@@ -11,3 +11,4 @@
     - [User Stories](docs/1_requirements/user-stories.md)
 - [Meetings](meetings/README.md)
   - [11-24-2025](meetings/meeting-11-24-2025.md)
+  - [12-10-2025](meetings/meeting-12-10-2025.md)
