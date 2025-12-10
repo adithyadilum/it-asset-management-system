@@ -18,3 +18,5 @@
 | NFR-14 | Scan Interaction                 | Mobile scanning interface provides haptic feedback or an audio cue upon successful scans so users need not view the screen.      | [AR-21]          |
 | NFR-15 | Error Clarity                    | Error messages (e.g., Duplicate Serial Number) must clearly state the cause and actionable next step, not generic system errors. | [AR-16]          |
 | NFR-16 | Keyboard Navigation              | High-volume data entry screens (e.g., New Asset Registration) must support full keyboard navigation (Tab-to-next-field).         | [AR-1]           |
+
+[Back to Root](../../README.md)

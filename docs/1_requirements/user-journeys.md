@@ -54,3 +54,5 @@
   3.  **Decision:** They identify an out-of-warranty laptop that is not worth renewing and locate it via Serial Number or Asset ID.
   4.  **Update:** The Manager changes the asset status to "Retired".
   5.  **Financial Impact:** Finance relies on the automatically generated depreciation to ensure accurate books upon retirement.
+
+[Back to Root](../../README.md)
