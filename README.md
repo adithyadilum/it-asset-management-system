@@ -9,6 +9,7 @@
     - [Non-Functional Requirements](docs/1_requirements/non-functional-requirements.md)
     - [User Journeys](docs/1_requirements/user-journeys.md)
     - [User Stories](docs/1_requirements/user-stories.md)
+    - [Elicitation Questions](docs/1_requirements/elicitation-questions.md)
 - [Meetings](meetings/README.md)
   - [11-24-2025](meetings/meeting-11-24-2025.md)
   - [12-10-2025](meetings/meeting-12-10-2025.md)
