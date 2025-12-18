@@ -14,3 +14,4 @@
   - [11-24-2025](meetings/meeting-11-24-2025.md)
   - [12-10-2025](meetings/meeting-12-10-2025.md)
   - [12-11-2025](meetings/meeting-12-11-2025.md)
+  - [12-11-2025](meetings/meeting-12-17-2025.md)
