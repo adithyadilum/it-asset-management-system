@@ -154,47 +154,56 @@ Protect financial and proprietary data from unauthorized DB dumps or internal th
 
 ## 3. Integrated Use Case Diagram
 
-```plantuml
-@startuml
-left to right direction
-skinparam packageStyle rectangle
+```mermaid
+flowchart LR
+    %%====================
+    %% Actors
+    %%====================
+    User["User"]
+    Admin["Global Admin"]
+    IDP["Azure AD"]
 
-actor "User" as User
-actor "Global Admin" as Admin
-actor "Azure AD" as IDP
+    %%====================
+    %% Security Module
+    %%====================
+    subgraph SecurityModule["Security Module"]
+        UC_Login["Login via SSO"]
+        UC_Validate["Validate Token"]
+        UC_Roles["Map Roles"]
+        UC_Encrypt["Encrypt Sensitive Data"]
+        UC_Decrypt["Decrypt for Display"]
+    end
 
-package "Security Module" {
-    usecase "Login via SSO" as UC_Login
-    usecase "Validate Token" as UC_Validate
-    usecase "Map Roles" as UC_Roles
-    usecase "Encrypt Sensitive Data" as UC_Encrypt
-    usecase "Decrypt for Display" as UC_Decrypt
+    %%====================
+    %% Core Registry Reference
+    %%====================
+    subgraph CoreRegistry["Core Registry (Reference)"]
+        UC_View["View Asset Details"]
+    end
 
+    %%====================
+    %% Actor interactions
+    %%====================
     User --> UC_Login
-    UC_Login --> IDP : Authenticate
-    IDP --> UC_Validate : Return Token
-    
-    UC_Validate ..> UC_Roles : <<include>>
-    
-    note right of UC_Roles
-      Check AD Groups
-      Grant Admin or User Access
-    end note
-}
+    Admin --> UC_View
 
-package "Core Registry (Reference)" {
-    usecase "View Asset Details" as UC_View
-}
+    UC_Login --> IDP
+    IDP --> UC_Validate
 
-Admin --> UC_View
-UC_View ..> UC_Decrypt : <<include>>
-UC_View ..> UC_Encrypt : <<include>>
+    %%====================
+    %% Include relationships (dashed arrows)
+    %%====================
+    UC_Validate -.-> UC_Roles
+    UC_View -.-> UC_Decrypt
+    UC_View -.-> UC_Encrypt
 
-note bottom of UC_Encrypt
-  AES-256 for Costs/Keys
-end note
-
-@enduml
+    %%====================
+    %% Notes / explanations
+    %%====================
+    UC_Roles ---|Role Mapping| RolesNote[/"Check AD Groups\nGrant Admin or User Access"/]
+    UC_Encrypt ---|Encryption| EncryptNote[/"AES-256 for Costs/Keys"/]
 ```
+
+
 
 [< Back to Specifications](./README.md)

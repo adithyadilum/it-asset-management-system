@@ -361,62 +361,59 @@ Provide a centralized interface for Global Admins to manage the reference data t
 
 The following diagram illustrates the complete interactions of the Global Admin with the Core Registry features.
 
-```plantuml
-@startuml
-left to right direction
-skinparam packageStyle rectangle
+```mermaid
+flowchart LR
+    %%====================
+    %% Actor
+    %%====================
+    Admin["Global Admin"]
 
-actor "Global Admin" as Admin
+    %%====================
+    %% Core Asset Registry System
+    %%====================
+    subgraph CoreAssetRegistry["Core Asset Registry System"]
+        UC_Register["Register New Asset"]
+        UC_GenID["Generate Unique ID"]
+        UC_Import["Bulk Import via CSV"]
+        UC_Search["Search & Filter Assets"]
+        UC_Consumables["Manage Consumable Stock"]
+        UC_MasterData["Manage Master Data"]
 
-package "Core Asset Registry System" {
-    
-    usecase "Register New Asset" as UC_Register
-    usecase "Generate Unique ID" as UC_GenID
-    usecase "Bulk Import via CSV" as UC_Import
-    usecase "Search & Filter Assets" as UC_Search
-    usecase "Manage Consumable Stock" as UC_Consumables
-    usecase "Manage Master Data" as UC_MasterData
-    
-    ' Logical associations
-    usecase "Validate Data" as UC_Validate
-    usecase "Dynamic Field Logic" as UC_Dynamic
-    usecase "Standardize Brand/Model" as UC_Standard
-    usecase "Secure Financial Data" as UC_Secure
+        %% Logical associations / included features
+        UC_Validate["Validate Data"]
+        UC_Dynamic["Dynamic Field Logic"]
+        UC_Standard["Standardize Brand/Model"]
+        UC_Secure["Secure Financial Data"]
+    end
 
-    ' Relationships
+    %%====================
+    %% Actor interactions
+    %%====================
     Admin --> UC_Register
     Admin --> UC_Import
     Admin --> UC_Search
     Admin --> UC_Consumables
     Admin --> UC_MasterData
 
-    ' Include/Extend relationships
-    UC_Register ..> UC_GenID : <<include>>
-    UC_Register ..> UC_Validate : <<include>>
-    UC_Register ..> UC_Dynamic : <<include>>
-    UC_Register ..> UC_Standard : <<include>>
-    UC_Register ..> UC_Secure : <<include>>
+    %%====================
+    %% Include relationships (dashed arrows)
+    %%====================
+    UC_Register -.-> UC_GenID
+    UC_Register -.-> UC_Validate
+    UC_Register -.-> UC_Dynamic
+    UC_Register -.-> UC_Standard
+    UC_Register -.-> UC_Secure
 
-    UC_Import ..> UC_Validate : <<include>>
-    UC_Import ..> UC_GenID : <<include>>
-    
-    note right of UC_Dynamic
-      Category = Hardware -> Show Serial/Model
-      Category = Software -> Show License/Seats
-      Category = Consumable -> Show Quantity
-    end note
+    UC_Import -.-> UC_Validate
+    UC_Import -.-> UC_GenID
 
-    note right of UC_Consumables
-      Bypasses Serial Number check
-      Tracks Quantity only
-    end note
-
-    note bottom of UC_MasterData
-      Configure Brands, Models,
-      Locations, Vendors, Categories
-    end note
-}
-@enduml
+    %%====================
+    %% Notes / explanations
+    %%====================
+    UC_Dynamic ---|Category logic| DynamicNote[/"Hardware -> Serial/Model\nSoftware -> License/Seats\nConsumable -> Quantity"/]
+    UC_Consumables ---|Stock logic| ConsumablesNote[/"Bypasses Serial Number check\nTracks Quantity Only"/]
+    UC_MasterData ---|Master data config| MasterDataNote[/"Configure Brands, Models, Locations, Vendors, Categories"/]
 ```
+
 
 [< Back to Specifications](./README.md)
