@@ -16,6 +16,7 @@ This document outlines the functional requirements for a centralized, IT Asset M
 | **REQ-REG-1.6** | **(Financials)** Record **Initial Cost** (Base Price + Tax + Shipping) with **Multi-Currency Support** (allowing entry in NOK, USD, or LKR) and support attaching related documents (e.g., PDF invoices).                                    |
 | **REQ-REG-1.7** | **(Bulk Import)** Support **CSV/Excel import** for assets. If specific rows contain errors, the system must **skip only the invalid rows**, import the valid ones, and generate an error report for the failed entries (No "Undo" required). |
 | **REQ-REG-1.8** | **(Consumables & Cloud)** Support a "Quantity Only" tracking mode for low-value items (e.g., HDMI Cables) without unique IDs.                                                                                                                |
+| **REQ-REG-1.9** | **(Master Data Management)** Provide a dedicated "Settings" or "Configuration" interface where Global Admins can Create, Edit, and Delete reference data (Brands, Models, Categories, Locations, Vendors).                                   |
 
 <a id="user-access-security"></a>
 
