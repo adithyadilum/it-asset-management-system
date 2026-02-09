@@ -180,49 +180,38 @@ Provide a self-service view for employees to verify the assets assigned to them.
 
 ## 3. Integrated Use Case Diagram
 
-```plantuml
-@startuml
-left to right direction
-skinparam packageStyle rectangle
+```mermaid
+flowchart LR
+    %% Actors
+    Admin["Global Admin"]
+    API_Client["External System"]
+    User["Employee"]
+    Auditor["Auditor"]
 
-actor "Global Admin" as Admin
-actor "External System" as API_Client
-actor "Employee" as User
-actor "Auditor" as Auditor
+    %% Integration & Reporting Package
+    subgraph IntegrationRep["Integration & Reporting"]
+        UC_Dash["View Admin Dashboard"]
+        UC_API["Fetch Asset Data (API)"]
+        UC_Report["Generate Reports"]
+        UC_MyView["View 'My Assets'"]
+        UC_Export["Export to CSV/PDF"]
+        UC_AuthAPI["Validate API Token"]
+    end
 
-package "Integration & Reporting" {
-    usecase "View Admin Dashboard" as UC_Dash
-    usecase "Fetch Asset Data (API)" as UC_API
-    usecase "Generate Reports" as UC_Report
-    usecase "View 'My Assets'" as UC_MyView
-    
-    usecase "Export to CSV/PDF" as UC_Export
-    usecase "Validate API Token" as UC_AuthAPI
-
+    %% Actor interactions
     Admin --> UC_Dash
     Admin --> UC_Report
     Auditor --> UC_Report
-    
     User --> UC_MyView
-    
     API_Client --> UC_API
-    
-    UC_Report ..> UC_Export : <<include>>
-    UC_API ..> UC_AuthAPI : <<include>>
-    
-    note right of UC_Dash
-      Show:
-      - Pending Actions
-      - Stock Alerts
-      - KPIs
-    end note
-    
-    note bottom of UC_API
-      Read-Only access
-      Strict Rate Limiting
-    end note
-}
-@enduml
+
+    %% Include relationships (dashed arrows)
+    UC_Report -.-> UC_Export
+    UC_API -.-> UC_AuthAPI
+
+    %% Notes
+    UC_Dash ---|Dashboard Info| DashNote[/"Show:\n- Pending Actions\n- Stock Alerts\n- KPIs"/]
+    UC_API ---|API Restrictions| APINote[/"Read-Only access\nStrict Rate Limiting"/]
 ```
 
 [< Back to Specifications](./README.md)

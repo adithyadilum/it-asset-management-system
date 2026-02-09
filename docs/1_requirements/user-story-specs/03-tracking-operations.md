@@ -216,47 +216,43 @@ stateDiagram-v2
 
 ## 3. Integrated Use Case Diagram
 
-%% Use Case Diagram: Tracking & Operations (Mermaid-compatible)
+```mermaid
+flowchart LR
+    %% Actors
+    Admin["Global Admin"]
+    Auditor["Auditor"]
 
-graph TB
-    %% System boundary as a subgraph
-    subgraph "Tracking & Operations"
-        direction TB
+    %% Tracking & Operations Package
+    subgraph TrackingOps["Tracking & Operations"]
         UC_Assign["Assign Asset (Check-out)"]
         UC_Return["Return Asset (Check-in)"]
         UC_Status["Update Lifecycle Status"]
         UC_History["View Audit History"]
 
-        %% Supporting logic (included use cases)
+        %% Logical includes
         UC_ValAvail["Validate Availability"]
         UC_Log["Log Event"]
         UC_Cust["Resolve Custodian"]
-
-        %% Dependencies / include relationships
-        UC_Assign --> UC_ValAvail
-        UC_Assign --> UC_Cust
-        UC_Assign --> UC_Log
-        UC_Return --> UC_Log
-        UC_Status --> UC_Log
     end
 
-    %% Actors outside the system boundary
-    Admin["Global Admin"]
-    Auditor["Auditor"]
-
-    %% Actor to Use Case relationships
+    %% Actor interactions
     Admin --> UC_Assign
     Admin --> UC_Return
     Admin --> UC_Status
     Admin --> UC_History
     Auditor --> UC_History
 
-    %% Notes as separate nodes (optional, dashed line)
-    Note1["Prompt for Condition (Broken/Working)"]
-    Note2["Immutable WORM Storage"]
-    UC_Return -.-> Note1
-    UC_History -.-> Note2
+    %% Include relationships (dashed arrows)
+    UC_Assign -.-> UC_ValAvail
+    UC_Assign -.-> UC_Cust
+    UC_Assign -.-> UC_Log
 
+    UC_Return -.-> UC_Log
+    UC_Status -.-> UC_Log
 
+    %% Notes
+    UC_Return ---|Condition prompt| ReturnNote[/"Prompt for Condition\n(Broken/Working)"/]
+    UC_History ---|Audit storage| HistoryNote[/"Immutable WORM Storage"/]
+```
 
 [< Back to Specifications](./README.md)

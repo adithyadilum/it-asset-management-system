@@ -208,46 +208,37 @@ Enforce a multi-step approval for permanently removing assets from the ledger.
 
 ## 3. Integrated Use Case Diagram
 
-```plantuml
-@startuml
-left to right direction
-skinparam packageStyle rectangle
+```mermaid
+flowchart LR
+    %% Actors
+    Admin["Global Admin"]
+    User["Employee"]
+    SMTP["Email System"]
+    Cron["Scheduler"]
 
-actor "Global Admin" as Admin
-actor "Employee" as User
-actor "Email System" as SMTP
-actor "Scheduler" as Cron
+    %% Automation & Optimization Package
+    subgraph AutoOpt["Automation & Optimization"]
+        UC_Accept["Trigger Digital Acceptance"]
+        UC_Confirm["Confirm Receipt"]
+        UC_Alert["Send Proactive Alerts"]
+        UC_Maint["Log Maintenance"]
+        UC_Dispose["Initiate Disposal"]
+        UC_Approve["Approve Disposal"]
+    end
 
-package "Automation & Optimization" {
-    usecase "Trigger Digital Acceptance" as UC_Accept
-    usecase "Confirm Receipt" as UC_Confirm
-    usecase "Send Proactive Alerts" as UC_Alert
-    usecase "Log Maintenance" as UC_Maint
-    usecase "Initiate Disposal" as UC_Dispose
-    usecase "Approve Disposal" as UC_Approve
-
+    %% Actor interactions
     Admin --> UC_Accept
-    SMTP --> UC_Accept : Send Email
-    User --> UC_Confirm : Click Link
-
-    Cron --> UC_Alert : Daily Check
-    UC_Alert --> SMTP : Send Digest
-
+    SMTP --> UC_Accept
+    User --> UC_Confirm
+    Cron --> UC_Alert
+    UC_Alert --> SMTP
     Admin --> UC_Maint
     Admin --> UC_Dispose
     Admin --> UC_Approve
 
-    note right of UC_Confirm
-      Updates Status to
-      "Assigned (Confirmed)"
-    end note
-
-    note bottom of UC_Dispose
-      Upload Disposal Cert
-      Reason: E-Waste/Sold
-    end note
-}
-@enduml
+    %% Notes
+    UC_Confirm ---|Status Update| ConfirmNote[/"Updates Status to\n'Assigned (Confirmed)'"/]
+    UC_Dispose ---|Disposal Info| DisposeNote[/"Upload Disposal Cert\nReason: E-Waste/Sold"/]
 ```
 
 [< Back to Specifications](./README.md)
