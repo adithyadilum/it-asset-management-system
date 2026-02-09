@@ -43,3 +43,6 @@ To ensure timely delivery, the following features are explicitly excluded from t
 - **User Base:** The system is designed for internal use by <100 Admin users, not the entire public workforce.
 - **Authentication:** Final production deployment depends on Azure AD approval; development will proceed with Mock Auth.
 - **Data Migration:** It is assumed legacy data will be available in CSV format for the initial bulk import.
+
+---
+[< Back to Root](../../README.md)

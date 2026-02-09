@@ -37,3 +37,6 @@
 | **NFR-USE-02** | **Scan Interaction**      | _(Low Priority)_ Mobile scanning interface provides haptic feedback or an audio cue upon successful scans.                                                 | [REQ-AUTO-5.4] |
 | **NFR-USE-03** | **Error Clarity**         | Error messages (e.g., Duplicate Serial Number) must clearly state the cause and actionable next step (e.g., "Serial 123 already exists for Asset ID 456"). | [REQ-REG-1.1]  |
 | **NFR-USE-04** | **Keyboard Navigation**   | High-volume data entry screens (e.g., New Asset Registration) must support full keyboard navigation (Tab-to-next-field).                                   | [REQ-REG-1.1]  |
+
+---
+[< Back to Requirements](./README.md)

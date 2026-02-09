@@ -59,4 +59,4 @@ This document outlines the functional requirements for a centralized, IT Asset M
 | **REQ-OPS-5.4**  | **(Disposal Workflow)** Enforce an approval step for the \"Disposed\" status (e.g., Manager/IT approval) and **capture disposal reasons** (Sold, Stolen, E‑waste, etc.), with ability to attach supporting documents.               |
 | **REQ-AUTO-5.5** | **(Warranty Sync – Optional)** _(Optional / nice-to-have)_ Periodically query external **Vendor APIs (Dell/HP/Lenovo)** using the Serial Number to automatically update Warranty Expiry dates.                                      |
 
-[Back to Root](../../README.md)
+[< Back to Requirements](./README.md)

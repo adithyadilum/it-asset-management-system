@@ -418,3 +418,5 @@ package "Core Asset Registry System" {
 }
 @enduml
 ```
+
+[< Back to Specifications](./README.md)
