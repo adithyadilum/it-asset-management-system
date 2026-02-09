@@ -216,49 +216,47 @@ stateDiagram-v2
 
 ## 3. Integrated Use Case Diagram
 
-```plantuml
-@startuml
-left to right direction
-skinparam packageStyle rectangle
+%% Use Case Diagram: Tracking & Operations (Mermaid-compatible)
 
-actor "Global Admin" as Admin
-actor "Auditor" as Auditor
+graph TB
+    %% System boundary as a subgraph
+    subgraph "Tracking & Operations"
+        direction TB
+        UC_Assign["Assign Asset (Check-out)"]
+        UC_Return["Return Asset (Check-in)"]
+        UC_Status["Update Lifecycle Status"]
+        UC_History["View Audit History"]
 
-package "Tracking & Operations" {
-    usecase "Assign Asset (Check-out)" as UC_Assign
-    usecase "Return Asset (Check-in)" as UC_Return
-    usecase "Update Lifecycle Status" as UC_Status
-    usecase "View Audit History" as UC_History
+        %% Supporting logic (included use cases)
+        UC_ValAvail["Validate Availability"]
+        UC_Log["Log Event"]
+        UC_Cust["Resolve Custodian"]
 
-    ' Logic
-    usecase "Validate Availability" as UC_ValAvail
-    usecase "Log Event" as UC_Log
-    usecase "Resolve Custodian" as UC_Cust
+        %% Dependencies / include relationships
+        UC_Assign --> UC_ValAvail
+        UC_Assign --> UC_Cust
+        UC_Assign --> UC_Log
+        UC_Return --> UC_Log
+        UC_Status --> UC_Log
+    end
 
+    %% Actors outside the system boundary
+    Admin["Global Admin"]
+    Auditor["Auditor"]
+
+    %% Actor to Use Case relationships
     Admin --> UC_Assign
     Admin --> UC_Return
     Admin --> UC_Status
     Admin --> UC_History
     Auditor --> UC_History
 
-    UC_Assign ..> UC_ValAvail : <<include>>
-    UC_Assign ..> UC_Cust : <<include>>
-    UC_Assign ..> UC_Log : <<include>>
+    %% Notes as separate nodes (optional, dashed line)
+    Note1["Prompt for Condition (Broken/Working)"]
+    Note2["Immutable WORM Storage"]
+    UC_Return -.-> Note1
+    UC_History -.-> Note2
 
-    UC_Return ..> UC_Log : <<include>>
-    
-    UC_Status ..> UC_Log : <<include>>
-    
-    note right of UC_Return
-      Prompt for Condition
-      (Broken/Working)
-    end note
 
-    note bottom of UC_History
-      Immutable WORM Storage
-    end note
-}
-@enduml
-```
 
 [< Back to Specifications](./README.md)
