@@ -17,6 +17,7 @@ This document outlines the functional requirements for a centralized, IT Asset M
 | **REQ-REG-1.7** | **(Bulk Import)** Support **CSV/Excel import** for assets. If specific rows contain errors, the system must **skip only the invalid rows**, import the valid ones, and generate an error report for the failed entries (No "Undo" required). |
 | **REQ-REG-1.8** | **(Consumables & Cloud)** Support a "Quantity Only" tracking mode for low-value items (e.g., HDMI Cables) without unique IDs.                                                                                                                |
 | **REQ-REG-1.9** | **(Master Data Management)** Provide a dedicated "Settings" or "Configuration" interface where Global Admins can Create, Edit, and Delete reference data (Brands, Models, Categories, Locations, Vendors).                                   |
+| **REQ-REG-1.10**| **(Non-IT Asset Support)** The system must support asset categories for **Furniture and Facilities**, allowing for attributes specific to physical infrastructure (e.g., Dimensions, Material) rather than technical specs.        |
 
 <a id="user-access-security"></a>
 
@@ -38,6 +39,7 @@ This document outlines the functional requirements for a centralized, IT Asset M
 | **REQ-OPS-3.2** | **(Assignment & Return Tracking)** Provide a simple interface to record asset assignment and return (no service request workflow), and enable sending automated **email/Teams notifications** to users with the list of assets to return and due dates.                                        |
 | **REQ-OPS-3.3** | **(Audit Log)** Maintain an immutable, chronological history log of every change (e.g., "Asset moved from IT to Finance by User John Doe on Dec 12").                                                                                                                                          |
 | **REQ-OPS-3.4** | **(Lifecycle Status)** Track the specific status of an asset (e.g., **Available, Assigned, Defective, In Repair, Disposed, Donated, Lost, Missing**) and allow admins to configure additional statuses as needed. Deleted assets must be **Soft Deleted (Archived)**, not permanently removed. |
+| **REQ-OPS-3.5** | **(Bulk Location Transfer)** Support the **bulk update of Asset Locations** (e.g., moving 50 chairs from Room A to Room B) in a single transaction to streamline mass moves. |
 
 ## 4: External Integration (API) & Reporting
 

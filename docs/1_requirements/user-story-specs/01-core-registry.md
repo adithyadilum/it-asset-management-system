@@ -135,6 +135,13 @@ Streamline the data entry process and improve data quality by displaying only th
   - **Then** the "Serial Number", "CPU", and "RAM" fields should immediately disappear
   - **And** the "License Key", "Seat Count", and "Expiry Date" fields should appear.
 
+- **Scenario: Category Selection (Furniture)**
+  - **Given** I am on the "New Asset" screen
+  - **When** I select Category = "Office Furniture"
+  - **Then** the "Technical Specs" section (CPU/RAM) is hidden
+  - **And** the "Physical Specs" section appears (Fields: Dimensions, Material, Weight)
+  - **And** the "Serial Number" field becomes optional (since desks might not have one).
+
 **2.3.5 Validations/Business Rules**
 - **Data Cleanup**: If a user switches categories mid-entry (e.g., fills in "RAM" then switches to "Software"), the system must clear the hidden values to prevent phantom data.
 
@@ -410,7 +417,7 @@ flowchart LR
     %%====================
     %% Notes / explanations
     %%====================
-    UC_Dynamic ---|Category logic| DynamicNote[/"Hardware -> Serial/Model\nSoftware -> License/Seats\nConsumable -> Quantity"/]
+    UC_Dynamic ---|Category logic| DynamicNote[/"Hardware -> Serial/Model\nSoftware -> License/Seats\nFurniture -> Dimensions/Material\nConsumable -> Quantity"/]
     UC_Consumables ---|Stock logic| ConsumablesNote[/"Bypasses Serial Number check\nTracks Quantity Only"/]
     UC_MasterData ---|Master data config| MasterDataNote[/"Configure Brands, Models, Locations, Vendors, Categories"/]
 ```

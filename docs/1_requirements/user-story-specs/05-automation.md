@@ -70,6 +70,9 @@ Create a digital paper trail proving that an employee took possession of an asse
 
 **2.1.5 Validations/Business Rules**
 
+- **Conditional Trigger**:
+  - **IT Assets** (Laptops/Mobiles): **Trigger** email automatically.
+  - **Furniture/Peripherals**: **Do NOT Trigger** (Silent Assignment) unless the "Force Acknowledgement" checkbox is checked manually.
 - **SLA**: If not confirmed in 3 days, send a reminder to User and Admin.
 
 **2.1.6 UI/UX requirements**

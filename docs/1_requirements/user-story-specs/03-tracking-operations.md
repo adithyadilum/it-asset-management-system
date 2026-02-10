@@ -67,6 +67,9 @@ Accurately record the custodian or location of an asset to enforce accountabilit
 - **Status Check**: Only assets with status "Available" can be assigned.
 - **Custodian**: Must be a valid User from the directory or a valid Location entity.
 - **Mutually Exclusive Assignment**: An asset can be assigned to a **User** OR a **Location**, but never both simultaneously.
+- **Category Constraints**:
+  - **IT Devices** (Laptops, Mobiles): Can be assigned to User OR Location.
+  - **Furniture/Facilities**: Defaults to **Location** (User assignment is optional/rare).
 - **Location Capacity**: If assigning to a Location (e.g., "Server Room B"), the system does not enforce a limit on the number of assets.
 
 **2.1.6 UI/UX requirements**
@@ -214,6 +217,41 @@ stateDiagram-v2
 
 ---
 
+### 2.5 User Story 5 - US-3.5 (Bulk Location Transfer)
+
+**2.5.1 Overview of the requirement**
+Mapped to **REQ-OPS-3.5**. Moving physical infrastructure happens in batches. Moving 50 chairs from Room A to Room B one by one is not feasible.
+
+**2.5.1 Goal**
+Allow Admins to update the location of multiple assets in a single transaction.
+
+**2.5.2 User Story**
+- **As a** Global Admin,
+- **I want to** select multiple assets and update their Location in one step,
+- **So that** I can efficiently manage office moves or bulk deployments.
+
+**2.5.3 Acceptance Criteria (Gherkin Format)**
+- **Scenario: Bulk Move of Furniture**
+  - **Given** I have filtered the Asset List to show "Office Chairs" in "Room 101"
+  - **When** I select 20 records and click "Bulk Edit" > "Change Location"
+  - **And** I select "Room 102"
+  - **Then** all 20 assets are updated to "Room 102"
+  - **And** 20 individual history log entries are created.
+
+**2.5.5 Validations/Business Rules**
+- **Validation**: If any selected asset is currently "Assigned to a User", the system must warn the Admin: "Asset [ID] is assigned to [User]. Re-assigning to Location will clear the User."
+
+**2.5.6 UI/UX requirements**
+- **Multi-Select**: Grid must support checkboxes and "Select All".
+
+**2.5.7 Non-functional requirements**
+- **Performance**: Bulk updates of up to 100 items should complete within 3 seconds.
+
+**2.5.8 Dependencies**
+- None.
+
+---
+
 ## 3. Integrated Use Case Diagram
 
 ```mermaid
@@ -226,6 +264,7 @@ flowchart LR
     subgraph TrackingOps["Tracking & Operations"]
         UC_Assign["Assign Asset (Check-out)"]
         UC_Return["Return Asset (Check-in)"]
+        UC_Bulk["Bulk Location Transfer"]
         UC_Status["Update Lifecycle Status"]
         UC_History["View Audit History"]
 
@@ -238,6 +277,7 @@ flowchart LR
     %% Actor interactions
     Admin --> UC_Assign
     Admin --> UC_Return
+    Admin --> UC_Bulk
     Admin --> UC_Status
     Admin --> UC_History
     Auditor --> UC_History
