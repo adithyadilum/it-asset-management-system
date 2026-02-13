@@ -11,7 +11,7 @@ This folder contains the technical design specifications for the **IT Asset Mana
 |                     | [Component Diagram (C4-L3)](01_architecture/c4-03-component-diagram.md)       | Details the internal modularity                         | **Review** |
 |                     | [Deployment Strategy](01_architecture/deployment-strategy.md)                 | Docker Compose setup for local/internal hosting.        | To Do      |
 |                     | [Backup & DR Plan](01_architecture/backup-dr-plan.md)                         | Database dump and restore procedures (RPO 24h).         | To Do      |
-| **02 Data Model**   | [ER Diagram](02_data_model/erd-diagram.md)                                    | Entity relationships (Assets, Categories, Users).       | To Do      |
+| **02 Data Model**   | [ER Diagram](02_data_model/erd-diagram.md)                                    | Entity relationships (Assets, Categories, Users).       | **Review** |
 |                     | [Seed Data Strategy](02_data_model/seed-data-strategy.md)                     | Default Categories, Brands, and Mock Users.             | To Do      |
 |                     | [Audit Log Schema](02_data_model/audit-log-schema.md)                         | Immutable history table design.                         | To Do      |
 | **03 API Spec**     | [OpenAPI Definition](03_api_spec/openapi-definition.yaml)                     | Swagger specification for all REST endpoints.           | To Do      |
@@ -21,4 +21,4 @@ This folder contains the technical design specifications for the **IT Asset Mana
 |                     | [RBAC Matrix](04_security_infra/rbac-matrix.csv)                              | Permission mapping (Roles vs. Actions).                 | To Do      |
 | **05 Logic**        | [Import Flowchart](05_business_logic/bulk-import-logic.md)                    | Logic for "Partial Success" CSV imports.                | To Do      |
 |                     | [Lifecycle State Machine](05_business_logic/asset-lifecycle-state-machine.md) | Valid status transitions (e.g., New -> Assigned).       | To Do      |
-|                     | [Asset Return Seq](05_business_logic/sequence-diagrams/seq-asset-return.md)   | Sequence diagram for the return workflow.               | To Do      |
+|                     | [Sequence Diagrams](05_business_logic/sequence-diagrams.md)                   | Consolidated core workflow diagrams (4 workflows).      | **Review** |
