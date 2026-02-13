@@ -1,4 +1,4 @@
-````mermaid
+```mermaid
 erDiagram
 
     USERS {
@@ -163,5 +163,4 @@ erDiagram
     ASSETS ||--o{ ASSET_DISPOSALS : disposes
     USERS ||--o{ ASSET_DISPOSALS : approves
     ASSETS ||--o{ ASSET_DOCUMENTS : has
-    ```
-````
+```
