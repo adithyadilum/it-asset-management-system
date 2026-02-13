@@ -223,7 +223,7 @@ This diagram visualizes the handshake between the User, the System, and the Azur
 
 - Critical Security Step: The diagram highlights the logic occurring after authCallback(token) is received. The Backend API validates the token signature and extracts the OID_Groups. It then iterates through these groups to map them to internal System Roles (e.g., "Global Admin"), fulfilling REQ-SEC-2.2.
 
-````mermaid
+```mermaid
 sequenceDiagram
     autonumber
     actor User as User
@@ -273,5 +273,4 @@ sequenceDiagram
 
     Browser-->>User: Load Dashboard (Based on Role)
     deactivate Browser
-    ```
-````
+```
