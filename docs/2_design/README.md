@@ -20,5 +20,5 @@ This folder contains the technical design specifications for the **IT Asset Mana
 |                     | [SSO Requirements](04_security_infra/sso-requirements-specification.md)       | Requirements for future Azure AD integration.           | To Do      |
 |                     | [RBAC Matrix](04_security_infra/rbac-matrix.csv)                              | Permission mapping (Roles vs. Actions).                 | To Do      |
 | **05 Logic**        | [Import Flowchart](05_business_logic/bulk-import-logic.md)                    | Logic for "Partial Success" CSV imports.                | To Do      |
-|                     | [Lifecycle State Machine](05_business_logic/asset-lifecycle-state-machine.md) | Valid status transitions (e.g., New -> Assigned).       | To Do      |
+|                     | [Lifecycle State Machine](05_business_logic/asset-lifecycle-state-machine.md) | Valid status transitions (e.g., New -> Assigned).       | **Review** |
 |                     | [Sequence Diagrams](05_business_logic/sequence-diagrams.md)                   | Consolidated core workflow diagrams (4 workflows).      | **Review** |
