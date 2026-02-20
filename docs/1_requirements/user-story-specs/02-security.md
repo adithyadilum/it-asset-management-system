@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Feature Name: User Access & Security
+## Epic: User Access & Security
 
 ### Version History
 
@@ -10,9 +10,9 @@
 
 ---
 
-## 1. Overview of the Feature
+## 1. Overview
 
-### 1.1 Summary Feature
+### 1.1 Summary
 
 Security is paramount for an IT Asset Management system that houses financial data and PII. This feature governs how users access the system, enforcing strict Identity Management via Azure Active Directory (Entra ID). It ensures that only authorized personnel can access sensitive data and that all communications and storage are verifyingly secure.
 

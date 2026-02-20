@@ -2,18 +2,18 @@
 
 ## for Integrated Digital Asset Management System
 
-**Version 1.0**
-**Prepared by ITM07 - NovaSoft**
-**University of Moratuwa, Sri Lanka**
+**Version 1.0**  
+**Prepared by ITM07 - NovaSoft**  
+**University of Moratuwa, Sri Lanka**  
 **12/02/2026**
 
 ---
 
 ## Revision History
 
-| Name | Date | Reason For Changes | Version |
-| :--- | :--- | :----------------- | :------ |
-|      |      |                    |         |
+| Name | Date       | Reason For Changes | Version |
+| :--- | :--------- | :----------------- | :------ |
+| Team | 12/02/2026 | Initial draft      | 1.0     |
 
 ---
 

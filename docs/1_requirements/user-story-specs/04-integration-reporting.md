@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Feature Name: Integration & Reporting
+## Epic: Integration & Reporting
 
 ### Version History
 
@@ -10,9 +10,9 @@
 
 ---
 
-## 1. Overview of the Feature
+## 1. Overview
 
-### 1.1 Summary Feature
+### 1.1 Summary
 
 Data is useless if it's trapped. This feature unlocks the value of the ITAM system by providing visibility through Dashboards and Reports, and enabling connectivity via APIs. It serves stakeholders from the Global Admin (Operational Dashboards) to Auditors (Compliance Reports) and other systems (HR/Finance Integrations).
 

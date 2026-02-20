@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Feature Name: Core Asset Registry
+## Epic: Core Asset Registry
 
 ### Version History
 
@@ -10,9 +10,9 @@
 
 ---
 
-## 1. Overview of the Feature
+## 1. Overview
 
-### 1.1 Summary Feature
+### 1.1 Summary
 
 The Core Asset Registry serves as the foundational database for the entire IT Asset Management (ITAM) system. It is designed to be the single source of truth for all physical and digital assets within the organization. The feature provides a robust, validated mechanism for registering new items, ensuring that every asset—whether a high-value server or a bulk consumable—is uniquely identified, accurately categorized, and financially tracked from day one.
 

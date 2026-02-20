@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Feature Name: Automation & Optimization
+## Epic: Automation & Optimization
 
 ### Version History
 
@@ -10,9 +10,9 @@
 
 ---
 
-## 1. Overview of the Feature
+## 1. Overview
 
-### 1.1 Summary Feature
+### 1.1 Summary
 
 Manual tracking is prone to "human latency" and error. This feature introduces automation to the ITAM lifecycle. It proactively notifies admins of critical events (Expiry, Stockouts), streamlines the "Acceptance of Responsibility" for new hires, and manages the end-of-life disposal process with a rigid audit trail.
 
