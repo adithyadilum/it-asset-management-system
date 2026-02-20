@@ -18,7 +18,7 @@ Asset Tracking is the operational core of the system. It moves beyond static reg
 
 ### 1.2 Scope
 
-- **Check-in/Check-out**: Assigning assets to specific Employees or Physical Locations.
+- **Assignment/Return**: Assigning assets to specific Employees or Physical Locations.
 - **Return Management**: Process for receiving assets back into inventory.
 - **Audit Logging**: Automatic, chronological recording of all custody changes.
 - **Status Lifecycle**: Managing states like "In Use", "Repair", "Lost", "Disposed".
@@ -41,7 +41,7 @@ Knowing _what_ you own is step 1; knowing _where_ it is and _who_ has it is step
 
 ## 2. Functionality: Tracking Operations
 
-### 2.1 User Story 1 - US-3.1 (Asset Assignment / Check-out)
+### 2.1 User Story 1 - US-3.1 (Asset Assignment)
 
 **2.1.1 Overview of the requirement**
 Mapped to **REQ-OPS-3.1**. Assets act as tools for employees. The system must link a specific asset ID to a specific User or Room.
@@ -95,7 +95,7 @@ Accurately record the custodian or location of an asset to enforce accountabilit
 
 ---
 
-### 2.2 User Story 2 - US-3.2 (Asset Return / Check-in)
+### 2.2 User Story 2 - US-3.2 (Asset Return)
 
 **2.2.1 Overview of the requirement**
 Mapped to **REQ-OPS-3.2**. When an employee leaves or equipment is swapped, assets must be returned to the pool.
@@ -182,7 +182,7 @@ Maintain an unalterable history of every event in an asset's life.
 
 ---
 
-### 2.4 User Story 4 - US-3.4 (Lifecycle Status Management)
+### 2.4 User Story 4 - US-3.4 (Lifecycle Status Management /Asset status)
 
 **2.4.1 Overview of the requirement**
 Mapped to **REQ-OPS-3.4**. Assets are not just "Used" or "Unused". They break, get lost, or are sold.
