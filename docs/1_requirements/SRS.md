@@ -210,6 +210,34 @@ The Integrated Digital Asset Management System (IDAMS) automates the tracking an
 - **Role-Based Access Control (RBAC):** Automatically maps Azure AD group attributes to system permissions (e.g., Admin, Viewer).
 - **Immutable Audit Log:** Maintains a chronological, read-only ledger of every system change (assignments, status updates) for security and historical traceability.
 
+**Functional Hierarchy Diagram**
+
+The following diagram illustrates the major functional groups and their relationships:
+
+```mermaid
+graph TD
+    subgraph "IDAMS Core Functions"
+
+    A[Asset Registry] --> B[Lifecycle Management]
+    A --> C[Financials & Reporting]
+
+    B --> B1[Assignment & Returns]
+    B --> B2[Maintenance]
+    B --> B3[Disposal Workflow]
+
+    C --> C1[Cost Allocation]
+    C --> C2[Dashboards]
+    C --> C3[Audit Reports]
+
+    D[Automation Engine] --> A
+    D --> E[Alerts & Notifications]
+
+    F[Security Module] --> G[Azure AD SSO]
+    F --> H[Role-Based Access]
+    F --> I[Immutable Audit Log]
+    end
+```
+
 ## 2.3 User Classes and Characteristics
 
 The system interactions are divided into three primary user classes, distinguished by their access levels and business responsibilities.
@@ -771,16 +799,296 @@ While the user interface language is restricted to English (US) for this version
 **Figure 1: DFD Level 0 - Context Diagram**
 This diagram illustrates the high-level interaction between the IDAMS system and external entities (Users, Azure AD, and External Systems).
 
+```mermaid
+graph TD
+    %% External Entities
+    Admin[Global Admin]
+    Emp[Employee]
+    AzureAD[Microsoft Azure AD]
+    Finance[Finance System]
+    Notify[Email/Teams Gateway]
+
+    %% System Boundary
+    System((IDAMS System))
+
+    %% Relationships
+    Admin -->|Asset Data / Config| System
+    System -->|Reports / Dashboards| Admin
+
+    Emp -->|View My Assets| System
+    System -->|Custody Confirmation| Emp
+
+    System -->|Auth Request| AzureAD
+    AzureAD -->|Token & User Claims| System
+
+    System -->|Asset Valuation Data| Finance
+
+    System -->|Alerts & Notifications| Notify
+```
+
 **Figure 2: DFD Level 1 - System Processes**
 This diagram breaks down the system into its core functional processes and data stores.
+
+```mermaid
+graph TD
+    %% External Entities
+    Admin[Global Admin]
+    Emp[Employee]
+
+    %% Processes
+    P1(1.0 Asset Registration)
+    P2(2.0 Assignment & Return)
+    P3(3.0 Maintenance)
+    P4(4.0 Reporting)
+
+    %% Data Stores
+    DB_Asset[(Asset Database)]
+    DB_Log[(Audit Log)]
+    DB_User[(User Profiles)]
+
+    %% Flow 1: Registration
+    Admin -->|Enter New Asset| P1
+    P1 -->|Save Asset Details| DB_Asset
+    P1 -->|Log Creation| DB_Log
+
+    %% Flow 2: Assignment
+    Admin -->|Assign Asset| P2
+    P2 -->|Update Status: In Use| DB_Asset
+    P2 -->|Create Assignment Record| DB_Log
+    P2 -->|Notify User| Emp
+    Emp -->|Confirm Receipt| P2
+
+    %% Flow 3: Maintenance
+    Admin -->|Log Repair| P3
+    P3 -->|Update Status: In Repair| DB_Asset
+    P3 -->|Record Cost| DB_Log
+
+    %% Flow 4: Reporting
+    Admin -->|Request Report| P4
+    DB_Asset -->|Fetch Data| P4
+    DB_Log -->|Fetch History| P4
+    P4 -->|Export PDF/CSV| Admin
+```
 
 **Figure 3: Asset Lifecycle State Diagram**
 This diagram models the valid status transitions for an IT Asset, enforcing the business rules defined in REQ-OPS-3.4. It ensures an asset cannot jump from "In Use" to "Retired" without being returned first.
 
+```mermaid
+stateDiagram-v2
+    [*] --> New: Purchase & Register
+
+    New --> Available: QC Passed & Tagged
+
+    Available --> InUse: Assigned to User
+    InUse --> Available: Returned (Good Condition)
+
+    InUse --> InRepair: Returned (Damaged)
+    InRepair --> Available: Repaired
+
+    InRepair --> Retired: Unrepairable / Too Costly
+    Available --> Retired: End of Life / Obsolete
+
+    Retired --> Disposed: Disposal Approved
+    Disposed --> [*]: Archived (Soft Delete)
+
+    note right of InUse
+        Asset is in custody of
+        an employee or location.
+    end note
+
+    note right of Retired
+        Asset is withdrawn from use
+        but still in storage.
+    end note
+```
+
 **Figure 4: Disposal Approval Workflow**
 This diagram details the specific governance workflow for REQ-OPS-5.4, ensuring no asset is disposed of without a manager's approval.
 
+```mermaid
+stateDiagram-v2
+    state "Retired (In Storage)" as Retired
+    state "Pending Approval" as Pending
+    state "Disposed (E-Waste)" as Disposed
+
+    [*] --> Retired
+
+    Retired --> Pending: Admin Initiates Disposal Request
+
+    Pending --> Disposed: Manager Approves
+    Pending --> Retired: Manager Rejects (Keep in Stock)
+
+    Disposed --> [*]: Certificate Uploaded & Archived
+```
+
 **Figure 5: ER Diagram**
+
+```mermaid
+erDiagram
+
+    USERS {
+        UUID user_id PK
+        STRING azure_ad_object_id UK
+        STRING email
+        STRING display_name
+        STRING department
+        BOOLEAN is_active
+        TIMESTAMP created_at
+    }
+
+    ROLES {
+        INT role_id PK
+        STRING role_name UK
+        STRING description
+    }
+
+    USER_ROLES {
+        UUID user_id FK
+        INT role_id FK
+    }
+
+    BRANDS {
+        INT brand_id PK
+        STRING brand_name UK
+        BOOLEAN is_active
+    }
+
+    MODELS {
+        INT model_id PK
+        INT brand_id FK
+        STRING model_name
+    }
+
+    CATEGORIES {
+        INT category_id PK
+        STRING category_name UK
+        STRING asset_type
+        BOOLEAN requires_serial
+    }
+
+    VENDORS {
+        INT vendor_id PK
+        STRING vendor_name UK
+        STRING contact_info
+    }
+
+    LOCATIONS {
+        INT location_id PK
+        INT parent_location_id FK
+        STRING location_type
+        STRING location_name
+    }
+
+    ASSET_STATUSES {
+        INT status_id PK
+        STRING status_name UK
+        BOOLEAN is_terminal
+    }
+
+    ASSETS {
+        UUID asset_id PK
+        STRING asset_tag UK
+        INT category_id FK
+        INT brand_id FK
+        INT model_id FK
+        STRING serial_number UK
+        STRING asset_name
+        DATE purchase_date
+        INT vendor_id FK
+        INT status_id FK
+        BOOLEAN is_quantity_only
+        INT quantity
+        BOOLEAN is_archived
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    CURRENCIES {
+        STRING currency_code PK
+        STRING currency_name
+    }
+
+    ASSET_COSTS {
+        INT asset_cost_id PK
+        UUID asset_id FK
+        DECIMAL base_price
+        DECIMAL tax_amount
+        DECIMAL shipping_cost
+        DECIMAL total_cost
+        STRING currency_code FK
+        DECIMAL conversion_rate_to_base
+        TIMESTAMP recorded_at
+    }
+
+    ASSET_ASSIGNMENTS {
+        INT assignment_id PK
+        UUID asset_id FK
+        UUID assigned_to_user_id FK
+        INT assigned_to_location_id FK
+        DATE assigned_date
+        DATE expected_return_date
+        DATE returned_date
+    }
+
+    ASSET_AUDIT_LOGS {
+        INT log_id PK
+        UUID asset_id FK
+        STRING action_type
+        STRING old_value
+        STRING new_value
+        UUID performed_by FK
+        TIMESTAMP performed_at
+    }
+
+    MAINTENANCE_RECORDS {
+        INT maintenance_id PK
+        UUID asset_id FK
+        DATE service_date
+        INT vendor_id FK
+        STRING description
+        DECIMAL repair_cost
+        STRING currency_code FK
+    }
+
+    ASSET_DISPOSALS {
+        INT disposal_id PK
+        UUID asset_id FK
+        STRING disposal_reason
+        UUID approved_by FK
+        TIMESTAMP approved_at
+        STRING notes
+    }
+
+    ASSET_DOCUMENTS {
+        INT document_id PK
+        UUID asset_id FK
+        STRING document_type
+        STRING file_path
+        TIMESTAMP uploaded_at
+    }
+
+    %% Relationships
+    USERS ||--o{ USER_ROLES : has
+    ROLES ||--o{ USER_ROLES : assigned
+    USERS ||--o{ ASSET_ASSIGNMENTS : assigned
+    ASSETS ||--o{ ASSET_ASSIGNMENTS : gets
+    LOCATIONS ||--o{ ASSET_ASSIGNMENTS : contains
+    BRANDS ||--o{ MODELS : produces
+    BRANDS ||--o{ ASSETS : categorizes
+    MODELS ||--o{ ASSETS : specifies
+    CATEGORIES ||--o{ ASSETS : classifies
+    VENDORS ||--o{ ASSETS : supplies
+    VENDORS ||--o{ MAINTENANCE_RECORDS : performs
+    ASSET_STATUSES ||--o{ ASSETS : determines
+    ASSETS ||--o{ ASSET_COSTS : has
+    CURRENCIES ||--o{ ASSET_COSTS : prices
+    CURRENCIES ||--o{ MAINTENANCE_RECORDS : charges
+    ASSETS ||--o{ ASSET_AUDIT_LOGS : logs
+    USERS ||--o{ ASSET_AUDIT_LOGS : performs
+    ASSETS ||--o{ ASSET_DISPOSALS : disposes
+    USERS ||--o{ ASSET_DISPOSALS : approves
+    ASSETS ||--o{ ASSET_DOCUMENTS : has
+```
 
 **Figure 6: Class Diagram**
 
@@ -799,3 +1107,7 @@ The following items have been identified as To Be Determined (TBD). These values
 | **TBD-03** | 3.4     | **SMTP Relay Configuration:** The exact Hostname, Port, and Allow-list configurations for the corporate SMTP email relay are pending.                    | TIQRI Infrastructure |
 | **TBD-04** | 4.5     | **Disposal Reason Codes:** The finalized list of legally compliant "Disposal Reasons" (e.g., WEEE-Category-A) is pending review by the Legal department. | TIQRI Compliance     |
 | **TBD-05** | 6.1     | **Exchange Rate Source:** The specific API source or fixed monthly rate policy for converting NOK/USD to LKR is to be decided by Finance.                | TIQRI Finance        |
+
+---
+
+[< Back to Requirements](./README.md)
