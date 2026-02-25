@@ -4,11 +4,11 @@ This directory contains the detailed User Story Specifications for the IT Asset 
 
 | ID     | Module Name                                              | Description                     | Key Features                              |
 | :----- | :------------------------------------------------------- | :------------------------------ | :---------------------------------------- |
-| **01** | [Core Asset Registry](./01-Core-Infrastructure-&-API.md)             | Central database of all assets. | Registration, Search, Import, Master Data |
-| **02** | [User Access & Security](./02-security.md)               | Identity and Access Management. | SSO, Role Mapping, Encryption             |
-| **03** | [Tracking & Operations](./03-tracking-operations.md)     | Day-to-day asset lifecycle.     | Check-in/out, Audit Logs, Status          |
-| **04** | [Integration & Reporting](./04-integration-reporting.md) | Visibility and Connectivity.    | Dashboards, API, Standard Reports         |
-| **05** | [Automation & Optimization](./05-automation.md)          | Workflow automation.            | Alerts, Maintenance, Disposal             |
+| **01** | [Platform Foundation, Master Data & API Gateway](./01-Core-Infrastructure-&-API.md) | Core infrastructure and API.    | Roles, Setup, Master Data         |
+| **02** | [Asset Registry & Tethered Scanning System](./02-asset-registry-scanning.md) | Central database of all assets. | Registration, Scanning, Master Data|
+| **03** | [IT Operations & Hardware Maintenance](./03-Operations-&-Maintenance.md) | Day-to-day asset lifecycle.     | Check-in/out, Maintenance, Status |
+| **04** | [Compliance-Driven Disposals](./04-Compliance-Driven%20Disposals.md) | Asset end-of-life management.   | Disposal Requests, Approvals, logs|
+| **05** | [Financial Intelligence & Automated Alerts](./05-finance-notification-automation.md) | Financials and automation.      | Depreciation, Alerts, Reporting   |
 
 ---
 
