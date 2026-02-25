@@ -43,7 +43,7 @@ Improper disposal of IT assets can lead to massive data breaches (if hard drives
 
 ---
 
-## 2. Functionality: Features & User Stories
+## 2. Features & User Stories
 
 ### 2.1 Feature 1: Disposal Requests & Administrative Review
 
@@ -72,6 +72,7 @@ The intake and review pipeline that separates the person requesting the disposal
 - [ ] Build the read-only "Disposal History" tab within the ledger to display finalized records alongside their selected disposal method and direct download links to their E-Waste certificates.
 
 ![alt text](<images/Dashboard - Desktop.png>)
+
 #### 2.1.3 User Story: US-4.1.2 (Disposal Request Review Sheet)
 
 - **As a** Global Admin or Finance Manager,
@@ -96,6 +97,7 @@ The intake and review pipeline that separates the person requesting the disposal
 
 ![alt text](<images/Asset Disposal Pending- Desktop.png>)
 ![alt text](<images/Request Disposal Review- Desktop.png>)
+
 ### 2.2 Feature 2: Secure Disposal Execution & Compliance
 
 **2.2.1 Overview**
@@ -130,6 +132,7 @@ The strict, destructive action workflows (both Approval and Rejection) that fina
 - [ ] Write backend validation to reject the final disposal `POST` request if the Disposal Method, exact Asset ID text confirmation, or physical security checkbox boolean is missing.
 
 ![alt text](<images/Asset disposal modal (accept request) - Desktop.png>)
+
 #### 2.2.3 User Story: US-4.2.2 (Reject Disposal Workflow)
 
 - **As a** Global Admin,
@@ -151,8 +154,7 @@ The strict, destructive action workflows (both Approval and Rejection) that fina
 - [ ] Write backend logic to revert the `Pending Disposal` status to the newly selected status.
 - [ ] Hook into Epic 5's notification engine to alert the original IT Ops admin.
 
-![alt text](<images/Request rejection- Desktop.png>)
----
+## ![alt text](<images/Request rejection- Desktop.png>)
 
 ### 2.3 Feature 3: Bulk Operations & Architectural Safeguards
 
@@ -182,6 +184,7 @@ The efficiency tools for retiring large batches of equipment and the underlying 
 
 ![alt text](<images/Asset Disposal Pending bulk actions - Desktop.png>)
 ![alt text](<images/Asset Disposal Pending bulk actions - Desktop 2.png>)
+
 #### 2.3.4 User Story: US-4.3.2 (Soft Delete Architecture & Finality)
 
 - **As a** Security Auditor,
@@ -203,7 +206,8 @@ The efficiency tools for retiring large batches of equipment and the underlying 
 
 - [ ] Implement `IsArchived` or `Status = Disposed` global filters across all standard `GET` API endpoints.
 - [ ] Write backend permission logic to strictly block `PUT`/`PATCH` requests for any asset carrying the `Disposed` status.
-![alt text](<images/Asset Disposal HistoryDesktop.png>)
+      ![alt text](<images/Asset Disposal HistoryDesktop.png>)
+
 ---
 
 ## 3. Integrated Use Case Diagram
@@ -251,6 +255,7 @@ flowchart LR
     UC_Approve -.-> UC_SoftDelete
     UC_SoftDelete -.-> UC_Lock
 ```
+
 ---
 
 [< Back to Requirements](../README.md)

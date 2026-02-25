@@ -45,7 +45,7 @@ Executives need high-level summaries, and other departments (like Finance) need 
 
 ---
 
-## 2. Functionality: Features & User Stories
+## 2. Features & User Stories
 
 ### 2.1 Feature 1: Global KPI Dashboard & Standard Reporting
 
@@ -64,7 +64,7 @@ The primary interface providing immediate situational awareness of critical issu
 - **Scenario: Dashboard Load**
   - **Given** I am a Global Admin
   - **When** I log in to the system
-  - **Then** the landing page displays Total Assets count, Pending Approvals, Overdue Returns list, and Low Stock Alerts for Consumables.
+  - **Then** the landing page displays Total Assets count, Pending Approvals, Overdue Returns list, Low Stock Alerts for Consumables, a "Recent Activity Log" feed, and a "Frequently Failing Assets / Problem Asset Counts" widget.
   - **And** the widget layout stacks seamlessly into a single column on mobile devices.
 
 **Tasks**
@@ -88,11 +88,20 @@ The primary interface providing immediate situational awareness of critical issu
   - **When** I click "Export to CSV"
   - **Then** a file downloads within 10 seconds containing all grid data.
   - **And** the system successfully handles exporting up to 50,000 rows without crashing.
+- **Scenario: Export to Excel**
+  - **Given** I am viewing a generated report
+  - **When** I click "Export to Excel"
+  - **Then** a formatted `.xlsx` file downloads containing the report data with proper column headers and data types.
+- **Scenario: HTML Report Preview**
+  - **Given** I select a report type (e.g., "Inventory by Department")
+  - **When** I click "Generate Report"
+  - **Then** the system renders an HTML preview of the report in-browser before I choose to export it to PDF, CSV, or Excel.
 
 **Tasks**
 
 - [ ] Build Report configuration UI (allowing users to set Date Range and Location parameters before generating).
-- [ ] Implement robust CSV and PDF generation libraries on the backend.
+- [ ] Implement robust CSV, Excel (.xlsx), and PDF generation libraries on the backend.
+- [ ] Build an HTML report preview renderer for in-browser viewing before export.
 
 ![alt text](<images/Report Generation - Desktop.png>)
 
@@ -189,7 +198,12 @@ The proactive background engine and user-facing inbox that prevent service disru
   - **Given** a Server's warranty expires in 30 days
   - **When** the daily job runs in the background (off-peak hours)
   - **Then** an alert is added to the "Admin Dashboard"
-  - **And** an email is sent to the IT distribution list.
+  - **And** notifications are sent via Email and Microsoft Teams to the IT distribution list.
+- **Scenario: Software License Renewal Alert**
+  - **Given** a software license for "Adobe Creative Cloud" is set to expire in 30 days
+  - **When** the nightly CRON job scans the database
+  - **Then** the system generates an alert for the upcoming license renewal
+  - **And** notifications are sent via Email and Microsoft Teams to the assigned IT Admin.
 - **Scenario: Configuring Thresholds**
   - **Given** I am in the Settings > Alert Configuration page
   - **When** I toggle the "Warranty Expiration" rule and set the threshold to 60 days
@@ -206,6 +220,8 @@ The proactive background engine and user-facing inbox that prevent service disru
 - [ ] Build the Alert Configuration Rules UI with toggle switches and threshold dropdowns.
 - [ ] Configure a background Scheduler service (e.g., Azure Functions / Hangfire) to run nightly queries.
 - [ ] Write email aggregation logic to send 1 summary digest email instead of 100 separate emails.
+- [ ] Implement Microsoft Teams channel/chat notification delivery alongside email alerts.
+- [ ] Write specific CRON job query to scan for upcoming Software License expirations in addition to warranty thresholds.
 - [ ] Write specific CRON job query to flag active maintenance tickets where `Status == "In Repair"` AND `ExpectedReturnDate < CURRENT_DATE`.
 - [ ] Implement backend routing to ensure the overdue repair alert is sent specifically to the `CreatedBy` user of that repair ticket, rather than the global distribution list.
 - [ ] Implement exponential backoff retry logic for the SMTP/Email service to ensure alert delivery reliability in case the mail server temporarily fails.
@@ -235,6 +251,31 @@ The proactive background engine and user-facing inbox that prevent service disru
 - [ ] Implement deep-linking URL routing from the notification payload to the specific UI component.
 
 ![alt text](<images/Notifications - Desktop.png>)
+
+#### 2.3.4 User Story: US-5.3.3 (Vendor API Sync) _(Optional / Phase 2)_
+
+- **As a** Global Admin,
+- **I want** the system to periodically query external Vendor APIs (e.g., Dell, HP, Lenovo) using asset Serial Numbers,
+- **So that** Warranty Expiry dates are automatically fetched and updated without manual data entry.
+
+**Acceptance Criteria (Gherkin)**
+
+- **Scenario: Automated Warranty Date Fetch**
+  - **Given** a Dell laptop with Serial Number "SN-DELL-5540-001" is registered in the system
+  - **When** the scheduled sync job runs
+  - **Then** the system queries Dell's warranty API with the Serial Number
+  - **And** automatically updates the asset's Warranty Expiry Date field if a newer date is returned.
+- **Scenario: Vendor API Unavailability**
+  - **Given** the HP warranty API is temporarily unavailable
+  - **When** the sync job encounters a connection failure
+  - **Then** the system logs the failure, skips the affected assets, and retries on the next scheduled run using exponential backoff.
+
+**Tasks**
+
+- [ ] Research and integrate available vendor warranty API endpoints (Dell TechDirect, HP ISEE, Lenovo Support API).
+- [ ] Build a configurable Vendor API Sync settings page with enable/disable toggles per vendor.
+- [ ] Implement a scheduled background job to batch-query vendor APIs using stored Serial Numbers.
+- [ ] Write resilient error handling with exponential backoff for failed vendor API calls.
 
 ---
 
@@ -285,6 +326,7 @@ flowchart LR
     UC_Digest --> SMTP
     UC_Scan -.->|Creates| UC_Inbox
 ```
+
 ---
 
 [< Back to Requirements](../README.md)

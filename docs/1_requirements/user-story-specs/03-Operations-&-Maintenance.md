@@ -42,7 +42,7 @@ Knowing _what_ you own is step 1; knowing _where_ it is and _who_ has it is step
 
 ---
 
-## 2. Functionality: Features & User Stories
+## 2. Features & User Stories
 
 ### 2.1 Feature 1: Employee Support Portal & Digital Acceptance
 
@@ -73,7 +73,7 @@ A self-service view for employees to verify the assets assigned to them and repo
 #### 2.1.4 User Story: US-3.1.2 (Digital Acceptance of Responsibility)
 
 - **As a** Global Admin,
-- **I want** the system to automatically email the user when I assign an asset,
+- **I want** the system to automatically notify the user via Email and Microsoft Teams when I assign an asset,
 - **So that** they can click a link to confirm they have received it in good working order.
 
 **Acceptance Criteria (Gherkin)**
@@ -87,6 +87,7 @@ A self-service view for employees to verify the assets assigned to them and repo
 **Tasks**
 
 - [ ] Implement email generation template with a unique confirmation token link.
+- [ ] Implement Microsoft Teams adaptive card notification with a confirmation action button.
 - [ ] Create a public-facing (but token-secured) confirmation landing page.
 - [ ] Write backend logic to update assignment status upon confirmation.
 
@@ -124,11 +125,17 @@ A self-service view for employees to verify the assets assigned to them and repo
   - **When** I manually change its status to "Lost"
   - **Then** the system prompts for a mandatory "Reason/Note"
   - **And** the asset is immediately removed from the "Available" pool.
+- **Scenario: Configuring Custom Statuses**
+  - **Given** I am a Global Admin on the Settings page
+  - **When** I add a new custom status called "Pending Audit"
+  - **Then** the new status becomes available in the "Change Status" dropdown across the system
+  - **And** the custom status behaves identically to built-in statuses in filters, reports, and the registry grid.
 
 **Tasks**
 
 - [ ] Build a "Change Status" quick-action modal requiring a mandatory justification note.
 - [ ] Implement backend state-machine rules preventing a "Lost" asset from being assigned without first transitioning to "Found" or "Available".
+- [ ] Build a "Custom Status Configuration" UI in Settings allowing admins to create, label, and manage additional lifecycle statuses.
 
 ---
 
@@ -154,6 +161,11 @@ The core system for checking hardware in and out, linking a specific asset ID to
   - **Given** "Laptop B" is already assigned to "Jane"
   - **When** I try to assign it to "Mike"
   - **Then** the system blocks the action and shows an error: "Asset is currently checked out to Jane. Please return it first.".
+- **Scenario: Team Assignment Prevention**
+  - **Given** I am assigning an asset
+  - **When** I search for an assignment target
+  - **Then** the system only allows assignment to individual Users or physical Locations
+  - **And** generic "Team" or "Department" level assignments are blocked.
 
 **Tasks**
 
@@ -165,21 +177,16 @@ The core system for checking hardware in and out, linking a specific asset ID to
 ![alt text](images/Assign-Asset.png)
 
 #### US- 3.2.2: (Request Asset Return)
--**As a** Global Admin,
--**I want to** notify a user to return an assigned asset,
--**So that **I can begin the offboarding or reassignment process.
+
+-**As a** Global Admin, -**I want to** notify a user to return an assigned asset, -**So that **I can begin the offboarding or reassignment process.
 
 **Acceptance Criteria (Gherkin)**
 
--**Scenario: Notify user for return**
--**Given** an asset is currently in the "Assigned Assets" tab.
--**When** I select the asset and click the "Request Return" button.
--**Then** a notification is sent to the current custodian (e.g., Mark Kim).
--**And** the asset status label updates to "Requested" in the asset list.
+-**Scenario: Notify user for return** -**Given** an asset is currently in the "Assigned Assets" tab. -**When** I select the asset and click the "Request Return" button. -**Then** a notification is sent to the current custodian (e.g., Mark Kim). -**And** the asset status label updates to "Requested" in the asset list.
 
 -**Tasks**
 
- -[ ] Frontend: Add the "Request Return" button to the Asset Details side panel for assigned assets.
+-[ ] Frontend: Add the "Request Return" button to the Asset Details side panel for assigned assets.
 
 -[ ] Frontend: Implement the "Requested" status badge/label within the "Assigned Assets" table rows.
 
@@ -189,33 +196,25 @@ The core system for checking hardware in and out, linking a specific asset ID to
 
 ![alt text](images/Request-Return.png)
 
-
 US-3.2.3: (Asset Check-In & Condition Review)
 
--**As a** Global Admin,
--**I want to** process the physical return of an asset and assess its condition,
--**So that** its status is accurately updated in the inventory for future use or disposal.
+-**As a** Global Admin, -**I want to** process the physical return of an asset and assess its condition, -**So that** its status is accurately updated in the inventory for future use or disposal.
 
 **Acceptance Criteria (Gherkin)**
 
 -**Scenario 1: Move Asset to Review List**
 
--**Given** an asset is currently assigned to a user.
--**When** I click the "Received" button in the Asset Details pane.
--**Then** the asset is moved from the "Assigned Assets" tab to the "Returned Assets" tab for final review.
+-**Given** an asset is currently assigned to a user. -**When** I click the "Received" button in the Asset Details pane. -**Then** the asset is moved from the "Assigned Assets" tab to the "Returned Assets" tab for final review.
 
 -**Scenario 2: Verify Condition and Update Status**
 
--**Given** an asset is in the "Returned Assets" list.
--**When** I select the asset and a "Return Dialog" modal appears.
--**And** I select a condition:
+-**Given** an asset is in the "Returned Assets" list. -**When** I select the asset and a "Return Dialog" modal appears. -**And** I select a condition:
 
 -**If** "Good Working Condition", the status changes to "Available".
 
 -**If** "Working with Minor Issues" or "Needs Repair", the status changes to "In Repair".
 
--**If** "Beyond Repair", the status changes to "Disposed".
--**Then** the system clears the current custodian and logs the event in the historical ledger.
+-**If** "Beyond Repair", the status changes to "Disposed". -**Then** the system clears the current custodian and logs the event in the historical ledger.
 
 -**Tasks**
 
@@ -237,7 +236,25 @@ Beyond Repair $\rightarrow$ Disposed.
 
 ![alt text](images/Review-Condition.png)
 
+#### US-3.2.5: (Bulk Location Transfer)
 
+- **As a** Global Admin,
+- **I want to** bulk-update the location of multiple assets in a single action,
+- **So that** I can efficiently reflect large physical moves (e.g., relocating 50 chairs from Room A to Room B) without editing each asset individually.
+
+**Acceptance Criteria (Gherkin)**
+
+- **Scenario: Bulk Location Update**
+  - **Given** I have selected 50 assets in the main Asset Registry grid using the bulk-select checkboxes
+  - **When** I click "Bulk Edit" and select a new Location from the dropdown
+  - **Then** all 50 assets are updated to the new Location in a single database transaction
+  - **And** the Audit Log records each individual asset's location change.
+
+**Tasks**
+
+- [ ] Build the "Bulk Edit" modal accessible from the main registry grid's bulk-action toolbar.
+- [ ] Implement backend batch-update endpoint processing multiple asset IDs in a single transaction.
+- [ ] Write Audit Log entries for each individual asset change within the batch.
 
 ---
 
@@ -286,7 +303,6 @@ The administrative dashboard for managing broken hardware reports and triaging i
 
 - [ ] Build the Triage Review Slide-Out Sheet component.
 - [ ] Aggregate financial and warranty data into the API response for the triage view.
-
 
 ![alt text](images/pending-maintenance.png)
 !
@@ -387,6 +403,7 @@ flowchart LR
     %% Diagram logic inclusion
     %%
 ```
+
 ---
 
 [< Back to Requirements](../README.md)

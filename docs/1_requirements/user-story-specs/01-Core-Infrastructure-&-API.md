@@ -42,7 +42,7 @@ A rigid database becomes obsolete the moment a company buys a new type of hardwa
 
 ---
 
-## 2. Functionality: Features & User Stories
+## 2. Features & User Stories
 
 ### 2.1 Feature 1: Enterprise Authentication & Access Control
 
@@ -65,12 +65,18 @@ Manages how users enter the system and what they are allowed to see/do based on 
   - **Given** I am mapped as a "Standard Employee"
   - **When** I attempt to access a protected API route (e.g., `/api/v1/master-data/categories`)
   - **Then** the RBAC middleware blocks the request and returns a `403 Forbidden` error.
+- **Scenario: Automated Group-Based Role Assignment**
+  - **Given** my Azure AD profile belongs to the "Finance Team" AD Group
+  - **When** I authenticate via Microsoft SSO
+  - **Then** the system automatically maps me to the "Finance Read-Only" role based on my AD Group attributes
+  - **And** no manual intervention from a Global Admin is required.
 
 **Tasks**
 
 - [ ] Configure Azure AD App Registration (Client ID/Secret/Tenant ID).
 - [ ] Implement OAuth 2.0 / OIDC Authorization Code Flow.
 - [ ] Write RBAC backend middleware to protect API routes.
+- [ ] Implement Azure AD Group-to-Role mapping logic to auto-assign baseline permissions on login.
 
 #### 2.1.3 User Story: US-1.1.2 (Role Mapping UI)
 
@@ -124,6 +130,11 @@ The core engine that allows the system to adapt to any physical asset type witho
   - **Given** the prefix "LAP" already exists for Laptops
   - **When** the system generates "LAP" for a new "Laser Pointer" category
   - **Then** the system automatically appends a number (e.g., "LAP2") to ensure uniqueness.
+- **Scenario: Non-IT Asset Category Support**
+  - **Given** I am creating a new category for "Office Furniture"
+  - **When** I define the category schema using the Custom Field Builder
+  - **Then** I can add physical attribute fields (e.g., Dimensions, Material, Weight) instead of technical specs
+  - **And** the category functions identically to IT categories across registration, assignment, and disposal workflows.
 
 **Tasks**
 
@@ -168,8 +179,8 @@ The CRUD interfaces and safety mechanisms for managing the company's foundationa
 #### 2.3.2 User Story: US-1.3.1 (Location & Department CRUD)
 
 - **As a** Global Admin,
-- **I want to** manage a directory of company locations, departments, and vendors,
-- **So that** I can accurately map where an asset physically resides and who owns it.
+- **I want to** manage a directory of company locations, departments, vendors, brands, and models,
+- **So that** I can accurately map where an asset physically resides, who owns it, and standardize manufacturer information.
 
 **Acceptance Criteria (Gherkin)**
 
@@ -181,11 +192,16 @@ The CRUD interfaces and safety mechanisms for managing the company's foundationa
   - **Given** a vendor named "Softlogc" was entered with a typo
   - **When** I edit the name to "Softlogic"
   - **Then** the updated name is reflected across all historical repair tickets.
+- **Scenario: Managing Brands & Models**
+  - **Given** I am on the Brands Master Data page
+  - **When** I add a new Brand "Dell" and create a Model "Latitude 5540" linked to it
+  - **Then** the Brand and Model are immediately available in the asset registration dropdowns.
 
 **Tasks**
 
-- [ ] Build standard Data Tables for Locations, Departments, and Vendors.
+- [ ] Build standard Data Tables for Locations, Departments, Vendors, Brands, and Models.
 - [ ] Create simple CRUD Modal forms for each entity.
+- [ ] Implement Brand-Model parent-child relationship (Models filtered by selected Brand).
 
 #### 2.3.3 User Story: US-1.3.2 (Relational Deletion Safeguards)
 
@@ -269,7 +285,6 @@ A strict, read-only ledger that captures every action performed in the system fo
 ![alt text](images/System-audit-log-apply-filters.png)
 ![alt text](images/System-audit-log-filtered.png)
 
-
 ---
 
 ### 2.5 Feature 5: Open API & Integration Gateway
@@ -321,12 +336,15 @@ Secure endpoints and documentation allowing third-party corporate software (like
 - [ ] Implement Token Authentication & Rate Limiting middleware for `/api/v1/external/*`.
 - [ ] Create standard Read-Only endpoints for Assets and Assignments.
 - [ ] Write Swagger/OpenAPI documentation for available endpoints.
+
 #### 2.5.4 User Story: US-1.5.3 (Inbound API Action Triggers)
+
 - **As a** Third-Party System Developer,
 - **I want to** trigger specific operational workflows (like assigning a laptop to a new hire) via the REST API,
 - **So that** our HR system (e.g., Workday) can automate IT onboarding without manual IT admin intervention.
 
 **Acceptance Criteria (Gherkin)**
+
 - **Scenario: Triggering an Assignment via API**
   - **Given** I have a valid API Token with Write permissions
   - **When** I send a `POST` request to `/api/v1/external/assets/assign` with a payload containing the `Employee_ID` and requested `Category_ID`
@@ -337,22 +355,26 @@ Secure endpoints and documentation allowing third-party corporate software (like
   - **Then** it aborts the assignment and returns a `400 Bad Request` with a descriptive error message.
 
 **Tasks**
+
 - [ ] Create `POST /api/v1/external/assets/assign` endpoint with transactional database safety.
 - [ ] Implement backend logic to auto-select available inventory based on category requests.
 - [ ] Ensure API-triggered actions are logged in the System Audit Log, citing the specific API Key Name as the Actor.
 
 #### 2.5.5 User Story: US-1.5.4 (Outbound Webhooks Configuration)
+
 - **As a** Global Admin,
 - **I want to** register external webhook URLs for specific system events (e.g., Asset Disposed, Asset Assigned),
 - **So that** other corporate systems (like Jira, ServiceNow, or Slack) receive real-time push updates when asset statuses change.
 
 **Acceptance Criteria (Gherkin)**
+
 - **Scenario: Firing a Webhook on Status Change**
   - **Given** a webhook URL is registered for the "Asset_Assigned" event
   - **When** an IT Admin assigns a laptop to a user in the UI
   - **Then** the backend automatically sends an asynchronous `POST` request containing the JSON payload of the assignment details to the registered target URL.
 
 **Tasks**
+
 - [ ] Build a Webhooks configuration UI in the Integrations Settings tab (Event selection dropdown, Target URL input).
 - [ ] Create a `WebhookSubscriptions` database table to store event mappings.
 - [ ] Write an asynchronous backend service/job to dispatch HTTP POST payloads upon triggered system events, including retry logic for failed deliveries.
@@ -403,6 +425,7 @@ flowchart LR
     UC_LogEvent -.-> UC_IPCapture
     UC_FetchAPI -.-> UC_LogEvent
 ```
+
 ---
 
 [< Back to Requirements](../README.md)

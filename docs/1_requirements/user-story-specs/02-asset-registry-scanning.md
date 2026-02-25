@@ -43,7 +43,7 @@ Inaccurate asset data leads to financial invisible costs, failed audits, and sec
 
 ---
 
-## 2. Functionality: Features & User Stories
+## 2. Features & User Stories
 
 ### 2.1 Feature 1: Dynamic Asset Registration
 
@@ -67,6 +67,10 @@ A smart creation interface that guarantees unique identification while adapting 
   - **Given** an existing asset already has Serial Number "SN-XYZ-123"
   - **When** I attempt to register a new asset with the exact same Serial Number
   - **Then** the system blocks the submission and highlights the field with a validation error.
+- **Scenario: Full Keyboard Navigation**
+  - **Given** I am on the asset registration form
+  - **When** I use the Tab key to navigate between fields and Enter to submit
+  - **Then** all form fields, dropdowns, and the submit button are fully accessible via keyboard without requiring mouse interaction.
 
 **Tasks**
 
@@ -95,6 +99,7 @@ A smart creation interface that guarantees unique identification while adapting 
 - [ ] Write backend logic to save dynamic form values into the EAV/JSONB payload column.
 
 **Wireframe Reference**
+
 ## Asset Registry Wireframe
 
 ![Asset Registry Wireframe](images/Asset-Registry-Wizard.png)
@@ -102,7 +107,7 @@ A smart creation interface that guarantees unique identification while adapting 
 #### 2.1.4 User Story: US-2.1.3 (Financial Proof & Invoice Upload)
 
 - **As a** Global Admin,
-- **I want to** attach digital copies of purchase invoices and enter the base cost during registration,
+- **I want to** attach digital copies of purchase invoices and enter the full initial cost breakdown during registration,
 - **So that** the organization has verifiable proof of value to feed into the Epic 5 Depreciation engine.
 
 **Acceptance Criteria (Gherkin)**
@@ -112,14 +117,28 @@ A smart creation interface that guarantees unique identification while adapting 
   - **When** I drag and drop a "Receipt.pdf" file into the upload zone
   - **Then** the file is securely stored in cloud storage (e.g., AWS S3/Azure Blob)
   - **And** linked to the asset record for future download by the Finance team.
+- **Scenario: Initial Cost Breakdown Entry**
+  - **Given** I am entering financial details on the New Asset form
+  - **When** I fill out the cost section
+  - **Then** I must enter the Base Price, Tax Amount, and Shipping Cost as separate fields
+  - **And** the system auto-calculates and displays the total Initial Cost.
+- **Scenario: Multi-Currency Support**
+  - **Given** I am entering financial details for an asset purchased overseas
+  - **When** I select the currency dropdown
+  - **Then** I can choose from supported currencies (NOK, USD, LKR)
+  - **And** the selected currency is stored alongside the financial values for accurate reporting.
 
 **Tasks**
 
 - [ ] Implement secure Drag & Drop file upload component on the frontend.
 - [ ] Integrate cloud storage bucket API for storing and retrieving PDF invoices.
 - [ ] Add encrypted `PurchaseCost` column to the database to protect financial data at rest.
+- [ ] Build separate Base Price, Tax, and Shipping input fields with auto-calculated Total.
+- [ ] Implement currency selector dropdown supporting NOK, USD, and LKR.
+- [ ] Store original currency code alongside all financial values in the database.
 
 **Wireframe Reference**
+
 ## Invoice Attaching Wireframe
 
 ![Invoice Attaching Wireframe](images/Attach-invoice.png)
@@ -145,10 +164,10 @@ A smart creation interface that guarantees unique identification while adapting 
 - [ ] Write backend logic flag to bypass ID/QR generation if category type is `Consumable`.
 - [ ] Build simple `+` and `-` quantity adjustment UI for consumable records.
 
-#### 2.1.6 User Story: US-2.1.5 (Bulk CSV Import)
+#### 2.1.6 User Story: US-2.1.5 (Bulk CSV/Excel Import)
 
 - **As a** Global Admin,
-- **I want to** upload a CSV file containing hundreds of asset details,
+- **I want to** upload a CSV or Excel file containing hundreds of asset details,
 - **So that** I can mass-populate the registry during legacy system migration or bulk batch purchases.
 
 **Acceptance Criteria (Gherkin)**
@@ -158,14 +177,18 @@ A smart creation interface that guarantees unique identification while adapting 
   - **When** the import script processes
   - **Then** the system successfully imports the 95 valid rows
   - **And** generates a downloadable error report detailing the 5 failed rows without failing the entire batch.
+- **Scenario: Excel Format Support**
+  - **Given** I have asset data in an Excel (.xlsx) spreadsheet
+  - **When** I upload the file via the bulk import interface
+  - **Then** the system parses the Excel file identically to a CSV upload
+  - **And** applies the same column-mapping, validation, and Partial Success logic.
 
 **Tasks**
 
-- [ ] Build CSV parser and column-mapping UI in React.
+- [ ] Build CSV/Excel parser and column-mapping UI in React.
 - [ ] Implement "All-or-Nothing" bypass logic (Partial Success handling) in the backend import script.
 - [ ] Write logic to auto-generate Asset IDs and QR URLs for every successfully imported row.
-
-
+- [ ] Add Excel (.xlsx) file parsing support using a backend library (e.g., `exceljs` or `SheetJS`).
 
 ### 2.2 Feature 2: Main Asset Registry Grid & Details
 
@@ -194,7 +217,8 @@ The central hub for viewing, filtering, and interacting with the entire IT inven
 - [ ] Build multi-select column visibility dropdown.
 - [ ] Implement bulk-select checkboxes enabling batch actions (like Epic 4 Bulk Disposals).
 - [ ] Implement a specific "Bulk Edit Modal" allowing admins to update the `Location` or `Status` of 50+ selected checkbox rows in a single database transaction.
-**Wireframe Reference**
+      **Wireframe Reference**
+
 ## Asset List View Wireframe
 
 ![Asset List View Wireframe](images/Asset-List-View-Desktop.png)
@@ -222,14 +246,12 @@ The central hub for viewing, filtering, and interacting with the entire IT inven
 - [ ] Write `GET /api/v1/assets/{id}` endpoint to aggregate relational data for the panel.
 
 **Wireframe Reference**
+
 ## Asset Details Wireframe
 
-![Asset Details Wireframe](images/Asset-Details-(Assigned)-Desktop.png)
+![Asset Details Wireframe](<images/Asset-Details-(Assigned)-Desktop.png>)
 ![Technical Details Wireframe](images/Tech-Details-Desktop.png)
 ![Purchase Details Wireframe](images/Purchase-Details-Desktop.png)
-
-
-
 
 ---
 
@@ -276,10 +298,10 @@ The bridge between the digital database and the physical world, generating scann
 - [ ] Add TIQRI Logo and Asset ID text dynamically beneath the QR code in the print layout.
 
 **Wireframe Reference**
+
 ## QR Code Generation Wireframe
 
-![QR Code Generation Wireframe](images/Asset-Details-(QR-preview)-Desktop.png)
-
+![QR Code Generation Wireframe](<images/Asset-Details-(QR-preview)-Desktop.png>)
 
 ---
 
@@ -434,6 +456,7 @@ flowchart LR
     Hardware --> UC_Inject
     UC_GenerateQR -.-> UC_ScanLookup
 ```
+
 ---
 
 [< Back to Requirements](../README.md)
