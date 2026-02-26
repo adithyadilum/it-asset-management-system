@@ -189,7 +189,7 @@ The Integrated Digital Asset Management System (IDAMS) automates the tracking an
 - **Financial Data Capture:** Mandates Initial Cost breakdown (Base Price, Tax, Shipping) with multi-currency support (NOK, USD, LKR) and secure invoice PDF uploads to cloud storage.
 - **Bulk Import:** Supports CSV and Excel (.xlsx) uploads with Partial Success processing for mass asset registration.
 - **Mobile Audit:** Provides a Progressive Web App (PWA) mobile scanner interface using HTML5 camera APIs for scanning QR codes and 1D barcodes.
-- **Tethered Companion Scanning:** Enables real-time WebSocket pairing between mobile devices and desktop browsers to inject scanned serial numbers directly into active form fields.
+- **Tethered Companion Scanning:** Enables real-time WebSocket auto-linking between mobile devices and desktop browsers — when both are logged in under the same Azure AD identity, scanned serial numbers are injected directly into active form fields without manual pairing.
 
 **Lifecycle Operations & Workflow**
 
@@ -534,11 +534,11 @@ The IDAMS platform interacts with several external software components to handle
 
 **6. WebSocket Server (Real-Time Communication)**
 
-- **Purpose:** Enabling the Tethered Companion Scanning feature, where a paired mobile device injects scanned barcode data into an active desktop browser session in real-time.
+- **Purpose:** Enabling the Tethered Companion Scanning feature, where a mobile device authenticated under the same Azure AD user identity automatically links to an active desktop browser session and injects scanned barcode data in real-time.
 - **Interface Mechanism:** WebSocket protocol (via Socket.io or native WS) over a secure WSS connection.
 - **Data Exchange:**
-  - **Incoming (from mobile client):** JSON payloads containing the decoded barcode string and session token.
-  - **Outgoing (to desktop client):** JSON payloads injecting the scanned value into the targeted form field.
+  - **Incoming (from mobile client):** JSON payloads containing the decoded barcode string and the user's Azure AD identity (JWT).
+  - **Outgoing (to desktop client):** JSON payloads injecting the scanned value into the targeted form field, routed by matching `user_id`.
 - **Constraint:** Scan-to-display latency must be under 500ms.
 
 **7. External Vendor Warranty APIs (Optional / Phase 2)**
@@ -586,7 +586,7 @@ The IDAMS system relies on standard network communication protocols to ensure se
 **5. WebSocket Communication (Tethered Scanning)**
 
 - **Protocol:** Secure WebSocket (WSS) over TLS 1.2+ for real-time bidirectional communication between mobile and desktop browser clients.
-- **Function:** Enables the "Companion Scanner" feature, pairing a mobile device to a desktop session via a temporary QR-encoded session token.
+- **Function:** Enables the "Companion Scanner" feature, automatically linking a mobile device to a desktop session when both are authenticated under the same Azure AD user identity.
 - **Latency Requirement:** Scanned barcode data must appear in the desktop input field within 500ms of a successful scan.
 
 **6. Outbound Webhooks**
@@ -682,9 +682,9 @@ The Asset Registry is the "Single Source of Truth" for the organization's IT inf
   - **Response:** The system imports the 95 valid rows and generates a downloadable error report detailing the 5 failed rows (Partial Success).
 - **Stimulus:** Administrator selects 30 laptops in the Asset Grid and clicks "Print Labels," choosing "A4 Grid Layout."
   - **Response:** The system generates a downloadable PDF formatted for standard commercial sticker sheets (e.g., Avery 5160).
-- **Stimulus:** Administrator clicks "Link Mobile Scanner" on the desktop "Add Asset" form.
-  - **Response:** The desktop displays a temporary Session QR Code. Scanning it with a mobile device opens a WebSocket channel and the desktop UI updates to "Scanner Connected."
-- **Stimulus:** Paired mobile device scans a manufacturer barcode.
+- **Stimulus:** Administrator clicks "Enable Mobile Scanner" on the desktop "Add Asset" form.
+  - **Response:** The desktop activates the scanner listener. When a mobile device logged in under the same Azure AD account connects via WebSocket, the desktop UI updates to "Scanner Connected" — no QR code or manual pairing required.
+- **Stimulus:** Linked mobile device scans a manufacturer barcode.
   - **Response:** The decoded serial number is injected into the active desktop input field within 500ms via WebSocket.
 - **Stimulus:** Mobile user scans a TIQRI QR sticker.
   - **Response:** The device vibrates (haptic feedback), and a bottom-sheet UI slides up displaying the Asset ID, Model, Custodian, and quick actions.
@@ -705,7 +705,7 @@ The Asset Registry is the "Single Source of Truth" for the organization's IT inf
 - **REQ-REG-2.8:** The system shall display a comprehensive read-only view of a single asset's vitals, assignments, and lifecycle history in a right-side panel when an asset row is clicked.
 - **REQ-REG-2.9:** The system shall support CSV and Excel format uploads for mass asset registration.
 - **REQ-REG-2.10:** The system shall ensure the bulk import script skips invalid rows, imports valid ones, and generates a downloadable error report without failing the entire batch.
-- **REQ-REG-2.11:** The system shall automatically generate a unique URL routing endpoint (e.g., `idams.tiqri.com/asset/AST-0142`) and convert it into a downloadable 2D QR code upon asset creation.
+- **REQ-REG-2.11:** The system shall automatically generate a unique URL routing endpoint (e.g., `assets.tiqri.com/asset/AST-0142`) and convert it into a downloadable 2D QR code upon asset creation.
 - **REQ-REG-2.12:** The system shall provide a formatting engine to export selected QR codes as single-tag thermal print files (Zebra/Dymo) or bulk A4 PDF grid layouts for standard sticker paper.
 - **REQ-REG-2.13:** The system shall provide a mobile-responsive browser interface utilizing HTML5 `getUserMedia` APIs to scan 1D barcodes and 2D QR codes.
 - **REQ-REG-2.14:** The system shall establish a real-time WebSocket connection allowing the mobile camera to inject scanned manufacturer serial numbers directly into active desktop input fields.

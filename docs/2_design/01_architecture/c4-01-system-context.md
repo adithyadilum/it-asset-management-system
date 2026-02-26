@@ -2,31 +2,35 @@
 
 The diagram positions the IT Asset Management System as the central hub.
 
-- User Interaction: It serves three distinct user groups: Global Admins (full lifecycle management), Department Heads (operational oversight), and Employees (custody acknowledgement).
+- **User Interaction:** It serves three distinct user groups: Global Admins (full lifecycle management, master data, compliance), Department Heads (operational oversight and disposal reviews), and Employees (custody acknowledgement and issue reporting).
 
-- External Integrations: The system relies on Azure Active Directory for secure Single Sign-On (SSO) and role mapping. It pushes automated alerts via Notification Services (Teams/Email) and provides a read-only API interface for HR & Finance Systems to retrieve asset value data for payroll and depreciation reporting.
+- **External Integrations:** The system relies on Azure Active Directory (Entra ID) for secure Single Sign-On (SSO) via OAuth 2.0/OIDC and role-based group mapping. It pushes automated alerts via Notification Services (Email/Teams) for custody confirmations, warranty expirations, license renewals, and overdue returns. A rate-limited Open API Gateway provides read-only endpoints and outbound webhooks for HR & Finance Systems. Optionally, the system queries external Vendor APIs to auto-fetch warranty data.
 
 ```mermaid
 C4Context
     title System Context Diagram for IT Asset Management System (IDAMS)
 
-    Person(admin, "Global Admin", "Manages registry, master data, and system configurations.")
-    Person(deptHead, "Department Head", "Oversees assets and status changes within their department scope.")
-    Person(employee, "Employee", "Views assigned assets and confirms receipt of equipment.")
+    Person(admin, "Global Admin", "Manages registry, master data, system configurations, and oversees the full asset lifecycle including compliance-driven disposals.")
+    Person(deptHead, "Department Head", "Oversees departmental assets, reviews disposal requests, and manages operational workflows.")
+    Person(employee, "Employee", "Views assigned assets, confirms custody receipt, and reports hardware issues.")
 
-    System(itam, "IT Asset Management System", "Centralized PERN stack system for tracking hardware/software lifecycle and financial value.")
+    System(itam, "IT Asset Management System", "Next.js / TypeScript / PostgreSQL platform for tracking hardware & software lifecycle, financial value, and compliance-driven disposals.")
 
-    System_Ext(azure, "Azure AD", "Handles SSO authentication and role-based group mapping.")
-    System_Ext(hr_finance, "HR / Finance Systems", "External systems consuming asset data for payroll or financial reporting.")
-    System_Ext(notifications, "Notification Services", "Email (SMTP) and Microsoft Teams for automated alerts.")
+    System_Ext(azure, "Azure AD (Entra ID)", "Handles SSO authentication via OAuth 2.0/OIDC and role-based AD group mapping.")
+    System_Ext(hr_finance, "HR / Finance Systems", "External systems consuming read-only asset and financial data via the Open API Gateway and Webhooks.")
+    System_Ext(notifications, "Notification Services", "Email (SMTP) and Microsoft Teams for automated alerts and custody confirmations.")
+    System_Ext(vendor_api, "Vendor APIs", "External manufacturer APIs (e.g., Dell, HP, Lenovo) for automated warranty data retrieval.")
 
-    Rel(admin, itam, "Registers assets and manages settings", "HTTPS")
-    Rel(deptHead, itam, "Manages department assets", "HTTPS")
-    Rel(employee, itam, "Views 'My Assets' and accepts custody", "HTTPS")
+    Rel(admin, itam, "Registers assets, manages master data, configures roles", "HTTPS")
+    Rel(deptHead, itam, "Reviews department assets and disposal requests", "HTTPS")
+    Rel(employee, itam, "Views 'My Assets', confirms custody, reports issues", "HTTPS")
 
-    Rel(itam, azure, "Authenticates users via OIDC", "JSON/HTTPS")
-    Rel(itam, hr_finance, "Exposes Read-Only asset data", "REST API")
-    Rel(itam, notifications, "Sends warranty alerts", "SMTP/API")
+    Rel(itam, azure, "Authenticates users via OIDC/OAuth 2.0", "JSON/HTTPS")
+    Rel(itam, hr_finance, "Exposes read-only asset data via rate-limited API", "REST API / Webhooks")
+    Rel(itam, notifications, "Sends automated alerts and custody confirmations", "SMTP / Teams API")
+    Rel(itam, vendor_api, "Fetches warranty expiry data by Serial Number", "REST API")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
+
+[< Back to Requirements](../README.md)

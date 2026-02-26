@@ -26,24 +26,24 @@ This document outlines the functional requirements for the IDAMS (IT Asset Manag
 
 ## Epic 2: Asset Registry & Tethered Scanning System
 
-| ID               | Requirement Detail (The System Shall...)                                                                                                                                                 |
-| :--------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **REQ-REG-2.1**  | **(Dynamic Registration)** Provide a registration form that automatically generates a unique Asset ID and dynamically renders custom fields based on the selected Epic 1 category.       |
-| **REQ-REG-2.2**  | **(Financial Data)** Mandate the capture of Initial Cost, including base price, tax, and shipping.                                                                                       |
-| **REQ-REG-2.3**  | **(Multi-Currency Support)** Support the entry of financial data in multiple currencies, explicitly including NOK, USD, and LKR.                                                         |
-| **REQ-REG-2.4**  | **(Invoice Uploads)** Allow the secure upload of digital Purchase Invoices (PDF) to cloud storage during asset registration.                                                             |
-| **REQ-REG-2.5**  | **(Consumables Mode)** Bypass unique serialization for categories flagged as "Consumables" (e.g., HDMI cables), tracking them strictly via a centralized Quantity Stock integer.         |
-| **REQ-REG-2.6**  | **(High-Density Grid)** Display the inventory in a data table supporting sticky multi-column filtering by Serial Number, ID, Employee, and Status.                                       |
-| **REQ-REG-2.7**  | **(Grid Operations)** Enable column visibility toggles and bulk-select checkboxes for batch actions within the main registry grid.                                                       |
-| **REQ-REG-2.8**  | **(Slide-Out Vitals)** Display a comprehensive read-only view of a single asset's vitals, assignments, and lifecycle history in a right-side panel when an asset row is clicked.         |
-| **REQ-REG-2.9**  | **(Bulk Import)** Support CSV and Excel format uploads for mass asset registration.                                                                                                      |
-| **REQ-REG-2.10** | **(Partial Success Import)** Ensure the bulk import script skips invalid rows, imports valid ones, and generates a downloadable error report without failing the entire batch.           |
-| **REQ-REG-2.11** | **(QR Routing Engine)** Automatically generate a unique URL routing endpoint (e.g., `idams.tiqri.com/asset/AST-0142`) and convert it into a downloadable 2D QR code upon asset creation. |
-| **REQ-REG-2.12** | **(Print Layouts)** Provide a formatting engine to export selected QR codes as single-tag thermal print files (Zebra/Dymo) or bulk A4 PDF grid layouts for standard sticker paper.       |
-| **REQ-REG-2.13** | **(PWA Mobile Scanner)** Provide a mobile-responsive browser interface utilizing HTML5 `getUserMedia` APIs to scan 1D barcodes and 2D QR codes.                                          |
-| **REQ-REG-2.14** | **(Tethered WebSockets)** Establish a real-time WebSocket connection allowing the mobile camera to inject scanned manufacturer serial numbers directly into active desktop input fields. |
-| **REQ-REG-2.15** | **(Mobile Fallbacks)** Display a bottom-sheet UI with asset vitals when a QR is scanned via mobile, and block users from accessing complex desktop-only data grids on mobile devices.    |
-| **REQ-REG-2.16** | **(Serial Number Uniqueness)** Enforce unique Serial Number validation during asset registration, blocking submission and displaying a descriptive error if a duplicate is detected.     |
+| ID               | Requirement Detail (The System Shall...)                                                                                                                                                  |
+| :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **REQ-REG-2.1**  | **(Dynamic Registration)** Provide a registration form that automatically generates a unique Asset ID and dynamically renders custom fields based on the selected Epic 1 category.        |
+| **REQ-REG-2.2**  | **(Financial Data)** Mandate the capture of Initial Cost, including base price, tax, and shipping.                                                                                        |
+| **REQ-REG-2.3**  | **(Multi-Currency Support)** Support the entry of financial data in multiple currencies, explicitly including NOK, USD, and LKR.                                                          |
+| **REQ-REG-2.4**  | **(Invoice Uploads)** Allow the secure upload of digital Purchase Invoices (PDF) to cloud storage during asset registration.                                                              |
+| **REQ-REG-2.5**  | **(Consumables Mode)** Bypass unique serialization for categories flagged as "Consumables" (e.g., HDMI cables), tracking them strictly via a centralized Quantity Stock integer.          |
+| **REQ-REG-2.6**  | **(High-Density Grid)** Display the inventory in a data table supporting sticky multi-column filtering by Serial Number, ID, Employee, and Status.                                        |
+| **REQ-REG-2.7**  | **(Grid Operations)** Enable column visibility toggles and bulk-select checkboxes for batch actions within the main registry grid.                                                        |
+| **REQ-REG-2.8**  | **(Slide-Out Vitals)** Display a comprehensive read-only view of a single asset's vitals, assignments, and lifecycle history in a right-side panel when an asset row is clicked.          |
+| **REQ-REG-2.9**  | **(Bulk Import)** Support CSV and Excel format uploads for mass asset registration.                                                                                                       |
+| **REQ-REG-2.10** | **(Partial Success Import)** Ensure the bulk import script skips invalid rows, imports valid ones, and generates a downloadable error report without failing the entire batch.            |
+| **REQ-REG-2.11** | **(QR Routing Engine)** Automatically generate a unique URL routing endpoint (e.g., `assets.tiqri.com/asset/AST-0142`) and convert it into a downloadable 2D QR code upon asset creation. |
+| **REQ-REG-2.12** | **(Print Layouts)** Provide a formatting engine to export selected QR codes as single-tag thermal print files (Zebra/Dymo) or bulk A4 PDF grid layouts for standard sticker paper.        |
+| **REQ-REG-2.13** | **(PWA Mobile Scanner)** Provide a mobile-responsive browser interface utilizing HTML5 `getUserMedia` APIs to scan 1D barcodes and 2D QR codes.                                           |
+| **REQ-REG-2.14** | **(Tethered WebSockets)** Establish a real-time WebSocket connection allowing the mobile camera to inject scanned manufacturer serial numbers directly into active desktop input fields.  |
+| **REQ-REG-2.15** | **(Mobile Fallbacks)** Display a bottom-sheet UI with asset vitals when a QR is scanned via mobile, and block users from accessing complex desktop-only data grids on mobile devices.     |
+| **REQ-REG-2.16** | **(Serial Number Uniqueness)** Enforce unique Serial Number validation during asset registration, blocking submission and displaying a descriptive error if a duplicate is detected.      |
 
 ## Epic 3: IT Operations & Hardware Maintenance
 

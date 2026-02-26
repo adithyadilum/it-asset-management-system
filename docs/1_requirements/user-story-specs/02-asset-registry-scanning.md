@@ -24,7 +24,7 @@ The Core Asset Registry serves as the foundational database for the entire IT As
 - **Dynamic Asset Registration Form**: Form that automatically renders exact Custom Fields defined in Epic 1 based on category.
 - **QR Code & Print Engine**: Unique URL endpoint generation and formatting logic for Single-Tag (Zebra/Dymo) or Bulk A4 PDF printing.
 - **PWA Mobile Web Scanner**: Mobile-responsive browser interface using HTML5 camera APIs.
-- **Tethered "Companion" Mode**: Real-time WebSocket pairing to scan 1D barcodes directly into desktop input fields.
+- **Tethered "Companion" Mode**: Real-time WebSocket auto-linking (by Azure AD user identity) to scan 1D barcodes directly into desktop input fields.
 - **Standalone Mobile Lookup & Fallbacks**: Bottom-sheet asset pop-ups and mobile "Empty State" blockers for desktop-only views.
 
 ### 1.3 Out of scope/Limitations
@@ -271,7 +271,7 @@ The bridge between the digital database and the physical world, generating scann
 - **Scenario: Secure URL Generation**
   - **Given** I have successfully created asset `AST-0142`
   - **When** the backend finalizes the database commit
-  - **Then** it generates a routing URL (e.g., `idams.tiqri.com/asset/AST-0142`) and converts it to a downloadable Base64/SVG QR code image.
+  - **Then** it generates a routing URL (e.g., `assets.tiqri.com/asset/AST-0142`) and converts it to a downloadable Base64/SVG QR code image.
 
 **Tasks**
 
@@ -319,7 +319,7 @@ The mobile-responsive browser interface utilizing device cameras to instantly re
 **Acceptance Criteria (Gherkin)**
 
 - **Scenario: Camera Viewfinder UI**
-  - **Given** I navigate to `idams.tiqri.com/scan` on my mobile device
+  - **Given** I navigate to `assets.tiqri.com/scan` on my mobile device
   - **When** I grant camera permissions
   - **Then** a full-screen camera overlay activates with a centered targeting reticle and a "Flashlight" toggle button.
 
@@ -371,27 +371,27 @@ The mobile-responsive browser interface utilizing device cameras to instantly re
 ### 2.5 Feature 5: Tethered Companion Scanning (WebSockets)
 
 **2.5.1 Overview**
-Real-time pairing that turns a standard smartphone into a tethered wireless barcode scanner for a desktop data-entry session.
+Zero-config auto-linking that turns a standard smartphone into a tethered wireless barcode scanner for a desktop data-entry session. When both devices are logged in under the same Azure AD identity, the WebSocket server matches them automatically — no QR codes or manual pairing required.
 
-#### 2.5.2 User Story: US-2.5.1 (Mobile-Desktop Session Pairing)
+#### 2.5.2 User Story: US-2.5.1 (Mobile-Desktop Auto-Link)
 
 - **As an** IT Admin,
-- **I want to** pair my mobile phone to my current desktop browser session,
-- **So that** the two devices can communicate in real-time.
+- **I want** my mobile phone to automatically link to my current desktop browser session when both are signed in under my Azure AD account,
+- **So that** the two devices can communicate in real-time without manual pairing.
 
 **Acceptance Criteria (Gherkin)**
 
-- **Scenario: WebSocket Handshake via QR**
-  - **Given** I click "Link Mobile Scanner" on the desktop "Add Asset" form
-  - **When** the desktop displays a temporary Session QR Code
-  - **And** I scan it with my mobile device
-  - **Then** the desktop UI updates to say "Scanner Connected (iPhone 14)" and a WebSocket channel is securely opened.
+- **Scenario: Identity-Based WebSocket Auto-Link**
+  - **Given** I am signed in on both my desktop browser and my mobile device with the same Azure AD account
+  - **And** I click "Enable Mobile Scanner" on the desktop "Add Asset" form
+  - **When** the mobile device connects to the WebSocket server
+  - **Then** the server matches both connections by `user_id`, the desktop UI updates to say "Scanner Connected (iPhone 14)", and a WebSocket channel is securely opened.
 
 **Tasks**
 
 - [ ] Set up a WebSocket server (e.g., `Socket.io` or native WS).
-- [ ] Create a short-lived UUID token generator for session pairing.
-- [ ] Build the desktop modal displaying the connection QR code.
+- [ ] Implement `UserSessionMap` keyed by `user_id` to track desktop and mobile connections.
+- [ ] Build the desktop `ScannerToggle` component (replaces the former pairing QR modal).
 
 #### 2.5.3 User Story: US-2.5.2 (Real-Time Barcode Injection)
 
@@ -402,7 +402,7 @@ Real-time pairing that turns a standard smartphone into a tethered wireless barc
 **Acceptance Criteria (Gherkin)**
 
 - **Scenario: Cross-Device Data Injection**
-  - **Given** my phone and desktop are paired via WebSockets
+  - **Given** my phone and desktop are auto-linked via WebSockets (same Azure AD identity)
   - **When** I focus my desktop cursor on the "Serial Number" input field
   - **And** I scan the Dell barcode with my phone
   - **Then** the mobile device emits the decoded string over the socket
@@ -434,7 +434,7 @@ flowchart LR
         UC_Print["Print PDF/Thermal Labels"]
 
         subgraph MobileScanner["Mobile & WebSocket Engine"]
-            UC_Pair["Pair Mobile to Desktop"]
+            UC_Pair["Auto-Link Mobile to Desktop"]
             UC_Inject["Inject Scan to Desktop Form"]
             UC_ScanLookup["Scan QR for Mobile Lookup"]
             UC_BlockMobile["Gate Desktop Features on Mobile"]

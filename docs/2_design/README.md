@@ -1,24 +1,35 @@
 # Design Docs
 
-This folder contains the technical design specifications for the **IT Asset Management System**. All implementation details—including database schemas, API contracts, and security protocols—must be defined here before code is written.
+This folder contains the technical design specifications for the **IDAMS (IT Asset Management System)**. All implementation details including database schemas, API contracts, and security protocols must be defined here before code is written.
 
 ## Design Artifacts Status
 
-| Domain              | Document                                                                      | Description                                             | Status     |
-| :------------------ | :---------------------------------------------------------------------------- | :------------------------------------------------------ | :--------- |
-| **01 Architecture** | [System Context (C4-L1)](01_architecture/c4-01-system-context.md)             | High-level system boundaries and external integrations. | **Review** |
-|                     | [Container Diagram (C4-L2)](01_architecture/c4-02-container-diagram.md)       | Web, API, and Database interaction model.               | **Review** |
-|                     | [Component Diagram (C4-L3)](01_architecture/c4-03-component-diagram.md)       | Details the internal modularity                         | **Review** |
-|                     | [Deployment Strategy](01_architecture/deployment-strategy.md)                 | Docker Compose setup for local/internal hosting.        | To Do      |
-|                     | [Backup & DR Plan](01_architecture/backup-dr-plan.md)                         | Database dump and restore procedures (RPO 24h).         | To Do      |
-| **02 Data Model**   | [ER Diagram](02_data_model/erd-diagram.md)                                    | Entity relationships (Assets, Categories, Users).       | **Review** |
-|                     | [Seed Data Strategy](02_data_model/seed-data-strategy.md)                     | Default Categories, Brands, and Mock Users.             | To Do      |
-|                     | [Audit Log Schema](02_data_model/audit-log-schema.md)                         | Immutable history table design.                         | To Do      |
-| **03 API Spec**     | [OpenAPI Definition](03_api_spec/openapi-definition.yaml)                     | Swagger specification for all REST endpoints.           | To Do      |
-|                     | [Error Standards](03_api_spec/error-handling-standards.md)                    | Standard JSON error response formats.                   | To Do      |
-| **04 Security**     | [Auth Strategy (Dev)](04_security_infra/auth-flow-dev-mode.md)                | "Mock Auth" implementation for Phase 1.                 | To Do      |
-|                     | [SSO Requirements](04_security_infra/sso-requirements-specification.md)       | Requirements for future Azure AD integration.           | To Do      |
-|                     | [RBAC Matrix](04_security_infra/rbac-matrix.csv)                              | Permission mapping (Roles vs. Actions).                 | To Do      |
-| **05 Logic**        | [Import Flowchart](05_business_logic/bulk-import-logic.md)                    | Logic for "Partial Success" CSV imports.                | To Do      |
-|                     | [Lifecycle State Machine](05_business_logic/asset-lifecycle-state-machine.md) | Valid status transitions (e.g., New -> Assigned).       | **Review** |
-|                     | [Sequence Diagrams](05_business_logic/sequence-diagrams.md)                   | Consolidated core workflow diagrams (4 workflows).      | **Review** |
+| Domain              | Document                                                                   | Description                                                                          | Status     |
+| :------------------ | :------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- | :--------- |
+| **01 Architecture** | [System Context (C4-L1)](01_architecture/c4-01-system-context.md)          | High-level system boundaries (IDAMS, Azure AD, Cloud Storage).                       | **Review** |
+|                     | [Container Diagram (C4-L2)](01_architecture/c4-02-container-diagram.md)    | Web UI, PWA Scanner, API Gateway, and Database interaction model.                    | **Review** |
+|                     | [Component Diagram (C4-L3)](01_architecture/c4-03-component-diagram.md)    | Internal modularity of the API (TCO Engine, Schema Engine, WebSockets).              | **Review** |
+|                     | [Data Flow Diagram (DFD)](01_architecture/data-flow-diagram.md)            | Visualizes how sensitive data (Financials, PII) moves through the system and rests.  | To Do      |
+|                     | [Backup & DR Plan](01_architecture/backup-dr-plan.md)                      | Database dump and restore procedures (RPO 24h).                                      | To Do      |
+| **02 Data Model**   | [Core ER Diagram](02_data_model/erd-diagram.md)                            | Entity relationships (Assets, Locations, Users, Maintenance).                        | **Review** |
+|                     | [EAV Dynamic Schema](02_data_model/eav-schema-design.md)                   | JSONB/Relational table design for dynamic custom fields per category.                | To Do      |
+|                     | [Audit Log Ledger](02_data_model/audit-log-schema.md)                      | Immutable history table design capturing JSON diffs and IPs.                         | **Review** |
+| **03 API Spec**     | [OpenAPI Definition](03_api_spec/openapi-definition.yaml)                  | Swagger specification for all REST endpoints and rate-limiting rules.                | To Do      |
+|                     | [WebSocket Contracts](03_api_spec/websocket-payload-contracts.md)          | Payload structures for mobile-to-desktop barcode injections.                         | To Do      |
+|                     | [Webhook Outbound Engine](03_api_spec/webhook-dispatch-contracts.md)       | Event payload structures for pushing data to external 3rd party systems.             | To Do      |
+| **04 Security**     | [Azure AD SSO Flow](04_security_infra/azure-ad-auth-sequence.md)           | OAuth 2.0 / OIDC sequence diagram and JWT claim extraction.                          | To Do      |
+|                     | [RBAC Matrix](04_security_infra/rbac-matrix.csv)                           | Permission mapping (Global Admin vs IT Ops vs Finance).                              | To Do      |
+|                     | [Data Encryption Strategy](04_security_infra/encryption-key-management.md) | AES-256 implementation for financial costs and license keys.                         | To Do      |
+| **05 Logic**        | [Asset Lifecycle (State Machine)](05_business_logic/asset-lifecycle.md)    | Valid status transitions (Available -> Assigned -> In Repair -> Disposed).           | **Review** |
+|                     | [Companion Scanner (Sequence)](05_business_logic/tethered-scanner.md)      | Real-time WebSocket identity-based auto-link and barcode injection workflow.         | To Do      |
+|                     | [Compliance Disposal (Activity)](05_business_logic/disposal-hard-stop.md)  | Multi-user approval, Soft-Delete, and E-waste upload swimlane diagram.               | To Do      |
+|                     | [Digital Acceptance (Activity)](05_business_logic/digital-acceptance.md)   | Email notification and user confirmation routing.                                    | To Do      |
+|                     | [CRON Alert Engine (Flowchart)](05_business_logic/cron-alert-engine.md)    | Nightly queries for warranty expiry, TCO flags, and digest generation.               | To Do      |
+|                     | [Bulk Import Flowchart](05_business_logic/bulk-import-partial-success.md)  | Logic for handling CSV array parsing and skipping invalid rows.                      | To Do      |
+| **06 UI/UX Design** | [Design System & Components](06_ui_ux_design/design-system.md)             | Link to Figma: Color palette, typography, and reusable ShadCN/Tailwind components.   | To Do      |
+|                     | [Mobile PWA Wireframes](06_ui_ux_design/mobile-scanner-wireframes.md)      | Visual layout for the HTML5 camera viewfinder, bottom-sheets, and empty states.      | To Do      |
+|                     | [Desktop Grid & Slide-Outs](06_ui_ux_design/desktop-wireframes.md)         | Visual layout for the complex filtering grid and the Right-Side Slide-Out Panels.    | To Do      |
+| **07 QA & Testing** | [Test Automation Strategy](07_qa_testing/test-automation-strategy.md)      | Frameworks used (Jest, Cypress, Postman) and definitions of "Done" for PR merges.    | To Do      |
+|                     | [Critical Path Test Cases](07_qa_testing/critical-path-tests.md)           | Step-by-step UAT scripts for SSO Login, Disposal Execution, and WebSocket auto-link. | To Do      |
+
+[< Back to Root](../../README.md)
