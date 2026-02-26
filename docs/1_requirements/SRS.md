@@ -2,18 +2,19 @@
 
 ## for Integrated Digital Asset Management System
 
-**Version 1.0**  
+**Version 1.1**  
 **Prepared by ITM07 - NovaSoft**  
 **University of Moratuwa, Sri Lanka**  
-**12/02/2026**
+**26/02/2026**
 
 ---
 
 ## Revision History
 
-| Name | Date       | Reason For Changes | Version |
-| :--- | :--------- | :----------------- | :------ |
-| Team | 12/02/2026 | Initial draft      | 1.0     |
+| Name | Date       | Reason For Changes                        | Version |
+| :--- | :--------- | :---------------------------------------- | :------ |
+| Team | 12/02/2026 | Initial draft                             | 1.0     |
+| Team | 02/26/2026 | Aligned with updated FRs/NFRs (Epics 1–5) | 1.1     |
 
 ---
 
@@ -44,22 +45,23 @@
   - [3.3 Software Interfaces](#33-software-interfaces)
   - [3.4 Communications Interfaces](#34-communications-interfaces)
 - [4. System Features](#4-system-features)
-  - [4.1 Core Asset Registry](#41-core-asset-registry)
+  - [4.1 Platform Foundation, Master Data & API Gateway](#41-platform-foundation-master-data--api-gateway)
     - [4.1.1 Description and Priority](#411-description-and-priority)
     - [4.1.2 Stimulus/Response Sequences](#412-stimulusresponse-sequences)
     - [4.1.3 Functional Requirements](#413-functional-requirements)
-  - [4.2 User Access & Security](#42-user-access--security)
+  - [4.2 Asset Registry & Tethered Scanning](#42-asset-registry--tethered-scanning)
     - [4.2.1 Description and Priority](#421-description-and-priority)
-    - [4.2.2 Functional Requirements](#422-functional-requirements)
-  - [4.3 Tracking & Operations](#43-tracking--operations)
+    - [4.2.2 Stimulus/Response Sequences](#422-stimulusresponse-sequences)
+    - [4.2.3 Functional Requirements](#423-functional-requirements)
+  - [4.3 IT Operations & Hardware Maintenance](#43-it-operations--hardware-maintenance)
     - [4.3.1 Description and Priority](#431-description-and-priority)
     - [4.3.2 Stimulus/Response Sequences](#432-stimulusresponse-sequences)
     - [4.3.3 Functional Requirements](#433-functional-requirements)
-  - [4.4 Integration & Reporting](#44-integration--reporting)
+  - [4.4 Compliance-Driven Disposals](#44-compliance-driven-disposals)
     - [4.4.1 Description and Priority](#441-description-and-priority)
     - [4.4.2 Stimulus/Response Sequences](#442-stimulusresponse-sequences)
     - [4.4.3 Functional Requirements](#443-functional-requirements)
-  - [4.5 Automation & Optimization](#45-automation--optimization)
+  - [4.5 Financial Intelligence & Automated Alerts](#45-financial-intelligence--automated-alerts)
     - [4.5.1 Description and Priority](#451-description-and-priority)
     - [4.5.2 Stimulus/Response Sequences](#452-stimulusresponse-sequences)
     - [4.5.3 Functional Requirements](#453-functional-requirements)
@@ -90,7 +92,7 @@ The purpose of this document is to specify the software requirements for the Int
 This document follows the IEEE 830-1998 standard for Software Requirements Specifications.
 
 - **Typography:** Important terms and user interface elements are highlighted in **bold**.
-- **Requirement IDs:** Detailed requirements in Section 4 are marked with unique identifiers (e.g., REQ-REG-1.1, REQ-SEC-2.1) as defined in the functional requirements documentation to facilitate traceability.
+- **Requirement IDs:** Detailed requirements in Section 4 are marked with unique identifiers (e.g., REQ-FND-1.1, REQ-REG-2.1) as defined in the functional requirements documentation to facilitate traceability.
 - **Priorities:** Requirements may be classified as High, Medium, or Low priority to guide development phases.
 
 ## 1.3 Intended Audience and Reading Suggestions
@@ -180,35 +182,47 @@ The Integrated Digital Asset Management System (IDAMS) automates the tracking an
 
 **Core Asset Registry & Identification**
 
-- **Unified Registry:** Consolidates diverse asset types (Hardware, Software Licenses, Office Equipment) into a single, centralized database.
-- **Dynamic Data Schema:** Adapts data entry fields based on the asset category (e.g., capturing "License Keys" for software vs. "CPU/RAM" for hardware).
-- **Unique Identification:** Auto-generates unique Asset IDs and corresponding QR codes to prevent duplication and facilitate physical tracking.
-- **Mobile Audit:** Provides a mobile-web interface for scanning QR codes to perform rapid inventory lookups and audits.
+- **Unified Registry:** Consolidates diverse asset types (Hardware, Software Licenses, Office Equipment, Furniture & Facilities) into a single, centralized database.
+- **Dynamic Data Schema:** Adapts data entry fields based on the asset category (e.g., capturing "License Keys" for software vs. "CPU/RAM" for hardware vs. "Dimensions/Material" for furniture) using an EAV schema builder with drag-and-drop field ordering.
+- **Unique Identification:** Auto-generates unique Asset IDs (with category Prefix Codes and collision handling) and corresponding QR codes with print layouts (Zebra/Dymo thermal and A4 PDF grid) to prevent duplication and facilitate physical tracking.
+- **Serial Number Validation:** Enforces unique Serial Number constraints during registration, blocking duplicates with descriptive errors.
+- **Financial Data Capture:** Mandates Initial Cost breakdown (Base Price, Tax, Shipping) with multi-currency support (NOK, USD, LKR) and secure invoice PDF uploads to cloud storage.
+- **Bulk Import:** Supports CSV and Excel (.xlsx) uploads with Partial Success processing for mass asset registration.
+- **Mobile Audit:** Provides a Progressive Web App (PWA) mobile scanner interface using HTML5 camera APIs for scanning QR codes and 1D barcodes.
+- **Tethered Companion Scanning:** Enables real-time WebSocket pairing between mobile devices and desktop browsers to inject scanned serial numbers directly into active form fields.
 
 **Lifecycle Operations & Workflow**
 
-- **Assignment & Return:** Manages the assignment of assets to specific employees or locations and tracks the return process.
-- **Digital Custody:** Triggers automated "Digital Acceptance" workflows via Email/Teams, requiring employees to acknowledge custody of assigned assets.
-- **Maintenance Management:** Tracks service history, repair costs, and schedules upcoming maintenance tasks.
-- **Disposal Governance:** Enforces strict approval workflows for retiring assets (e.g., E-waste, Stolen) to ensure compliance and capture disposal reasons.
+- **Assignment & Return:** Manages the assignment of assets strictly to individual Users or physical Locations (team-level assignments blocked), with return-request notifications via Email and Teams.
+- **Digital Custody:** Triggers automated "Digital Acceptance" workflows via Email and Microsoft Teams, requiring employees to acknowledge custody of assigned assets.
+- **Asset Chain of Custody:** Provides a chronological timeline view of all assignments, returns, and status changes per asset with CSV export.
+- **Employee Self-Service:** Provides a "My Assets" portal for standard employees to view assigned equipment and submit "Report Issue" damage tickets.
+- **Custom Status Management:** Tracks built-in lifecycle statuses (Available, Assigned, Defective, In Repair, Disposed, Donated, Lost, Missing) and allows admins to configure additional custom statuses with state-machine transition rules.
+- **Maintenance Management:** Provides a tabbed Maintenance Ledger (Pending Review, Active Repairs, Repair History) with triage review panels, vendor dispatch (RMA tracking), and cost reconciliation upon repair completion.
+- **Disposal Governance:** Enforces multi-step compliance workflows including executive financial review, mandatory E-waste certificate uploads, physical security checkboxes, exact Asset ID confirmation, and bulk disposal processing.
 
 **Financial Visibility & Reporting**
 
-- **Cost Tracking:** Records comprehensive financial data, including purchase orders (POs), invoices, and vendor details from acquisition to retirement.
-- **Asset Valuation:** Calculates and displays the total asset value allocated to each employee, department, or cost center.
-- **Interactive Dashboards:** Visualizes real-time metrics such as pending approvals, license utilization, and critical failure trends.
-- **Exportable Reports:** Generates audit-ready reports in standard formats (PDF/Excel) for inventory and financial audits.
+- **Cost Tracking:** Records comprehensive financial data including Initial Cost breakdowns (Base Price, Tax, Shipping), multi-currency values, invoices, and vendor details from acquisition to retirement.
+- **Automated Depreciation:** Calculates real-time "Current Book Value" using straight-line depreciation math in a dedicated RBAC-secured Financials module.
+- **Total Cost of Ownership (TCO):** Aggregates purchase prices with all historical maintenance costs to calculate true asset cost.
+- **Write-Offs & Salvage:** Maintains a ledger of disposed assets alongside salvage values recouped from e-waste recycling.
+- **Interactive Dashboards:** Visualizes real-time metrics including Total Assets, Pending Approvals, Overdue Returns, Low Stock Alerts, a "Recent Activity Log" feed, and "Frequently Failing Assets / Problem Asset Counts" widgets.
+- **Exportable Reports:** Generates HTML inventory reports with in-browser preview and exports to PDF, CSV, and Excel (.xlsx) formats for inventory and financial audits.
 
 **Automation & Proactive Alerts**
 
-- **Expiration Alerts:** Automatically monitors and sends notifications for upcoming software license renewals and hardware warranty expirations.
+- **Expiration Alerts:** Automatically monitors and sends notifications via Email and Microsoft Teams for upcoming warranty expirations, software license renewals, and overdue active repair tickets.
 - **Overdue Notifications:** Triggers alerts to IT staff and users when assigned assets are not returned by the due date.
+- **CRON Engine:** Runs scheduled nightly background tasks to scan for threshold breaches and dispatch alert digests.
+- **Notification Center:** Provides an in-app Bell Icon inbox with unread alert counts and deep-links routing users directly to affected asset detail panels.
 
 **Security & Administration**
 
 - **Single Sign-On (SSO):** Authenticates users exclusively via Microsoft Azure AD (OIDC/SAML), eliminating local passwords.
 - **Role-Based Access Control (RBAC):** Automatically maps Azure AD group attributes to system permissions (e.g., Admin, Viewer).
-- **Immutable Audit Log:** Maintains a chronological, read-only ledger of every system change (assignments, status updates) for security and historical traceability.
+- **Immutable Audit Log:** Maintains a chronological, read-only ledger of every system change (assignments, status updates) capturing Actor, IP address (`X-Forwarded-For`), and Before/After JSON state diffs for security and historical traceability, with a filterable viewer and CSV export.
+- **Open API Gateway:** Exposes rate-limited REST API endpoints with hashed API key authentication for external systems to fetch asset data or trigger assignment workflows, plus configurable outbound Webhooks for real-time push notifications on system events.
 
 **Functional Hierarchy Diagram**
 
@@ -320,7 +334,8 @@ The development team is restricted to the following pre-approved technology stac
 
 **5. Reliability Constraints**
 
-- **Audit Trail Immutable:** The system must not allow the deletion of audit logs. All historical data regarding asset assignments must be preserved for a minimum of 5 years (simulated) for tax/audit purposes.
+- **Audit Trail Immutable:** The system must not allow the deletion of audit logs. All historical data regarding asset assignments must be preserved for a minimum of 7 years for tax/audit purposes.
+- **Data Retention (E-Waste):** E-Waste Certificates of Destruction stored in cloud storage must be retained for a minimum of 7 years to satisfy tax compliance requirements.
 
 ## 2.6 User Documentation
 
@@ -501,12 +516,39 @@ The IDAMS platform interacts with several external software components to handle
 
 **4. External Finance & HR Systems (REST API)**
 
-- **Purpose:** Allowing external enterprise systems to consume asset valuation and assignment data for payroll or auditing purposes.
-- **Interface Mechanism:** RESTful API endpoints exposed by IDAMS.
+- **Purpose:** Allowing external enterprise systems to consume asset valuation and assignment data, or trigger operational workflows (e.g., auto-assigning assets to new hires).
+- **Interface Mechanism:** RESTful API endpoints exposed by IDAMS, secured via hashed API keys.
 - **Data Exchange:**
-  - **Incoming:** HTTP GET requests with Bearer Token authorization.
-  - **Outgoing:** JSON-formatted responses containing Asset Lists, Current Valuations, and Depreciation schedules.
+  - **Incoming:** HTTP GET/POST requests with API key authorization in the `Authorization` header.
+  - **Outgoing:** JSON-formatted responses containing Asset Lists, Current Valuations, Depreciation schedules, and assignment confirmations.
 - **Schema Definition:** The API specification follows the OpenAPI 3.0 standard.
+
+**5. Cloud Storage (AWS S3 / Azure Blob Storage)**
+
+- **Purpose:** Secure storage for uploaded documents, specifically Purchase Invoice PDFs (during registration) and E-Waste Certificates of Destruction (during disposal).
+- **Interface Mechanism:** HTTPS API calls to the cloud storage provider's SDK.
+- **Data Exchange:**
+  - **Outgoing:** Binary file uploads (PDF) with metadata tags (Asset ID, Document Type).
+  - **Incoming:** Signed URL references for secure download/retrieval.
+- **Constraint:** E-Waste certificate storage buckets must be configured with retention policies preventing file deletion for a minimum of 7 years.
+
+**6. WebSocket Server (Real-Time Communication)**
+
+- **Purpose:** Enabling the Tethered Companion Scanning feature, where a paired mobile device injects scanned barcode data into an active desktop browser session in real-time.
+- **Interface Mechanism:** WebSocket protocol (via Socket.io or native WS) over a secure WSS connection.
+- **Data Exchange:**
+  - **Incoming (from mobile client):** JSON payloads containing the decoded barcode string and session token.
+  - **Outgoing (to desktop client):** JSON payloads injecting the scanned value into the targeted form field.
+- **Constraint:** Scan-to-display latency must be under 500ms.
+
+**7. External Vendor Warranty APIs (Optional / Phase 2)**
+
+- **Purpose:** Periodically querying vendor APIs (e.g., Dell TechDirect, HP ISEE, Lenovo Support) to auto-fetch and update warranty expiry dates.
+- **Interface Mechanism:** Outbound HTTPS REST calls using asset Serial Numbers as query parameters.
+- **Data Exchange:**
+  - **Outgoing:** HTTP GET requests with Serial Number identifiers.
+  - **Incoming:** JSON responses containing warranty status and expiry dates.
+- **Constraint:** Must implement exponential backoff retry logic for failed vendor API calls.
 
 ## 3.4 Communications Interfaces
 
@@ -533,171 +575,291 @@ The IDAMS system relies on standard network communication protocols to ensure se
 **4. External API Communication (REST)**
 
 - **Protocol:** The system exposes public-facing endpoints via REST (Representational State Transfer).
-- **Authentication:** All API requests must include a valid Bearer Token (JWT) in the Authorization header.
+- **Authentication:** External API requests must include a valid, system-generated hashed API Key in the Authorization header. Internal user requests use Bearer Tokens (JWT) from Azure AD.
+- **Rate Limiting:** The API Gateway enforces a rate limit of 100 requests per minute per API Key to prevent external systems from degrading system performance.
 - **Response Standards:**
   - Success: 200 OK with JSON body.
   - Client Error: 400 Bad Request or 401 Unauthorized.
+  - Rate Exceeded: 429 Too Many Requests.
   - Server Error: 500 Internal Server Error.
+
+**5. WebSocket Communication (Tethered Scanning)**
+
+- **Protocol:** Secure WebSocket (WSS) over TLS 1.2+ for real-time bidirectional communication between mobile and desktop browser clients.
+- **Function:** Enables the "Companion Scanner" feature, pairing a mobile device to a desktop session via a temporary QR-encoded session token.
+- **Latency Requirement:** Scanned barcode data must appear in the desktop input field within 500ms of a successful scan.
+
+**6. Outbound Webhooks**
+
+- **Protocol:** Asynchronous HTTPS POST requests dispatched to admin-configured external target URLs upon specific system events (e.g., Asset Assigned, Asset Disposed).
+- **Message Format:** JSON payloads containing event type, asset details, and timestamp.
+- **Retry Logic:** Failed webhook deliveries must implement exponential backoff retry logic to ensure delivery reliability.
 
 # 4. System Features
 
-## 4.1 Core Asset Registry
+## 4.1 Platform Foundation, Master Data & API Gateway
 
 ### 4.1.1 Description and Priority
 
-The Core Asset Registry serves as the "Single Source of Truth" for the organization's IT infrastructure. It allows Global Administrators to register, track, and manage the static details of both physical assets (Laptops, Monitors) and digital assets (Software Licenses).This feature enforces data standardization and ensures every item is uniquely identified.
+The Platform Foundation is the architectural bedrock of the IDAMS system. It establishes enterprise-grade security via Azure AD SSO and Role-Based Access Control (RBAC), provides a Dynamic Schema Engine (EAV architecture) allowing admins to build custom asset categories with specific attributes, maintains an Immutable System Audit Log for SOC2 compliance, and exposes an Open API Gateway for third-party integrations. This epic also governs all organizational Master Data (Locations, Departments, Vendors, Brands, Models) and the relational safeguards protecting them.
+
+- **Priority:** High (Critical for Security & Compliance).
+- **Reasoning:** Without a functioning foundation — authentication, authorization, master data, and audit trails — no other feature (registry, assignment, reporting, automation) can operate securely.
+
+### 4.1.2 Stimulus/Response Sequences
+
+- **Stimulus:** Unauthenticated user attempts to access the application URL.
+  - **Response:** The system automatically redirects the user to the Microsoft Online Login page (Azure AD).
+- **Stimulus:** User successfully authenticates with valid TIQRI credentials.
+  - **Response:** Microsoft redirects the user back to the application with a valid ID Token. The system parses the token, automatically maps Azure AD Group attributes to baseline system permissions (e.g., "Finance Team" group → "Finance Read-Only" role), and loads the appropriate Dashboard view.
+- **Stimulus:** A "Standard Employee" attempts to manually navigate to an Admin-only API route (e.g., `/api/v1/master-data/categories`).
+  - **Response:** The RBAC middleware blocks the request, returns a `403 Forbidden` error, and logs the unauthorized access attempt in the Audit Log.
+- **Stimulus:** Global Admin navigates to the Role Assignment screen and searches for an employee.
+  - **Response:** The system displays a master-detail split-view interface. The admin selects a role on the left master-list, searches for the employee on the right, and clicks "Confirm Mapping" to instantly grant elevated access.
+- **Stimulus:** Global Admin creates a new asset category named "Wireless Keyboard."
+  - **Response:** The system auto-generates a 3-letter Prefix Code ("WKE"), locks it permanently, and presents the Custom Field Builder panel for defining category-specific attributes (Text, Number, Dropdown) with drag-and-drop re-ordering.
+- **Stimulus:** Global Admin creates a new category that generates a Prefix Code already in use (e.g., "LAP").
+  - **Response:** The system automatically detects the collision and appends a numeric suffix (e.g., "LAP2") to ensure uniqueness.
+- **Stimulus:** Global Admin attempts to delete the "Laptops" category that has 142 active assets.
+  - **Response:** The system blocks the action, displays the dependent count: "Cannot delete: Category contains 142 active assets," and suggests archival instead.
+- **Stimulus:** Global Admin archives an unused Location.
+  - **Response:** The system sets the `IsActive` flag to false, hiding it from active dropdowns while preserving all historical references.
+- **Stimulus:** Security Auditor navigates to the System Audit Log page and filters by Actor "Jane Doe" and Action "DELETE."
+  - **Response:** The high-density table displays only destructive actions performed by Jane, with each entry showing Timestamp, IP Address, and Before/After JSON state diffs. The auditor can export the filtered results to CSV.
+- **Stimulus:** Global Admin clicks "Generate New API Key" and names it "Workday HRIS."
+  - **Response:** The system displays the secret key exactly once and stores a hashed version in the database for future authentication.
+- **Stimulus:** External system sends a `GET` request to `/api/v1/external/assets` exceeding the rate limit.
+  - **Response:** The API responds with a `429 Too Many Requests` error.
+- **Stimulus:** Global Admin registers an external webhook URL for the "Asset_Assigned" event.
+  - **Response:** Upon any future asset assignment, the backend automatically dispatches an asynchronous HTTPS POST payload containing the assignment details to the registered URL.
+- **Stimulus:** User clicks "Logout."
+  - **Response:** The system destroys the local session token and redirects the user to the Azure AD "End Session" endpoint.
+
+### 4.1.3 Functional Requirements
+
+- **REQ-FND-1.1:** The system shall authenticate users exclusively via Azure Active Directory (Entra ID) using OAuth 2.0. Local credential storage and external guest users are strictly prohibited.
+- **REQ-FND-1.2:** The system shall enforce strict HTTPS (TLS 1.2+) for all system connections.
+- **REQ-FND-1.3:** The system shall encrypt sensitive financial fields and software license keys at rest using AES-256.
+- **REQ-FND-1.4:** The system shall provide a master-detail split-view interface for Global Admins to map active directory users to specific system roles.
+- **REQ-FND-1.5:** The system shall automatically assign baseline system permissions (e.g., Finance Read-Only, General Employee) based on Azure AD Group attributes.
+- **REQ-FND-1.6:** The system shall allow admins to create custom asset categories and automatically generate a locked, unique 3-letter Prefix Code (e.g., `LAP` for Laptops) to standardize future Asset IDs.
+- **REQ-FND-1.7:** The system shall provide a custom panel allowing admins to define category-specific custom inputs (Text, Number, Dropdown) that dynamically render on forms.
+- **REQ-FND-1.8:** The system shall support asset categories for Furniture and Facilities, allowing for physical attributes (Dimensions, Material) rather than technical specs.
+- **REQ-FND-1.9:** The system shall provide interfaces to manage organizational Master Data, explicitly including Brands, Models, Locations (Building > Floor > Room hierarchy), Departments, and authorized Vendors.
+- **REQ-FND-1.10:** The system shall enforce database constraints that physically prevent the deletion of any Master Data entity if active assets are currently assigned to it.
+- **REQ-FND-1.11:** The system shall maintain an append-only, chronological system ledger of every CRUD event, automatically capturing the Actor, Timestamp, `X-Forwarded-For` IP Address, and a Before/After JSON state diff.
+- **REQ-FND-1.12:** The system shall expose secure, rate-limited REST API endpoints (JSON) for external third-party systems to fetch read-only asset data or trigger assignment workflows.
+- **REQ-FND-1.13:** The system shall allow Admins to generate/revoke hashed API keys and register external target URLs for outbound Webhook payloads triggered by system events.
+- **REQ-FND-1.14:** The system shall provide a high-density, filterable log viewer allowing authorized users to search the immutable audit ledger by Actor, Action Type, and Date Range, and export the filtered results to CSV.
+- **REQ-FND-1.15:** The system shall automatically detect and resolve duplicate Prefix Codes during category creation by appending a numeric suffix (e.g., `LAP2`) to ensure uniqueness.
+- **REQ-FND-1.16:** The system shall support drag-and-drop re-ordering of category-specific custom fields, persisting the display sequence for dynamic form rendering.
+- **REQ-FND-1.17:** The system shall allow admins to soft-archive unused Master Data entities by setting an `IsActive` flag to false, hiding them from active dropdowns while preserving historical references.
+
+---
+
+## 4.2 Asset Registry & Tethered Scanning
+
+### 4.2.1 Description and Priority
+
+The Asset Registry is the "Single Source of Truth" for the organization's IT infrastructure. It allows Global Administrators to register, track, and manage the static details of both physical assets (Laptops, Monitors, Furniture) and digital assets (Software Licenses). This epic enhances the standard inventory tracker by introducing a Dynamic Asset Registration Form, high-density data grids, a QR Code & Print Engine, a mobile PWA Scanner, and a sophisticated Tethered Companion Scanning infrastructure via WebSockets.
 
 - **Priority:** High (Benefit: 9, Penalty: 9, Cost: 5, Risk: 3).
 - **Reasoning:** Without a functioning registry, no other feature (assignment, reporting, automation) can operate.
 
-### 4.1.2 Stimulus/Response Sequences
+### 4.2.2 Stimulus/Response Sequences
 
 - **Stimulus:** Administrator clicks the "Add New Asset" button on the Asset Dashboard.
-  - **Response:** The system displays the Asset Registration Wizard.
+  - **Response:** The system displays the Asset Registration Wizard with standard fields and a Category selector.
 - **Stimulus:** Administrator selects an Asset Category (e.g., "Laptop").
-  - **Response:** The system dynamically updates the form to reveal hardware-specific fields (CPU, RAM) and hides irrelevant fields (License Keys).
-- **Stimulus:** Administrator submits the form with valid data.
-  - **Response:** The system validates uniqueness, auto-generates a sequential Asset ID (e.g., AST-00105), saves the record to the database, and displays a "Success" toast notification.
+  - **Response:** The system fetches the Epic 1 EAV JSON schema for that category and dynamically renders hardware-specific custom fields (e.g., CPU, RAM) while hiding irrelevant fields (e.g., License Keys). Switching to "Software" replaces the monitor fields with "License Key" inputs.
+- **Stimulus:** Administrator submits the form with valid data, including Base Price, Tax, Shipping, and currency selection.
+  - **Response:** The system validates serial uniqueness, auto-generates a sequential Asset ID using the category Prefix Code (e.g., `LAP-0142`), saves the record, generates a unique routing URL and QR code, and displays a "Success" toast notification.
 - **Stimulus:** Administrator attempts to register an asset with a duplicate Serial Number.
-  - **Response:** The system blocks the submission and highlights the Serial Number field with the error message: "Duplicate Serial Number detected (linked to AST-00045)."
+  - **Response:** The system blocks the submission and highlights the Serial Number field with a descriptive error: "Duplicate Serial Number detected (linked to AST-00045)."
+- **Stimulus:** Administrator drags and drops a "Receipt.pdf" into the invoice upload zone.
+  - **Response:** The file is securely stored in cloud storage (AWS S3/Azure Blob) and linked to the asset record.
+- **Stimulus:** Administrator uploads a CSV/Excel file with 100 rows, where 5 rows have duplicate Serial Numbers.
+  - **Response:** The system imports the 95 valid rows and generates a downloadable error report detailing the 5 failed rows (Partial Success).
+- **Stimulus:** Administrator selects 30 laptops in the Asset Grid and clicks "Print Labels," choosing "A4 Grid Layout."
+  - **Response:** The system generates a downloadable PDF formatted for standard commercial sticker sheets (e.g., Avery 5160).
+- **Stimulus:** Administrator clicks "Link Mobile Scanner" on the desktop "Add Asset" form.
+  - **Response:** The desktop displays a temporary Session QR Code. Scanning it with a mobile device opens a WebSocket channel and the desktop UI updates to "Scanner Connected."
+- **Stimulus:** Paired mobile device scans a manufacturer barcode.
+  - **Response:** The decoded serial number is injected into the active desktop input field within 500ms via WebSocket.
+- **Stimulus:** Mobile user scans a TIQRI QR sticker.
+  - **Response:** The device vibrates (haptic feedback), and a bottom-sheet UI slides up displaying the Asset ID, Model, Custodian, and quick actions.
+- **Stimulus:** Mobile user attempts to navigate to the `/registry` or `/financials` grid URL.
+  - **Response:** The system presents a clean "Empty State" UI card illustrating "Desktop Required" and a prompt to switch devices.
+- **Stimulus:** Administrator clicks a row in the High-Density Data Grid.
+  - **Response:** A Right-Side Slide-Out Panel opens displaying the asset's vitals, assignment history, lifecycle events, and quick actions (Edit/Assign/Dispose), without losing the current grid filters.
 
-### 4.1.3 Functional Requirements
+### 4.2.3 Functional Requirements
 
-The following requirements define the capabilities necessary for the Core Asset Registry:
-
-- **REQ-REG-1.1:** The system shall provide a web-based interface to register new assets, automatically generating a unique, immutable Asset ID for each entry to prevent duplication.
-- **REQ-REG-1.2:** The system shall store comprehensive attribute data for each asset, including but not limited to: Brand, Model, Serial Number, Purchase Date, Vendor, and Warranty Expiration.
-- **REQ-REG-1.3:** The system shall implement Conditional Field Logic that dynamically shows or hides form fields based on the selected Asset Category (e.g., showing "Seats" for Software, "Screen Size" for Monitors).
-- **REQ-REG-1.4:** The system shall allow Administrators to manage Master Data (Brands, Models, Locations) via a dedicated settings console to enforce standardized dropdown selections and prevent data inconsistencies (e.g., "HP" vs. "Hewlett-Packard").
-- **REQ-REG-1.5:** The system shall provide a High-Performance Search capability, allowing users to filter the registry by Asset ID, Serial Number, Employee Name, or Status with sub-second response times.
-- **REQ-REG-1.6:** The system shall support Multi-Currency Financial Recording, capturing the original purchase cost (in NOK, USD, or LKR) and the exchange rate at the time of purchase.
-- **REQ-REG-1.7:** The system shall support Bulk Import functionality via CSV files, capable of validating up to 1,000 rows simultaneously and providing a detailed error report for any failed rows.
-- **REQ-REG-1.8:** The system shall support a "Quantity Only" tracking mode for low-value items (e.g., HDMI Cables) without unique IDs.
-- **REQ-REG-1.9:** The system shall provide a dedicated "Settings" or "Configuration" interface where Global Admins can Create, Edit, and Delete reference data (Brands, Models, Categories, Locations, Vendors).
-- **REQ-REG-1.10:** The system must support asset categories for Furniture and Facilities, allowing for attributes specific to physical infrastructure (e.g., Dimensions, Material) rather than technical specs.
-
----
-
-## 4.2 User Access & Security
-
-### 4.2.1 Description and Priority
-
-This feature manages the authentication and authorization of all users interacting with the system. It enforces a "Zero Trust" policy by relying exclusively on Microsoft Entra ID (Azure AD) for identity verification, ensuring that no local passwords are stored within the application. It also handles Role-Based Access Control (RBAC) to ensure users only access data pertinent to their job function.
-
-- **Priority:** High (Critical for Security & Compliance).
-- **Reasoning:** Without secure authentication, the system cannot protect sensitive financial data or PII, violating GDPR and corporate security policies.
-
-### 4.2.1 Stimulus/Response Sequences
-
-- **Stimulus:** Unauthenticated user attempts to access the application URL.
-  - **Response:** The system automatically redirects the user to the Microsoft Online Login page.
-- **Stimulus:** User successfully enters valid TIQRI credentials on the Microsoft login page.
-  - **Response:** Microsoft redirects the user back to the application with a valid ID Token. The system parses the token, identifies the user's role (e.g., "Global Admin"), and loads the appropriate Dashboard.
-- **Stimulus:** A "Standard User" attempts to manually navigate to an Admin-only URL (e.g., `/admin/settings`).
-  - **Response:** The system denies the request, displays a 403 Forbidden error page, and logs the unauthorized access attempt.
-- **Stimulus:** User clicks "Logout".
-  - **Response:** The system destroys the local session token and redirects the user to the Azure AD "End Session" endpoint to clear the browser session.
-
-### 4.2.2 Functional Requirements
-
-- **REQ-SEC-2.1:** The system shall authenticate all users exclusively via Microsoft Entra ID (Azure AD) using the OpenID Connect (OIDC) protocol; no local username/password management shall be implemented.
-- **REQ-SEC-2.2:** The system shall automatically map Azure AD Group Claims to application roles upon login (e.g., if a user is in the "IT-Admins" Azure group, they are granted "Global Admin" rights in the system).
-- **REQ-SEC-2.3:** The system shall encrypt sensitive data fields (specifically Software License Keys and Purchase Costs) at rest in the database using AES-256 encryption.
-- **REQ-SEC-2.4:** The system shall enforce Role-Based Access Control (RBAC) at the API level, ensuring that POST, PUT, and DELETE endpoints are strictly restricted to the "Global Admin" role.
-- **REQ-SEC-2.5:** The system shall implement Session Timeouts aligned with the Azure AD tenant policy (defaulting to 1 hour of inactivity), forcing a re-authentication flow to prevent unauthorized access on shared devices.
+- **REQ-REG-2.1:** The system shall provide a registration form that automatically generates a unique Asset ID and dynamically renders custom fields based on the selected Epic 1 category.
+- **REQ-REG-2.2:** The system shall mandate the capture of Initial Cost, including base price, tax, and shipping.
+- **REQ-REG-2.3:** The system shall support the entry of financial data in multiple currencies, explicitly including NOK, USD, and LKR.
+- **REQ-REG-2.4:** The system shall allow the secure upload of digital Purchase Invoices (PDF) to cloud storage during asset registration.
+- **REQ-REG-2.5:** The system shall bypass unique serialization for categories flagged as "Consumables" (e.g., HDMI cables), tracking them strictly via a centralized Quantity Stock integer.
+- **REQ-REG-2.6:** The system shall display the inventory in a data table supporting sticky multi-column filtering by Serial Number, ID, Employee, and Status.
+- **REQ-REG-2.7:** The system shall enable column visibility toggles and bulk-select checkboxes for batch actions within the main registry grid.
+- **REQ-REG-2.8:** The system shall display a comprehensive read-only view of a single asset's vitals, assignments, and lifecycle history in a right-side panel when an asset row is clicked.
+- **REQ-REG-2.9:** The system shall support CSV and Excel format uploads for mass asset registration.
+- **REQ-REG-2.10:** The system shall ensure the bulk import script skips invalid rows, imports valid ones, and generates a downloadable error report without failing the entire batch.
+- **REQ-REG-2.11:** The system shall automatically generate a unique URL routing endpoint (e.g., `idams.tiqri.com/asset/AST-0142`) and convert it into a downloadable 2D QR code upon asset creation.
+- **REQ-REG-2.12:** The system shall provide a formatting engine to export selected QR codes as single-tag thermal print files (Zebra/Dymo) or bulk A4 PDF grid layouts for standard sticker paper.
+- **REQ-REG-2.13:** The system shall provide a mobile-responsive browser interface utilizing HTML5 `getUserMedia` APIs to scan 1D barcodes and 2D QR codes.
+- **REQ-REG-2.14:** The system shall establish a real-time WebSocket connection allowing the mobile camera to inject scanned manufacturer serial numbers directly into active desktop input fields.
+- **REQ-REG-2.15:** The system shall display a bottom-sheet UI with asset vitals when a QR is scanned via mobile, and block users from accessing complex desktop-only data grids on mobile devices.
+- **REQ-REG-2.16:** The system shall enforce unique Serial Number validation during asset registration, blocking submission and displaying a descriptive error if a duplicate is detected.
 
 ---
 
-## 4.3 Tracking & Operations
+## 4.3 IT Operations & Hardware Maintenance
 
 ### 4.3.1 Description and Priority
 
-This feature manages the dynamic lifecycle of assets, transforming the system from a static list into an active operational tool. It handles the "Chain of Custody" by tracking exactly who has an asset, where it is located, and its current condition. It ensures accountability by logging every status change in an immutable history ledger.
+This feature manages the dynamic lifecycle of assets, transforming the system from a static list into an active operational tool. It handles the "Chain of Custody" by tracking who has an asset, where it is located, and its current condition. It provides an Employee Support Portal, Digital Acceptance workflows via Email and Microsoft Teams, Check-in/Check-out assignment logic, return management with condition assessment, a Maintenance Ledger for tracking repairs, and bulk operations. It ensures accountability by logging every status change.
 
 - **Priority:** High (Benefit: 9, Risk: 8).
 - **Reasoning:** This is the core "business logic" of the application. Without it, the organization cannot solve the primary problem of "Asset Loss" or "Unknown Ownership."
 
 ### 4.3.2 Stimulus/Response Sequences
 
-- **Stimulus:** Administrator selects an "Available" asset and clicks "Assign to User."
-  - **Response:** The system prompts for a User (via search) and a "Due Date." Upon confirmation, the Asset Status changes to "In Use," the User is linked as the Custodian, and an email notification is triggered.
+- **Stimulus:** Standard Employee logs in.
+  - **Response:** The system detects the non-admin role and displays the "My Assets" portal showing a read-only list of equipment assigned to their Azure AD profile, with a "Report Issue" action.
+- **Stimulus:** Employee clicks "Report Issue" from the "My Assets" portal.
+  - **Response:** The system creates a triage ticket and routes it to the Maintenance Ledger's "Pending Review" queue.
+- **Stimulus:** Administrator assigns an "Available" asset to a user.
+  - **Response:** The system prompts for a User or Location (via search). Assignment to generic "Teams" or Departments is blocked. Upon confirmation, the Asset Status changes to "Assigned (Pending)," the User is linked as the Custodian, and an automated "Digital Acceptance" notification is dispatched via Email and Microsoft Teams.
+- **Stimulus:** Employee clicks "Confirm Receipt" in the automated email/Teams notification.
+  - **Response:** The system updates the asset status from "Assigned (Pending)" to "Assigned (Confirmed)" and logs the confirmation timestamp in the Audit Trail.
+- **Stimulus:** Administrator clicks "Request Return" on an assigned asset.
+  - **Response:** The system sends a return-request notification to the current custodian via Email and Teams, and transitions the asset status to "Requested."
 - **Stimulus:** Administrator processes an asset return.
-  - **Response:** The system asks for the "Return Condition" (e.g., Good, Damaged). If "Damaged" is selected, the system automatically prompts to flag the asset for "Maintenance."
-- **Stimulus:** Administrator attempts to assign an asset that is already "In Use."
-  - **Response:** The system blocks the action and displays an error: "Asset is currently assigned to [User Name]. Please process a return first."
-- **Stimulus:** Administrator performs a bulk location update for 50 chairs.
-  - **Response:** The system updates the "Location" field for all 50 records simultaneously and creates 50 individual audit log entries.
+  - **Response:** The system presents a "Return Dialog" modal requiring the selection of a "Return Condition" (Good Working Condition, Working with Minor Issues, Needs Repair, Beyond Repair). The system routes the asset to the appropriate next status based on the condition assessment (Available, In Repair, or Disposed).
+- **Stimulus:** Administrator attempts to assign an asset that is already "Assigned."
+  - **Response:** The system blocks the action and displays an error: "Asset is currently checked out to [User Name]. Please return it first."
+- **Stimulus:** Administrator manually changes an asset's status to "Lost."
+  - **Response:** The system prompts for a mandatory "Reason/Note," removes the asset from the "Available" pool, and logs the event. State-machine rules prevent invalid transitions (e.g., a "Lost" asset cannot be assigned without first transitioning to "Found" or "Available").
+- **Stimulus:** Global Admin adds a custom status called "Pending Audit" on the Settings page.
+  - **Response:** The new status becomes available in the "Change Status" dropdown across the system and behaves identically to built-in statuses in filters, reports, and the registry grid.
+- **Stimulus:** Administrator performs a bulk location update for 50 chairs from the registry grid.
+  - **Response:** The system updates the "Location" field for all 50 records in a single database transaction and creates 50 individual audit log entries.
+- **Stimulus:** IT Ops Admin navigates to Operations > Maintenance & Repairs.
+  - **Response:** The system displays a tabbed data grid with "Pending Review" (employee-reported triage tickets), "Active Repairs" (dispatched to vendors), and "Repair History" tabs.
+- **Stimulus:** IT Ops Admin clicks a pending triage ticket row.
+  - **Response:** A Right-Side Triage Review Panel slides in showing the user's complaint, the asset's current financial Book Value, and Warranty Status, with actions to "Resolve Internally" or "Log Repair Ticket."
+- **Stimulus:** IT Ops Admin clicks "Log Repair Ticket" from the Triage Review Panel.
+  - **Response:** An "Initiate Repair" modal opens requiring the Vendor, RMA Ticket Number, Estimated Cost, and Expected Return Date. Upon confirmation, the asset status changes to "In Repair" and moves to the "Active Repairs" tab.
+- **Stimulus:** Administrator clicks "Complete Repair" on an active repair ticket.
+  - **Response:** A "Close Repair" modal opens requiring the Actual Final Cost. Upon confirmation, the system updates the asset's Total Cost of Ownership (TCO) in the financial engine and routes the asset to its next status (e.g., "Available" or "Flag for Disposal").
 
 ### 4.3.3 Functional Requirements
 
-- **REQ-OPS-3.1:** The system shall provide a Check-in/Check-out workflow that allows Global Admins to assign assets to specific Employees or Physical Locations, enforcing a validation rule that an asset must be in "Available" status to be assigned.
-- **REQ-OPS-3.2:** The system shall implement a Return Management process that captures the date of return and the physical condition of the asset (e.g., "Good," "Scratched," "Broken") before releasing it back to the "Available" pool.
-- **REQ-OPS-3.3:** The system shall maintain an Immutable Audit Log that automatically records the Who, What, When, and Why for every change in asset state (e.g., "Status changed from Available to In Use by Admin [Name] on [Date]"). This log must be read-only and unalterable.
-- **REQ-OPS-3.4:** The system shall support a defined Status Lifecycle (e.g., New -> Available -> In Use -> In Repair -> Retired), preventing invalid transitions (e.g., moving directly from "In Use" to "Retired" without a return step).
-- **REQ-OPS-3.5:** The system shall allow Bulk Location Transfers, enabling Admins to select multiple assets and update their physical location (e.g., "Moving IT Lab to Room 304") in a single transaction.
+- **REQ-OPS-3.1:** The system shall provide a "My Assets" self-service portal for standard employees to view equipment assigned strictly to their Azure AD profile.
+- **REQ-OPS-3.2:** The system shall dispatch automated notifications via Email and Microsoft Teams to employees upon new hardware assignment, requiring them to digitally confirm custody.
+- **REQ-OPS-3.3:** The system shall provide modal interfaces to assign available hardware strictly to a User or a Location. Assignment to generic "Teams" must be blocked.
+- **REQ-OPS-3.4:** The system shall process returns with a mandatory condition check (Working vs. Defective) to dictate the asset's next lifecycle state.
+- **REQ-OPS-3.5:** The system shall support the bulk update of Asset Locations (e.g., moving 50 chairs from Room A to Room B) in a single transaction.
+- **REQ-OPS-3.6:** The system shall track specific asset statuses (Available, Assigned, Defective, In Repair, Disposed, Donated, Lost, Missing) and allow admins to configure additional custom statuses.
+- **REQ-OPS-3.7:** The system shall provide a tabbed data grid separating triage tickets ("Pending Review"), dispatched hardware ("Active Repairs"), and historical maintenance logs.
+- **REQ-OPS-3.8:** The system shall display a slide-out panel allowing IT Admins to assess user-reported damage alongside the asset's current financial book value and warranty status.
+- **REQ-OPS-3.9:** The system shall provide an "Initiate Repair" modal to route an asset to a Vendor, capturing the RMA Ticket Number, Estimated Cost, and Expected Return Date.
+- **REQ-OPS-3.10:** The system shall provide a "Close Repair" modal requiring the input of the Actual Final Cost upon the asset's return, automatically updating the system's financial engine.
+- **REQ-OPS-3.11:** The system shall allow admins to send automated return-request notifications to current custodians via Email and Microsoft Teams, transitioning the asset status to "Requested" pending physical return.
+- **REQ-OPS-3.12:** The system shall provide a chronological timeline view of all assignments, returns, and status changes for a single asset, accessible from the Asset Details panel, with CSV export capability.
+- **REQ-OPS-3.13:** The system shall enforce state-machine rules for manual status changes (e.g., Lost, Stolen, Found), requiring mandatory justification notes and preventing invalid transitions.
+- **REQ-OPS-3.14:** The system shall support the batch editing of Location or Status for multiple selected assets directly from the main registry grid in a single database transaction.
+- **REQ-OPS-3.15:** The system shall provide a self-service "Report Issue" interface within the Employee Portal for standard employees to submit damage tickets for assigned assets, routing to the Maintenance Ledger.
 
 ---
 
-## 4.4 Integration & Reporting
+## 4.4 Compliance-Driven Disposals
 
 ### 4.4.1 Description and Priority
 
-This feature unlocks the value of the collected data by transforming it into actionable insights. It provides distinct views for different stakeholders: a high-level Dashboard for management to monitor system health, an Employee Portal for self-verification of assets, and an External API to allow other business systems (HR/Finance) to consume asset data safely.
+This feature governs the secure, multi-step workflow for permanently retiring hardware. It enforces governance to prevent fraud (e.g., "I threw it away" → "I sold it on eBay"), requiring physical security checks, executive financial review, E-Waste certificate uploads, and legal destruction certificates before an item is permanently archived. The disposal process is separated between the person requesting the retirement (IT Ops) and the person authorizing the financial write-off (Finance/Global Admin).
 
-- **Priority:** High (Dashboards) / Medium (Employee Portal).
-- **Reasoning:** While the registry stores data, the reporting module is what allows the business to actually use that data for decision-making and auditing.
+- **Priority:** High (Critical for Security & Compliance).
+- **Reasoning:** Improper disposal of IT assets can lead to data breaches (if hard drives aren't wiped) and environmental fines (WEEE compliance). Disposal records must be kept for 7 years to satisfy tax law.
 
 ### 4.4.2 Stimulus/Response Sequences
 
-- **Stimulus:** Global Admin logs into the system.
-  - **Response:** The system renders the Main Dashboard, displaying real-time widgets for "Total Asset Value," "Pending Approvals," and a graph of "Assets by Status."
-- **Stimulus:** Standard Employee logs in.
-  - **Response:** The system detects their non-admin role and redirects them to the "My Assets" portal, showing a read-only list of devices currently assigned to them.
-- **Stimulus:** Auditor requests a list of all laptops purchased in 2024.
-  - **Response:** Admin navigates to "Reports," selects the "Asset Inventory" report, applies a "Date Range" filter, and clicks "Export to PDF." The system generates and downloads the file within 10 seconds.
-- **Stimulus:** External Finance System sends a `GET /api/v1/assets` request with a valid token.
-  - **Response:** The system returns a JSON array of asset objects including ID, Cost, and Depreciation Value.
+- **Stimulus:** IT Ops Admin flags a defective asset for disposal by clicking "Initiate Disposal" and selecting a reason (e.g., "E-Waste").
+  - **Response:** The asset status changes to "Pending Disposal," the item is removed from the "Available" inventory pool, and an approval task is generated on the Admin Dashboard.
+- **Stimulus:** Finance/Global Admin clicks a pending disposal request in the Disposals Ledger.
+  - **Response:** A Right-Side Review Panel slides out displaying the Original Purchase Cost, Depreciated Book Value, and the IT technician's justification notes, with actions for "Reject Request" and "Approve & Dispose."
+- **Stimulus:** Finance Admin clicks "Approve & Dispose."
+  - **Response:** The "Hard Stop" Compliance Modal appears, requiring the admin to: check physical security checkboxes ("Data Wiped," "Tags Removed"), drag-and-drop upload a PDF E-Waste Certificate of Destruction, select a Disposal Method (E-Waste Recycling, Sold, Donated, Stolen), and type the exact Asset ID to unlock the "Confirm Disposal" button.
+- **Stimulus:** Finance Admin clicks "Reject Request."
+  - **Response:** A Rejection Modal opens requiring a mandatory typed justification (e.g., "Device still under warranty") and a new status selection from a dropdown (e.g., "In Repair"). The original IT Ops requester receives an in-app notification with the reason.
+- **Stimulus:** Global Admin selects 30 monitors in the Asset Grid and clicks "Bulk Dispose."
+  - **Response:** The Bulk Compliance Modal opens allowing a single shared E-Waste PDF upload and requiring "DISPOSE 30 ASSETS" text confirmation. Upon execution, all 30 assets are marked as Disposed and linked to the same uploaded receipt.
+- **Stimulus:** An Admin searches for a disposed asset in the main Asset Registry Grid.
+  - **Response:** The asset does not appear in the active registry (filtered out by default). The complete record remains accessible in the "Disposal History" tab with a direct download link to its E-Waste certificate.
+- **Stimulus:** A Global Admin attempts to edit a Disposed asset's fields via API or UI.
+  - **Response:** All fields are locked and `PUT`/`PATCH` requests are blocked.
 
 ### 4.4.3 Functional Requirements
 
-- **REQ-REP-4.1:** The system shall provide an interactive Admin Dashboard containing customizable widgets to display real-time metrics, including but not limited to: Total Asset Count, Total Financial Value, Warranty Expirations (Next 30 Days), and Pending Approval Requests.
-- **REQ-REP-4.2:** The system shall include a Reporting Engine capable of generating and exporting standard reports (Asset Inventory, Maintenance History, Disposal Audit) in PDF and Excel (CSV) formats.
-- **REQ-REP-4.3:** The system shall implement "Filter-before-Run" logic for reports, requiring users to define scope (e.g., Date Range, Location, Category) before processing to ensure performance efficiency.
-- **REQ-USR-4.4:** The system shall provide a "My Assets" Portal for standard employees, displaying a read-only list of assets currently assigned to them, allowing them to verify custody without contacting IT.
-- **REQ-INT-4.5:** The system shall expose secure, read-only REST API Endpoints to allow authorized external applications (e.g., HR or Finance software) to retrieve asset metadata and current status programmatically.
+- **REQ-DSP-4.1:** The system shall allow IT Admins to flag defective assets for retirement, removing them from active circulation and routing them to a dedicated "Pending Disposals" queue.
+- **REQ-DSP-4.2:** The system shall provide a slide-out panel for Finance/Global Admins detailing the technical justification, original purchase cost, and depreciated book value of a pending disposal request.
+- **REQ-DSP-4.3:** The system shall provide a modal to reject a disposal request, requiring a mandatory justification note and forcing the re-routing of the asset to an active lifecycle status.
+- **REQ-DSP-4.4:** The system shall enforce a final execution modal requiring exact Asset ID text confirmation and physical security checkboxes (Data Wiped, Tags Removed) to unlock the submit button.
+- **REQ-DSP-4.5:** The system shall require the approving admin to capture the specific disposal reason (e.g., Sold, Stolen, E-waste, Donated) during the final execution.
+- **REQ-DSP-4.6:** The system shall mandate a Drag-and-Drop file upload of the PDF Certificate of Destruction (E-Waste Receipt) during the Hard Stop execution, storing it in AWS S3 / Azure Blob.
+- **REQ-DSP-4.7:** The system shall allow the batch selection of identical assets to be processed through the Compliance Modal simultaneously, linking all retired assets to a single shared E-Waste PDF upload.
+- **REQ-DSP-4.8:** The system shall ensure disposed assets are Soft Deleted (Archived), locking all fields from future edits and hiding them from active registry endpoints while preserving the data for 7-year historical audits.
 
 ---
 
-## 4.5 Automation & Optimization
+## 4.5 Financial Intelligence & Automated Alerts
 
 ### 4.5.1 Description and Priority
 
-This feature proactively manages the asset lifecycle by reducing manual administrative effort. It replaces static tracking with intelligent workflows, such as sending automatic reminders for expiring warranties, enforcing digital sign-offs for asset handover, and governing the disposal process to prevent unauthorized asset loss.
+This feature unlocks the value of the collected data by providing visibility through Dashboards and Reports, transforming raw inventory data into actionable business intelligence. It introduces automation to proactively notify admins of critical events, provides the Finance department with a dedicated RBAC-secured module to analyze depreciation and the Total Cost of Ownership (TCO), and runs a CRON engine for background alert processing.
 
-- **Priority:** Medium (High benefit for operational efficiency).
-- **Reasoning:** While the system can technically function without automation, this feature significantly reduces the "human latency" and compliance risks associated with manual tracking.
+- **Priority:** High (Dashboards/Financials) / Medium (Alerts/Automation).
+- **Reasoning:** While the registry stores data, the reporting and financial modules transform it into decision-making tools. The automation engine significantly reduces human latency and compliance risks.
 
 ### 4.5.2 Stimulus/Response Sequences
 
-- **Stimulus:** A Software License is 30 days away from expiration.
-  - **Response:** The background "Alert Engine" runs its daily job, identifies the expiry, and sends a "License Renewal Warning" notification to the IT Manager via Microsoft Teams and Email.
-- **Stimulus:** Administrator assigns a laptop to a new employee.
-  - **Response:** The system triggers a "Digital Acceptance" email to the employee containing a link. The asset status shows "Pending Acceptance" until the user clicks "Confirm Receipt."
-- **Stimulus:** Administrator marks an asset as "Disposed - E-Waste."
-  - **Response:** The system locks the asset record, changes status to "Pending Disposal Approval," and generates an approval task for the IT Director.
-- **Stimulus:** User confirms receipt of an asset via the email link.
-  - **Response:** The system updates the asset status from "Pending Acceptance" to "In Use" and logs the confirmation timestamp in the audit trail.
+- **Stimulus:** Global Admin logs into the system.
+  - **Response:** The system renders the Main Dashboard displaying real-time widgets: Total Assets count, Pending Approvals, Overdue Returns, Low Stock Alerts for Consumables, a "Recent Activity Log" feed, and a "Frequently Failing Assets / Problem Asset Counts" widget. Widgets stack into a single column on mobile.
+- **Stimulus:** Finance Director navigates to the Financials sidebar module.
+  - **Response:** The system verifies Finance/Global Admin RBAC permissions and renders the Straight-Line Depreciation Ledger, TCO Engine, and Write-Offs & Salvage Ledger.
+- **Stimulus:** Finance Director views the Depreciation Ledger 3 years after a $1,000 laptop purchase (5-year lifespan).
+  - **Response:** The system automatically calculates and displays the "Current Book Value" as $400.00 using straight-line depreciation.
+- **Stimulus:** IT Ops team completes a $500 vendor repair for a server with a $5,000 base price.
+  - **Response:** The TCO Engine instantly updates the server's Total Cost of Ownership to $5,500, and flags the row if repair costs exceed the depreciated book value.
+- **Stimulus:** Finance Director navigates to the "Write-Offs & Salvage Ledger."
+  - **Response:** The system displays permanently Disposed assets alongside any salvage value recouped from e-waste recycling, with a calculated net financial loss/gain.
+- **Stimulus:** Admin selects a report type (e.g., "Inventory by Department") and clicks "Generate Report."
+  - **Response:** The system renders an HTML preview in-browser. The admin can then export to PDF, CSV, or Excel (.xlsx). Reports handle up to 50,000 rows and download within 10 seconds.
+- **Stimulus:** A hardware warranty expires in 30 days.
+  - **Response:** The nightly CRON job identifies the expiry and dispatches alerts via Email and Microsoft Teams to the IT distribution list, adding an entry to the Notification Center.
+- **Stimulus:** A software license for "Adobe Creative Cloud" is set to expire in 30 days.
+  - **Response:** The nightly CRON job generates a license renewal alert dispatched via Email and Microsoft Teams to the assigned IT Admin.
+- **Stimulus:** An active repair ticket has an expected return date that has passed.
+  - **Response:** The CRON job detects the overdue status and pushes a high-priority alert to the Notification Center of the IT Ops Admin who dispatched the repair.
+- **Stimulus:** Global Admin configures the "Warranty Expiration" alert threshold to 60 days in Settings.
+  - **Response:** The CRON job engine updates its scanning parameters accordingly.
+- **Stimulus:** User clicks a notification in the Bell Icon dropdown (e.g., "Warranty Expiring for Server X").
+  - **Response:** The system marks the alert as read and navigates the user directly to the asset's slide-out details panel.
 
 ### 4.5.3 Functional Requirements
 
-- **REQ-AUTO-5.1:** The system shall trigger an automated Digital Acceptance Workflow upon asset assignment, sending an email/Teams notification to the assignee with a secure link to acknowledge custody, updating the status to "In Use" only upon confirmation.
-- **REQ-AUTO-5.2:** The system shall run a daily background job to identify and dispatch Proactive Alerts to IT Staff for:
-  - Hardware Warranties expiring within 30 days.
-  - Software Licenses expiring within 30 days.
-  - Assets not returned by their "Due Date."
-- **REQ-MNT-5.3:** The system shall provide a Maintenance Tracking module to record service history, including Vendor Name, Repair Cost, and Issue Description, linking these records to the asset's permanent history.
-- **REQ-OPS-5.4:** The system shall enforce a Disposal Governance Workflow that requires a secondary approval (e.g., from a Manager) before an asset can be permanently set to "Disposed" status, capturing the disposal reason (e.g., Sold, E-Waste, Stolen).
-- **REQ-AUTO-5.5:** (Optional) The system shall be architected to allow future integration with Vendor APIs (e.g., Dell/Lenovo) to automatically fetch and update warranty status based on Serial Numbers.
+- **REQ-FIN-5.1:** The system shall provide an admin landing page featuring real-time aggregate metric cards designed to stack natively on mobile and desktop.
+- **REQ-FIN-5.2:** The system shall explicitly include a "Recent Activity Log" and a "Frequently Failing Assets / Problem Asset Counts" widget on the main dashboard.
+- **REQ-FIN-5.3:** The system shall restrict access to the dedicated Financials sidebar module strictly to Global Admins and Finance roles.
+- **REQ-FIN-5.4:** The system shall calculate and display the real-time "Current Book Value" of all active hardware in a dedicated ledger using straight-line depreciation math.
+- **REQ-FIN-5.5:** The system shall aggregate the original purchase price with all historical maintenance costs (from Epic 3) to calculate the Total Cost of Ownership.
+- **REQ-FIN-5.6:** The system shall maintain a "Write-Offs & Salvage" ledger combining historical disposal records with any manually inputted monetary salvage values recouped from e-waste recycling.
+- **REQ-FIN-5.7:** The system shall allow admins to generate HTML inventory reports (Inventory by Dept, Assets by Status) and export them to PDF, CSV, and Excel formats.
+- **REQ-FIN-5.8:** The system shall send automated notifications via Email and Microsoft Teams to IT Staff for upcoming Warranty Expirations, Software License Renewals, and overdue asset returns.
+- **REQ-FIN-5.9:** The system shall run scheduled background tasks (nightly) to scan the database for threshold breaches to trigger the alert system.
+- **REQ-FIN-5.10:** The system shall display a user-facing Bell Icon containing unread system alerts, featuring deep-links that route the user directly to the affected asset's details panel.
+- **REQ-FIN-5.11:** _(Optional)_ The system shall periodically query external Vendor APIs (e.g., Dell, HP, Lenovo) using the Serial Number to automatically fetch and update Warranty Expiry dates.
 
 ---
 
@@ -707,11 +869,13 @@ This feature proactively manages the asset lifecycle by reducing manual administ
 
 Performance requirements define the expected speed and responsiveness of the system under workload to ensure a smooth user experience.
 
-- **NFR-PERF-01 (Scan Latency):** The system shall retrieve and display asset details within 1 second of a successful QR code scan on the mobile interface to ensure efficient physical auditing workflows.
-- **NFR-PERF-02 (Search Response):** General search queries (filtering by Status, Department, or Asset Type) must return results within 2 seconds for a database size of up to 100,000 assets.
-- **NFR-PERF-03 (Report Generation):** Complex export reports (e.g., "Full Compliance Audit") must generate and initiate the file download within 10 seconds of the request.
-- **NFR-PERF-04 (Notification Latency):** Automated notifications (Email/Teams) for critical events (e.g., "Warranty Expired") must be dispatched to the message gateway within 60 seconds of the triggering event.
-- **NFR-PERF-05 (Concurrency):** The system shall support at least 50 concurrent users (e.g., multiple auditors and managers accessing the system simultaneously) without degradation in response times.
+- **NFR-PERF-01 (Dashboard Load Time):** The Global KPI Dashboard metrics and widget counts must aggregate and render in under 2 seconds.
+- **NFR-PERF-02 (Search & Grid Latency):** General search results and complex column filtering must load within 2 seconds for a database of up to 100,000 assets.
+- **NFR-PERF-03 (WebSocket Scan Latency):** Tethered mobile-to-desktop barcode injections via WebSockets must appear in the desktop input field within 500ms of a successful scan.
+- **NFR-PERF-04 (Report Generation):** Complex CSV/PDF export reports (e.g., full compliance audit lists) must handle up to 50,000 rows without crashing, and initiate download within 10 seconds.
+- **NFR-PERF-05 (Notification Latency):** Automated Email/Teams notifications and Webhook payloads must be dispatched within 60 seconds of the triggering system event.
+- **NFR-PERF-06 (API Rate Limiting):** The Open API Gateway must enforce a rate limit of 100 requests per minute per API Key to prevent external systems from degrading system performance.
+- **NFR-PERF-07 (Concurrency):** The system shall support at least 50 concurrent administrative users without database locking or UI degradation.
 
 ## 5.2 Safety Requirements
 
@@ -725,28 +889,40 @@ Safety requirements in this context refer to the prevention of accidental data l
 
 Security requirements define the specific controls required to protect data confidentiality and integrity, complementing the features in Section 4.2.
 
-- **NFR-SEC-01 (Transport Security):** All data transmitted between the client, server, and external APIs must be encrypted using TLS 1.2 or higher. Unencrypted HTTP traffic must be rejected.
-- **NFR-SEC-02 (Data at Rest):** Sensitive fields, specifically Purchase Costs and Software License Keys, must be encrypted in the database using AES-256 standard to prevent unauthorized access via database dumps.
-- **NFR-SEC-03 (Session Management):** User sessions must automatically time out after 1 hour of inactivity, forcing a re-authentication with Azure AD to prevent unauthorized access on shared workstations.
-- **NFR-SEC-04 (Audit Immutability):** The Audit Log must be implemented as Append-Only. No user, including Global Administrators, shall have the permission to modify or delete existing audit log entries.
+- **NFR-SEC-01 (Session Management):** User sessions must rely exclusively on Azure AD OAuth 2.0 tokens; local session timeouts must align strictly with Azure AD policies (typically 1 hour).
+- **NFR-SEC-02 (Role-Based Access):** Enforce strict endpoint routing security. Users attempting to access an unauthorized API route via tools like Postman or direct browser navigation must receive a `403 Forbidden` response.
+- **NFR-SEC-03 (Data Encryption — At Rest):** Encrypt Financial Fields (Purchase Cost), Software License Keys, and API Auth Tokens in the database using AES-256 via a secure Key Vault.
+- **NFR-SEC-04 (Data Encryption — In Transit):** Secure all system traffic, especially login and external API calls, enforcing HTTPS/TLS 1.2+ minimum. Unencrypted HTTP traffic must be rejected.
+- **NFR-SEC-05 (Audit Log Immutability):** History logs must be WORM (Write Once, Read Many). The database user executing application logic must strictly lack `UPDATE` or `DELETE` permissions on the `AuditLogs` table.
+- **NFR-SEC-06 (Client IP Tracking):** The backend must evaluate the `X-Forwarded-For` HTTP header to accurately capture the true origin IP address of the user for the immutable Audit Log.
+- **NFR-SEC-07 (Soft-Delete Enforcement):** Disposed/Deleted assets must be structurally blocked from being altered. `PUT/PATCH` API requests targeting an asset with `Status=Disposed` must be rejected with an appropriate error.
 
 ## 5.4 Software Quality Attributes
 
 These attributes define the overall quality characteristics expected by the developers and the client.
 
-- **Availability:** The system shall maintain an availability of 99.9% during business hours (08:00 – 18:00 local time), allowing for scheduled maintenance outside of these windows.
-- **Usability (Mobile):** The "Employee Portal" and "Scanner" interfaces must be fully responsive and functional on standard mobile viewports (minimum width 320px).
+- **Availability (NFR-REL-01):** The system shall maintain an availability of 99.9% during business hours (08:00 – 18:00 local time), allowing for scheduled maintenance outside of these windows.
+- **Usability — Mobile PWA (NFR-USE-01):** The "Employee Portal" and "HTML5 Mobile Scanner" interfaces must be fully responsive and accessible via standard mobile browsers (Safari/Chrome) without requiring native App Store installation.
+- **Usability — Graceful Mobile Gates (NFR-USE-02):** If a mobile user attempts to navigate to a complex desktop-only view (e.g., the High-Density Data Grid), they must be presented with a clean "Empty State" UI card instructing them to use a desktop.
+- **Usability — Scan Interaction (NFR-USE-03):** The mobile scanning interface must utilize the `navigator.vibrate` API to provide haptic feedback (or an audio cue) upon a successful QR/Barcode read.
+- **Usability — Error Clarity (NFR-USE-04):** Error messages must clearly state the cause and the actionable next step (e.g., "Serial 123 already exists for Asset ID AST-456. Please review the existing asset.").
+- **Usability — Keyboard Navigation (NFR-USE-05):** High-volume data entry screens (like the Dynamic Asset Registration Form) must support full keyboard navigation (Tab-to-next-field, Enter-to-Submit).
 - **Maintainability:** The codebase must adhere to the Airbnb JavaScript Style Guide (enforced via ESLint) to ensure that future student batches or TIQRI engineers can easily read and extend the code.
-- **Robustness (Bulk Import):** The system must support "Partial Success" for bulk imports. If a CSV file contains 100 rows and 5 are invalid, the system must import the 95 valid rows and generate an error report for the 5 failed rows, rather than rejecting the entire file.
+- **Robustness — Bulk Import (NFR-REL-03):** The system must support "Partial Success" for bulk imports. Valid CSV/Excel rows must be imported while invalid rows are skipped and reported; the entire transaction must not fail due to a single row error.
+- **Robustness — Currency Precision (NFR-REL-04):** Financial calculations must store original currency values and precise floating points/decimals to prevent rounding errors in the Straight-Line Depreciation math.
+- **Robustness — Network Retry (NFR-REL-05):** CRON jobs, Outbound Webhooks, and SMTP Email dispatchers must implement Exponential Backoff retry logic to automatically retry failed requests if the target server is temporarily unavailable.
+- **Data Retention (NFR-REL-06):** AWS S3/Azure Blob storage buckets hosting E-Waste Certificates of Destruction must be configured with retention policies to prevent file deletion for a minimum of 7 years to satisfy tax compliance.
 
 ## 5.5 Business Rules
 
 These rules govern the logic of business operations and must be enforced by the system code.
 
-- **BR-01 (Segregation of Duties):** A user cannot approve their own "Disposal Request." If an Admin initiates a disposal, the approval task must be routed to a different user with "Manager" privileges.
+- **BR-01 (Segregation of Duties):** A user cannot approve their own "Disposal Request." If an Admin initiates a disposal, the approval task must be routed to a different user with Finance/Global Admin privileges.
 - **BR-02 (Status Lifecycle):** An asset cannot be moved to "Retired" or "Disposed" status directly from "In Use." It must first be returned (Status: "Available" or "Damaged") to ensure condition assessment.
-- **BR-03 (Unique Identification):** No two assets can share the same Serial Number within the same Model category.
+- **BR-03 (Unique Identification):** No two assets can share the same Serial Number within the same Model category. The system must validate serial uniqueness across the Model at the point of entry.
 - **BR-04 (License Compliance):** The system must prevent the assignment of a Software License if the "Used Seats" count equals the "Total Seats" count (i.e., no over-allocation allowed).
+- **BR-05 (Assignment Target Restriction):** Assets may only be assigned to an individual User or a physical Location. Assigning an asset directly to a Team or Department entity is blocked and must display a clear error message.
+- **BR-06 (Master Data Referential Integrity):** Deleting a Master Data entry (e.g., a Category, Location, or Brand) is forbidden if any existing asset references it; the system must display the dependent asset count and suggest archival instead.
 
 ---
 
@@ -763,11 +939,11 @@ While the user interface language is restricted to English (US) for this version
 ## 6.2 Legal & Compliance Requirements
 
 - **REQ-LEG-6.1 (GDPR - Right to Erasure):** To comply with General Data Protection Regulation (GDPR), the system must allow for the anonymization of user data in the event of an employee leaving the company. Historic asset assignments must remain, but the PII (Name, Email) associated with the User record should be replaceable with a placeholder (e.g., "Former Employee 123").
-- **REQ-LEG-6.2 (WEEE Directive):** To comply with the Waste Electrical and Electronic Equipment (WEEE) directive, the system must force the selection of a valid Disposal Reason (e.g., "Recycled via Certified Vendor") and allow the attachment of a "Certificate of Destruction" for all retired electronic hardware.
+- **REQ-LEG-6.2 (WEEE Directive):** To comply with the Waste Electrical and Electronic Equipment (WEEE) directive, the system must force the selection of a valid Disposal Reason (e.g., "Recycled via Certified Vendor") and allow the upload of a "Certificate of Destruction" (PDF) for all retired electronic hardware, stored in cloud storage (AWS S3/Azure Blob) with a 7-year retention policy per NFR-REL-06.
 
 ## 6.3 Database & Data Integrity
 
-- **REQ-DB-6.1 (ACID Transactions):** The system must enforce ACID (Atomicity, Consistency, Isolation, Durability) properties for all inventory transactions. Specifically, a "Bulk Location Update" for 50 assets must either succeed for all 50 or fail for all 50; partial updates are strictly prohibited to prevent data corruption.
+- **REQ-DB-6.1 (ACID Transactions):** The system must enforce ACID (Atomicity, Consistency, Isolation, Durability) properties for all inventory transactions. Specifically, a "Bulk Location Update" or "Bulk Status Update" for 50 assets must either succeed for all 50 or fail for all 50; partial updates are strictly prohibited to prevent data corruption.
 
 ---
 
@@ -778,6 +954,7 @@ While the user interface language is restricted to English (US) for this version
 | **API**          | Application Programming Interface. A set of rules that allows different software entities (e.g., IDAMS and Azure AD) to communicate with each other.                      |
 | **Asset Tag**    | A unique label, typically containing a QR code and a human-readable ID (e.g., AST-001), physically affixed to hardware for identification.                                |
 | **Azure AD**     | Microsoft Azure Active Directory (now Microsoft Entra ID). The cloud-based identity and access management service used for Single Sign-On (SSO).                          |
+| **CRON**         | A time-based job scheduler. In IDAMS, a nightly CRON engine runs background jobs for warranty/license expiry alerts and overdue ticket detection.                         |
 | **CRUD**         | Create, Read, Update, Delete. The four basic operations of persistent storage.                                                                                            |
 | **Custodian**    | The specific individual (Employee) or Department currently in possession of and responsible for an asset.                                                                 |
 | **Depreciation** | The reduction in the value of an asset over time, due to usage, wear and tear, or obsolescence.                                                                           |
@@ -785,12 +962,17 @@ While the user interface language is restricted to English (US) for this version
 | **IDAMS**        | Integrated Digital Asset Management System. The name of the software product specified in this document.                                                                  |
 | **JWT**          | JSON Web Token. A compact, URL-safe means of representing claims to be transferred between two parties. Used here for secure API authentication.                          |
 | **OIDC**         | OpenID Connect. An identity layer on top of the OAuth 2.0 protocol, used to verify the identity of the end-user.                                                          |
+| **PWA**          | Progressive Web App. A web application that can be installed on a device and provides a native-like experience. Used for the mobile scanner interface.                    |
+| **TCO**          | Total Cost of Ownership. The purchase price of an asset plus all cumulative maintenance/repair costs over its lifetime.                                                   |
 | **PII**          | Personally Identifiable Information. Data that can be used to identify a specific individual (e.g., Name, Email Address, Employee ID).                                    |
 | **RBAC**         | Role-Based Access Control. A method of restricting network access based on the roles of individual users within an enterprise (e.g., "Global Admin" vs. "Standard User"). |
 | **Soft Delete**  | A database operation where a record is not actually removed from the database table but is flagged as "inactive" or "deleted" to preserve historical data.                |
 | **SRS**          | Software Requirements Specification. This document.                                                                                                                       |
 | **SSO**          | Single Sign-On. An authentication scheme that allows a user to log in with a single ID to any of several related, yet independent, software systems.                      |
+| **Webhook**      | An HTTP callback that delivers real-time data to other applications. IDAMS dispatches webhooks to external URLs when registered system events fire.                       |
+| **WebSocket**    | A communication protocol providing full-duplex channels over a single TCP connection. Used in IDAMS for tethered mobile-to-desktop barcode scanning.                      |
 | **WEEE**         | Waste Electrical and Electronic Equipment. A directive imposing responsibility for the disposal of waste electrical and electronic equipment.                             |
+| **WORM**         | Write Once, Read Many. A data storage principle ensuring that once data is written (e.g., audit logs), it cannot be modified or deleted.                                  |
 
 ---
 
@@ -903,7 +1085,7 @@ stateDiagram-v2
 ```
 
 **Figure 4: Disposal Approval Workflow**
-This diagram details the specific governance workflow for REQ-OPS-5.4, ensuring no asset is disposed of without a manager's approval.
+This diagram details the specific governance workflow for REQ-DSP-4.4, ensuring no asset is disposed of without a manager's approval.
 
 ```mermaid
 stateDiagram-v2
