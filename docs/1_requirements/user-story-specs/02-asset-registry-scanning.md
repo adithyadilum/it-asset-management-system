@@ -88,7 +88,7 @@ A smart creation interface that guarantees unique identification while adapting 
 
 - **Scenario: Switching Category Context**
   - **Given** I am creating a new asset
-  - **When** I select "Monitors" from the Category dropdown
+  - **When** I select "Hardware > Monitors" from the Category dropdown
   - **Then** the UI fetches the Epic 1 JSON schema and dynamically renders a "Screen Size" number input and "Panel Type" dropdown.
   - **And** if I switch the category to "Software", the monitor fields disappear and are replaced by "License Key" inputs.
 
@@ -383,7 +383,6 @@ Zero-config auto-linking that turns a standard smartphone into a tethered wirele
 
 - **Scenario: Identity-Based WebSocket Auto-Link**
   - **Given** I am signed in on both my desktop browser and my mobile device with the same Azure AD account
-  - **And** I click "Enable Mobile Scanner" on the desktop "Add Asset" form
   - **When** the mobile device connects to the WebSocket server
   - **Then** the server matches both connections by `user_id`, the desktop UI updates to say "Scanner Connected (iPhone 14)", and a WebSocket channel is securely opened.
 
@@ -408,11 +407,19 @@ Zero-config auto-linking that turns a standard smartphone into a tethered wirele
   - **Then** the mobile device emits the decoded string over the socket
   - **And** the desktop text field is instantly populated with the scanned value.
 
+- **Scenario: Graceful Payload Buffering**
+  - **Given** my phone and desktop are auto-linked via WebSockets
+  - **When** I scan a barcode on my phone but my desktop cursor is not focused on any input field
+  - **Then** the desktop UI temporarily buffers the payload in memory
+  - **And** displays a toast notification: "Barcode scanned. Click an input field to paste."
+
 **Tasks**
 
 - [ ] Configure the mobile scanner library to recognize 1D formats (Code 128, UPC, EAN).
 - [ ] Write WebSocket emitter logic on the mobile PWA client.
 - [ ] Write WebSocket listener logic on the desktop React client to inject received payloads into active form states.
+- [ ] Implement a temporary memory buffer in the React global state for incoming WebSocket payloads when document.activeElement is not an input field.
+- [ ] Ensure the WebSocket emitter and listener logic satisfies the NFR for sub-500ms latency.
 
 ---
 
