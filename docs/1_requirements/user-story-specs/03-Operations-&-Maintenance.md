@@ -21,7 +21,7 @@ Asset Tracking is the operational core of the system, moving beyond static regis
 
 - **Employee Support Portal**: Simplified UI for standard employees to view assigned equipment and submit "Report Issue" tickets.
 - **Digital Acceptance**: Workflow to get user confirmation when they receive an asset.
-- **Assignments & Returns Workflow**: Check-in/Check-out system to assign hardware or temporary loaners, updating the asset's global status automatically.
+- **Assignments & Returns Workflow**: Assignment/Return system to assign hardware or temporary loaners, updating the asset's global status automatically.
 - **Maintenance Ledger (Tabbed View)**: Three-part data grid managing "Pending Review", "Active Repairs", and historical "Repair History".
 - **Triage Review Sheet**: Slide-out panel for IT to assess user-reported damage alongside current book value and warranty status.
 - **Initiate & Close Repair Modals**: Forms to dispatch an item to a vendor (RMA/Estimates) and resolve it upon return (Actual Final Cost) to update TCO.
@@ -69,6 +69,7 @@ A self-service view for employees to verify the assets assigned to them and repo
 - [ ] Implement backend endpoint filtering active assignments by the logged-in user's SSO token.
 
 ![alt text](images/My-assets.png)
+![alt text](<images/Employee Portal - Mobile.png>)
 
 #### 2.1.4 User Story: US-3.1.2 (Digital Acceptance of Responsibility)
 
@@ -178,61 +179,63 @@ The core system for checking hardware in and out, linking a specific asset ID to
 
 #### US- 3.2.2: (Request Asset Return)
 
--**As a** Global Admin, -**I want to** notify a user to return an assigned asset, -**So that **I can begin the offboarding or reassignment process.
+- **As a** Global Admin,
+- **I want to** notify a user to return an assigned asset,
+- **So that** I can begin the offboarding or reassignment process.
 
 **Acceptance Criteria (Gherkin)**
 
--**Scenario: Notify user for return** -**Given** an asset is currently in the "Assigned Assets" tab. -**When** I select the asset and click the "Request Return" button. -**Then** a notification is sent to the current custodian (e.g., Mark Kim). -**And** the asset status label updates to "Requested" in the asset list.
+- **Scenario: Notify user for return**
+  - **Given** an asset is currently in the "Assigned Assets" tab.
+  - **When** I select the asset and click the "Request Return" button.
+  - **Then** a notification is sent to the current custodian (e.g., Mark Kim).
+  - **And** the asset status label updates to "Requested" in the asset list.
 
--**Tasks**
-
--[ ] Frontend: Add the "Request Return" button to the Asset Details side panel for assigned assets.
-
--[ ] Frontend: Implement the "Requested" status badge/label within the "Assigned Assets" table rows.
-
--[ ] Backend: Create an endpoint to trigger a return notification (Email/System Alert) to the current custodian.
-
--[ ] Backend: Update the asset status logic to transition the asset state to "Requested" upon button click.
+- **Tasks**
+  - [ ] Frontend: Add the "Request Return" button to the Asset Details side panel for assigned assets.
+  - [ ] Frontend: Implement the "Requested" status badge/label within the "Assigned Assets" table rows.
+  - [ ] Backend: Create an endpoint to trigger a return notification (Email/System Alert) to the current custodian.
+  - [ ] Backend: Update the asset status logic to transition the asset state to "Requested" upon button click.
 
 ![alt text](images/Request-Return.png)
 
-US-3.2.3: (Asset Check-In & Condition Review)
+#### US-3.2.3: (Asset Check-In & Condition Review)
 
--**As a** Global Admin, -**I want to** process the physical return of an asset and assess its condition, -**So that** its status is accurately updated in the inventory for future use or disposal.
+- **As a** Global Admin,
+- **I want to** process the physical return of an asset and assess its condition,
+- **So that** its status is accurately updated in the inventory for future use or disposal.
 
 **Acceptance Criteria (Gherkin)**
 
--**Scenario 1: Move Asset to Review List**
+- **Scenario 1: Move Asset to Review List**
+  - **Given** an asset is currently assigned to a user.
+  - **When** I click the "Received" button in the Asset Details pane.
+  - **Then** the asset is moved from the "Assigned Assets" tab to the "Returned Assets" tab for final review.
 
--**Given** an asset is currently assigned to a user. -**When** I click the "Received" button in the Asset Details pane. -**Then** the asset is moved from the "Assigned Assets" tab to the "Returned Assets" tab for final review.
+- **Scenario 2: Verify Condition and Update Status**
+  - **Given** an asset is in the "Returned Assets" list.
+  - **When** I select the asset and a "Return Dialog" modal appears.
+  - **And** I select a condition:
 
--**Scenario 2: Verify Condition and Update Status**
+  - **If** "Good Working Condition", the status changes to "Available".
 
--**Given** an asset is in the "Returned Assets" list. -**When** I select the asset and a "Return Dialog" modal appears. -**And** I select a condition:
+  - **If** "Working with Minor Issues" or "Needs Repair", the status changes to "In Repair".
 
--**If** "Good Working Condition", the status changes to "Available".
+  - **If** "Beyond Repair", the status changes to "Disposed".
+  - **Then** the system clears the current custodian and logs the event in the historical ledger.
 
--**If** "Working with Minor Issues" or "Needs Repair", the status changes to "In Repair".
+- **Tasks**
+  - [ ] Frontend: Implement the "Received" button to trigger the transfer of an asset from the "Assigned Assets" list to the "Returned Assets" list.
 
--**If** "Beyond Repair", the status changes to "Disposed". -**Then** the system clears the current custodian and logs the event in the historical ledger.
+  - [ ] Frontend: Build the "Return-Dialog" modal with mandatory condition radio buttons (Good Working Condition, Working with Minor Issues, Needs Repair, Beyond Repair).
 
--**Tasks**
+  - [ ] Frontend: Add a "Condition Notes" text area within the modal for detailed admin feedback.
 
--[ ] Frontend: Implement the "Received" button to trigger the transfer of an asset from the "Assigned Assets" list to the "Returned Assets" list.
-
--[ ] Frontend: Build the "Return-Dialog" modal with mandatory condition radio buttons (Good Working Condition, Working with Minor Issues, Needs Repair, Beyond Repair).
-
--[ ] Frontend: Add a "Condition Notes" text area within the modal for detailed admin feedback.
-
--[ ] Backend: Write conditional logic to update asset status based on selection:
-
-Good Working Condition $\rightarrow$ Available
-
-Working with Minor Issues / Needs Repair $\rightarrow$ In Repair
-
-Beyond Repair $\rightarrow$ Disposed.
-
--[ ] Backend: Write logic to clear the current custodian field and record the return event, condition, and notes into the historical ledger.
+  - [ ] Backend: Write conditional logic to update asset status based on selection:
+    - Good Working Condition $\rightarrow$ Available
+    - Working with Minor Issues / Needs Repair $\rightarrow$ In Repair
+    - Beyond Repair $\rightarrow$ Disposed.
+  - [ ] Backend: Write logic to clear the current custodian field and record the return event, condition, and notes into the historical ledger.
 
 ![alt text](images/Review-Condition.png)
 
@@ -305,7 +308,6 @@ The administrative dashboard for managing broken hardware reports and triaging i
 - [ ] Aggregate financial and warranty data into the API response for the triage view.
 
 ![alt text](images/pending-maintenance.png)
-!
 
 ---
 

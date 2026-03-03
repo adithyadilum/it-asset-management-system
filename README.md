@@ -9,6 +9,7 @@
     - [Functional Requirements](docs/1_requirements/functional-requirements.md)
     - [Non-Functional Requirements](docs/1_requirements/non-functional-requirements.md)
     - [User Journeys](docs/1_requirements/user-journeys.md)
+    - [Product Backlog](docs/1_requirements/product-backlog.md)
     - [Detailed User Story Specifications](docs/1_requirements/user-story-specs/README.md)
     - [Software Requirement Specification](docs/1_requirements/SRS.md)
   - [Design](docs/2_design/README.md)
