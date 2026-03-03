@@ -39,3 +39,4 @@
   - [01-07-2026](meetings/meeting-01-07-2026.md)
   - [01-16-2026](meetings/meeting-01-16-2026.md)
   - [02-13-2026](meetings/meeting-02-13-2026.md)
+  - [02-20-2026](meetings/meeting-02-20-2026.md)
