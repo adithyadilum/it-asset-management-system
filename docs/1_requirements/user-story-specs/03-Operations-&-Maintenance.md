@@ -119,6 +119,8 @@ A self-service view for employees to verify the assets assigned to them and repo
 - **I want to** manually update the status of an asset to exception states (e.g., "Lost", "Stolen", "Found"),
 - **So that** the inventory reflects reality when an asset goes missing outside of the standard repair or assignment workflows.
 
+![alt text](<images/Asset History - Desktop.png>)
+
 **Acceptance Criteria (Gherkin)**
 
 - **Scenario: Marking an Asset as Lost**
@@ -258,6 +260,8 @@ The core system for checking hardware in and out, linking a specific asset ID to
 - [ ] Build the "Bulk Edit" modal accessible from the main registry grid's bulk-action toolbar.
 - [ ] Implement backend batch-update endpoint processing multiple asset IDs in a single transaction.
 - [ ] Write Audit Log entries for each individual asset change within the batch.
+
+![alt text](<images/Bulk Tranfer pop up -Desktop.png>)
 
 ---
 

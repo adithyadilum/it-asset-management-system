@@ -78,6 +78,9 @@ A smart creation interface that guarantees unique identification while adapting 
 - [ ] Implement backend auto-increment logic for Asset ID generation linked to Epic 1's Prefix codes.
 - [ ] Write database validation rules to enforce unique Serial Numbers per Manufacturer.
 
+**Wireframe Reference**
+![Asset Registry Wireframe](images/Asset-Registry-Wizard.png)
+
 #### 2.1.3 User Story: US-2.1.2 (Dynamic Schema Form Rendering)
 
 - **As a** Global Admin,
@@ -97,12 +100,6 @@ A smart creation interface that guarantees unique identification while adapting 
 - [ ] Implement frontend logic to fetch category schema via API `onChange`.
 - [ ] Build dynamic form component renderer supporting Text, Number, and Dropdown types.
 - [ ] Write backend logic to save dynamic form values into the EAV/JSONB payload column.
-
-**Wireframe Reference**
-
-## Asset Registry Wireframe
-
-![Asset Registry Wireframe](images/Asset-Registry-Wizard.png)
 
 #### 2.1.4 User Story: US-2.1.3 (Financial Proof & Invoice Upload)
 
@@ -189,6 +186,8 @@ A smart creation interface that guarantees unique identification while adapting 
 - [ ] Implement "All-or-Nothing" bypass logic (Partial Success handling) in the backend import script.
 - [ ] Write logic to auto-generate Asset IDs and QR URLs for every successfully imported row.
 - [ ] Add Excel (.xlsx) file parsing support using a backend library (e.g., `exceljs` or `SheetJS`).
+
+![alt text](<images/Bulk Asset Registry - Desktop.png>)
 
 ### 2.2 Feature 2: Main Asset Registry Grid & Details
 
@@ -301,7 +300,7 @@ The bridge between the digital database and the physical world, generating scann
 
 ## QR Code Generation Wireframe
 
-![QR Code Generation Wireframe](<images/Asset-Details-(QR-preview)-Desktop.png>)
+![alt text](<images/Asset Details (QR preview)- Desktop.png>)
 
 ---
 
@@ -328,6 +327,9 @@ The mobile-responsive browser interface utilizing device cameras to instantly re
 - [ ] Implement HTML5 `getUserMedia` API and a JavaScript barcode scanning library (e.g., `html5-qrcode`).
 - [ ] Design mobile-first CSS for the camera overlay, reticle, and permission prompts.
 
+![alt text](<images/Admin Portal - Mobile.png>)
+![alt text](<images/Scanner - Mobile.png>)
+
 #### 2.4.3 User Story: US-2.4.2 (Standalone Mobile Lookup)
 
 - **As an** IT Admin,
@@ -348,6 +350,8 @@ The mobile-responsive browser interface utilizing device cameras to instantly re
 - [ ] Implement haptic feedback API (`navigator.vibrate`) upon successful scan.
 - [ ] Route the decoded URL string to fetch the specific asset payload.
 
+![alt text](<images/Scan success - Mobile.png>)
+
 #### 2.4.4 User Story: US-2.4.3 (Mobile "Empty State" Fallbacks)
 
 - **As a** mobile user,
@@ -366,7 +370,7 @@ The mobile-responsive browser interface utilizing device cameras to instantly re
 - [ ] Write CSS Media Queries or React viewport hooks to detect mobile screen widths.
 - [ ] Design and implement the fallback Illustration Card components.
 
----
+## ![alt text](<images/Admin Portal - Empty - Mobile.png>)
 
 ### 2.5 Feature 5: Tethered Companion Scanning (WebSockets)
 

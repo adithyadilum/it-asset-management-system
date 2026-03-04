@@ -71,7 +71,7 @@ The intake and review pipeline that separates the person requesting the disposal
 - [ ] Implement backend logic to change status to `Pending Disposal` and lock the asset from being assigned.
 - [ ] Build the read-only "Disposal History" tab within the ledger to display finalized records alongside their selected disposal method and direct download links to their E-Waste certificates.
 
-![alt text](<images/Dashboard - Desktop.png>)
+![alt text](<images/Asset Disposal Pending- Desktop.png>)
 
 #### 2.1.3 User Story: US-4.1.2 (Disposal Request Review Sheet)
 

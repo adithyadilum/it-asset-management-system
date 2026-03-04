@@ -78,6 +78,8 @@ Manages how users enter the system and what they are allowed to see/do based on 
 - [ ] Write RBAC backend middleware to protect API routes.
 - [ ] Implement Azure AD Group-to-Role mapping logic to auto-assign baseline permissions on login.
 
+![alt text](<images/Login - Desktop.png>)
+
 #### 2.1.3 User Story: US-1.1.2 (Role Mapping UI)
 
 - **As a** Global Admin,
@@ -142,6 +144,8 @@ The core engine that allows the system to adapt to any physical asset type witho
 - [ ] Write JavaScript auto-prefix generation logic (1-word vs 2-word rules).
 - [ ] Implement backend lock to prevent Prefix updates via `PUT` requests.
 
+![alt text](images/Master-Data-Add-new-category.png)
+
 #### 2.2.3 User Story: US-1.2.2 (Custom Field Builder)
 
 - **As a** Global Admin,
@@ -166,7 +170,7 @@ The core engine that allows the system to adapt to any physical asset type witho
 - [ ] Write API to fetch category schema payload for frontend rendering.
 
 **Wireframe Reference**
-![alt text](images/Master-Data-Add-new-category.png)
+
 ![alt text](images/Master-Data-Edit-category.png)
 
 ---
@@ -203,6 +207,8 @@ The CRUD interfaces and safety mechanisms for managing the company's foundationa
 - [ ] Create simple CRUD Modal forms for each entity.
 - [ ] Implement Brand-Model parent-child relationship (Models filtered by selected Brand).
 
+![alt text](images/Master-Data-Add-modal.png)
+
 #### 2.3.3 User Story: US-1.3.2 (Relational Deletion Safeguards)
 
 - **As a** Global Admin,
@@ -227,7 +233,6 @@ The CRUD interfaces and safety mechanisms for managing the company's foundationa
 
 **Wireframe Reference**
 ![alt text](images/Master-Data.png)
-![alt text](images/Master-Data-Add-modal.png)
 ![alt text](images/Master-Data-Bulk-actions.png)
 
 ---
@@ -258,6 +263,8 @@ A strict, read-only ledger that captures every action performed in the system fo
 - [ ] Revoke `UPDATE` and `DELETE` database privileges on the Audit table.
 - [ ] Implement backend utility to compute Before/After object states and serialize them into JSON diff payloads for the database.
 
+![alt text](images/System-audit-log.png)
+
 #### 2.4.3 User Story: US-1.4.2 (Audit Log Viewing and Export)
 
 - **As a** Security Auditor,
@@ -281,7 +288,7 @@ A strict, read-only ledger that captures every action performed in the system fo
 - [ ] Implement "Export Log to CSV" logic.
 
 **Wireframe Reference**
-![alt text](images/System-audit-log.png)
+
 ![alt text](images/System-audit-log-apply-filters.png)
 ![alt text](images/System-audit-log-filtered.png)
 
@@ -313,6 +320,9 @@ Secure endpoints and documentation allowing third-party corporate software (like
 
 - [ ] Build API Key management UI in Settings.
 - [ ] Implement backend key generation and hashing logic (similar to password storage).
+
+![alt text](<images/Integrations API - Desktop.png>)
+![alt text](<images/Integrations API Key gen modal - Desktop.png>)
 
 #### 2.5.3 User Story: US-1.5.2 (External Data Consumption)
 
@@ -378,6 +388,9 @@ Secure endpoints and documentation allowing third-party corporate software (like
 - [ ] Build a Webhooks configuration UI in the Integrations Settings tab (Event selection dropdown, Target URL input).
 - [ ] Create a `WebhookSubscriptions` database table to store event mappings.
 - [ ] Write an asynchronous backend service/job to dispatch HTTP POST payloads upon triggered system events, including retry logic for failed deliveries.
+
+![alt text](<images/Integrations Webhooks - Desktop.png>)
+![alt text](<images/Integrations Webhooks Configure modal - Desktop.png>)
 
 ---
 
