@@ -361,8 +361,8 @@ All custody-related events are logged to the immutable `system_audit_logs` table
 | Escalation Reminder (Day 5)               | REQ-FIN-5.9              | US-5.3.1   |
 | Admin Expiry Alert                        | REQ-FIN-5.8              | US-5.3.1   |
 | Resend Confirmation Action                | REQ-OPS-3.2              | US-3.1.2   |
-| Return Request Notification               | REQ-OPS-3.11             | US-3.2.2   |
-| Assignment to User or Location Only       | REQ-OPS-3.3              | US-3.2.1   |
+| Return Request Notification               | REQ-OPS-3.11             | US-3.3.2   |
+| Assignment to User or Location Only       | REQ-OPS-3.3              | US-3.3.1   |
 | Audit Log (Custody Events)                | REQ-FND-1.11, NFR-SEC-05 | —          |
 | HTTPS Token Security                      | NFR-SEC-04               | —          |
 | Token Hashing (SHA-256)                   | NFR-SEC-03               | —          |

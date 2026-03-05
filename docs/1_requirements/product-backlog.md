@@ -2,7 +2,7 @@
 
 Consolidated task-level backlog, from the [Detailed User Story Specifications](./user-story-specs/README.md). Every task maps back to a User Story, Feature, and Epic.
 
-**Last Updated:** 03/03/2026
+**Last Updated:** 03/06/2026
 
 ## Table of Contents
 
@@ -19,10 +19,10 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 | :--- | :-------------------------------- | :------: | :-----: | :-----: |
 | 1    | Core Platform & API Gateway       |    5     |   12    |   36    |
 | 2    | Asset Registry & Onboarding       |    5     |   15    |   45    |
-| 3    | Operations & Lifecycle Management |    4     |   12    |   35    |
+| 3    | Operations & Lifecycle Management |    5     |   12    |   35    |
 | 4    | Secure Disposal & Compliance      |    3     |    6    |   18    |
 | 5    | Financial Analytics & Automation  |    3     |    9    |   29    |
-|      | **TOTAL**                         |  **20**  | **54**  | **163** |
+|      | **TOTAL**                         |  **21**  | **54**  | **163** |
 
 ---
 
@@ -354,7 +354,7 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 #### US-3.1.2 — Digital Acceptance of Responsibility
 
-> _As a Global Admin, I want the system to automatically notify the user via Email and Microsoft Teams when I assign an asset, So that they can click a link to confirm they have received it in good working order._
+> _As a Global Admin, I want the system to automatically notify the user via Email, Microsoft Teams and App when I assign an asset, So that they can click a link to confirm they have received it in good working order._
 
 | Task ID      | Description                                                                             |
 | :----------- | :-------------------------------------------------------------------------------------- |
@@ -363,116 +363,120 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 | TSK-3.1.2.03 | Create a public-facing (but token-secured) confirmation landing page.                   |
 | TSK-3.1.2.04 | Write backend logic to update assignment status upon confirmation.                      |
 
-#### US-3.1.3 — Asset Chain of Custody / History Tab
+---
 
-> _As an Auditor or Global Admin, I want to view the complete chronological history of a specific asset, So that I can see every assignment, return, and status change since it was purchased._
+### Feature 3.2: Asset Lifecycle Tracking & Status Control
+
+#### US-3.2.1 — Asset Chain of Custody / History Tab
+
+> _As an Auditor or Global Admin, I want to view the complete chronological history of a specific asset, So that I can see every assignment, return, and status change since it was purchased to establish a secure chain of custody._
 
 | Task ID      | Description                                                                                     |
 | :----------- | :---------------------------------------------------------------------------------------------- |
-| TSK-3.1.3.01 | Build a vertical timeline UI component for the Asset Details Slide-Out Panel.                   |
-| TSK-3.1.3.02 | Write backend query to fetch and format asset-specific events from the global System Audit Log. |
-| TSK-3.1.3.03 | Add a "Download History as CSV" button specifically for this asset's timeline.                  |
+| TSK-3.2.1.01 | Build a vertical timeline UI component for the Asset Details Slide-Out Panel.                   |
+| TSK-3.2.1.02 | Write backend query to fetch and format asset-specific events from the global System Audit Log. |
+| TSK-3.2.1.03 | Add a "Download History as CSV" button specifically for this asset's timeline.                  |
 
-#### US-3.1.4 — Manual Lifecycle Status Management
+#### US-3.2.2 — Manual Lifecycle Status Management
 
-> _As a Global Admin, I want to manually update the status of an asset to exception states (e.g., "Lost", "Stolen", "Found"), So that the inventory reflects reality when an asset goes missing outside of standard workflows._
+> _As a Global Admin, I want to manually update the status of an asset to exception states (e.g., "Lost", "Stolen", "Found"), So that the inventory reflects reality when an asset goes missing outside of the standard repair or assignment workflows._
 
-| Task ID      | Description                                                                                              |
-| :----------- | :------------------------------------------------------------------------------------------------------- |
-| TSK-3.1.4.01 | Build a "Change Status" quick-action modal requiring a mandatory justification note.                     |
-| TSK-3.1.4.02 | Implement backend state-machine rules preventing invalid transitions (e.g., Lost → Assigned).            |
-| TSK-3.1.4.03 | Build a "Custom Status Configuration" UI in Settings for admins to create additional lifecycle statuses. |
+| Task ID      | Description                                                                                                                  |
+| :----------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| TSK-3.2.2.01 | Build a "Change Status" quick-action modal requiring a mandatory justification note.                                         |
+| TSK-3.2.2.02 | Implement backend state-machine rules preventing a "Lost" asset from being assigned without first transitioning to "Found" or "Available". |
+| TSK-3.2.2.03 | Build a "Custom Status Configuration" UI in Settings allowing admins to create, label, and manage additional lifecycle statuses. |
 
 ---
 
-### Feature 3.2: Assignments & Returns Workflow
+### Feature 3.3: Assignments & Returns Workflow
 
-#### US-3.2.1 — Asset Check-Out / Assignment
+#### US-3.3.1 — Asset Check-Out / Assignment
 
 > _As a Global Admin, I want to assign an available asset to a user or a specific location, So that I know exactly who is responsible for the item._
 
-| Task ID      | Description                                                                            |
-| :----------- | :------------------------------------------------------------------------------------- |
-| TSK-3.2.1.01 | Build "Assign Asset" UI modal with searchable User/Location dropdowns.                 |
-| TSK-3.2.1.02 | Implement backend validation to ensure only "Available" assets can be assigned.        |
-| TSK-3.2.1.03 | Add an optional "Expected Return Date" calendar picker for tracking temporary loaners. |
+| Task ID      | Description                                                                                          |
+| :----------- | :--------------------------------------------------------------------------------------------------- |
+| TSK-3.3.1.01 | Build "Assign Asset" UI modal with searchable User/Location dropdowns.                               |
+| TSK-3.3.1.02 | Implement backend validation to ensure only "Available" assets can be assigned.                      |
+| TSK-3.3.1.03 | Add an optional "Expected Return Date" calendar picker to the assignment modal for tracking temporary loaners. |
 
-#### US-3.2.2 — Request Asset Return
+#### US-3.3.2 — Request Asset Return
 
 > _As a Global Admin, I want to notify a user to return an assigned asset, So that I can begin the offboarding or reassignment process._
 
 | Task ID      | Description                                                                                       |
 | :----------- | :------------------------------------------------------------------------------------------------ |
-| TSK-3.2.2.01 | Add the "Request Return" button to the Asset Details side panel for assigned assets.              |
-| TSK-3.2.2.02 | Implement the "Requested" status badge/label within the Assigned Assets table rows.               |
-| TSK-3.2.2.03 | Create a backend endpoint to trigger a return notification (Email/System Alert) to the custodian. |
-| TSK-3.2.2.04 | Update the asset status logic to transition to "Requested" upon button click.                     |
+| TSK-3.3.2.01 | Add the "Request Return" button to the Asset Details side panel for assigned assets.              |
+| TSK-3.3.2.02 | Implement the "Requested" status badge/label within the Assigned Assets table rows.               |
+| TSK-3.3.2.03 | Create a backend endpoint to trigger a return notification (Email/System Alert) to the custodian. |
+| TSK-3.3.2.04 | Update the asset status logic to transition to "Requested" upon button click.                     |
 
-#### US-3.2.3 — Asset Check-In & Condition Review
+#### US-3.3.3 — Asset Check-In & Condition Review
 
 > _As a Global Admin, I want to process the physical return of an asset and assess its condition, So that its status is accurately updated in the inventory for future use or disposal._
 
 | Task ID      | Description                                                                                                                  |
 | :----------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| TSK-3.2.3.01 | Implement the "Received" button to transfer an asset from Assigned to Returned list.                                         |
-| TSK-3.2.3.02 | Build the "Return-Dialog" modal with mandatory condition radio buttons (Good / Minor Issues / Needs Repair / Beyond Repair). |
-| TSK-3.2.3.03 | Add a "Condition Notes" text area within the modal for detailed admin feedback.                                              |
-| TSK-3.2.3.04 | Write conditional backend logic: Good → Available; Minor/Repair → In Repair; Beyond Repair → Disposed.                       |
-| TSK-3.2.3.05 | Write logic to clear the custodian field and record the return event into the historical ledger.                             |
+| TSK-3.3.3.01 | Implement the "Received" button to transfer an asset from Assigned to Returned list.                                         |
+| TSK-3.3.3.02 | Build the "Return-Dialog" modal with mandatory condition radio buttons (Good / Minor Issues / Needs Repair / Beyond Repair). |
+| TSK-3.3.3.03 | Add a "Condition Notes" text area within the modal for detailed admin feedback.                                              |
+| TSK-3.3.3.04 | Write conditional backend logic: Good → Available; Minor/Repair → In Repair; Beyond Repair → Disposed.                       |
+| TSK-3.3.3.05 | Write logic to clear the custodian field and record the return event into the historical ledger.                             |
 
-#### US-3.2.4 — Bulk Location Transfer
+#### US-3.3.4 — Bulk Location Transfer
 
 > _As a Global Admin, I want to bulk-update the location of multiple assets in a single action, So that I can efficiently reflect large physical moves without editing each asset individually._
 
 | Task ID      | Description                                                                                    |
 | :----------- | :--------------------------------------------------------------------------------------------- |
-| TSK-3.2.4.01 | Build the "Bulk Edit" modal accessible from the registry grid's bulk-action toolbar.           |
-| TSK-3.2.4.02 | Implement backend batch-update endpoint processing multiple asset IDs in a single transaction. |
-| TSK-3.2.4.03 | Write Audit Log entries for each individual asset change within the batch.                     |
+| TSK-3.3.4.01 | Build the "Bulk Edit" modal accessible from the registry grid's bulk-action toolbar.           |
+| TSK-3.3.4.02 | Implement backend batch-update endpoint processing multiple asset IDs in a single transaction. |
+| TSK-3.3.4.03 | Write Audit Log entries for each individual asset change within the batch.                     |
 
 ---
 
-### Feature 3.3: Maintenance Ledger & Issue Triage
+### Feature 3.4: Maintenance Ledger & Issue Triage
 
-#### US-3.3.1 — Tabbed Maintenance Ledger
+#### US-3.4.1 — Tabbed Maintenance Ledger
 
 > _As an IT Operations Admin, I want to view a dedicated ledger with tabs for "Pending Review", "Active Repairs", and "Repair History", So that I can easily track the current status of all broken or out-for-repair hardware._
 
 | Task ID      | Description                                                                                  |
 | :----------- | :------------------------------------------------------------------------------------------- |
-| TSK-3.3.1.01 | Build the Tabbed Data Table React component.                                                 |
-| TSK-3.3.1.02 | Implement API routes to fetch maintenance tickets filtered by their current lifecycle state. |
+| TSK-3.4.1.01 | Build the Tabbed Data Table React component.                                                 |
+| TSK-3.4.1.02 | Implement API routes to fetch maintenance tickets filtered by their current lifecycle state. |
 
-#### US-3.3.2 — Triage Review Sheet
+#### US-3.4.2 — Triage Review Sheet
 
 > _As an IT Operations Admin, I want to click a pending triage ticket to open a Right-Side Review Panel, So that I can assess the user's reported damage alongside the asset's current book value and warranty status._
 
 | Task ID      | Description                                                                      |
 | :----------- | :------------------------------------------------------------------------------- |
-| TSK-3.3.2.01 | Build the Triage Review Slide-Out Sheet component.                               |
-| TSK-3.3.2.02 | Aggregate financial and warranty data into the API response for the triage view. |
+| TSK-3.4.2.01 | Build the Triage Review Slide-Out Sheet component.                               |
+| TSK-3.4.2.02 | Aggregate financial and warranty data into the API response for the triage view. |
 
 ---
 
-### Feature 3.4: Vendor Repair Workflow
+### Feature 3.5: Vendor Repair Workflow
 
-#### US-3.4.1 — Initiate Repair Modal
+#### US-3.5.1 — Initiate Repair Modal
 
 > _As an IT Operations Admin, I want to log a "Maintenance Event" and dispatch an item to a vendor, So that I have a history of all repairs and can track expected returns._
 
 | Task ID      | Description                                                                                    |
 | :----------- | :--------------------------------------------------------------------------------------------- |
-| TSK-3.4.1.01 | Build the "Initiate Repair" modal form.                                                        |
-| TSK-3.4.1.02 | Write backend state-machine logic to update status to `In Repair` and un-assign from employee. |
+| TSK-3.5.1.01 | Build the "Initiate Repair" modal form.                                                        |
+| TSK-3.5.1.02 | Write backend state-machine logic to update status to `In Repair` and un-assign from employee. |
 
-#### US-3.4.2 — Close Repair Modal & TCO Update
+#### US-3.5.2 — Close Repair Modal & TCO Update
 
 > _As a Global Admin, I want to close a repair ticket and log the actual final cost, So that the Asset's "Total Maintenance Cost" updates and it is routed to its next status._
 
 | Task ID      | Description                                                                                        |
 | :----------- | :------------------------------------------------------------------------------------------------- |
-| TSK-3.4.2.01 | Build the "Close Repair" modal form requiring Final Cost input.                                    |
-| TSK-3.4.2.02 | Implement backend aggregation logic to append the new cost to the asset's Total Cost of Ownership. |
+| TSK-3.5.2.01 | Build the "Close Repair" modal form requiring Final Cost input.                                    |
+| TSK-3.5.2.02 | Implement backend aggregation logic to append the new cost to the asset's Total Cost of Ownership. |
 
 ---
 
