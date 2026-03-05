@@ -1,4 +1,4 @@
-# User Story Specification
+﻿# User Story Specification
 
 ## Epic 4: Secure Disposal & Compliance
 
@@ -221,7 +221,7 @@ flowchart LR
     Cloud["Cloud Storage (AWS/Azure)"]
 
     %% Epic 4 Package
-    subgraph Epic4["Epic 4: Compliance-Driven Disposals"]
+    subgraph Epic4["Epic 4: Secure Disposal & Compliance"]
         UC_Initiate["Initiate Disposal Request"]
         UC_Review["Review Financials & Context"]
         UC_Reject["Reject & Re-route Asset"]
@@ -259,3 +259,4 @@ flowchart LR
 ---
 
 [< Back to Requirements](../README.md)
+

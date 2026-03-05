@@ -45,23 +45,23 @@
   - [3.3 Software Interfaces](#33-software-interfaces)
   - [3.4 Communications Interfaces](#34-communications-interfaces)
 - [4. System Features](#4-system-features)
-  - [4.1 Platform Foundation, Master Data & API Gateway](#41-platform-foundation-master-data--api-gateway)
+  - [4.1 Core Platform & API Gateway](#41-platform-foundation-master-data--api-gateway)
     - [4.1.1 Description and Priority](#411-description-and-priority)
     - [4.1.2 Stimulus/Response Sequences](#412-stimulusresponse-sequences)
     - [4.1.3 Functional Requirements](#413-functional-requirements)
-  - [4.2 Asset Registry & Tethered Scanning](#42-asset-registry--tethered-scanning)
+  - [4.2 Asset Registry & Onboarding](#42-asset-registry--tethered-scanning)
     - [4.2.1 Description and Priority](#421-description-and-priority)
     - [4.2.2 Stimulus/Response Sequences](#422-stimulusresponse-sequences)
     - [4.2.3 Functional Requirements](#423-functional-requirements)
-  - [4.3 IT Operations & Hardware Maintenance](#43-it-operations--hardware-maintenance)
+  - [4.3 Operations & Lifecycle Management](#43-it-operations--hardware-maintenance)
     - [4.3.1 Description and Priority](#431-description-and-priority)
     - [4.3.2 Stimulus/Response Sequences](#432-stimulusresponse-sequences)
     - [4.3.3 Functional Requirements](#433-functional-requirements)
-  - [4.4 Compliance-Driven Disposals](#44-compliance-driven-disposals)
+  - [4.4 Secure Disposal & Compliance](#44-compliance-driven-disposals)
     - [4.4.1 Description and Priority](#441-description-and-priority)
     - [4.4.2 Stimulus/Response Sequences](#442-stimulusresponse-sequences)
     - [4.4.3 Functional Requirements](#443-functional-requirements)
-  - [4.5 Financial Intelligence & Automated Alerts](#45-financial-intelligence--automated-alerts)
+  - [4.5 Financial Analytics & Automation](#45-financial-intelligence--automated-alerts)
     - [4.5.1 Description and Priority](#451-description-and-priority)
     - [4.5.2 Stimulus/Response Sequences](#452-stimulusresponse-sequences)
     - [4.5.3 Functional Requirements](#453-functional-requirements)
@@ -597,7 +597,7 @@ The IDAMS system relies on standard network communication protocols to ensure se
 
 # 4. System Features
 
-## 4.1 Platform Foundation, Master Data & API Gateway
+## 4.1 Core Platform & API Gateway
 
 ### 4.1.1 Description and Priority
 
@@ -657,7 +657,7 @@ The Platform Foundation is the architectural bedrock of the IDAMS system. It est
 
 ---
 
-## 4.2 Asset Registry & Tethered Scanning
+## 4.2 Asset Registry & Onboarding
 
 ### 4.2.1 Description and Priority
 
@@ -714,7 +714,7 @@ The Asset Registry is the "Single Source of Truth" for the organization's IT inf
 
 ---
 
-## 4.3 IT Operations & Hardware Maintenance
+## 4.3 Operations & Lifecycle Management
 
 ### 4.3.1 Description and Priority
 
@@ -774,7 +774,7 @@ This feature manages the dynamic lifecycle of assets, transforming the system fr
 
 ---
 
-## 4.4 Compliance-Driven Disposals
+## 4.4 Secure Disposal & Compliance
 
 ### 4.4.1 Description and Priority
 
@@ -813,7 +813,7 @@ This feature governs the secure, multi-step workflow for permanently retiring ha
 
 ---
 
-## 4.5 Financial Intelligence & Automated Alerts
+## 4.5 Financial Analytics & Automation
 
 ### 4.5.1 Description and Priority
 
@@ -1293,3 +1293,5 @@ The following items have been identified as To Be Determined (TBD). These values
 ---
 
 [< Back to Requirements](./README.md)
+
+

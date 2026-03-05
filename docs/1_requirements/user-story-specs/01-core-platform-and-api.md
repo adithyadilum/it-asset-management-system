@@ -1,4 +1,4 @@
-# User Story Specification
+﻿# User Story Specification
 
 ## Epic 1: Core Platform & API gateway
 
@@ -405,7 +405,7 @@ flowchart LR
     External["3rd Party System (HRIS)"]
 
     %% Platform Foundation Package
-    subgraph Foundation["Epic 1: Platform Foundation & API"]
+    subgraph Foundation["Epic 1: Core Platform & API Gateway"]
         UC_SSO["Authenticate via Azure SSO"]
         UC_MapRole["Map User to Role"]
         UC_ManageSchema["Build Category Schema (Custom Fields)"]
@@ -442,3 +442,5 @@ flowchart LR
 ---
 
 [< Back to Requirements](../README.md)
+
+

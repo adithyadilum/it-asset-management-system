@@ -1,4 +1,4 @@
-# Data Flow Diagram
+﻿# Data Flow Diagram
 
 This document illustrates how data moves through the Integrated Digital Asset Management System (IDAMS) across all five architectural Epics.
 
@@ -10,7 +10,7 @@ This document illustrates how data moves through the Integrated Digital Asset Ma
   - [3.1 Authentication & Access Control (Epic 1)](#31-authentication--access-control-epic-1)
   - [3.2 Asset Registration & Scanning (Epic 2)](#32-asset-registration--scanning-epic-2)
   - [3.3 Operations & Maintenance (Epic 3)](#33-operations--maintenance-epic-3)
-  - [3.4 Compliance-Driven Disposals (Epic 4)](#34-compliance-driven-disposals-epic-4)
+  - [3.4 Secure Disposal & Compliance (Epic 4)](#34-compliance-driven-disposals-epic-4)
   - [3.5 Financial Intelligence & Alerts (Epic 5)](#35-financial-intelligence--alerts-epic-5)
 - [4. Data Store Inventory](#4-data-store-inventory)
 - [5. External Entity Inventory](#5-external-entity-inventory)
@@ -320,7 +320,7 @@ flowchart TB
     CloseRepair -- "Update financial engine" --> AssetDB
 ```
 
-### 3.4 Compliance-Driven Disposals (Epic 4)
+### 3.4 Secure Disposal & Compliance (Epic 4)
 
 Covers the full disposal pipeline from intake to compliance hard stop (REQ-DSP-4.1–4.8).
 
@@ -493,3 +493,4 @@ flowchart TB
 | API Gateway → External Systems          | REQ-FND-1.12, REQ-FND-1.13, NFR-PERF-06 |
 
 [< Back to Requirements](../README.md)
+

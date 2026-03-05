@@ -1,4 +1,4 @@
-# Desktop Wireframes & Screen Catalogue
+﻿# Desktop Wireframes & Screen Catalogue
 
 This document catalogues every distinct desktop screen and overlay in the IDAMS platform, organised by Epic. Each entry describes the layout, key components, and links the wireframe mockup image from the user story specifications.
 
@@ -6,7 +6,7 @@ This document catalogues every distinct desktop screen and overlay in the IDAMS 
 
 ## Table of Contents
 
-- [1. Epic 1 — Platform Foundation, Master Data & API Gateway](#1-epic-1--platform-foundation-master-data--api-gateway)
+- [1. Epic 1 — Core Platform & API Gateway](#1-epic-1--platform-foundation-master-data--api-gateway)
   - [1.1 Role Mapping — Split-View UI](#11-role-mapping--split-view-ui)
   - [1.2 Category Builder — Slide-Out Panel](#12-category-builder--slide-out-panel)
   - [1.3 Master Data — Table & CRUD Modals](#13-master-data--table--crud-modals)
@@ -14,7 +14,7 @@ This document catalogues every distinct desktop screen and overlay in the IDAMS 
   - [1.5 SSO Login — Azure AD Sign-In](#15-sso-login--azure-ad-sign-in)
   - [1.6 API Key Management — Integrations](#16-api-key-management--integrations)
   - [1.7 Webhook Configuration — Integrations](#17-webhook-configuration--integrations)
-- [2. Epic 2 — Asset Registry & Tethered Scanning](#2-epic-2--asset-registry--tethered-scanning)
+- [2. Epic 2 — Asset Registry & Onboarding](#2-epic-2--asset-registry--tethered-scanning)
   - [2.1 Asset Registration Wizard](#21-asset-registration-wizard)
   - [2.2 Invoice & Financial Details](#22-invoice--financial-details)
   - [2.3 Asset Registry — High-Density Data Grid](#23-asset-registry--high-density-data-grid)
@@ -23,7 +23,7 @@ This document catalogues every distinct desktop screen and overlay in the IDAMS 
   - [2.6 Bulk CSV/Excel Import](#26-bulk-csvexcel-import)
   - [2.7 Mobile Scanner & Lookup](#27-mobile-scanner--lookup)
   - [2.8 Mobile Empty State Fallbacks](#28-mobile-empty-state-fallbacks)
-- [3. Epic 3 — IT Operations & Hardware Maintenance](#3-epic-3--it-operations--hardware-maintenance)
+- [3. Epic 3 — Operations & Lifecycle Management](#3-epic-3--it-operations--hardware-maintenance)
   - [3.1 Employee "My Assets" Portal](#31-employee-my-assets-portal)
   - [3.2 Digital Acceptance — Confirmation Page](#32-digital-acceptance--confirmation-page)
   - [3.3 Asset Assignment Flow](#33-asset-assignment-flow)
@@ -33,14 +33,14 @@ This document catalogues every distinct desktop screen and overlay in the IDAMS 
   - [3.7 Repair Workflow — Dispatch & Close Modals](#37-repair-workflow--dispatch--close-modals)
   - [3.8 Asset Chain of Custody — History Timeline](#38-asset-chain-of-custody--history-timeline)
   - [3.9 Bulk Location Transfer](#39-bulk-location-transfer)
-- [4. Epic 4 — Compliance-Driven Disposals](#4-epic-4--compliance-driven-disposals)
+- [4. Epic 4 — Secure Disposal & Compliance](#4-epic-4--compliance-driven-disposals)
   - [4.1 Disposals Ledger — Pending Approval](#41-disposals-ledger--pending-approval)
   - [4.2 Disposal Review — Slide-Out Panel](#42-disposal-review--slide-out-panel)
   - [4.3 Hard Stop Compliance — Execution Modal](#43-hard-stop-compliance--execution-modal)
   - [4.4 Disposal Rejection Modal](#44-disposal-rejection-modal)
   - [4.5 Bulk Disposal Processing](#45-bulk-disposal-processing)
   - [4.6 Disposal History — Archived Records](#46-disposal-history--archived-records)
-- [5. Epic 5 — Financial Intelligence & Automated Alerts](#5-epic-5--financial-intelligence--automated-alerts)
+- [5. Epic 5 — Financial Analytics & Automation](#5-epic-5--financial-intelligence--automated-alerts)
   - [5.1 Admin KPI Dashboard](#51-admin-kpi-dashboard)
   - [5.2 Report Generation & Preview](#52-report-generation--preview)
   - [5.3 Depreciation Ledger](#53-depreciation-ledger)
@@ -50,7 +50,7 @@ This document catalogues every distinct desktop screen and overlay in the IDAMS 
   - [5.7 Notification Centre — Bell Dropdown](#57-notification-centre--bell-dropdown)
 - [6. Wireframe Image Index](#6-wireframe-image-index)
 
-## 1. Epic 1 — Platform Foundation, Master Data & API Gateway
+## 1. Epic 1 — Core Platform & API Gateway
 
 ### 1.1 Role Mapping — Split-View UI
 
@@ -205,7 +205,7 @@ A configuration interface for registering external webhook URLs that receive rea
 
 **Linked Stories:** US-1.5.4
 
-## 2. Epic 2 — Asset Registry & Tethered Scanning
+## 2. Epic 2 — Asset Registry & Onboarding
 
 ### 2.1 Asset Registration Wizard
 
@@ -378,7 +378,7 @@ Graceful fallback screens displayed when a mobile user navigates to a URL design
 
 **Linked Stories:** US-2.4.3
 
-## 3. Epic 3 — IT Operations & Hardware Maintenance
+## 3. Epic 3 — Operations & Lifecycle Management
 
 ### 3.1 Employee "My Assets" Portal
 
@@ -588,7 +588,7 @@ A modal dialog for updating the physical location of multiple assets simultaneou
 
 **Linked Stories:** US-3.2.4
 
-## 4. Epic 4 — Compliance-Driven Disposals
+## 4. Epic 4 — Secure Disposal & Compliance
 
 ### 4.1 Disposals Ledger — Pending Approval
 
@@ -714,7 +714,7 @@ A read-only data grid showing all finalised disposal records. All fields are per
 
 **Linked Stories:** US-4.3.2
 
-## 5. Epic 5 — Financial Intelligence & Automated Alerts
+## 5. Epic 5 — Financial Analytics & Automation
 
 ### 5.1 Admin KPI Dashboard
 
@@ -929,3 +929,5 @@ Complete index of all wireframe mockup images, organised by Epic and screen.
 | 58  | `Bulk Tranfer pop up -Desktop.png`                     | 3    | Bulk Location Transfer Modal                 |
 
 [< Back to Design Docs](../README.md)
+
+

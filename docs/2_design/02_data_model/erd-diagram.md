@@ -1,12 +1,12 @@
-# Entity Relationship Diagram
+﻿# Entity Relationship Diagram
 
-This diagram defines the complete data model for the Integrated Digital Asset Management System (IDAMS), covering all five architectural Epics: Platform Foundation & Master Data (Epic 1), Asset Registry (Epic 2), IT Operations & Maintenance (Epic 3), Compliance-Driven Disposals (Epic 4), and Financial Intelligence & Automated Alerts (Epic 5). Each entity is annotated with the primary requirement(s) it fulfills.
+This diagram defines the complete data model for the Integrated Digital Asset Management System (IDAMS), covering all five architectural Epics: Core Platform & API Gateway (Epic 1), Asset Registry (Epic 2), IT Operations & Maintenance (Epic 3), Secure Disposal & Compliance (Epic 4), and Financial Analytics & Automation (Epic 5). Each entity is annotated with the primary requirement(s) it fulfills.
 
 ```mermaid
 erDiagram
 
     %% ═══════════════════════════════════════════
-    %% EPIC 1: Platform Foundation & Master Data
+    %% EPIC 1: Core Platform & API Gateway
     %% ═══════════════════════════════════════════
 
     USERS {
@@ -135,7 +135,7 @@ erDiagram
     }
 
     %% ═══════════════════════════════════════════
-    %% EPIC 2: Asset Registry & Tethered Scanning
+    %% EPIC 2: Asset Registry & Onboarding
     %% ═══════════════════════════════════════════
 
     ASSETS {
@@ -196,7 +196,7 @@ erDiagram
     }
 
     %% ═══════════════════════════════════════════
-    %% EPIC 3: IT Operations & Hardware Maintenance
+    %% EPIC 3: Operations & Lifecycle Management
     %% ═══════════════════════════════════════════
 
     ASSET_ASSIGNMENTS {
@@ -242,7 +242,7 @@ erDiagram
     }
 
     %% ═══════════════════════════════════════════
-    %% EPIC 4: Compliance-Driven Disposals
+    %% EPIC 4: Secure Disposal & Compliance
     %% ═══════════════════════════════════════════
 
     ASSET_DISPOSALS {
@@ -333,3 +333,5 @@ erDiagram
 ```
 
 [< Back to Requirements](../README.md)
+
+

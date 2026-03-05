@@ -1,4 +1,4 @@
-# Requirements
+﻿# Requirements
 
 ## Overview
 
@@ -20,12 +20,14 @@ This section contains all requirements documentation for the **IDAMS (IT Asset M
 
 | Epic | Name                                           | Requirement Prefix | Stories         |
 | :--- | :--------------------------------------------- | :----------------- | :-------------- |
-| 1    | Platform Foundation, Master Data & API Gateway | `REQ-FND-1.x`      | US-1.1 → US-1.5 |
-| 2    | Asset Registry & Tethered Scanning             | `REQ-REG-2.x`      | US-2.1 → US-2.4 |
-| 3    | IT Operations & Hardware Maintenance           | `REQ-OPS-3.x`      | US-3.1 → US-3.4 |
-| 4    | Compliance-Driven Disposals                    | `REQ-DSP-4.x`      | US-4.1 → US-4.3 |
-| 5    | Financial Intelligence & Automated Alerts      | `REQ-FIN-5.x`      | US-5.1 → US-5.3 |
+| 1    | Core Platform & API Gateway | `REQ-FND-1.x`      | US-1.1 → US-1.5 |
+| 2    | Asset Registry & Onboarding             | `REQ-REG-2.x`      | US-2.1 → US-2.4 |
+| 3    | Operations & Lifecycle Management           | `REQ-OPS-3.x`      | US-3.1 → US-3.4 |
+| 4    | Secure Disposal & Compliance                    | `REQ-DSP-4.x`      | US-4.1 → US-4.3 |
+| 5    | Financial Analytics & Automation      | `REQ-FIN-5.x`      | US-5.1 → US-5.3 |
 
 ---
 
 [< Back to Docs](../README.md) · [< Back to Root](../../README.md)
+
+

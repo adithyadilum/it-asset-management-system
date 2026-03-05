@@ -1,4 +1,4 @@
-# C4 Level 1 – System Context Diagram
+﻿# C4 Level 1 – System Context Diagram
 
 The diagram positions the IT Asset Management System as the central hub.
 
@@ -10,11 +10,11 @@ The diagram positions the IT Asset Management System as the central hub.
 C4Context
     title System Context Diagram for IT Asset Management System (IDAMS)
 
-    Person(admin, "Global Admin", "Manages registry, master data, system configurations, and oversees the full asset lifecycle including compliance-driven disposals.")
+    Person(admin, "Global Admin", "Manages registry, master data, system configurations, and oversees the full asset lifecycle including Secure Disposal & Compliance.")
     Person(deptHead, "Department Head", "Oversees departmental assets, reviews disposal requests, and manages operational workflows.")
     Person(employee, "Employee", "Views assigned assets, confirms custody receipt, and reports hardware issues.")
 
-    System(itam, "IT Asset Management System", "Next.js / TypeScript / PostgreSQL platform for tracking hardware & software lifecycle, financial value, and compliance-driven disposals.")
+    System(itam, "IT Asset Management System", "Next.js / TypeScript / PostgreSQL platform for tracking hardware & software lifecycle, financial value, and Secure Disposal & Compliance.")
 
     System_Ext(azure, "Azure AD (Entra ID)", "Handles SSO authentication via OAuth 2.0/OIDC and role-based AD group mapping.")
     System_Ext(hr_finance, "HR / Finance Systems", "External systems consuming read-only asset and financial data via the Open API Gateway and Webhooks.")
@@ -34,3 +34,4 @@ C4Context
 ```
 
 [< Back to Requirements](../README.md)
+

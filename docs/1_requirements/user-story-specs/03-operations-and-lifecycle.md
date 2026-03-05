@@ -1,4 +1,4 @@
-# User Story Specification
+﻿# User Story Specification
 
 ## Epic 3: Operations & Lifecycle Management
 
@@ -377,7 +377,7 @@ flowchart LR
     Vendor["External Vendor"]
 
     %% IT Operations & Maintenance Package
-    subgraph Epic3["Epic 3: IT Operations & Hardware Maintenance"]
+    subgraph Epic3["Epic 3: Operations & Lifecycle Management"]
         UC_MyAssets["View 'My Assets' Portal"]
         UC_Report["Submit 'Report Issue' Ticket"]
         UC_Accept["Digitally Accept Assignment"]
@@ -413,3 +413,4 @@ flowchart LR
 ---
 
 [< Back to Requirements](../README.md)
+

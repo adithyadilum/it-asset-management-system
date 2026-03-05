@@ -1,8 +1,8 @@
-# Functional Requirements Specification
+﻿# Functional Requirements Specification
 
 This document outlines the functional requirements for the IDAMS (IT Asset Management System) enterprise platform, mapped across 5 core architectural Epics.
 
-## Epic 1: Platform Foundation, Master Data & API Gateway
+## Epic 1: Core Platform & API Gateway
 
 | ID               | Requirement Detail (The System Shall...)                                                                                                                                                                            |
 | :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -24,7 +24,7 @@ This document outlines the functional requirements for the IDAMS (IT Asset Manag
 | **REQ-FND-1.16** | **(Custom Field Ordering)** Support drag-and-drop re-ordering of category-specific custom fields, persisting the display sequence for dynamic form rendering.                                                       |
 | **REQ-FND-1.17** | **(Master Data Archival)** Allow admins to soft-archive unused Master Data entities by setting an `IsActive` flag to false, hiding them from active dropdowns while preserving historical references.               |
 
-## Epic 2: Asset Registry & Tethered Scanning System
+## Epic 2: Asset Registry & Onboarding System
 
 | ID               | Requirement Detail (The System Shall...)                                                                                                                                                  |
 | :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -45,7 +45,7 @@ This document outlines the functional requirements for the IDAMS (IT Asset Manag
 | **REQ-REG-2.15** | **(Mobile Fallbacks)** Display a bottom-sheet UI with asset vitals when a QR is scanned via mobile, and block users from accessing complex desktop-only data grids on mobile devices.     |
 | **REQ-REG-2.16** | **(Serial Number Uniqueness)** Enforce unique Serial Number validation during asset registration, blocking submission and displaying a descriptive error if a duplicate is detected.      |
 
-## Epic 3: IT Operations & Hardware Maintenance
+## Epic 3: Operations & Lifecycle Management
 
 | ID               | Requirement Detail (The System Shall...)                                                                                                                                                                           |
 | :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -65,7 +65,7 @@ This document outlines the functional requirements for the IDAMS (IT Asset Manag
 | **REQ-OPS-3.14** | **(Bulk Registry Operations)** Support the batch editing of Location or Status for multiple selected assets directly from the main registry grid in a single database transaction.                                 |
 | **REQ-OPS-3.15** | **(Employee Issue Reporting)** Provide a self-service "Report Issue" interface within the Employee Portal for standard employees to submit damage tickets for assigned assets, routing to the Maintenance Ledger.  |
 
-## Epic 4: Compliance-Driven Disposals
+## Epic 4: Secure Disposal & Compliance
 
 | ID              | Requirement Detail (The System Shall...)                                                                                                                                                                                   |
 | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,7 +78,7 @@ This document outlines the functional requirements for the IDAMS (IT Asset Manag
 | **REQ-DSP-4.7** | **(Bulk Disposal)** Allow the batch selection of identical assets to be processed through the Compliance Modal simultaneously, linking all retired assets to a single shared E-Waste PDF upload.                           |
 | **REQ-DSP-4.8** | **(Soft Delete Finality)** Ensure disposed assets are Soft Deleted (Archived), locking all fields from future edits and hiding them from active registry endpoints while preserving the data for 7-year historical audits. |
 
-## Epic 5: Financial Intelligence & Automated Alerts
+## Epic 5: Financial Analytics & Automation
 
 | ID               | Requirement Detail (The System Shall...)                                                                                                                                                |
 | :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -1,4 +1,4 @@
-# Product Backlog
+﻿# Product Backlog
 
 Consolidated task-level backlog, from the [Detailed User Story Specifications](./user-story-specs/README.md). Every task maps back to a User Story, Feature, and Epic.
 
@@ -7,28 +7,28 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 ## Table of Contents
 
 - [Summary](#summary)
-- [Epic 1 — Platform Foundation, Master Data & API Gateway](#epic-1--platform-foundation-master-data--api-gateway)
-- [Epic 2 — Asset Registry & Tethered Scanning](#epic-2--asset-registry--tethered-scanning)
-- [Epic 3 — IT Operations & Hardware Maintenance](#epic-3--it-operations--hardware-maintenance)
-- [Epic 4 — Compliance-Driven Disposals](#epic-4--compliance-driven-disposals)
-- [Epic 5 — Financial Intelligence & Automated Alerts](#epic-5--financial-intelligence--automated-alerts)
+- [Epic 1 — Core Platform & API Gateway](#epic-1--platform-foundation-master-data--api-gateway)
+- [Epic 2 — Asset Registry & Onboarding](#epic-2--asset-registry--tethered-scanning)
+- [Epic 3 — Operations & Lifecycle Management](#epic-3--it-operations--hardware-maintenance)
+- [Epic 4 — Secure Disposal & Compliance](#epic-4--compliance-driven-disposals)
+- [Epic 5 — Financial Analytics & Automation](#epic-5--financial-intelligence--automated-alerts)
 
 ## Summary
 
-| Epic | Name                                           | Features | Stories |  Tasks  |
-| :--- | :--------------------------------------------- | :------: | :-----: | :-----: |
-| 1    | Platform Foundation, Master Data & API Gateway |    5     |   12    |   36    |
-| 2    | Asset Registry & Tethered Scanning             |    5     |   15    |   45    |
-| 3    | IT Operations & Hardware Maintenance           |    4     |   12    |   35    |
-| 4    | Compliance-Driven Disposals                    |    3     |    6    |   18    |
-| 5    | Financial Intelligence & Automated Alerts      |    3     |    9    |   29    |
-|      | **TOTAL**                                      |  **20**  | **54**  | **163** |
+| Epic | Name                              | Features | Stories |  Tasks  |
+| :--- | :-------------------------------- | :------: | :-----: | :-----: |
+| 1    | Core Platform & API Gateway       |    5     |   12    |   36    |
+| 2    | Asset Registry & Onboarding       |    5     |   15    |   45    |
+| 3    | Operations & Lifecycle Management |    4     |   12    |   35    |
+| 4    | Secure Disposal & Compliance      |    3     |    6    |   18    |
+| 5    | Financial Analytics & Automation  |    3     |    9    |   29    |
+|      | **TOTAL**                         |  **20**  | **54**  | **163** |
 
 ---
 
-## Epic 1 — Platform Foundation, Master Data & API Gateway
+## Epic 1 — Core Platform & API Gateway
 
-> **Source:** [01-Core-Infrastructure-&-API.md](./user-story-specs/01-Core-Infrastructure-&-API.md)
+> **Source:** [01-core-platform-and-api.md](./user-story-specs/01-core-platform-and-api.md)
 
 ### Feature 1.1: Enterprise Authentication & Access Control
 
@@ -170,9 +170,9 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ---
 
-## Epic 2 — Asset Registry & Tethered Scanning
+## Epic 2 — Asset Registry & Onboarding
 
-> **Source:** [02-asset-registry-scanning.md](./user-story-specs/02-asset-registry-scanning.md)
+> **Source:** [02-asset-registry-and-onboarding.md](./user-story-specs/02-asset-registry-and-onboarding.md)
 
 ### Feature 2.1: Dynamic Asset Registration
 
@@ -337,9 +337,9 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ---
 
-## Epic 3 — IT Operations & Hardware Maintenance
+## Epic 3 — Operations & Lifecycle Management
 
-> **Source:** [03-Operations-&-Maintenance.md](./user-story-specs/03-Operations-&-Maintenance.md)
+> **Source:** [03-operations-and-lifecycle.md](./user-story-specs/03-operations-and-lifecycle.md)
 
 ### Feature 3.1: Employee Support Portal & Digital Acceptance
 
@@ -476,9 +476,9 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ---
 
-## Epic 4 — Compliance-Driven Disposals
+## Epic 4 — Secure Disposal & Compliance
 
-> **Source:** [04-Compliance-Driven Disposals.md](./user-story-specs/04-Compliance-Driven%20Disposals.md)
+> **Source:** [04-secure-disposal-and-compliance.md](./user-story-specs/04-Compliance-Driven%20Disposals.md)
 
 ### Feature 4.1: Disposal Requests & Administrative Review
 
@@ -552,9 +552,9 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ---
 
-## Epic 5 — Financial Intelligence & Automated Alerts
+## Epic 5 — Financial Analytics & Automation
 
-> **Source:** [05-finance-notification-automation.md](./user-story-specs/05-finance-notification-automation.md)
+> **Source:** [05-financial-analytics-and-automation.md](./user-story-specs/05-financial-analytics-and-automation.md)
 
 ### Feature 5.1: Global KPI Dashboard & Standard Reporting
 
@@ -654,3 +654,4 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 ---
 
 [< Back to Requirements](./README.md)
+

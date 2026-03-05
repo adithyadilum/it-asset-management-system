@@ -1,4 +1,4 @@
-# Project Scope Statement
+﻿# Project Scope Statement
 
 **Project Name:** IDAMS — IT Asset Management System (Internal)
 
@@ -12,13 +12,13 @@ IDAMS is a centralised, web-based enterprise platform built for TIQRI Corporatio
 
 The platform is organised across **five architectural Epics**:
 
-| Epic | Name                                        | Summary                                                                       |
-| :--- | :------------------------------------------ | :---------------------------------------------------------------------------- |
-| 1    | Platform Foundation, Master Data & API Gateway | SSO/RBAC, dynamic category schemas, master data CRUD, audit log, API gateway. |
-| 2    | Asset Registry & Tethered Scanning          | Registration wizard, high-density grid, QR engine, PWA mobile scanner.        |
-| 3    | IT Operations & Hardware Maintenance        | Employee portal, digital acceptance, assignments/returns, maintenance ledger. |
-| 4    | Compliance-Driven Disposals                 | Pending approval queue, hard-stop compliance modal, bulk disposal, archival.  |
-| 5    | Financial Intelligence & Automated Alerts   | KPI dashboard, depreciation/TCO/write-off ledgers, CRON engine, reports.      |
+| Epic | Name                              | Summary                                                                       |
+| :--- | :-------------------------------- | :---------------------------------------------------------------------------- |
+| 1    | Core Platform & API gateway       | SSO/RBAC, dynamic category schemas, master data CRUD, audit log, API gateway. |
+| 2    | Asset Registry & Onboarding       | Registration wizard, high-density grid, QR engine, PWA mobile scanner.        |
+| 3    | Operations & Lifecycle Management | Employee portal, digital acceptance, assignments/returns, maintenance ledger. |
+| 4    | Secure Disposal & Compliance      | Pending approval queue, hard-stop compliance modal, bulk disposal, archival.  |
+| 5    | Financial Analytics & Automation  | KPI dashboard, depreciation/TCO/write-off ledgers, CRON engine, reports.      |
 
 ## 2. In Scope
 
@@ -28,7 +28,7 @@ The platform is organised across **five architectural Epics**:
 - **Financial Tracking:** Multi-currency recording (NOK, USD, LKR) of initial costs (base price, tax, shipping), invoice PDF upload, automated straight-line depreciation, TCO aggregation, and a write-offs & salvage ledger.
 - **Lifecycle Management:** Full state-machine tracking of assets through Available → Assigned → In Repair → Pending Disposal → Disposed (and related statuses: Defective, Lost, Missing, Donated) with enforced transition rules and mandatory justification notes.
 - **Operations:** Asset assignment to Users or Locations (Building > Floor > Room hierarchy), digital custody acceptance (email + Teams notification with token-secured confirmation), condition-based return check-in, and vendor dispatch/repair tracking.
-- **Compliance-Driven Disposals:** Executive approval workflow with financial context, hard-stop compliance modal (data-wipe checkbox, tag-removal checkbox, exact Asset ID confirmation, E-Waste Certificate PDF upload), bulk batch disposal, and soft-delete archival with 7-year retention.
+- **Secure Disposal & Compliance:** Executive approval workflow with financial context, hard-stop compliance modal (data-wipe checkbox, tag-removal checkbox, exact Asset ID confirmation, E-Waste Certificate PDF upload), bulk batch disposal, and soft-delete archival with 7-year retention.
 - **Employee Self-Service Portal:** "My Assets" read-only grid for standard employees filtered by Azure AD identity, with "Report Issue" capability routing to the Maintenance Ledger.
 - **Maintenance Ledger:** Tabbed pipeline (Pending Review → Active Repairs → Repair History) with triage slide-out, vendor dispatch modal, and close-repair cost reconciliation feeding back into TCO.
 
@@ -74,4 +74,5 @@ The following features are explicitly excluded from the current delivery phase:
 - **Performance Targets:** Page loads < 2 seconds, API responses < 500 ms (95th percentile), bulk imports up to 10,000 rows, report exports up to 50,000 rows within 10 seconds.
 
 ---
+
 [< Back to Root](../../README.md)
