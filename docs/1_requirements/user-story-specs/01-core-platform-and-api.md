@@ -4,10 +4,11 @@
 
 ### Version History
 
-| Version | Date       | Author | Description of Change     |
-| :------ | :--------- | :----- | :------------------------ |
-| 1.0     | 02/08/2026 | Team   | Initial Draft             |
-| 2.0     | 02/25/2026 | Team   | Architectural restructure |
+| Version | Date       | Author  | Description of Change                                                                   |
+| :------ | :--------- | :------ | :-------------------------------------------------------------------------------------- |
+| 1.0     | 02/08/2026 | Team    | Initial Draft                                                                           |
+| 2.0     | 02/25/2026 | Team    | Architectural restructure                                                               |
+| 2.1     | 03/06/2026 | Adithya | Updated Epic title and file name; clarified direct IP capture requirement for ISO 27001 |
 
 ---
 
@@ -38,7 +39,7 @@ A rigid database becomes obsolete the moment a company buys a new type of hardwa
 ### 1.5 Assumptions and Dependencies
 
 - **Azure Tenant**: An active Azure AD tenant exists and the App Registration is configured.
-- **Infrastructure**: The backend environment supports `X-Forwarded-For` header reading for accurate IP logging.
+- **Infrastructure**: The backend environment supports direct IP capture for accurate, ISO 27001-compliant IP logging without requiring reverse proxy header unwrapping.
 
 ---
 
@@ -79,6 +80,7 @@ Manages how users enter the system and what they are allowed to see/do based on 
 - [ ] Implement Azure AD Group-to-Role mapping logic to auto-assign baseline permissions on login.
 
 ![alt text](<images/Login - Desktop.png>)
+![alt text](<images/Error 403 Screen- Desktop.png>)
 
 #### 2.1.3 User Story: US-1.1.2 (Role Mapping UI)
 
@@ -107,6 +109,7 @@ Manages how users enter the system and what they are allowed to see/do based on 
 **Wireframe Reference**
 ![alt text](images/User-roles-and-access-view.png)
 ![alt text](images/User-roles-and-access-add.png)
+![alt text](<images/Integrations API Key gen modal success - Desktop.png>)
 
 ---
 
@@ -132,11 +135,6 @@ The core engine that allows the system to adapt to any physical asset type witho
   - **Given** the prefix "LAP" already exists for Laptops
   - **When** the system generates "LAP" for a new "Laser Pointer" category
   - **Then** the system automatically appends a number (e.g., "LAP2") to ensure uniqueness.
-- **Scenario: Non-IT Asset Category Support**
-  - **Given** I am creating a new category for "Office Furniture"
-  - **When** I define the category schema using the Custom Field Builder
-  - **Then** I can add physical attribute fields (e.g., Dimensions, Material, Weight) instead of technical specs
-  - **And** the category functions identically to IT categories across registration, assignment, and disposal workflows.
 
 **Tasks**
 
@@ -162,6 +160,11 @@ The core engine that allows the system to adapt to any physical asset type witho
   - **Given** I have multiple custom fields defined
   - **When** I drag and drop the fields to change their order
   - **Then** the sequence is saved and will reflect on the final registration form.
+- **Scenario: Non-IT Asset Category Support**
+  - **Given** I am creating a new category for "Office Furniture"
+  - **When** I define the category schema using the Custom Field Builder
+  - **Then** I can add physical attribute fields (e.g., Dimensions, Material, Weight) instead of technical specs
+  - **And** the category functions identically to IT categories across registration, assignment, and disposal workflows.
 
 **Tasks**
 
@@ -180,7 +183,7 @@ The core engine that allows the system to adapt to any physical asset type witho
 **2.3.1 Overview**
 The CRUD interfaces and safety mechanisms for managing the company's foundational data points, such as Locations, Departments, and Vendors.
 
-#### 2.3.2 User Story: US-1.3.1 (Location & Department CRUD)
+#### 2.3.2 User Story: US-1.3.1 (Master Data CRUD)
 
 - **As a** Global Admin,
 - **I want to** manage a directory of company locations, departments, vendors, brands, and models,
@@ -253,13 +256,13 @@ A strict, read-only ledger that captures every action performed in the system fo
 - **Scenario: IP and Payload Capture**
   - **Given** an IT Admin updates the status of a server
   - **When** the HTTP request hits the backend
-  - **Then** the server intercepts the `X-Forwarded-For` header to get the true IP
+  - **Then** the server captures the user's IP address directly from the incoming request (Required for ISO 27001 compliance)
   - **And** writes an immutable record to the Audit Log table containing the Before/After JSON states.
 
 **Tasks**
 
 - [ ] Create append-only `AuditLogs` database table.
-- [ ] Write backend middleware interceptor to capture `X-Forwarded-For` IP addresses.
+- [ ] Write backend middleware interceptor to capture direct IP addresses from the request object.
 - [ ] Revoke `UPDATE` and `DELETE` database privileges on the Audit table.
 - [ ] Implement backend utility to compute Before/After object states and serialize them into JSON diff payloads for the database.
 
@@ -347,30 +350,7 @@ Secure endpoints and documentation allowing third-party corporate software (like
 - [ ] Create standard Read-Only endpoints for Assets and Assignments.
 - [ ] Write Swagger/OpenAPI documentation for available endpoints.
 
-#### 2.5.4 User Story: US-1.5.3 (Inbound API Action Triggers)
-
-- **As a** Third-Party System Developer,
-- **I want to** trigger specific operational workflows (like assigning a laptop to a new hire) via the REST API,
-- **So that** our HR system (e.g., Workday) can automate IT onboarding without manual IT admin intervention.
-
-**Acceptance Criteria (Gherkin)**
-
-- **Scenario: Triggering an Assignment via API**
-  - **Given** I have a valid API Token with Write permissions
-  - **When** I send a `POST` request to `/api/v1/external/assets/assign` with a payload containing the `Employee_ID` and requested `Category_ID`
-  - **Then** the system automatically finds an "Available" asset in that category, assigns it to the user, updates the status, and returns a `200 OK` with the `Asset_ID`.
-- **Scenario: API Validation Failure**
-  - **Given** I trigger an assignment for an `Employee_ID` that does not exist in Azure AD
-  - **When** the API processes the request
-  - **Then** it aborts the assignment and returns a `400 Bad Request` with a descriptive error message.
-
-**Tasks**
-
-- [ ] Create `POST /api/v1/external/assets/assign` endpoint with transactional database safety.
-- [ ] Implement backend logic to auto-select available inventory based on category requests.
-- [ ] Ensure API-triggered actions are logged in the System Audit Log, citing the specific API Key Name as the Actor.
-
-#### 2.5.5 User Story: US-1.5.4 (Outbound Webhooks Configuration)
+#### 2.5.4 User Story: US-1.5.3 (Outbound Webhooks Configuration)
 
 - **As a** Global Admin,
 - **I want to** register external webhook URLs for specific system events (e.g., Asset Disposed, Asset Assigned),
@@ -442,5 +422,3 @@ flowchart LR
 ---
 
 [< Back to Requirements](../README.md)
-
-

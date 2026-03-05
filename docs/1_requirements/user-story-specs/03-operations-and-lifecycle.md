@@ -4,11 +4,11 @@
 
 ### Version History
 
-| Version | Date       | Author | Description of Change                                                                              |
-| :------ | :--------- | :----- | :------------------------------------------------------------------------------------------------- |
-| 1.0     | 02/08/2026 | Team   | Initial Draft                                                                                      |
-| 2.0     | 02/25/2026 | Team   | Overhauled to include Employee Support Portal, Digital Acceptance, and Tabbed Maintenance Ledgers. |
-| 2.1    | 03/06/2026 | Chathuni   |  Update epic title and refine user story specifications for IT Operations & Hardware Maintenance. |
+| Version | Date       | Author   | Description of Change                                                                              |
+| :------ | :--------- | :------- | :------------------------------------------------------------------------------------------------- |
+| 1.0     | 02/08/2026 | Team     | Initial Draft                                                                                      |
+| 2.0     | 02/25/2026 | Team     | Overhauled to include Employee Support Portal, Digital Acceptance, and Tabbed Maintenance Ledgers. |
+| 2.1     | 03/06/2026 | Chathuni | Update epic title and refine user story specifications for IT Operations & Hardware Maintenance.   |
 
 ---
 
@@ -95,10 +95,11 @@ A self-service view for employees to verify the assets assigned to them and repo
 
 ![alt text](images/Confirm-reciept.png)
 
-
 ### 2.2 Feature 2: Asset Lifecycle Tracking & Status Control
+
 **2.2.1 Overview**
 This feature allows auditors and administrators to track the complete history of an asset through a chronological timeline of all assignments, returns, and status changes. It also enables manual lifecycle status management, allowing admins to update or create asset statuses such as Lost, Stolen, or Pending Audit to ensure accurate inventory records.
+
 #### 2.2.2 User Story: US-3.2.1 (Asset Chain of Custody / History Tab)
 
 - **As an** Auditor or Global Admin,
@@ -125,8 +126,6 @@ This feature allows auditors and administrators to track the complete history of
 - **As a** Global Admin,
 - **I want to** manually update the status of an asset to exception states (e.g., "Lost", "Stolen", "Found"),
 - **So that** the inventory reflects reality when an asset goes missing outside of the standard repair or assignment workflows.
-
-
 
 **Acceptance Criteria (Gherkin)**
 
@@ -183,7 +182,7 @@ The core system for checking hardware in and out, linking a specific asset ID to
 - [ ] Implement backend validation to ensure only "Available" assets can be assigned.
 - [ ] Add an optional "Expected Return Date" calendar picker to the assignment modal specifically for tracking temporary loaners.
 
-![alt text](images/Assign-Asset.png)
+![alt text](images/Assign%20Asset.png)
 ![alt text](images/Asset-Assignment-to-User.png)
 
 #### 2.3.3 User Story: US- 3.3.2: (Request Asset Return)
