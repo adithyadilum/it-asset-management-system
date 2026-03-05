@@ -1,6 +1,6 @@
 ﻿# User Story Specification
 
-## Epic 3: Operations & Lifecycle Management
+## Epic 3: IT Operations & Hardware Maintenance
 
 ### Version History
 
@@ -8,6 +8,7 @@
 | :------ | :--------- | :----- | :------------------------------------------------------------------------------------------------- |
 | 1.0     | 02/08/2026 | Team   | Initial Draft                                                                                      |
 | 2.0     | 02/25/2026 | Team   | Overhauled to include Employee Support Portal, Digital Acceptance, and Tabbed Maintenance Ledgers. |
+| 2.1    | 03/06/2026 | Chathuni   |  Update epic title and refine user story specifications for IT Operations & Hardware Maintenance. |
 
 ---
 
@@ -19,7 +20,7 @@ Asset Tracking is the operational core of the system, moving beyond static regis
 
 ### 1.2 Scope
 
-- **Employee Support Portal**: Simplified UI for standard employees to view assigned equipment and submit "Report Issue" tickets.
+- **Employee Portal**: Simplified UI for standard employees to view assigned equipment and submit "Report Issue" tickets.
 - **Digital Acceptance**: Workflow to get user confirmation when they receive an asset.
 - **Assignments & Returns Workflow**: Assignment/Return system to assign hardware or temporary loaners, updating the asset's global status automatically.
 - **Maintenance Ledger (Tabbed View)**: Three-part data grid managing "Pending Review", "Active Repairs", and historical "Repair History".
@@ -71,10 +72,10 @@ A self-service view for employees to verify the assets assigned to them and repo
 ![alt text](images/My-assets.png)
 ![alt text](<images/Employee Portal - Mobile.png>)
 
-#### 2.1.4 User Story: US-3.1.2 (Digital Acceptance of Responsibility)
+#### 2.1.3 User Story: US-3.1.2 (Digital Acceptance of Responsibility)
 
 - **As a** Global Admin,
-- **I want** the system to automatically notify the user via Email and Microsoft Teams when I assign an asset,
+- **I want** the system to automatically notify the user via Email, Microsoft Teams and App when I assign an asset,
 - **So that** they can click a link to confirm they have received it in good working order.
 
 **Acceptance Criteria (Gherkin)**
@@ -94,7 +95,11 @@ A self-service view for employees to verify the assets assigned to them and repo
 
 ![alt text](images/Confirm-reciept.png)
 
-#### 2.2.4 User Story: US-3.2.3 (Asset Chain of Custody / History Tab)
+
+### 2.2 Feature 2: Asset Lifecycle Tracking & Status Control
+**2.2.1 Overview**
+This feature allows auditors and administrators to track the complete history of an asset through a chronological timeline of all assignments, returns, and status changes. It also enables manual lifecycle status management, allowing admins to update or create asset statuses such as Lost, Stolen, or Pending Audit to ensure accurate inventory records.
+#### 2.2.2 User Story: US-3.2.1 (Asset Chain of Custody / History Tab)
 
 - **As an** Auditor or Global Admin,
 - **I want to** view the complete chronological history of a specific asset,
@@ -113,13 +118,15 @@ A self-service view for employees to verify the assets assigned to them and repo
 - [ ] Write backend query to fetch and format asset-specific events from the global System Audit Log.
 - [ ] Add a "Download History as CSV" button specifically for this asset's timeline.
 
-#### 2.2.5 User Story: US-3.2.4 (Manual Lifecycle Status Management)
+![alt text](<images/Asset History - Desktop.png>)
+
+#### 2.2.3 User Story: US-3.2.2 (Manual Lifecycle Status Management)
 
 - **As a** Global Admin,
 - **I want to** manually update the status of an asset to exception states (e.g., "Lost", "Stolen", "Found"),
 - **So that** the inventory reflects reality when an asset goes missing outside of the standard repair or assignment workflows.
 
-![alt text](<images/Asset History - Desktop.png>)
+
 
 **Acceptance Criteria (Gherkin)**
 
@@ -142,12 +149,12 @@ A self-service view for employees to verify the assets assigned to them and repo
 
 ---
 
-### 2.2 Feature 2: Assignments & Returns Workflow
+### 2.3 Feature 3: Assignments & Returns Workflow
 
-**2.2.1 Overview**
+**2.3.1 Overview**
 The core system for checking hardware in and out, linking a specific asset ID to a specific User or Room.
 
-#### 2.2.2 User Story: US-3.2.1 (Asset Check-Out / Assignment)
+#### 2.3.2 User Story: US-3.3.1 (Asset Check-Out / Assignment)
 
 - **As a** Global Admin,
 - **I want to** assign an available asset to a user or a specific location (Building/Room),
@@ -176,10 +183,10 @@ The core system for checking hardware in and out, linking a specific asset ID to
 - [ ] Implement backend validation to ensure only "Available" assets can be assigned.
 - [ ] Add an optional "Expected Return Date" calendar picker to the assignment modal specifically for tracking temporary loaners.
 
-![alt text](images/Asset-Assignment-to-User.png)
 ![alt text](images/Assign-Asset.png)
+![alt text](images/Asset-Assignment-to-User.png)
 
-#### US- 3.2.2: (Request Asset Return)
+#### 2.3.3 User Story: US- 3.3.2: (Request Asset Return)
 
 - **As a** Global Admin,
 - **I want to** notify a user to return an assigned asset,
@@ -201,7 +208,7 @@ The core system for checking hardware in and out, linking a specific asset ID to
 
 ![alt text](images/Request-Return.png)
 
-#### US-3.2.3: (Asset Check-In & Condition Review)
+#### 2.3.4 User Story: US-3.3.3: (Asset Check-In & Condition Review)
 
 - **As a** Global Admin,
 - **I want to** process the physical return of an asset and assess its condition,
@@ -241,7 +248,7 @@ The core system for checking hardware in and out, linking a specific asset ID to
 
 ![alt text](images/Review-Condition.png)
 
-#### US-3.2.5: (Bulk Location Transfer)
+#### 2.3.5 User Story: US-3.3.4: (Bulk Location Transfer)
 
 - **As a** Global Admin,
 - **I want to** bulk-update the location of multiple assets in a single action,
@@ -265,12 +272,12 @@ The core system for checking hardware in and out, linking a specific asset ID to
 
 ---
 
-### 2.3 Feature 3: Maintenance Ledger & Issue Triage
+### 2.4 Feature 4: Maintenance Ledger & Issue Triage
 
-**2.3.1 Overview**
+**2.4.1 Overview**
 The administrative dashboard for managing broken hardware reports and triaging issues before committing company funds to a vendor repair.
 
-#### 2.3.2 User Story: US-3.3.1 (Tabbed Maintenance Ledger)
+#### 2.4.2 User Story: US-3.4.1 (Tabbed Maintenance Ledger)
 
 - **As an** IT Operations Admin,
 - **I want to** view a dedicated ledger with tabs for "Pending Review", "Active Repairs", and "Repair History",
@@ -291,7 +298,7 @@ The administrative dashboard for managing broken hardware reports and triaging i
 
 ![alt text](images/Track-maintenance.png)
 
-#### 2.3.3 User Story: US-3.3.2 (Triage Review Sheet)
+#### 2.4.3 User Story: US-3.4.2 (Triage Review Sheet)
 
 - **As an** IT Operations Admin,
 - **I want to** click a pending triage ticket to open a Right-Side Review Panel,
@@ -315,12 +322,12 @@ The administrative dashboard for managing broken hardware reports and triaging i
 
 ---
 
-### 2.4 Feature 4: Vendor Repair Workflow
+### 2.5 Feature 5: Vendor Repair Workflow
 
-**2.4.1 Overview**
+**2.5.1 Overview**
 The financial and logistical workflow for dispatching broken items to third-party vendors and resolving the tickets upon return.
 
-#### 2.4.2 User Story: US-3.4.1 (Initiate Repair Modal)
+#### 2.5.2 User Story: US-3.5.1 (Initiate Repair Modal)
 
 - **As an** IT Operations Admin,
 - **I want to** log a "Maintenance Event" and dispatch an item to a vendor,
@@ -341,7 +348,7 @@ The financial and logistical workflow for dispatching broken items to third-part
 
 ![alt text](images/Dispatch.png)
 
-#### 2.4.3 User Story: US-3.4.2 (Close Repair Modal & TCO Update)
+#### 2.5.3 User Story: US-3.5.2 (Close Repair Modal & TCO Update)
 
 - **As a** Global Admin,
 - **I want to** close a repair ticket and log the actual final cost,
@@ -377,7 +384,7 @@ flowchart LR
     Vendor["External Vendor"]
 
     %% IT Operations & Maintenance Package
-    subgraph Epic3["Epic 3: Operations & Lifecycle Management"]
+    subgraph Epic3["Epic 3: IT Operations & Hardware Maintenance"]
         UC_MyAssets["View 'My Assets' Portal"]
         UC_Report["Submit 'Report Issue' Ticket"]
         UC_Accept["Digitally Accept Assignment"]
@@ -413,4 +420,3 @@ flowchart LR
 ---
 
 [< Back to Requirements](../README.md)
-
