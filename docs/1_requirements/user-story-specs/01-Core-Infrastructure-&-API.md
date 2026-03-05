@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Epic 1: Platform Foundation, Master Data & API Gateway
+## Epic 1: Core Platform & API gateway
 
 ### Version History
 

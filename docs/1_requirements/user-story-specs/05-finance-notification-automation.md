@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Epic 5: Financial Intelligence & Automated Alerts
+## Epic 5: Financial Analytics & Automation
 
 ### Version History
 

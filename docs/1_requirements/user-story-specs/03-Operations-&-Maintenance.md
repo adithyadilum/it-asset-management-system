@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Epic 3: IT Operations & Hardware Maintenance
+## Epic 3: Operations & Lifecycle Management
 
 ### Version History
 

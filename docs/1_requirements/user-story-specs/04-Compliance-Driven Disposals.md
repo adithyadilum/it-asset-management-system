@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Epic 4: Compliance-Driven Disposals
+## Epic 4: Secure Disposal & Compliance
 
 ### Version History
 

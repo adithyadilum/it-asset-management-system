@@ -1,6 +1,6 @@
 # User Story Specification
 
-## Epic 2: Asset Registry & Tethered Scanning System
+## Epic 2: Asset Registry & Onboarding
 
 ### Version History
 
