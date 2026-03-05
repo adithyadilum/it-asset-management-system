@@ -4,10 +4,11 @@
 
 ### Version History
 
-| Version | Date       | Author | Description of Change     |
-| :------ | :--------- | :----- | :------------------------ |
-| 1.0     | 02/08/2026 | Team   | Initial Draft             |
-| 2.0     | 02/25/2026 | Team   | Architectural restructure |
+| Version | Date       | Author  | Description of Change     |
+| :------ | :--------- | :------ | :------------------------ |
+| 1.0     | 02/08/2026 | Team    | Initial Draft             |
+| 2.0     | 02/25/2026 | Team    | Architectural restructure |
+| 2.1     | 03/06/2026 | Chamodi |  |
 
 ---
 
@@ -48,9 +49,9 @@ Inaccurate asset data leads to financial invisible costs, failed audits, and sec
 ### 2.1 Feature 1: Dynamic Asset Registration
 
 **2.1.1 Overview**
-A smart creation interface that guarantees unique identification while adapting its fields based on the selected hardware category's EAV schema.
+A smart creation interface that guarantees unique identification while adapting its fields based on the selected asset category's EAV schema.
 
-#### 2.1.2 User Story: US-2.1.1 (Standard Asset Generation)
+#### 2.1.2 User Story: US-2.1.1 (Standard Asset Registration)
 
 - **As a** Global Admin,
 - **I want to** register a new asset using a standardized web form,
@@ -58,7 +59,7 @@ A smart creation interface that guarantees unique identification while adapting 
 
 **Acceptance Criteria (Gherkin)**
 
-- **Scenario: Successful Asset Generation**
+- **Scenario: Successful Asset Registration**
   - **Given** I am on the "New Asset" registration page
   - **When** I submit the form with all mandatory Master Data fields completed
   - **Then** the backend generates a unique ID using the category Prefix (e.g., `LAP-0142`)
@@ -138,8 +139,7 @@ A smart creation interface that guarantees unique identification while adapting 
 
 ## Invoice Attaching Wireframe
 
-![Invoice Attaching Wireframe](images/Attach-invoice.png)
-
+![Invoice Attaching Wireframe](<images/Attach Financial Evidance.png>)
 ---
 
 #### 2.1.5 User Story: US-2.1.4 (Consumable Quantity Tracking)
@@ -206,9 +206,7 @@ The central hub for viewing, filtering, and interacting with the entire IT inven
   - **Given** I am viewing the main Asset Registry grid
   - **When** I apply filters for `Category: Laptops` AND `Status: Available`
   - **Then** the grid instantly updates to show only matching records.
-- **Scenario: Column Visibility Toggles**
-  - **When** I click the "View" button in the table header
-  - **Then** I can uncheck the "Purchase Date" column to hide it, optimizing my screen space.
+
 
 **Tasks**
 
@@ -233,7 +231,7 @@ The central hub for viewing, filtering, and interacting with the entire IT inven
 **Acceptance Criteria (Gherkin)**
 
 - **Scenario: Viewing Asset Vitals**
-  - **Given** I am on the Asset Registry
+  - **Given** I am on the Asset Grid View
   - **When** I click the row for `LAP-0142`
   - **Then** a panel slides in from the right displaying its Hardware Specs, current Custodian, and Warranty Status.
   - **And** clicking the "X" closes the panel, leaving my previous grid filters perfectly intact.
@@ -248,9 +246,10 @@ The central hub for viewing, filtering, and interacting with the entire IT inven
 
 ## Asset Details Wireframe
 
-![Asset Details Wireframe](<images/Asset-Details-(Assigned)-Desktop.png>)
-![Technical Details Wireframe](images/Tech-Details-Desktop.png)
-![Purchase Details Wireframe](images/Purchase-Details-Desktop.png)
+![Asset Details Wireframe](<images/Asset Details (Assigned)- Desktop.png>)
+![Technical Details Wireframe](<images/Tech Details- Desktop.png>)
+![Purchase Details Wireframe](<images/Purchase Details- Desktop.png>)
+![Asset History Wireframe](<images/Asset History - Desktop.png>)
 
 ---
 
@@ -389,6 +388,14 @@ Zero-config auto-linking that turns a standard smartphone into a tethered wirele
   - **Given** I am signed in on both my desktop browser and my mobile device with the same Azure AD account
   - **When** the mobile device connects to the WebSocket server
   - **Then** the server matches both connections by `user_id`, the desktop UI updates to say "Scanner Connected (iPhone 14)", and a WebSocket channel is securely opened.
+
+- **Scenario: Standalone Operation when Desktop is Offline**
+  - **Given** I am signed in on my mobile device with my Azure AD account
+  - **But** there is no active desktop session currently logged in under my identity
+  - **When** the mobile device connects to the WebSocket server
+  - **Then** the server acknowledges the mobile connection without returning any error
+  - **And** the mobile UI proceeds directly to the Standalone Mobile Lookup interface
+
 
 **Tasks**
 
