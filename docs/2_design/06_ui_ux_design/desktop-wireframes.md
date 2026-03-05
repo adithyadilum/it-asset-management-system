@@ -441,7 +441,7 @@ A two-step flow: selecting an asset from the registry and then assigning it via 
 ![Asset Assignment — Selection View](../../1_requirements/user-story-specs/images/Asset-Assignment-to-User.png)
 ![Assign Asset Modal](../../1_requirements/user-story-specs/images/Assign-Asset.png)
 
-**Linked Stories:** US-3.2.1
+**Linked Stories:** US-3.3.1
 
 ### 3.4 Request Return & Condition Review
 
@@ -472,7 +472,7 @@ Two connected interaction points: initiating a return request and processing the
 ![Request Return](../../1_requirements/user-story-specs/images/Request-Return.png)
 ![Condition Review Modal](../../1_requirements/user-story-specs/images/Review-Condition.png)
 
-**Linked Stories:** US-3.2.2, US-3.2.3
+**Linked Stories:** US-3.3.2, US-3.3.3
 
 ### 3.5 Maintenance Ledger — Tabbed Grid
 
@@ -491,7 +491,7 @@ A tabbed data grid following the Tabbed Ledger pattern, providing a pipeline vie
 
 ![Maintenance Ledger — Tabbed View](../../1_requirements/user-story-specs/images/Track-maintenance.png)
 
-**Linked Stories:** US-3.3.1
+**Linked Stories:** US-3.4.1
 
 ### 3.6 Triage Review — Slide-Out Panel
 
@@ -511,7 +511,7 @@ A right-side Slide-Out Sheet presenting the full context needed for an IT admin 
 
 ![Triage Review — Slide-Out](../../1_requirements/user-story-specs/images/pending-maintenance.png)
 
-**Linked Stories:** US-3.3.2
+**Linked Stories:** US-3.4.2
 
 ### 3.7 Repair Workflow — Dispatch & Close Modals
 
@@ -545,7 +545,7 @@ On confirm: asset status → In Repair, asset un-assigned from current employee,
 ![Dispatch to Vendor — Initiate Repair](../../1_requirements/user-story-specs/images/Dispatch.png)
 ![Close Repair Modal](../../1_requirements/user-story-specs/images/Complete-repair.png)
 
-**Linked Stories:** US-3.4.1, US-3.4.2
+**Linked Stories:** US-3.5.1, US-3.5.2
 
 ### 3.8 Asset Chain of Custody — History Timeline
 
@@ -565,7 +565,7 @@ A comprehensive chronological timeline displaying the complete chain of custody 
 
 ![Asset Chain of Custody — History Timeline](../../1_requirements/user-story-specs/images/Asset%20History%20-%20Desktop.png)
 
-**Linked Stories:** US-3.1.3
+**Linked Stories:** US-3.2.1
 
 ---
 
@@ -586,7 +586,7 @@ A modal dialog for updating the physical location of multiple assets simultaneou
 
 ![Bulk Location Transfer Modal](../../1_requirements/user-story-specs/images/Bulk%20Tranfer%20pop%20up%20-Desktop.png)
 
-**Linked Stories:** US-3.2.4
+**Linked Stories:** US-3.3.4
 
 ## 4. Epic 4 — Secure Disposal & Compliance
 
