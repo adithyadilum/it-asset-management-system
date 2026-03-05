@@ -4,11 +4,11 @@
 
 ### Version History
 
-| Version | Date       | Author  | Description of Change     |
-| :------ | :--------- | :------ | :------------------------ |
-| 1.0     | 02/08/2026 | Team    | Initial Draft             |
-| 2.0     | 02/25/2026 | Team    | Architectural restructure |
-| 2.1     | 03/06/2026 | Chamodi |  |
+| Version | Date       | Author  | Description of Change                       |
+| :------ | :--------- | :------ | :------------------------------------------ |
+| 1.0     | 02/08/2026 | Team    | Initial Draft                               |
+| 2.0     | 02/25/2026 | Team    | Architectural restructure                   |
+| 2.1     | 03/06/2026 | Chamodi | Update asset registry specs and standardize |
 
 ---
 
