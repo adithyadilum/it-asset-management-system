@@ -31,7 +31,6 @@ Data is useless if it's trapped. This epic unlocks the value of the ITAM system 
 
 ### 1.3 Out of scope/Limitations
 
-- **Custom Report Builder**: Users are limited to pre-defined standard reports; ad-hoc SQL queries are out of scope.
 - **Predictive AI**: Predictive maintenance analysis is out of scope.
 
 ### 1.4 Business Context
@@ -88,10 +87,10 @@ The primary interface providing immediate situational awareness of critical issu
   - **When** I click "Export to CSV"
   - **Then** a file downloads within 10 seconds containing all grid data.
   - **And** the system successfully handles exporting up to 50,000 rows without crashing.
-- **Scenario: Export to Excel**
+- **Scenario: Export to PDF**
   - **Given** I am viewing a generated report
-  - **When** I click "Export to Excel"
-  - **Then** a formatted `.xlsx` file downloads containing the report data with proper column headers and data types.
+  - **When** I click "Export to PDF"
+  - **Then** a formatted `.pdf` file downloads containing the report data with proper headings and structured layout.
 - **Scenario: HTML Report Preview**
   - **Given** I select a report type (e.g., "Inventory by Department")
   - **When** I click "Generate Report"
@@ -117,6 +116,11 @@ A highly secured sandbox containing financial ledgers that automate depreciation
 - **As a** Finance Director,
 - **I want to** access a dedicated, RBAC-secured Financials module with a Depreciation Ledger,
 - **So that** I can view the real-time "Current Book Value" and salvage values for corporate tax reporting.
+
+
+**Comment:**  
+The depreciation calculations in this module are currently based on project assumptions. Final validation with the Finance Department is required to confirm the actual calculation methods before completing the implementation.
+
 
 **Acceptance Criteria (Gherkin)**
 
