@@ -56,9 +56,16 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 
 ### Technical Implementation Tasks
 
-- [ ] Build the 3-tab `Maintenance & Repairs` layout component.
-- [ ] Configure the `Pending Review` data grid to filter assets by `Pending Maintenance`/`Defective` status.
-- [ ] Build the "Issue Review" slide-out panel, ensuring financial and warranty data is aggregated into the API response.
+#### Frontend
+
+- [ ] Build the 3-tab `Maintenance & Repairs` layout component (Pending Review, Active Repairs, Repair History).
+- [ ] Configure the `Pending Review` data grid to filter assets by `Pending Maintenance` / `Defective` status, displaying columns: Asset ID, Model, Reported By, Issue, Date Reported.
+- [ ] Build the "Issue Review" slide-out panel displaying: reported issue, Purchase Date, Original Cost, Current Book Value, and Warranty Status badge (color-coded: Green=Active, Red=Expired).
+- [ ] Add `Resolve Internally` and `Initiate Repair` action buttons to the panel footer.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/maintenance/pending` endpoint returning assets filtered by maintenance-related statuses, including aggregated financial and warranty data.
 
 ---
 
@@ -81,8 +88,13 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 
 ### Technical Implementation Tasks
 
-- [ ] Build a quick confirmation dialog for the "Resolve Internally" action requiring a text note.
-- [ ] Write an endpoint (`POST /api/v1/assets/{id}/resolve-internal`) that updates the status to `Available` and writes the history log.
+#### Frontend
+
+- [ ] Build a quick confirmation dialog for the "Resolve Internally" action with a mandatory resolution note text area.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/{id}/resolve-internal` endpoint that: updates the asset status to `Available`, creates a maintenance record with `resolution_type: 'Internal'`, and writes an event to the System Audit Log.
 
 ---
 
@@ -112,8 +124,18 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 
 ### Technical Implementation Tasks
 
-- [ ] Create a `MaintenanceTickets` relational database table to store the repair lifecycle (Vendor, RMA, Est Cost, Final Cost).
-- [ ] Build the "Send Asset for Repair" modal and hook it to a `POST /api/v1/maintenance/dispatch` endpoint.
+#### Frontend
+
+- [ ] Build the "Send Asset for Repair" modal with: Vendor dropdown (searchable), RMA/Ticket Number input (required), Estimated Cost input, Expected Return Date picker.
+- [ ] Implement form validation: `Confirm & Dispatch` button disabled until Vendor and RMA are filled.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/maintenance/dispatch` endpoint that: creates a `MaintenanceTicket` record, updates the asset status to `In Repair`, and writes an Audit Log entry.
+
+#### Database
+
+- [ ] Create a `MaintenanceTickets` table with columns: `id`, `asset_id` (FK → Assets), `ticket_type` (ENUM: VENDOR, INTERNAL), `vendor_name`, `rma_number`, `reported_issue`, `resolution_notes`, `estimated_cost`, `actual_cost`, `estimated_return_date`, `actual_completion_date`, `status` (ENUM: ACTIVE, COMPLETED, CANCELLED), `dispatched_by` (FK → Users), `created_at`, `updated_at`.
 
 ---
 
@@ -144,9 +166,14 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `Active Repairs` grid pulling from the `MaintenanceTickets` table where `status = 'Active'`.
-- [ ] Build the "Log Completed Repair" modal.
-- [ ] Create an endpoint (`POST /api/v1/maintenance/{ticket_id}/complete`) that updates the ticket to closed, modifies the parent asset's global status, and aggregates the `Final Cost` into the asset's TCO payload.
+#### Frontend
+
+- [ ] Configure the `Active Repairs` grid to display data from `MaintenanceTickets` where `status = 'Active'`, showing: Vendor, RMA, Est. Return Date, Est. Cost.
+- [ ] Build the "Log Completed Repair" modal with: Actual Final Cost input, Resolution Notes text area, and "Update Status To" dropdown (Available, Disposed).
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/maintenance/{ticketId}/complete` endpoint that: updates the ticket status to `Completed`, records actual cost and resolution notes, updates the parent asset's global status to the selected value, and aggregates the `actual_cost` into the asset's cumulative maintenance cost.
 
 ---
 
@@ -172,5 +199,12 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 
 ### Technical Implementation Tasks
 
-- [ ] Configure the `Repair History` data grid to fetch `MaintenanceTickets` where `status = 'Completed'`.
-- [ ] Update the `AssetDetailsPanel` component (built in Epic 8) to dynamically fetch and display the 3 most recent related records from the `MaintenanceTickets` and internal resolution logs.
+#### Frontend
+
+- [ ] Configure the `Repair History` data grid to fetch completed `MaintenanceTickets` records, displaying: Asset ID, Vendor, Resolution Date, Final Cost, Resolution Notes.
+- [ ] Update the Epic 8 `AssetDetailsPanel` component to fetch and display the 3 most recent maintenance records from the `MaintenanceTickets` table for the selected asset.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/maintenance/history` endpoint with pagination and filtering support (by date range, vendor, cost range).
+- [ ] Ensure the existing `GET /api/v1/assets/{id}/maintenance` endpoint returns both vendor and internal resolution records.

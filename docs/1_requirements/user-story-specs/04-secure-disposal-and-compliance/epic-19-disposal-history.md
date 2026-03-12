@@ -52,9 +52,16 @@ This epic governs the long-term archival of retired assets. It implements a "Sof
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `Disposal History` data table React component.
-- [ ] Configure the grid to fetch assets where `status === 'Disposed'`, joining the `Users` table twice to retrieve both the `Flagged By` name and the `Disposed By` (executor) name.
-- [ ] Implement the UI logic to render the `disposal_receipt_url` as a clickable download icon in the grid.
+#### Frontend
+
+- [ ] Build the `Disposal History` data grid React component with read-only rows (no checkboxes or bulk action toolbar).
+- [ ] Configure the grid columns: Asset ID, Category, Reason, Flagged By, Disposed By, Disposal Date, Status badge (muted gray "Disposed"), and Documents.
+- [ ] Implement the `Documents` column: render the uploaded filename with a clickable PDF icon that opens a signed URL in a new browser tab.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/disposals/history` endpoint that fetches assets with `status === 'Disposed'`, joining the `Users` table twice to retrieve both the `Flagged By` (requester) and `Disposed By` (executor) display names.
+- [ ] Generate signed URLs for the disposal receipt documents on-demand for secure, time-limited access.
 
 ---
 
@@ -74,7 +81,15 @@ This epic governs the long-term archival of retired assets. It implements a "Sof
 
 ### Technical Implementation Tasks
 
-- [ ] Implement an `IsArchived` boolean or ensure `Status != 'Disposed'` global filters are applied across all standard `GET` API endpoints that feed the main registries and Master Data dropdowns.
+#### Backend
+
+- [ ] Add an `is_archived` boolean column (default `false`) to the `Assets` table, set to `true` upon disposal completion.
+- [ ] Apply a global `WHERE is_archived = false` (or `WHERE status != 'Disposed'`) filter to all standard `GET` API endpoints that feed the main registries, assignment dropdowns, and Master Data lookups.
+- [ ] Ensure the `GET /api/v1/disposals/history` endpoint explicitly queries `WHERE is_archived = true` to retrieve only archived records.
+
+#### Database
+
+- [ ] Add a database index on the `is_archived` column for query performance optimization.
 
 ---
 
@@ -96,5 +111,10 @@ This epic governs the long-term archival of retired assets. It implements a "Sof
 
 ### Technical Implementation Tasks
 
-- [ ] Write conditional rendering logic in the frontend `AssetDetailsPanel` to disable all inputs and hide the "Edit" toolbar if `asset.status === 'Disposed'`.
-- [ ] Write backend middleware permission logic to strictly block `PUT`/`PATCH` requests for any asset carrying the `Disposed` status.
+#### Frontend
+
+- [ ] Write conditional rendering logic in the `AssetDetailsPanel`: if `asset.status === 'Disposed'`, hide all "Edit" buttons, disable all form inputs, and hide the interactive `StatusBadge` dropdown.
+
+#### Backend
+
+- [ ] Write backend middleware that intercepts all `PUT`, `PATCH`, and `DELETE` requests for assets with `is_archived === true` or `status === 'Disposed'`, returning `403 Forbidden: Record is finalized`.

@@ -73,12 +73,26 @@ This epic focuses entirely on establishing the front door of the asset managemen
 _Wireframe – Login Page_
 ![Login Page Wireframe](https://t90181861921.p.clickup-attachments.com/t90181861921/b10bf483-aa93-47f6-ac32-ff005882e4bc/Login%20-%20Desktop.png)
 
-### Tasks
+### Technical Implementation Tasks
 
-- Configure Azure AD App Registration (Client ID/Secret/Tenant ID) restricting access to the specific corporate tenant.
-- Implement OAuth 2.0 / OIDC Authorization Code Flow utilizing a popup window mechanism.
-- Write frontend error boundary logic to catch network drops and popup-closed events.
-- Write backend middleware to validate the JWT signature and reject tokens from unauthorized issuers.
+#### Infrastructure / DevOps
+
+- [ ] Register the application in the Azure AD portal (configure Client ID, Client Secret, Tenant ID, and Redirect URIs).
+- [ ] Restrict the App Registration to the specific corporate tenant (single-tenant mode).
+- [ ] Configure environment variables for Azure AD credentials in the deployment pipeline (`.env` / secrets manager).
+
+#### Frontend
+
+- [ ] Build the responsive Login Page UI component (TIQRI logo, title/description, "Login with Microsoft" CTA button with hover effect).
+- [ ] Integrate the MSAL.js library and implement the `loginPopup()` authentication flow.
+- [ ] Write error boundary logic to catch and display user-friendly messages for popup-closed events and network timeouts.
+- [ ] Implement the post-login redirect to the main dashboard route upon successful token acquisition.
+
+#### Backend
+
+- [ ] Write authentication middleware to validate incoming JWT signatures against Azure AD's public signing keys (JWKS endpoint).
+- [ ] Implement Tenant ID validation in the middleware to reject tokens from non-approved Azure AD issuers.
+- [ ] Create a protected health-check endpoint (`GET /api/v1/auth/me`) to verify token validity and return basic user claims.
 
 ---
 
@@ -103,10 +117,17 @@ _Wireframe – Login Page_
 
 - No Custom UI Designs: Because the authentication rejection is handled natively by the Microsoft SSO gateway, there are no internal application screens or UI designs for these specific scenarios.
 
-### Tasks
+### Technical Implementation Tasks
 
-- Write backend middleware to extract and validate the Tenant ID from the incoming JWT signature, rejecting any tokens issued by non-approved Azure tenants.
-- Map standard Azure AD error codes (like AADSTS50057 for disabled accounts) to clean, user-friendly frontend error messages.
+#### Backend
+
+- [ ] Write backend middleware to extract and validate the Tenant ID (`tid` claim) from the incoming JWT, strictly rejecting any tokens issued by non-approved Azure tenants.
+- [ ] Implement a catch-all error handler that maps standard Azure AD error codes (e.g., `AADSTS50057` for disabled accounts, `AADSTS700016` for wrong tenant) to structured JSON error responses.
+
+#### Frontend
+
+- [ ] Map structured backend error responses to clean, user-friendly toast/banner messages on the login page (e.g., "Your account does not have access to this application.").
+- [ ] Ensure the login page gracefully handles and displays the error state without crashing or showing raw error codes.
 
 ---
 
@@ -144,9 +165,19 @@ _Wireframe – Login Page_
 
 ### Technical Implementation Tasks
 
-- [ ] Implement frontend routing guards (e.g., React Router `PublicRoute` and `PrivateRoute` wrappers) to check for a valid JWT in `localStorage` or `HttpOnly` cookies before component mounting.
-- [ ] Implement a silent token validation or refresh mechanism (e.g., MSAL.js `acquireTokenSilent`) on the initial application load.
-- [ ] Write an Axios/Fetch interceptor to listen for `401 Unauthorized` API responses. If caught, force the frontend to clear the dead session and redirect the user back to `/login`.
+#### Frontend
+
+- [ ] Implement route guards (`PublicRoute` and `PrivateRoute` wrapper components) that check for a valid JWT in `localStorage` or `HttpOnly` cookies before rendering any protected page.
+- [ ] Implement a silent token refresh mechanism using MSAL.js `acquireTokenSilent()` on initial application load to seamlessly renew expiring tokens.
+- [ ] Build a full-screen TIQRI loading spinner component displayed during the initial auth-state check to prevent login page UI flashing.
+- [ ] Write an Axios/Fetch HTTP interceptor to listen for `401 Unauthorized` API responses, automatically clearing the stale session and redirecting to `/login`.
+- [ ] Implement deep-link preservation: store the originally requested URL before an auth redirect, and navigate to it after successful re-authentication.
+- [ ] Build the "Session Expired" alert banner component that renders contextually on the login page when a token expiration triggers a redirect.
+
+#### Backend
+
+- [ ] Implement a token refresh endpoint or relay mechanism to support silent token renewal without requiring user interaction.
+- [ ] Ensure all protected API routes consistently return a standardized `401 Unauthorized` response with a clear error code when tokens are expired or invalid.
 
 ---
 
@@ -178,6 +209,15 @@ _Wireframe – Login Page_
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `MainLayout` React wrapper component containing the Sidebar and Topbar.
-- [ ] Parse the decoded JWT payload to populate the Topbar avatar, email, and role state variables.
-- [ ] Implement the sign-out flow, ensuring the application clears local session state and hits the Azure AD `logout` endpoint to prevent ghost sessions.
+#### Frontend
+
+- [ ] Build the `MainLayout` React wrapper component containing a fixed Topbar and a collapsible Sidebar shell (placeholder for Epic 2+).
+- [ ] Build the Topbar component displaying the user avatar (Microsoft profile picture or generated initials fallback), full name, and email.
+- [ ] Implement the profile dropdown/popover menu component displaying the user's name, email, system role, and a "Log Out" action button.
+- [ ] Parse the decoded JWT payload (or call the Microsoft Graph API `/me` endpoint) to extract the user's `displayName`, `mail`, and `photo` for rendering in the Topbar.
+- [ ] Implement the `logout()` function that clears all local session data (`localStorage`, cookies) and invokes the MSAL.js `logoutRedirect()` to the Azure AD end-session endpoint.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/auth/profile` endpoint that returns the authenticated user's profile data (name, email, role) from the JWT claims or the database.
+- [ ] Implement a `POST /api/v1/auth/logout` endpoint (optional server-side cleanup) to invalidate any server-held session references or refresh tokens.

@@ -87,6 +87,24 @@ This epic governs what authenticated users are allowed to do inside the system. 
   - Button: A primary/destructive button labeled "Confirm Removal".
 - Anti-Lockout UX: The trash icon next to the active user's own name in the Role Mapping screen must be styled with low opacity and a `cursor-not-allowed` hover state.
 
+### Technical Implementation Tasks
+
+#### Frontend
+
+- [ ] Build the Master-Detail split-view layout component: left panel listing the 4 roles, right panel displaying assigned users for the selected role.
+- [ ] Build the "Add User" modal with a searchable input, multi-select user list, individual trash-icon removal, and a "Confirm Mapping" CTA.
+- [ ] Build the "Remove User Access" confirmation modal with destructive-action styling.
+- [ ] Implement self-lockout prevention logic: disable the trash icon on the current user's own row when the "Global Admin" role is selected.
+- [ ] Build the "No users found" empty state for the user search within the Add User modal.
+
+#### Backend
+
+- [ ] Create a `UserRoles` mapping table in the database linking `user_id` to `role_id`.
+- [ ] Create a `POST /api/v1/roles/{roleId}/users` bulk-assignment endpoint accepting an array of user IDs.
+- [ ] Create a `DELETE /api/v1/roles/{roleId}/users/{userId}` revocation endpoint.
+- [ ] Write backend validation to reject any `DELETE` request targeting the active user's own mapping row in the `UserRoles` table (anti-lockout fail-safe).
+- [ ] Create a `GET /api/v1/users/search?q={query}` endpoint to power the user search in the Add User modal, with support for filtering out already-mapped users.
+
 ---
 
 ## User Story: US-2.2 — Global Admin Role Capabilities
@@ -110,8 +128,15 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 ### Technical Implementation Tasks
 
-- [ ] Configure the backend JWT parser to identify the Global Admin claim.
-- [ ] Write backend validation to reject any `DELETE` request targeting the active user's own mapping row in the `UserRoles` table.
+#### Frontend
+
+- [ ] Implement the role-aware Sidebar component that renders all navigation items when `user.role === 'GlobalAdmin'`.
+- [ ] Ensure all action buttons (Edit, Delete, Assign, Dispose, etc.) render without restriction for this role across all pages.
+
+#### Backend
+
+- [ ] Configure the backend JWT parser to identify and validate the `GlobalAdmin` claim from the token payload.
+- [ ] Ensure all RBAC middleware grants full pass-through access for requests carrying the `GlobalAdmin` role.
 
 ---
 
@@ -153,8 +178,16 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement Azure AD Group-to-Role mapping logic upon login to catch the IT Helpdesk group.
-- [ ] Write RBAC middleware to strictly protect configuration API routes (e.g., `POST /api/categories`) from this role.
+#### Frontend
+
+- [ ] Implement conditional sidebar rendering that hides "Settings", "Integrations", "System Log", and "Master Data" navigation items when `user.role === 'ITOperator'`.
+- [ ] Build a reusable `403 Forbidden` error page component with an illustration and a "Return to Dashboard" navigation button.
+- [ ] Implement frontend route guards that redirect IT Operators to the 403 page if they attempt to access restricted URL paths.
+
+#### Backend
+
+- [ ] Implement Azure AD Group-to-Role mapping logic in the SSO callback to automatically assign the "IT Operator" role when the user's token contains the "IT Helpdesk" group claim.
+- [ ] Write RBAC middleware to strictly protect configuration API routes (e.g., `POST /api/categories`, `GET /api/settings`, `POST /api/webhooks`) from this role, returning `403 Forbidden`.
 
 ---
 
@@ -186,8 +219,16 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 ### Technical Implementation Tasks
 
-- [ ] Configure the frontend UI state to conditionally render action buttons based on `user.role !== 'FinanceAuditor'`.
-- [ ] Apply strict Read-Only (`GET`) middleware enforcement for this role across the `/api/assets/*` controllers.
+#### Frontend
+
+- [ ] Implement conditional rendering logic to completely remove all write-action buttons (Edit, Assign, Dispose, Delete) from the DOM when `user.role === 'FinanceAuditor'`.
+- [ ] Ensure "Export CSV" and "Download Report" buttons remain visible and fully functional for this role.
+- [ ] Implement the role-aware Sidebar component that shows Financial module navigation but hides operational settings.
+
+#### Backend
+
+- [ ] Apply strict Read-Only (`GET`-only) middleware enforcement for the `FinanceAuditor` role across all `/api/assets/*` and `/api/operations/*` controllers.
+- [ ] Ensure the Finance-specific API endpoints (`GET /api/financials/*`) are accessible to both `FinanceAuditor` and `GlobalAdmin` roles.
 
 ---
 
@@ -221,5 +262,13 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 ### Technical Implementation Tasks
 
-- [ ] Write user-provisioning logic in the SSO callback: If the incoming `user_id` does not exist in the local `Users` table, insert them and set their `role_id` to the database equivalent of "Standard Employee".
+#### Backend
+
+- [ ] Write user-provisioning logic in the SSO callback: if the incoming `user_id` does not exist in the local `Users` table, insert a new record and set their `role_id` to the database equivalent of "Standard Employee".
 - [ ] Ensure the RBAC middleware strictly treats any `null` or missing role mappings as "Standard Employee" to prevent accidental privilege escalation.
+- [ ] Implement Azure AD group-claims parsing: if the user's JWT contains recognized group memberships (e.g., "IT Helpdesk", "Finance Team"), auto-elevate during provisioning instead of defaulting.
+
+#### Database
+
+- [ ] Seed the `Roles` table with the 4 hardcoded role records (Global Admin, IT Operator, Finance Auditor, Standard Employee) during initial database migration.
+- [ ] Add a `NOT NULL DEFAULT` constraint on the `role_id` column in the `Users` table pointing to the "Standard Employee" role ID to enforce least-privilege at the schema level.

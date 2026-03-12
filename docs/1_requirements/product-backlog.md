@@ -1,661 +1,1522 @@
 # Product Backlog
 
-Consolidated task-level backlog, from the [Detailed User Story Specifications](./user-story-specs/README.md). Every task maps back to a User Story, Feature, and Epic.
+This document contains the comprehensive list of user stories and their associated technical implementation tasks, categorized by Frontend, Backend, Database, and Infrastructure/DevOps.
 
-**Last Updated:** 03/13/2026
-
-## Table of Contents
-
-- [Summary](#summary)
-- [Epic 1 — Core Platform & API Gateway](#epic-1--platform-foundation-master-data--api-gateway)
-- [Epic 2 — Asset Registry & Onboarding](#epic-2--asset-registry--tethered-scanning)
-- [Epic 3 — Operations & Lifecycle Management](#epic-3--it-operations--hardware-maintenance)
-- [Epic 4 — Secure Disposal & Compliance](#epic-4--compliance-driven-disposals)
-- [Epic 5 — Financial Analytics & Automation](#epic-5--financial-intelligence--automated-alerts)
-
-## Summary
-
-| Epic | Name                              | Features | Stories |  Tasks  |
-| :--- | :-------------------------------- | :------: | :-----: | :-----: |
-| 1    | Core Platform & API Gateway       |    5     |   12    |   36    |
-| 2    | Asset Registry & Onboarding       |    5     |   15    |   45    |
-| 3    | Operations & Lifecycle Management |    5     |   12    |   35    |
-| 4    | Secure Disposal & Compliance      |    3     |    6    |   18    |
-| 5    | Financial Analytics & Automation  |    3     |    9    |   29    |
-|      | **TOTAL**                         |  **21**  | **54**  | **163** |
+*Total Tasks across all Epics: 540*
 
 ---
 
-## Epic 1 — Core Platform & API Gateway
+## Epic 1: Authentication & Single Sign-On (SSO)
 
-> **Source:** [01-core-platform-and-api/](./user-story-specs/01-core-platform-and-api/)
+### US-1.1 — Corporate Single Sign-On (SSO)
 
-### Feature 1.1: Enterprise Authentication & Access Control
+**Infrastructure / DevOps**
 
-#### US-1.1.1 — SSO & RBAC Enforcement
+- [ ] Register the application in the Azure AD portal (configure Client ID, Client Secret, Tenant ID, and Redirect URIs).
+- [ ] Restrict the App Registration to the specific corporate tenant (single-tenant mode).
+- [ ] Configure environment variables for Azure AD credentials in the deployment pipeline (`.env` / secrets manager).
 
-> _As a Corporate User, I want to log in using my Microsoft Azure AD credentials, So that my access is secured by corporate MFA and I don't need a separate password._
+**Frontend**
 
-| Task ID      | Description                                                                                  |
-| :----------- | :------------------------------------------------------------------------------------------- |
-| TSK-1.1.1.01 | Configure Azure AD App Registration (Client ID / Secret / Tenant ID).                        |
-| TSK-1.1.1.02 | Implement OAuth 2.0 / OIDC Authorization Code Flow.                                          |
-| TSK-1.1.1.03 | Write RBAC backend middleware to protect API routes.                                         |
-| TSK-1.1.1.04 | Implement Azure AD Group-to-Role mapping logic to auto-assign baseline permissions on login. |
+- [ ] Build the responsive Login Page UI component (TIQRI logo, title/description, "Login with Microsoft" CTA button with hover effect).
+- [ ] Integrate the MSAL.js library and implement the `loginPopup()` authentication flow.
+- [ ] Write error boundary logic to catch and display user-friendly messages for popup-closed events and network timeouts.
+- [ ] Implement the post-login redirect to the main dashboard route upon successful token acquisition.
 
-#### US-1.1.2 — Role Mapping UI
+**Backend**
 
-> _As a Global Admin, I want to use a split-view interface to map active directory users to specific system roles, So that I can safely elevate permissions for IT and Finance staff._
+- [ ] Write authentication middleware to validate incoming JWT signatures against Azure AD's public signing keys (JWKS endpoint).
+- [ ] Implement Tenant ID validation in the middleware to reject tokens from non-approved Azure AD issuers.
+- [ ] Create a protected health-check endpoint (`GET /api/v1/auth/me`) to verify token validity and return basic user claims.
 
-| Task ID      | Description                                                                    |
-| :----------- | :----------------------------------------------------------------------------- |
-| TSK-1.1.2.01 | Build Master-Detail split-view UI component in React.                          |
-| TSK-1.1.2.02 | Implement User Directory Search API endpoint with "Hide already mapped" logic. |
-| TSK-1.1.2.03 | Create Database mapping table (`UserRoles`).                                   |
+### US-1.2 — Unauthorized Access Prevention
 
----
+**Backend**
 
-### Feature 1.2: Dynamic Schema & Asset Categories
+- [ ] Write backend middleware to extract and validate the Tenant ID (`tid` claim) from the incoming JWT, strictly rejecting any tokens issued by non-approved Azure tenants.
+- [ ] Implement a catch-all error handler that maps standard Azure AD error codes (e.g., `AADSTS50057` for disabled accounts, `AADSTS700016` for wrong tenant) to structured JSON error responses.
 
-#### US-1.2.1 — Category Creation & Auto-Prefix
+**Frontend**
 
-> _As a Global Admin, I want to create new hardware categories with an auto-generated Prefix Code, So that future assets registered under this category have standardized IDs (e.g., AST-LAP-001)._
+- [ ] Map structured backend error responses to clean, user-friendly toast/banner messages on the login page (e.g., "Your account does not have access to this application.").
+- [ ] Ensure the login page gracefully handles and displays the error state without crashing or showing raw error codes.
 
-| Task ID      | Description                                                             |
-| :----------- | :---------------------------------------------------------------------- |
-| TSK-1.2.1.01 | Build the "Add Category" slide-out panel (Sheet component).             |
-| TSK-1.2.1.02 | Write JavaScript auto-prefix generation logic (1-word vs 2-word rules). |
-| TSK-1.2.1.03 | Implement backend lock to prevent Prefix updates via `PUT` requests.    |
+### US-1.3 — Persistent Login Sessions (Bypass Login)
 
-#### US-1.2.2 — Custom Field Builder
+**Frontend**
 
-> _As a Global Admin, I want to define specific custom attributes (Text, Number, Dropdown) for a category, So that the Asset Registration form dynamically requests the exact right data for that specific hardware._
+- [ ] Implement route guards (`PublicRoute` and `PrivateRoute` wrapper components) that check for a valid JWT in `localStorage` or `HttpOnly` cookies before rendering any protected page.
+- [ ] Implement a silent token refresh mechanism using MSAL.js `acquireTokenSilent()` on initial application load to seamlessly renew expiring tokens.
+- [ ] Build a full-screen TIQRI loading spinner component displayed during the initial auth-state check to prevent login page UI flashing.
+- [ ] Write an Axios/Fetch HTTP interceptor to listen for `401 Unauthorized` API responses, automatically clearing the stale session and redirecting to `/login`.
+- [ ] Implement deep-link preservation: store the originally requested URL before an auth redirect, and navigate to it after successful re-authentication.
+- [ ] Build the "Session Expired" alert banner component that renders contextually on the login page when a token expiration triggers a redirect.
 
-| Task ID      | Description                                                            |
-| :----------- | :--------------------------------------------------------------------- |
-| TSK-1.2.2.01 | Design the dynamic field builder UI (add/remove rows, type selection). |
-| TSK-1.2.2.02 | Implement JSON/EAV schema storage in the database.                     |
-| TSK-1.2.2.03 | Write API to fetch category schema payload for frontend rendering.     |
+**Backend**
 
----
+- [ ] Implement a token refresh endpoint or relay mechanism to support silent token renewal without requiring user interaction.
+- [ ] Ensure all protected API routes consistently return a standardized `401 Unauthorized` response with a clear error code when tokens are expired or invalid.
 
-### Feature 1.3: Organizational Master Data Management
+### US-1.4 — Application Shell & User Profile Menu
 
-#### US-1.3.1 — Location & Department CRUD
+**Frontend**
 
-> _As a Global Admin, I want to manage a directory of company locations, departments, vendors, brands, and models, So that I can accurately map where an asset physically resides, who owns it, and standardize manufacturer information._
+- [ ] Build the `MainLayout` React wrapper component containing a fixed Topbar and a collapsible Sidebar shell (placeholder for Epic 2+).
+- [ ] Build the Topbar component displaying the user avatar (Microsoft profile picture or generated initials fallback), full name, and email.
+- [ ] Implement the profile dropdown/popover menu component displaying the user's name, email, system role, and a "Log Out" action button.
+- [ ] Parse the decoded JWT payload (or call the Microsoft Graph API `/me` endpoint) to extract the user's `displayName`, `mail`, and `photo` for rendering in the Topbar.
+- [ ] Implement the `logout()` function that clears all local session data (`localStorage`, cookies) and invokes the MSAL.js `logoutRedirect()` to the Azure AD end-session endpoint.
 
-| Task ID      | Description                                                                          |
-| :----------- | :----------------------------------------------------------------------------------- |
-| TSK-1.3.1.01 | Build standard Data Tables for Locations, Departments, Vendors, Brands, and Models.  |
-| TSK-1.3.1.02 | Create simple CRUD Modal forms for each entity.                                      |
-| TSK-1.3.1.03 | Implement Brand-Model parent-child relationship (Models filtered by selected Brand). |
+**Backend**
 
-#### US-1.3.2 — Relational Deletion Safeguards
+- [ ] Create a `GET /api/v1/auth/profile` endpoint that returns the authenticated user's profile data (name, email, role) from the JWT claims or the database.
+- [ ] Implement a `POST /api/v1/auth/logout` endpoint (optional server-side cleanup) to invalidate any server-held session references or refresh tokens.
 
-> _As a Global Admin, I want the system to prevent me from deleting master data that is currently in use, So that I do not accidentally orphan active assets in the database._
-
-| Task ID      | Description                                                                       |
-| :----------- | :-------------------------------------------------------------------------------- |
-| TSK-1.3.2.01 | Write backend dependency check queries before executing `DELETE`.                 |
-| TSK-1.3.2.02 | Implement frontend UI disabled-states based on "Active Count" relational queries. |
 
 ---
 
-### Feature 1.4: Immutable System Audit Log
+## Epic 2: System Permissions & Role-Based Access Control
 
-#### US-1.4.1 — Automated Event Tracking & IP Capture
+### US-2.1 — Administrator Control Panel for System Permissions
 
-> _As a Security Auditor, I want the system backend to automatically capture the user, IP address, and payload data of every state change, So that no malicious action goes unrecorded, even if initiated via API._
+**Frontend**
 
-| Task ID      | Description                                                                                                 |
-| :----------- | :---------------------------------------------------------------------------------------------------------- |
-| TSK-1.4.1.01 | Create append-only `AuditLogs` database table.                                                              |
-| TSK-1.4.1.02 | Write backend middleware interceptor to capture `X-Forwarded-For` IP addresses.                             |
-| TSK-1.4.1.03 | Revoke `UPDATE` and `DELETE` database privileges on the Audit table.                                        |
-| TSK-1.4.1.04 | Implement backend utility to compute Before/After object states and serialize them into JSON diff payloads. |
+- [ ] Build the Master-Detail split-view layout component: left panel listing the 4 roles, right panel displaying assigned users for the selected role.
+- [ ] Build the "Add User" modal with a searchable input, multi-select user list, individual trash-icon removal, and a "Confirm Mapping" CTA.
+- [ ] Build the "Remove User Access" confirmation modal with destructive-action styling.
+- [ ] Implement self-lockout prevention logic: disable the trash icon on the current user's own row when the "Global Admin" role is selected.
+- [ ] Build the "No users found" empty state for the user search within the Add User modal.
 
-#### US-1.4.2 — Audit Log Viewing and Export
+**Backend**
 
-> _As a Security Auditor, I want to view, filter, and export the system audit ledger, So that I can conduct forensic investigations into hardware discrepancies._
+- [ ] Create a `UserRoles` mapping table in the database linking `user_id` to `role_id`.
+- [ ] Create a `POST /api/v1/roles/{roleId}/users` bulk-assignment endpoint accepting an array of user IDs.
+- [ ] Create a `DELETE /api/v1/roles/{roleId}/users/{userId}` revocation endpoint.
+- [ ] Write backend validation to reject any `DELETE` request targeting the active user's own mapping row in the `UserRoles` table (anti-lockout fail-safe).
+- [ ] Create a `GET /api/v1/users/search?q={query}` endpoint to power the user search in the Add User modal, with support for filtering out already-mapped users.
 
-| Task ID      | Description                                                            |
-| :----------- | :--------------------------------------------------------------------- |
-| TSK-1.4.2.01 | Build the High-Density Audit UI table with complex Date/Actor filters. |
-| TSK-1.4.2.02 | Create visual badges for Action Types (e.g., CREATE, UPDATE, DISPOSE). |
-| TSK-1.4.2.03 | Implement "Export Log to CSV" logic.                                   |
+### US-2.2 — Global Admin Role Capabilities
 
----
+**Frontend**
 
-### Feature 1.5: Open API & Integration Gateway
+- [ ] Implement the role-aware Sidebar component that renders all navigation items when `user.role === 'GlobalAdmin'`.
+- [ ] Ensure all action buttons (Edit, Delete, Assign, Dispose, etc.) render without restriction for this role across all pages.
 
-#### US-1.5.1 — API Key Generation
+**Backend**
 
-> _As a Global Admin, I want to generate and revoke secure API keys from the Settings dashboard, So that I can grant external systems programmatic access without sharing user credentials._
+- [ ] Configure the backend JWT parser to identify and validate the `GlobalAdmin` claim from the token payload.
+- [ ] Ensure all RBAC middleware grants full pass-through access for requests carrying the `GlobalAdmin` role.
 
-| Task ID      | Description                                                                       |
-| :----------- | :-------------------------------------------------------------------------------- |
-| TSK-1.5.1.01 | Build API Key management UI in Settings.                                          |
-| TSK-1.5.1.02 | Implement backend key generation and hashing logic (similar to password storage). |
+### US-2.3 — IT Operator Role Capabilities
 
-#### US-1.5.2 — External Data Consumption
+**Frontend**
 
-> _As a Third-Party System Developer, I want to securely query a REST API for asset assignments, So that our HR system knows if a terminating employee still possesses company hardware._
+- [ ] Implement conditional sidebar rendering that hides "Settings", "Integrations", "System Log", and "Master Data" navigation items when `user.role === 'ITOperator'`.
+- [ ] Build a reusable `403 Forbidden` error page component with an illustration and a "Return to Dashboard" navigation button.
+- [ ] Implement frontend route guards that redirect IT Operators to the 403 page if they attempt to access restricted URL paths.
 
-| Task ID      | Description                                                                         |
-| :----------- | :---------------------------------------------------------------------------------- |
-| TSK-1.5.2.01 | Implement Token Authentication & Rate Limiting middleware for `/api/v1/external/*`. |
-| TSK-1.5.2.02 | Create standard Read-Only endpoints for Assets and Assignments.                     |
-| TSK-1.5.2.03 | Write Swagger/OpenAPI documentation for available endpoints.                        |
+**Backend**
 
-#### US-1.5.3 — Inbound API Action Triggers
+- [ ] Implement Azure AD Group-to-Role mapping logic in the SSO callback to automatically assign the "IT Operator" role when the user's token contains the "IT Helpdesk" group claim.
+- [ ] Write RBAC middleware to strictly protect configuration API routes (e.g., `POST /api/categories`, `GET /api/settings`, `POST /api/webhooks`) from this role, returning `403 Forbidden`.
 
-> _As a Third-Party System Developer, I want to trigger specific operational workflows (like assigning a laptop to a new hire) via the REST API, So that our HR system can automate IT onboarding without manual IT admin intervention._
+### US-2.4 — Finance Auditor Role Capabilities
 
-| Task ID      | Description                                                                                     |
-| :----------- | :---------------------------------------------------------------------------------------------- |
-| TSK-1.5.3.01 | Create `POST /api/v1/external/assets/assign` endpoint with transactional database safety.       |
-| TSK-1.5.3.02 | Implement backend logic to auto-select available inventory based on category requests.          |
-| TSK-1.5.3.03 | Ensure API-triggered actions are logged in the Audit Log, citing the API Key Name as the Actor. |
+**Frontend**
 
-#### US-1.5.4 — Outbound Webhooks Configuration
+- [ ] Implement conditional rendering logic to completely remove all write-action buttons (Edit, Assign, Dispose, Delete) from the DOM when `user.role === 'FinanceAuditor'`.
+- [ ] Ensure "Export CSV" and "Download Report" buttons remain visible and fully functional for this role.
+- [ ] Implement the role-aware Sidebar component that shows Financial module navigation but hides operational settings.
 
-> _As a Global Admin, I want to register external webhook URLs for specific system events, So that other corporate systems receive real-time push updates when asset statuses change._
+**Backend**
 
-| Task ID      | Description                                                                                                  |
-| :----------- | :----------------------------------------------------------------------------------------------------------- |
-| TSK-1.5.4.01 | Build a Webhooks configuration UI in the Integrations Settings tab (Event dropdown, Target URL input).       |
-| TSK-1.5.4.02 | Create a `WebhookSubscriptions` database table to store event mappings.                                      |
-| TSK-1.5.4.03 | Write an asynchronous backend service to dispatch HTTP POST payloads with retry logic for failed deliveries. |
+- [ ] Apply strict Read-Only (`GET`-only) middleware enforcement for the `FinanceAuditor` role across all `/api/assets/*` and `/api/operations/*` controllers.
+- [ ] Ensure the Finance-specific API endpoints (`GET /api/financials/*`) are accessible to both `FinanceAuditor` and `GlobalAdmin` roles.
 
----
+### US-2.5 — Default "Least Privilege" Access Assignment
 
-## Epic 2 — Asset Registry & Onboarding
+**Backend**
 
-> **Source:** [02-asset-registry-and-onboarding/](./user-story-specs/02-asset-registry-and-onboarding/)
+- [ ] Write user-provisioning logic in the SSO callback: if the incoming `user_id` does not exist in the local `Users` table, insert a new record and set their `role_id` to the database equivalent of "Standard Employee".
+- [ ] Ensure the RBAC middleware strictly treats any `null` or missing role mappings as "Standard Employee" to prevent accidental privilege escalation.
+- [ ] Implement Azure AD group-claims parsing: if the user's JWT contains recognized group memberships (e.g., "IT Helpdesk", "Finance Team"), auto-elevate during provisioning instead of defaulting.
 
-### Feature 2.1: Dynamic Asset Registration
+**Database**
 
-#### US-2.1.1 — Standard Asset Generation
+- [ ] Seed the `Roles` table with the 4 hardcoded role records (Global Admin, IT Operator, Finance Auditor, Standard Employee) during initial database migration.
+- [ ] Add a `NOT NULL DEFAULT` constraint on the `role_id` column in the `Users` table pointing to the "Standard Employee" role ID to enforce least-privilege at the schema level.
 
-> _As a Global Admin, I want to register a new asset using a standardized web form, So that the system automatically verifies its uniqueness and assigns it a permanent, non-editable Asset ID._
-
-| Task ID      | Description                                                                                     |
-| :----------- | :---------------------------------------------------------------------------------------------- |
-| TSK-2.1.1.01 | Build the base React registration form for standard fields (Name, Location, Vendor).            |
-| TSK-2.1.1.02 | Implement backend auto-increment logic for Asset ID generation linked to Epic 1's Prefix codes. |
-| TSK-2.1.1.03 | Write database validation rules to enforce unique Serial Numbers per Manufacturer.              |
-
-#### US-2.1.2 — Dynamic Schema Form Rendering
-
-> _As a Global Admin, I want the registration form to dynamically render custom inputs based on the selected category, So that I only see relevant technical specification fields._
-
-| Task ID      | Description                                                                        |
-| :----------- | :--------------------------------------------------------------------------------- |
-| TSK-2.1.2.01 | Implement frontend logic to fetch category schema via API `onChange`.              |
-| TSK-2.1.2.02 | Build dynamic form component renderer supporting Text, Number, and Dropdown types. |
-| TSK-2.1.2.03 | Write backend logic to save dynamic form values into the EAV/JSONB payload column. |
-
-#### US-2.1.3 — Financial Proof & Invoice Upload
-
-> _As a Global Admin, I want to attach digital copies of purchase invoices and enter the full initial cost breakdown during registration, So that the organization has verifiable proof of value to feed into the Depreciation engine._
-
-| Task ID      | Description                                                                            |
-| :----------- | :------------------------------------------------------------------------------------- |
-| TSK-2.1.3.01 | Implement secure Drag & Drop file upload component on the frontend.                    |
-| TSK-2.1.3.02 | Integrate cloud storage bucket API for storing and retrieving PDF invoices.            |
-| TSK-2.1.3.03 | Add encrypted `PurchaseCost` column to the database to protect financial data at rest. |
-| TSK-2.1.3.04 | Build separate Base Price, Tax, and Shipping input fields with auto-calculated Total.  |
-| TSK-2.1.3.05 | Implement currency selector dropdown supporting NOK, USD, and LKR.                     |
-| TSK-2.1.3.06 | Store original currency code alongside all financial values in the database.           |
-
-#### US-2.1.4 — Consumable Quantity Tracking
-
-> _As a Global Admin, I want to maintain a stock count for low-value items without generating individual Asset IDs, So that I can efficiently manage high-volume inventory levels without database bloat._
-
-| Task ID      | Description                                                                           |
-| :----------- | :------------------------------------------------------------------------------------ |
-| TSK-2.1.4.01 | Write backend logic flag to bypass ID/QR generation if category type is `Consumable`. |
-| TSK-2.1.4.02 | Build simple `+` and `−` quantity adjustment UI for consumable records.               |
-
-#### US-2.1.5 — Bulk CSV/Excel Import
-
-> _As a Global Admin, I want to upload a CSV or Excel file containing hundreds of asset details, So that I can mass-populate the registry during legacy system migration or bulk batch purchases._
-
-| Task ID      | Description                                                                                      |
-| :----------- | :----------------------------------------------------------------------------------------------- |
-| TSK-2.1.5.01 | Build CSV/Excel parser and column-mapping UI in React.                                           |
-| TSK-2.1.5.02 | Implement "All-or-Nothing" bypass logic (Partial Success handling) in the backend import script. |
-| TSK-2.1.5.03 | Write logic to auto-generate Asset IDs and QR URLs for every successfully imported row.          |
-| TSK-2.1.5.04 | Add Excel (.xlsx) file parsing support using a backend library (e.g., `exceljs` or `SheetJS`).   |
 
 ---
 
-### Feature 2.2: Main Asset Registry Grid & Details
+## Epic 3: Flexible Asset Categorization & Master Data Setup
 
-#### US-2.2.1 — High-Density Data Grid
+### US-3.1 — Centralized Master Data Dashboard
 
-> _As a Global Admin, I want to view my inventory in a high-density table with complex filtering and column toggles, So that I can rapidly find specific assets or execute bulk operations._
+**Frontend**
 
-| Task ID      | Description                                                                                            |
-| :----------- | :----------------------------------------------------------------------------------------------------- |
-| TSK-2.2.1.01 | Implement ShadCN Data Table with pagination, sorting, and global search.                               |
-| TSK-2.2.1.02 | Build multi-select column visibility dropdown.                                                         |
-| TSK-2.2.1.03 | Implement bulk-select checkboxes enabling batch actions (like Epic 4 Bulk Disposals).                  |
-| TSK-2.2.1.04 | Implement a "Bulk Edit Modal" for updating Location or Status of 50+ selected rows in one transaction. |
+- [ ] Build the `MasterDataLayout` React wrapper component with nested tab routing for each entity (Categories, Locations, Departments, Vendors, Brands & Models).
+- [ ] Implement a reusable `DataTable` UI component with built-in pagination (configurable rows per page), sortable column headers, and a fixed header row.
+- [ ] Build a reusable empty-state component with an illustration and dynamic prompt text.
 
-#### US-2.2.2 — Asset Details Slide-Out Panel
+**Backend**
 
-> _As an IT Support Staff member, I want to click on a grid row to open a Right-Side Slide-Out Panel, So that I can see an asset's complete vitals, assignment history, and take quick actions without losing my place in the grid._
+- [ ] Create a base CRUD controller pattern/template for Master Data entities that all specific entity controllers will extend.
 
-| Task ID      | Description                                                                             |
-| :----------- | :-------------------------------------------------------------------------------------- |
-| TSK-2.2.2.01 | Build the Slide-Out Sheet React component.                                              |
-| TSK-2.2.2.02 | Create layout sections: Header (Status Badges), Vitals, Assignments, and Quick Actions. |
-| TSK-2.2.2.03 | Write `GET /api/v1/assets/{id}` endpoint to aggregate relational data for the panel.    |
+### US-3.2 — Location Data Management
+
+**Frontend**
+
+- [ ] Build the "Add/Edit Location" modal component with form validation (required fields, duplicate detection on blur).
+- [ ] Implement the Toast notification system (reusable across all Master Data entities) for success/error feedback.
+- [ ] Implement multi-select checkboxes with a bulk-action toolbar featuring a "Delete" button.
+- [ ] Implement the Archive confirmation dialog for locations with active assets (disabling the hard-delete option).
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for Locations (`GET`, `POST`, `PUT`, `DELETE /api/v1/locations`).
+- [ ] Write dependency-check queries (`SELECT count(*) FROM assets WHERE location_id = X`) before executing `DELETE` — return `409 Conflict` if dependencies exist.
+- [ ] Implement the `PATCH /api/v1/locations/{id}/archive` endpoint to set `IsActive = false` for soft-delete.
+
+**Database**
+
+- [ ] Create the `Locations` table with columns: `id`, `building_name`, `floor`, `is_active` (boolean, default `true`), `created_at`, `updated_at`.
+- [ ] Add a `UNIQUE` constraint on the `building_name` column to enforce duplicate prevention at the schema level.
+
+### US-3.3 — Department & Cost Center Management
+
+**Frontend**
+
+- [ ] Build the "Add/Edit Department" modal with the short code input and a read-only preview field displaying the generated Cost Center ID (`tiq-{shortCode}`).
+- [ ] Implement the auto-formatting logic for the short code input: force lowercase, strip spaces and special characters, update the preview field on every keystroke.
+- [ ] Implement duplicate code validation on blur by querying the backend before submission.
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for Departments (`GET`, `POST`, `PUT`, `DELETE /api/v1/departments`).
+- [ ] Write the server-side Cost Center ID generation logic (`'tiq-' + shortCode.toLowerCase()`) as a validation step before insert.
+- [ ] Implement relational deletion checks against the `Users` and `Assets` tables to prevent orphaned records.
+
+**Database**
+
+- [ ] Create the `Departments` table with columns: `id`, `name`, `short_code`, `department_id` (generated), `is_active`, `created_at`, `updated_at`.
+- [ ] Add `UNIQUE` constraints on both the `name` and `department_id` columns.
+
+### US-3.4 — Vendor Directory Management
+
+**Frontend**
+
+- [ ] Build the "Add/Edit Vendor" modal with fields: Company Name, Contact Person, Contact Phone, Support Email.
+- [ ] Implement email field regex validation and inline error messaging.
+- [ ] Render the `Support Email` column in the data grid as a clickable `mailto:` link.
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for Vendors (`GET`, `POST`, `PUT`, `DELETE /api/v1/vendors`).
+- [ ] Ensure the "Edit Vendor" API cascades updated data naturally via foreign key relationships.
+- [ ] Implement relational deletion checks against `Assets` and `MaintenanceTickets` tables before allowing deletion.
+
+**Database**
+
+- [ ] Create the `Vendors` table with columns: `id`, `company_name`, `contact_person`, `contact_phone`, `support_email`, `is_active`, `created_at`, `updated_at`.
+- [ ] Add a `UNIQUE` constraint on the `company_name` column.
+
+### US-3.5 — Brand Management (Manufacturers)
+
+**Frontend**
+
+- [ ] Build the "Add/Edit Brand" modal component with case-insensitive duplicate validation.
+- [ ] Build the Brands data grid displaying `Brand Name`, `Status` (Active/Inactive toggle badge), and a computed `Model Count` column.
+- [ ] Implement the Active/Inactive toggle with visual state change (green for active, gray for inactive).
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for Brands (`GET`, `POST`, `PUT /api/v1/brands`).
+- [ ] Implement case-insensitive uniqueness validation on the brand name before insert/update.
+- [ ] Implement a `PATCH /api/v1/brands/{id}/deactivate` endpoint for soft-delete (setting `is_active = false`).
+- [ ] Write a `GET /api/v1/brands` response aggregation that includes a computed `model_count` for each brand.
+
+**Database**
+
+- [ ] Create the `Brands` table with columns: `id`, `name`, `is_active` (boolean, default `true`), `created_at`, `updated_at`.
+- [ ] Add a case-insensitive `UNIQUE` constraint on the `name` column (e.g., `UNIQUE(LOWER(name))` or `CITEXT` type).
+
+### US-3.6 — Brand & Model Hierarchy Management
+
+**Frontend**
+
+- [ ] Build the expandable/accordion row data table component: clicking a Brand row reveals a nested sub-table of its Models.
+- [ ] Build the "Add/Edit Model" modal contextually anchored to the expanded Brand row.
+- [ ] Implement the dependent dropdown logic for asset registration forms: selecting a Brand triggers an API call to `GET /api/v1/brands/{brandId}/models` to populate the Model dropdown.
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for Models (`GET`, `POST`, `PUT`, `DELETE /api/v1/brands/{brandId}/models`).
+- [ ] Enforce composite uniqueness: a model name must be unique _within_ a given brand, but the same name can exist under different brands.
+- [ ] Implement relational deletion checks against the `Assets` table before allowing Brand or Model deletion.
+
+**Database**
+
+- [ ] Create the `Models` table with columns: `id`, `name`, `brand_id` (FK → `Brands.id`), `is_active`, `created_at`, `updated_at`.
+- [ ] Add a composite `UNIQUE` constraint on `(brand_id, name)`.
+
+### US-3.7 — Sub-Category Management (Under the 4 Pillars)
+
+**Frontend**
+
+- [ ] Build the right-side Slide-Out Panel (Sheet) component covering 40% of the viewport width for category creation/editing.
+- [ ] Implement the Main Pillar selector as a locked dropdown or radio group with only the 4 hardcoded options.
+- [ ] Integrate the Sub-Category panel with the auto-prefix generator (US-3.8) and schema builder (US-3.9) as sub-sections.
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for SubCategories (`GET`, `POST`, `PUT`, `DELETE /api/v1/subcategories`).
+- [ ] Enforce uniqueness: a sub-category name must be unique within its parent pillar.
+- [ ] Implement relational deletion safeguards linking Sub-Categories to the main `Assets` table.
+
+**Database**
+
+- [ ] Create the `SubCategories` table with columns: `id`, `name`, `pillar` (ENUM: Hardware, Software, Furniture, Electronics), `prefix`, `schema` (JSONB), `is_active`, `created_at`, `updated_at`.
+- [ ] Add a composite `UNIQUE` constraint on `(pillar, name)`.
+
+### US-3.8 — Automated Sub-Category Prefixing
+
+**Frontend**
+
+- [ ] Implement the auto-prefix generation logic triggered on the Sub-Category Name input's `onBlur` event (e.g., first letter of each word, or first 3 consonants for single words).
+- [ ] Implement an async validation call on the generated prefix to check uniqueness against the backend before form submission.
+- [ ] Apply the visual lock styling to the Prefix field after creation: gray background (`bg-gray-100`), padlock icon, `readOnly` attribute.
+
+**Backend**
+
+- [ ] Write server-side prefix generation logic with collision resolution: if the generated prefix already exists, automatically append an incrementing number (e.g., `LAP` → `LAP2` → `LAP3`).
+- [ ] Write a `GET /api/v1/subcategories/validate-prefix?prefix={prefix}` endpoint for frontend async validation.
+- [ ] Block `PUT`/`PATCH` requests from modifying the `prefix` column after initial creation.
+
+### US-3.9 — Custom Field Builder (Schema Engine)
+
+**Frontend**
+
+- [ ] Build the Custom Field Builder UI at the bottom of the Sub-Category slide-out panel using a drag-and-drop library (e.g., `dnd-kit`).
+- [ ] Implement the field row component with: a drag handle (`⋮⋮`), a "Field Name" text input, a "Type" dropdown (`Text | Number | Dropdown | Date | Boolean`), a "Required" toggle, and a delete button.
+- [ ] Implement the conditional dropdown options sub-UI: when Type is set to "Dropdown", render a secondary input for comma-separated option values.
+- [ ] Write schema serialization logic to convert the field builder state into a JSON payload for API submission.
+
+**Backend**
+
+- [ ] Implement JSONB schema storage to save each sub-category's custom field definitions as a structured JSON array.
+- [ ] Create a `GET /api/v1/subcategories/{id}/schema` endpoint to fetch the field schema payload for dynamic frontend form rendering.
+- [ ] Write server-side validation logic to enforce required fields defined in the schema when assets are registered under this sub-category.
+
 
 ---
 
-### Feature 2.3: QR Code & Print Engine
+## Epic 4: Automated System Audit Log
 
-#### US-2.3.1 — QR Code Routing Generator
+### US-4.1 — Automated Action & IP Logging (The Ledger)
 
-> _As a Global Admin, I want the system to automatically generate a unique URL and 2D QR code for every registered asset, So that scanning the physical sticker routes the scanner directly to the asset's digital profile._
+**Backend**
 
-| Task ID      | Description                                                                       |
-| :----------- | :-------------------------------------------------------------------------------- |
-| TSK-2.3.1.01 | Implement QR code generation library on the backend (e.g., `qrcode` npm package). |
-| TSK-2.3.1.02 | Ensure the generated URL points to the secure Mobile Lookup PWA route.            |
+- [ ] Write a reusable backend middleware/interceptor that automatically hooks into all `POST`, `PUT`, `PATCH`, and `DELETE` controller actions to capture audit data.
+- [ ] Implement a utility function to compute Before/After object states by fetching the current record before mutation, then serializing both states into a JSON diff payload.
+- [ ] Implement IP address extraction logic from the request object, handling `X-Forwarded-For` headers for requests behind Load Balancers or Reverse Proxies.
+- [ ] Ensure the middleware captures the `actor_id` from the authenticated JWT payload and attaches it to every audit log entry.
+- [ ] Implement performance safeguards: use asynchronous (non-blocking) log writes where possible to stay under the 100ms latency budget.
 
-#### US-2.3.2 — Print Layout Engine
+**Database**
 
-> _As an IT Operations Admin, I want to select multiple assets and generate a formatted print file, So that I can print 50+ QR stickers on standard A4 sticker paper or send single tags to a thermal printer._
+- [ ] Create an append-only `AuditLogs` table with columns: `id`, `actor_id` (FK → Users), `actor_email`, `action_type` (ENUM: CREATE, UPDATE, DELETE, DISPOSE), `entity_type`, `entity_id`, `ip_address`, `before_state` (JSONB), `after_state` (JSONB), `created_at`.
+- [ ] Strictly revoke `UPDATE` and `DELETE` database privileges on the `AuditLogs` table at the database-user level to enforce immutability.
+- [ ] Create an index on `(entity_type, entity_id)` and `(actor_id)` for efficient querying by the Audit Log viewer.
 
-| Task ID      | Description                                                                           |
-| :----------- | :------------------------------------------------------------------------------------ |
-| TSK-2.3.2.01 | Integrate a PDF generation library (like `pdfmake` or `puppeteer`).                   |
-| TSK-2.3.2.02 | Build exact CSS/PDF millimeter dimensions for A4 Grid and Single Thermal layouts.     |
-| TSK-2.3.2.03 | Add TIQRI Logo and Asset ID text dynamically beneath the QR code in the print layout. |
+### US-4.2 — Forensic Audit Log Viewer & Export
 
----
+**Frontend**
 
-### Feature 2.4: PWA Mobile Scanner & Standalone Lookup
+- [ ] Build the Audit Log data table page in React with chronological ordering (newest first) and pagination.
+- [ ] Build the filter bar component with: Date Range pickers, Actor searchable dropdown, Action Type multi-select, and Entity Type filter.
+- [ ] Implement color-coded action-type badges component (Green = CREATE, Blue = UPDATE, Red = DELETE/DISPOSE).
+- [ ] Build the expandable row / "View Details" modal component rendering Before/After JSON diffs in a monospace font with a highlighted-change visual indicator.
+- [ ] Implement the "Export Log (CSV)" button that sends the current filter parameters to the backend and triggers the CSV file download.
 
-#### US-2.4.1 — HTML5 Camera Scanner Interface
+**Backend**
 
-> _As an IT Admin in the server room, I want to access a mobile scanner interface via my phone's web browser, So that I can scan QR codes without downloading a native app._
+- [ ] Create an API endpoint `GET /api/v1/audit-logs` with support for complex query parameters: `dateFrom`, `dateTo`, `actorId`, `actionType[]`, `entityType`, `entityId`, and cursor-based or offset pagination.
+- [ ] Implement a backend CSV streaming/generation service that accepts the same filter parameters and returns the result set as a downloadable `.csv` file (`GET /api/v1/audit-logs/export`).
+- [ ] Ensure the endpoint enforces RBAC: only `GlobalAdmin` and `FinanceAuditor` roles can access the audit log API.
 
-| Task ID      | Description                                                                                          |
-| :----------- | :--------------------------------------------------------------------------------------------------- |
-| TSK-2.4.1.01 | Implement HTML5 `getUserMedia` API and a JavaScript barcode scanning library (e.g., `html5-qrcode`). |
-| TSK-2.4.1.02 | Design mobile-first CSS for the camera overlay, reticle, and permission prompts.                     |
-
-#### US-2.4.2 — Standalone Mobile Lookup
-
-> _As an IT Admin, I want scanning a TIQRI QR sticker to instantly trigger a bottom-sheet pop-up, So that I can read the asset's vitals on my mobile device._
-
-| Task ID      | Description                                                               |
-| :----------- | :------------------------------------------------------------------------ |
-| TSK-2.4.2.01 | Build the mobile Bottom-Sheet React component.                            |
-| TSK-2.4.2.02 | Implement haptic feedback API (`navigator.vibrate`) upon successful scan. |
-| TSK-2.4.2.03 | Route the decoded URL string to fetch the specific asset payload.         |
-
-#### US-2.4.3 — Mobile "Empty State" Fallbacks
-
-> _As a mobile user, I want the system to gracefully block me from accessing complex desktop screens, So that I don't struggle with broken, unreadable data grids on a small screen._
-
-| Task ID      | Description                                                                     |
-| :----------- | :------------------------------------------------------------------------------ |
-| TSK-2.4.3.01 | Write CSS Media Queries or React viewport hooks to detect mobile screen widths. |
-| TSK-2.4.3.02 | Design and implement the fallback Illustration Card components.                 |
 
 ---
 
-### Feature 2.5: Tethered Companion Scanning (WebSockets)
+## Epic 5: Third-Party Integrations & Automation
 
-#### US-2.5.1 — Mobile-Desktop Auto-Link
+### US-5.1 — Secure API Key Management
 
-> _As an IT Admin, I want my mobile phone to automatically link to my current desktop browser session when both are signed in under my Azure AD account, So that the two devices can communicate in real-time without manual pairing._
+**Frontend**
 
-| Task ID      | Description                                                                            |
-| :----------- | :------------------------------------------------------------------------------------- |
-| TSK-2.5.1.01 | Set up a WebSocket server (e.g., `Socket.io` or native WS).                            |
-| TSK-2.5.1.02 | Implement `UserSessionMap` keyed by `user_id` to track desktop and mobile connections. |
-| TSK-2.5.1.03 | Build the desktop `ScannerToggle` component (replaces the former pairing QR modal).    |
+- [ ] Build the API Key management data grid page within the Settings/Integrations module, displaying: Key Name, Masked Key, Created Date, Last Used, and Status.
+- [ ] Build the "Generate New API Key" modal with a Key Name input and a "show-once" key reveal UI (monospace text box + "Copy to Clipboard" button + warning banner).
+- [ ] Build the "Revoke Key" confirmation modal with destructive-action styling and a clear warning message.
+- [ ] Implement the key masking display logic: show only the prefix and last 4 characters of each key.
 
-#### US-2.5.2 — Real-Time Barcode Injection
+**Backend**
 
-> _As an IT Admin entering new hardware, I want to scan a 1D manufacturer barcode on a laptop box using my phone, So that the serial number instantly appears in the text field on my desktop monitor without manual typing._
+- [ ] Implement cryptographically secure API key generation using a random string prefixed for identification (e.g., `idams_live_{random}`).
+- [ ] Implement secure hashing logic (bcrypt or Argon2) to store only the hashed version of the key in the database — the plaintext is returned only once during generation.
+- [ ] Create a `POST /api/v1/api-keys` endpoint for key generation that returns the plaintext key in the response body.
+- [ ] Create a `DELETE /api/v1/api-keys/{id}` endpoint for key revocation that invalidates the key immediately.
+- [ ] Write middleware to authenticate incoming external API requests by comparing the `Authorization: Bearer {key}` header against hashed keys in the database.
 
-| Task ID      | Description                                                                                               |
-| :----------- | :-------------------------------------------------------------------------------------------------------- |
-| TSK-2.5.2.01 | Configure the mobile scanner library to recognize 1D formats (Code 128, UPC, EAN).                        |
-| TSK-2.5.2.02 | Write WebSocket emitter logic on the mobile PWA client.                                                   |
-| TSK-2.5.2.03 | Write WebSocket listener logic on the desktop React client to inject payloads into active form states.    |
-| TSK-2.5.2.04 | Implement a temporary memory buffer in React global state for incoming payloads when no input is focused. |
-| TSK-2.5.2.05 | Ensure the WebSocket emitter and listener logic satisfies the NFR for sub-500 ms latency.                 |
+**Database**
 
----
+- [ ] Create an `ApiKeys` table with columns: `id`, `name`, `key_hash`, `key_prefix`, `key_suffix` (last 4 chars for display), `created_by` (FK → Users), `last_used_at`, `is_revoked` (boolean), `created_at`.
 
-## Epic 3 — Operations & Lifecycle Management
+### US-5.2 — External Data Consumption (Open API)
 
-> **Source:** [03-operations-and-lifecycle/](./user-story-specs/03-operations-and-lifecycle/)
+**Frontend**
 
-### Feature 3.1: Employee Support Portal & Digital Acceptance
+- [ ] Add a "View API Documentation" button/link on the Integrations dashboard that navigates to the Swagger UI.
 
-#### US-3.1.1 — View "My Assets"
+**Backend**
 
-> _As a Standard Employee, I want to see a list of "My Assets" when I log in, So that I can verify the equipment assigned to me and check return dates._
+- [ ] Implement Token Authentication middleware for the `/api/v1/external/*` route group that validates API keys against hashed values in the database.
+- [ ] Implement rate-limiting middleware (e.g., using `express-rate-limit` or Redis-backed sliding window) scoped per API key and/or IP address, returning `429 Too Many Requests` on threshold breach.
+- [ ] Create read-only endpoints: `GET /api/v1/external/assets`, `GET /api/v1/external/assets/{id}`, `GET /api/v1/external/assets/user/{employee_id}`, and `GET /api/v1/external/assignments`.
+- [ ] Integrate Swagger/OpenAPI auto-generation library to produce interactive API documentation from route definitions.
+- [ ] Update the `last_used_at` timestamp on the `ApiKeys` record each time a key is successfully authenticated.
 
-| Task ID      | Description                                                                                |
-| :----------- | :----------------------------------------------------------------------------------------- |
-| TSK-3.1.1.01 | Build a simplified, mobile-responsive "My Assets" UI grid.                                 |
-| TSK-3.1.1.02 | Implement backend endpoint filtering active assignments by the logged-in user's SSO token. |
+**Infrastructure / DevOps**
 
-#### US-3.1.2 — Digital Acceptance of Responsibility
+- [ ] Configure rate-limiting thresholds as environment variables (e.g., `API_RATE_LIMIT_PER_MINUTE=60`) so they can be tuned per deployment environment.
 
-> _As a Global Admin, I want the system to automatically notify the user via Email, Microsoft Teams and App when I assign an asset, So that they can click a link to confirm they have received it in good working order._
+### US-5.3 — Automated Outbound Webhooks
 
-| Task ID      | Description                                                                             |
-| :----------- | :-------------------------------------------------------------------------------------- |
-| TSK-3.1.2.01 | Implement email generation template with a unique confirmation token link.              |
-| TSK-3.1.2.02 | Implement Microsoft Teams adaptive card notification with a confirmation action button. |
-| TSK-3.1.2.03 | Create a public-facing (but token-secured) confirmation landing page.                   |
-| TSK-3.1.2.04 | Write backend logic to update assignment status upon confirmation.                      |
+**Frontend**
 
----
+- [ ] Build the Webhooks management data grid within the Integrations tab, displaying: Endpoint URL, Description, Subscribed Events, Health Status (badge), and actions (Edit / Delete).
+- [ ] Build the "Add/Edit Webhook" modal with: Endpoint URL input (with URL format validation), Description text area, and grouped event-trigger checkboxes (Assets, Lifecycle, Maintenance).
+- [ ] Implement the Health Status badge component: Green "Healthy" badge if last delivery was HTTP 2xx, Red "Failing" badge if last delivery timed out or returned an error.
 
-### Feature 3.2: Asset Lifecycle Tracking & Status Control
+**Backend**
 
-#### US-3.2.1 — Asset Chain of Custody / History Tab
+- [ ] Create RESTful CRUD endpoints for Webhook subscriptions (`GET`, `POST`, `PUT`, `DELETE /api/v1/webhooks`).
+- [ ] Write an asynchronous webhook dispatch service (using a message queue like Redis/BullMQ or native background workers) that fires HTTP `POST` payloads to registered URLs when subscribed system events are triggered.
+- [ ] Implement exponential backoff retry logic within the dispatch worker (e.g., retry at 1s, 5s, 30s, 5min intervals) to handle temporary network failures.
+- [ ] Write delivery logging logic: record the HTTP response status and timestamp of each dispatch attempt, and update the webhook's health status accordingly.
+- [ ] Implement the event-hook integration points in existing controllers: when an asset status changes, assignment occurs, or maintenance event fires, push the event payload to the webhook dispatcher.
 
-> _As an Auditor or Global Admin, I want to view the complete chronological history of a specific asset, So that I can see every assignment, return, and status change since it was purchased to establish a secure chain of custody._
+**Database**
 
-| Task ID      | Description                                                                                     |
-| :----------- | :---------------------------------------------------------------------------------------------- |
-| TSK-3.2.1.01 | Build a vertical timeline UI component for the Asset Details Slide-Out Panel.                   |
-| TSK-3.2.1.02 | Write backend query to fetch and format asset-specific events from the global System Audit Log. |
-| TSK-3.2.1.03 | Add a "Download History as CSV" button specifically for this asset's timeline.                  |
+- [ ] Create a `WebhookSubscriptions` table with columns: `id`, `endpoint_url`, `description`, `subscribed_events` (JSONB array), `is_active`, `last_delivery_status`, `last_delivery_at`, `created_by` (FK → Users), `created_at`, `updated_at`.
+- [ ] Create a `WebhookDeliveryLogs` table for auditing: `id`, `webhook_id` (FK), `event_type`, `payload` (JSONB), `http_status`, `response_body` (text), `attempt_number`, `created_at`.
 
-#### US-3.2.2 — Manual Lifecycle Status Management
-
-> _As a Global Admin, I want to manually update the status of an asset to exception states (e.g., "Lost", "Stolen", "Found"), So that the inventory reflects reality when an asset goes missing outside of the standard repair or assignment workflows._
-
-| Task ID      | Description                                                                                                                  |
-| :----------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| TSK-3.2.2.01 | Build a "Change Status" quick-action modal requiring a mandatory justification note.                                         |
-| TSK-3.2.2.02 | Implement backend state-machine rules preventing a "Lost" asset from being assigned without first transitioning to "Found" or "Available". |
-| TSK-3.2.2.03 | Build a "Custom Status Configuration" UI in Settings allowing admins to create, label, and manage additional lifecycle statuses. |
 
 ---
 
-### Feature 3.3: Assignments & Returns Workflow
+## Epic 6: Asset Registries & Data Grids
 
-#### US-3.3.1 — Asset Check-Out / Assignment
+### US-6.1 — Global Omni-Search (Cmd+K)
 
-> _As a Global Admin, I want to assign an available asset to a user or a specific location, So that I know exactly who is responsible for the item._
+**Frontend**
 
-| Task ID      | Description                                                                                          |
-| :----------- | :--------------------------------------------------------------------------------------------------- |
-| TSK-3.3.1.01 | Build "Assign Asset" UI modal with searchable User/Location dropdowns.                               |
-| TSK-3.3.1.02 | Implement backend validation to ensure only "Available" assets can be assigned.                      |
-| TSK-3.3.1.03 | Add an optional "Expected Return Date" calendar picker to the assignment modal for tracking temporary loaners. |
+- [ ] Build the Command Palette UI component using a specialized accessibility library (e.g., `cmdk` or custom implementation).
+- [ ] Register the global `Cmd+K` / `Ctrl+K` keyboard shortcut listener and wire it to toggle the modal overlay.
+- [ ] Implement a static frontend index of all system routes (Pages) and global functions (Actions) to allow for instant, zero-latency client-side filtering.
+- [ ] Implement categorized result rendering with sticky sub-headers (`PAGES`, `ASSETS`, `USERS`, `ACTIONS`) and distinct leading icons per category.
+- [ ] Implement full keyboard navigation within the results list (Arrow Up/Down to highlight, Enter to select, Escape to close).
+- [ ] Wire the selected result to either a `react-router` navigation (for Pages/Assets) or a frontend action dispatcher (for Actions).
 
-#### US-3.3.2 — Request Asset Return
+**Backend**
 
-> _As a Global Admin, I want to notify a user to return an assigned asset, So that I can begin the offboarding or reassignment process._
+- [ ] Create an optimized multi-table search endpoint (`GET /api/v1/search?q={query}`) that queries Assets (by ID, name, serial number), Users (by name, email), and Master Data entities concurrently.
+- [ ] Implement result ranking/relevance scoring to surface the most likely matches first (e.g., exact Asset ID matches above partial name matches).
+- [ ] Add a debounced query parameter to prevent excessive database hits from rapid keystroke input.
 
-| Task ID      | Description                                                                                       |
-| :----------- | :------------------------------------------------------------------------------------------------ |
-| TSK-3.3.2.01 | Add the "Request Return" button to the Asset Details side panel for assigned assets.              |
-| TSK-3.3.2.02 | Implement the "Requested" status badge/label within the Assigned Assets table rows.               |
-| TSK-3.3.2.03 | Create a backend endpoint to trigger a return notification (Email/System Alert) to the custodian. |
-| TSK-3.3.2.04 | Update the asset status logic to transition to "Requested" upon button click.                     |
+### US-6.2 — Universal Registry Header & Local Table Filter
 
-#### US-3.3.3 — Asset Check-In & Condition Review
+**Frontend**
 
-> _As a Global Admin, I want to process the physical return of an asset and assess its condition, So that its status is accurately updated in the inventory for future use or disposal._
+- [ ] Build a reusable `RegistryHeader` React component that accepts the current pillar context as a prop and renders the dynamic heading, subcategory dropdown, search bar, Filters button, and "+ Add Asset" CTA.
+- [ ] Implement the subcategory dropdown powered by a `GET /api/v1/subcategories?pillar={pillar}` API call, triggering a grid data refresh on selection change.
+- [ ] Integrate the local search input state directly with the data table's global text filter logic for instant client-side filtering.
+- [ ] Build a dynamic breadcrumbs component in the top nav bar that updates based on sidebar grouping and current subcategory selection.
 
-| Task ID      | Description                                                                                                                  |
-| :----------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| TSK-3.3.3.01 | Implement the "Received" button to transfer an asset from Assigned to Returned list.                                         |
-| TSK-3.3.3.02 | Build the "Return-Dialog" modal with mandatory condition radio buttons (Good / Minor Issues / Needs Repair / Beyond Repair). |
-| TSK-3.3.3.03 | Add a "Condition Notes" text area within the modal for detailed admin feedback.                                              |
-| TSK-3.3.3.04 | Write conditional backend logic: Good → Available; Minor/Repair → In Repair; Beyond Repair → Disposed.                       |
-| TSK-3.3.3.05 | Write logic to clear the custodian field and record the return event into the historical ledger.                             |
+**Backend**
 
-#### US-3.3.4 — Bulk Location Transfer
+- [ ] Create a `GET /api/v1/subcategories?pillar={pillar}` endpoint to return active subcategories for the selected pillar.
 
-> _As a Global Admin, I want to bulk-update the location of multiple assets in a single action, So that I can efficiently reflect large physical moves without editing each asset individually._
+### US-6.3 — Hardware Inventory Grid
 
-| Task ID      | Description                                                                                    |
-| :----------- | :--------------------------------------------------------------------------------------------- |
-| TSK-3.3.4.01 | Build the "Bulk Edit" modal accessible from the registry grid's bulk-action toolbar.           |
-| TSK-3.3.4.02 | Implement backend batch-update endpoint processing multiple asset IDs in a single transaction. |
-| TSK-3.3.4.03 | Write Audit Log entries for each individual asset change within the batch.                     |
+**Frontend**
 
----
+- [ ] Build the `HardwareGrid` React component with the exact column definitions: Asset ID, Asset Name, Serial Number, Category, Assigned to, Status.
+- [ ] Build a reusable `StatusBadge` component rendering color-coded outline pill badges with leading icons per status (Available=Green, Assigned=Gray, In Repair=Purple, etc.).
+- [ ] Build a `CategoryBadge` component and implement conditional visibility: hidden when a specific subcategory is selected, visible when "All" is selected.
 
-### Feature 3.4: Maintenance Ledger & Issue Triage
+**Backend**
 
-#### US-3.4.1 — Tabbed Maintenance Ledger
+- [ ] Create a `GET /api/v1/assets?pillar=Hardware&subcategory={id}` endpoint that returns paginated asset data filtered by pillar and optionally by subcategory, supporting sorting and search parameters.
 
-> _As an IT Operations Admin, I want to view a dedicated ledger with tabs for "Pending Review", "Active Repairs", and "Repair History", So that I can easily track the current status of all broken or out-for-repair hardware._
+### US-6.4 — Software & Licenses Grid
 
-| Task ID      | Description                                                                                  |
-| :----------- | :------------------------------------------------------------------------------------------- |
-| TSK-3.4.1.01 | Build the Tabbed Data Table React component.                                                 |
-| TSK-3.4.1.02 | Implement API routes to fetch maintenance tickets filtered by their current lifecycle state. |
+**Frontend**
 
-#### US-3.4.2 — Triage Review Sheet
+- [ ] Build the `SoftwareGrid` React component with software-specific column definitions: Software Name, License Key (masked display), Total Seats, Available Seats, Expiration Date.
+- [ ] Implement visual warnings for the Expiration Date column: highlight rows in yellow/orange when expiry is within 30 days, red when expired.
 
-> _As an IT Operations Admin, I want to click a pending triage ticket to open a Right-Side Review Panel, So that I can assess the user's reported damage alongside the asset's current book value and warranty status._
+**Backend**
 
-| Task ID      | Description                                                                      |
-| :----------- | :------------------------------------------------------------------------------- |
-| TSK-3.4.2.01 | Build the Triage Review Slide-Out Sheet component.                               |
-| TSK-3.4.2.02 | Aggregate financial and warranty data into the API response for the triage view. |
+- [ ] Create a `GET /api/v1/assets?pillar=Software&subcategory={id}` endpoint returning software-specific data including computed `Available Seats` (Total Seats minus active assignments).
 
----
+### US-6.5 — Furniture & Fixtures Grid
 
-### Feature 3.5: Vendor Repair Workflow
+**Frontend**
 
-#### US-3.5.1 — Initiate Repair Modal
+- [ ] Build the `FurnitureGrid` React component with furniture-specific column definitions: Asset ID, Asset Name, Category, Location (Building/Floor), Condition.
 
-> _As an IT Operations Admin, I want to log a "Maintenance Event" and dispatch an item to a vendor, So that I have a history of all repairs and can track expected returns._
+**Backend**
 
-| Task ID      | Description                                                                                    |
-| :----------- | :--------------------------------------------------------------------------------------------- |
-| TSK-3.5.1.01 | Build the "Initiate Repair" modal form.                                                        |
-| TSK-3.5.1.02 | Write backend state-machine logic to update status to `In Repair` and un-assign from employee. |
+- [ ] Create a `GET /api/v1/assets?pillar=Furniture&subcategory={id}` endpoint returning furniture-specific data with location details.
 
-#### US-3.5.2 — Close Repair Modal & TCO Update
+### US-6.6 — Office Electronics Grid
 
-> _As a Global Admin, I want to close a repair ticket and log the actual final cost, So that the Asset's "Total Maintenance Cost" updates and it is routed to its next status._
+**Frontend**
 
-| Task ID      | Description                                                                                        |
-| :----------- | :------------------------------------------------------------------------------------------------- |
-| TSK-3.5.2.01 | Build the "Close Repair" modal form requiring Final Cost input.                                    |
-| TSK-3.5.2.02 | Implement backend aggregation logic to append the new cost to the asset's Total Cost of Ownership. |
+- [ ] Build the `ElectronicsGrid` React component with electronics-specific column definitions: Asset ID, Asset Name, Category, Location, IP/MAC Address, Maintenance Status.
 
----
+**Backend**
 
-## Epic 4 — Secure Disposal & Compliance
+- [ ] Create a `GET /api/v1/assets?pillar=Electronics&subcategory={id}` endpoint returning electronics-specific data including network identifiers and maintenance status.
 
-> **Source:** [04-secure-disposal-and-compliance/](./user-story-specs/04-secure-disposal-and-compliance/)
+### US-6.7 — Advanced Grid Controls (Filtering, Sorting, & Pagination)
 
-### Feature 4.1: Disposal Requests & Administrative Review
+**Frontend**
 
-#### US-4.1.1 — Initiate Disposal & The Ledger Queue
+- [ ] Build the custom table footer component matching the UI mockup: total record count, rows-per-page dropdown, and First/Prev/Next/Last page navigation controls.
+- [ ] Build the "Filters" dropdown panel with multi-select filter options (Status, Location, Brand, Category, Date Range) that apply to the current grid.
+- [ ] Implement sortable column headers: clicking a column header toggles ascending/descending sort with a visual indicator arrow.
+- [ ] Wire all filter/sort/pagination state to the backend API as query parameters for server-side data processing.
 
-> _As an IT Ops Admin, I want to request disposal for an asset and select a reason, So that it is removed from active circulation and routed to the Pending Disposal queue for executive review._
+**Backend**
 
-| Task ID      | Description                                                                                        |
-| :----------- | :------------------------------------------------------------------------------------------------- |
-| TSK-4.1.1.01 | Build the Disposals Ledger UI (Tabbed data table: "Pending Approval" and "Disposal History").      |
-| TSK-4.1.1.02 | Implement backend logic to change status to `Pending Disposal` and lock the asset from assignment. |
-| TSK-4.1.1.03 | Build the read-only "Disposal History" tab with download links to E-Waste certificates.            |
+- [ ] Extend all asset listing endpoints to accept query parameters for: `page`, `pageSize`, `sortBy`, `sortOrder`, `status[]`, `locationId`, `brandId`, `subcategoryId`, `dateFrom`, `dateTo`.
+- [ ] Implement server-side pagination returning a standardized response envelope: `{ data: [...], meta: { total, page, pageSize, totalPages } }`.
 
-#### US-4.1.2 — Disposal Request Review Sheet
+### US-6.8 — Bulk Operations
 
-> _As a Global Admin or Finance Manager, I want to click a pending disposal request to view a slide-out panel detailing its financial and technical history, So that I have the necessary context to authorize the write-off._
+**Frontend**
 
-| Task ID      | Description                                                                                    |
-| :----------- | :--------------------------------------------------------------------------------------------- |
-| TSK-4.1.2.01 | Build the Disposal Request Review Sheet component.                                             |
-| TSK-4.1.2.02 | Write API aggregator to pull Epic 5 financial data (Current Book Value) into the review panel. |
+- [ ] Implement row-selection state management within the data table component (individual checkboxes + a "select all on page" checkbox in the header).
+- [ ] Build the dynamic Bulk Action Toolbar component that appears when one or more rows are selected, showing a selected count badge.
+- [ ] Write frontend logic to compute the intersection of valid allowed actions based on the current `pillar` and `status` of all selected rows: hide impossible pillar actions entirely, disable conflicting status actions with tooltips.
+- [ ] Build the bulk-action confirmation modal component with a dynamic warning message (e.g., "You are about to update {count} assets.").
+
+**Backend**
+
+- [ ] Create a transactional batch-update endpoint (`PATCH /api/v1/assets/bulk`) that accepts an array of asset IDs and the target update operation.
+- [ ] Implement atomic transaction logic: all updates succeed or the entire batch rolls back if any single item fails business logic validation (e.g., assigning an already-assigned asset).
+- [ ] Ensure each individual asset change within the batch writes a separate entry to the Audit Log (Epic 4) for traceability.
+- [ ] Implement backend validation that mirrors the frontend pillar/status constraint rules to prevent bypassing via direct API calls.
+
 
 ---
 
-### Feature 4.2: Secure Disposal Execution & Compliance
+## Epic 7: Asset Registration
 
-#### US-4.2.1 — The Hard Stop Compliance Modal & Upload
+### US-7.1 — Universal Registration Panel & Automation
 
-> _As a Global Admin, I want to upload a Certificate of Destruction and confirm physical security checks, So that the organization has legal proof of the disposal for environmental and tax audits._
+**Frontend**
 
-| Task ID      | Description                                                                                             |
-| :----------- | :------------------------------------------------------------------------------------------------------ |
-| TSK-4.2.1.01 | Build the Compliance Execution Modal with exact text-match validation logic.                            |
-| TSK-4.2.1.02 | Integrate a Drag-and-Drop file upload UI.                                                               |
-| TSK-4.2.1.03 | Connect the frontend upload zone to the backend cloud storage bucket (AWS S3 / Azure Blob).             |
-| TSK-4.2.1.04 | Add a mandatory "Disposal Method" dropdown and bind it to the frontend form state.                      |
-| TSK-4.2.1.05 | Write backend validation to reject the final disposal POST if Method, Asset ID, or checkbox is missing. |
+- [ ] Build the reusable Slide-Out Panel React component (40-50% width, dark backdrop overlay, smooth slide-in/out animation).
+- [ ] Integrate React Hook Form (or equivalent) for form state management, validation, and submission.
+- [ ] Implement the Pillar lock mechanism: read the current pillar from the routing context and render it as a read-only disabled field.
+- [ ] Implement dynamic Subcategory selection: on change, fetch the sub-category's custom schema from `GET /api/v1/subcategories/{id}/schema` and re-render the form fields accordingly.
+- [ ] Implement the `onChange` listener for the Brand/Model dropdowns that auto-binds Epic 3 Master Data technical specs to the form's hidden payload.
+- [ ] Build form section dividers/accordion cards to visually organize long forms into logical groups.
+- [ ] Implement the disabled Submit button state: grayed out until all mandatory fields pass validation.
 
-#### US-4.2.2 — Reject Disposal Workflow
+**Backend**
 
-> _As a Global Admin, I want to reject a disposal request, provide a mandatory reason, and re-route the asset, So that assets still under warranty or holding value are put back into circulation._
+- [ ] Create a `POST /api/v1/assets` endpoint that accepts the registration payload, validates required fields, and persists the record.
+- [ ] Implement server-side Asset Tracking ID generation using the format `[Pillar Prefix]-[Subcategory Prefix]-[Sequence Number]`, ensuring atomic sequential number assignment.
+- [ ] Write server-side validation to enforce mandatory fields based on the sub-category's custom schema definition.
 
-| Task ID      | Description                                                                               |
-| :----------- | :---------------------------------------------------------------------------------------- |
-| TSK-4.2.2.01 | Build the Rejection Modal component.                                                      |
-| TSK-4.2.2.02 | Write backend logic to revert the `Pending Disposal` status to the newly selected status. |
-| TSK-4.2.2.03 | Hook into Epic 5's notification engine to alert the original IT Ops admin.                |
+**Database**
 
----
+- [ ] Design the `Assets` table schema with columns for all shared fields: `id`, `asset_id` (generated tracking ID), `pillar`, `subcategory_id` (FK), `brand_id` (FK), `model_id` (FK), `status`, `custom_fields` (JSONB), `created_by`, `created_at`, `updated_at`.
+- [ ] Create a sequence or counter mechanism for the auto-incrementing portion of the Asset Tracking ID.
 
-### Feature 4.3: Bulk Operations & Architectural Safeguards
+### US-7.2 — Hardware Registration & Consumables
 
-#### US-4.3.1 — Bulk Disposal Processing
+**Frontend**
 
-> _As a Global Admin, I want to request disposal for a batch of assets and approve them using a single shared receipt, So that I don't have to upload the same E-Waste PDF 50 times._
+- [ ] Build the conditional Hardware form rendering: show `Serial Number`, `MAC Address`, `Condition`, `Assigned User` fields for standard subcategories.
+- [ ] Build the Consumables variant: hide individual tracking ID and serial number fields, render the Stepper Input for "Quantity to Add".
+- [ ] Implement MAC Address input auto-formatting logic (insert colons/hyphens every 2 characters).
 
-| Task ID      | Description                                                                                    |
-| :----------- | :--------------------------------------------------------------------------------------------- |
-| TSK-4.3.1.01 | Adapt the Compliance Modal to accept an array of selected Asset IDs.                           |
-| TSK-4.3.1.02 | Write backend batch processing logic to update multiple rows in a single database transaction. |
-| TSK-4.3.1.03 | Optimize the database to store a single file URL reference across multiple asset records.      |
+**Backend**
 
-#### US-4.3.2 — Soft Delete Architecture & Finality
+- [ ] Implement the backend bypass for Asset ID generation when `subcategory.type === 'Consumable'`: instead of creating individual records, increment a stock counter.
+- [ ] Create a `POST /api/v1/assets/consumables` endpoint for consumable stock adjustments.
+- [ ] Add `UNIQUE` constraint validation on `serial_number` within the Hardware pillar to prevent duplicate serial entries.
 
-> _As a Security Auditor, I want disposed assets to be retained in the database for 7 years, So that they are hidden from the active registry but available for historical tax audits._
+### US-7.3 — Software Registration
 
-| Task ID      | Description                                                                                          |
-| :----------- | :--------------------------------------------------------------------------------------------------- |
-| TSK-4.3.2.01 | Implement `IsArchived` / `Status = Disposed` global filters across all standard `GET` API endpoints. |
-| TSK-4.3.2.02 | Write backend permission logic to block `PUT`/`PATCH` requests for any `Disposed` asset.             |
+**Frontend**
 
----
+- [ ] Build the conditional Software form rendering: show Software Name, Category, Agreement Type, Publisher, Payment Model, License Key, Total Seats, Licensed Email; hide physical fields (Location, Condition, Serial Number).
+- [ ] Build the software icon image upload placeholder with preview.
+- [ ] Build the Purchase Details form section with currency dropdown, date picker, cost fields, vendor selection, and invoice attachment.
 
-## Epic 5 — Financial Analytics & Automation
+**Backend**
 
-> **Source:** [05-financial-analytics-and-automation/](./user-story-specs/05-financial-analytics-and-automation/)
+- [ ] Implement server-side validation rules specific to Software assets: enforce mandatory fields like `license_key`, `total_seats`, and `agreement_type`.
+- [ ] Create a `SoftwareLicenses` extension table (or JSONB fields) to store software-specific data (seats, keys, publisher, etc.) linked to the main `Assets` record.
 
-### Feature 5.1: Global KPI Dashboard & Standard Reporting
+### US-7.4 — Furniture & Fixtures Registration
 
-#### US-5.1.1 — Admin Dashboard
+**Frontend**
 
-> _As a Global Admin, I want to see a dashboard upon login with key metrics and pending actions, So that I know exactly what needs my attention today._
+- [ ] Build the conditional Furniture form rendering: show `Building Location`, `Floor/Zone`, `Condition`, and dynamic Custom Fields from Epic 3.
+- [ ] Implement the dependent Location dropdown: selecting a Building filters the available Floor/Zone options.
+- [ ] Build the Condition dropdown with color-coded status indicator dots beside each option.
 
-| Task ID      | Description                                                                               |
-| :----------- | :---------------------------------------------------------------------------------------- |
-| TSK-5.1.1.01 | Build responsive CSS Grid layout for KPI metric cards.                                    |
-| TSK-5.1.1.02 | Write optimized database aggregation queries to fetch live counts (< 2 s load time).      |
-| TSK-5.1.1.03 | Implement click-through deep-linking from KPI widgets to their respective filtered grids. |
+**Backend**
 
-#### US-5.1.2 — Standard Reporting
+- [ ] Implement server-side validation rules specific to Furniture assets: enforce mandatory `location_id` and `condition`.
 
-> _As a Global Admin / Auditor, I want to generate and download standard inventory reports, So that I can share this data with stakeholders who don't have system access._
+### US-7.5 — Office Electronics Registration
 
-| Task ID      | Description                                                                       |
-| :----------- | :-------------------------------------------------------------------------------- |
-| TSK-5.1.2.01 | Build Report configuration UI (Date Range and Location parameters).               |
-| TSK-5.1.2.02 | Implement robust CSV, Excel (.xlsx), and PDF generation libraries on the backend. |
-| TSK-5.1.2.03 | Build an HTML report preview renderer for in-browser viewing before export.       |
+**Frontend**
 
----
+- [ ] Build the conditional Electronics form rendering: show `Building Location`, `Network IP/MAC Address`, `Next Scheduled Maintenance Date`, and dynamic Custom Fields.
+- [ ] Implement IPv4/IPv6 input masking with regex validation.
+- [ ] Integrate a date picker component for the "Next Scheduled Maintenance Date" field.
 
-### Feature 5.2: Dedicated Financials Module & Cost Analysis
+**Backend**
 
-#### US-5.2.1 — Depreciation & Write-Offs Ledger
+- [ ] Implement server-side validation for the Electronics pillar: enforce mandatory `location_id`, validate IP address format, and validate maintenance date is in the future.
 
-> _As a Finance Director, I want to access a dedicated, RBAC-secured Financials module with a Depreciation Ledger, So that I can view the real-time "Current Book Value" for corporate tax reporting._
+### US-7.6 — Financial Proof & Invoice Upload
 
-| Task ID      | Description                                                                                                    |
-| :----------- | :------------------------------------------------------------------------------------------------------------- |
-| TSK-5.2.1.01 | Update the UI Sidebar to include a "Financials" accordion menu restricted to Finance/Global Admin.             |
-| TSK-5.2.1.02 | Build the Straight-Line Depreciation Ledger data grid.                                                         |
-| TSK-5.2.1.03 | Write backend mathematical aggregation logic to calculate depreciation based on `PurchaseDate` and `BaseCost`. |
+**Frontend**
 
-#### US-5.2.2 — Total Cost of Ownership Engine
+- [ ] Build the "Financials" form section with: Currency selector (with flags/symbols), Base Price, Tax, Shipping cost inputs, and a read-only auto-calculated Total Initial Cost field.
+- [ ] Implement the real-time auto-calculation logic: `Total = Base Price + Tax + Shipping`, updating the locked total field on every keystroke.
+- [ ] Build a secure drag-and-drop file upload component with client-side file type validation (allow `.pdf`, `.jpg`, `.png` only) and a visual upload progress bar.
 
-> _As a Global Admin, I want to track the "Total Cost of Ownership" (TCO) including repair costs, So that I can monitor reliability and stop buying models that fail frequently._
+**Backend**
 
-| Task ID      | Description                                                                                           |
-| :----------- | :---------------------------------------------------------------------------------------------------- |
-| TSK-5.2.2.01 | Create the TCO Ledger UI tab.                                                                         |
-| TSK-5.2.2.02 | Write SQL Views or backend aggregators to sum `BaseCost` with all linked `MaintenanceLogs.FinalCost`. |
+- [ ] Create a `POST /api/v1/uploads/invoices` endpoint that accepts multipart file uploads, validates file type and size on the server, and stores the file in the cloud bucket.
+- [ ] Return a `file_url` or `file_key` from the upload endpoint to be saved alongside the asset record.
+- [ ] Store the financial breakdown (`base_price`, `tax`, `shipping`, `total_cost`, `currency`) in a dedicated `PurchaseDetails` table linked to the `Assets` record via foreign key.
 
-#### US-5.2.3 — Write-Offs & Salvage Ledger
+**Infrastructure / DevOps**
 
-> _As a Finance Director, I want to view a financial ledger of the permanent disposal history alongside any captured salvage values, So that I can accurately report write-offs and recouped cash for corporate tax purposes._
+- [ ] Configure a cloud storage bucket (AWS S3 or Azure Blob Storage) for invoice file storage with appropriate access policies and CORS configuration.
+- [ ] Set up signed URL generation for secure, time-limited file downloads.
 
-| Task ID      | Description                                                                                                   |
-| :----------- | :------------------------------------------------------------------------------------------------------------ |
-| TSK-5.2.3.01 | Create the "Write-Offs & Salvage Ledger" UI tab within the secured Financials sidebar module.                 |
-| TSK-5.2.3.02 | Add an optional `SalvageValue` numeric input to the Epic 4 Compliance Execution Modal.                        |
-| TSK-5.2.3.03 | Write backend query to fetch `Disposed` assets joining `PurchaseCost`, depreciated value, and `SalvageValue`. |
 
 ---
 
-### Feature 5.3: Automated Alerts & Notification Center
+## Epic 8: Asset Details View
 
-#### US-5.3.1 — CRON Engine & Alert Configuration
+### US-8.1 — Slide-Out Panel & Navigation
 
-> _As a Global Admin, I want to receive a weekly digest of upcoming expiries (Warranties, Licenses), So that I can plan budget and replacements proactively._
+**Frontend**
 
-| Task ID      | Description                                                                                                                    |
-| :----------- | :----------------------------------------------------------------------------------------------------------------------------- |
-| TSK-5.3.1.01 | Build the Alert Configuration Rules UI with toggle switches and threshold dropdowns.                                           |
-| TSK-5.3.1.02 | Configure a background Scheduler service (e.g., Azure Functions / Hangfire) to run nightly queries.                            |
-| TSK-5.3.1.03 | Write email aggregation logic to send 1 summary digest email instead of 100 separate emails.                                   |
-| TSK-5.3.1.04 | Implement Microsoft Teams channel/chat notification delivery alongside email alerts.                                           |
-| TSK-5.3.1.05 | Write CRON job query to scan for upcoming Software License expirations.                                                        |
-| TSK-5.3.1.06 | Write CRON job query to flag active maintenance tickets where `Status == "In Repair"` AND `ExpectedReturnDate < CURRENT_DATE`. |
-| TSK-5.3.1.07 | Implement backend routing to send overdue repair alerts to the `CreatedBy` user of that repair ticket.                         |
-| TSK-5.3.1.08 | Implement exponential backoff retry logic for the SMTP/Email service for delivery reliability.                                 |
+- [ ] Build the base 700px Slide-Out Sheet React component that does _not_ trap focus or block interaction with the underlying DOM elements (non-modal sheet).
+- [ ] Implement sidebar auto-collapse logic: when the panel opens, the main sidebar collapses to icon-only mode; when the panel closes, the sidebar expands back.
+- [ ] Implement the `selectedAssetId` state management at the grid level, passed down as a prop to the panel.
+- [ ] Write a `useEffect` hook inside the panel component that listens for `selectedAssetId` changes and triggers a fresh `GET /api/v1/assets/{id}` fetch, smoothly replacing the panel's data.
+- [ ] Implement a loading skeleton component displayed inside the panel during data fetching transitions.
+- [ ] Implement active row highlighting in the data grid: apply a distinct background color to the row matching `selectedAssetId`.
 
-#### US-5.3.2 — Notification Center / Inbox
+**Backend**
 
-> _As a User, I want a dedicated Notification Center (Bell Icon) within the application, So that I can quickly view unread system alerts and navigate directly to the affected items._
+- [ ] Create a `GET /api/v1/assets/{id}` endpoint returning the complete asset profile including base details, custom fields, purchase details, and related maintenance records.
 
-| Task ID      | Description                                                                                    |
-| :----------- | :--------------------------------------------------------------------------------------------- |
-| TSK-5.3.2.01 | Build the Notification Center Dropdown UI component with a "Mark all as read" action.          |
-| TSK-5.3.2.02 | Create an `AppNotifications` database table to track unread/read states per user.              |
-| TSK-5.3.2.03 | Implement deep-linking URL routing from the notification payload to the specific UI component. |
+### US-8.2 — Hardware Asset Profile
 
-#### US-5.3.3 — Vendor API Sync _(Optional / Phase 2)_
+**Frontend**
 
-> _As a Global Admin, I want the system to periodically query external Vendor APIs (e.g., Dell, HP, Lenovo) using asset Serial Numbers, So that Warranty Expiry dates are automatically fetched and updated._
+- [ ] Implement conditional tab rendering based on `asset.pillar === 'Hardware'` to show the 4-tab layout (Asset Details, Technical Details, Purchase Details, History).
+- [ ] Build the "Asset Details" summary tab: device image, status badge, 2-column CSS Grid of key-value pairs, and the Maintenance Records summary card.
+- [ ] Build the QR Code icon button that triggers the Epic 9 tag preview modal.
+- [ ] Build the "Technical Details" tab that dynamically renders custom fields from the sub-category schema via `GET /api/v1/subcategories/{id}/schema`.
+- [ ] Build the "Maintenance Records" summary card showing the 3 most recent events with a "View all" navigation link.
 
-| Task ID      | Description                                                                                        |
-| :----------- | :------------------------------------------------------------------------------------------------- |
-| TSK-5.3.3.01 | Research and integrate available vendor warranty API endpoints (Dell TechDirect, HP ISEE, Lenovo). |
-| TSK-5.3.3.02 | Build a configurable Vendor API Sync settings page with enable/disable toggles per vendor.         |
-| TSK-5.3.3.03 | Implement a scheduled background job to batch-query vendor APIs using stored Serial Numbers.       |
-| TSK-5.3.3.04 | Write resilient error handling with exponential backoff for failed vendor API calls.               |
+**Backend**
+
+- [ ] Create a `GET /api/v1/assets/{id}/maintenance` endpoint returning the maintenance record history for a specific asset (used in the summary card and the "View all" page).
+
+### US-8.3 — Software Asset Profile
+
+**Frontend**
+
+- [ ] Implement conditional tab rendering for `asset.pillar === 'Software'` showing 3 tabs: Details, Purchase Details, Assignments.
+- [ ] Build the License Key masked display component with a "Reveal" toggle button.
+- [ ] Build the "Assignments" tab with a data table (User, Action, Date, Performed By) and contextual "Revoke"/"Assign" action buttons per row.
+- [ ] Ensure Maintenance Records section and QR Code button are completely hidden for Software assets.
+
+**Backend**
+
+- [ ] Create `GET /api/v1/assets/{id}/assignments` endpoint to return the seat allocation history for a software license.
+- [ ] Create `POST /api/v1/assets/{id}/assignments` and `DELETE /api/v1/assets/{id}/assignments/{userId}` endpoints for seat assignment and revocation.
+
+### US-8.4 — Furniture & Fixtures Profile
+
+**Frontend**
+
+- [ ] Implement conditional tab rendering for `asset.pillar === 'Furniture'` showing 4 tabs: Asset Details, Physical Details, Purchase Details, History.
+- [ ] Build the Asset Details tab variant with Location (Building/Floor/Zone) and Condition prominently displayed instead of user assignment.
+- [ ] Build the "Physical Details" tab rendering dynamic Custom Fields from the sub-category schema (e.g., Dimensions, Material, Weight).
+
+### US-8.5 — Office Electronics Profile
+
+**Frontend**
+
+- [ ] Implement conditional tab rendering for `asset.pillar === 'Electronics'` showing 4 tabs: Asset Details, Technical Details, Purchase Details, History.
+- [ ] Build the Asset Details tab variant with Location, Maintenance Status, Next Scheduled Maintenance Date, and the Maintenance Records summary card.
+
+### US-8.6 — Purchase Details & History Mechanics
+
+**Frontend**
+
+- [ ] Build the "Purchase Details" tab component displaying the financial breakdown (Base Price, Tax, Shipping, Total Cost, Currency) in a clean key-value layout.
+- [ ] Implement the "Download Invoice" button that requests a signed URL from the backend and triggers a file download.
+- [ ] Build the "History" tab component rendering a vertical chronological timeline from audit log entries, with color-coded event-type indicators.
+
+**Backend**
+
+- [ ] Implement secure signed-URL generation for invoice file retrieval from the cloud storage bucket (AWS S3 `getSignedUrl` / Azure Blob `generateSasUrl`), with a configurable expiry (e.g., 15 minutes).
+- [ ] Create a `GET /api/v1/assets/{id}/history` endpoint that queries the `AuditLogs` table filtered by `entity_id = {assetId}` and returns chronologically ordered events.
+
 
 ---
 
-[< Back to Requirements](./README.md)
+## Epic 9: Physical Tagging & Tag Printing
+
+### US-9.1 — Single Tag Generation & Reprinting
+
+**Frontend**
+
+- [ ] Integrate a QR code generation library (e.g., `qrcode.react` or `qrcode`) to render SVG/Canvas QR codes on the client.
+- [ ] Build the Tag Preview Modal component displaying the fixed-layout sticker design: company logo (top), QR code (center), Asset ID in monospace (bottom).
+- [ ] Hook the QR generation and Tag Preview Modal into the Epic 7 registration success callback.
+- [ ] Wire the "QR Code" button on the Epic 8 Asset Details panel to open the same Tag Preview Modal for reprinting.
+- [ ] Implement the "Print Tag" button that triggers the browser's `window.print()` API with a print-specific CSS stylesheet for the tag.
+
+**Backend**
+
+- [ ] Implement the routing URL generation logic: compose the URL using the system domain and asset tracking ID (e.g., `assets.tiqri.com/scan/{assetId}`).
+- [ ] Store the generated `qr_url` in the asset record upon creation, ensuring it points to the Mobile Lookup PWA route (Epic 11).
+
+### US-9.2 — Bulk Print Engine (A4 Constant Grid)
+
+**Frontend**
+
+- [ ] Build the Bulk Print configuration modal triggered from the Bulk Action Toolbar's "Print QR Code" button, showing a count of selected assets and layout confirmation.
+- [ ] Implement the "Generating PDF..." loading state with a disabled button to prevent duplicate submissions.
+
+**Backend**
+
+- [ ] Integrate a robust server-side PDF generation library (e.g., `pdfmake`, `puppeteer`, or `pdf-lib`).
+- [ ] Create a `POST /api/v1/assets/print-tags` endpoint that accepts an array of asset IDs, generates QR codes for each, and composes them into a single A4 PDF document.
+- [ ] Hardcode the exact PDF millimeter dimensions (margins, padding, cell size) to align perfectly with a standard A4 sticker sheet template (e.g., Avery 5160).
+- [ ] Stream the generated PDF back to the client for download or new-tab preview.
+
+### US-9.3 — [Optional] Thermal Printer Support
+
+**Frontend**
+
+- [ ] Add a "Layout Format" toggle/dropdown to the Bulk Print configuration modal: options for "A4 Sheet" (default) and "Thermal Roll".
+
+**Backend**
+
+- [ ] Build a secondary PDF template configuration in the `print-tags` endpoint specifying custom page dimensions tailored for Zebra/Dymo standard label rolls (e.g., 2x1 inch pages).
+- [ ] Enforce the same tag layout constraints (logo, QR, Asset ID) used in US-9.2 to guarantee visual parity across both A4 and thermal output formats.
+
+---
+
+## Epic 10: Bulk Asset Registration
+
+### US-10.1 — The Bulk Import Entry Point & Upload UI
+
+**Frontend**
+
+- [ ] Update the `RegistryHeader` component to convert the "+ Add Asset" button into a split-button dropdown with "Add Single Asset" and "Bulk Import" options.
+- [ ] Build the Bulk Import Modal with a drag-and-drop file upload zone, accepting `.csv` and `.xlsx` file types only.
+- [ ] Implement the multi-stage loading UI: "Uploading..." with a progress bar during network transfer, transitioning to "Reading & Processing File..." during server-side parsing.
+- [ ] Implement client-side file type validation: reject unsupported file extensions immediately with an inline error.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/bulk-import` endpoint that accepts multipart file uploads.
+- [ ] Integrate server-side file parsing libraries (`papaparse` for CSV, `exceljs` or `SheetJS` for Excel) to extract row data.
+
+### US-10.2 — Automatic Column Matching & Strict Validation
+
+**Frontend**
+
+- [ ] Add a prominent "Download Template (.xlsx)" link inside the Bulk Import Modal that serves a pre-built template file for each pillar.
+
+**Backend**
+
+- [ ] Write column-header matching logic: compare parsed headers against the expected schema keys (exact string match, case-insensitive), and return a structured error response listing missing/misspelled columns if validation fails.
+- [ ] Implement row-level NOT NULL validation for mandatory fields based on the pillar's required field schema.
+- [ ] Create a `GET /api/v1/assets/bulk-import/template?pillar={pillar}` endpoint to serve downloadable Excel templates pre-populated with the correct column headers for each pillar.
+
+### US-10.3 — Partial Success Processing & Error Reporting
+
+**Frontend**
+
+- [ ] Build the Success Summary screen displaying: success count (green), failure count (red), total records processed, and a "Download Error Report" button.
+- [ ] Implement the "Download Error Report" button that requests a CSV from the backend and triggers a browser file download.
+
+**Backend**
+
+- [ ] Write the iterative processing script that loops through parsed rows, validating and inserting each individually rather than as a batch transaction.
+- [ ] Implement row-level `try/catch` logic: append failed rows (with their specific error messages) to an error array rather than throwing a fatal API error.
+- [ ] Trigger the Epic 7 Asset ID generation and Epic 9 QR routing URL generation utilities for every successfully imported record.
+- [ ] Compile the error array into a downloadable CSV stream with an appended `Error` column explaining each row's failure reason.
+- [ ] Return a structured JSON response: `{ successCount, failureCount, errorReportUrl }` to power the frontend summary screen.
+
+
+---
+
+## Epic 11: Mobile Companion Tag Scanning
+
+### US-11.1 — Mobile Role Routing & Admin Dashboard
+
+**Frontend**
+
+- [ ] Build the mobile-responsive `AdminMobileDashboard` React layout with the hero "Launch Scanner" button, Quick Metrics cards, and Recent Activities list.
+- [ ] Implement JWT role-based routing guards that direct "Standard Employee" users to the employee portal and "Global Admin"/"IT Operator" users to the Admin Dashboard.
+- [ ] Build the fixed bottom navigation bar component (Home, My Assets, Notifications) with `position: fixed; bottom: 0`.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/mobile/dashboard` endpoint returning aggregated quick metrics (assigned asset count, pending approvals count, recent activity feed) for the authenticated user.
+
+**Infrastructure / DevOps**
+
+- [ ] Configure the PWA manifest (`manifest.json`) with app name, icons, theme color, and `display: standalone` for mobile home-screen installation.
+- [ ] Set up a Service Worker for offline caching of the app shell and static assets.
+
+### US-11.2 — Desktop Feature Gating (Empty State)
+
+**Frontend**
+
+- [ ] Write a React viewport detection hook using `window.innerWidth` (or `useMediaQuery`) to identify mobile screen sizes.
+- [ ] Build the "Desktop Screen Required" fallback component with the monitor icon illustration, explanatory message, and "Return to Mobile Dashboard" navigation button.
+- [ ] Wrap all desktop-only routes (registry grids, settings, master data) with the viewport guard to intercept mobile access attempts.
+
+### US-11.3 — Standalone Mobile Scanner & Lookup
+
+**Frontend**
+
+- [ ] Implement the full-screen camera scanner interface using the HTML5 `getUserMedia` API with a QR scanning library (e.g., `html5-qrcode` or `zxing`).
+- [ ] Build the targeting reticle overlay on the camera viewfinder for visual scan guidance.
+- [ ] Implement haptic feedback on successful scan using the `navigator.vibrate()` API.
+- [ ] Build the mobile Bottom-Sheet component that slides up on successful scan, displaying: Asset ID, Model, Custodian, Status, and Quick Action buttons (View Details, Assign, Return).
+- [ ] Extract the asset ID from the scanned QR URL and call the `GET /api/v1/assets/{id}` endpoint to populate the bottom-sheet data.
+
+### US-11.4 — Cross-Device Desktop Synchronization (Remote Control)
+
+**Frontend**
+
+- [ ] Implement a WebSocket client connection on both mobile and desktop that authenticates using the JWT `user_id`.
+- [ ] Write a desktop-side WebSocket event listener for the `ASSET_SCANNED` event that automatically updates the `selectedAssetId` state, triggering the Epic 8 slide-out panel to open with the scanned asset's data.
+
+**Backend**
+
+- [ ] Set up a WebSocket server (e.g., using `Socket.IO` or native `ws` library) alongside the REST API.
+- [ ] Implement a `UserSessionMap` data structure on the WebSocket server to pair and manage multiple device connections by `user_id`.
+- [ ] Handle the `ASSET_SCANNED` event: when a mobile client emits a scan event, broadcast it to all other connections belonging to the same `user_id`.
+
+**Infrastructure / DevOps**
+
+- [ ] Configure WebSocket support in the deployment environment (ensure the load balancer/reverse proxy supports sticky sessions or WebSocket passthrough).
+
+### US-11.5 — Barcode Injection (Tethered Registration)
+
+**Frontend**
+
+- [ ] Configure the mobile scanning library to recognize 1D barcode formats (Code 128, UPC-A, EAN-13) in addition to QR codes.
+- [ ] On the mobile client, emit a `BARCODE_SCANNED` WebSocket event containing the decoded serial string.
+- [ ] On the desktop client, write a WebSocket listener for the `BARCODE_SCANNED` event that injects the received payload into `document.activeElement.value` if an input field is currently focused.
+- [ ] Implement memory buffering on the desktop: if no input field is focused, store the payload temporarily and display a toast notification ("Barcode scanned. Click an input field to paste.").
+- [ ] Implement a "paste" mechanism: when the user next focuses an input field after buffering, auto-populate it with the buffered barcode value.
+
+---
+
+## Epic 12: Employee Portal & Digital Handshake
+
+### US-12.1 — Secure Portal Routing & Role Restriction
+
+**Frontend**
+
+- [ ] Implement a `<ProtectedRoute allowedRoles={['GlobalAdmin', 'ITOperator']} />` higher-order component (HOC) or route guard wrapper around all admin-only routes (Epic 6, 7, 8 components).
+- [ ] Implement the role-aware Sidebar component that shows only "My Dashboard", "My Assets", and "Service Requests" (disabled placeholder) for Standard Employees.
+- [ ] Implement post-login routing logic: if `user.role === 'StandardEmployee'`, redirect to `/portal/my-assets` instead of the admin dashboard.
+- [ ] Reuse the 403 Forbidden error page component from Epic 2 for route interception.
+
+**Backend**
+
+- [ ] Write strict backend middleware ensuring all admin API endpoints (`/api/v1/assets`, `/api/v1/settings`, `/api/v1/master-data`) validate the JWT role and return `403 Forbidden` for Standard Employee tokens.
+
+### US-12.2 — "My Assets" Dashboard
+
+**Frontend**
+
+- [ ] Build the `EmployeeDashboard` React layout with a personalized greeting ("Welcome back, {firstName}") and a responsive CSS Grid of `AssetCard` components.
+- [ ] Build the `AssetCard` component displaying: asset type icon/image, model name, Asset ID, date assigned, and status badge.
+- [ ] Implement mobile responsive layout: sidebar collapses to hamburger menu, asset cards stack in a single column on small screens.
+- [ ] Ensure asset cards are strictly read-only with no click-through to admin panels.
+
+**Backend**
+
+- [ ] Create a secure `GET /api/v1/portal/my-assets` endpoint that _forces_ the database query to filter strictly by the requesting user's ID (`WHERE assigned_to = jwt.user_id`), returning only their assigned assets.
+
+### US-12.3 — Digital Acceptance & Escalating Reminders
+
+**Frontend**
+
+- [ ] Build the "Action Required" alert banner component that renders at the top of the Employee Dashboard when there are pending acceptance items.
+- [ ] Build the Acceptance Modal with: asset details summary, mandatory acknowledgment checkbox (linked to IT acceptable use policy), and a "Confirm Receipt" button that enables only when the checkbox is checked.
+- [ ] Implement the "Report Issue / Did Not Receive" rejection pathway as a secondary action in the Acceptance Modal.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/portal/assignments/{id}/accept` endpoint that logs the digital acceptance timestamp, updates the assignment status to "Confirmed", and cancels any pending reminder events.
+- [ ] Create a `POST /api/v1/portal/assignments/{id}/reject` endpoint for the "Did Not Receive" pathway, notifying the issuing admin.
+- [ ] Implement an escalation scheduler (cron job or task queue): at 24h, 48h, and 72h intervals, check for assignments still in "Pending Acceptance" state and enqueue `REMINDER_ESCALATED` events to the notification queue.
+
+**Database**
+
+- [ ] Create a `NotificationQueue` table with columns: `id`, `event_type` (ENUM: PENDING_ACCEPTANCE, REMINDER_24H, REMINDER_48H, REMINDER_72H_ADMIN), `assignment_id` (FK), `recipient_id` (FK → Users), `is_processed` (boolean), `created_at`.
+
+### US-12.4 — Asset Return Reminders & Admin Requests
+
+**Frontend**
+
+- [ ] Build the yellow "Upcoming Return" alert banner component, conditionally rendered when an asset's expected return date is within 14 days.
+- [ ] Build the red "Urgent Action Required" alert banner component for admin-initiated return requests.
+- [ ] Implement real-time banner rendering via WebSocket or polling to display admin-initiated return requests without requiring a page refresh.
+
+**Backend**
+
+- [ ] Implement a scheduled task (cron job) that runs daily, identifies assignments with `expected_return_date` within 14 days, and enqueues `UPCOMING_RETURN` events to the notification queue.
+- [ ] Implement the admin "Request Return" action handler: when triggered, enqueue an `URGENT_RETURN_REQUESTED` event and push a real-time notification to the employee's active session (via WebSocket or push API).
+- [ ] Create a `GET /api/v1/portal/notifications` endpoint that returns the authenticated employee's pending alerts and banners.
+
+
+---
+
+## Epic 13: Asset Assignment
+
+### US-13.1 — The Operations Dashboard & Single Assignment
+
+**Frontend**
+
+- [ ] Build the `Assignments & Returns` layout component with the 3-tab navigation structure (Available Assets, Assigned Assets, Returned Assets).
+- [ ] Configure the `Available Assets` data grid to automatically apply a `status=Available` filter to the API fetch.
+- [ ] Add an "Assign" action button to the Asset Details panel footer, conditionally rendered only when `asset.status === 'Available'`.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/operations/assignments?tab={available|assigned|returned}` endpoint that returns filtered asset data based on the selected tab.
+
+### US-13.2 — Bulk Asset Assignment
+
+**Frontend**
+
+- [ ] Add a "Bulk Assign" button to the Bulk Actions toolbar that only renders when `selectedRows > 1` and all selected rows have `status === 'Available'`.
+- [ ] Adapt the Assignment Modal to accept an array of asset IDs and display a summary header (e.g., "Assigning 3 Assets").
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/bulk-assign` endpoint that accepts an array of asset IDs and a target user/location, processes all assignments in a single atomic database transaction.
+- [ ] Trigger Epic 12 Digital Acceptance notifications for each asset in the batch.
+
+### US-13.3 — The Assignment Modal & Allocation Types
+
+**Frontend**
+
+- [ ] Build the "Assign Asset" modal with a "User" vs. "Location" toggle that dynamically switches the searchable dropdown data source.
+- [ ] Integrate the searchable User dropdown powered by `GET /api/v1/users?search={query}`.
+- [ ] Integrate the searchable Location dropdown powered by `GET /api/v1/locations?search={query}`.
+- [ ] Add an optional "Expected Return Date" date picker for temporary loaner assignments.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/{id}/assign` endpoint that accepts the assignment payload (`type: 'user' | 'location'`, `targetId`, `expectedReturnDate`), updates the asset status to `Assigned`, and creates an Assignment record.
+
+**Database**
+
+- [ ] Create an `Assignments` table with columns: `id`, `asset_id` (FK → Assets), `assignment_type` (ENUM: USER, LOCATION), `assigned_to_user_id` (FK → Users, nullable), `assigned_to_location_id` (FK → Locations, nullable), `assigned_by` (FK → Users), `expected_return_date`, `actual_return_date`, `status` (ENUM: ACTIVE, RETURNED, CANCELLED), `created_at`, `updated_at`.
+
+### US-13.4 — UI State Gating & Conflict Prevention
+
+**Frontend**
+
+- [ ] Write frontend logic to conditionally hide/disable the "Assign" button based on `asset.status`: only show for `Available` status.
+- [ ] Display a user-friendly error toast when the backend returns a conflict error (409).
+
+**Backend**
+
+- [ ] Implement optimistic concurrency control or row-level locking: before processing an assignment, verify `asset.status === 'Available'` within the same database transaction, returning `409 Conflict` if the status has changed.
+
+### US-13.5 — Pillar-Restricted Bulk Location Transfers
+
+**Frontend**
+
+- [ ] Update the Bulk Action toolbar logic to evaluate the `pillar` and `subcategory.isPortable` flag of selected rows: hide "Change Location" for Software and portable Hardware, show it for Furniture and Electronics.
+- [ ] Build the "Change Location" bulk action modal with a searchable Location dropdown.
+
+**Backend**
+
+- [ ] Create a `PATCH /api/v1/assets/bulk-location` endpoint that accepts an array of asset IDs and a target `location_id`, validates pillar constraints server-side, and writes individual Audit Log entries for each updated asset.
+- [ ] Enforce pillar validation: reject requests attempting to change location for Software or portable Hardware assets with a `422 Unprocessable Entity` response.
+
+
+---
+
+## Epic 14: Asset Returns
+
+### US-14.1 — The Assigned Assets Tab
+
+**Frontend**
+
+- [ ] Configure the `Assigned Assets` data grid to automatically apply a `status=Assigned` filter to the API fetch.
+- [ ] Ensure the Asset Details slide-out panel correctly maps and prominently displays the active user relationship (`Assigned to` field).
+
+### US-14.2 — Requesting an Asset Return (Recall)
+
+**Frontend**
+
+- [ ] Add a conditionally rendered "Request Return" button to the Asset Details panel footer (visible only when `status === 'Assigned'`).
+- [ ] Display a success confirmation toast upon successful return request submission.
+- [ ] Update the grid row's visual label to show a `Requested` sub-status badge after a return is requested.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/{id}/request-return` endpoint that flags the assignment record with a `return_requested` status and queues an `URGENT_RETURN_REQUESTED` notification event.
+- [ ] Integrate with the escalating reminder scheduler: enqueue 24h, 48h, and 72h reminder events upon return request creation.
+
+### US-14.3 — Receiving an Asset (Mark as Returned)
+
+**Frontend**
+
+- [ ] Add a conditionally rendered "Return" button to the Asset Details panel footer (visible only when `status === 'Assigned'`).
+- [ ] On successful return, refresh the data grid to remove the asset from the `Assigned Assets` tab and show it in `Returned Assets`.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/{id}/receive` endpoint that closes the active assignment record (`actual_return_date = now()`), clears the custodian, updates the asset status to `Pending Review`, and cancels any pending return reminder events.
+
+### US-14.4 — The Returned Assets Tab & Condition Check
+
+**Frontend**
+
+- [ ] Build the "Process Return" modal with the 4 radio button condition options (Good Working Condition, Minor Issues, Needs Repair, Beyond Repair) and the "Condition Notes" text area.
+- [ ] Implement form validation: "Confirm" button remains disabled until a condition radio is selected.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/{id}/process-return` endpoint implementing the state-machine logic: automatically route the asset to `Available`, `Pending Maintenance`, or `Pending Disposal` based on the submitted condition enum.
+- [ ] Append the condition notes and status change to the System Audit Log.
+- [ ] If routed to `Pending Maintenance`, automatically create a stub record in the `MaintenanceTickets` table for the Epic 15 workflow.
+
+
+---
+
+## Epic 15: Maintenance & Repair
+
+### US-15.1 — The Pending Review Tab & Triage Panel
+
+**Frontend**
+
+- [ ] Build the 3-tab `Maintenance & Repairs` layout component (Pending Review, Active Repairs, Repair History).
+- [ ] Configure the `Pending Review` data grid to filter assets by `Pending Maintenance` / `Defective` status, displaying columns: Asset ID, Model, Reported By, Issue, Date Reported.
+- [ ] Build the "Issue Review" slide-out panel displaying: reported issue, Purchase Date, Original Cost, Current Book Value, and Warranty Status badge (color-coded: Green=Active, Red=Expired).
+- [ ] Add `Resolve Internally` and `Initiate Repair` action buttons to the panel footer.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/maintenance/pending` endpoint returning assets filtered by maintenance-related statuses, including aggregated financial and warranty data.
+
+### US-15.2 — Fast-Track: Resolve Internally
+
+**Frontend**
+
+- [ ] Build a quick confirmation dialog for the "Resolve Internally" action with a mandatory resolution note text area.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/{id}/resolve-internal` endpoint that: updates the asset status to `Available`, creates a maintenance record with `resolution_type: 'Internal'`, and writes an event to the System Audit Log.
+
+### US-15.3 — Initiating a Vendor Repair
+
+**Frontend**
+
+- [ ] Build the "Send Asset for Repair" modal with: Vendor dropdown (searchable), RMA/Ticket Number input (required), Estimated Cost input, Expected Return Date picker.
+- [ ] Implement form validation: `Confirm & Dispatch` button disabled until Vendor and RMA are filled.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/maintenance/dispatch` endpoint that: creates a `MaintenanceTicket` record, updates the asset status to `In Repair`, and writes an Audit Log entry.
+
+**Database**
+
+- [ ] Create a `MaintenanceTickets` table with columns: `id`, `asset_id` (FK → Assets), `ticket_type` (ENUM: VENDOR, INTERNAL), `vendor_name`, `rma_number`, `reported_issue`, `resolution_notes`, `estimated_cost`, `actual_cost`, `estimated_return_date`, `actual_completion_date`, `status` (ENUM: ACTIVE, COMPLETED, CANCELLED), `dispatched_by` (FK → Users), `created_at`, `updated_at`.
+
+### US-15.4 — Active Repairs Tab & Logging Completion
+
+**Frontend**
+
+- [ ] Configure the `Active Repairs` grid to display data from `MaintenanceTickets` where `status = 'Active'`, showing: Vendor, RMA, Est. Return Date, Est. Cost.
+- [ ] Build the "Log Completed Repair" modal with: Actual Final Cost input, Resolution Notes text area, and "Update Status To" dropdown (Available, Disposed).
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/maintenance/{ticketId}/complete` endpoint that: updates the ticket status to `Completed`, records actual cost and resolution notes, updates the parent asset's global status to the selected value, and aggregates the `actual_cost` into the asset's cumulative maintenance cost.
+
+### US-15.5 — Repair History Tab & Asset Details Integration
+
+**Frontend**
+
+- [ ] Configure the `Repair History` data grid to fetch completed `MaintenanceTickets` records, displaying: Asset ID, Vendor, Resolution Date, Final Cost, Resolution Notes.
+- [ ] Update the Epic 8 `AssetDetailsPanel` component to fetch and display the 3 most recent maintenance records from the `MaintenanceTickets` table for the selected asset.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/maintenance/history` endpoint with pagination and filtering support (by date range, vendor, cost range).
+- [ ] Ensure the existing `GET /api/v1/assets/{id}/maintenance` endpoint returns both vendor and internal resolution records.
+
+
+---
+
+## Epic 16: Asset History & Status Management
+
+### US-16.1 — Asset History Timeline & Export
+
+**Frontend**
+
+- [ ] Build the vertical timeline React component for the `History` tab, rendering event cards with: Timestamp, Action type (color-coded), Old Value, New Value, and Actor.
+- [ ] Implement the "Export CSV" button that sends the current asset ID to the backend export endpoint and triggers a browser file download.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/assets/{id}/history` endpoint to fetch, format, and chronologically sort asset-specific events from the global `AuditLogs` table.
+- [ ] Create a `GET /api/v1/assets/{id}/history/export` endpoint that generates a CSV stream of the asset's audit history and returns it as a downloadable file.
+
+### US-16.2 — Manual Status Override
+
+**Frontend**
+
+- [ ] Build the interactive `StatusBadge` React component with a built-in inline dropdown menu activated on click, showing a subtle hover state on the badge.
+- [ ] Write frontend filtering logic to populate the dropdown with only permissible manual statuses from a `PermissibleManualStates` config, hiding workflow-driven statuses.
+- [ ] Build the "Status Change Justification" modal with a mandatory note text area (minimum 10 characters) and a conditionally disabled "Save" button.
+- [ ] On successful save, update the badge color/text reactively without requiring a full page reload.
+
+**Backend**
+
+- [ ] Create a `PATCH /api/v1/assets/{id}/status` endpoint that validates the requested status transition against a state-machine rule set, requires a justification note, and writes to the Audit Log.
+- [ ] Implement automatic side-effects: if the asset was `Assigned` and is being changed to `Lost`/`Stolen`, automatically close the active assignment record in the background.
+- [ ] Return `422 Unprocessable Entity` for illegal transitions (e.g., manually setting status to `Assigned` or `In Repair`).
+
+### US-16.3 — Custom Status Configuration
+
+**Frontend**
+
+- [ ] Build the "Custom Status Configuration" UI page in Settings with a CRUD data grid: Status Name, Color Picker, Description, and actions (Edit / Delete).
+- [ ] Update the global frontend status configuration to dynamically merge custom statuses from the API with the hardcoded system statuses, making them available in all dropdowns, filters, and badges.
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for custom statuses: `GET`, `POST`, `PUT`, `DELETE /api/v1/settings/statuses`.
+- [ ] Update all backend validation logic to dynamically load and accept custom statuses alongside built-in statuses when validating status transitions.
+
+**Database**
+
+- [ ] Create a `CustomStatuses` table with columns: `id`, `name` (UNIQUE), `color` (hex), `description`, `is_active` (boolean), `created_by` (FK → Users), `created_at`, `updated_at`.
+
+---
+
+## Epic 17: Disposal Requests
+
+### US-17.1 — Flagging Assets for Disposal
+
+**Frontend**
+
+- [ ] Build the "Initiate Disposal" intake modal with: Reason Category dropdown, Technician Notes text area (with 500-char limit and visible counter), and darkened backdrop overlay.
+- [ ] Build the `Operations > Disposals` layout component with the tab structure (`Pending Disposal`, `Disposal History`).
+- [ ] Configure the `Pending Disposal` data grid to filter by `status === 'Pending Disposal'`, displaying: Asset ID, Model, Reason, Requested By, Days Pending (dynamically calculated, color-coded badge).
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/{id}/request-disposal` endpoint that updates the asset status to `Pending Disposal`, stores the reason category and technician notes, and writes an Audit Log entry.
+- [ ] Create a `GET /api/v1/disposals/pending` endpoint returning pending disposal requests with dynamically calculated `days_pending` values.
+
+**Database**
+
+- [ ] Create a `DisposalRequests` table with columns: `id`, `asset_id` (FK → Assets), `reason_category` (ENUM: DAMAGED_BEYOND_REPAIR, OBSOLETE, END_OF_LIFE, OTHER), `technician_notes` (500 char max), `requested_by` (FK → Users), `status` (ENUM: PENDING, APPROVED, REJECTED), `rejection_reason`, `rejected_by`, `created_at`, `updated_at`.
+
+### US-17.2 — The Disposal Review Panel
+
+**Frontend**
+
+- [ ] Build the "Disposal Request Review" slide-out panel with: disposal context section (Requested By, Date, Reason, Technician Notes) and financial summary block (Purchase Date, Original Cost, Current Book Value, Warranty Status) with a distinct visual hierarchy.
+- [ ] Add "Reject" (secondary/outline style) and "Initiate Disposal" (destructive red) action buttons to the panel footer.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/disposals/{id}` endpoint that aggregates the disposal request details alongside the asset's financial data (purchase details, real-time depreciated book value, warranty status) in a single response.
+
+### US-17.3 — Rejecting a Disposal Request
+
+**Frontend**
+
+- [ ] Build the "Reject Disposal Request" modal with: contextual warning header ("You are declining the disposal of..."), mandatory Rejection Reason text area (auto-focused, >10 char minimum), Update Status To dropdown, and a conditionally disabled "Confirm Rejection" button.
+- [ ] Implement strict React state binding: the "Confirm Rejection" button only activates when both the reason length (>10 chars) and status selection criteria are met.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/disposals/{id}/reject` endpoint that: updates the disposal request status to `REJECTED`, stores the rejection reason and rejector, applies the selected fallback status to the asset, writes the event to the Audit Log, and queues a notification alert for the original requesting operator.
+
+
+---
+
+## Epic 18: Executing Asset Disposals
+
+### US-18.1 — Asset Disposal Modal (Single Asset)
+
+**Frontend**
+
+- [ ] Build the "Dispose Asset" compliance modal with: warning banner, Disposal Date picker, Reason for Disposal dropdown, Disposal Method dropdown, "Data wiped" checkbox, "Tags removed" checkbox, file upload zone (US-18.2), and exact Asset ID text confirmation input.
+- [ ] Implement strict multi-condition React state management: the "Confirm Disposal" button only activates when ALL conditions are met (all dropdowns filled, both checkboxes checked, file uploaded, and text input exactly matches the Asset ID).
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/{id}/dispose` endpoint that validates all required fields (date, reason, method, checkboxes, receipt URL, text confirmation), updates the asset status to `Disposed`, writes the disposal record, and logs the event in the Audit Log.
+
+### US-18.2 — Documentation/E-Waste Certificate Upload
+
+**Frontend**
+
+- [ ] Integrate a drag-and-drop file upload component (e.g., React Dropzone) into the Dispose Asset modal's Documentation section.
+- [ ] Implement client-side file type validation (allow `.pdf`, `.jpg`, `.jpeg`, `.png` only) and display an upload progress indicator.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/uploads/disposal-receipts` endpoint that accepts multipart file uploads, validates file type and size, and stores the file in the cloud storage bucket.
+- [ ] Return the generated `file_url` or `file_key` to be attached to the disposal record payload.
+
+**Database**
+
+- [ ] Add a `disposal_receipt_url` column to the `DisposalRequests` table (or create a dedicated `DisposalRecords` table) to store the link to the uploaded E-Waste certificate.
+
+### US-18.3 — Bulk Disposal Processing
+
+**Frontend**
+
+- [ ] Add a red "Dispose assets" danger button to the Bulk Actions toolbar on the `Pending Disposal` grid, visible when rows are multi-selected.
+- [ ] Build the Bulk Disposal modal: scrollable asset list box (max-height 120px, `overflow-y: auto`), shared compliance form (same fields as single-asset modal), and dynamic text confirmation prompt (`DISPOSE {count} ASSETS`).
+- [ ] Implement the dynamic text-match validation: "Confirm Bulk Disposal" button only activates when the typed string exactly matches `DISPOSE {count} ASSETS`.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/assets/bulk-dispose` endpoint that: accepts an array of asset IDs plus the shared compliance payload (date, reason, method, checkboxes, receipt URL), processes all status changes in a single atomic database transaction, links the shared receipt URL to all disposal records, and writes individual Audit Log entries for each asset.
+
+
+---
+
+## Epic 19: Disposal History
+
+### US-19.1 — The Disposal History Ledger
+
+**Frontend**
+
+- [ ] Build the `Disposal History` data grid React component with read-only rows (no checkboxes or bulk action toolbar).
+- [ ] Configure the grid columns: Asset ID, Category, Reason, Flagged By, Disposed By, Disposal Date, Status badge (muted gray "Disposed"), and Documents.
+- [ ] Implement the `Documents` column: render the uploaded filename with a clickable PDF icon that opens a signed URL in a new browser tab.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/disposals/history` endpoint that fetches assets with `status === 'Disposed'`, joining the `Users` table twice to retrieve both the `Flagged By` (requester) and `Disposed By` (executor) display names.
+- [ ] Generate signed URLs for the disposal receipt documents on-demand for secure, time-limited access.
+
+### US-19.2 — Soft Delete Architecture
+
+**Backend**
+
+- [ ] Add an `is_archived` boolean column (default `false`) to the `Assets` table, set to `true` upon disposal completion.
+- [ ] Apply a global `WHERE is_archived = false` (or `WHERE status != 'Disposed'`) filter to all standard `GET` API endpoints that feed the main registries, assignment dropdowns, and Master Data lookups.
+- [ ] Ensure the `GET /api/v1/disposals/history` endpoint explicitly queries `WHERE is_archived = true` to retrieve only archived records.
+
+**Database**
+
+- [ ] Add a database index on the `is_archived` column for query performance optimization.
+
+### US-19.3 — Record Finality & Edit Locking
+
+**Frontend**
+
+- [ ] Write conditional rendering logic in the `AssetDetailsPanel`: if `asset.status === 'Disposed'`, hide all "Edit" buttons, disable all form inputs, and hide the interactive `StatusBadge` dropdown.
+
+**Backend**
+
+- [ ] Write backend middleware that intercepts all `PUT`, `PATCH`, and `DELETE` requests for assets with `is_archived === true` or `status === 'Disposed'`, returning `403 Forbidden: Record is finalized`.
+
+---
+
+## Epic 20: Main KPI Dashboard
+
+### US-20.1 — KPI Widgets & Data Definitions
+
+**Frontend**
+
+- [ ] Build the responsive dashboard layout with 3 rows: KPI Cards (top), Visualizations (middle), Actionable Tables (bottom).
+- [ ] Build the 4 KPI Metric Card components displaying: primary value, MoM/WoW percentage change indicator (green arrow up / red arrow down), and a descriptive label.
+- [ ] Integrate a charting library (e.g., Recharts, Chart.js, or ApexCharts) to render the `Asset Allocation by Department` bar chart and the `Current Inventory Status` donut chart.
+- [ ] Build the bottom-row actionable data tables with tabs: `Overdue Returns` and `High-Maintenance Assets (Lemons)`.
+- [ ] Add a global Date Range picker to the dashboard header for filtering all widgets by a selected time period.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/dashboard/kpis` endpoint returning aggregated KPI data: total asset value (with MoM delta), active asset count (with WoW delta), in-repair count, and expiring software count.
+- [ ] Create a `GET /api/v1/dashboard/charts` endpoint returning: department allocation data (group by custodian department) and status distribution data (group by status).
+- [ ] Create a `GET /api/v1/dashboard/overdue-returns` endpoint returning assets where `expected_return_date < CURRENT_DATE`.
+- [ ] Create a `GET /api/v1/dashboard/high-maintenance` endpoint returning assets with a repair count ≥ 3 from the `MaintenanceTickets` table.
+- [ ] Write optimized SQL aggregation queries with proper indexing to ensure dashboard load time stays under 2 seconds.
+
+### US-20.2 — Global Admin View (Full Access)
+
+**Frontend**
+
+- [ ] Ensure the Global Admin role renders all dashboard widgets without any conditional hiding.
+
+### US-20.3 — IT Operator View (Operational Access)
+
+**Frontend**
+
+- [ ] Implement conditional rendering logic on the dashboard layout: hide the `Total Asset Value` KPI card when `user.role === 'ITOperator'` and adjust the CSS Grid to fill the remaining 3 cards at full width.
+
+**Backend**
+
+- [ ] Ensure the `GET /api/v1/dashboard/kpis` endpoint omits the `totalAssetValue` field from the response payload when the requesting JWT lacks financial permissions.
+
+### US-20.4 — Finance View (Financial Access)
+
+**Frontend**
+
+- [ ] Implement Finance-role conditional rendering: show `Total Asset Value` card, hide `Expiring Software` and `Assets in Repair` cards, default bottom table to the `Pending Approvals` tab, and replace `High-Maintenance Assets` with `Recent Write-Offs`.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/dashboard/pending-approvals` endpoint returning pending disposal requests requiring financial sign-off.
+- [ ] Create a `GET /api/v1/dashboard/recent-writeoffs` endpoint returning recently disposed assets with their write-off values.
+
+### US-20.5 — Dashboard Interactions & Deep-Linking
+
+**Frontend**
+
+- [ ] Implement URL deep-linking on KPI cards: clicking each card navigates to the corresponding Operations page with filter query parameters pre-applied (e.g., `/operations/maintenance?tab=active`).
+- [ ] Bind the "Send Reminder" inline button to the `POST /api/v1/assets/{id}/request-return` endpoint and display a success toast.
+- [ ] Bind the "Flag for Disposal" inline button to open the Epic 17 "Initiate Disposal" modal as an overlay on the dashboard.
+
+
+---
+
+## Epic 21: Standard Reporting
+
+### US-21.1 — Quick Templates & Preview
+
+**Frontend**
+
+- [ ] Build the split-screen layout: Left Configuration Sidebar (template cards, filter controls) and Right Report Preview Panel (data grid with empty state).
+- [ ] Build the reusable `TemplateCard` component displaying: icon, title, description, and "Preview report" button.
+- [ ] Implement the empty state UI for the preview panel with an illustrative icon and guidance text.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/reports/templates` endpoint returning all available report templates (system-default + custom).
+- [ ] Create a `POST /api/v1/reports/preview` endpoint that accepts filter parameters and returns paginated query results for the report preview grid.
+
+### US-21.2 — Custom One-time Reporting
+
+**Frontend**
+
+- [ ] Implement the `Primary Data Source` dropdown that dynamically updates the available filter options based on the selected source (e.g., "Assets" shows Category/Location/Status filters; "Maintenance Records" shows Vendor/Date/Cost filters).
+- [ ] Build the dynamic filter controls: Date Range picker, Category multi-select, Location dropdown, Status multi-select.
+- [ ] Implement the "Clear filters" button to reset all filter state to defaults.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/reports/datasources` endpoint returning the available primary data sources and their respective filter schemas.
+
+### US-21.3 — Creating Custom Report Templates
+
+**Frontend**
+
+- [ ] Build the "Add New Template" multi-step modal with: Basic Information section (Name, Code, Description, Active toggle), Data Source and Filters section, Report Fields checkbox grid, and Sort configuration (field + direction).
+- [ ] After successful save, dynamically append the new template card to the sidebar without requiring a page refresh.
+
+**Backend**
+
+- [ ] Create RESTful CRUD endpoints for report templates: `POST /api/v1/reports/templates` (create), `PUT /api/v1/reports/templates/{id}` (update), `DELETE /api/v1/reports/templates/{id}` (delete).
+
+**Database**
+
+- [ ] Create a `ReportTemplates` table with columns: `id`, `name`, `code` (UNIQUE), `description`, `is_active` (boolean), `data_source` (ENUM: ASSETS, MAINTENANCE, ASSIGNMENTS, DISPOSALS), `filters` (JSON), `fields` (JSON array of selected column keys), `sort_field`, `sort_direction` (ENUM: ASC, DESC), `created_by` (FK → Users), `created_at`, `updated_at`.
+
+### US-21.4 — CSV Export
+
+**Frontend**
+
+- [ ] Build the "Export as CSV" configuration modal with: Data Scope toggle (Current preview / Full dataset), File Name input, Include Header Row checkbox, and "Export as CSV" button.
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/reports/export/csv` endpoint that: accepts the report query parameters and scope option, executes the query, and streams the results as a CSV file response.
+- [ ] Implement streaming CSV generation using Node.js `Transform` streams to handle datasets exceeding 50,000 rows without exhausting server memory.
+
+### US-21.5 — PDF Generation
+
+**Frontend**
+
+- [ ] Build the "Generate PDF Report" configuration modal with: Layout toggle (Portrait/Landscape, auto-default to Landscape if >8 columns), Page Size dropdown (A4/Letter), and Branding checkboxes (company logo, report title, filter summary, timestamp, generated by).
+
+**Backend**
+
+- [ ] Create a `POST /api/v1/reports/export/pdf` endpoint that accepts the report query parameters and PDF configuration options (layout, page size, branding flags).
+- [ ] Integrate a robust server-side PDF generation library (e.g., Puppeteer or pdfmake) capable of rendering the data grid as a clean table, injecting the company logo image, and respecting the layout and page-size constraints.
+- [ ] Stream the generated PDF back to the client as a downloadable file.
+
+
+---
+
+## Epic 22: Financial Ledgers & Cost Analysis
+
+### US-22.1 — Financial Module Security (RBAC)
+
+**Frontend**
+
+- [ ] Update the global Sidebar component with conditional rendering: hide the `Financials` accordion menu entirely when `user.role` is not `FinanceManager` or `GlobalAdmin`.
+- [ ] Wrap all Financial module routes with the `<ProtectedRoute allowedRoles={['FinanceManager', 'GlobalAdmin']} />` guard, redirecting unauthorized users to the 403 page.
+
+**Backend**
+
+- [ ] Write backend middleware to reject API requests to all `/api/v1/financials/*` endpoints from non-authorized roles, returning `403 Forbidden`.
+
+### US-22.2 — The Depreciation Ledger
+
+**Frontend**
+
+- [ ] Build the `Depreciation Ledger` data grid UI with the specified columns and the financial toolbar (search bar, Filters dropdown, `Export Log (CSV)` button).
+- [ ] Format financial values as localized currency strings (e.g., `$1,400.00 USD`) in the grid cells.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/financials/depreciation` endpoint with pagination, search, and filter support.
+- [ ] Implement the Straight-Line Depreciation calculation in a SQL View or backend aggregation: `Current Book Value = Original Purchase Price - ((Original Purchase Price / Expected Lifespan in months) * Months Elapsed Since Purchase)`, floored at `$0.00`.
+- [ ] Wire the `Export Log (CSV)` button to the Epic 21 CSV generation engine via a `POST /api/v1/reports/export/csv` call with pre-configured depreciation query parameters.
+
+### US-22.3 — Total Cost of Ownership (TCO)
+
+**Frontend**
+
+- [ ] Build the `Total Cost of Ownership` data grid UI with the specified columns and the financial toolbar (search, filters, `Export Log (CSV)` button).
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/financials/tco` endpoint that executes a SQL aggregation query joining the `Assets` table (`purchase_price`) with `SUM(actual_cost)` from all related `MaintenanceTickets` records, computing `Total TCO = purchase_price + SUM(actual_cost)`.
+- [ ] Support pagination, search (by Asset ID, Category), and filter (by date range, cost range) on the TCO endpoint.
+
+### US-22.4 — Write-Offs & Salvage Ledger
+
+**Frontend**
+
+- [ ] Build the `Write-Offs & Salvage` data grid UI with the specified columns and the financial toolbar (search, filters, `Export Log (CSV)` button).
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/financials/writeoffs` endpoint fetching only assets with `status === 'Disposed'`, joining the disposal record for `disposal_date`, the locked `book_value_at_disposal`, and the `salvage_value`.
+
+**Database**
+
+- [ ] Add a `salvage_value` numeric column to the Epic 18 Disposal payload schema (either in `DisposalRequests` or `Assets` table).
+- [ ] Add a `book_value_at_disposal` numeric column to persist the calculated depreciated value at the moment of disposal, ensuring it never changes after finalization.
+
+
+---
+
+## Epic 23: Automated Alerts & Notification
+
+### US-23.1 — The Notification Center (Inbox)
+
+**Frontend**
+
+- [ ] Build the Notification Center Bell icon component in the global header/navbar with a numeric unread badge.
+- [ ] Build the Notification Dropdown UI: scrollable container (`max-height: 400px`, `overflow-y: auto`), individual notification items with: message text, relative timestamp (using `date-fns` `formatDistanceToNow`), unread visual cue (blue background), and a "Mark all as read" footer button.
+- [ ] Implement deep-linking on notification item click: navigate to the `target_url` and call the mark-as-read API.
+- [ ] Implement real-time badge updates via WebSocket or polling to reflect new notifications without page refresh.
+
+**Backend**
+
+- [ ] Create a `GET /api/v1/notifications` endpoint returning the authenticated user's notifications, sorted by `created_at DESC`, with pagination.
+- [ ] Create a `GET /api/v1/notifications/unread-count` endpoint returning the count of unread notifications for badge rendering.
+- [ ] Create a `PATCH /api/v1/notifications/{id}/read` endpoint to mark an individual notification as read.
+- [ ] Create a `PATCH /api/v1/notifications/read-all` endpoint to mark all of the user's notifications as read in a single operation.
+
+**Database**
+
+- [ ] Create an `AppNotifications` table with columns: `id`, `user_id` (FK → Users, indexed), `message` (text), `target_url` (the deep-link path), `is_read` (boolean, default `false`), `event_type` (ENUM: DISPOSAL_REQUEST, WARRANTY_EXPIRY, RETURN_OVERDUE, ROLE_CHANGE, ASSIGNMENT_PENDING, etc.), `created_at`.
+
+### US-23.2 — Alert Configuration & Multi-Channel Delivery
+
+**Frontend**
+
+- [ ] Build the `Alerts & Notifications` settings page with categorized sections: Hardware Lifecycle, Operational Workflows, Security & Audits.
+- [ ] For each notification rule, render: master toggle switch, threshold parameter dropdown (where applicable), and channel checkboxes (In-App, Email, MS Teams).
+
+**Backend**
+
+- [ ] Create RESTful endpoints for notification rules: `GET /api/v1/settings/notification-rules` (list all rules with their current config) and `PUT /api/v1/settings/notification-rules/{id}` (update a specific rule's toggle, threshold, and channel settings).
+
+**Database**
+
+- [ ] Create a `NotificationRules` table with columns: `id`, `rule_key` (UNIQUE, e.g., `WARRANTY_EXPIRY_WARNING`), `display_name`, `category` (ENUM: HARDWARE_LIFECYCLE, OPERATIONAL, SECURITY), `is_enabled` (boolean), `threshold_days` (integer, nullable), `channel_in_app` (boolean), `channel_email` (boolean), `channel_teams` (boolean), `updated_by` (FK → Users), `updated_at`.
+
+### US-23.3 — The Scheduled CRON Engine
+
+**Backend**
+
+- [ ] Configure a background Scheduler service (e.g., `node-cron`, Azure Functions Timer Trigger, or AWS EventBridge) to execute alert-checking jobs during off-peak hours (e.g., 2:00 AM UTC daily).
+- [ ] Write a `warrantyExpiryCheck` job: query assets where `warranty_expiry_date - CURRENT_DATE <= threshold_days` AND where a notification has not already been sent for this threshold period (deduplication).
+- [ ] Write an `overdueRepairCheck` job: query `MaintenanceTickets` where `status = 'Active'` AND `expected_return_date < CURRENT_DATE`, alert the dispatching admin.
+- [ ] Write an `overdueReturnCheck` job: query assignments where `expected_return_date < CURRENT_DATE` AND `status = 'ACTIVE'`, alert the assigning admin.
+- [ ] Implement a `NotificationDispatcher` service that reads the configured channels from `NotificationRules` and routes each alert payload to the appropriate handler (In-App insert, Email queue, Teams webhook).
+
+**Infrastructure / DevOps**
+
+- [ ] Deploy the CRON scheduler as a separate service or serverless function to avoid impact on the main API's performance.
+- [ ] Set up monitoring and alerting on the CRON jobs themselves (e.g., if a job fails to execute, alert DevOps).
+
+### US-23.4 — External Dispatch (Email & Teams Integration)
+
+**Backend**
+
+- [ ] Implement an Email dispatch service using a transactional email provider (e.g., SendGrid, AWS SES, or direct SMTP via `nodemailer`) with configurable templates for each notification type.
+- [ ] Implement exponential backoff retry logic (e.g., 1s, 2s, 4s, 8s, max 5 retries) for failed email deliveries, logging failures to a dead-letter queue after exhausting retries.
+- [ ] Implement an MS Teams webhook integration service: format notification payloads as MS Teams Adaptive Card JSON and POST to the configured Incoming Webhook URL.
+
+**Infrastructure / DevOps**
+
+- [ ] Add environment variables for SMTP configuration (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) and MS Teams Webhook URL (`TEAMS_WEBHOOK_URL`).
+- [ ] Create a `Settings > Integrations` page (or add a section to the Alerts settings) for admins to input and test the MS Teams Webhook URL.
+
+---
 

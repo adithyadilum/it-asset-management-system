@@ -62,8 +62,20 @@ Powered by WebSockets and Azure AD identity matching, the scanner operates in th
 
 ### Technical Implementation Tasks
 
-- [ ] Build the mobile-responsive `AdminMobileDashboard` React layout.
-- [ ] Implement routing guards that read the JWT role and direct standard users away from the Admin UI.
+#### Frontend
+
+- [ ] Build the mobile-responsive `AdminMobileDashboard` React layout with the hero "Launch Scanner" button, Quick Metrics cards, and Recent Activities list.
+- [ ] Implement JWT role-based routing guards that direct "Standard Employee" users to the employee portal and "Global Admin"/"IT Operator" users to the Admin Dashboard.
+- [ ] Build the fixed bottom navigation bar component (Home, My Assets, Notifications) with `position: fixed; bottom: 0`.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/mobile/dashboard` endpoint returning aggregated quick metrics (assigned asset count, pending approvals count, recent activity feed) for the authenticated user.
+
+#### Infrastructure / DevOps
+
+- [ ] Configure the PWA manifest (`manifest.json`) with app name, icons, theme color, and `display: standalone` for mobile home-screen installation.
+- [ ] Set up a Service Worker for offline caching of the app shell and static assets.
 
 ---
 
@@ -85,8 +97,11 @@ Powered by WebSockets and Azure AD identity matching, the scanner operates in th
 
 ### Technical Implementation Tasks
 
-- [ ] Write React viewport hooks (`window.innerWidth`) or CSS Media Queries to detect mobile constraints.
-- [ ] Build the Fallback Illustration component matching the exact UI design.
+#### Frontend
+
+- [ ] Write a React viewport detection hook using `window.innerWidth` (or `useMediaQuery`) to identify mobile screen sizes.
+- [ ] Build the "Desktop Screen Required" fallback component with the monitor icon illustration, explanatory message, and "Return to Mobile Dashboard" navigation button.
+- [ ] Wrap all desktop-only routes (registry grids, settings, master data) with the viewport guard to intercept mobile access attempts.
 
 ---
 
@@ -112,8 +127,13 @@ Powered by WebSockets and Azure AD identity matching, the scanner operates in th
 
 ### Technical Implementation Tasks
 
-- [ ] Implement HTML5 `getUserMedia` API alongside a lightweight scanning library (e.g., `html5-qrcode`).
-- [ ] Build the mobile Bottom-Sheet React component and hook up the haptic feedback API (`navigator.vibrate`).
+#### Frontend
+
+- [ ] Implement the full-screen camera scanner interface using the HTML5 `getUserMedia` API with a QR scanning library (e.g., `html5-qrcode` or `zxing`).
+- [ ] Build the targeting reticle overlay on the camera viewfinder for visual scan guidance.
+- [ ] Implement haptic feedback on successful scan using the `navigator.vibrate()` API.
+- [ ] Build the mobile Bottom-Sheet component that slides up on successful scan, displaying: Asset ID, Model, Custodian, Status, and Quick Action buttons (View Details, Assign, Return).
+- [ ] Extract the asset ID from the scanned QR URL and call the `GET /api/v1/assets/{id}` endpoint to populate the bottom-sheet data.
 
 ---
 
@@ -139,8 +159,20 @@ Powered by WebSockets and Azure AD identity matching, the scanner operates in th
 
 ### Technical Implementation Tasks
 
-- [ ] Implement a `UserSessionMap` in the WebSocket server to pair connections by `user_id`.
-- [ ] Write a desktop listener for an `ASSET_SCANNED` event that automatically updates the `selectedAssetId` state, triggering the Epic 8 slide-out panel to open.
+#### Frontend
+
+- [ ] Implement a WebSocket client connection on both mobile and desktop that authenticates using the JWT `user_id`.
+- [ ] Write a desktop-side WebSocket event listener for the `ASSET_SCANNED` event that automatically updates the `selectedAssetId` state, triggering the Epic 8 slide-out panel to open with the scanned asset's data.
+
+#### Backend
+
+- [ ] Set up a WebSocket server (e.g., using `Socket.IO` or native `ws` library) alongside the REST API.
+- [ ] Implement a `UserSessionMap` data structure on the WebSocket server to pair and manage multiple device connections by `user_id`.
+- [ ] Handle the `ASSET_SCANNED` event: when a mobile client emits a scan event, broadcast it to all other connections belonging to the same `user_id`.
+
+#### Infrastructure / DevOps
+
+- [ ] Configure WebSocket support in the deployment environment (ensure the load balancer/reverse proxy supports sticky sessions or WebSocket passthrough).
 
 ---
 
@@ -168,5 +200,10 @@ Powered by WebSockets and Azure AD identity matching, the scanner operates in th
 
 ### Technical Implementation Tasks
 
-- [ ] Configure the mobile scanning library to recognize 1D formats (Code 128, UPC, EAN).
-- [ ] Write the WebSocket listener logic on the desktop React client to inject received payloads into `document.activeElement`.
+#### Frontend
+
+- [ ] Configure the mobile scanning library to recognize 1D barcode formats (Code 128, UPC-A, EAN-13) in addition to QR codes.
+- [ ] On the mobile client, emit a `BARCODE_SCANNED` WebSocket event containing the decoded serial string.
+- [ ] On the desktop client, write a WebSocket listener for the `BARCODE_SCANNED` event that injects the received payload into `document.activeElement.value` if an input field is currently focused.
+- [ ] Implement memory buffering on the desktop: if no input field is focused, store the payload temporarily and display a toast notification ("Barcode scanned. Click an input field to paste.").
+- [ ] Implement a "paste" mechanism: when the user next focuses an input field after buffering, auto-populate it with the buffered barcode value.

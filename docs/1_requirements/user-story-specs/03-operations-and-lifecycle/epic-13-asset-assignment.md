@@ -56,8 +56,15 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `Assignments & Returns` layout component with the 3-tab navigation structure.
-- [ ] Configure the `Available Assets` data grid to automatically apply a `WHERE status = 'Available'` filter to the API fetch.
+#### Frontend
+
+- [ ] Build the `Assignments & Returns` layout component with the 3-tab navigation structure (Available Assets, Assigned Assets, Returned Assets).
+- [ ] Configure the `Available Assets` data grid to automatically apply a `status=Available` filter to the API fetch.
+- [ ] Add an "Assign" action button to the Asset Details panel footer, conditionally rendered only when `asset.status === 'Available'`.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/operations/assignments?tab={available|assigned|returned}` endpoint that returns filtered asset data based on the selected tab.
 
 ---
 
@@ -84,8 +91,15 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 
 ### Technical Implementation Tasks
 
-- [ ] Add a "Bulk Assign" button to the Epic 6 Data Grid toolbar that only renders when `selectedRows > 1` and all selected rows are `Available`.
-- [ ] Create a batch assignment API endpoint (`POST /api/v1/assets/bulk-assign`) that loops through the array of Asset IDs and updates them in a single transaction.
+#### Frontend
+
+- [ ] Add a "Bulk Assign" button to the Bulk Actions toolbar that only renders when `selectedRows > 1` and all selected rows have `status === 'Available'`.
+- [ ] Adapt the Assignment Modal to accept an array of asset IDs and display a summary header (e.g., "Assigning 3 Assets").
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/bulk-assign` endpoint that accepts an array of asset IDs and a target user/location, processes all assignments in a single atomic database transaction.
+- [ ] Trigger Epic 12 Digital Acceptance notifications for each asset in the batch.
 
 ---
 
@@ -111,7 +125,20 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 
 ### Technical Implementation Tasks
 
-- [ ] Build the "Assign Asset" UI modal with the User vs. Location toggle, the searchable dropdown, and the optional Date Picker.
+#### Frontend
+
+- [ ] Build the "Assign Asset" modal with a "User" vs. "Location" toggle that dynamically switches the searchable dropdown data source.
+- [ ] Integrate the searchable User dropdown powered by `GET /api/v1/users?search={query}`.
+- [ ] Integrate the searchable Location dropdown powered by `GET /api/v1/locations?search={query}`.
+- [ ] Add an optional "Expected Return Date" date picker for temporary loaner assignments.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/{id}/assign` endpoint that accepts the assignment payload (`type: 'user' | 'location'`, `targetId`, `expectedReturnDate`), updates the asset status to `Assigned`, and creates an Assignment record.
+
+#### Database
+
+- [ ] Create an `Assignments` table with columns: `id`, `asset_id` (FK → Assets), `assignment_type` (ENUM: USER, LOCATION), `assigned_to_user_id` (FK → Users, nullable), `assigned_to_location_id` (FK → Locations, nullable), `assigned_by` (FK → Users), `expected_return_date`, `actual_return_date`, `status` (ENUM: ACTIVE, RETURNED, CANCELLED), `created_at`, `updated_at`.
 
 ---
 
@@ -135,7 +162,14 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 
 ### Technical Implementation Tasks
 
-- [ ] Write frontend logic to conditionally hide/disable the Assign button based on `asset.status === 'Available'`.
+#### Frontend
+
+- [ ] Write frontend logic to conditionally hide/disable the "Assign" button based on `asset.status`: only show for `Available` status.
+- [ ] Display a user-friendly error toast when the backend returns a conflict error (409).
+
+#### Backend
+
+- [ ] Implement optimistic concurrency control or row-level locking: before processing an assignment, verify `asset.status === 'Available'` within the same database transaction, returning `409 Conflict` if the status has changed.
 
 ---
 
@@ -165,5 +199,12 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 
 ### Technical Implementation Tasks
 
-- [ ] Update the Epic 6 Bulk Action toolbar logic to evaluate the `pillar` and `category` of the selected rows before rendering the "Change Location" button.
-- [ ] Implement a backend batch-update endpoint (`PATCH /api/v1/assets/bulk-location`) that writes to the `AuditLog` iteratively for every updated asset.
+#### Frontend
+
+- [ ] Update the Bulk Action toolbar logic to evaluate the `pillar` and `subcategory.isPortable` flag of selected rows: hide "Change Location" for Software and portable Hardware, show it for Furniture and Electronics.
+- [ ] Build the "Change Location" bulk action modal with a searchable Location dropdown.
+
+#### Backend
+
+- [ ] Create a `PATCH /api/v1/assets/bulk-location` endpoint that accepts an array of asset IDs and a target `location_id`, validates pillar constraints server-side, and writes individual Audit Log entries for each updated asset.
+- [ ] Enforce pillar validation: reject requests attempting to change location for Software or portable Hardware assets with a `422 Unprocessable Entity` response.

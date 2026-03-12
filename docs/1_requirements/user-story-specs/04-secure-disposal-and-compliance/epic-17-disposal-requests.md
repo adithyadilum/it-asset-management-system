@@ -54,9 +54,20 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 
 ### Technical Implementation Tasks
 
-- [ ] Build the "Initiate Disposal" intake modal with character counting logic.
-- [ ] Build the `Operations > Disposals` layout component with the 2-tab structure (`Pending Disposal`, `Disposal History`).
-- [ ] Configure the data grid to filter by `status === 'Pending Disposal'` and calculate the `Days Pending` dynamically based on the timestamp of the status change.
+#### Frontend
+
+- [ ] Build the "Initiate Disposal" intake modal with: Reason Category dropdown, Technician Notes text area (with 500-char limit and visible counter), and darkened backdrop overlay.
+- [ ] Build the `Operations > Disposals` layout component with the tab structure (`Pending Disposal`, `Disposal History`).
+- [ ] Configure the `Pending Disposal` data grid to filter by `status === 'Pending Disposal'`, displaying: Asset ID, Model, Reason, Requested By, Days Pending (dynamically calculated, color-coded badge).
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/{id}/request-disposal` endpoint that updates the asset status to `Pending Disposal`, stores the reason category and technician notes, and writes an Audit Log entry.
+- [ ] Create a `GET /api/v1/disposals/pending` endpoint returning pending disposal requests with dynamically calculated `days_pending` values.
+
+#### Database
+
+- [ ] Create a `DisposalRequests` table with columns: `id`, `asset_id` (FK → Assets), `reason_category` (ENUM: DAMAGED_BEYOND_REPAIR, OBSOLETE, END_OF_LIFE, OTHER), `technician_notes` (500 char max), `requested_by` (FK → Users), `status` (ENUM: PENDING, APPROVED, REJECTED), `rejection_reason`, `rejected_by`, `created_at`, `updated_at`.
 
 ---
 
@@ -85,8 +96,14 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 
 ### Technical Implementation Tasks
 
-- [ ] Build the "Disposal Request Review" slide-out panel component applying the specified visual hierarchy and button colors.
-- [ ] Ensure the backend API serving this panel aggregates the real-time depreciation value (Epic 5) so the `Current Book Value` is mathematically accurate.
+#### Frontend
+
+- [ ] Build the "Disposal Request Review" slide-out panel with: disposal context section (Requested By, Date, Reason, Technician Notes) and financial summary block (Purchase Date, Original Cost, Current Book Value, Warranty Status) with a distinct visual hierarchy.
+- [ ] Add "Reject" (secondary/outline style) and "Initiate Disposal" (destructive red) action buttons to the panel footer.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/disposals/{id}` endpoint that aggregates the disposal request details alongside the asset's financial data (purchase details, real-time depreciated book value, warranty status) in a single response.
 
 ---
 
@@ -124,5 +141,11 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 
 ### Technical Implementation Tasks
 
-- [ ] Build the "Reject Disposal Request" modal with strict React state-binding to enforce the disabled button logic.
-- [ ] Create an API endpoint (`POST /api/v1/assets/{id}/reject-disposal`) that applies the new selected status and writes the rejection reason into the asset's `AuditLogs`.
+#### Frontend
+
+- [ ] Build the "Reject Disposal Request" modal with: contextual warning header ("You are declining the disposal of..."), mandatory Rejection Reason text area (auto-focused, >10 char minimum), Update Status To dropdown, and a conditionally disabled "Confirm Rejection" button.
+- [ ] Implement strict React state binding: the "Confirm Rejection" button only activates when both the reason length (>10 chars) and status selection criteria are met.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/disposals/{id}/reject` endpoint that: updates the disposal request status to `REJECTED`, stores the rejection reason and rejector, applies the selected fallback status to the asset, writes the event to the Audit Log, and queues a notification alert for the original requesting operator.

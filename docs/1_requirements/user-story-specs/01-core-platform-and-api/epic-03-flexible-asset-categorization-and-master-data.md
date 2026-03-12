@@ -59,8 +59,15 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `MasterDataLayout` React wrapper component with nested routing for the tabs.
-- [ ] Implement a reusable `DataTable` UI component with built-in client-side or server-side pagination and sorting.
+#### Frontend
+
+- [ ] Build the `MasterDataLayout` React wrapper component with nested tab routing for each entity (Categories, Locations, Departments, Vendors, Brands & Models).
+- [ ] Implement a reusable `DataTable` UI component with built-in pagination (configurable rows per page), sortable column headers, and a fixed header row.
+- [ ] Build a reusable empty-state component with an illustration and dynamic prompt text.
+
+#### Backend
+
+- [ ] Create a base CRUD controller pattern/template for Master Data entities that all specific entity controllers will extend.
 
 ---
 
@@ -107,8 +114,23 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Create `Locations` table with an `IsActive` boolean column.
-- [ ] Write dependency check queries (`SELECT count(*) FROM assets WHERE location_id = X`) before executing `DELETE`.
+#### Frontend
+
+- [ ] Build the "Add/Edit Location" modal component with form validation (required fields, duplicate detection on blur).
+- [ ] Implement the Toast notification system (reusable across all Master Data entities) for success/error feedback.
+- [ ] Implement multi-select checkboxes with a bulk-action toolbar featuring a "Delete" button.
+- [ ] Implement the Archive confirmation dialog for locations with active assets (disabling the hard-delete option).
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for Locations (`GET`, `POST`, `PUT`, `DELETE /api/v1/locations`).
+- [ ] Write dependency-check queries (`SELECT count(*) FROM assets WHERE location_id = X`) before executing `DELETE` — return `409 Conflict` if dependencies exist.
+- [ ] Implement the `PATCH /api/v1/locations/{id}/archive` endpoint to set `IsActive = false` for soft-delete.
+
+#### Database
+
+- [ ] Create the `Locations` table with columns: `id`, `building_name`, `floor`, `is_active` (boolean, default `true`), `created_at`, `updated_at`.
+- [ ] Add a `UNIQUE` constraint on the `building_name` column to enforce duplicate prevention at the schema level.
 
 ---
 
@@ -146,9 +168,22 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Create the `Departments` database table with a strict `UNIQUE` constraint on both the Name and the generated `department_id` column.
-- [ ] Write the frontend string-concatenation logic (e.g., `'tiq-' + shortCode.toLowerCase()`) to generate the ID before submitting the payload.
+#### Frontend
+
+- [ ] Build the "Add/Edit Department" modal with the short code input and a read-only preview field displaying the generated Cost Center ID (`tiq-{shortCode}`).
+- [ ] Implement the auto-formatting logic for the short code input: force lowercase, strip spaces and special characters, update the preview field on every keystroke.
+- [ ] Implement duplicate code validation on blur by querying the backend before submission.
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for Departments (`GET`, `POST`, `PUT`, `DELETE /api/v1/departments`).
+- [ ] Write the server-side Cost Center ID generation logic (`'tiq-' + shortCode.toLowerCase()`) as a validation step before insert.
 - [ ] Implement relational deletion checks against the `Users` and `Assets` tables to prevent orphaned records.
+
+#### Database
+
+- [ ] Create the `Departments` table with columns: `id`, `name`, `short_code`, `department_id` (generated), `is_active`, `created_at`, `updated_at`.
+- [ ] Add `UNIQUE` constraints on both the `name` and `department_id` columns.
 
 ---
 
@@ -183,8 +218,22 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Create `Vendors` database table with a unique constraint on the `CompanyName` column.
-- [ ] Ensure the "Edit Vendor" API cascades the updated data naturally via foreign keys.
+#### Frontend
+
+- [ ] Build the "Add/Edit Vendor" modal with fields: Company Name, Contact Person, Contact Phone, Support Email.
+- [ ] Implement email field regex validation and inline error messaging.
+- [ ] Render the `Support Email` column in the data grid as a clickable `mailto:` link.
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for Vendors (`GET`, `POST`, `PUT`, `DELETE /api/v1/vendors`).
+- [ ] Ensure the "Edit Vendor" API cascades updated data naturally via foreign key relationships.
+- [ ] Implement relational deletion checks against `Assets` and `MaintenanceTickets` tables before allowing deletion.
+
+#### Database
+
+- [ ] Create the `Vendors` table with columns: `id`, `company_name`, `contact_person`, `contact_phone`, `support_email`, `is_active`, `created_at`, `updated_at`.
+- [ ] Add a `UNIQUE` constraint on the `company_name` column.
 
 ---
 
@@ -229,9 +278,23 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Build a standard CRUD interface (Create, Read, Update, Deactivate) for the `Brands` database table.
-- [ ] Enforce a strict `UNIQUE` database constraint on the Brand Name column to prevent identical entries at the schema level.
-- [ ] Implement a Soft Delete (`is_active` boolean) rather than a Hard Delete to preserve historical asset integrity.
+#### Frontend
+
+- [ ] Build the "Add/Edit Brand" modal component with case-insensitive duplicate validation.
+- [ ] Build the Brands data grid displaying `Brand Name`, `Status` (Active/Inactive toggle badge), and a computed `Model Count` column.
+- [ ] Implement the Active/Inactive toggle with visual state change (green for active, gray for inactive).
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for Brands (`GET`, `POST`, `PUT /api/v1/brands`).
+- [ ] Implement case-insensitive uniqueness validation on the brand name before insert/update.
+- [ ] Implement a `PATCH /api/v1/brands/{id}/deactivate` endpoint for soft-delete (setting `is_active = false`).
+- [ ] Write a `GET /api/v1/brands` response aggregation that includes a computed `model_count` for each brand.
+
+#### Database
+
+- [ ] Create the `Brands` table with columns: `id`, `name`, `is_active` (boolean, default `true`), `created_at`, `updated_at`.
+- [ ] Add a case-insensitive `UNIQUE` constraint on the `name` column (e.g., `UNIQUE(LOWER(name))` or `CITEXT` type).
 
 ---
 
@@ -271,8 +334,22 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Create `Brands` and `Models` tables with a `brand_id` foreign key.
-- [ ] Build the frontend dependent-dropdown logic for asset registration forms.
+#### Frontend
+
+- [ ] Build the expandable/accordion row data table component: clicking a Brand row reveals a nested sub-table of its Models.
+- [ ] Build the "Add/Edit Model" modal contextually anchored to the expanded Brand row.
+- [ ] Implement the dependent dropdown logic for asset registration forms: selecting a Brand triggers an API call to `GET /api/v1/brands/{brandId}/models` to populate the Model dropdown.
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for Models (`GET`, `POST`, `PUT`, `DELETE /api/v1/brands/{brandId}/models`).
+- [ ] Enforce composite uniqueness: a model name must be unique _within_ a given brand, but the same name can exist under different brands.
+- [ ] Implement relational deletion checks against the `Assets` table before allowing Brand or Model deletion.
+
+#### Database
+
+- [ ] Create the `Models` table with columns: `id`, `name`, `brand_id` (FK → `Brands.id`), `is_active`, `created_at`, `updated_at`.
+- [ ] Add a composite `UNIQUE` constraint on `(brand_id, name)`.
 
 ---
 
@@ -308,8 +385,22 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Create the `SubCategories` database table. Add an ENUM or foreign key column linking it to the 4 hardcoded Main Pillars (Hardware, Software, Furniture, Electronics).
+#### Frontend
+
+- [ ] Build the right-side Slide-Out Panel (Sheet) component covering 40% of the viewport width for category creation/editing.
+- [ ] Implement the Main Pillar selector as a locked dropdown or radio group with only the 4 hardcoded options.
+- [ ] Integrate the Sub-Category panel with the auto-prefix generator (US-3.8) and schema builder (US-3.9) as sub-sections.
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for SubCategories (`GET`, `POST`, `PUT`, `DELETE /api/v1/subcategories`).
+- [ ] Enforce uniqueness: a sub-category name must be unique within its parent pillar.
 - [ ] Implement relational deletion safeguards linking Sub-Categories to the main `Assets` table.
+
+#### Database
+
+- [ ] Create the `SubCategories` table with columns: `id`, `name`, `pillar` (ENUM: Hardware, Software, Furniture, Electronics), `prefix`, `schema` (JSONB), `is_active`, `created_at`, `updated_at`.
+- [ ] Add a composite `UNIQUE` constraint on `(pillar, name)`.
 
 ---
 
@@ -340,8 +431,17 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Write string-manipulation logic for auto-prefix generation.
-- [ ] Block `PUT`/`PATCH` requests from modifying the `Prefix` column after initial creation.
+#### Frontend
+
+- [ ] Implement the auto-prefix generation logic triggered on the Sub-Category Name input's `onBlur` event (e.g., first letter of each word, or first 3 consonants for single words).
+- [ ] Implement an async validation call on the generated prefix to check uniqueness against the backend before form submission.
+- [ ] Apply the visual lock styling to the Prefix field after creation: gray background (`bg-gray-100`), padlock icon, `readOnly` attribute.
+
+#### Backend
+
+- [ ] Write server-side prefix generation logic with collision resolution: if the generated prefix already exists, automatically append an incrementing number (e.g., `LAP` → `LAP2` → `LAP3`).
+- [ ] Write a `GET /api/v1/subcategories/validate-prefix?prefix={prefix}` endpoint for frontend async validation.
+- [ ] Block `PUT`/`PATCH` requests from modifying the `prefix` column after initial creation.
 
 ---
 
@@ -370,5 +470,15 @@ This epic builds the dynamic data foundation of the IDAMS platform. The system i
 
 ### Technical Implementation Tasks
 
-- [ ] Implement JSONB (or EAV relational) schema storage to save sub-category definitions.
-- [ ] Write `GET /api/sub-categories/{id}/schema` to fetch the payload for dynamic frontend rendering.
+#### Frontend
+
+- [ ] Build the Custom Field Builder UI at the bottom of the Sub-Category slide-out panel using a drag-and-drop library (e.g., `dnd-kit`).
+- [ ] Implement the field row component with: a drag handle (`⋮⋮`), a "Field Name" text input, a "Type" dropdown (`Text | Number | Dropdown | Date | Boolean`), a "Required" toggle, and a delete button.
+- [ ] Implement the conditional dropdown options sub-UI: when Type is set to "Dropdown", render a secondary input for comma-separated option values.
+- [ ] Write schema serialization logic to convert the field builder state into a JSON payload for API submission.
+
+#### Backend
+
+- [ ] Implement JSONB schema storage to save each sub-category's custom field definitions as a structured JSON array.
+- [ ] Create a `GET /api/v1/subcategories/{id}/schema` endpoint to fetch the field schema payload for dynamic frontend form rendering.
+- [ ] Write server-side validation logic to enforce required fields defined in the schema when assets are registered under this sub-category.

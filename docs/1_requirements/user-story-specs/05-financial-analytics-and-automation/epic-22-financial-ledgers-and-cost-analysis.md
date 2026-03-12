@@ -48,8 +48,14 @@ This epic builds a highly secured, dedicated sandbox for the Finance department.
 
 ### Technical Implementation Tasks
 
-- [ ] Update the global Sidebar layout component with conditional rendering logic checking the user's JWT role payload.
-- [ ] Write robust middleware on the backend to reject any API requests to financial ledger endpoints from non-authorized roles.
+#### Frontend
+
+- [ ] Update the global Sidebar component with conditional rendering: hide the `Financials` accordion menu entirely when `user.role` is not `FinanceManager` or `GlobalAdmin`.
+- [ ] Wrap all Financial module routes with the `<ProtectedRoute allowedRoles={['FinanceManager', 'GlobalAdmin']} />` guard, redirecting unauthorized users to the 403 page.
+
+#### Backend
+
+- [ ] Write backend middleware to reject API requests to all `/api/v1/financials/*` endpoints from non-authorized roles, returning `403 Forbidden`.
 
 ---
 
@@ -79,9 +85,16 @@ _Note: The depreciation calculations must be validated with the Finance Departme
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `Depreciation Ledger` data grid UI matching the specified columns.
-- [ ] Write a dynamic SQL View or backend aggregation logic that calculates `Current Book Value` based on `(Original Purchase Price / Expected Lifespan) * Remaining Lifespan` relative to `CURRENT_DATE`.
-- [ ] Wire the `Export Log (CSV)` button to the Epic 21 CSV generation engine.
+#### Frontend
+
+- [ ] Build the `Depreciation Ledger` data grid UI with the specified columns and the financial toolbar (search bar, Filters dropdown, `Export Log (CSV)` button).
+- [ ] Format financial values as localized currency strings (e.g., `$1,400.00 USD`) in the grid cells.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/financials/depreciation` endpoint with pagination, search, and filter support.
+- [ ] Implement the Straight-Line Depreciation calculation in a SQL View or backend aggregation: `Current Book Value = Original Purchase Price - ((Original Purchase Price / Expected Lifespan in months) * Months Elapsed Since Purchase)`, floored at `$0.00`.
+- [ ] Wire the `Export Log (CSV)` button to the Epic 21 CSV generation engine via a `POST /api/v1/reports/export/csv` call with pre-configured depreciation query parameters.
 
 ---
 
@@ -105,8 +118,14 @@ _Note: The depreciation calculations must be validated with the Finance Departme
 
 ### Technical Implementation Tasks
 
-- [ ] Create the `Total Cost of Ownership (TCO)` UI tab with the search, filter, and export toolbar.
-- [ ] Write a backend SQL aggregation query joining the `Assets` table (`Original Purchase Price`) with a `SUM(FinalCost)` from all `MaintenanceTickets` linked to that specific `asset_id` to generate the `Total Repair Costs` and `Total TCO` fields.
+#### Frontend
+
+- [ ] Build the `Total Cost of Ownership` data grid UI with the specified columns and the financial toolbar (search, filters, `Export Log (CSV)` button).
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/financials/tco` endpoint that executes a SQL aggregation query joining the `Assets` table (`purchase_price`) with `SUM(actual_cost)` from all related `MaintenanceTickets` records, computing `Total TCO = purchase_price + SUM(actual_cost)`.
+- [ ] Support pagination, search (by Asset ID, Category), and filter (by date range, cost range) on the TCO endpoint.
 
 ---
 
@@ -130,6 +149,15 @@ _Note: The depreciation calculations must be validated with the Finance Departme
 
 ### Technical Implementation Tasks
 
-- [ ] Create the `Write-Offs & Salvage` UI tab with the search, filter, and export toolbar.
-- [ ] Add a `salvage_value` numeric column to the Epic 18 Disposal payload and database schema.
-- [ ] Write a backend query fetching only assets with the `Disposed` status, joining their locked depreciation value at the time of disposal and the `salvage_value`.
+#### Frontend
+
+- [ ] Build the `Write-Offs & Salvage` data grid UI with the specified columns and the financial toolbar (search, filters, `Export Log (CSV)` button).
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/financials/writeoffs` endpoint fetching only assets with `status === 'Disposed'`, joining the disposal record for `disposal_date`, the locked `book_value_at_disposal`, and the `salvage_value`.
+
+#### Database
+
+- [ ] Add a `salvage_value` numeric column to the Epic 18 Disposal payload schema (either in `DisposalRequests` or `Assets` table).
+- [ ] Add a `book_value_at_disposal` numeric column to persist the calculated depreciated value at the moment of disposal, ensuring it never changes after finalization.

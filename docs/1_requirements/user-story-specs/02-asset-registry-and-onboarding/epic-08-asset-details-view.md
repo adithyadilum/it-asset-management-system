@@ -66,9 +66,18 @@ This epic focuses on the "Read" and "Interact" portion of an individual asset's 
 
 ### Technical Implementation Tasks
 
-- [ ] Build the base Slide-Out Sheet React component ensuring it does _not_ trap focus or block interaction with the underlying DOM elements.
-- [ ] Implement a `selectedAssetId` state variable at the grid level that passes down to the panel.
-- [ ] Write a `useEffect` hook inside the panel component that listens for changes to `selectedAssetId` and triggers a fresh `GET /api/v1/assets/{id}` fetch, smoothly replacing the panel's internal data.
+#### Frontend
+
+- [ ] Build the base 700px Slide-Out Sheet React component that does _not_ trap focus or block interaction with the underlying DOM elements (non-modal sheet).
+- [ ] Implement sidebar auto-collapse logic: when the panel opens, the main sidebar collapses to icon-only mode; when the panel closes, the sidebar expands back.
+- [ ] Implement the `selectedAssetId` state management at the grid level, passed down as a prop to the panel.
+- [ ] Write a `useEffect` hook inside the panel component that listens for `selectedAssetId` changes and triggers a fresh `GET /api/v1/assets/{id}` fetch, smoothly replacing the panel's data.
+- [ ] Implement a loading skeleton component displayed inside the panel during data fetching transitions.
+- [ ] Implement active row highlighting in the data grid: apply a distinct background color to the row matching `selectedAssetId`.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/assets/{id}` endpoint returning the complete asset profile including base details, custom fields, purchase details, and related maintenance records.
 
 ---
 
@@ -107,9 +116,17 @@ This epic focuses on the "Read" and "Interact" portion of an individual asset's 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement conditional tab rendering based on `asset.pillar === 'Hardware'`.
-- [ ] Build the 2-column CSS Grid layout for the Asset Details tab.
-- [ ] Add the QR icon button placeholder that will trigger the Epic 9 generation modal.
+#### Frontend
+
+- [ ] Implement conditional tab rendering based on `asset.pillar === 'Hardware'` to show the 4-tab layout (Asset Details, Technical Details, Purchase Details, History).
+- [ ] Build the "Asset Details" summary tab: device image, status badge, 2-column CSS Grid of key-value pairs, and the Maintenance Records summary card.
+- [ ] Build the QR Code icon button that triggers the Epic 9 tag preview modal.
+- [ ] Build the "Technical Details" tab that dynamically renders custom fields from the sub-category schema via `GET /api/v1/subcategories/{id}/schema`.
+- [ ] Build the "Maintenance Records" summary card showing the 3 most recent events with a "View all" navigation link.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/assets/{id}/maintenance` endpoint returning the maintenance record history for a specific asset (used in the summary card and the "View all" page).
 
 ---
 
@@ -137,8 +154,17 @@ This epic focuses on the "Read" and "Interact" portion of an individual asset's 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement conditional tab rendering based on `asset.pillar === 'Software'`.
-- [ ] Build the securely masked "reveal" component for the License Key on the frontend.
+#### Frontend
+
+- [ ] Implement conditional tab rendering for `asset.pillar === 'Software'` showing 3 tabs: Details, Purchase Details, Assignments.
+- [ ] Build the License Key masked display component with a "Reveal" toggle button.
+- [ ] Build the "Assignments" tab with a data table (User, Action, Date, Performed By) and contextual "Revoke"/"Assign" action buttons per row.
+- [ ] Ensure Maintenance Records section and QR Code button are completely hidden for Software assets.
+
+#### Backend
+
+- [ ] Create `GET /api/v1/assets/{id}/assignments` endpoint to return the seat allocation history for a software license.
+- [ ] Create `POST /api/v1/assets/{id}/assignments` and `DELETE /api/v1/assets/{id}/assignments/{userId}` endpoints for seat assignment and revocation.
 
 ![](https://t90181861921.p.clickup-attachments.com/t90181861921/f86df33b-5165-4e0c-81e4-3266b5f1a697/Software%20List%20View%20-%20Desktop.png)
 ![](https://t90181861921.p.clickup-attachments.com/t90181861921/aabb2423-3742-4b0f-bf18-74b19b7e2dab/Software%20Asset%20Profile-%20Desktop.png)
@@ -171,7 +197,11 @@ This epic focuses on the "Read" and "Interact" portion of an individual asset's 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement conditional tab rendering based on `asset.pillar === 'Furniture'`.
+#### Frontend
+
+- [ ] Implement conditional tab rendering for `asset.pillar === 'Furniture'` showing 4 tabs: Asset Details, Physical Details, Purchase Details, History.
+- [ ] Build the Asset Details tab variant with Location (Building/Floor/Zone) and Condition prominently displayed instead of user assignment.
+- [ ] Build the "Physical Details" tab rendering dynamic Custom Fields from the sub-category schema (e.g., Dimensions, Material, Weight).
 
 ---
 
@@ -195,7 +225,10 @@ This epic focuses on the "Read" and "Interact" portion of an individual asset's 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement conditional tab rendering based on `asset.pillar === 'Electronics'`.
+#### Frontend
+
+- [ ] Implement conditional tab rendering for `asset.pillar === 'Electronics'` showing 4 tabs: Asset Details, Technical Details, Purchase Details, History.
+- [ ] Build the Asset Details tab variant with Location, Maintenance Status, Next Scheduled Maintenance Date, and the Maintenance Records summary card.
 
 ---
 
@@ -222,5 +255,13 @@ This epic focuses on the "Read" and "Interact" portion of an individual asset's 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement secure file retrieval logic from the AWS S3/Azure Blob bucket to generate a temporary, signed download URL for the invoice.
-- [ ] Write an API query pulling specifically from the `AuditLogs` table where `target_asset_id = {current_asset}` to populate the History timeline.
+#### Frontend
+
+- [ ] Build the "Purchase Details" tab component displaying the financial breakdown (Base Price, Tax, Shipping, Total Cost, Currency) in a clean key-value layout.
+- [ ] Implement the "Download Invoice" button that requests a signed URL from the backend and triggers a file download.
+- [ ] Build the "History" tab component rendering a vertical chronological timeline from audit log entries, with color-coded event-type indicators.
+
+#### Backend
+
+- [ ] Implement secure signed-URL generation for invoice file retrieval from the cloud storage bucket (AWS S3 `getSignedUrl` / Azure Blob `generateSasUrl`), with a configurable expiry (e.g., 15 minutes).
+- [ ] Create a `GET /api/v1/assets/{id}/history` endpoint that queries the `AuditLogs` table filtered by `entity_id = {assetId}` and returns chronologically ordered events.

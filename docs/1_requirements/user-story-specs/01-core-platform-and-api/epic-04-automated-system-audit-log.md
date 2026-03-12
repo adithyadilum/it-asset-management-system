@@ -52,10 +52,19 @@ This epic acts as the system's black box flight recorder. To meet strict ISO 270
 
 ### Technical Implementation Tasks
 
-- [ ] Create an append-only `AuditLogs` PostgreSQL database table.
-- [ ] Strictly revoke `UPDATE` and `DELETE` database privileges on the `AuditLogs` table at the database-user level.
-- [ ] Write a backend middleware interceptor to extract the direct client IP address from the request object (handling `X-Forwarded-For` headers if necessary).
-- [ ] Implement a backend utility to compute Before/After object states and serialize them into JSON diff payloads for storage.
+#### Backend
+
+- [ ] Write a reusable backend middleware/interceptor that automatically hooks into all `POST`, `PUT`, `PATCH`, and `DELETE` controller actions to capture audit data.
+- [ ] Implement a utility function to compute Before/After object states by fetching the current record before mutation, then serializing both states into a JSON diff payload.
+- [ ] Implement IP address extraction logic from the request object, handling `X-Forwarded-For` headers for requests behind Load Balancers or Reverse Proxies.
+- [ ] Ensure the middleware captures the `actor_id` from the authenticated JWT payload and attaches it to every audit log entry.
+- [ ] Implement performance safeguards: use asynchronous (non-blocking) log writes where possible to stay under the 100ms latency budget.
+
+#### Database
+
+- [ ] Create an append-only `AuditLogs` table with columns: `id`, `actor_id` (FK → Users), `actor_email`, `action_type` (ENUM: CREATE, UPDATE, DELETE, DISPOSE), `entity_type`, `entity_id`, `ip_address`, `before_state` (JSONB), `after_state` (JSONB), `created_at`.
+- [ ] Strictly revoke `UPDATE` and `DELETE` database privileges on the `AuditLogs` table at the database-user level to enforce immutability.
+- [ ] Create an index on `(entity_type, entity_id)` and `(actor_id)` for efficient querying by the Audit Log viewer.
 
 ---
 
@@ -98,6 +107,16 @@ This epic acts as the system's black box flight recorder. To meet strict ISO 270
 
 ### Technical Implementation Tasks
 
-- [ ] Build the High-Density Audit UI table in React with complex state management for Date/Actor filters.
-- [ ] Create API endpoint `GET /api/audit-logs` that accepts complex query parameters for filtering and supports cursor-based or offset pagination.
-- [ ] Implement a backend CSV generator service that streams the requested log data down to the client upon clicking "Export Log".
+#### Frontend
+
+- [ ] Build the Audit Log data table page in React with chronological ordering (newest first) and pagination.
+- [ ] Build the filter bar component with: Date Range pickers, Actor searchable dropdown, Action Type multi-select, and Entity Type filter.
+- [ ] Implement color-coded action-type badges component (Green = CREATE, Blue = UPDATE, Red = DELETE/DISPOSE).
+- [ ] Build the expandable row / "View Details" modal component rendering Before/After JSON diffs in a monospace font with a highlighted-change visual indicator.
+- [ ] Implement the "Export Log (CSV)" button that sends the current filter parameters to the backend and triggers the CSV file download.
+
+#### Backend
+
+- [ ] Create an API endpoint `GET /api/v1/audit-logs` with support for complex query parameters: `dateFrom`, `dateTo`, `actorId`, `actionType[]`, `entityType`, `entityId`, and cursor-based or offset pagination.
+- [ ] Implement a backend CSV streaming/generation service that accepts the same filter parameters and returns the result set as a downloadable `.csv` file (`GET /api/v1/audit-logs/export`).
+- [ ] Ensure the endpoint enforces RBAC: only `GlobalAdmin` and `FinanceAuditor` roles can access the audit log API.

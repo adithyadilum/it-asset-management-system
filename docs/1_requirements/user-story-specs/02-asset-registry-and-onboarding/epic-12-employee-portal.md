@@ -53,8 +53,16 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 
 ### Technical Implementation Tasks
 
-- [ ] Implement a React Higher-Order Component (HOC) or Route Guard (e.g., `<ProtectedRoute allowedRoles={['admin']} />`) around all Epic 6, 7, and 8 components.
-- [ ] Write strict backend middleware ensuring API endpoints validate the JWT role before returning global asset arrays.
+#### Frontend
+
+- [ ] Implement a `<ProtectedRoute allowedRoles={['GlobalAdmin', 'ITOperator']} />` higher-order component (HOC) or route guard wrapper around all admin-only routes (Epic 6, 7, 8 components).
+- [ ] Implement the role-aware Sidebar component that shows only "My Dashboard", "My Assets", and "Service Requests" (disabled placeholder) for Standard Employees.
+- [ ] Implement post-login routing logic: if `user.role === 'StandardEmployee'`, redirect to `/portal/my-assets` instead of the admin dashboard.
+- [ ] Reuse the 403 Forbidden error page component from Epic 2 for route interception.
+
+#### Backend
+
+- [ ] Write strict backend middleware ensuring all admin API endpoints (`/api/v1/assets`, `/api/v1/settings`, `/api/v1/master-data`) validate the JWT role and return `403 Forbidden` for Standard Employee tokens.
 
 ---
 
@@ -86,8 +94,16 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `EmployeeDashboard` React layout and responsive `AssetCard` components.
-- [ ] Write a locked-down API endpoint (`GET /api/v1/my-assets`) that _forces_ the database query to filter strictly by the requesting user's ID (`WHERE assigned_to = jwt.user_id`).
+#### Frontend
+
+- [ ] Build the `EmployeeDashboard` React layout with a personalized greeting ("Welcome back, {firstName}") and a responsive CSS Grid of `AssetCard` components.
+- [ ] Build the `AssetCard` component displaying: asset type icon/image, model name, Asset ID, date assigned, and status badge.
+- [ ] Implement mobile responsive layout: sidebar collapses to hamburger menu, asset cards stack in a single column on small screens.
+- [ ] Ensure asset cards are strictly read-only with no click-through to admin panels.
+
+#### Backend
+
+- [ ] Create a secure `GET /api/v1/portal/my-assets` endpoint that _forces_ the database query to filter strictly by the requesting user's ID (`WHERE assigned_to = jwt.user_id`), returning only their assigned assets.
 
 ---
 
@@ -118,9 +134,21 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 
 ### Technical Implementation Tasks
 
-- [ ] Build the Acceptance Modal component and checkbox validation logic.
-- [ ] Write the backend endpoint (`POST /api/v1/assignments/{id}/accept`) to log the digital signature timestamp.
-- [ ] _Mock/Stub_ a notification queue table in the database where the system can log `PENDING_ACCEPTANCE` and `REMINDER_ESCALATED` events, ready for the future Notification Service to consume.
+#### Frontend
+
+- [ ] Build the "Action Required" alert banner component that renders at the top of the Employee Dashboard when there are pending acceptance items.
+- [ ] Build the Acceptance Modal with: asset details summary, mandatory acknowledgment checkbox (linked to IT acceptable use policy), and a "Confirm Receipt" button that enables only when the checkbox is checked.
+- [ ] Implement the "Report Issue / Did Not Receive" rejection pathway as a secondary action in the Acceptance Modal.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/portal/assignments/{id}/accept` endpoint that logs the digital acceptance timestamp, updates the assignment status to "Confirmed", and cancels any pending reminder events.
+- [ ] Create a `POST /api/v1/portal/assignments/{id}/reject` endpoint for the "Did Not Receive" pathway, notifying the issuing admin.
+- [ ] Implement an escalation scheduler (cron job or task queue): at 24h, 48h, and 72h intervals, check for assignments still in "Pending Acceptance" state and enqueue `REMINDER_ESCALATED` events to the notification queue.
+
+#### Database
+
+- [ ] Create a `NotificationQueue` table with columns: `id`, `event_type` (ENUM: PENDING_ACCEPTANCE, REMINDER_24H, REMINDER_48H, REMINDER_72H_ADMIN), `assignment_id` (FK), `recipient_id` (FK → Users), `is_processed` (boolean), `created_at`.
 
 ---
 
@@ -147,6 +175,14 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 
 ### Technical Implementation Tasks
 
-- [ ] Conditionally render the yellow and red alert banners on the Employee Dashboard based on assignment statuses.
-- [ ] Build WebSocket or polling logic on the frontend to display the Admin-Initiated "Request Return" banner in real-time.
-- [ ] Ensure the backend logic for date-math correctly flags records so the future Notification Engine knows which ones require emails.
+#### Frontend
+
+- [ ] Build the yellow "Upcoming Return" alert banner component, conditionally rendered when an asset's expected return date is within 14 days.
+- [ ] Build the red "Urgent Action Required" alert banner component for admin-initiated return requests.
+- [ ] Implement real-time banner rendering via WebSocket or polling to display admin-initiated return requests without requiring a page refresh.
+
+#### Backend
+
+- [ ] Implement a scheduled task (cron job) that runs daily, identifies assignments with `expected_return_date` within 14 days, and enqueues `UPCOMING_RETURN` events to the notification queue.
+- [ ] Implement the admin "Request Return" action handler: when triggered, enqueue an `URGENT_RETURN_REQUESTED` event and push a real-time notification to the employee's active session (via WebSocket or push API).
+- [ ] Create a `GET /api/v1/portal/notifications` endpoint that returns the authenticated employee's pending alerts and banners.

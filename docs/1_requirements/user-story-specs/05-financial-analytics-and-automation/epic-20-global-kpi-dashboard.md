@@ -53,8 +53,21 @@ This epic builds the primary "Command Center" landing page for the ITAM system. 
 
 ### Technical Implementation Tasks
 
-- [ ] Write optimized SQL Views or backend aggregation endpoints to calculate the MoM and WoW percentage changes for the KPI cards.
-- [ ] Integrate a charting library (e.g., Recharts, Chart.js) for the Bar and Donut visualizations.
+#### Frontend
+
+- [ ] Build the responsive dashboard layout with 3 rows: KPI Cards (top), Visualizations (middle), Actionable Tables (bottom).
+- [ ] Build the 4 KPI Metric Card components displaying: primary value, MoM/WoW percentage change indicator (green arrow up / red arrow down), and a descriptive label.
+- [ ] Integrate a charting library (e.g., Recharts, Chart.js, or ApexCharts) to render the `Asset Allocation by Department` bar chart and the `Current Inventory Status` donut chart.
+- [ ] Build the bottom-row actionable data tables with tabs: `Overdue Returns` and `High-Maintenance Assets (Lemons)`.
+- [ ] Add a global Date Range picker to the dashboard header for filtering all widgets by a selected time period.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/dashboard/kpis` endpoint returning aggregated KPI data: total asset value (with MoM delta), active asset count (with WoW delta), in-repair count, and expiring software count.
+- [ ] Create a `GET /api/v1/dashboard/charts` endpoint returning: department allocation data (group by custodian department) and status distribution data (group by status).
+- [ ] Create a `GET /api/v1/dashboard/overdue-returns` endpoint returning assets where `expected_return_date < CURRENT_DATE`.
+- [ ] Create a `GET /api/v1/dashboard/high-maintenance` endpoint returning assets with a repair count ≥ 3 from the `MaintenanceTickets` table.
+- [ ] Write optimized SQL aggregation queries with proper indexing to ensure dashboard load time stays under 2 seconds.
 
 ---
 
@@ -73,6 +86,12 @@ This epic builds the primary "Command Center" landing page for the ITAM system. 
   - And I have full access to view and interact with every widget, chart, and actionable table presented in US-20.1.
 
 ![](https://t90181861921.p.clickup-attachments.com/t90181861921/ac4920af-b1da-4e4b-9183-7523750f6104/Dashboard%20-%20Desktop.png)
+
+### Technical Implementation Tasks
+
+#### Frontend
+
+- [ ] Ensure the Global Admin role renders all dashboard widgets without any conditional hiding.
 
 ---
 
@@ -95,8 +114,13 @@ This epic builds the primary "Command Center" landing page for the ITAM system. 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement conditional rendering logic (e.g., `if (user.role !== 'IT Operator') return <FinancialKpiCard />`) on the frontend layout component.
-- [ ] Ensure the backend API drops financial aggregation data from the dashboard payload if the requesting JWT lacks financial permissions.
+#### Frontend
+
+- [ ] Implement conditional rendering logic on the dashboard layout: hide the `Total Asset Value` KPI card when `user.role === 'ITOperator'` and adjust the CSS Grid to fill the remaining 3 cards at full width.
+
+#### Backend
+
+- [ ] Ensure the `GET /api/v1/dashboard/kpis` endpoint omits the `totalAssetValue` field from the response payload when the requesting JWT lacks financial permissions.
 
 ---
 
@@ -118,6 +142,17 @@ This epic builds the primary "Command Center" landing page for the ITAM system. 
   - Then the bottom data table defaults to the `Pending Approvals` tab (showing pending disposals requiring financial sign-off) rather than the `Overdue Returns` tab.
   - And the operational `High-Maintenance Assets` table is hidden or replaced by a `Recent Write-Offs` summary.
   ![](https://t90181861921.p.clickup-attachments.com/t90181861921/146a2fbf-749e-4a7e-bbf6-a537d892023a/Dashboard%20finance%20audit%20-%20Desktop.png)
+
+### Technical Implementation Tasks
+
+#### Frontend
+
+- [ ] Implement Finance-role conditional rendering: show `Total Asset Value` card, hide `Expiring Software` and `Assets in Repair` cards, default bottom table to the `Pending Approvals` tab, and replace `High-Maintenance Assets` with `Recent Write-Offs`.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/dashboard/pending-approvals` endpoint returning pending disposal requests requiring financial sign-off.
+- [ ] Create a `GET /api/v1/dashboard/recent-writeoffs` endpoint returning recently disposed assets with their write-off values.
 
 ---
 
@@ -146,5 +181,8 @@ This epic builds the primary "Command Center" landing page for the ITAM system. 
 
 ### Technical Implementation Tasks
 
-- [ ] Implement URL routing wrappers around the KPI cards, passing filter states as query parameters.
-- [ ] Bind the dashboard "Quick Action" buttons to the existing backend API endpoints built during the Operations epics.
+#### Frontend
+
+- [ ] Implement URL deep-linking on KPI cards: clicking each card navigates to the corresponding Operations page with filter query parameters pre-applied (e.g., `/operations/maintenance?tab=active`).
+- [ ] Bind the "Send Reminder" inline button to the `POST /api/v1/assets/{id}/request-return` endpoint and display a success toast.
+- [ ] Bind the "Flag for Disposal" inline button to open the Epic 17 "Initiate Disposal" modal as an overlay on the dashboard.

@@ -46,9 +46,15 @@ This epic focuses on accountability and exception handling. It surfaces the raw 
 
 ### Technical Implementation Tasks
 
-- [ ] Build the vertical timeline React component for the `History` tab.
-- [ ] Write a backend query (`GET /api/v1/assets/{id}/history`) to fetch, format, and chronologically sort asset-specific events from the global `AuditLogs` table.
-- [ ] Implement the CSV generation utility for the targeted history payload.
+#### Frontend
+
+- [ ] Build the vertical timeline React component for the `History` tab, rendering event cards with: Timestamp, Action type (color-coded), Old Value, New Value, and Actor.
+- [ ] Implement the "Export CSV" button that sends the current asset ID to the backend export endpoint and triggers a browser file download.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/assets/{id}/history` endpoint to fetch, format, and chronologically sort asset-specific events from the global `AuditLogs` table.
+- [ ] Create a `GET /api/v1/assets/{id}/history/export` endpoint that generates a CSV stream of the asset's audit history and returns it as a downloadable file.
 
 ---
 
@@ -86,10 +92,18 @@ This epic focuses on accountability and exception handling. It surfaces the raw 
 
 ### Technical Implementation Tasks
 
-- [ ] Build the interactive `StatusBadge` React component with a built-in dropdown menu.
-- [ ] Write frontend filtering logic to map the available dropdown options based on a `PermissibleManualStates` enum.
-- [ ] Build the intercepting "Status Change Justification" modal.
-- [ ] Implement backend state-machine rules validating the payload.
+#### Frontend
+
+- [ ] Build the interactive `StatusBadge` React component with a built-in inline dropdown menu activated on click, showing a subtle hover state on the badge.
+- [ ] Write frontend filtering logic to populate the dropdown with only permissible manual statuses from a `PermissibleManualStates` config, hiding workflow-driven statuses.
+- [ ] Build the "Status Change Justification" modal with a mandatory note text area (minimum 10 characters) and a conditionally disabled "Save" button.
+- [ ] On successful save, update the badge color/text reactively without requiring a full page reload.
+
+#### Backend
+
+- [ ] Create a `PATCH /api/v1/assets/{id}/status` endpoint that validates the requested status transition against a state-machine rule set, requires a justification note, and writes to the Audit Log.
+- [ ] Implement automatic side-effects: if the asset was `Assigned` and is being changed to `Lost`/`Stolen`, automatically close the active assignment record in the background.
+- [ ] Return `422 Unprocessable Entity` for illegal transitions (e.g., manually setting status to `Assigned` or `In Repair`).
 
 ---
 
@@ -115,6 +129,16 @@ This epic focuses on accountability and exception handling. It surfaces the raw 
 
 ### Technical Implementation Tasks
 
-- [ ] Create a `CustomStatuses` configuration table in the database.
-- [ ] Build the "Custom Status Configuration" UI in Settings.
-- [ ] Update the global frontend state and backend validation enums to dynamically merge these custom statuses with the hardcoded system statuses.
+#### Frontend
+
+- [ ] Build the "Custom Status Configuration" UI page in Settings with a CRUD data grid: Status Name, Color Picker, Description, and actions (Edit / Delete).
+- [ ] Update the global frontend status configuration to dynamically merge custom statuses from the API with the hardcoded system statuses, making them available in all dropdowns, filters, and badges.
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for custom statuses: `GET`, `POST`, `PUT`, `DELETE /api/v1/settings/statuses`.
+- [ ] Update all backend validation logic to dynamically load and accept custom statuses alongside built-in statuses when validating status transitions.
+
+#### Database
+
+- [ ] Create a `CustomStatuses` table with columns: `id`, `name` (UNIQUE), `color` (hex), `description`, `is_active` (boolean), `created_by` (FK → Users), `created_at`, `updated_at`.

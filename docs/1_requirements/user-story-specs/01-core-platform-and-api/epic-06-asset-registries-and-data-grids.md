@@ -71,9 +71,20 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Build the Command Palette UI component using a specialized accessibility library (e.g., `cmdk` or `paletto`).
-- [ ] Implement a static frontend index of all system routes (Pages) and global functions (Actions) to allow for instant, zero-latency client-side filtering of commands.
-- [ ] Write an optimized backend endpoint (`GET /api/search?q={query}`) that executes a multi-table search across the inventory and user databases for dynamic data records.
+#### Frontend
+
+- [ ] Build the Command Palette UI component using a specialized accessibility library (e.g., `cmdk` or custom implementation).
+- [ ] Register the global `Cmd+K` / `Ctrl+K` keyboard shortcut listener and wire it to toggle the modal overlay.
+- [ ] Implement a static frontend index of all system routes (Pages) and global functions (Actions) to allow for instant, zero-latency client-side filtering.
+- [ ] Implement categorized result rendering with sticky sub-headers (`PAGES`, `ASSETS`, `USERS`, `ACTIONS`) and distinct leading icons per category.
+- [ ] Implement full keyboard navigation within the results list (Arrow Up/Down to highlight, Enter to select, Escape to close).
+- [ ] Wire the selected result to either a `react-router` navigation (for Pages/Assets) or a frontend action dispatcher (for Actions).
+
+#### Backend
+
+- [ ] Create an optimized multi-table search endpoint (`GET /api/v1/search?q={query}`) that queries Assets (by ID, name, serial number), Users (by name, email), and Master Data entities concurrently.
+- [ ] Implement result ranking/relevance scoring to surface the most likely matches first (e.g., exact Asset ID matches above partial name matches).
+- [ ] Add a debounced query parameter to prevent excessive database hits from rapid keystroke input.
 
 ---
 
@@ -104,9 +115,16 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Build a reusable `RegistryHeader` React component that accepts the pillar context as a prop.
-- [ ] Implement the `Cmd+K` global search listener and modal overlay.
-- [ ] Integrate the local search input state directly with the data table's global filter logic.
+#### Frontend
+
+- [ ] Build a reusable `RegistryHeader` React component that accepts the current pillar context as a prop and renders the dynamic heading, subcategory dropdown, search bar, Filters button, and "+ Add Asset" CTA.
+- [ ] Implement the subcategory dropdown powered by a `GET /api/v1/subcategories?pillar={pillar}` API call, triggering a grid data refresh on selection change.
+- [ ] Integrate the local search input state directly with the data table's global text filter logic for instant client-side filtering.
+- [ ] Build a dynamic breadcrumbs component in the top nav bar that updates based on sidebar grouping and current subcategory selection.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/subcategories?pillar={pillar}` endpoint to return active subcategories for the selected pillar.
 
 ---
 
@@ -140,8 +158,15 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `HardwareGrid` React component mapped to the exact column definitions.
-- [ ] Write API query to fetch assets strictly where `pillar = 'Hardware'`, passing the dynamic subcategory filter if selected.
+#### Frontend
+
+- [ ] Build the `HardwareGrid` React component with the exact column definitions: Asset ID, Asset Name, Serial Number, Category, Assigned to, Status.
+- [ ] Build a reusable `StatusBadge` component rendering color-coded outline pill badges with leading icons per status (Available=Green, Assigned=Gray, In Repair=Purple, etc.).
+- [ ] Build a `CategoryBadge` component and implement conditional visibility: hidden when a specific subcategory is selected, visible when "All" is selected.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/assets?pillar=Hardware&subcategory={id}` endpoint that returns paginated asset data filtered by pillar and optionally by subcategory, supporting sorting and search parameters.
 
 ---
 
@@ -164,8 +189,14 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `SoftwareGrid` React component.
-- [ ] Write API query to fetch assets strictly where `pillar = 'Software'`.
+#### Frontend
+
+- [ ] Build the `SoftwareGrid` React component with software-specific column definitions: Software Name, License Key (masked display), Total Seats, Available Seats, Expiration Date.
+- [ ] Implement visual warnings for the Expiration Date column: highlight rows in yellow/orange when expiry is within 30 days, red when expired.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/assets?pillar=Software&subcategory={id}` endpoint returning software-specific data including computed `Available Seats` (Total Seats minus active assignments).
 
 ---
 
@@ -189,8 +220,13 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `FurnitureGrid` React component.
-- [ ] Write API query to fetch assets strictly where `pillar = 'Furniture'`.
+#### Frontend
+
+- [ ] Build the `FurnitureGrid` React component with furniture-specific column definitions: Asset ID, Asset Name, Category, Location (Building/Floor), Condition.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/assets?pillar=Furniture&subcategory={id}` endpoint returning furniture-specific data with location details.
 
 ---
 
@@ -214,8 +250,13 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Build the `ElectronicsGrid` React component.
-- [ ] Write API query to fetch assets strictly where `pillar = 'Electronics'`.
+#### Frontend
+
+- [ ] Build the `ElectronicsGrid` React component with electronics-specific column definitions: Asset ID, Asset Name, Category, Location, IP/MAC Address, Maintenance Status.
+
+#### Backend
+
+- [ ] Create a `GET /api/v1/assets?pillar=Electronics&subcategory={id}` endpoint returning electronics-specific data including network identifiers and maintenance status.
 
 ---
 
@@ -242,8 +283,17 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Build the custom table footer matching the UI mockup.
-- [ ] Implement advanced multi-select filtering logic.
+#### Frontend
+
+- [ ] Build the custom table footer component matching the UI mockup: total record count, rows-per-page dropdown, and First/Prev/Next/Last page navigation controls.
+- [ ] Build the "Filters" dropdown panel with multi-select filter options (Status, Location, Brand, Category, Date Range) that apply to the current grid.
+- [ ] Implement sortable column headers: clicking a column header toggles ascending/descending sort with a visual indicator arrow.
+- [ ] Wire all filter/sort/pagination state to the backend API as query parameters for server-side data processing.
+
+#### Backend
+
+- [ ] Extend all asset listing endpoints to accept query parameters for: `page`, `pageSize`, `sortBy`, `sortOrder`, `status[]`, `locationId`, `brandId`, `subcategoryId`, `dateFrom`, `dateTo`.
+- [ ] Implement server-side pagination returning a standardized response envelope: `{ data: [...], meta: { total, page, pageSize, totalPages } }`.
 
 ---
 
@@ -288,6 +338,16 @@ This epic builds the central command center for all asset tracking. It implement
 
 ### Technical Implementation Tasks
 
-- [ ] Implement row-selection state management within the data table.
-- [ ] Write frontend logic to compute the intersection of valid allowed actions based on the current `Pillar` and `Status` of all selected rows.
-- [ ] Write a transactional backend API endpoint (e.g., `PATCH /api/assets/bulk`) capable of safely processing mass updates and rolling back the transaction if any single item fails business logic validation.
+#### Frontend
+
+- [ ] Implement row-selection state management within the data table component (individual checkboxes + a "select all on page" checkbox in the header).
+- [ ] Build the dynamic Bulk Action Toolbar component that appears when one or more rows are selected, showing a selected count badge.
+- [ ] Write frontend logic to compute the intersection of valid allowed actions based on the current `pillar` and `status` of all selected rows: hide impossible pillar actions entirely, disable conflicting status actions with tooltips.
+- [ ] Build the bulk-action confirmation modal component with a dynamic warning message (e.g., "You are about to update {count} assets.").
+
+#### Backend
+
+- [ ] Create a transactional batch-update endpoint (`PATCH /api/v1/assets/bulk`) that accepts an array of asset IDs and the target update operation.
+- [ ] Implement atomic transaction logic: all updates succeed or the entire batch rolls back if any single item fails business logic validation (e.g., assigning an already-assigned asset).
+- [ ] Ensure each individual asset change within the batch writes a separate entry to the Audit Log (Epic 4) for traceability.
+- [ ] Implement backend validation that mirrors the frontend pillar/status constraint rules to prevent bypassing via direct API calls.

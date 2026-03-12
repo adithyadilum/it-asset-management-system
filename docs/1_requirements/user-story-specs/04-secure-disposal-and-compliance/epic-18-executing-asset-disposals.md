@@ -61,8 +61,14 @@ This epic governs the final, secure execution of an asset disposal. It introduce
 
 ### Technical Implementation Tasks
 
-- [ ] Build the "Dispose Asset" modal with strict React state management to control the disabled state of the submit button based on the checkboxes, dropdowns, and text input.
-- [ ] Write the backend API endpoint (`POST /api/v1/assets/{id}/dispose`) to process the payload and update the global status to `Disposed`.
+#### Frontend
+
+- [ ] Build the "Dispose Asset" compliance modal with: warning banner, Disposal Date picker, Reason for Disposal dropdown, Disposal Method dropdown, "Data wiped" checkbox, "Tags removed" checkbox, file upload zone (US-18.2), and exact Asset ID text confirmation input.
+- [ ] Implement strict multi-condition React state management: the "Confirm Disposal" button only activates when ALL conditions are met (all dropdowns filled, both checkboxes checked, file uploaded, and text input exactly matches the Asset ID).
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/{id}/dispose` endpoint that validates all required fields (date, reason, method, checkboxes, receipt URL, text confirmation), updates the asset status to `Disposed`, writes the disposal record, and logs the event in the Audit Log.
 
 ---
 
@@ -83,9 +89,19 @@ This epic governs the final, secure execution of an asset disposal. It introduce
 
 ### Technical Implementation Tasks
 
-- [ ] Integrate an upload component (e.g., React Dropzone) into the modal UI.
-- [ ] Configure the backend to generate signed URLs or handle direct uploads to AWS S3 / Azure Blob Storage.
-- [ ] Add a `disposal_receipt_url` column to the `Asset` or `DisposalLogs` database table.
+#### Frontend
+
+- [ ] Integrate a drag-and-drop file upload component (e.g., React Dropzone) into the Dispose Asset modal's Documentation section.
+- [ ] Implement client-side file type validation (allow `.pdf`, `.jpg`, `.jpeg`, `.png` only) and display an upload progress indicator.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/uploads/disposal-receipts` endpoint that accepts multipart file uploads, validates file type and size, and stores the file in the cloud storage bucket.
+- [ ] Return the generated `file_url` or `file_key` to be attached to the disposal record payload.
+
+#### Database
+
+- [ ] Add a `disposal_receipt_url` column to the `DisposalRequests` table (or create a dedicated `DisposalRecords` table) to store the link to the uploaded E-Waste certificate.
 
 ---
 
@@ -121,6 +137,12 @@ This epic governs the final, secure execution of an asset disposal. It introduce
 
 ### Technical Implementation Tasks
 
-- [ ] Add the "Dispose assets" button to the Grid Toolbar, styled as a danger action.
-- [ ] Build the Bulk version of the modal, incorporating the array list and the dynamic `DISPOSE ${count} ASSETS` validation logic.
-- [ ] Write a backend batch processing endpoint (`POST /api/v1/assets/bulk-dispose`) that iterates through the provided array of Asset IDs, updates their statuses, and maps the single S3 receipt URL to all of them in a single database transaction.
+#### Frontend
+
+- [ ] Add a red "Dispose assets" danger button to the Bulk Actions toolbar on the `Pending Disposal` grid, visible when rows are multi-selected.
+- [ ] Build the Bulk Disposal modal: scrollable asset list box (max-height 120px, `overflow-y: auto`), shared compliance form (same fields as single-asset modal), and dynamic text confirmation prompt (`DISPOSE {count} ASSETS`).
+- [ ] Implement the dynamic text-match validation: "Confirm Bulk Disposal" button only activates when the typed string exactly matches `DISPOSE {count} ASSETS`.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/bulk-dispose` endpoint that: accepts an array of asset IDs plus the shared compliance payload (date, reason, method, checkboxes, receipt URL), processes all status changes in a single atomic database transaction, links the shared receipt URL to all disposal records, and writes individual Audit Log entries for each asset.

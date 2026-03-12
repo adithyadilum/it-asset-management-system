@@ -49,8 +49,10 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 
 ### Technical Implementation Tasks
 
-- [ ] Configure the `Assigned Assets` data grid to automatically apply a `WHERE status = 'Assigned'` filter to the API fetch.
-- [ ] Ensure the slide-out panel correctly maps and displays the active user relationship.
+#### Frontend
+
+- [ ] Configure the `Assigned Assets` data grid to automatically apply a `status=Assigned` filter to the API fetch.
+- [ ] Ensure the Asset Details slide-out panel correctly maps and prominently displays the active user relationship (`Assigned to` field).
 
 ---
 
@@ -81,8 +83,16 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 
 ### Technical Implementation Tasks
 
-- [ ] Add a conditionally rendered "Request Return" button to the Epic 8 Asset Details panel (visible only when `status === 'Assigned'`).
-- [ ] Create an endpoint (`POST /api/v1/assets/{id}/request-return`) that flags the record and queues the notification event.
+#### Frontend
+
+- [ ] Add a conditionally rendered "Request Return" button to the Asset Details panel footer (visible only when `status === 'Assigned'`).
+- [ ] Display a success confirmation toast upon successful return request submission.
+- [ ] Update the grid row's visual label to show a `Requested` sub-status badge after a return is requested.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/{id}/request-return` endpoint that flags the assignment record with a `return_requested` status and queues an `URGENT_RETURN_REQUESTED` notification event.
+- [ ] Integrate with the escalating reminder scheduler: enqueue 24h, 48h, and 72h reminder events upon return request creation.
 
 ---
 
@@ -109,8 +119,14 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 
 ### Technical Implementation Tasks
 
-- [ ] Build the conditionally rendered "Return" button logic in the panel footer.
-- [ ] Create an API endpoint (`POST /api/v1/assets/{id}/receive`) that clears the custodian and updates the internal status to a holding state (e.g., `Pending Review`).
+#### Frontend
+
+- [ ] Add a conditionally rendered "Return" button to the Asset Details panel footer (visible only when `status === 'Assigned'`).
+- [ ] On successful return, refresh the data grid to remove the asset from the `Assigned Assets` tab and show it in `Returned Assets`.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/{id}/receive` endpoint that closes the active assignment record (`actual_return_date = now()`), clears the custodian, updates the asset status to `Pending Review`, and cancels any pending return reminder events.
 
 ---
 
@@ -150,5 +166,13 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 
 ### Technical Implementation Tasks
 
-- [ ] Build the Process Return modal with the 4 radio button condition options and the text area.
-- [ ] Write the backend state-machine logic (`POST /api/v1/assets/{id}/process-return`) that handles the automated status routing based on the provided condition enum.
+#### Frontend
+
+- [ ] Build the "Process Return" modal with the 4 radio button condition options (Good Working Condition, Minor Issues, Needs Repair, Beyond Repair) and the "Condition Notes" text area.
+- [ ] Implement form validation: "Confirm" button remains disabled until a condition radio is selected.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/{id}/process-return` endpoint implementing the state-machine logic: automatically route the asset to `Available`, `Pending Maintenance`, or `Pending Disposal` based on the submitted condition enum.
+- [ ] Append the condition notes and status change to the System Audit Log.
+- [ ] If routed to `Pending Maintenance`, automatically create a stub record in the `MaintenanceTickets` table for the Epic 15 workflow.

@@ -13,7 +13,7 @@ This section contains all requirements documentation for the **IDAMS (IT Asset M
 | [Non-Functional Requirements](./non-functional-requirements.md)    | Performance, Security, Reliability, and Usability constraints (NFR-PERF, NFR-SEC, NFR-REL, NFR-USE). | **Done**   |
 | [User Journeys](./user-journeys.md)                                | 23 end-to-end workflows mapped by persona with cross-handoff matrix and error catalogue.             | **Done**   |
 | [Software Requirements Specification (SRS)](./SRS.md)              | IEEE 830-style SRS consolidating scope, interfaces, functional/NFR specs, and data dictionary.       | **Review** |
-| [Product Backlog](./product-backlog.md)                            | Consolidated task-level backlog (163 tasks) from all 5 module user story specifications.             | **Done**   |
+| [Product Backlog](./product-backlog.md)                            | Consolidated task-level backlog (540 tasks) from all 5 module user story specifications.             | **Done**   |
 | [Detailed User Story Specifications](./user-story-specs/README.md) | Expanded User Stories with Acceptance Criteria, wireframe references, and diagrams per Epic.         | **Done**   |
 
 ## Module & Epic Structure

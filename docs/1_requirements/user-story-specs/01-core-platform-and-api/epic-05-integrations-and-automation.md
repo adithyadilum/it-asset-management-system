@@ -58,9 +58,24 @@ This epic connects the IDAMS platform to the broader corporate software ecosyste
 
 ### Technical Implementation Tasks
 
-- [ ] Build the API Key management UI data grid in the Settings module.
-- [ ] Implement backend key generation logic using cryptographically secure random strings, prefixed for easy identification (e.g., `idams_live_`).
-- [ ] Implement backend hashing logic (bcrypt or Argon2) to store the keys exactly like passwords so database admins cannot read them.
+#### Frontend
+
+- [ ] Build the API Key management data grid page within the Settings/Integrations module, displaying: Key Name, Masked Key, Created Date, Last Used, and Status.
+- [ ] Build the "Generate New API Key" modal with a Key Name input and a "show-once" key reveal UI (monospace text box + "Copy to Clipboard" button + warning banner).
+- [ ] Build the "Revoke Key" confirmation modal with destructive-action styling and a clear warning message.
+- [ ] Implement the key masking display logic: show only the prefix and last 4 characters of each key.
+
+#### Backend
+
+- [ ] Implement cryptographically secure API key generation using a random string prefixed for identification (e.g., `idams_live_{random}`).
+- [ ] Implement secure hashing logic (bcrypt or Argon2) to store only the hashed version of the key in the database — the plaintext is returned only once during generation.
+- [ ] Create a `POST /api/v1/api-keys` endpoint for key generation that returns the plaintext key in the response body.
+- [ ] Create a `DELETE /api/v1/api-keys/{id}` endpoint for key revocation that invalidates the key immediately.
+- [ ] Write middleware to authenticate incoming external API requests by comparing the `Authorization: Bearer {key}` header against hashed keys in the database.
+
+#### Database
+
+- [ ] Create an `ApiKeys` table with columns: `id`, `name`, `key_hash`, `key_prefix`, `key_suffix` (last 4 chars for display), `created_by` (FK → Users), `last_used_at`, `is_revoked` (boolean), `created_at`.
 
 ---
 
@@ -87,9 +102,21 @@ This epic connects the IDAMS platform to the broader corporate software ecosyste
 
 ### Technical Implementation Tasks
 
-- [ ] Implement Token Authentication & Rate Limiting middleware strictly applied to the `/api/v1/external/*` route group.
-- [ ] Create standard Read-Only endpoints for Assets and Assignments.
-- [ ] Integrate a library (like Swagger/OpenAPI) to automatically generate API documentation.
+#### Frontend
+
+- [ ] Add a "View API Documentation" button/link on the Integrations dashboard that navigates to the Swagger UI.
+
+#### Backend
+
+- [ ] Implement Token Authentication middleware for the `/api/v1/external/*` route group that validates API keys against hashed values in the database.
+- [ ] Implement rate-limiting middleware (e.g., using `express-rate-limit` or Redis-backed sliding window) scoped per API key and/or IP address, returning `429 Too Many Requests` on threshold breach.
+- [ ] Create read-only endpoints: `GET /api/v1/external/assets`, `GET /api/v1/external/assets/{id}`, `GET /api/v1/external/assets/user/{employee_id}`, and `GET /api/v1/external/assignments`.
+- [ ] Integrate Swagger/OpenAPI auto-generation library to produce interactive API documentation from route definitions.
+- [ ] Update the `last_used_at` timestamp on the `ApiKeys` record each time a key is successfully authenticated.
+
+#### Infrastructure / DevOps
+
+- [ ] Configure rate-limiting thresholds as environment variables (e.g., `API_RATE_LIMIT_PER_MINUTE=60`) so they can be tuned per deployment environment.
 
 ---
 
@@ -120,7 +147,21 @@ This epic connects the IDAMS platform to the broader corporate software ecosyste
 
 ### Technical Implementation Tasks
 
-- [ ] Build the Webhooks configuration UI in the Integrations Settings tab (Event selection checkboxes, Target URL input).
-- [ ] Create a `WebhookSubscriptions` database table to store event mappings.
-- [ ] Write an asynchronous backend service/job (using a message queue like Redis/BullMQ or native background workers) to dispatch HTTP POST payloads upon triggered system events.
-- [ ] Implement exponential backoff retry logic within the dispatch worker to handle temporary network failures from the receiving external system.
+#### Frontend
+
+- [ ] Build the Webhooks management data grid within the Integrations tab, displaying: Endpoint URL, Description, Subscribed Events, Health Status (badge), and actions (Edit / Delete).
+- [ ] Build the "Add/Edit Webhook" modal with: Endpoint URL input (with URL format validation), Description text area, and grouped event-trigger checkboxes (Assets, Lifecycle, Maintenance).
+- [ ] Implement the Health Status badge component: Green "Healthy" badge if last delivery was HTTP 2xx, Red "Failing" badge if last delivery timed out or returned an error.
+
+#### Backend
+
+- [ ] Create RESTful CRUD endpoints for Webhook subscriptions (`GET`, `POST`, `PUT`, `DELETE /api/v1/webhooks`).
+- [ ] Write an asynchronous webhook dispatch service (using a message queue like Redis/BullMQ or native background workers) that fires HTTP `POST` payloads to registered URLs when subscribed system events are triggered.
+- [ ] Implement exponential backoff retry logic within the dispatch worker (e.g., retry at 1s, 5s, 30s, 5min intervals) to handle temporary network failures.
+- [ ] Write delivery logging logic: record the HTTP response status and timestamp of each dispatch attempt, and update the webhook's health status accordingly.
+- [ ] Implement the event-hook integration points in existing controllers: when an asset status changes, assignment occurs, or maintenance event fires, push the event payload to the webhook dispatcher.
+
+#### Database
+
+- [ ] Create a `WebhookSubscriptions` table with columns: `id`, `endpoint_url`, `description`, `subscribed_events` (JSONB array), `is_active`, `last_delivery_status`, `last_delivery_at`, `created_by` (FK → Users), `created_at`, `updated_at`.
+- [ ] Create a `WebhookDeliveryLogs` table for auditing: `id`, `webhook_id` (FK), `event_type`, `payload` (JSONB), `http_status`, `response_body` (text), `attempt_number`, `created_at`.

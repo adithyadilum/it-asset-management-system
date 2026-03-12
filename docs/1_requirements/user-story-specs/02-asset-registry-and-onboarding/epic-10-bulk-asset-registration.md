@@ -58,9 +58,17 @@ This epic builds the mass-ingestion engine for the IDAMS platform. Accessed dire
 
 ### Technical Implementation Tasks
 
-- [ ] Update the `RegistryHeader` component to include the dropdown options.
-- [ ] Build the Bulk Import Modal and drag-and-drop file upload zone.
-- [ ] Integrate file parsing libraries (like `Papaparse` for CSVs and `SheetJS` or `exceljs` for Excel files).
+#### Frontend
+
+- [ ] Update the `RegistryHeader` component to convert the "+ Add Asset" button into a split-button dropdown with "Add Single Asset" and "Bulk Import" options.
+- [ ] Build the Bulk Import Modal with a drag-and-drop file upload zone, accepting `.csv` and `.xlsx` file types only.
+- [ ] Implement the multi-stage loading UI: "Uploading..." with a progress bar during network transfer, transitioning to "Reading & Processing File..." during server-side parsing.
+- [ ] Implement client-side file type validation: reject unsupported file extensions immediately with an inline error.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets/bulk-import` endpoint that accepts multipart file uploads.
+- [ ] Integrate server-side file parsing libraries (`papaparse` for CSV, `exceljs` or `SheetJS` for Excel) to extract row data.
 
 ---
 
@@ -91,8 +99,15 @@ This epic builds the mass-ingestion engine for the IDAMS platform. Accessed dire
 
 ### Technical Implementation Tasks
 
-- [ ] Create standardized CSV/Excel templates for each pillar for users to download.
-- [ ] Write backend or frontend validation logic to verify spreadsheet headers against the required schema keys.
+#### Frontend
+
+- [ ] Add a prominent "Download Template (.xlsx)" link inside the Bulk Import Modal that serves a pre-built template file for each pillar.
+
+#### Backend
+
+- [ ] Write column-header matching logic: compare parsed headers against the expected schema keys (exact string match, case-insensitive), and return a structured error response listing missing/misspelled columns if validation fails.
+- [ ] Implement row-level NOT NULL validation for mandatory fields based on the pillar's required field schema.
+- [ ] Create a `GET /api/v1/assets/bulk-import/template?pillar={pillar}` endpoint to serve downloadable Excel templates pre-populated with the correct column headers for each pillar.
 
 ---
 
@@ -127,7 +142,15 @@ This epic builds the mass-ingestion engine for the IDAMS platform. Accessed dire
 
 ### Technical Implementation Tasks
 
-- [ ] Write the backend iterative script to process the parsed JSON payload.
-- [ ] Implement row-level `try/catch` logic within the loop, appending failed rows to an error array rather than throwing a fatal API error.
-- [ ] Write logic to compile the error array into a temporary CSV file stream for the client to download.
-- [ ] Ensure the background ID/QR generation utilities built in Epic 7 and Epic 9 are triggered for every successfully imported record.
+#### Frontend
+
+- [ ] Build the Success Summary screen displaying: success count (green), failure count (red), total records processed, and a "Download Error Report" button.
+- [ ] Implement the "Download Error Report" button that requests a CSV from the backend and triggers a browser file download.
+
+#### Backend
+
+- [ ] Write the iterative processing script that loops through parsed rows, validating and inserting each individually rather than as a batch transaction.
+- [ ] Implement row-level `try/catch` logic: append failed rows (with their specific error messages) to an error array rather than throwing a fatal API error.
+- [ ] Trigger the Epic 7 Asset ID generation and Epic 9 QR routing URL generation utilities for every successfully imported record.
+- [ ] Compile the error array into a downloadable CSV stream with an appended `Error` column explaining each row's failure reason.
+- [ ] Return a structured JSON response: `{ successCount, failureCount, errorReportUrl }` to power the frontend summary screen.

@@ -67,9 +67,26 @@ This epic governs the creation of new asset records within the IDAMS platform. A
 
 ### Technical Implementation Tasks
 
-- [ ] Build the Slide-Out Panel component and the React Hook Form structure.
-- [ ] Write the frontend string-concatenation logic for the `[Pillar]-[Subcategory]-[Number]` ID format.
-- [ ] Implement the `onChange` listener for the Model dropdown that securely binds the Epic 3 Master Data specs to the submission payload.
+#### Frontend
+
+- [ ] Build the reusable Slide-Out Panel React component (40-50% width, dark backdrop overlay, smooth slide-in/out animation).
+- [ ] Integrate React Hook Form (or equivalent) for form state management, validation, and submission.
+- [ ] Implement the Pillar lock mechanism: read the current pillar from the routing context and render it as a read-only disabled field.
+- [ ] Implement dynamic Subcategory selection: on change, fetch the sub-category's custom schema from `GET /api/v1/subcategories/{id}/schema` and re-render the form fields accordingly.
+- [ ] Implement the `onChange` listener for the Brand/Model dropdowns that auto-binds Epic 3 Master Data technical specs to the form's hidden payload.
+- [ ] Build form section dividers/accordion cards to visually organize long forms into logical groups.
+- [ ] Implement the disabled Submit button state: grayed out until all mandatory fields pass validation.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/assets` endpoint that accepts the registration payload, validates required fields, and persists the record.
+- [ ] Implement server-side Asset Tracking ID generation using the format `[Pillar Prefix]-[Subcategory Prefix]-[Sequence Number]`, ensuring atomic sequential number assignment.
+- [ ] Write server-side validation to enforce mandatory fields based on the sub-category's custom schema definition.
+
+#### Database
+
+- [ ] Design the `Assets` table schema with columns for all shared fields: `id`, `asset_id` (generated tracking ID), `pillar`, `subcategory_id` (FK), `brand_id` (FK), `model_id` (FK), `status`, `custom_fields` (JSONB), `created_by`, `created_at`, `updated_at`.
+- [ ] Create a sequence or counter mechanism for the auto-incrementing portion of the Asset Tracking ID.
 
 ---
 
@@ -99,8 +116,17 @@ This epic governs the creation of new asset records within the IDAMS platform. A
 
 ### Technical Implementation Tasks
 
-- [ ] Build dynamic form rendering rules specific to the Hardware pillar state.
-- [ ] Implement the backend bypass for ID generation if the `Subcategory === 'Consumables'`.
+#### Frontend
+
+- [ ] Build the conditional Hardware form rendering: show `Serial Number`, `MAC Address`, `Condition`, `Assigned User` fields for standard subcategories.
+- [ ] Build the Consumables variant: hide individual tracking ID and serial number fields, render the Stepper Input for "Quantity to Add".
+- [ ] Implement MAC Address input auto-formatting logic (insert colons/hyphens every 2 characters).
+
+#### Backend
+
+- [ ] Implement the backend bypass for Asset ID generation when `subcategory.type === 'Consumable'`: instead of creating individual records, increment a stock counter.
+- [ ] Create a `POST /api/v1/assets/consumables` endpoint for consumable stock adjustments.
+- [ ] Add `UNIQUE` constraint validation on `serial_number` within the Hardware pillar to prevent duplicate serial entries.
 
 ---
 
@@ -134,7 +160,16 @@ This epic governs the creation of new asset records within the IDAMS platform. A
 
 ### Technical Implementation Tasks
 
-- [ ] Build dynamic form rendering rules specific to the Software pillar state.
+#### Frontend
+
+- [ ] Build the conditional Software form rendering: show Software Name, Category, Agreement Type, Publisher, Payment Model, License Key, Total Seats, Licensed Email; hide physical fields (Location, Condition, Serial Number).
+- [ ] Build the software icon image upload placeholder with preview.
+- [ ] Build the Purchase Details form section with currency dropdown, date picker, cost fields, vendor selection, and invoice attachment.
+
+#### Backend
+
+- [ ] Implement server-side validation rules specific to Software assets: enforce mandatory fields like `license_key`, `total_seats`, and `agreement_type`.
+- [ ] Create a `SoftwareLicenses` extension table (or JSONB fields) to store software-specific data (seats, keys, publisher, etc.) linked to the main `Assets` record.
 
 ---
 
@@ -158,7 +193,15 @@ This epic governs the creation of new asset records within the IDAMS platform. A
 
 ### Technical Implementation Tasks
 
-- [ ] Build dynamic form rendering rules specific to the Furniture pillar state, heavily enforcing Location selection logic.
+#### Frontend
+
+- [ ] Build the conditional Furniture form rendering: show `Building Location`, `Floor/Zone`, `Condition`, and dynamic Custom Fields from Epic 3.
+- [ ] Implement the dependent Location dropdown: selecting a Building filters the available Floor/Zone options.
+- [ ] Build the Condition dropdown with color-coded status indicator dots beside each option.
+
+#### Backend
+
+- [ ] Implement server-side validation rules specific to Furniture assets: enforce mandatory `location_id` and `condition`.
 
 ---
 
@@ -181,7 +224,15 @@ This epic governs the creation of new asset records within the IDAMS platform. A
 
 ### Technical Implementation Tasks
 
-- [ ] Build dynamic form rendering rules specific to the Electronics pillar state.
+#### Frontend
+
+- [ ] Build the conditional Electronics form rendering: show `Building Location`, `Network IP/MAC Address`, `Next Scheduled Maintenance Date`, and dynamic Custom Fields.
+- [ ] Implement IPv4/IPv6 input masking with regex validation.
+- [ ] Integrate a date picker component for the "Next Scheduled Maintenance Date" field.
+
+#### Backend
+
+- [ ] Implement server-side validation for the Electronics pillar: enforce mandatory `location_id`, validate IP address format, and validate maintenance date is in the future.
 
 ---
 
@@ -214,5 +265,19 @@ This epic governs the creation of new asset records within the IDAMS platform. A
 
 ### Technical Implementation Tasks
 
-- [ ] Implement a secure Drag & Drop file upload component.
-- [ ] Integrate a cloud storage bucket API (AWS S3/Azure Blob) to handle the multipart file upload.
+#### Frontend
+
+- [ ] Build the "Financials" form section with: Currency selector (with flags/symbols), Base Price, Tax, Shipping cost inputs, and a read-only auto-calculated Total Initial Cost field.
+- [ ] Implement the real-time auto-calculation logic: `Total = Base Price + Tax + Shipping`, updating the locked total field on every keystroke.
+- [ ] Build a secure drag-and-drop file upload component with client-side file type validation (allow `.pdf`, `.jpg`, `.png` only) and a visual upload progress bar.
+
+#### Backend
+
+- [ ] Create a `POST /api/v1/uploads/invoices` endpoint that accepts multipart file uploads, validates file type and size on the server, and stores the file in the cloud bucket.
+- [ ] Return a `file_url` or `file_key` from the upload endpoint to be saved alongside the asset record.
+- [ ] Store the financial breakdown (`base_price`, `tax`, `shipping`, `total_cost`, `currency`) in a dedicated `PurchaseDetails` table linked to the `Assets` record via foreign key.
+
+#### Infrastructure / DevOps
+
+- [ ] Configure a cloud storage bucket (AWS S3 or Azure Blob Storage) for invoice file storage with appropriate access policies and CORS configuration.
+- [ ] Set up signed URL generation for secure, time-limited file downloads.

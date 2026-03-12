@@ -64,9 +64,18 @@ This epic acts as the bridge between the digital database and the physical world
 
 ### Technical Implementation Tasks
 
-- [ ] Implement a QR code generation library (e.g., `qrcode.react`).
-- [ ] Hook the QR generation logic into the Epic 7 form submission success state.
-- [ ] Ensure the generated URL string points to the Mobile Lookup PWA route (Epic 11).
+#### Frontend
+
+- [ ] Integrate a QR code generation library (e.g., `qrcode.react` or `qrcode`) to render SVG/Canvas QR codes on the client.
+- [ ] Build the Tag Preview Modal component displaying the fixed-layout sticker design: company logo (top), QR code (center), Asset ID in monospace (bottom).
+- [ ] Hook the QR generation and Tag Preview Modal into the Epic 7 registration success callback.
+- [ ] Wire the "QR Code" button on the Epic 8 Asset Details panel to open the same Tag Preview Modal for reprinting.
+- [ ] Implement the "Print Tag" button that triggers the browser's `window.print()` API with a print-specific CSS stylesheet for the tag.
+
+#### Backend
+
+- [ ] Implement the routing URL generation logic: compose the URL using the system domain and asset tracking ID (e.g., `assets.tiqri.com/scan/{assetId}`).
+- [ ] Store the generated `qr_url` in the asset record upon creation, ensuring it points to the Mobile Lookup PWA route (Epic 11).
 
 ---
 
@@ -97,8 +106,17 @@ This epic acts as the bridge between the digital database and the physical world
 
 ### Technical Implementation Tasks
 
-- [ ] Integrate a robust PDF generation library on the backend (like `pdfmake` or `puppeteer`).
-- [ ] Hardcode the exact CSS/PDF millimeter dimensions (margins, padding, cell size) to align perfectly with the chosen standard A4 sticker sheet template (e.g., Avery 5160).
+#### Frontend
+
+- [ ] Build the Bulk Print configuration modal triggered from the Bulk Action Toolbar's "Print QR Code" button, showing a count of selected assets and layout confirmation.
+- [ ] Implement the "Generating PDF..." loading state with a disabled button to prevent duplicate submissions.
+
+#### Backend
+
+- [ ] Integrate a robust server-side PDF generation library (e.g., `pdfmake`, `puppeteer`, or `pdf-lib`).
+- [ ] Create a `POST /api/v1/assets/print-tags` endpoint that accepts an array of asset IDs, generates QR codes for each, and composes them into a single A4 PDF document.
+- [ ] Hardcode the exact PDF millimeter dimensions (margins, padding, cell size) to align perfectly with a standard A4 sticker sheet template (e.g., Avery 5160).
+- [ ] Stream the generated PDF back to the client for download or new-tab preview.
 
 ---
 
@@ -120,5 +138,11 @@ This epic acts as the bridge between the digital database and the physical world
 
 ### Technical Implementation Tasks
 
-- [ ] Build a secondary PDF template configuration specifying custom page dimensions tailored for Zebra/Dymo standard label rolls.
-- [ ] Enforce the same layout constraints used in US-9.2 to guarantee visual parity across printers.
+#### Frontend
+
+- [ ] Add a "Layout Format" toggle/dropdown to the Bulk Print configuration modal: options for "A4 Sheet" (default) and "Thermal Roll".
+
+#### Backend
+
+- [ ] Build a secondary PDF template configuration in the `print-tags` endpoint specifying custom page dimensions tailored for Zebra/Dymo standard label rolls (e.g., 2x1 inch pages).
+- [ ] Enforce the same tag layout constraints (logo, QR, Asset ID) used in US-9.2 to guarantee visual parity across both A4 and thermal output formats.
