@@ -95,6 +95,8 @@ A self-service view for employees to verify the assets assigned to them and repo
 
 ![alt text](images/Confirm-reciept.png)
 
+---
+
 ### 2.2 Feature 2: Asset Lifecycle Tracking & Status Control
 
 **2.2.1 Overview**
@@ -199,11 +201,12 @@ The core system for checking hardware in and out, linking a specific asset ID to
   - **Then** a notification is sent to the current custodian (e.g., Mark Kim).
   - **And** the asset status label updates to "Requested" in the asset list.
 
-- **Tasks**
-  - [ ] Frontend: Add the "Request Return" button to the Asset Details side panel for assigned assets.
-  - [ ] Frontend: Implement the "Requested" status badge/label within the "Assigned Assets" table rows.
-  - [ ] Backend: Create an endpoint to trigger a return notification (Email/System Alert) to the current custodian.
-  - [ ] Backend: Update the asset status logic to transition the asset state to "Requested" upon button click.
+**Tasks**
+
+- [ ] Frontend: Add the "Request Return" button to the Asset Details side panel for assigned assets.
+- [ ] Frontend: Implement the "Requested" status badge/label within the "Assigned Assets" table rows.
+- [ ] Backend: Create an endpoint to trigger a return notification (Email/System Alert) to the current custodian.
+- [ ] Backend: Update the asset status logic to transition the asset state to "Requested" upon button click.
 
 ![alt text](images/Request-Return.png)
 
@@ -232,18 +235,16 @@ The core system for checking hardware in and out, linking a specific asset ID to
   - **If** "Beyond Repair", the status changes to "Disposed".
   - **Then** the system clears the current custodian and logs the event in the historical ledger.
 
-- **Tasks**
-  - [ ] Frontend: Implement the "Received" button to trigger the transfer of an asset from the "Assigned Assets" list to the "Returned Assets" list.
+**Tasks**
 
-  - [ ] Frontend: Build the "Return-Dialog" modal with mandatory condition radio buttons (Good Working Condition, Working with Minor Issues, Needs Repair, Beyond Repair).
-
-  - [ ] Frontend: Add a "Condition Notes" text area within the modal for detailed admin feedback.
-
-  - [ ] Backend: Write conditional logic to update asset status based on selection:
-    - Good Working Condition $\rightarrow$ Available
-    - Working with Minor Issues / Needs Repair $\rightarrow$ In Repair
-    - Beyond Repair $\rightarrow$ Disposed.
-  - [ ] Backend: Write logic to clear the current custodian field and record the return event, condition, and notes into the historical ledger.
+- [ ] Frontend: Implement the "Received" button to trigger the transfer of an asset from the "Assigned Assets" list to the "Returned Assets" list.
+- [ ] Frontend: Build the "Return-Dialog" modal with mandatory condition radio buttons (Good Working Condition, Working with Minor Issues, Needs Repair, Beyond Repair).
+- [ ] Frontend: Add a "Condition Notes" text area within the modal for detailed admin feedback.
+- [ ] Backend: Write conditional logic to update asset status based on selection:
+  - Good Working Condition $\rightarrow$ Available
+  - Working with Minor Issues / Needs Repair $\rightarrow$ In Repair
+  - Beyond Repair $\rightarrow$ Disposed.
+- [ ] Backend: Write logic to clear the current custodian field and record the return event, condition, and notes into the historical ledger.
 
 ![alt text](images/Review-Condition.png)
 

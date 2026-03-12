@@ -137,9 +137,8 @@ A smart creation interface that guarantees unique identification while adapting 
 
 **Wireframe Reference**
 
-## Invoice Attaching Wireframe
-
 ![Invoice Attaching Wireframe](<images/Attach Financial Evidance.png>)
+
 ---
 
 #### 2.1.5 User Story: US-2.1.4 (Consumable Quantity Tracking)
@@ -189,6 +188,8 @@ A smart creation interface that guarantees unique identification while adapting 
 
 ![alt text](<images/Bulk Asset Registry - Desktop.png>)
 
+---
+
 ### 2.2 Feature 2: Main Asset Registry Grid & Details
 
 **2.2.1 Overview**
@@ -214,9 +215,8 @@ The central hub for viewing, filtering, and interacting with the entire IT inven
 - [ ] Build multi-select column visibility dropdown.
 - [ ] Implement bulk-select checkboxes enabling batch actions (like Epic 4 Bulk Disposals).
 - [ ] Implement a specific "Bulk Edit Modal" allowing admins to update the `Location` or `Status` of 50+ selected checkbox rows in a single database transaction.
-      **Wireframe Reference**
 
-## Asset List View Wireframe
+**Wireframe Reference**
 
 ![Asset List View Wireframe](images/Asset-List-View-Desktop.png)
 
@@ -243,8 +243,6 @@ The central hub for viewing, filtering, and interacting with the entire IT inven
 - [ ] Write `GET /api/v1/assets/{id}` endpoint to aggregate relational data for the panel.
 
 **Wireframe Reference**
-
-## Asset Details Wireframe
 
 ![Asset Details Wireframe](<images/Asset Details (Assigned)- Desktop.png>)
 ![Technical Details Wireframe](<images/Tech Details- Desktop.png>)
@@ -296,8 +294,6 @@ The bridge between the digital database and the physical world, generating scann
 - [ ] Add TIQRI Logo and Asset ID text dynamically beneath the QR code in the print layout.
 
 **Wireframe Reference**
-
-## QR Code Generation Wireframe
 
 ![alt text](<images/Asset Details (QR preview)- Desktop.png>)
 
@@ -369,7 +365,9 @@ The mobile-responsive browser interface utilizing device cameras to instantly re
 - [ ] Write CSS Media Queries or React viewport hooks to detect mobile screen widths.
 - [ ] Design and implement the fallback Illustration Card components.
 
-## ![alt text](<images/Admin Portal - Empty - Mobile.png>)
+![alt text](<images/Admin Portal - Empty - Mobile.png>)
+
+---
 
 ### 2.5 Feature 5: Tethered Companion Scanning (WebSockets)
 

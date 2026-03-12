@@ -49,7 +49,6 @@ Executives need high-level summaries, and other departments (like Finance) need 
 ### 2.1 Feature 1: Global KPI Dashboard & Standard Reporting
 
 **2.1.1 Overview**
-
 The primary interface providing immediate situational awareness of critical issues like "Stockouts" or "Overdue Returns", alongside tools for auditors to extract compliance evidence.
 
 #### 2.1.2 User Story: US-5.1.1 (Admin Dashboard)

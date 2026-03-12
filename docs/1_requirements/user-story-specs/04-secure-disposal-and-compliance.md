@@ -154,7 +154,9 @@ The strict, destructive action workflows (both Approval and Rejection) that fina
 - [ ] Write backend logic to revert the `Pending Disposal` status to the newly selected status.
 - [ ] Hook into Epic 5's notification engine to alert the original IT Ops admin.
 
-## ![alt text](<images/Request rejection- Desktop.png>)
+![alt text](<images/Request rejection- Desktop.png>)
+
+---
 
 ### 2.3 Feature 3: Bulk Operations & Architectural Safeguards
 
@@ -206,7 +208,8 @@ The efficiency tools for retiring large batches of equipment and the underlying 
 
 - [ ] Implement `IsArchived` or `Status = Disposed` global filters across all standard `GET` API endpoints.
 - [ ] Write backend permission logic to strictly block `PUT`/`PATCH` requests for any asset carrying the `Disposed` status.
-      ![alt text](<images/Asset Disposal HistoryDesktop.png>)
+
+![alt text](<images/Asset Disposal HistoryDesktop.png>)
 
 ---
 
