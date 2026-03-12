@@ -1,8 +1,8 @@
-﻿# Product Backlog
+# Product Backlog
 
 Consolidated task-level backlog, from the [Detailed User Story Specifications](./user-story-specs/README.md). Every task maps back to a User Story, Feature, and Epic.
 
-**Last Updated:** 03/06/2026
+**Last Updated:** 03/13/2026
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ## Epic 1 — Core Platform & API Gateway
 
-> **Source:** [01-core-platform-and-api.md](./user-story-specs/01-core-platform-and-api.md)
+> **Source:** [01-core-platform-and-api/](./user-story-specs/01-core-platform-and-api/)
 
 ### Feature 1.1: Enterprise Authentication & Access Control
 
@@ -172,7 +172,7 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ## Epic 2 — Asset Registry & Onboarding
 
-> **Source:** [02-asset-registry-and-onboarding.md](./user-story-specs/02-asset-registry-and-onboarding.md)
+> **Source:** [02-asset-registry-and-onboarding/](./user-story-specs/02-asset-registry-and-onboarding/)
 
 ### Feature 2.1: Dynamic Asset Registration
 
@@ -339,7 +339,7 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ## Epic 3 — Operations & Lifecycle Management
 
-> **Source:** [03-operations-and-lifecycle.md](./user-story-specs/03-operations-and-lifecycle.md)
+> **Source:** [03-operations-and-lifecycle/](./user-story-specs/03-operations-and-lifecycle/)
 
 ### Feature 3.1: Employee Support Portal & Digital Acceptance
 
@@ -482,7 +482,7 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ## Epic 4 — Secure Disposal & Compliance
 
-> **Source:** [04-secure-disposal-and-compliance.md](./user-story-specs/04-Compliance-Driven%20Disposals.md)
+> **Source:** [04-secure-disposal-and-compliance/](./user-story-specs/04-secure-disposal-and-compliance/)
 
 ### Feature 4.1: Disposal Requests & Administrative Review
 
@@ -558,7 +558,7 @@ Consolidated task-level backlog, from the [Detailed User Story Specifications](.
 
 ## Epic 5 — Financial Analytics & Automation
 
-> **Source:** [05-financial-analytics-and-automation.md](./user-story-specs/05-financial-analytics-and-automation.md)
+> **Source:** [05-financial-analytics-and-automation/](./user-story-specs/05-financial-analytics-and-automation/)
 
 ### Feature 5.1: Global KPI Dashboard & Standard Reporting
 

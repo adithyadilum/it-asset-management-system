@@ -7,7 +7,7 @@ Central index for all project documentation for the **IT Asset Management System
 | Section              | Folder                                      | Description                                                                                                                                             |
 | :------------------- | :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Project Overview** | [0_project-overview/](0_project-overview/)  | Executive summary, scope statement (v2.0), in-scope / out-of-scope boundaries, and constraints.                                                         |
-| **Requirements**     | [1_requirements/](1_requirements/README.md) | Elicitation, functional & non-functional requirements, user journeys, SRS, and detailed user story specifications across 5 Epics.                       |
+| **Requirements**     | [1_requirements/](1_requirements/README.md) | Elicitation, functional & non-functional requirements, user journeys, SRS, and detailed user story specifications across 23 Epics in 5 modules.         |
 | **Design**           | [2_design/](2_design/README.md)             | Architecture (C4 diagrams, DFD), data model (ERD, audit log), business logic (state machines, sequences, flowcharts), UI/UX design system & wireframes. |
 
 ## Quick Links
