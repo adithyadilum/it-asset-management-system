@@ -1,0 +1,42 @@
+name: CI Pipeline (The Bouncer)
+
+# 1. When does this run?
+# Every time someone opens or updates a Pull Request targeting 'dev' or 'main'
+on:
+  pull_request:
+    branches: ["dev", "main"]
+
+jobs:
+  code-quality-checks:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    # 2. Tell GitHub that our Next.js app is inside the 'web' folder!
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+      # 3. Download the code onto the temporary GitHub server
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 4. Install Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20" # Use the latest stable LTS version
+          cache: "npm"
+          cache-dependency-path: "./web/package-lock.json"
+
+      # 5. Install the project dependencies (using ci for strict lockfile adherence)
+      - name: Install Dependencies
+        run: npm ci
+
+      # 6. Run the Next.js Linter (Catches syntax errors and unused variables)
+      - name: Run ESLint
+        run: npm run lint
+
+      # 7. Run TypeScript (Catches type mismatch errors without building the app)
+      - name: Run Type Check
+        run: npx tsc --noEmit
