@@ -1,4 +1,4 @@
-name: CI Pipeline (The Bouncer)
+name: CI Pipeline (Lint & Type Check)
 
 # 1. When does this run?
 # Every time someone opens or updates a Pull Request targeting 'dev' or 'main'

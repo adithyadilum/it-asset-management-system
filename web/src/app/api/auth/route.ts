@@ -1,21 +1,22 @@
-// app/api/auth/login/route.ts
+// src/app/api/auth/route.ts
 import { NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import type { AuthErrorResponse, LoginRequest, LoginSuccessResponse } from '@/types/auth';
 
 // Adjust these paths based on where created the db instance and schema
-import { db } from '@/db'; 
-import { users } from '@/db/schema'; 
+import { db } from '@/db';
+import { users } from '@/db/schema';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Partial<LoginRequest>;
     const { email, password } = body;
 
     // 1. Basic Validation
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' }, 
+      return NextResponse.json<AuthErrorResponse>(
+        { error: 'Email and password are required' },
         { status: 400 }
       );
     }
@@ -31,8 +32,8 @@ export async function POST(request: Request) {
 
     // 3. Check if a user with that email was found
     if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' }, 
+      return NextResponse.json<AuthErrorResponse>(
+        { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
@@ -41,26 +42,28 @@ export async function POST(request: Request) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (isPasswordValid) {
-      return NextResponse.json({
+      const response: LoginSuccessResponse = {
         success: true,
         message: 'Login successful',
-        user: { 
+        user: {
           // Only return safe data to the client
           id: user.id,
           email: user.email,
         },
-      }, { status: 200 });
+      };
+
+      return NextResponse.json<LoginSuccessResponse>(response, { status: 200 });
     } else {
-      return NextResponse.json(
-        { error: 'Invalid credentials' }, 
+      return NextResponse.json<AuthErrorResponse>(
+        { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
   } catch (error) {
     console.error("Database Login Error:", error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' }, 
+    return NextResponse.json<AuthErrorResponse>(
+      { error: 'Internal Server Error' },
       { status: 500 }
     );
   }
