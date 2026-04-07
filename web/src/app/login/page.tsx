@@ -48,9 +48,13 @@ export default function LoginPage() {
       // 6. Redirect to the Dashboard
       router.push("/dashboard");
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Login Error:", error);
-      setErrorMessage(error.message);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
