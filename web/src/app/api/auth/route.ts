@@ -48,7 +48,6 @@ export async function POST(request: Request) {
           // Only return safe data to the client
           id: user.id,
           email: user.email,
-          role: user.role, 
         },
       }, { status: 200 });
     } else {
