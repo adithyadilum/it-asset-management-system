@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: ["dev", "main"]
     paths-ignore:
-      - "**.md" # Ignores any markdown file anywhere
+      - "**/*.md" # Ignores any markdown file anywhere
       - "docs/**" # Ignores the entire docs folder
       - ".gitignore" # Ignores git config changes
 
