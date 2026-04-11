@@ -1,3 +1,6 @@
+"use client"
+
+import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import type { LucideIcon } from "lucide-react"
@@ -157,6 +160,36 @@ function SidebarSection({
 }
 
 export function AppSidebar() {
+    const [isHydrated, setIsHydrated] = React.useState(false)
+
+    React.useEffect(() => {
+        setIsHydrated(true)
+    }, [])
+
+    // Render a stable, link-free shell until hydration completes.
+    // This prevents extension-mutated anchor markup from causing SSR hydration mismatches.
+    if (!isHydrated) {
+        return (
+            <Sidebar collapsible="icon" variant="sidebar">
+                <SidebarHeader className="h-17 justify-center border-b border-sidebar-border px-2 py-2">
+                    <div className="inline-flex items-center gap-2 px-2">
+                        <Image
+                            src="/tiqri-logo.png"
+                            alt="TIQRI Corporate Logo"
+                            width={89}
+                            height={50}
+                            className="h-12.5 w-22.25 object-contain"
+                            priority
+                        />
+                        <span className="font-text-4xl-semi-bold text-(length:--text-4xl-semi-bold-font-size) leading-(--text-4xl-semi-bold-line-height) text-primary">
+                            Assets
+                        </span>
+                    </div>
+                </SidebarHeader>
+            </Sidebar>
+        )
+    }
+
     return (
         <Sidebar collapsible="icon" variant="sidebar">
             <SidebarHeader className="h-17 justify-center border-b border-sidebar-border px-2 py-2">
