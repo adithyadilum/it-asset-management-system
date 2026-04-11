@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "check": "npm run lint && tsc --noEmit",
-    "db:seed:test-user": "tsx src/db/seed-test-user.ts"
+    "db:seed:sample-users": "tsx src/db/seed-sample-users.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -16,8 +16,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "jose": "^6.2.2",
     "lucide-react": "^1.7.0",
-    "next": "16.2.2",
+    "next": "^16.2.3",
     "postgres": "^3.4.8",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
@@ -34,7 +35,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.4.0",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "^0.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "eslint-config-prettier": "^10.1.8",
