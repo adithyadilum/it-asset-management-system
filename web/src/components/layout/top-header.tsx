@@ -1,15 +1,17 @@
-"use client"
+'use client';
 
 import {
+    Ban,
     Bell,
-    MoreHorizontal,
     PanelLeftClose,
+    PanelLeftOpen,
     Search,
-} from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { logout } from '@/actions/auth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -17,50 +19,63 @@ import {
     BreadcrumbList,
     BreadcrumbPage,
     BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import { useSidebar } from "@/components/ui/sidebar"
-import type { HeaderBreadcrumb, TopHeaderProps } from "@/types/layout"
+} from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+import { useSidebar } from '@/components/ui/sidebar';
+import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
 
 function formatBreadcrumbSegment(segment: string) {
     return decodeURIComponent(segment)
-        .split("-")
+        .split('-')
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ")
+        .join(' ');
 }
 
 function buildBreadcrumbs(pathname: string): HeaderBreadcrumb[] {
-    const segments = pathname.split("/").filter((segment) => segment !== "")
+    const segments = pathname.split('/').filter((segment) => segment !== '');
 
     return segments.map((segment, index) => ({
-        href: `/${segments.slice(0, index + 1).join("/")}`,
+        href: `/${segments.slice(0, index + 1).join('/')}`,
         label: formatBreadcrumbSegment(segment),
-    }))
+    }));
 }
 
 export function TopHeader({ user }: TopHeaderProps) {
-    const { toggleSidebar } = useSidebar()
-    const pathname = usePathname()
-    const breadcrumbs = buildBreadcrumbs(pathname)
+    const { state, toggleSidebar } = useSidebar();
+    const pathname = usePathname();
+    const breadcrumbs = buildBreadcrumbs(pathname);
 
     const initials = user.name
-        .split(" ")
+        .split(' ')
         .map((namePart) => namePart[0])
-        .join("")
+        .join('')
         .substring(0, 2)
-        .toUpperCase()
+        .toUpperCase();
+
+    const roleLabel = user.role === 'Admin' ? 'Global Admin' : 'Employee';
 
     return (
         <header className="flex h-14 items-center justify-between rounded-lg bg-muted px-2">
             <div className="flex items-center gap-2 px-2">
                 <button
                     type="button"
-                    aria-label="Toggle sidebar"
+                    aria-label={state === 'collapsed' ? 'Expand sidebar' : 'Collapse sidebar'}
                     onClick={toggleSidebar}
                     className="flex h-7 w-7 items-center justify-center"
                 >
-                    <PanelLeftClose className="h-4 w-4 text-slate-500" />
+                    {state === 'collapsed' ? (
+                        <PanelLeftOpen className="h-4 w-4 text-slate-500" />
+                    ) : (
+                        <PanelLeftClose className="h-4 w-4 text-slate-500" />
+                    )}
                 </button>
 
                 <div className="flex items-center px-2">
@@ -80,32 +95,30 @@ export function TopHeader({ user }: TopHeaderProps) {
                             </BreadcrumbItem>
                         ) : (
                             breadcrumbs.map((breadcrumb, index) => {
-                                const isLast = index === breadcrumbs.length - 1
+                                const isLast = index === breadcrumbs.length - 1;
 
-                                return (
-                                    [
-                                        <BreadcrumbItem key={`${breadcrumb.href}-item`}>
-                                            {isLast ? (
-                                                <BreadcrumbPage className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) whitespace-nowrap text-slate-900 [font-style:var(--text-sm-regular-font-style)]">
-                                                    {breadcrumb.label}
-                                                </BreadcrumbPage>
-                                            ) : (
-                                                <BreadcrumbLink
-                                                    asChild
-                                                    className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) whitespace-nowrap text-slate-500 [font-style:var(--text-sm-regular-font-style)] hover:text-slate-700"
-                                                >
-                                                    <Link href={breadcrumb.href}>{breadcrumb.label}</Link>
-                                                </BreadcrumbLink>
-                                            )}
-                                        </BreadcrumbItem>,
-                                        !isLast ? (
-                                            <BreadcrumbSeparator
-                                                key={`${breadcrumb.href}-separator`}
-                                                className="text-slate-400"
-                                            />
-                                        ) : null,
-                                    ]
-                                )
+                                return [
+                                    <BreadcrumbItem key={`${breadcrumb.href}-item`}>
+                                        {isLast ? (
+                                            <BreadcrumbPage className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) whitespace-nowrap text-slate-900 [font-style:var(--text-sm-regular-font-style)]">
+                                                {breadcrumb.label}
+                                            </BreadcrumbPage>
+                                        ) : (
+                                            <BreadcrumbLink
+                                                asChild
+                                                className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) whitespace-nowrap text-slate-500 [font-style:var(--text-sm-regular-font-style)] hover:text-slate-700"
+                                            >
+                                                <Link href={breadcrumb.href}>{breadcrumb.label}</Link>
+                                            </BreadcrumbLink>
+                                        )}
+                                    </BreadcrumbItem>,
+                                    !isLast ? (
+                                        <BreadcrumbSeparator
+                                            key={`${breadcrumb.href}-separator`}
+                                            className="text-slate-400"
+                                        />
+                                    ) : null,
+                                ];
                             })
                         )}
                     </BreadcrumbList>
@@ -113,7 +126,7 @@ export function TopHeader({ user }: TopHeaderProps) {
             </div>
 
             <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-slate-200 bg-white shadow-box-shadow-shadow-xs">
-                <div className="flex items-center pl-3 pr-0 py-1.5">
+                <div className="flex items-center py-1.5 pl-3 pr-0">
                     <Search className="h-4 w-4 shrink-0 text-slate-400" />
                 </div>
                 <div className="flex h-9 flex-1 items-center px-2">
@@ -121,8 +134,8 @@ export function TopHeader({ user }: TopHeaderProps) {
                         Search...
                     </span>
                 </div>
-                <div className="flex items-center gap-1 pl-0 pr-3 py-1.5">
-                    {["⌘", "K"].map((key) => (
+                <div className="flex items-center gap-1 py-1.5 pl-0 pr-3">
+                    {['⌘', 'K'].map((key) => (
                         <div
                             key={key}
                             className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-slate-50 px-1 py-0"
@@ -152,24 +165,79 @@ export function TopHeader({ user }: TopHeaderProps) {
                     </div>
                 </div>
 
-                <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src="" alt={user.name} className="object-cover" />
-                    <AvatarFallback className="rounded-lg bg-slate-300 text-xs font-semibold text-slate-700">
-                        {initials}
-                    </AvatarFallback>
-                </Avatar>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button
+                            type="button"
+                            className="flex items-center gap-4 rounded-lg p-2"
+                            aria-label="Open user menu"
+                        >
+                            <Avatar className="h-8 w-8 rounded-lg">
+                                <AvatarImage src="" alt={user.name} className="object-cover" />
+                                <AvatarFallback className="rounded-lg bg-slate-300 text-xs font-semibold text-slate-700">
+                                    {initials}
+                                </AvatarFallback>
+                            </Avatar>
 
-                <div className="flex flex-col items-start">
-                    <span className="whitespace-nowrap font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
-                        {user.name}
-                    </span>
-                    <span className="overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
-                        {user.email}
-                    </span>
-                </div>
+                            <div className="flex flex-col items-start">
+                                <span className="whitespace-nowrap font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
+                                    {user.name}
+                                </span>
+                                <span className="overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
+                                    {user.email}
+                                </span>
+                            </div>
+                        </button>
+                    </DropdownMenuTrigger>
 
-                <MoreHorizontal className="h-4 w-4 cursor-pointer text-slate-500" />
+                    <DropdownMenuContent
+                        align="end"
+                        sideOffset={8}
+                        className="w-67.5 min-w-67.5 border-none bg-transparent p-0 shadow-none ring-0"
+                    >
+                        <Card className="w-67.5 rounded-lg border border-solid border-slate-200 bg-white py-0 shadow-box-shadow-shadow-xl ring-0">
+                            <CardContent className="flex flex-col items-end gap-4 p-6">
+                                <div className="flex w-full justify-end">
+                                    <Ban className="h-4 w-4 text-slate-400" />
+                                </div>
+
+                                <div className="flex w-full flex-col items-start gap-2">
+                                    <div className="flex w-full items-center gap-4 p-2">
+                                        <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                                            <AvatarImage
+                                                src=""
+                                                alt={user.name}
+                                                className="rounded-lg object-cover"
+                                            />
+                                            <AvatarFallback className="rounded-lg bg-slate-200 text-xs text-slate-600">
+                                                {initials}
+                                            </AvatarFallback>
+                                        </Avatar>
+
+                                        <div className="flex min-w-0 flex-1 flex-col items-start">
+                                            <span className="self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
+                                                {user.name}
+                                            </span>
+                                            <span className="self-stretch overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
+                                                {user.email}
+                                            </span>
+                                            <span className="self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-[#7cc000] [font-style:var(--text-sm-semi-bold-font-style)]">
+                                                {roleLabel}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <form action={logout} className="w-full">
+                                        <Button className="h-8 w-full rounded-lg bg-red-500 text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-white shadow-box-shadow-shadow-xs hover:bg-red-600 [font-style:var(--text-sm-medium-font-style)]">
+                                            Logout
+                                        </Button>
+                                    </form>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </header>
-    )
+    );
 }

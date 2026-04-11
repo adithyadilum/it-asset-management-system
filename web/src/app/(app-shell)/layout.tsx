@@ -3,9 +3,9 @@ import { jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
-import { AppSidebar } from "../../components/layout/app-sidebar"
-import { TopHeader } from "../../components/layout/top-header"
-import { SidebarProvider } from "../../components/ui/sidebar"
+import { AppSidebar } from "@/components/layout/app-sidebar"
+import { TopHeader } from "@/components/layout/top-header"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import type { ShellUser } from "@/types/layout"
 
 const SESSION_COOKIE_NAME = "session_token"
