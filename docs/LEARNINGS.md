@@ -90,32 +90,37 @@
 - **What we learned:** We must avoid "Frankenstein PRs" by keeping Pull Requests atomic (one PR = one specific fix or feature). If a PR contains multiple unrelated changes, reverting a bug in one will accidentally revert the good code in the other.
 - **The Standard:** We adopted standard branch naming conventions: `feat/` for new additions, `fix/` for bug resolution, and `chore/` for maintenance.
 
-Topic: Next.js Route Groups & Clean URLs
+### Next.js Route Groups & Clean URLs
 
-The Context: We wanted clean, shallow URLs (e.g., /assets/hardware) instead of deeply nested URLs (/dashboard/assets/hardware) without losing our persistent App Shell layout.
+- **The Context:** We wanted clean, shallow URLs (for example, /assets/hardware) instead of deeply nested URLs (/dashboard/assets/hardware) without losing our persistent App Shell layout.
+- **What we learned:** We utilized Next.js Route Groups by wrapping a folder name in parentheses (for example, (app-shell)). This allows us to share a single layout.tsx across multiple route segments while keeping the folder name invisible in the browser URL.
+- **Security Update:** Because our secure routes are now at the root level, we updated our proxy.ts matcher from an inclusion strategy (protect /dashboard) to an exclusion strategy (protect everything except /login and static assets).
 
-What we learned: We utilized Next.js Route Groups by wrapping a folder name in parentheses (e.g., (app-shell)). This allows us to share a single layout.tsx across multiple route segments while keeping the folder name invisible in the browser's URL bar.
+### Root Routing & Server-Side Redirects
 
-Security Update: Because our secure routes are now at the root level, we updated our proxy.ts matcher from an inclusion strategy (protect /dashboard) to an exclusion strategy (protect everything EXCEPT /login and static assets).
+- **The Context:** We needed to remove the default Next.js starter page at the root URL (/) and ensure users are sent to the correct application module or the login screen.
+- **What we learned:** We replaced the boilerplate in src/app/page.tsx with a server-side redirect() from next/navigation pointing to our default module (/assets/hardware).
+- **The Impact:** This creates a seamless user experience. We do not need to check authentication status on this root page because our proxy.ts edge middleware automatically intercepts the redirect. If a user lacks a JWT session, they are redirected to /login before the page renders.
 
-Topic: Root Routing & Server-Side Redirects
+### Next.js Metadata & Favicons
 
-The Context: We needed to remove the default Next.js starter page at the root URL (/) and ensure users are sent to the correct application module or the login screen.
+- **The Context:** We needed to replace the default Next.js favicon with a custom PNG logo for corporate branding.
+- **What we learned:** In the Next.js App Router, we do not need to manually configure head tags or link rel=icon tags. We used Next.js file conventions by placing an image named icon.png in src/app/. The framework automatically injects the metadata across the application.
 
-What we learned: We replaced the boilerplate in src/app/page.tsx with a server-side redirect() from next/navigation pointing to our default module (/assets/hardware).
+### Implementing the App Shell with shadcn/ui Sidebar
 
-The Impact: This creates a flawless user experience. We do not need to check authentication status on this root page because our proxy.ts edge middleware automatically intercepts the redirect; if they lack a JWT session, they are seamlessly bounced to /login before the page ever renders.
+- **The Context:** We needed to translate the Figma layout into a functional, responsive Next.js application shell.
+- **What we learned:** We used the shadcn/ui Sidebar component to handle mobile-responsive navigation state. The architecture is split into three parts: app-sidebar.tsx for navigation data, top-header.tsx for search/profile, and layout.tsx to wrap the module in SidebarProvider.
+- **The Impact:** This creates a scalable, enterprise-grade UI foundation. The declarative sidebar structure allows us to add or modify navigation routes without touching CSS.
 
-Topic: Next.js Metadata & Favicons
+### React Hydration Mismatches & Browser Extensions
 
-The Context: We needed to replace the default Next.js favicon with a custom .png logo for corporate branding.
+- **The Context:** We encountered a Hydration failed error immediately after building the App Shell layout.
+- **What we learned:** Hydration occurs when React attaches interactivity to server-rendered HTML. If the client DOM differs from the server DOM, React throws an error. Browser extensions (for example, password managers or grammar tools) can inject script tags and break Next.js hydration in local development.
+- **The Resolution:** To prevent harmless extension injections from crashing local development, we added the suppressHydrationWarning prop to html and body in src/app/layout.tsx, following Next.js guidance.
 
-What we learned: In the Next.js App Router, we do not need to manually configure <head> or <link rel="icon"> tags. We utilized Next.js File Conventions by simply placing an image named icon.png inside the src/app/ directory. The framework automatically parses this file and injects the correct metadata across the entire application.
+### Server-to-Client Prop Passing (JWT Data)
 
-Topic: Implementing the App Shell with shadcn/ui Sidebar
-
-The Context: We needed to translate the Figma layout into a functional, responsive Next.js application shell.
-
-What we learned: We utilized the new shadcn/ui Sidebar component to handle complex mobile-responsive navigation state automatically. The architecture is split into three parts: app-sidebar.tsx (navigation data), top-header.tsx (search/profile), and the layout.tsx which wraps the entire module in a <SidebarProvider>.
-
-The Impact: This creates a scalable, enterprise-grade UI foundation. The declarative structure of the Shadcn sidebar allows us to easily add or modify navigation routes in the future without touching CSS.
+- **The Context:** We needed to securely display the active user name and role in the client TopHeader without extra database or API calls.
+- **What we learned:** We updated our mockLogin Server Action to include the user name in the JWT payload. Because TopHeader is a client component, it cannot read HTTP-only cookies. We solved this by reading the cookie in the parent server layout.tsx, decoding the JWT with jose, and passing the user object as a prop.
+- **The Impact:** This pattern provides secure, immediate rendering of user data on initial page load without exposing cookie access to client-side JavaScript.

@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { and, eq, isNull } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { db } from "@/db";
 import { sessions, users } from "@/db/schema";
@@ -120,6 +121,5 @@ export async function logout() {
     }
 
     cookieStore.delete(SESSION_COOKIE_NAME);
-
-    return { success: true };
+    redirect("/login");
 }
