@@ -89,3 +89,33 @@
 - **The Context:** Deciding how to group our commits for the Auth Fix and the new App Shell layout.
 - **What we learned:** We must avoid "Frankenstein PRs" by keeping Pull Requests atomic (one PR = one specific fix or feature). If a PR contains multiple unrelated changes, reverting a bug in one will accidentally revert the good code in the other.
 - **The Standard:** We adopted standard branch naming conventions: `feat/` for new additions, `fix/` for bug resolution, and `chore/` for maintenance.
+
+Topic: Next.js Route Groups & Clean URLs
+
+The Context: We wanted clean, shallow URLs (e.g., /assets/hardware) instead of deeply nested URLs (/dashboard/assets/hardware) without losing our persistent App Shell layout.
+
+What we learned: We utilized Next.js Route Groups by wrapping a folder name in parentheses (e.g., (app-shell)). This allows us to share a single layout.tsx across multiple route segments while keeping the folder name invisible in the browser's URL bar.
+
+Security Update: Because our secure routes are now at the root level, we updated our proxy.ts matcher from an inclusion strategy (protect /dashboard) to an exclusion strategy (protect everything EXCEPT /login and static assets).
+
+Topic: Root Routing & Server-Side Redirects
+
+The Context: We needed to remove the default Next.js starter page at the root URL (/) and ensure users are sent to the correct application module or the login screen.
+
+What we learned: We replaced the boilerplate in src/app/page.tsx with a server-side redirect() from next/navigation pointing to our default module (/assets/hardware).
+
+The Impact: This creates a flawless user experience. We do not need to check authentication status on this root page because our proxy.ts edge middleware automatically intercepts the redirect; if they lack a JWT session, they are seamlessly bounced to /login before the page ever renders.
+
+Topic: Next.js Metadata & Favicons
+
+The Context: We needed to replace the default Next.js favicon with a custom .png logo for corporate branding.
+
+What we learned: In the Next.js App Router, we do not need to manually configure <head> or <link rel="icon"> tags. We utilized Next.js File Conventions by simply placing an image named icon.png inside the src/app/ directory. The framework automatically parses this file and injects the correct metadata across the entire application.
+
+Topic: Implementing the App Shell with shadcn/ui Sidebar
+
+The Context: We needed to translate the Figma layout into a functional, responsive Next.js application shell.
+
+What we learned: We utilized the new shadcn/ui Sidebar component to handle complex mobile-responsive navigation state automatically. The architecture is split into three parts: app-sidebar.tsx (navigation data), top-header.tsx (search/profile), and the layout.tsx which wraps the entire module in a <SidebarProvider>.
+
+The Impact: This creates a scalable, enterprise-grade UI foundation. The declarative structure of the Shadcn sidebar allows us to easily add or modify navigation routes in the future without touching CSS.
