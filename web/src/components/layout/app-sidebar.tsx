@@ -1,8 +1,6 @@
 "use client"
 
-import * as React from "react"
-import Image from "next/image"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
 import {
     Activity,
@@ -17,53 +15,36 @@ import {
     Sofa,
 } from "lucide-react"
 
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarMenuSub,
-    SidebarMenuSubButton,
-    SidebarMenuSubItem,
-    SidebarRail,
-    SidebarSeparator,
-} from "@/components/ui/sidebar"
+import { BrandHeader } from "@/components/shared/brand-header"
+import { Sidebar, SidebarContent, SidebarHeader, useSidebar } from "@/components/ui/sidebar"
 
 type NavChild = {
     label: string
-    href: string
     isActive?: boolean
 }
 
 type NavItem = {
     label: string
     icon: LucideIcon
-    href?: string
     children?: NavChild[]
 }
 
 const assetsItems: NavItem[] = [
-    { label: "All Assets", icon: Database, href: "/dashboard" },
+    { label: "All Assets", icon: Database },
     {
         label: "IT & Digital",
         icon: Laptop,
         children: [
-            { label: "Hardware", href: "/dashboard", isActive: true },
-            { label: "Software", href: "/dashboard" },
+            { label: "Hardware", isActive: true },
+            { label: "Software" },
         ],
     },
     {
         label: "Office",
         icon: Sofa,
         children: [
-            { label: "Furniture & Fixtures", href: "/dashboard" },
-            { label: "Office Electronics", href: "/dashboard" },
+            { label: "Furniture & Fixtures" },
+            { label: "Office Electronics" },
         ],
     },
 ]
@@ -73,173 +54,169 @@ const managementItems: NavItem[] = [
         label: "Operations",
         icon: Activity,
         children: [
-            { label: "Assignments & Returns", href: "/dashboard" },
-            { label: "Maintenance & Repairs", href: "/dashboard" },
-            { label: "Disposals", href: "/dashboard" },
+            { label: "Assignments & Returns" },
+            { label: "Maintenance & Repairs" },
+            { label: "Disposals" },
         ],
     },
     {
         label: "Financials",
         icon: DollarSign,
         children: [
-            { label: "Depreciation Ledger", href: "/dashboard" },
-            { label: "Total Cost of Ownership", href: "/dashboard" },
-            { label: "Salvage & Write-Offs", href: "/dashboard" },
+            { label: "Depreciation Ledger" },
+            { label: "Total Cost of Ownership" },
+            { label: "Salvage & Write-Offs" },
         ],
     },
     {
         label: "Reports & Audits",
         icon: FileBarChart,
-        children: [
-            { label: "Standard Reports", href: "/dashboard" },
-            { label: "System Audit Log", href: "/dashboard" },
-        ],
+        children: [{ label: "Standard Reports" }, { label: "System Audit Log" }],
     },
     {
         label: "Settings",
         icon: Settings,
         children: [
-            { label: "Master Data", href: "/dashboard" },
-            { label: "User Roles & Access", href: "/dashboard" },
-            { label: "Alerts & Notifications", href: "/dashboard" },
-            { label: "Integrations", href: "/dashboard" },
+            { label: "Master Data" },
+            { label: "User Roles & Access" },
+            { label: "Alerts & Notifications" },
+            { label: "Integrations" },
         ],
     },
 ]
 
-function SidebarSection({
-    title,
-    items,
-}: {
-    title: string
-    items: NavItem[]
-}) {
+function SectionLabel({ title }: { title: string }) {
     return (
-        <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel className="font-text-xs-bold uppercase tracking-[0.08em] text-sidebar-foreground/70">
+        <div className="flex h-8 items-center px-2 opacity-70">
+            <span className="font-text-xs-bold text-[10px] leading-4 text-slate-900">
                 {title}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-                <SidebarMenu>
-                    {items.map((item) => (
-                        <SidebarMenuItem key={item.label}>
-                            {item.href ? (
-                                <SidebarMenuButton asChild>
-                                    <Link href={item.href}>
-                                        <item.icon />
-                                        <span className="font-text-sm-regular">{item.label}</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            ) : (
-                                <SidebarMenuButton>
-                                    <item.icon />
-                                    <span className="font-text-sm-regular">{item.label}</span>
-                                    <ChevronDown className="ml-auto" />
-                                </SidebarMenuButton>
-                            )}
+            </span>
+        </div>
+    )
+}
 
-                            {item.children?.length ? (
-                                <SidebarMenuSub>
-                                    {item.children.map((child) => (
-                                        <SidebarMenuSubItem key={child.label}>
-                                            <SidebarMenuSubButton asChild isActive={child.isActive}>
-                                                <Link href={child.href} className="font-text-sm-regular">
-                                                    {child.label}
-                                                </Link>
-                                            </SidebarMenuSubButton>
-                                        </SidebarMenuSubItem>
-                                    ))}
-                                </SidebarMenuSub>
+function ChildList({ items, collapsed }: { items: NavChild[]; collapsed: boolean }) {
+    const router = useRouter()
+
+    if (collapsed) {
+        return null
+    }
+
+    return (
+        <div className="px-3.5">
+            <div className="flex flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5">
+                {items.map((child) => (
+                    <button
+                        key={child.label}
+                        type="button"
+                        onClick={() => router.push("/dashboard")}
+                        className={[
+                            "flex h-7 items-center rounded-md text-left transition-colors",
+                            child.isActive
+                                ? "bg-[#040d5a] px-3 text-white"
+                                : "px-2 text-slate-900 hover:bg-slate-100",
+                        ].join(" ")}
+                    >
+                        <span className="truncate font-text-sm-regular text-sm leading-5">
+                            {child.label}
+                        </span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
+    const router = useRouter()
+
+    return (
+        <div className="flex flex-col gap-1">
+            {items.map((item) => {
+                const Icon = item.icon
+
+                return (
+                    <div key={item.label} className="w-full">
+                        <button
+                            type="button"
+                            onClick={() => router.push("/dashboard")}
+                            className={[
+                                "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                                collapsed ? "justify-center px-0" : "gap-2 px-2",
+                            ].join(" ")}
+                        >
+                            <Icon className="size-4" />
+                            {!collapsed ? (
+                                <span className="flex-1 truncate text-left font-text-sm-regular text-sm leading-5">
+                                    {item.label}
+                                </span>
                             ) : null}
-                        </SidebarMenuItem>
-                    ))}
-                </SidebarMenu>
-            </SidebarGroupContent>
-        </SidebarGroup>
+                            {!collapsed && item.children ? <ChevronDown className="size-4" /> : null}
+                        </button>
+
+                        {item.children ? <ChildList items={item.children} collapsed={collapsed} /> : null}
+                    </div>
+                )
+            })}
+        </div>
     )
 }
 
 export function AppSidebar() {
-    const [isHydrated, setIsHydrated] = React.useState(false)
-
-    React.useEffect(() => {
-        setIsHydrated(true)
-    }, [])
-
-    // Render a stable, link-free shell until hydration completes.
-    // This prevents extension-mutated anchor markup from causing SSR hydration mismatches.
-    if (!isHydrated) {
-        return (
-            <Sidebar collapsible="icon" variant="sidebar">
-                <SidebarHeader className="h-17 justify-center border-b border-sidebar-border px-2 py-2">
-                    <div className="inline-flex items-center gap-2 px-2">
-                        <Image
-                            src="/tiqri-logo.png"
-                            alt="TIQRI Corporate Logo"
-                            width={89}
-                            height={50}
-                            className="h-12.5 w-22.25 object-contain"
-                            priority
-                        />
-                        <span className="font-text-4xl-semi-bold text-(length:--text-4xl-semi-bold-font-size) leading-(--text-4xl-semi-bold-line-height) text-primary">
-                            Assets
-                        </span>
-                    </div>
-                </SidebarHeader>
-            </Sidebar>
-        )
-    }
+    const router = useRouter()
+    const { state } = useSidebar()
+    const collapsed = state === "collapsed"
 
     return (
-        <Sidebar collapsible="icon" variant="sidebar">
-            <SidebarHeader className="h-17 justify-center border-b border-sidebar-border px-2 py-2">
-                <div className="inline-flex items-center gap-2 px-2">
-                    <Image
-                        src="/tiqri-logo.png"
-                        alt="TIQRI Corporate Logo"
-                        width={89}
-                        height={50}
-                        className="h-12.5 w-22.25 object-contain"
-                        priority
-                    />
-                    <span className="font-text-4xl-semi-bold text-(length:--text-4xl-semi-bold-font-size) leading-(--text-4xl-semi-bold-line-height) text-primary">
-                        Assets
-                    </span>
-                </div>
+        <Sidebar
+            collapsible="icon"
+            className="h-full bg-muted [--sidebar:var(--muted)] border-r-0 group-data-[side=left]:border-r-0 group-data-[side=right]:border-l-0 data-[collapsible=icon]:border-r-0"
+        >
+            <SidebarHeader className="h-17 justify-center p-2">
+                <BrandHeader collapsed={collapsed} />
             </SidebarHeader>
 
-            <SidebarContent className="pt-2">
-                <SidebarGroup className="px-2 pt-0">
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton asChild isActive>
-                                <Link href="/dashboard">
-                                    <LayoutDashboard />
-                                    <span className="font-text-sm-regular">Dashboard</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                </SidebarGroup>
+            <SidebarContent className="gap-0 overflow-hidden px-0 py-0">
+                <div className="px-2 pt-2">
+                    <button
+                        type="button"
+                        onClick={() => router.push("/dashboard")}
+                        className={[
+                            "flex h-10 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                            collapsed ? "justify-center px-0" : "gap-2 pl-2 pr-8",
+                        ].join(" ")}
+                    >
+                        <LayoutDashboard className="size-4" />
+                        {!collapsed ? (
+                            <span className="truncate font-text-sm-regular text-sm leading-5">Dashboard</span>
+                        ) : null}
+                    </button>
 
-                <SidebarSection title="ASSETS" items={assetsItems} />
-                <SidebarSection title="MANAGEMENT" items={managementItems} />
+                    {!collapsed ? <SectionLabel title="ASSETS" /> : null}
+                    <NavGroup items={assetsItems} collapsed={collapsed} />
+                </div>
+
+                <div className="px-2 pt-1">
+                    {!collapsed ? <SectionLabel title="MANAGEMENT" /> : null}
+                    <NavGroup items={managementItems} collapsed={collapsed} />
+                </div>
+
+                <div className="mt-auto p-2">
+                    <button
+                        type="button"
+                        onClick={() => router.push("/dashboard")}
+                        className={[
+                            "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                            collapsed ? "justify-center px-0" : "gap-2 px-2",
+                        ].join(" ")}
+                    >
+                        <LifeBuoy className="size-4" />
+                        {!collapsed ? (
+                            <span className="truncate font-text-sm-regular text-sm leading-5">Support</span>
+                        ) : null}
+                    </button>
+                </div>
             </SidebarContent>
-
-            <SidebarSeparator />
-
-            <SidebarFooter className="px-2">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton>
-                            <LifeBuoy />
-                            <span className="font-text-sm-regular">Support</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarFooter>
-
-            <SidebarRail />
         </Sidebar>
     )
 }
