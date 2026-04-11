@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "check": "npm run lint && tsc --noEmit",
-    "db:seed:sample-users": "tsx src/db/seed-sample-users.ts"
+    "db:seed:sample-users": "tsx src/db/seed-sample-users.ts",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -35,7 +36,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.4.0",
-    "drizzle-kit": "^0.18.1",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "eslint-config-prettier": "^10.1.8",
