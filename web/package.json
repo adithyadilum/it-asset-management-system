@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "check": "npm run lint && tsc --noEmit",
-    "db:seed:test-user": "tsx src/db/seed-test-user.ts",
-    "db:seed:sample-users": "tsx src/db/seed-test-user.ts"
+    "db:seed:sample-users": "tsx src/db/seed-sample-users.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
