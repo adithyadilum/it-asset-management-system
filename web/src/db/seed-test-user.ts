@@ -1,15 +1,62 @@
 import bcrypt from "bcryptjs"
 import { neon } from "@neondatabase/serverless"
 import { drizzle } from "drizzle-orm/neon-http"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import * as dotenv from "dotenv"
 
 import { users } from "./schema"
 
 dotenv.config({ path: ".env.local" })
 
-const TEST_USER_EMAIL = "test.user@tiqri.com"
-const TEST_USER_PASSWORD = "Test@1234"
+type SeedUser = {
+  email: string
+  name: string
+  role: "Admin" | "Employee"
+  password: string
+}
+
+const SAMPLE_USERS: SeedUser[] = [
+  {
+    email: "admin.user@tiqri.com",
+    name: "Admin User",
+    role: "Admin",
+    password: "Admin@1234",
+  },
+  {
+    email: "employee.one@tiqri.com",
+    name: "Employee One",
+    role: "Employee",
+    password: "Employee@1234",
+  },
+  {
+    email: "employee.two@tiqri.com",
+    name: "Employee Two",
+    role: "Employee",
+    password: "Employee@5678",
+  },
+  {
+    email: "test.user@tiqri.com",
+    name: "Test User",
+    role: "Employee",
+    password: "Test@1234",
+  },
+]
+
+async function ensureAuthSchema(db: ReturnType<typeof drizzle>) {
+  await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "name" text NOT NULL DEFAULT 'User'`)
+  await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password" text NOT NULL DEFAULT ''`)
+  await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "role" varchar(50) NOT NULL DEFAULT 'Employee'`)
+  await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "is_active" boolean NOT NULL DEFAULT true`)
+  await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_at" timestamp with time zone NOT NULL DEFAULT now()`)
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS "sessions" (
+    "id" serial PRIMARY KEY,
+    "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+    "token_id" text NOT NULL UNIQUE,
+    "expires_at" timestamp with time zone NOT NULL,
+    "created_at" timestamp with time zone NOT NULL DEFAULT now(),
+    "revoked_at" timestamp with time zone
+  )`)
+}
 
 async function seedTestUser() {
   const databaseUrl = process.env.DATABASE_URL
@@ -21,34 +68,49 @@ async function seedTestUser() {
   const sql = neon(databaseUrl)
   const db = drizzle(sql)
 
-  const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10)
+  await ensureAuthSchema(db)
 
-  const existingUser = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, TEST_USER_EMAIL))
-    .limit(1)
+  for (const sampleUser of SAMPLE_USERS) {
+    const hashedPassword = await bcrypt.hash(sampleUser.password, 10)
 
-  if (existingUser.length > 0) {
-    await db
-      .update(users)
-      .set({ password: hashedPassword })
-      .where(eq(users.email, TEST_USER_EMAIL))
+    const existingUser = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, sampleUser.email))
+      .limit(1)
 
-    console.log(`Updated test user: ${TEST_USER_EMAIL}`)
-  } else {
-    await db.insert(users).values({
-      email: TEST_USER_EMAIL,
-      password: hashedPassword,
-    })
+    if (existingUser.length > 0) {
+      await db
+        .update(users)
+        .set({
+          name: sampleUser.name,
+          role: sampleUser.role,
+          password: hashedPassword,
+          isActive: true,
+        })
+        .where(eq(users.email, sampleUser.email))
 
-    console.log(`Created test user: ${TEST_USER_EMAIL}`)
+      console.log(`Updated sample user: ${sampleUser.email}`)
+    } else {
+      await db.insert(users).values({
+        email: sampleUser.email,
+        name: sampleUser.name,
+        role: sampleUser.role,
+        password: hashedPassword,
+        isActive: true,
+      })
+
+      console.log(`Created sample user: ${sampleUser.email}`)
+    }
   }
 
-  console.log("Test user password:", TEST_USER_PASSWORD)
+  console.log("Seeded sample credentials:")
+  for (const sampleUser of SAMPLE_USERS) {
+    console.log(`- ${sampleUser.email} / ${sampleUser.password} (${sampleUser.role})`)
+  }
 }
 
 seedTestUser().catch((error) => {
-  console.error("Failed to seed test user:", error)
+  console.error("Failed to seed sample users:", error)
   process.exitCode = 1
 })

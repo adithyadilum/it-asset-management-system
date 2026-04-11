@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
 import { AlertCircle } from "lucide-react"
 
+import { mockLogin } from "@/actions/auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoginBrandHeader } from "@/components/shared/brand-header"
-import type { LoginRequest, LoginResponse } from "@/types/auth"
+import type { LoginRequest } from "@/types/auth"
 
 type LoginStep = "microsoft" | "mock"
 
@@ -46,18 +47,10 @@ export function MockLoginFlow() {
     try {
       const payload: LoginRequest = { email, password }
 
-      const response = await fetch("/api/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      })
+      const result = await mockLogin(payload)
 
-      const data: LoginResponse = await response.json()
-
-      if (!response.ok || !("success" in data)) {
-        throw new Error("error" in data ? data.error : "Authentication failed")
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       router.push("/dashboard")
