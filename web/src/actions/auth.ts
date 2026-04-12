@@ -10,20 +10,11 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/db";
 import { sessions, users } from "@/db/schema";
+import { getJwtSecretKey } from "@/lib/jwt";
 import type { LoginActionResult, LoginRequest, UserRole } from "@/types/auth";
 
 const SESSION_COOKIE_NAME = "session_token";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
-
-function getSecretKey() {
-    const secret = process.env.JWT_SECRET;
-
-    if (!secret) {
-        throw new Error("JWT_SECRET is not configured");
-    }
-
-    return new TextEncoder().encode(secret);
-}
 
 function normalizeRole(role: string): UserRole {
     return role === "Admin" ? "Admin" : "Employee";
@@ -75,7 +66,7 @@ export async function mockLogin(credentials: LoginRequest): Promise<LoginActionR
         .setSubject(String(user.id))
         .setIssuedAt()
         .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
-        .sign(getSecretKey());
+        .sign(getJwtSecretKey());
 
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, token, {
@@ -106,7 +97,7 @@ export async function logout() {
 
     if (token) {
         try {
-            const verified = await jwtVerify(token, getSecretKey());
+            const verified = await jwtVerify(token, getJwtSecretKey());
             const sessionId = verified.payload.sid;
 
             if (typeof sessionId === "string") {

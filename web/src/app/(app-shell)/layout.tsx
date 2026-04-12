@@ -6,19 +6,10 @@ import { redirect } from "next/navigation"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { TopHeader } from "@/components/layout/top-header"
 import { SidebarProvider } from "@/components/ui/sidebar"
+import { getJwtSecretKey } from "@/lib/jwt"
 import type { ShellUser } from "@/types/layout"
 
 const SESSION_COOKIE_NAME = "session_token"
-
-function getSecretKey() {
-    const secret = process.env.JWT_SECRET
-
-    if (!secret) {
-        throw new Error("JWT_SECRET is not configured")
-    }
-
-    return new TextEncoder().encode(secret)
-}
 
 async function getShellUser(): Promise<ShellUser | null> {
     const cookieStore = await cookies()
@@ -29,7 +20,7 @@ async function getShellUser(): Promise<ShellUser | null> {
     }
 
     try {
-        const verified = await jwtVerify(token, getSecretKey())
+        const verified = await jwtVerify(token, getJwtSecretKey())
         const payload = verified.payload as {
             name?: unknown
             email?: unknown

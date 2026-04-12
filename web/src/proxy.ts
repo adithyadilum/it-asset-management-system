@@ -4,18 +4,9 @@ import { neon } from "@neondatabase/serverless";
 import { jwtVerify } from "jose";
 
 import { DEFAULT_POST_LOGIN_REDIRECT, sanitizeRedirectPath } from "@/lib/auth-redirect";
+import { getJwtSecretKey } from "@/lib/jwt";
 
 const SESSION_COOKIE_NAME = "session_token";
-
-const getSecretKey = () => {
-    const secret = process.env.JWT_SECRET;
-
-    if (!secret) {
-        throw new Error("JWT_SECRET is not configured");
-    }
-
-    return new TextEncoder().encode(secret);
-};
 
 const getDbClient = () => {
     const databaseUrl = process.env.DATABASE_URL;
@@ -43,7 +34,7 @@ async function isSessionActive(sessionId: string) {
 }
 
 async function verifyTokenAndSession(token: string) {
-    const verified = await jwtVerify(token, getSecretKey());
+    const verified = await jwtVerify(token, getJwtSecretKey());
     const payload = verified.payload as { role?: string; sid?: string };
 
     if (typeof payload.sid !== "string" || payload.sid.length === 0) {
@@ -118,5 +109,5 @@ export async function proxy(request: NextRequest) {
 
 // Only run this proxy on protected routes and /login.
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.png|login).*)", "/login"],
+    matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.png|login|.*\\..*).*)", "/login"],
 };
