@@ -16,7 +16,8 @@ import {
 } from "lucide-react"
 
 import { BrandHeader } from "@/components/shared/brand-header"
-import { Sidebar, SidebarContent, SidebarHeader, useSidebar } from "@/components/ui/sidebar"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar"
 
 type NavChild = {
     label: string
@@ -134,28 +135,54 @@ function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }
         <div className="flex flex-col gap-1">
             {items.map((item) => {
                 const Icon = item.icon
+                const children = item.children ?? []
+                const hasChildren = children.length > 0
+
+                if (!hasChildren || collapsed) {
+                    return (
+                        <div key={item.label} className="w-full">
+                            <button
+                                type="button"
+                                onClick={() => router.push("/dashboard")}
+                                className={[
+                                    "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                                    collapsed ? "justify-center px-0" : "gap-2 px-2",
+                                ].join(" ")}
+                            >
+                                <Icon className="size-4" />
+                                {!collapsed ? (
+                                    <span className="flex-1 truncate text-left font-text-sm-regular text-sm leading-5">
+                                        {item.label}
+                                    </span>
+                                ) : null}
+                            </button>
+                        </div>
+                    )
+                }
 
                 return (
-                    <div key={item.label} className="w-full">
-                        <button
-                            type="button"
-                            onClick={() => router.push("/dashboard")}
-                            className={[
-                                "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
-                                collapsed ? "justify-center px-0" : "gap-2 px-2",
-                            ].join(" ")}
-                        >
-                            <Icon className="size-4" />
-                            {!collapsed ? (
+                    <Collapsible
+                        key={item.label}
+                        defaultOpen={children.some((child) => child.isActive)}
+                        className="group/nav-collapsible w-full"
+                    >
+                        <CollapsibleTrigger asChild>
+                            <button
+                                type="button"
+                                className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-slate-900 hover:bg-slate-100"
+                            >
+                                <Icon className="size-4" />
                                 <span className="flex-1 truncate text-left font-text-sm-regular text-sm leading-5">
                                     {item.label}
                                 </span>
-                            ) : null}
-                            {!collapsed && item.children ? <ChevronDown className="size-4" /> : null}
-                        </button>
+                                <ChevronDown className="size-4 transition-transform duration-200 ease-out group-data-[state=open]/nav-collapsible:rotate-180" />
+                            </button>
+                        </CollapsibleTrigger>
 
-                        {item.children ? <ChildList items={item.children} collapsed={collapsed} /> : null}
-                    </div>
+                        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:data-[state=open]:animate-none motion-reduce:data-[state=closed]:animate-none">
+                            <ChildList items={children} collapsed={collapsed} />
+                        </CollapsibleContent>
+                    </Collapsible>
                 )
             })}
         </div>
@@ -176,7 +203,7 @@ export function AppSidebar() {
                 <BrandHeader collapsed={collapsed} />
             </SidebarHeader>
 
-            <SidebarContent className="gap-0 overflow-hidden px-0 py-0">
+            <SidebarContent className="gap-0 overflow-x-hidden overflow-y-auto px-0 py-0 group-data-[collapsible=icon]:overflow-y-auto">
                 <div className="px-2 pt-2">
                     <button
                         type="button"
@@ -196,27 +223,27 @@ export function AppSidebar() {
                     <NavGroup items={assetsItems} collapsed={collapsed} />
                 </div>
 
-                <div className="px-2 pt-1">
+                <div className="px-2 pt-1 pb-2">
                     {!collapsed ? <SectionLabel title="MANAGEMENT" /> : null}
                     <NavGroup items={managementItems} collapsed={collapsed} />
                 </div>
-
-                <div className="mt-auto p-2">
-                    <button
-                        type="button"
-                        onClick={() => router.push("/dashboard")}
-                        className={[
-                            "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
-                            collapsed ? "justify-center px-0" : "gap-2 px-2",
-                        ].join(" ")}
-                    >
-                        <LifeBuoy className="size-4" />
-                        {!collapsed ? (
-                            <span className="truncate font-text-sm-regular text-sm leading-5">Support</span>
-                        ) : null}
-                    </button>
-                </div>
             </SidebarContent>
+
+            <SidebarFooter className="p-2">
+                <button
+                    type="button"
+                    onClick={() => router.push("/dashboard")}
+                    className={[
+                        "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                        collapsed ? "justify-center px-0" : "gap-2 px-2",
+                    ].join(" ")}
+                >
+                    <LifeBuoy className="size-4" />
+                    {!collapsed ? (
+                        <span className="truncate font-text-sm-regular text-sm leading-5">Support</span>
+                    ) : null}
+                </button>
+            </SidebarFooter>
         </Sidebar>
     )
 }
