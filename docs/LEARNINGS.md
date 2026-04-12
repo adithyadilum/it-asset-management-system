@@ -89,3 +89,38 @@
 - **The Context:** Deciding how to group our commits for the Auth Fix and the new App Shell layout.
 - **What we learned:** We must avoid "Frankenstein PRs" by keeping Pull Requests atomic (one PR = one specific fix or feature). If a PR contains multiple unrelated changes, reverting a bug in one will accidentally revert the good code in the other.
 - **The Standard:** We adopted standard branch naming conventions: `feat/` for new additions, `fix/` for bug resolution, and `chore/` for maintenance.
+
+### Next.js Route Groups & Clean URLs
+
+- **The Context:** We wanted clean, shallow URLs (for example, /assets/hardware) instead of deeply nested URLs (/dashboard/assets/hardware) without losing our persistent App Shell layout.
+- **What we learned:** We utilized Next.js Route Groups by wrapping a folder name in parentheses (for example, (app-shell)). This allows us to share a single layout.tsx across multiple route segments while keeping the folder name invisible in the browser URL.
+- **Security Update:** Because our secure routes are now at the root level, we updated our proxy.ts matcher from an inclusion strategy (protect /dashboard) to an exclusion strategy (protect everything except /login and static assets).
+
+### Root Routing & Server-Side Redirects
+
+- **The Context:** We needed to remove the default Next.js starter page at the root URL (/) and ensure users are sent to the correct application module or the login screen.
+- **What we learned:** We replaced the boilerplate in src/app/page.tsx with a server-side redirect() from next/navigation pointing to our default module (/assets/hardware).
+- **The Impact:** This creates a seamless user experience. We do not need to check authentication status on this root page because our proxy.ts edge middleware automatically intercepts the redirect. If a user lacks a JWT session, they are redirected to /login before the page renders.
+
+### Next.js Metadata & Favicons
+
+- **The Context:** We needed to replace the default Next.js favicon with a custom PNG logo for corporate branding.
+- **What we learned:** In the Next.js App Router, we do not need to manually configure head tags or link rel=icon tags. We used Next.js file conventions by placing an image named icon.png in src/app/. The framework automatically injects the metadata across the application.
+
+### Implementing the App Shell with shadcn/ui Sidebar
+
+- **The Context:** We needed to translate the Figma layout into a functional, responsive Next.js application shell.
+- **What we learned:** We used the shadcn/ui Sidebar component to handle mobile-responsive navigation state. The architecture is split into three parts: app-sidebar.tsx for navigation data, top-header.tsx for search/profile, and layout.tsx to wrap the module in SidebarProvider.
+- **The Impact:** This creates a scalable, enterprise-grade UI foundation. The declarative sidebar structure allows us to add or modify navigation routes without touching CSS.
+
+### React Hydration Mismatches & Browser Extensions
+
+- **The Context:** We encountered a Hydration failed error immediately after building the App Shell layout.
+- **What we learned:** Hydration occurs when React attaches interactivity to server-rendered HTML. If the client DOM differs from the server DOM, React throws an error. Browser extensions (for example, password managers or grammar tools) can inject script tags and break Next.js hydration in local development.
+- **The Resolution:** To prevent harmless extension injections from crashing local development, we added the suppressHydrationWarning prop to html and body in src/app/layout.tsx, following Next.js guidance.
+
+### Server-to-Client Prop Passing (JWT Data)
+
+- **The Context:** We needed to securely display the active user name and role in the client TopHeader without extra database or API calls.
+- **What we learned:** We updated our mockLogin Server Action to include the user name in the JWT payload. Because TopHeader is a client component, it cannot read HTTP-only cookies. We solved this by reading the cookie in the parent server layout.tsx, decoding the JWT with jose, and passing the user object as a prop.
+- **The Impact:** This pattern provides secure, immediate rendering of user data on initial page load without exposing cookie access to client-side JavaScript.

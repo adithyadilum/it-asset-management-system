@@ -15,6 +15,10 @@ import type { LoginRequest } from "@/types/auth"
 
 type LoginStep = "microsoft" | "mock"
 
+type MockLoginFlowProps = {
+  redirectTo: string
+}
+
 function MicrosoftMark() {
   return (
     <span className="grid size-4.5 grid-cols-2 gap-px">
@@ -26,7 +30,7 @@ function MicrosoftMark() {
   )
 }
 
-export function MockLoginFlow() {
+export function MockLoginFlow({ redirectTo }: MockLoginFlowProps) {
   const router = useRouter()
   const [step, setStep] = useState<LoginStep>("microsoft")
   const [email, setEmail] = useState("")
@@ -53,7 +57,8 @@ export function MockLoginFlow() {
         throw new Error(result.error)
       }
 
-      router.push("/dashboard")
+      // Use replace so the login page does not stay in browser history.
+      router.replace(redirectTo)
     } catch (error: unknown) {
       setErrorMessage(
         error instanceof Error

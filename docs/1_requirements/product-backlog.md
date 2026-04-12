@@ -2,76 +2,68 @@
 
 This document contains the comprehensive list of user stories and their associated technical implementation tasks, categorized by Frontend, Backend, Database, and Infrastructure/DevOps.
 
-*Total Tasks across all Epics: 540*
+_Total Tasks across all Epics: 540_
 
 ---
 
-## Epic 1: Authentication & Single Sign-On (SSO)
+# Epic 1: Authentication & App Shell (Completed - v1 Mock Architecture)
 
-### US-1.1 — Corporate Single Sign-On (SSO)
+**Architectural Note:** To accelerate development, this epic was built using a custom **Server-Side JWT Authentication** architecture leveraging Next.js Server Actions and Edge Middleware, rather than the originally planned Client-Side SPA (MSAL.js/Axios) approach. Corporate Azure AD SSO integration has been moved to a post-review Tech Debt ticket.
 
-**Infrastructure / DevOps**
+### US-1.1 — Secure Mock Login & JWT Generation
 
-- [ ] Register the application in the Azure AD portal (configure Client ID, Client Secret, Tenant ID, and Redirect URIs).
-- [ ] Restrict the App Registration to the specific corporate tenant (single-tenant mode).
-- [ ] Configure environment variables for Azure AD credentials in the deployment pipeline (`.env` / secrets manager).
+**Backend / Infrastructure**
 
-**Frontend**
-
-- [ ] Build the responsive Login Page UI component (TIQRI logo, title/description, "Login with Microsoft" CTA button with hover effect).
-- [ ] Integrate the MSAL.js library and implement the `loginPopup()` authentication flow.
-- [ ] Write error boundary logic to catch and display user-friendly messages for popup-closed events and network timeouts.
-- [ ] Implement the post-login redirect to the main dashboard route upon successful token acquisition.
-
-**Backend**
-
-- [ ] Write authentication middleware to validate incoming JWT signatures against Azure AD's public signing keys (JWKS endpoint).
-- [ ] Implement Tenant ID validation in the middleware to reject tokens from non-approved Azure AD issuers.
-- [ ] Create a protected health-check endpoint (`GET /api/v1/auth/me`) to verify token validity and return basic user claims.
-
-### US-1.2 — Unauthorized Access Prevention
-
-**Backend**
-
-- [ ] Write backend middleware to extract and validate the Tenant ID (`tid` claim) from the incoming JWT, strictly rejecting any tokens issued by non-approved Azure tenants.
-- [ ] Implement a catch-all error handler that maps standard Azure AD error codes (e.g., `AADSTS50057` for disabled accounts, `AADSTS700016` for wrong tenant) to structured JSON error responses.
+- [x] Configure environment variables for a secure `JWT_SECRET` used for local signing.
+- [x] Create a mock `users` table using Drizzle ORM to store Admin/Employee test accounts.
+- [x] Implement the `mockLogin` Server Action to validate credentials against the database.
+- [x] Utilize the `jose` Edge-compatible library to generate a signed JWT payload containing user ID, email, name, and role.
+- [x] Set the JWT securely in the user's browser as an `HttpOnly`, `Secure` cookie, preventing XSS attacks.
 
 **Frontend**
 
-- [ ] Map structured backend error responses to clean, user-friendly toast/banner messages on the login page (e.g., "Your account does not have access to this application.").
-- [ ] Ensure the login page gracefully handles and displays the error state without crashing or showing raw error codes.
+- [x] Build the responsive Login Page UI component (TIQRI logo, title/description, and credential input form).
+- [x] Connect the login form directly to the Server Action for seamless, mutation-based authentication.
 
-### US-1.3 — Persistent Login Sessions (Bypass Login)
+### US-1.2 — Unauthorized Access Prevention & Edge Routing
 
-**Frontend**
+**Backend / Proxy**
 
-- [ ] Implement route guards (`PublicRoute` and `PrivateRoute` wrapper components) that check for a valid JWT in `localStorage` or `HttpOnly` cookies before rendering any protected page.
-- [ ] Implement a silent token refresh mechanism using MSAL.js `acquireTokenSilent()` on initial application load to seamlessly renew expiring tokens.
-- [ ] Build a full-screen TIQRI loading spinner component displayed during the initial auth-state check to prevent login page UI flashing.
-- [ ] Write an Axios/Fetch HTTP interceptor to listen for `401 Unauthorized` API responses, automatically clearing the stale session and redirecting to `/login`.
-- [ ] Implement deep-link preservation: store the originally requested URL before an auth redirect, and navigate to it after successful re-authentication.
-- [ ] Build the "Session Expired" alert banner component that renders contextually on the login page when a token expiration triggers a redirect.
+- [x] Implement Next.js Edge Middleware (`src/proxy.ts`) to act as the primary security gatekeeper.
+- [x] Configure the middleware matcher to intercept all routes except `/login` and static `_next` assets.
+- [x] Write logic to decode and verify the JWT signature at the Edge on every request.
+- [x] Handle Server Action validation errors (e.g., "User not found") by returning typed objects rather than throwing HTTP 500 errors, ensuring smooth frontend state handling.
 
-**Backend**
+### US-1.3 — Persistent Sessions & State Management
 
-- [ ] Implement a token refresh endpoint or relay mechanism to support silent token renewal without requiring user interaction.
-- [ ] Ensure all protected API routes consistently return a standardized `401 Unauthorized` response with a clear error code when tokens are expired or invalid.
+**Frontend / Proxy**
+
+- [x] Eliminate "UI flashing" by handling authentication redirects server-side before React hydrates.
+- [x] Automatically bounce unauthenticated users trying to access protected routes back to `/login`.
+- [x] Automatically bounce authenticated users trying to access `/login` into the dashboard.
+- [x] Deep-Link Preservation: Update the middleware to store the originally requested URL (e.g., `/assets/hardware`) as a query parameter and redirect the user back to it after successful login.
 
 ### US-1.4 — Application Shell & User Profile Menu
 
 **Frontend**
 
-- [ ] Build the `MainLayout` React wrapper component containing a fixed Topbar and a collapsible Sidebar shell (placeholder for Epic 2+).
-- [ ] Build the Topbar component displaying the user avatar (Microsoft profile picture or generated initials fallback), full name, and email.
-- [ ] Implement the profile dropdown/popover menu component displaying the user's name, email, system role, and a "Log Out" action button.
-- [ ] Parse the decoded JWT payload (or call the Microsoft Graph API `/me` endpoint) to extract the user's `displayName`, `mail`, and `photo` for rendering in the Topbar.
-- [ ] Implement the `logout()` function that clears all local session data (`localStorage`, cookies) and invokes the MSAL.js `logoutRedirect()` to the Azure AD end-session endpoint.
+- [x] Utilize Next.js Route Groups `(app-shell)` to maintain clean URLs while sharing a persistent layout wrapper.
+- [x] Build the `AppSidebar` component using `shadcn/ui` for complex, mobile-responsive navigation state.
+- [x] Build the `TopHeader` component with dynamic breadcrumbs utilizing the `usePathname` hook.
+- [x] Implement the Server-to-Client prop passing pattern: Decode the JWT in the server `layout.tsx` and pass the user's `name`, `email`, and `role` to the client-side `TopHeader`.
+- [x] Build the profile dropdown menu containing user details and the logout trigger.
+- [x] Implement the `logout` Server Action utilizing a native `<form>` submission to securely destroy the `HttpOnly` cookie and trigger a server-side redirect to `/login`.
 
-**Backend**
+---
 
-- [ ] Create a `GET /api/v1/auth/profile` endpoint that returns the authenticated user's profile data (name, email, role) from the JWT claims or the database.
-- [ ] Implement a `POST /api/v1/auth/logout` endpoint (optional server-side cleanup) to invalidate any server-held session references or refresh tokens.
+### Technical Debt / Post-Review Migration
 
+**Tech Debt: Transition Mock Auth to Corporate Azure AD (MSAL)**
+_To be executed after the core Asset CRUD operations are finalized._
+
+- [ ] Register the application in the Azure AD portal (Client ID, Tenant ID).
+- [ ] Replace the custom `mockLogin` Server Action with NextAuth.js (Auth.js) configured for the Azure AD provider, OR implement the MSAL Node confidential client flow.
+- [ ] Update JWT payload extraction to map Azure AD claims (e.g., `tid`, `oid`) to internal system roles.
 
 ---
 
@@ -145,7 +137,6 @@ This document contains the comprehensive list of user stories and their associat
 
 - [ ] Seed the `Roles` table with the 4 hardcoded role records (Global Admin, IT Operator, Finance Auditor, Standard Employee) during initial database migration.
 - [ ] Add a `NOT NULL DEFAULT` constraint on the `role_id` column in the `Users` table pointing to the "Standard Employee" role ID to enforce least-privilege at the schema level.
-
 
 ---
 
@@ -308,7 +299,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Create a `GET /api/v1/subcategories/{id}/schema` endpoint to fetch the field schema payload for dynamic frontend form rendering.
 - [ ] Write server-side validation logic to enforce required fields defined in the schema when assets are registered under this sub-category.
 
-
 ---
 
 ## Epic 4: Automated System Audit Log
@@ -344,7 +334,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Create an API endpoint `GET /api/v1/audit-logs` with support for complex query parameters: `dateFrom`, `dateTo`, `actorId`, `actionType[]`, `entityType`, `entityId`, and cursor-based or offset pagination.
 - [ ] Implement a backend CSV streaming/generation service that accepts the same filter parameters and returns the result set as a downloadable `.csv` file (`GET /api/v1/audit-logs/export`).
 - [ ] Ensure the endpoint enforces RBAC: only `GlobalAdmin` and `FinanceAuditor` roles can access the audit log API.
-
 
 ---
 
@@ -409,7 +398,6 @@ This document contains the comprehensive list of user stories and their associat
 
 - [ ] Create a `WebhookSubscriptions` table with columns: `id`, `endpoint_url`, `description`, `subscribed_events` (JSONB array), `is_active`, `last_delivery_status`, `last_delivery_at`, `created_by` (FK → Users), `created_at`, `updated_at`.
 - [ ] Create a `WebhookDeliveryLogs` table for auditing: `id`, `webhook_id` (FK), `event_type`, `payload` (JSONB), `http_status`, `response_body` (text), `attempt_number`, `created_at`.
-
 
 ---
 
@@ -518,7 +506,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Ensure each individual asset change within the batch writes a separate entry to the Audit Log (Epic 4) for traceability.
 - [ ] Implement backend validation that mirrors the frontend pillar/status constraint rules to prevent bypassing via direct API calls.
 
-
 ---
 
 ## Epic 7: Asset Registration
@@ -616,7 +603,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Configure a cloud storage bucket (AWS S3 or Azure Blob Storage) for invoice file storage with appropriate access policies and CORS configuration.
 - [ ] Set up signed URL generation for secure, time-limited file downloads.
 
-
 ---
 
 ## Epic 8: Asset Details View
@@ -691,7 +677,6 @@ This document contains the comprehensive list of user stories and their associat
 
 - [ ] Implement secure signed-URL generation for invoice file retrieval from the cloud storage bucket (AWS S3 `getSignedUrl` / Azure Blob `generateSasUrl`), with a configurable expiry (e.g., 15 minutes).
 - [ ] Create a `GET /api/v1/assets/{id}/history` endpoint that queries the `AuditLogs` table filtered by `entity_id = {assetId}` and returns chronologically ordered events.
-
 
 ---
 
@@ -781,7 +766,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Trigger the Epic 7 Asset ID generation and Epic 9 QR routing URL generation utilities for every successfully imported record.
 - [ ] Compile the error array into a downloadable CSV stream with an appended `Error` column explaining each row's failure reason.
 - [ ] Return a structured JSON response: `{ successCount, failureCount, errorReportUrl }` to power the frontend summary screen.
-
 
 ---
 
@@ -911,7 +895,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Implement the admin "Request Return" action handler: when triggered, enqueue an `URGENT_RETURN_REQUESTED` event and push a real-time notification to the employee's active session (via WebSocket or push API).
 - [ ] Create a `GET /api/v1/portal/notifications` endpoint that returns the authenticated employee's pending alerts and banners.
 
-
 ---
 
 ## Epic 13: Asset Assignment
@@ -980,7 +963,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Create a `PATCH /api/v1/assets/bulk-location` endpoint that accepts an array of asset IDs and a target `location_id`, validates pillar constraints server-side, and writes individual Audit Log entries for each updated asset.
 - [ ] Enforce pillar validation: reject requests attempting to change location for Software or portable Hardware assets with a `422 Unprocessable Entity` response.
 
-
 ---
 
 ## Epic 14: Asset Returns
@@ -1028,7 +1010,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Create a `POST /api/v1/assets/{id}/process-return` endpoint implementing the state-machine logic: automatically route the asset to `Available`, `Pending Maintenance`, or `Pending Disposal` based on the submitted condition enum.
 - [ ] Append the condition notes and status change to the System Audit Log.
 - [ ] If routed to `Pending Maintenance`, automatically create a stub record in the `MaintenanceTickets` table for the Epic 15 workflow.
-
 
 ---
 
@@ -1094,7 +1075,6 @@ This document contains the comprehensive list of user stories and their associat
 
 - [ ] Create a `GET /api/v1/maintenance/history` endpoint with pagination and filtering support (by date range, vendor, cost range).
 - [ ] Ensure the existing `GET /api/v1/assets/{id}/maintenance` endpoint returns both vendor and internal resolution records.
-
 
 ---
 
@@ -1186,7 +1166,6 @@ This document contains the comprehensive list of user stories and their associat
 
 - [ ] Create a `POST /api/v1/disposals/{id}/reject` endpoint that: updates the disposal request status to `REJECTED`, stores the rejection reason and rejector, applies the selected fallback status to the asset, writes the event to the Audit Log, and queues a notification alert for the original requesting operator.
 
-
 ---
 
 ## Epic 18: Executing Asset Disposals
@@ -1229,7 +1208,6 @@ This document contains the comprehensive list of user stories and their associat
 **Backend**
 
 - [ ] Create a `POST /api/v1/assets/bulk-dispose` endpoint that: accepts an array of asset IDs plus the shared compliance payload (date, reason, method, checkboxes, receipt URL), processes all status changes in a single atomic database transaction, links the shared receipt URL to all disposal records, and writes individual Audit Log entries for each asset.
-
 
 ---
 
@@ -1327,7 +1305,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Bind the "Send Reminder" inline button to the `POST /api/v1/assets/{id}/request-return` endpoint and display a success toast.
 - [ ] Bind the "Flag for Disposal" inline button to open the Epic 17 "Initiate Disposal" modal as an overlay on the dashboard.
 
-
 ---
 
 ## Epic 21: Standard Reporting
@@ -1395,7 +1372,6 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Integrate a robust server-side PDF generation library (e.g., Puppeteer or pdfmake) capable of rendering the data grid as a clean table, injecting the company logo image, and respecting the layout and page-size constraints.
 - [ ] Stream the generated PDF back to the client as a downloadable file.
 
-
 ---
 
 ## Epic 22: Financial Ledgers & Cost Analysis
@@ -1449,7 +1425,6 @@ This document contains the comprehensive list of user stories and their associat
 
 - [ ] Add a `salvage_value` numeric column to the Epic 18 Disposal payload schema (either in `DisposalRequests` or `Assets` table).
 - [ ] Add a `book_value_at_disposal` numeric column to persist the calculated depreciated value at the moment of disposal, ensuring it never changes after finalization.
-
 
 ---
 
@@ -1519,4 +1494,3 @@ This document contains the comprehensive list of user stories and their associat
 - [ ] Create a `Settings > Integrations` page (or add a section to the Alerts settings) for admins to input and test the MS Teams Webhook URL.
 
 ---
-

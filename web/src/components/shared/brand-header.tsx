@@ -1,6 +1,25 @@
 import Image from "next/image"
 
-export function LoginBrandHeader() {
+type BrandHeaderProps = {
+  collapsed?: boolean
+}
+
+export function BrandHeader({ collapsed = false }: BrandHeaderProps) {
+  if (collapsed) {
+    return (
+      <div className="inline-flex items-center justify-center">
+        <Image
+          src="/icon.png"
+          alt="TIQRI Assets Icon"
+          width={32}
+          height={32}
+          priority
+          className="size-8 object-contain"
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="inline-flex items-center justify-center gap-2">
       <Image
@@ -14,4 +33,8 @@ export function LoginBrandHeader() {
       <span className="text-4xl leading-12.5 font-semibold text-primary">Assets</span>
     </div>
   )
+}
+
+export function LoginBrandHeader() {
+  return <BrandHeader />
 }
