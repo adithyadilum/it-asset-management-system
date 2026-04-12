@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { jwtVerify } from "jose";
 
+import { DEFAULT_POST_LOGIN_REDIRECT, sanitizeRedirectPath } from "@/lib/auth-redirect";
+
 const SESSION_COOKIE_NAME = "session_token";
 
 const getSecretKey = () => {
@@ -57,15 +59,29 @@ async function verifyTokenAndSession(token: string) {
     return payload;
 }
 
+function getLoginRedirectResponse(request: NextRequest) {
+    const loginUrl = new URL("/login", request.url);
+    // Preserve the originally requested path so login can send the user back.
+    const requestedPath = sanitizeRedirectPath(
+        `${request.nextUrl.pathname}${request.nextUrl.search}`,
+        DEFAULT_POST_LOGIN_REDIRECT,
+    );
+
+    loginUrl.searchParams.set("redirectTo", requestedPath);
+
+    return NextResponse.redirect(loginUrl);
+}
+
 export async function proxy(request: NextRequest) {
     const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
     const { pathname } = request.nextUrl;
+    const isProtectedRoute = pathname !== "/login";
     const isDashboardRoute = pathname.startsWith("/dashboard");
     const isLoginRoute = pathname === "/login";
 
-    //If the user trying to access the dashboard without a token, kick them to login
-    if (!token && isDashboardRoute) {
-        return NextResponse.redirect(new URL("/login", request.url));
+    // If the user is trying to access a protected route without a token, kick them to login.
+    if (!token && isProtectedRoute) {
+        return getLoginRedirectResponse(request);
     }
 
     let payload: { role?: string } | null = null;
@@ -75,9 +91,7 @@ export async function proxy(request: NextRequest) {
             payload = await verifyTokenAndSession(token);
         } catch {
             // Invalid token/session should not bounce on /login.
-            const response = isDashboardRoute
-                ? NextResponse.redirect(new URL("/login", request.url))
-                : NextResponse.next();
+            const response = isProtectedRoute ? getLoginRedirectResponse(request) : NextResponse.next();
             response.cookies.delete(SESSION_COOKIE_NAME);
             return response;
         }
@@ -90,13 +104,19 @@ export async function proxy(request: NextRequest) {
 
     // If the user is already logged in and tries to visit /login, skip it.
     if (token && isLoginRoute) {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
+        // Respect a preserved redirect target when an authenticated user hits /login.
+        const redirectTo = sanitizeRedirectPath(
+            request.nextUrl.searchParams.get("redirectTo"),
+            DEFAULT_POST_LOGIN_REDIRECT,
+        );
+
+        return NextResponse.redirect(new URL(redirectTo, request.url));
     }
 
     return NextResponse.next();
 }
 
-// Optimization: Only run this middleware on specific routes
+// Only run this proxy on protected routes and /login.
 export const config = {
-    matcher: ["/dashboard/:path*", "/login"],
+    matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.png|login).*)", "/login"],
 };
