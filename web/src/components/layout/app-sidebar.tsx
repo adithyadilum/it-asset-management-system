@@ -203,10 +203,10 @@ function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }
 
 //ADDED: The Props interface requiring userRole
 interface AppSidebarProps {
-    userRole: UserRole;
+    userRole?: UserRole;
 }
 
-export function AppSidebar({ userRole }: AppSidebarProps) {
+export function AppSidebar({ userRole = "Employee" }: AppSidebarProps) {
     const router = useRouter()
     const { state } = useSidebar()
     const collapsed = state === "collapsed"
