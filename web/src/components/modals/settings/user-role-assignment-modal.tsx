@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Info, Trash2, PlusCircle, Loader2 } from "lucide-react"
+import { Search, Info, Trash2, PlusCircle, Ban, Loader2 } from "lucide-react"
 
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -33,16 +33,30 @@ export function UserRoleAssignmentModal({
   const [isSearching, setIsSearching] = useState(false)
   const [hideExisting, setHideExisting] = useState(false)
 
-  // Staging list: Users you have selected to be added (Mocked with initial Figma data)
+  // Staging list starts completely empty
   const [selectedUsers, setSelectedUsers] = useState<SystemUser[]>([])
   
   // Search results list
   const [searchResults, setSearchResults] = useState<SystemUser[]>([])
 
-  
+  // --- CLEANUP LOGIC ---
+  useEffect(() => {
+    if (!isOpen) {
+      // Push the state resets to the next tick to avoid synchronous render warnings
+      const cleanupTimer = setTimeout(() => {
+        setSearchQuery("")
+        setSearchResults([])
+        setSelectedUsers([])
+        setHideExisting(false)
+      }, 0)
+      
+      return () => clearTimeout(cleanupTimer)
+    }
+  }, [isOpen])
+
   // --- SEARCH LOGIC (Debounced) ---
   useEffect(() => {
-    // 1. Handle empty search without triggering synchronous render errors
+    // 1. Handle empty search
     if (searchQuery.length === 0) {
       const clearTimer = setTimeout(() => {
         setSearchResults([])
@@ -51,44 +65,43 @@ export function UserRoleAssignmentModal({
       return () => clearTimeout(clearTimer)
     }
 
-    // 2. Turn on the loading spinner (pushed to next tick to satisfy linter)
-    const loadingTimer = setTimeout(() => {
-      setIsSearching(true)
-    }, 0)
+    const loadingTimer = setTimeout(() => setIsSearching(true), 0)
 
-    // 3. The 300ms Debounce Delay before searching
+    // 2. The Search Engine
     const searchTimer = setTimeout(() => {
-      // TODO: DEVELOPER 3 - Replace with real Server Action
+      
+      // MOCK DATA
       const mockDirectory = [
-        { name: "Nadeesha", email: "nadeesha@tiqri.com", role: "" },
+        { name: "Nadeesha", email: "nadeesha@tiqri.com", role: "IT Operations" },
         { name: "Nadeeka", email: "nadeeka@tiqri.com", role: "" },
         { name: "John Doe", email: "john.doe@tiqri.com", role: "" }
       ]
       
       const query = searchQuery.toLowerCase()
-      const filteredResults = mockDirectory.filter(user => 
-        user.name.toLowerCase().includes(query) || 
-        user.email.toLowerCase().includes(query)
-      )
+      
+      const filteredResults = mockDirectory.filter(user => {
+        const matchesText = user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query)
+        const alreadyHasRole = user.role === targetRole
+        const shouldHide = hideExisting && alreadyHasRole
+        
+        return matchesText && !shouldHide
+      })
       
       setSearchResults(filteredResults)
       setIsSearching(false)
     }, 300)
 
-    // Cleanup: clears timers if the user keeps typing
     return () => {
       clearTimeout(loadingTimer)
       clearTimeout(searchTimer)
     }
-  }, [searchQuery])
+  }, [searchQuery, hideExisting, targetRole])
 
   // --- HANDLERS ---
   const handleAddUser = (user: SystemUser) => {
-    // Prevent adding duplicates
     if (!selectedUsers.find(u => u.email === user.email)) {
       setSelectedUsers([...selectedUsers, user])
     }
-    // Clear search after adding for better UX
     setSearchQuery("")
   }
 
@@ -99,7 +112,8 @@ export function UserRoleAssignmentModal({
   // --- UI RENDER ---
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-550px p-0 overflow-hidden border-none shadow-2xl">
+      {/* COPILOT FIX: Added brackets to sm:max-w-[550px] */}
+      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-none shadow-2xl">
         
         {/* Header Section */}
         <div className="p-6 pb-0">
@@ -115,7 +129,8 @@ export function UserRoleAssignmentModal({
               <Checkbox 
                 id="hide-existing" 
                 checked={hideExisting}
-                onCheckedChange={(checked) => setHideExisting(checked as boolean)}
+                // COPILOT FIX: Explicit boolean check
+                onCheckedChange={(checked) => setHideExisting(checked === true)}
                 className="border-slate-300 data-[state=checked]:bg-[#000066]" 
               />
               <label htmlFor="hide-existing" className="text-sm font-medium text-slate-600 cursor-pointer">
@@ -137,7 +152,8 @@ export function UserRoleAssignmentModal({
 
         {/* Dynamic Content Area */}
         <div className="p-6">
-          <ScrollArea className="h-280px w-full rounded-xl bg-slate-50/50 p-2">
+          {/* COPILOT FIX: Added brackets to h-[280px] */}
+          <ScrollArea className="h-[280px] w-full rounded-xl bg-slate-50/50 p-2">
             
             <div className="px-2">
               {/* SEARCH RESULTS DROPDOWN AREA */}
@@ -149,10 +165,9 @@ export function UserRoleAssignmentModal({
                       <p className="text-xs text-slate-500">Searching...</p>
                     </div>
                   ) : searchResults.length > 0 ? (
-                    /* Dropdown List - Matching Figma Image 1 */
                     <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-2 space-y-1">
                       {searchResults.map((user) => (
-                        <div key={user.email} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50 transition-colors">
+                        <div key={user.email} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-slate-200 overflow-hidden" />
                             <div className="text-left">
@@ -163,6 +178,8 @@ export function UserRoleAssignmentModal({
                           <Button 
                             variant="ghost" 
                             size="icon" 
+                            // COPILOT FIX: Added aria-label
+                            aria-label="Add user"
                             className="h-8 w-8 rounded-full text-slate-600 hover:text-[#000066] hover:bg-[#000066]/10"
                             onClick={() => handleAddUser(user)}
                           >
@@ -172,10 +189,9 @@ export function UserRoleAssignmentModal({
                       ))}
                     </div>
                   ) : (
-                    /* No Results Found - Matching Figma Image 3 */
                     <div className="flex flex-col items-center justify-center py-6 bg-white rounded-lg border border-slate-200 shadow-sm text-center">
                       <p className="text-sm font-bold text-slate-900">No user found</p>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-slate-500 mt-1 max-w-[200px] mx-auto">
                         Your search <span className="font-semibold text-slate-700">&quot;{searchQuery}&quot;</span> did not match any users.
                       </p>
                     </div>
@@ -183,12 +199,12 @@ export function UserRoleAssignmentModal({
                 </div>
               )}
 
-              {/* SELECTED USERS STAGING AREA - Matching Figma Image 2 */}
+              {/* SELECTED USERS STAGING AREA */}
               <div className="space-y-2">
                 {selectedUsers.length > 0 && (
                   <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-2 space-y-1">
                     {selectedUsers.map((user) => (
-                      <div key={user.email} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50 transition-colors group">
+                      <div key={user.email} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all group">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-slate-200" />
                           <div className="text-left">
@@ -199,7 +215,9 @@ export function UserRoleAssignmentModal({
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                          // COPILOT FIX (Proactive): Added aria-label to this icon-only button too
+                          aria-label="Remove user"
+                          className="h-8 w-8 text-red-500 hover:text-[#D32F2F] hover:bg-red-100 transition-colors"
                           onClick={() => handleRemoveUser(user.email)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -230,6 +248,11 @@ export function UserRoleAssignmentModal({
             onClick={() => {
               // TODO: DEVELOPER 3 - Send `selectedUsers` array to the backend here
               console.log("Submitting users to backend:", selectedUsers)
+              
+              // Clear the staging area after successful submission
+              setSelectedUsers([])
+              setSearchQuery("")
+              
               onOpenChange(false)
             }}
             disabled={selectedUsers.length === 0}

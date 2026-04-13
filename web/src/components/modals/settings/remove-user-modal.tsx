@@ -32,7 +32,8 @@ export function RemoveUserModal({
       {/* The [&>button]:hidden class hides Shadcn's default absolute close button
         so we can perfectly align our custom X icon in the header layout.
       */}
-      <DialogContent className="sm:max-w-500px p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
+      {/* COPILOT FIX: Added brackets to sm:max-w-[500px] */}
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
         
         <div className="p-6">
           {/* Custom Header with inline X close button */}
@@ -45,7 +46,9 @@ export function RemoveUserModal({
             </div>
             <Button 
               variant="ghost" 
-              size="icon" 
+              size="icon"
+              // COPILOT FIX: Added aria-label for screen readers 
+              aria-label="Close"
               className="h-8 w-8 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100" 
               onClick={() => onOpenChange(false)}
             >

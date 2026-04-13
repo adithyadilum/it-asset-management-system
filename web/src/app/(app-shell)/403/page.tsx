@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import { Lock } from "lucide-react"
 import { Button } from "@/components/ui/button" // Uses your team's UI library
@@ -15,7 +13,7 @@ export default function ForbiddenPage() {
       {/* Typography using Slate colors to match Figma */}
       <h1 className="text-2xl font-bold text-slate-900">403 - Access Denied</h1>
       
-      <p className="mt-4 max-w-400px text-slate-500 text-sm leading-relaxed">
+      <p className="mt-4 max-w-[400px] text-slate-500 text-sm leading-relaxed">
         {"Sorry, you don't have permission to access this page. Please contact your administrator if you believe this is an error."}
       </p>
       
