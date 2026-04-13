@@ -73,22 +73,38 @@ function normalizeTokenRole(role: unknown): TokenRole | null {
   return null;
 }
 
-function hasSegment(pathname: string, segment: string) {
-  return pathname.split('/').filter(Boolean).includes(segment);
+function getTopLevelSegment(pathname: string) {
+  return pathname.split('/').filter(Boolean)[0] ?? null;
 }
 
+/*
+ * RBAC Matrix (top-level protected route segments):
+ * - GlobalAdmin: all routes
+ * - ITOperator: all except /settings/* and /financials/*
+ * - FinanceAuditor: all except /settings/* and /operations/*
+ * - Employee: /dashboard only
+ */
 function canAccessRoute(role: TokenRole, pathname: string) {
+  if (
+    pathname === '/' ||
+    pathname === '/dashboard' ||
+    pathname === '/dashboard/'
+  ) {
+    return true;
+  }
+
   if (role === 'GlobalAdmin') {
     return true;
   }
 
   if (role === 'Employee') {
-    return pathname === '/dashboard' || pathname === '/dashboard/';
+    return false;
   }
 
-  const isSettingsRoute = hasSegment(pathname, 'settings');
-  const isFinancialsRoute = hasSegment(pathname, 'financials');
-  const isOperationsRoute = hasSegment(pathname, 'operations');
+  const topLevelSegment = getTopLevelSegment(pathname);
+  const isSettingsRoute = topLevelSegment === 'settings';
+  const isFinancialsRoute = topLevelSegment === 'financials';
+  const isOperationsRoute = topLevelSegment === 'operations';
 
   if (role === 'ITOperator') {
     return !isSettingsRoute && !isFinancialsRoute;
