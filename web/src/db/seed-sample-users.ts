@@ -8,37 +8,39 @@ import { users } from "./schema"
 
 dotenv.config({ path: ".env.local" })
 
+//UPDATED: Added ITOperator and Finance to the allowed roles
 type SeedUser = {
     email: string
     name: string
-    role: "Admin" | "Employee"
+    role: "Admin" | "ITOperator" | "Finance" | "Employee"
     password: string
 }
 
+//UPDATED: The exact 4 users Developer 5 is required to create
 const SAMPLE_USERS: SeedUser[] = [
     {
-        email: "admin.user@tiqri.com",
-        name: "Admin User",
+        email: "admin@tiqri.com",
+        name: "System Admin",
         role: "Admin",
-        password: "Admin@1234",
+        password: "password123",
     },
     {
-        email: "employee.one@tiqri.com",
-        name: "Employee One",
-        role: "Employee",
-        password: "Employee@1234",
+        email: "it@tiqri.com",
+        name: "IT Support",
+        role: "ITOperator",
+        password: "password123",
     },
     {
-        email: "employee.two@tiqri.com",
-        name: "Employee Two",
-        role: "Employee",
-        password: "Employee@5678",
+        email: "finance@tiqri.com",
+        name: "Finance Manager",
+        role: "Finance",
+        password: "password123",
     },
     {
-        email: "test.user@tiqri.com",
-        name: "Test User",
+        email: "employee@tiqri.com",
+        name: "Standard Employee",
         role: "Employee",
-        password: "Test@1234",
+        password: "password123",
     },
 ]
 
