@@ -1,17 +1,21 @@
-name: CI Pipeline (The Bouncer)
+name: CI Pipeline (Lint & Type Check)
 
 # 1. When does this run?
 # Every time someone opens or updates a Pull Request targeting 'dev' or 'main'
 on:
   pull_request:
     branches: ["dev", "main"]
+    paths-ignore:
+      - "**/*.md" # Ignores any markdown file anywhere
+      - "docs/**" # Ignores the entire docs folder
+      - ".gitignore" # Ignores git config changes
 
 jobs:
   code-quality-checks:
     name: Lint & Type Check
     runs-on: ubuntu-latest
 
-    # 2. Tell GitHub that our Next.js app is inside the 'web' folder!
+    # 2. Tell GitHub that our Next.js app is inside the 'web' folder
     defaults:
       run:
         working-directory: ./web
