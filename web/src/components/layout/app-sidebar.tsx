@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
 import {
     Activity,
@@ -18,39 +18,48 @@ import {
 import { BrandHeader } from "@/components/shared/brand-header"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar"
-
-//Define the UserRole type for consistency
-export type UserRole = "Admin" | "ITOperator" | "Finance" | "Employee"
+import type { UserRole } from "@/types/auth"
 
 type NavChild = {
     label: string
+    href: string
     isActive?: boolean
+    allowedRoles?: UserRole[]
 }
 
 type NavItem = {
     label: string
     icon: LucideIcon
+    href?: string
     children?: NavChild[]
-    //ADDED: Optional array of roles allowed to see this item. If omitted, everyone sees it.
     allowedRoles?: UserRole[]
 }
 
+const privilegedRoles: UserRole[] = ["GlobalAdmin", "ITOperator", "FinanceAuditor"]
+
 const assetsItems: NavItem[] = [
-    { label: "All Assets", icon: Database }, // Everyone sees this
+    {
+        label: "All Assets",
+        icon: Database,
+        href: "/assets",
+        allowedRoles: privilegedRoles,
+    },
     {
         label: "IT & Digital",
         icon: Laptop,
+        allowedRoles: privilegedRoles,
         children: [
-            { label: "Hardware", isActive: true },
-            { label: "Software" },
+            { label: "Hardware", href: "/assets/hardware" },
+            { label: "Software", href: "/assets/software" },
         ],
     },
     {
         label: "Office",
         icon: Sofa,
+        allowedRoles: privilegedRoles,
         children: [
-            { label: "Furniture & Fixtures" },
-            { label: "Office Electronics" },
+            { label: "Furniture & Fixtures", href: "/assets/furniture" },
+            { label: "Office Electronics", href: "/assets/office-electronics" },
         ],
     },
 ]
@@ -59,44 +68,60 @@ const managementItems: NavItem[] = [
     {
         label: "Operations",
         icon: Activity,
+        href: "/operations",
+        allowedRoles: ["GlobalAdmin", "ITOperator"],
         children: [
-            { label: "Assignments & Returns" },
-            { label: "Maintenance & Repairs" },
-            { label: "Disposals" },
+            { label: "Assignments & Returns", href: "/operations/assignments" },
+            { label: "Maintenance & Repairs", href: "/operations/maintenance" },
+            { label: "Disposals", href: "/operations/disposals" },
         ],
     },
     {
         label: "Financials",
         icon: DollarSign,
+        href: "/financials",
+        allowedRoles: ["GlobalAdmin", "FinanceAuditor"],
         children: [
-            { label: "Depreciation Ledger" },
-            { label: "Total Cost of Ownership" },
-            { label: "Salvage & Write-Offs" },
+            { label: "Depreciation Ledger", href: "/financials/depreciation" },
+            { label: "Total Cost of Ownership", href: "/financials/tco" },
+            { label: "Salvage & Write-Offs", href: "/financials/salvage" },
         ],
-        //Only Admin and Finance can see this
-        allowedRoles: ["Admin", "Finance"],
-
     },
     {
         label: "Reports & Audits",
         icon: FileBarChart,
-        children: [{ label: "Standard Reports" }, { label: "System Audit Log" }],
-        //Only Admin,Finance and IT Operator can see Settings
-        allowedRoles: ["Admin", "Finance", "ITOperator"],
+        href: "/reports",
+        allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"],
+        children: [
+            { label: "Standard Reports", href: "/reports" },
+            { label: "System Audit Log", href: "/reports/audit-log" },
+        ],
     },
     {
         label: "Settings",
         icon: Settings,
+        href: "/settings",
+        allowedRoles: ["GlobalAdmin"],
         children: [
-            { label: "Master Data" },
-            { label: "User Roles & Access" },
-            { label: "Alerts & Notifications" },
-            { label: "Integrations" },
+            { label: "Master Data", href: "/settings/master-data" },
+            { label: "User Roles & Access", href: "/settings/roles" },
+            { label: "Alerts & Notifications", href: "/settings/alerts" },
+            { label: "Integrations", href: "/settings/integrations" },
         ],
-        //Only Admin and IT Operator can see Settings
-        allowedRoles: ["Admin", "ITOperator"],
     },
 ]
+
+function isAllowedForRole(role: UserRole, allowedRoles?: UserRole[]) {
+    return !allowedRoles || allowedRoles.includes(role)
+}
+
+function isPathActive(pathname: string, href?: string) {
+    if (!href) {
+        return false
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`)
+}
 
 function SectionLabel({ title }: { title: string }) {
     return (
@@ -108,7 +133,15 @@ function SectionLabel({ title }: { title: string }) {
     )
 }
 
-function ChildList({ items, collapsed }: { items: NavChild[]; collapsed: boolean }) {
+function ChildList({
+    items,
+    collapsed,
+    pathname,
+}: {
+    items: NavChild[]
+    collapsed: boolean
+    pathname: string
+}) {
     const router = useRouter()
 
     if (collapsed) {
@@ -122,10 +155,10 @@ function ChildList({ items, collapsed }: { items: NavChild[]; collapsed: boolean
                     <button
                         key={child.label}
                         type="button"
-                        onClick={() => router.push("/dashboard")}
+                        onClick={() => router.push(child.href)}
                         className={[
                             "flex h-7 items-center rounded-md text-left transition-colors",
-                            child.isActive
+                            isPathActive(pathname, child.href) || child.isActive
                                 ? "bg-[#040d5a] px-3 text-white"
                                 : "px-2 text-slate-900 hover:bg-slate-100",
                         ].join(" ")}
@@ -140,24 +173,43 @@ function ChildList({ items, collapsed }: { items: NavChild[]; collapsed: boolean
     )
 }
 
-function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
+function NavGroup({
+    items,
+    collapsed,
+    userRole,
+    pathname,
+}: {
+    items: NavItem[]
+    collapsed: boolean
+    userRole: UserRole
+    pathname: string
+}) {
     const router = useRouter()
 
     return (
         <div className="flex flex-col gap-1">
             {items.map((item) => {
+                if (!isAllowedForRole(userRole, item.allowedRoles)) {
+                    return null
+                }
+
                 const Icon = item.icon
-                const children = item.children ?? []
+                const children = (item.children ?? []).filter((child) =>
+                    isAllowedForRole(userRole, child.allowedRoles)
+                )
                 const hasChildren = children.length > 0
+                const defaultHref = item.href ?? children[0]?.href ?? "/dashboard"
+                const isItemActive = isPathActive(pathname, item.href) || children.some((child) => isPathActive(pathname, child.href))
 
                 if (!hasChildren || collapsed) {
                     return (
                         <div key={item.label} className="w-full">
                             <button
                                 type="button"
-                                onClick={() => router.push("/dashboard")}
+                                onClick={() => router.push(defaultHref)}
                                 className={[
                                     "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                                    isItemActive ? "bg-slate-100" : "",
                                     collapsed ? "justify-center px-0" : "gap-2 px-2",
                                 ].join(" ")}
                             >
@@ -175,13 +227,16 @@ function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }
                 return (
                     <Collapsible
                         key={item.label}
-                        defaultOpen={children.some((child) => child.isActive)}
+                        defaultOpen={isItemActive || children.some((child) => child.isActive)}
                         className="group/nav-collapsible w-full"
                     >
                         <CollapsibleTrigger asChild>
                             <button
                                 type="button"
-                                className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-slate-900 hover:bg-slate-100"
+                                className={[
+                                    "flex h-8 w-full items-center gap-2 rounded-md px-2 text-slate-900 hover:bg-slate-100",
+                                    isItemActive ? "bg-slate-100" : "",
+                                ].join(" ")}
                             >
                                 <Icon className="size-4" />
                                 <span className="flex-1 truncate text-left font-text-sm-regular text-sm leading-5">
@@ -192,7 +247,7 @@ function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }
                         </CollapsibleTrigger>
 
                         <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up motion-reduce:data-[state=open]:animate-none motion-reduce:data-[state=closed]:animate-none">
-                            <ChildList items={children} collapsed={collapsed} />
+                            <ChildList items={children} collapsed={collapsed} pathname={pathname} />
                         </CollapsibleContent>
                     </Collapsible>
                 )
@@ -201,21 +256,20 @@ function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }
     )
 }
 
-//ADDED: The Props interface requiring userRole
 interface AppSidebarProps {
-    userRole?: UserRole;
+    userRole: UserRole
 }
 
-export function AppSidebar({ userRole = "Employee" }: AppSidebarProps) {
+export function AppSidebar({ userRole }: AppSidebarProps) {
     const router = useRouter()
+    const pathname = usePathname()
     const { state } = useSidebar()
     const collapsed = state === "collapsed"
 
-    //Filter the menu items based on the user's role before rendering
     const visibleAssets = assetsItems.filter(
         (item) => !item.allowedRoles || item.allowedRoles.includes(userRole)
     )
-    
+
     const visibleManagement = managementItems.filter(
         (item) => !item.allowedRoles || item.allowedRoles.includes(userRole)
     )
@@ -236,6 +290,7 @@ export function AppSidebar({ userRole = "Employee" }: AppSidebarProps) {
                         onClick={() => router.push("/dashboard")}
                         className={[
                             "flex h-10 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                            pathname === "/dashboard" || pathname.startsWith("/dashboard/") ? "bg-slate-100" : "",
                             collapsed ? "justify-center px-0" : "gap-2 pl-2 pr-8",
                         ].join(" ")}
                     >
@@ -246,15 +301,15 @@ export function AppSidebar({ userRole = "Employee" }: AppSidebarProps) {
                     </button>
 
                     {!collapsed && visibleAssets.length > 0 ? <SectionLabel title="ASSETS" /> : null}
-                    <NavGroup items={visibleAssets} collapsed={collapsed} />
+                    <NavGroup items={visibleAssets} collapsed={collapsed} userRole={userRole} pathname={pathname} />
                 </div>
 
-            {visibleManagement.length > 0 && (                
-                <div className="px-2 pt-1 pb-2">
+                {visibleManagement.length > 0 && (
+                    <div className="px-2 pt-1 pb-2">
                         {!collapsed ? <SectionLabel title="MANAGEMENT" /> : null}
-                        <NavGroup items={visibleManagement} collapsed={collapsed} />
-                </div>
-            )}
+                        <NavGroup items={visibleManagement} collapsed={collapsed} userRole={userRole} pathname={pathname} />
+                    </div>
+                )}
             </SidebarContent>
 
             <SidebarFooter className="p-2">

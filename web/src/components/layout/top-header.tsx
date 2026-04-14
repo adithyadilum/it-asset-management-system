@@ -60,7 +60,13 @@ export function TopHeader({ user }: TopHeaderProps) {
         .substring(0, 2)
         .toUpperCase();
 
-    const roleLabel = user.role === 'Admin' ? 'Global Admin' : 'Employee';
+    const roleLabelMap: Record<typeof user.role, string> = {
+        GlobalAdmin: 'Global Admin',
+        ITOperator: 'IT Ops',
+        FinanceAuditor: 'Finance Audit',
+        Employee: 'Employee',
+    };
+    const roleLabel = roleLabelMap[user.role];
 
     return (
         <header className="flex h-14 items-center justify-between rounded-lg bg-muted px-2">
