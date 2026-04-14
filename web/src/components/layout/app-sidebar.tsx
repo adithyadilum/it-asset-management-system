@@ -19,6 +19,9 @@ import { BrandHeader } from "@/components/shared/brand-header"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar } from "@/components/ui/sidebar"
 
+//Define the UserRole type for consistency
+export type UserRole = "Admin" | "ITOperator" | "Finance" | "Employee"
+
 type NavChild = {
     label: string
     isActive?: boolean
@@ -28,10 +31,12 @@ type NavItem = {
     label: string
     icon: LucideIcon
     children?: NavChild[]
+    //ADDED: Optional array of roles allowed to see this item. If omitted, everyone sees it.
+    allowedRoles?: UserRole[]
 }
 
 const assetsItems: NavItem[] = [
-    { label: "All Assets", icon: Database },
+    { label: "All Assets", icon: Database }, // Everyone sees this
     {
         label: "IT & Digital",
         icon: Laptop,
@@ -68,11 +73,16 @@ const managementItems: NavItem[] = [
             { label: "Total Cost of Ownership" },
             { label: "Salvage & Write-Offs" },
         ],
+        //Only Admin and Finance can see this
+        allowedRoles: ["Admin", "Finance"],
+
     },
     {
         label: "Reports & Audits",
         icon: FileBarChart,
         children: [{ label: "Standard Reports" }, { label: "System Audit Log" }],
+        //Only Admin,Finance and IT Operator can see Settings
+        allowedRoles: ["Admin", "Finance", "ITOperator"],
     },
     {
         label: "Settings",
@@ -83,6 +93,8 @@ const managementItems: NavItem[] = [
             { label: "Alerts & Notifications" },
             { label: "Integrations" },
         ],
+        //Only Admin and IT Operator can see Settings
+        allowedRoles: ["Admin", "ITOperator"],
     },
 ]
 
@@ -189,10 +201,24 @@ function NavGroup({ items, collapsed }: { items: NavItem[]; collapsed: boolean }
     )
 }
 
-export function AppSidebar() {
+//ADDED: The Props interface requiring userRole
+interface AppSidebarProps {
+    userRole?: UserRole;
+}
+
+export function AppSidebar({ userRole = "Employee" }: AppSidebarProps) {
     const router = useRouter()
     const { state } = useSidebar()
     const collapsed = state === "collapsed"
+
+    //Filter the menu items based on the user's role before rendering
+    const visibleAssets = assetsItems.filter(
+        (item) => !item.allowedRoles || item.allowedRoles.includes(userRole)
+    )
+    
+    const visibleManagement = managementItems.filter(
+        (item) => !item.allowedRoles || item.allowedRoles.includes(userRole)
+    )
 
     return (
         <Sidebar
@@ -219,14 +245,16 @@ export function AppSidebar() {
                         ) : null}
                     </button>
 
-                    {!collapsed ? <SectionLabel title="ASSETS" /> : null}
-                    <NavGroup items={assetsItems} collapsed={collapsed} />
+                    {!collapsed && visibleAssets.length > 0 ? <SectionLabel title="ASSETS" /> : null}
+                    <NavGroup items={visibleAssets} collapsed={collapsed} />
                 </div>
 
+            {visibleManagement.length > 0 && (                
                 <div className="px-2 pt-1 pb-2">
-                    {!collapsed ? <SectionLabel title="MANAGEMENT" /> : null}
-                    <NavGroup items={managementItems} collapsed={collapsed} />
+                        {!collapsed ? <SectionLabel title="MANAGEMENT" /> : null}
+                        <NavGroup items={visibleManagement} collapsed={collapsed} />
                 </div>
+            )}
             </SidebarContent>
 
             <SidebarFooter className="p-2">
