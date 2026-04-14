@@ -1,0 +1,126 @@
+"use server";
+
+import { db } from "@/db";
+import { users, sessions } from "@/db/schema"; // Ensure sessions is exported from your schema
+import { eq, ilike, or, and, isNull, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
+import { getJwtSecretKey } from "@/lib/jwt";
+
+const SESSION_COOKIE_NAME = "session_token";
+
+// FIX 3: Infer the exact role type directly from Drizzle so there is a single source of truth
+type UserRole = typeof users.$inferSelect.role;
+
+/**
+ * Helper to get the current user ID and verify session validity.
+ */
+async function getAuthenticatedUser(): Promise<{ id: number; role: UserRole } | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
+    
+    // Validate sub is numeric and sid exists
+    if (!payload.sub || isNaN(Number(payload.sub))) return null;
+    if (!payload.sid || typeof payload.sid !== "string") return null;
+
+    // FIX 1: Verify the session against the database to ensure it hasn't been revoked
+    const activeSession = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.tokenId, payload.sid),
+          isNull(sessions.revokedAt),
+          sql`${sessions.expiresAt} > NOW()` // Ensure it is not expired
+        )
+      )
+      .limit(1);
+
+    if (activeSession.length === 0) {
+      return null; // Session is revoked or expired
+    }
+
+    return { 
+      id: Number(payload.sub), 
+      role: payload.role as UserRole 
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Search for users by name or email.
+ */
+export async function searchUsers(query: string) {
+  if (!query) return [];
+
+  // FIX 2: Authentication & Authorization Guard (Prevents Data Enumeration)
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || currentUser.role !== "GlobalAdmin") {
+    throw new Error("Forbidden: You do not have permission to search users.");
+  }
+
+  try {
+    return await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+      })
+      .from(users)
+      .where(
+        or(
+          ilike(users.name, `%${query}%`),
+          ilike(users.email, `%${query}%`)
+        )
+      )
+      .limit(10);
+  } catch (error) {
+    console.error("Search Error:", error);
+    throw new Error("Failed to search users.");
+  }
+}
+
+/**
+ * Assigns a new role to a user.
+ */
+export async function assignUserRole(targetUserId: number, newRole: UserRole) {
+  const currentUser = await getAuthenticatedUser();
+
+  // FIX 4: Authorization Guard
+  if (!currentUser || currentUser.role !== "GlobalAdmin") {
+    throw new Error("Forbidden: Only Global Administrators can modify roles.");
+  }
+
+  // Anti-Lockout Guard
+  if (targetUserId === currentUser.id) {
+    throw new Error("Action Prohibited: You cannot modify your own role.");
+  }
+
+  try {
+    // FIX 5: Use .returning() to verify a row was actually affected
+    const updatedUsers = await db
+      .update(users)
+      .set({ role: newRole })
+      .where(eq(users.id, targetUserId))
+      .returning({ updatedId: users.id });
+
+    if (updatedUsers.length === 0) {
+      return { success: false, error: "User not found or no changes made." };
+    }
+
+    revalidatePath("/settings/roles");
+    return { success: true };
+  } catch (error) {
+    console.error("Assignment Error:", error);
+    return { success: false, error: "Database update failed." };
+  }
+}
