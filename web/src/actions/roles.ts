@@ -122,6 +122,11 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
     throw new Error('Invalid target user id.');
   }
 
+  const normalizedNewRole = normalizeTokenRole(newRole);
+  if (!normalizedNewRole) {
+    throw new Error('Invalid role value.');
+  }
+
   // Anti-Lockout Guard
   if (targetUserId === currentUser.id) {
     throw new Error('Action Prohibited: You cannot modify your own role.');
@@ -131,13 +136,25 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
     // Use .returning() to verify a row was actually affected.
     const updatedUsers = await db
       .update(users)
-      .set({ role: newRole })
+      .set({ role: normalizedNewRole })
       .where(eq(users.id, targetUserId))
       .returning({ updatedId: users.id });
 
     if (updatedUsers.length === 0) {
       return { success: false, error: 'User not found or no changes made.' };
     }
+
+    // Revoke active sessions so role changes take effect immediately.
+    await db
+      .update(sessions)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(sessions.userId, targetUserId),
+          isNull(sessions.revokedAt),
+          sql`${sessions.expiresAt} > NOW()`
+        )
+      );
 
     revalidatePath('/settings/roles');
     return { success: true };

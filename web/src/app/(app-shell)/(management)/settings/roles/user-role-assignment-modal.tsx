@@ -46,11 +46,18 @@ export function UserRoleAssignmentModal({
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user) {
+    if (isOpen && user) {
       setSelectedRole(user.role)
       setError(null)
+      return
     }
-  }, [user])
+
+    if (!isOpen) {
+      setIsSubmitting(false)
+      setError(null)
+      setSelectedRole(user?.role ?? "Employee")
+    }
+  }, [isOpen, user])
 
   const handleSubmit = async () => {
     if (!user) {
