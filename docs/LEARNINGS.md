@@ -124,3 +124,27 @@
 - **The Context:** We needed to securely display the active user name and role in the client TopHeader without extra database or API calls.
 - **What we learned:** We updated our mockLogin Server Action to include the user name in the JWT payload. Because TopHeader is a client component, it cannot read HTTP-only cookies. We solved this by reading the cookie in the parent server layout.tsx, decoding the JWT with jose, and passing the user object as a prop.
 - **The Impact:** This pattern provides secure, immediate rendering of user data on initial page load without exposing cookie access to client-side JavaScript.
+
+### Hybrid Project Management (ClickUp + GitHub)
+
+- **The Context:** Maintaining parallel tracking boards during a tight sprint created process overhead and "ticket fatigue."
+- **What we learned:** A hybrid model works best for our team: ClickUp for high-level business planning and design specifications, and GitHub for day-to-day engineering execution.
+- **The Impact:** We mapped 23 Epics directly to GitHub Issues and used Semantic Versioning milestones (`v0.5.0` for core features, `v0.9.0` for Faculty Review) to measure progress automatically when PRs merge with `Closes #ID`.
+
+### Route Groups vs. URL Structure
+
+- **The Context:** Tying URL structure directly to UI collapsible groups (e.g., `/assets/ITandDigital/hardware`) created brittle routes that could break when business terminology changed.
+- **What we learned:** We should keep URLs flat (`/assets/hardware`) and use Next.js Route Groups `(assets)` for internal code organization.
+- **The Impact:** We can apply scoped `layout.tsx` files (for example, a search bar) to related pages without changing the user-facing URL scheme.
+
+### Server Action Vulnerabilities (The "Hidden API" Threat)
+
+- **The Context:** Hiding a UI button does not secure backend behavior because Next.js Server Actions can still be triggered manually.
+- **What we learned:** Every Server Action must follow a Zero Trust model and enforce authentication and authorization internally.
+- **The Impact:** Actions like `assignUserRole` now re-verify permissions against JWT/session data and server-side role checks before executing Drizzle queries, preventing privilege-escalation exploits.
+
+### Component Colocation
+
+- **The Context:** Grouping components by HTML type (for example, `components/tables/` or `components/modals/`) becomes a dumping ground as the codebase scales.
+- **What we learned:** A feature-based colocation strategy is more maintainable.
+- **The Impact:** Generic primitives stay in `src/components/ui`, while feature-specific implementations (such as `roles-management-table.tsx`) live alongside their route `page.tsx` in the App Router.

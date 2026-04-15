@@ -19,22 +19,21 @@ interface RemoveUserModalProps {
   targetRole?: string
 }
 
-export function RemoveUserModal({ 
-  isOpen, 
+export function RemoveUserModal({
+  isOpen,
   onOpenChange,
   // Default mock data to match your Figma
-  user = { name: "Nadeesha", email: "Admin@tiqri.com" }, 
+  user = { name: "Nadeesha", email: "Admin@tiqri.com" },
   targetRole = "IT Operations"
 }: RemoveUserModalProps) {
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       {/* The [&>button]:hidden class hides Shadcn's default absolute close button
         so we can perfectly align our custom X icon in the header layout.
       */}
-      {/* COPILOT FIX: Added brackets to sm:max-w-[500px] */}
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
-        
+      <DialogContent className="sm:max-w-125 p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
+
         <div className="p-6">
           {/* Custom Header with inline X close button */}
           <div className="flex items-start justify-between mb-2">
@@ -44,12 +43,12 @@ export function RemoveUserModal({
                 Remove User from {targetRole}
               </DialogTitle>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
-              // COPILOT FIX: Added aria-label for screen readers 
+              //Added aria-label for screen readers 
               aria-label="Close"
-              className="h-8 w-8 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100" 
+              className="h-8 w-8 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               onClick={() => onOpenChange(false)}
             >
               <X className="h-5 w-5" />
@@ -72,14 +71,14 @@ export function RemoveUserModal({
 
           {/* Footer Actions */}
           <div className="flex justify-end gap-3 pt-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => onOpenChange(false)}
               className="px-6 font-medium hover:bg-slate-100"
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               className="bg-[#D32F2F] hover:bg-[#B71C1C] px-6 text-white font-medium shadow-sm transition-colors"
               onClick={() => {
                 // TODO: DEVELOPER 3 - Hook up the delete mutation here

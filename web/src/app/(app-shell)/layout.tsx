@@ -30,7 +30,10 @@ async function getShellUser(): Promise<ShellUser | null> {
         if (
             typeof payload.name !== "string" ||
             typeof payload.email !== "string" ||
-            (payload.role !== "Admin" && payload.role !== "Employee")
+            (payload.role !== "GlobalAdmin" &&
+                payload.role !== "ITOperator" &&
+                payload.role !== "FinanceAuditor" &&
+                payload.role !== "Employee")
         ) {
             return null
         }
@@ -60,7 +63,7 @@ export default async function AppShellLayout({
             style={{ "--sidebar-width": "260px" } as CSSProperties}
         >
             <div className="flex h-screen w-full items-center bg-muted p-3.5">
-                <AppSidebar />
+                <AppSidebar userRole={user.role} />
 
                 <div className="flex h-full min-w-0 flex-1 flex-col gap-2">
                     <TopHeader user={user} />
