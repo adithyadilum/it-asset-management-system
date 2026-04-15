@@ -57,6 +57,7 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
+// Defensive dedupe protects the staged list when source arrays are rebuilt.
 function dedupeUsers(users: RoleUser[]) {
   const seen = new Set<number>()
   const unique: RoleUser[] = []
@@ -101,6 +102,7 @@ export function UserRoleAssignmentModal({
     [mappedSelection]
   )
 
+  // Directory results exclude already-staged users and optionally hide already-mapped users.
   const directoryResults = useMemo(() => {
     if (mode !== "add" || !normalizedQuery) {
       return []
@@ -147,6 +149,7 @@ export function UserRoleAssignmentModal({
     )
   }
 
+  // Reset add-mode UI state whenever the modal session starts or ends.
   const resetAddModeState = () => {
     setSearchQuery("")
     setHideUsersAlreadyInRole(false)
@@ -178,6 +181,7 @@ export function UserRoleAssignmentModal({
     }
   }, [defaultRole, isOpen, mappedUsers, mode, user])
 
+  // Handles two submit flows: bulk mapping in add mode and single-user update in edit mode.
   const handleSubmit = async () => {
     setIsSubmitting(true)
     setError(null)

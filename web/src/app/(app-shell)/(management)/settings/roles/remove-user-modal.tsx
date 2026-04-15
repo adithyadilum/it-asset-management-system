@@ -50,11 +50,13 @@ export function RemoveUserModal({
 
   useEffect(() => {
     if (!isOpen) {
+      // Clear transient modal state between openings.
       setIsSubmitting(false)
       setError(null)
     }
   }, [isOpen])
 
+  // Role removal is implemented by assigning the baseline Employee role.
   const handleRemove = async () => {
     if (!user) {
       setError("User details are missing.")
@@ -65,6 +67,7 @@ export function RemoveUserModal({
     setError(null)
 
     try {
+      // Reuse the secured role-assignment action to keep auth/validation centralized.
       const result = await assignUserRole(user.id, "Employee")
 
       if (!result.success) {

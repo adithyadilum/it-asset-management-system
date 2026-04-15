@@ -21,6 +21,7 @@ type RoleConfig = {
   desc: string
 }
 
+// Single source of truth for role tabs and right-panel copy.
 const ROLE_CONFIG = [
   {
     id: "GlobalAdmin" as UserRole,
@@ -57,6 +58,7 @@ export function RolesManagementTable({ initialUsers }: RolesManagementTableProps
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false)
   const [selectedUserForRemoval, setSelectedUserForRemoval] = useState<RoleUser | null>(null)
 
+  // Keep the tab counters consistent with the latest dataset.
   const roleCounts = useMemo(() => {
     const counts = new Map<UserRole, number>()
 
@@ -68,6 +70,7 @@ export function RolesManagementTable({ initialUsers }: RolesManagementTableProps
     return counts
   }, [initialUsers])
 
+  // Table rows are scoped to the currently selected role tab.
   const filteredUsers = useMemo(() => {
     return initialUsers.filter((u) => u.role === selectedRole)
   }, [initialUsers, selectedRole])
@@ -75,10 +78,12 @@ export function RolesManagementTable({ initialUsers }: RolesManagementTableProps
   const currentRoleInfo =
     ROLE_CONFIG.find((role) => role.id === selectedRole) ?? ROLE_CONFIG[0]
 
+  // After modal actions complete, refresh server-rendered data.
   const handleUpdated = () => {
     router.refresh()
   }
 
+  // Store clicked user so the confirmation modal has full context.
   const openRemoveModal = (user: RoleUser) => {
     setSelectedUserForRemoval(user)
     setIsRemoveModalOpen(true)
@@ -206,6 +211,7 @@ export function RolesManagementTable({ initialUsers }: RolesManagementTableProps
         </div>
       </section>
 
+      {/* Reuse assignment modal in add mode for mapping users to the active role. */}
       <UserRoleAssignmentModal
         isOpen={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
@@ -217,6 +223,7 @@ export function RolesManagementTable({ initialUsers }: RolesManagementTableProps
         onUpdated={handleUpdated}
       />
 
+      {/* Separate confirmation step helps prevent accidental role removal. */}
       <RemoveUserModal
         isOpen={isRemoveModalOpen}
         onOpenChange={setIsRemoveModalOpen}
