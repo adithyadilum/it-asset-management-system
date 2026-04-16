@@ -167,7 +167,7 @@ export async function searchUsers(query: string) {
 }
 
 /**
- * Assigns a role to multiple users in one transaction.
+ * Assigns a role to multiple users via a single atomic update.
  */
 export async function assignUsersRoleBulk(
   targetUserIds: number[],
@@ -194,66 +194,64 @@ export async function assignUsersRoleBulk(
     };
   }
 
+  // Anti-Lockout Guard.
+  if (normalizedTargetUserIds.includes(currentUser.id)) {
+    throw new Error('Action Prohibited: You cannot modify your own role.');
+  }
+
   try {
-    const transactionTimer = startLatencyTimer();
-    const mutationSummary = await db.transaction(async (tx) => {
-      const matchedUsers = await tx
-        .select({ id: users.id, role: users.role })
-        .from(users)
-        .where(inArray(users.id, normalizedTargetUserIds));
+    const updateUsersTimer = startLatencyTimer();
+    const updatedUsers = await db
+      .update(users)
+      .set({ role: normalizedNewRole })
+      .where(inArray(users.id, normalizedTargetUserIds))
+      .returning({ updatedId: users.id });
 
-      const targetUserIdsToUpdate = matchedUsers
-        .filter((matchedUser) => matchedUser.role !== normalizedNewRole)
-        .map((matchedUser) => matchedUser.id);
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'roles.assignUsersRoleBulk.update_users',
+      startTime: updateUsersTimer,
+      metadata: {
+        requestedCount: normalizedTargetUserIds.length,
+        updatedCount: updatedUsers.length,
+      },
+    });
 
-      // Anti-Lockout Guard only applies to rows where a mutation would occur.
-      if (targetUserIdsToUpdate.includes(currentUser.id)) {
-        throw new Error('Action Prohibited: You cannot modify your own role.');
-      }
-
-      if (targetUserIdsToUpdate.length === 0) {
-        return {
-          updatedCount: 0,
-          skippedCount: normalizedTargetUserIds.length,
-        };
-      }
-
-      const updatedUsers = await tx
-        .update(users)
-        .set({ role: normalizedNewRole })
-        .where(inArray(users.id, targetUserIdsToUpdate))
-        .returning({ updatedId: users.id });
-
-      // Revoke active sessions so role changes take effect immediately.
-      await tx
+    const updatedUserIds = updatedUsers.map(
+      (updatedUser) => updatedUser.updatedId
+    );
+    if (updatedUserIds.length > 0) {
+      const revokeSessionsTimer = startLatencyTimer();
+      await db
         .update(sessions)
         .set({ revokedAt: new Date() })
         .where(
           and(
-            inArray(sessions.userId, targetUserIdsToUpdate),
+            inArray(sessions.userId, updatedUserIds),
             isNull(sessions.revokedAt),
             sql`${sessions.expiresAt} > NOW()`
           )
         );
 
-      return {
-        updatedCount: updatedUsers.length,
-        skippedCount: normalizedTargetUserIds.length - updatedUsers.length,
-      };
-    });
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'roles.assignUsersRoleBulk.transaction',
-      startTime: transactionTimer,
-      metadata: {
-        requestedCount: normalizedTargetUserIds.length,
-      },
-    });
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'roles.assignUsersRoleBulk.revoke_sessions',
+        startTime: revokeSessionsTimer,
+        metadata: {
+          updatedCount: updatedUsers.length,
+        },
+      });
+    }
 
     revalidatePath('/settings/roles');
     return {
       success: true,
-      ...mutationSummary,
+      count: updatedUsers.length,
+      updatedCount: updatedUsers.length,
+      skippedCount: Math.max(
+        0,
+        normalizedTargetUserIds.length - updatedUsers.length
+      ),
     };
   } catch (error) {
     logError({

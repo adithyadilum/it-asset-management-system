@@ -160,3 +160,21 @@
 - **Context:** The `proxy.ts` Edge Middleware was executing database queries (e.g., `session_active_lookup`) to verify user sessions. Because Edge functions are globally distributed and the database is geographically centralized (in Mumbai), establishing these HTTP connections introduced massive network latency (~100-300ms) on every single page navigation.
 - **What We Learned:** Edge Middleware must never query a centralized database. Authentication at the network boundary should rely entirely on the stateless, cryptographic verification of the JSON Web Token (JWT) using libraries like `jose`. Any database-dependent state checks (such as verifying if an active session was manually revoked) must be pushed further down the stack into React Server Components (RSCs) and Server Actions.
 - **Impact:** Stripping the database query from the Edge proxy reduced middleware routing overhead by 99% (dropping from ~300ms down to ~1-5ms). This drastically improves application responsiveness and protects the database connection pool from being overwhelmed by standard routing traffic.
+
+### Topic: The UI Foundation & Avoiding Premature Abstraction
+
+- **Context:** Before starting heavy feature work, there is a risk of developers either building inconsistent UI elements (creating "UI spaghetti") or over-engineering a "perfect" shared component (like a data table with 50 unused props).
+- **What We Learned:** We must establish a baseline UI Foundation (using Shadcn UI for Sheets, Modals, Data Tables, and Toasts) but strictly enforce the YAGNI (You Aren't Gonna Need It) principle. We build basic, branded wrappers and stop.
+- **Impact:** The frontend team can safely parallelize feature work using a unified design system. We save weeks of engineering time by allowing complex component logic to evolve naturally only when a specific feature demands it.
+
+### Topic: Serverless Database Transactions (Neon HTTP)
+
+- **Context:** Attempting to execute a standard `db.transaction()` for bulk operations (like assigning roles) resulted in a fatal application crash (`No transactions support in neon-http driver`).
+- **What We Learned:** Serverless databases utilizing HTTP drivers cannot support traditional multi-query transactions because the HTTP protocol is stateless and cannot hold a database lock open.
+- **Impact:** We replaced multi-step transactions with single, atomic SQL queries (utilizing `inArray` and `.returning()`). This guarantees data integrity and bulk-update capabilities without crashing the serverless connection.
+
+### Topic: Network Waterfalls & Parallel Data Fetching
+
+- **Context:** Application code execution was taking ~500ms+ even in production builds. This was caused by sequential database queries (Network Waterfalls), where the app paid the TLS/SSL geographic network latency tax multiple times per page load.
+- **What We Learned:** React Server Components must execute independent database queries concurrently using `Promise.all()`. Furthermore, heavily used data-fetching helpers (e.g., `getAuthenticatedUser`) must be wrapped in React's `cache()` to deduplicate database calls during the render cycle.
+- **Impact:** Eliminates compounding network latency, shaving hundreds of milliseconds off page load times. This maximizes Next.js server performance and ensures the UI remains highly responsive regardless of the physical distance to the database.
