@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { jwtVerify } from "jose"
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
+import { cache } from "react"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
@@ -64,11 +65,23 @@ function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
 }
 
 async function assertRolesPageAccess() {
+    const accessState = await getRolesPageAccessState()
+
+    if (accessState === "forbidden") {
+        redirect("/403")
+    }
+
+    if (accessState !== "authorized") {
+        redirect("/login")
+    }
+}
+
+const getRolesPageAccessState = cache(async () => {
     const cookieStore = await cookies()
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
     if (!token) {
-        redirect("/login")
+        return "unauthorized" as const
     }
 
     try {
@@ -77,61 +90,62 @@ async function assertRolesPageAccess() {
         const sessionId = payload.sid
 
         if (!Number.isInteger(userId) || userId <= 0 || typeof sessionId !== "string") {
-            redirect("/login")
+            return "unauthorized" as const
         }
 
-        const activeSession = await db
-            .select({ id: sessions.id })
-            .from(sessions)
-            .where(
-                and(
-                    eq(sessions.userId, userId),
-                    eq(sessions.tokenId, sessionId),
-                    isNull(sessions.revokedAt),
-                    sql`${sessions.expiresAt} > NOW()`
+        // These two reads are independent once token claims are verified.
+        const [activeSession, currentUser] = await Promise.all([
+            db
+                .select({ id: sessions.id })
+                .from(sessions)
+                .where(
+                    and(
+                        eq(sessions.userId, userId),
+                        eq(sessions.tokenId, sessionId),
+                        isNull(sessions.revokedAt),
+                        sql`${sessions.expiresAt} > NOW()`
+                    )
                 )
-            )
-            .limit(1)
+                .limit(1),
+            db
+                .select({ role: users.role })
+                .from(users)
+                .where(eq(users.id, userId))
+                .limit(1),
+        ])
 
-        if (activeSession.length === 0) {
-            redirect("/login")
-        }
-
-        const currentUser = await db
-            .select({ role: users.role })
-            .from(users)
-            .where(eq(users.id, userId))
-            .limit(1)
-
-        if (currentUser.length === 0) {
-            redirect("/login")
+        if (activeSession.length === 0 || currentUser.length === 0) {
+            return "unauthorized" as const
         }
 
         if (currentUser[0].role !== "GlobalAdmin") {
-            redirect("/403")
+            return "forbidden" as const
         }
+
+        return "authorized" as const
     } catch {
-        redirect("/login")
+        return "unauthorized" as const
     }
-}
+})
 
 export default async function RolesPage({ searchParams }: RolesPageProps) {
     await assertRolesPageAccess()
 
-    const params = await searchParams
+    const [params, initialUsers] = await Promise.all([
+        searchParams,
+        db
+            .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+                department: users.department,
+                role: users.role,
+            })
+            .from(users)
+            .orderBy(asc(users.name))
+            .limit(100),
+    ])
     const selectedRole = normalizeSelectedRole(params.role)
-
-    const initialUsers = await db
-        .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            department: users.department,
-            role: users.role,
-        })
-        .from(users)
-        .orderBy(asc(users.name))
-        .limit(100)
 
     const roleCounts: Record<UserRole, number> = {
         GlobalAdmin: 0,
