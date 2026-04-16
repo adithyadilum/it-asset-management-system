@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import { getJwtSecretKey } from '@/lib/jwt';
+import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 const SESSION_COOKIE_NAME = 'session_token';
 type UserRole = typeof users.$inferSelect.role;
@@ -45,6 +46,7 @@ async function getAuthenticatedUser(): Promise<{
   id: number;
   role: UserRole;
 } | null> {
+  const authTimer = startLatencyTimer();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -61,17 +63,27 @@ async function getAuthenticatedUser(): Promise<{
     if (!role) return null;
 
     // Verify the session against the database to ensure it hasn't been revoked.
-    const activeSession = await db
-      .select({ id: sessions.id })
-      .from(sessions)
-      .where(
-        and(
-          eq(sessions.tokenId, payload.sid),
-          isNull(sessions.revokedAt),
-          sql`${sessions.expiresAt} > NOW()`
+    let activeSession: Array<{ id: number }> = [];
+    const sessionLookupTimer = startLatencyTimer();
+    try {
+      activeSession = await db
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.tokenId, payload.sid),
+            isNull(sessions.revokedAt),
+            sql`${sessions.expiresAt} > NOW()`
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
+    } finally {
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'roles.getAuthenticatedUser.session_lookup',
+        startTime: sessionLookupTimer,
+      });
+    }
 
     if (activeSession.length === 0) {
       return null; // Session is revoked or expired
@@ -83,6 +95,12 @@ async function getAuthenticatedUser(): Promise<{
     };
   } catch {
     return null;
+  } finally {
+    logLatency({
+      scope: 'ACTION AUTH',
+      label: 'roles.getAuthenticatedUser',
+      startTime: authTimer,
+    });
   }
 }
 
@@ -90,6 +108,7 @@ async function getAuthenticatedUser(): Promise<{
  * Search for users by name or email.
  */
 export async function searchUsers(query: string) {
+  const actionTimer = startLatencyTimer();
   // Authentication & Authorization Guard (prevents data enumeration).
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || currentUser.role !== 'GlobalAdmin') {
@@ -100,25 +119,50 @@ export async function searchUsers(query: string) {
   if (!trimmedQuery) return [];
 
   try {
-    return await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        department: users.department,
-        role: users.role,
-      })
-      .from(users)
-      .where(
-        or(
-          ilike(users.name, `%${trimmedQuery}%`),
-          ilike(users.email, `%${trimmedQuery}%`)
+    const queryTimer = startLatencyTimer();
+    try {
+      return await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          department: users.department,
+          role: users.role,
+        })
+        .from(users)
+        .where(
+          or(
+            ilike(users.name, `%${trimmedQuery}%`),
+            ilike(users.email, `%${trimmedQuery}%`)
+          )
         )
-      )
-      .limit(10);
+        .limit(10);
+    } finally {
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'roles.searchUsers.query',
+        startTime: queryTimer,
+        metadata: {
+          queryLength: trimmedQuery.length,
+        },
+      });
+    }
   } catch (error) {
-    console.error('Search Error:', error);
+    logError({
+      scope: 'ACTION',
+      label: 'roles.searchUsers',
+      error,
+    });
     throw new Error('Failed to search users.');
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'roles.searchUsers',
+      startTime: actionTimer,
+      metadata: {
+        queryLength: trimmedQuery.length,
+      },
+    });
   }
 }
 
@@ -129,6 +173,7 @@ export async function assignUsersRoleBulk(
   targetUserIds: number[],
   newRole: UserRole
 ) {
+  const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
   // Authorization Guard.
@@ -150,6 +195,7 @@ export async function assignUsersRoleBulk(
   }
 
   try {
+    const transactionTimer = startLatencyTimer();
     const mutationSummary = await db.transaction(async (tx) => {
       const matchedUsers = await tx
         .select({ id: users.id, role: users.role })
@@ -195,6 +241,14 @@ export async function assignUsersRoleBulk(
         skippedCount: normalizedTargetUserIds.length - updatedUsers.length,
       };
     });
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'roles.assignUsersRoleBulk.transaction',
+      startTime: transactionTimer,
+      metadata: {
+        requestedCount: normalizedTargetUserIds.length,
+      },
+    });
 
     revalidatePath('/settings/roles');
     return {
@@ -202,11 +256,24 @@ export async function assignUsersRoleBulk(
       ...mutationSummary,
     };
   } catch (error) {
-    console.error('Bulk Assignment Error:', error);
+    logError({
+      scope: 'ACTION',
+      label: 'roles.assignUsersRoleBulk',
+      error,
+    });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Database update failed.',
     };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'roles.assignUsersRoleBulk',
+      startTime: actionTimer,
+      metadata: {
+        requestedCount: normalizedTargetUserIds.length,
+      },
+    });
   }
 }
 
@@ -214,6 +281,7 @@ export async function assignUsersRoleBulk(
  * Assigns a new role to a user.
  */
 export async function assignUserRole(targetUserId: number, newRole: UserRole) {
+  const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
   // Authorization Guard.
@@ -237,17 +305,27 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
 
   try {
     // Use .returning() to verify a row was actually affected.
+    const updateUserTimer = startLatencyTimer();
     const updatedUsers = await db
       .update(users)
       .set({ role: normalizedNewRole })
       .where(eq(users.id, targetUserId))
       .returning({ updatedId: users.id });
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'roles.assignUserRole.update_user_role',
+      startTime: updateUserTimer,
+      metadata: {
+        targetUserId,
+      },
+    });
 
     if (updatedUsers.length === 0) {
       return { success: false, error: 'User not found or no changes made.' };
     }
 
     // Revoke active sessions so role changes take effect immediately.
+    const revokeSessionTimer = startLatencyTimer();
     await db
       .update(sessions)
       .set({ revokedAt: new Date() })
@@ -258,12 +336,36 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
           sql`${sessions.expiresAt} > NOW()`
         )
       );
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'roles.assignUserRole.revoke_sessions',
+      startTime: revokeSessionTimer,
+      metadata: {
+        targetUserId,
+      },
+    });
 
     revalidatePath('/settings/roles');
     return { success: true };
   } catch (error) {
-    console.error('Assignment Error:', error);
+    logError({
+      scope: 'ACTION',
+      label: 'roles.assignUserRole',
+      error,
+      metadata: {
+        targetUserId,
+      },
+    });
     return { success: false, error: 'Database update failed.' };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'roles.assignUserRole',
+      startTime: actionTimer,
+      metadata: {
+        targetUserId,
+      },
+    });
   }
 }
 

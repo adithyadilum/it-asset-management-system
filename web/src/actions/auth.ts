@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import { sessions, users } from '@/db/schema';
 import { getJwtSecretKey } from '@/lib/jwt';
+import { logLatency, startLatencyTimer } from '@/lib/latency';
 import type { LoginActionResult, LoginRequest, UserRole } from '@/types/auth';
 
 const SESSION_COOKIE_NAME = 'session_token';
@@ -32,101 +33,142 @@ function normalizeRole(role: string): UserRole {
 export async function mockLogin(
   credentials: LoginRequest
 ): Promise<LoginActionResult> {
-  const email = credentials.email.trim().toLowerCase();
-  const password = credentials.password;
+  const actionTimer = startLatencyTimer();
 
-  if (!email || !password) {
-    return { success: false, error: 'Email and password are required.' };
-  }
+  try {
+    const email = credentials.email.trim().toLowerCase();
+    const password = credentials.password;
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.email, email),
-  });
+    if (!email || !password) {
+      return { success: false, error: 'Email and password are required.' };
+    }
 
-  if (!user) {
-    return { success: false, error: 'Invalid credentials' };
-  }
+    const userLookupTimer = startLatencyTimer();
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'auth.mockLogin.find_user',
+      startTime: userLookupTimer,
+    });
 
-  if (!user.isActive) {
-    return {
-      success: false,
-      error: 'Your account is inactive. Contact IT support.',
-    };
-  }
+    if (!user) {
+      return { success: false, error: 'Invalid credentials' };
+    }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!user.isActive) {
+      return {
+        success: false,
+        error: 'Your account is inactive. Contact IT support.',
+      };
+    }
 
-  if (!isPasswordValid) {
-    return { success: false, error: 'Invalid credentials' };
-  }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-  const tokenId = randomUUID();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
-  const role = normalizeRole(user.role);
+    if (!isPasswordValid) {
+      return { success: false, error: 'Invalid credentials' };
+    }
 
-  await db.insert(sessions).values({
-    userId: user.id,
-    tokenId,
-    expiresAt,
-  });
+    const tokenId = randomUUID();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+    const role = normalizeRole(user.role);
 
-  const token = await new SignJWT({
-    sid: tokenId,
-    email: user.email,
-    role,
-    name: user.name,
-  })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(String(user.id))
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
-    .sign(getJwtSecretKey());
+    const createSessionTimer = startLatencyTimer();
+    await db.insert(sessions).values({
+      userId: user.id,
+      tokenId,
+      expiresAt,
+    });
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'auth.mockLogin.create_session',
+      startTime: createSessionTimer,
+      metadata: {
+        userId: user.id,
+      },
+    });
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: SESSION_TTL_SECONDS,
-    path: '/',
-  });
-
-  return {
-    success: true,
-    message: 'Login successful',
-    user: {
-      id: user.id,
+    const token = await new SignJWT({
+      sid: tokenId,
       email: user.email,
-      name: user.name,
       role,
-    },
-    sessionId: tokenId,
-    expiresAt: expiresAt.toISOString(),
-  };
+      name: user.name,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(String(user.id))
+      .setIssuedAt()
+      .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
+      .sign(getJwtSecretKey());
+
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_TTL_SECONDS,
+      path: '/',
+    });
+
+    return {
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role,
+      },
+      sessionId: tokenId,
+      expiresAt: expiresAt.toISOString(),
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'auth.mockLogin',
+      startTime: actionTimer,
+    });
+  }
 }
 
 export async function logout() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const actionTimer = startLatencyTimer();
 
-  if (token) {
-    try {
-      const verified = await jwtVerify(token, getJwtSecretKey());
-      const sessionId = verified.payload.sid;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
-      if (typeof sessionId === 'string') {
-        await db
-          .update(sessions)
-          .set({ revokedAt: new Date() })
-          .where(
-            and(eq(sessions.tokenId, sessionId), isNull(sessions.revokedAt))
-          );
+    if (token) {
+      try {
+        const verified = await jwtVerify(token, getJwtSecretKey());
+        const sessionId = verified.payload.sid;
+
+        if (typeof sessionId === 'string') {
+          const revokeSessionTimer = startLatencyTimer();
+          await db
+            .update(sessions)
+            .set({ revokedAt: new Date() })
+            .where(
+              and(eq(sessions.tokenId, sessionId), isNull(sessions.revokedAt))
+            );
+          logLatency({
+            scope: 'DB ACTION',
+            label: 'auth.logout.revoke_session',
+            startTime: revokeSessionTimer,
+          });
+        }
+      } catch {
+        // Ignore invalid token here; cookie is removed below regardless.
       }
-    } catch {
-      // Ignore invalid token here; cookie is removed below regardless.
     }
-  }
 
-  cookieStore.delete(SESSION_COOKIE_NAME);
-  redirect('/login');
+    cookieStore.delete(SESSION_COOKIE_NAME);
+    redirect('/login');
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'auth.logout',
+      startTime: actionTimer,
+    });
+  }
 }
