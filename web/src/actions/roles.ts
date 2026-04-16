@@ -91,6 +91,7 @@ export async function searchUsers(query: string) {
         id: users.id,
         name: users.name,
         email: users.email,
+        department: users.department,
         role: users.role,
       })
       .from(users)

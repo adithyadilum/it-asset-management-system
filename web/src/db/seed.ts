@@ -11,6 +11,7 @@ dotenv.config({ path: '.env.local' });
 type SeedUser = {
   email: string;
   name: string;
+  department: string;
   role: 'GlobalAdmin' | 'ITOperator' | 'FinanceAuditor' | 'Employee';
   password: string;
 };
@@ -19,24 +20,28 @@ const SAMPLE_USERS: SeedUser[] = [
   {
     email: 'admin@tiqri.com',
     name: 'Admin User',
+    department: 'IT',
     role: 'GlobalAdmin',
     password: 'Admin@1234',
   },
   {
     email: 'it@tiqri.com',
     name: 'IT Support',
+    department: 'IT',
     role: 'ITOperator',
     password: 'IT@1234',
   },
   {
     email: 'finance@tiqri.com',
     name: 'Finance Auditor',
+    department: 'Finance',
     role: 'FinanceAuditor',
     password: 'Finance@1234',
   },
   {
     email: 'employee@tiqri.com',
     name: 'Standard Employee',
+    department: 'HR',
     role: 'Employee',
     password: 'Employee@1234',
   },
@@ -66,6 +71,7 @@ async function seed() {
         .update(users)
         .set({
           name: sampleUser.name,
+          department: sampleUser.department,
           role: sampleUser.role,
           password: hashedPassword,
           isActive: true,
@@ -79,6 +85,7 @@ async function seed() {
       await db.insert(users).values({
         email: sampleUser.email,
         name: sampleUser.name,
+        department: sampleUser.department,
         role: sampleUser.role,
         password: hashedPassword,
         isActive: true,
