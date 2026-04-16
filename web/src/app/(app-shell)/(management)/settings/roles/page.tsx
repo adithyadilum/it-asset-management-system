@@ -77,14 +77,7 @@ export default async function RolesPage() {
     .limit(100)
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">User Roles & Access</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Assign and review permissions for system users.
-        </p>
-      </div>
-
+    <div className="-mx-6 -my-6 grid min-h-0 flex-1 grid-cols-1 gap-2 bg-muted p-6 lg:grid-cols-[40%_60%]">
       <RolesManagementTable initialUsers={initialUsers} />
     </div>
   )
