@@ -62,8 +62,8 @@ const textBaseSemiBoldClass =
   "font-text-base-semi-bold text-(length:--text-base-semi-bold-font-size) leading-(--text-base-semi-bold-line-height) tracking-(--text-base-semi-bold-letter-spacing) [font-style:var(--text-base-semi-bold-font-style)]"
 const textLgSemiBoldClass =
   "font-text-lg-semi-bold text-(length:--text-lg-semi-bold-font-size) leading-(--text-lg-semi-bold-line-height) tracking-(--text-lg-semi-bold-letter-spacing) [font-style:var(--text-lg-semi-bold-font-style)]"
-const text3xlSemiBoldClass =
-  "font-text-3xl-semi-bold text-(length:--text-3xl-semi-bold-font-size) leading-(--text-3xl-semi-bold-line-height) tracking-(--text-3xl-semi-bold-letter-spacing) [font-style:var(--text-3xl-semi-bold-font-style)]"
+const textLgBoldClass =
+  "font-text-lg-bold text-(length:--text-lg-bold-font-size) leading-(--text-lg-bold-line-height) tracking-(--text-lg-bold-letter-spacing) [font-style:var(--text-lg-bold-font-style)]"
 
 function getInitials(name: string) {
   return name
@@ -314,7 +314,7 @@ export function UserRoleAssignmentModal({
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Info className="h-5 w-5 text-slate-500" />
-                <h2 className={`${text3xlSemiBoldClass} text-slate-900`}>
+                <h2 className={`${textLgBoldClass} text-slate-900`}>
                   Assign Users to {roleLabelForAddMode}
                 </h2>
               </div>
@@ -451,6 +451,7 @@ export function UserRoleAssignmentModal({
               <Button
                 type="button"
                 variant="outline"
+                className={textSmMediumClass}
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
@@ -460,7 +461,7 @@ export function UserRoleAssignmentModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting || mappedSelection.length === 0}
-                className="bg-primary px-4 text-primary-foreground hover:bg-primary/90"
+                className={`bg-primary px-4 text-primary-foreground hover:bg-primary/90 ${textSmMediumClass}`}
               >
                 {isSubmitting ? "Confirming..." : "Confirm Mapping"}
               </Button>
@@ -505,12 +506,18 @@ export function UserRoleAssignmentModal({
               <Button
                 type="button"
                 variant="outline"
+                className={textSmMediumClass}
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="button" onClick={handleSubmit} disabled={isSubmitting || !activeUser}>
+              <Button
+                type="button"
+                className={textSmMediumClass}
+                onClick={handleSubmit}
+                disabled={isSubmitting || !activeUser}
+              >
                 {isSubmitting ? "Updating..." : "Update Role"}
               </Button>
             </div>

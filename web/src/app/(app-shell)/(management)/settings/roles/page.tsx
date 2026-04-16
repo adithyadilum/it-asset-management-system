@@ -40,8 +40,8 @@ const textSmRegularClass =
     "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]"
 const textSmMediumClass =
     "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]"
-const textSmSemiBoldClass =
-    "font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) [font-style:var(--text-sm-semi-bold-font-style)]"
+const textBaseSemiBoldClass =
+    "font-text-base-semi-bold text-(length:--text-base-semi-bold-font-size) leading-(--text-base-semi-bold-line-height) tracking-(--text-base-semi-bold-letter-spacing) [font-style:var(--text-base-semi-bold-font-style)]"
 
 type RolesPageProps = {
     searchParams: Promise<{
@@ -148,7 +148,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
     const selectedRoleInfo = ROLE_CONFIG.find((role) => role.id === selectedRole) ?? ROLE_CONFIG[1]
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col items-stretch gap-2.5 lg:flex-row bg-muted" >
+        <div className="flex min-h-0 flex-1 flex-col items-stretch gap-2.5 bg-muted lg:flex-row">
             <section className="flex w-full flex-col items-start gap-4 rounded-lg bg-white p-6 shadow-box-shadow-shadow-sm lg:max-w-100">
                 <h1 className="font-text-2xl-semi-bold text-(length:--text-2xl-semi-bold-font-size) leading-(--text-2xl-semi-bold-line-height) tracking-(--text-2xl-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-2xl-semi-bold-font-style)]">
                     Role Assignment
@@ -168,7 +168,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                                 ].join(" ")}
                             >
                                 <div className="flex w-full items-center gap-2.5 px-6 py-0">
-                                    <span className={`flex-1 text-left text-slate-900 ${textSmSemiBoldClass}`}>
+                                    <span className={`flex-1 text-left text-slate-900 ${textBaseSemiBoldClass}`}>
                                         {role.name}
                                     </span>
 

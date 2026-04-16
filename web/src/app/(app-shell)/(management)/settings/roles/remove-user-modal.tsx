@@ -5,7 +5,6 @@ import { Info, X } from "lucide-react"
 
 import { removeUserFromManagedRole } from "@/actions/roles"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-// UI Components
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import type { UserRole } from "@/types/auth"
@@ -97,11 +96,11 @@ export function RemoveUserModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-125 p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
+      <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-125 [&>button]:hidden">
         <div className="p-6">
-          <div className="flex items-start justify-between mb-2">
+          <div className="mb-2 flex items-start justify-between">
             <div className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-slate-400 mt-0.5" />
+              <Info className="mt-0.5 h-5 w-5 text-slate-400" />
               <DialogTitle className={`${textLgBoldClass} text-slate-900`}>
                 Remove User from {targetRole}
               </DialogTitle>
@@ -122,8 +121,8 @@ export function RemoveUserModal({
             This user will lose all privileges associated with the {targetRole} role.
           </DialogDescription>
 
-          <div className="flex items-center gap-3 bg-slate-50/80 p-3 rounded-lg border border-slate-100 mb-6 mx-1">
-            <Avatar className="h-10 w-10 rounded-full bg-slate-200 overflow-hidden">
+          <div className="mx-1 mb-6 flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3">
+            <Avatar className="h-10 w-10 overflow-hidden rounded-full bg-slate-200">
               <AvatarFallback className={`rounded-full bg-slate-300 text-slate-700 ${textXsSemiBoldClass}`}>
                 {initials}
               </AvatarFallback>
@@ -146,7 +145,7 @@ export function RemoveUserModal({
               Cancel
             </Button>
             <Button
-              className={`bg-[#D32F2F] hover:bg-[#B71C1C] px-6 text-white shadow-sm transition-colors ${textSmMediumClass}`}
+              className={`bg-destructive px-6 text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90 ${textSmMediumClass}`}
               onClick={handleRemove}
               disabled={isSubmitting || !user}
             >
