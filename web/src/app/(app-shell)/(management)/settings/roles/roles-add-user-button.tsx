@@ -11,13 +11,11 @@ import { UserRoleAssignmentModal, type RoleUser } from "./user-role-assignment-m
 
 type RolesAddUserButtonProps = {
     selectedRole: UserRole
-    allUsers: RoleUser[]
     mappedUsers: RoleUser[]
 }
 
 export function RolesAddUserButton({
     selectedRole,
-    allUsers,
     mappedUsers,
 }: RolesAddUserButtonProps) {
     const router = useRouter()
@@ -47,7 +45,6 @@ export function RolesAddUserButton({
                 user={null}
                 mode="add"
                 defaultRole={selectedRole}
-                allUsers={allUsers}
                 mappedUsers={mappedUsers}
                 onUpdated={handleUpdated}
             />

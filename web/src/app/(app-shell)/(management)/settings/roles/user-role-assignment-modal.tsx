@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { CirclePlus, Info, Search, Trash2, X } from "lucide-react"
 
-import { assignUserRole } from "@/actions/roles"
+import { assignUserRole, assignUsersRoleBulk, searchUsers } from "@/actions/roles"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -30,7 +30,6 @@ interface UserRoleAssignmentModalProps {
   user: RoleUser | null
   mode?: "edit" | "add"
   defaultRole?: UserRole
-  allUsers?: RoleUser[]
   mappedUsers?: RoleUser[]
   onUpdated?: () => void
 }
@@ -98,12 +97,14 @@ export function UserRoleAssignmentModal({
   user,
   mode = "edit",
   defaultRole = "Employee",
-  allUsers = [],
   mappedUsers = [],
   onUpdated,
 }: UserRoleAssignmentModalProps) {
   const [selectedRole, setSelectedRole] = useState<UserRole>("Employee")
   const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<RoleUser[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
   const [hideUsersAlreadyInRole, setHideUsersAlreadyInRole] = useState(false)
   const [mappedSelection, setMappedSelection] = useState<RoleUser[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -111,7 +112,7 @@ export function UserRoleAssignmentModal({
 
   const roleLabelForAddMode = ROLE_ASSIGNMENT_LABELS[defaultRole]
 
-  const normalizedQuery = searchQuery.trim().toLowerCase()
+  const normalizedQuery = searchQuery.trim()
 
   const mappedIdSet = useMemo(
     () => new Set(mappedSelection.map((roleUser) => roleUser.id)),
@@ -124,16 +125,8 @@ export function UserRoleAssignmentModal({
       return []
     }
 
-    return allUsers
+    return searchResults
       .filter((directoryUser) => {
-        const matchesSearch =
-          directoryUser.name.toLowerCase().includes(normalizedQuery) ||
-          directoryUser.email.toLowerCase().includes(normalizedQuery)
-
-        if (!matchesSearch) {
-          return false
-        }
-
         if (mappedIdSet.has(directoryUser.id)) {
           return false
         }
@@ -144,8 +137,8 @@ export function UserRoleAssignmentModal({
 
         return true
       })
-      .slice(0, 8)
-  }, [allUsers, defaultRole, hideUsersAlreadyInRole, mappedIdSet, mode, normalizedQuery])
+      .slice(0, 10)
+  }, [defaultRole, hideUsersAlreadyInRole, mappedIdSet, mode, normalizedQuery, searchResults])
 
   const activeUser = mode === "edit" ? user : null
 
@@ -168,9 +161,60 @@ export function UserRoleAssignmentModal({
   // Reset add-mode UI state whenever the modal session starts or ends.
   const resetAddModeState = useCallback(() => {
     setSearchQuery("")
+    setSearchResults([])
+    setIsSearching(false)
+    setSearchError(null)
     setHideUsersAlreadyInRole(false)
     setMappedSelection(dedupeUsers(mappedUsers))
   }, [mappedUsers])
+
+  useEffect(() => {
+    if (!isOpen || mode !== "add") {
+      return
+    }
+
+    if (!normalizedQuery) {
+      setSearchResults([])
+      setIsSearching(false)
+      setSearchError(null)
+      return
+    }
+
+    let isCancelled = false
+    const searchDebounce = setTimeout(async () => {
+      setIsSearching(true)
+      setSearchError(null)
+
+      try {
+        const results = await searchUsers(normalizedQuery)
+        if (isCancelled) {
+          return
+        }
+
+        setSearchResults(results)
+      } catch (caughtError) {
+        if (isCancelled) {
+          return
+        }
+
+        setSearchResults([])
+        setSearchError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Failed to search users."
+        )
+      } finally {
+        if (!isCancelled) {
+          setIsSearching(false)
+        }
+      }
+    }, 250)
+
+    return () => {
+      isCancelled = true
+      clearTimeout(searchDebounce)
+    }
+  }, [isOpen, mode, normalizedQuery])
 
   useEffect(() => {
     if (isOpen) {
@@ -209,17 +253,14 @@ export function UserRoleAssignmentModal({
           return
         }
 
-        const usersNeedingAssignment = mappedSelection.filter(
-          (selection) => selection.role !== defaultRole
+        const result = await assignUsersRoleBulk(
+          mappedSelection.map((selection) => selection.id),
+          defaultRole
         )
 
-        for (const selection of usersNeedingAssignment) {
-          const result = await assignUserRole(selection.id, defaultRole)
-
-          if (!result.success) {
-            setError(result.error ?? "Failed to assign selected users.")
-            return
-          }
+        if (!result.success) {
+          setError(result.error ?? "Failed to assign selected users.")
+          return
         }
 
         onOpenChange(false)
@@ -241,8 +282,14 @@ export function UserRoleAssignmentModal({
 
       onOpenChange(false)
       onUpdated?.()
-    } catch {
-      setError(mode === "add" ? "Failed to assign selected users." : "Failed to update role. Please try again.")
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : mode === "add"
+            ? "Failed to assign selected users."
+            : "Failed to update role. Please try again."
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -309,7 +356,15 @@ export function UserRoleAssignmentModal({
 
             {normalizedQuery ? (
               <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                {directoryResults.length > 0 ? (
+                {isSearching ? (
+                  <div className="py-3 text-center">
+                    <p className={`text-slate-500 ${textSmRegularClass}`}>Searching users...</p>
+                  </div>
+                ) : searchError ? (
+                  <div className="py-3 text-center">
+                    <p className={`text-red-600 ${textSmMediumClass}`}>{searchError}</p>
+                  </div>
+                ) : directoryResults.length > 0 ? (
                   <div className="space-y-2">
                     {directoryResults.map((directoryUser) => (
                       <div key={directoryUser.id} className="flex items-center justify-between gap-3">

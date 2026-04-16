@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Info, X } from "lucide-react"
 
-import { assignUserRole } from "@/actions/roles"
+import { removeUserFromManagedRole } from "@/actions/roles"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -69,7 +69,6 @@ export function RemoveUserModal({
     }
   }, [isOpen])
 
-  // Role removal is implemented by assigning the baseline Employee role.
   const handleRemove = async () => {
     if (!user) {
       setError("User details are missing.")
@@ -80,8 +79,7 @@ export function RemoveUserModal({
     setError(null)
 
     try {
-      // Reuse the secured role-assignment action to keep auth/validation centralized.
-      const result = await assignUserRole(user.id, "Employee")
+      const result = await removeUserFromManagedRole(user.id)
 
       if (!result.success) {
         setError(result.error ?? "Failed to remove user from this role.")

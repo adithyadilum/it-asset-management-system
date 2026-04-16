@@ -201,7 +201,6 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
 
                     <RolesAddUserButton
                         selectedRole={selectedRole}
-                        allUsers={initialUsers}
                         mappedUsers={usersInRole}
                     />
                 </div>
