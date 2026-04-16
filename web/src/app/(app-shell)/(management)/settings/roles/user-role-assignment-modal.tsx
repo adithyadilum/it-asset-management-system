@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { CirclePlus, Info, Search, Trash2, X } from "lucide-react"
 
 import { assignUserRole } from "@/actions/roles"
@@ -91,8 +91,6 @@ export function UserRoleAssignmentModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const selectedRoleLabel = ROLE_ASSIGNMENT_LABELS[selectedRole]
-
   const roleLabelForAddMode = ROLE_ASSIGNMENT_LABELS[defaultRole]
 
   const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -150,11 +148,11 @@ export function UserRoleAssignmentModal({
   }
 
   // Reset add-mode UI state whenever the modal session starts or ends.
-  const resetAddModeState = () => {
+  const resetAddModeState = useCallback(() => {
     setSearchQuery("")
     setHideUsersAlreadyInRole(false)
     setMappedSelection(dedupeUsers(mappedUsers))
-  }
+  }, [mappedUsers])
 
   useEffect(() => {
     if (isOpen) {
@@ -179,7 +177,7 @@ export function UserRoleAssignmentModal({
         resetAddModeState()
       }
     }
-  }, [defaultRole, isOpen, mappedUsers, mode, user])
+  }, [defaultRole, isOpen, mode, resetAddModeState, user])
 
   // Handles two submit flows: bulk mapping in add mode and single-user update in edit mode.
   const handleSubmit = async () => {
@@ -329,7 +327,7 @@ export function UserRoleAssignmentModal({
                   <div className="py-3 text-center">
                     <p className="text-base font-semibold text-slate-900">No user found</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Your search "{searchQuery.trim()}" did not match any users.
+                      Your search &quot;{searchQuery.trim()}&quot; did not match any users.
                     </p>
                   </div>
                 )}
