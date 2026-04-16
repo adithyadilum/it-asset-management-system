@@ -36,6 +36,13 @@ const ROLE_CONFIG: Array<{
         },
     ]
 
+const textSmRegularClass =
+    "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]"
+const textSmMediumClass =
+    "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]"
+const textSmSemiBoldClass =
+    "font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) [font-style:var(--text-sm-semi-bold-font-style)]"
+
 type RolesPageProps = {
     searchParams: Promise<{
         role?: string | string[]
@@ -161,12 +168,12 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                                 ].join(" ")}
                             >
                                 <div className="flex w-full items-center gap-2.5 px-6 py-0">
-                                    <span className="flex-1 text-left font-text-base-medium text-(length:--text-base-medium-font-size) leading-(--text-base-medium-line-height) tracking-(--text-base-medium-letter-spacing) text-slate-900 [font-style:var(--text-base-medium-font-style)]">
+                                    <span className={`flex-1 text-left text-slate-900 ${textSmSemiBoldClass}`}>
                                         {role.name}
                                     </span>
 
                                     <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-blue-800 bg-white px-1.5 py-0.5">
-                                        <span className="font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-blue-800 [font-style:var(--text-sm-medium-font-style)]">
+                                        <span className={`${textSmMediumClass} text-blue-800`}>
                                             {roleCounts[role.id]} Users
                                         </span>
                                     </div>
@@ -188,7 +195,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                 </h2>
 
                 <div className="flex w-full flex-col items-start justify-between gap-3 lg:flex-row lg:items-center">
-                    <p className="max-w-175 font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-slate-900 [font-style:var(--text-sm-medium-font-style)]">
+                    <p className={`max-w-175 text-slate-900 ${textSmRegularClass}`}>
                         {selectedRoleInfo.description}
                     </p>
 

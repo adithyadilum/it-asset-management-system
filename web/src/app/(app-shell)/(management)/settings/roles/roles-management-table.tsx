@@ -15,6 +15,10 @@ type RolesManagementTableProps = {
 }
 
 const SSO_SYNC_STATUS_LABEL = "Active - Azure AD"
+const textXsSemiBoldClass =
+    "font-text-xs-semi-bold text-(length:--text-xs-semi-bold-font-size) leading-(--text-xs-semi-bold-line-height) tracking-(--text-xs-semi-bold-letter-spacing) [font-style:var(--text-xs-semi-bold-font-style)]"
+const textSmRegularClass =
+    "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]"
 
 function getInitials(name: string) {
     return name
@@ -66,7 +70,7 @@ export function RolesManagementTable({ users, roleLabel }: RolesManagementTableP
                                 <td className="pl-4 pr-2 py-2">
                                     <div className="flex items-center gap-4 p-2">
                                         <Avatar className="h-8 w-8 rounded-lg">
-                                            <AvatarFallback className="rounded-lg bg-slate-200 text-[10px] font-semibold text-slate-700">
+                                            <AvatarFallback className={`rounded-lg bg-slate-200 text-slate-700 ${textXsSemiBoldClass}`}>
                                                 {getInitials(user.name)}
                                             </AvatarFallback>
                                         </Avatar>
@@ -111,7 +115,7 @@ export function RolesManagementTable({ users, roleLabel }: RolesManagementTableP
 
                         {users.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">
+                                <td colSpan={4} className={`px-4 py-6 text-center text-slate-500 ${textSmRegularClass}`}>
                                     No users found for this role.
                                 </td>
                             </tr>

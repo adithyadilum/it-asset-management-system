@@ -49,6 +49,23 @@ const ROLE_ASSIGNMENT_LABELS: Record<UserRole, string> = {
   Employee: "Employee",
 }
 
+const textXsRegularClass =
+  "font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) [font-style:var(--text-xs-regular-font-style)]"
+const textXsSemiBoldClass =
+  "font-text-xs-semi-bold text-(length:--text-xs-semi-bold-font-size) leading-(--text-xs-semi-bold-line-height) tracking-(--text-xs-semi-bold-letter-spacing) [font-style:var(--text-xs-semi-bold-font-style)]"
+const textSmRegularClass =
+  "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]"
+const textSmMediumClass =
+  "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]"
+const textSmSemiBoldClass =
+  "font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) [font-style:var(--text-sm-semi-bold-font-style)]"
+const textBaseSemiBoldClass =
+  "font-text-base-semi-bold text-(length:--text-base-semi-bold-font-size) leading-(--text-base-semi-bold-line-height) tracking-(--text-base-semi-bold-letter-spacing) [font-style:var(--text-base-semi-bold-font-style)]"
+const textLgSemiBoldClass =
+  "font-text-lg-semi-bold text-(length:--text-lg-semi-bold-font-size) leading-(--text-lg-semi-bold-line-height) tracking-(--text-lg-semi-bold-letter-spacing) [font-style:var(--text-lg-semi-bold-font-style)]"
+const text3xlSemiBoldClass =
+  "font-text-3xl-semi-bold text-(length:--text-3xl-semi-bold-font-size) leading-(--text-3xl-semi-bold-line-height) tracking-(--text-3xl-semi-bold-letter-spacing) [font-style:var(--text-3xl-semi-bold-font-style)]"
+
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -250,7 +267,7 @@ export function UserRoleAssignmentModal({
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Info className="h-5 w-5 text-slate-500" />
-                <h2 className="text-[30px] leading-9 font-semibold tracking-tight text-slate-900">
+                <h2 className={`${text3xlSemiBoldClass} text-slate-900`}>
                   Assign Users to {roleLabelForAddMode}
                 </h2>
               </div>
@@ -274,7 +291,7 @@ export function UserRoleAssignmentModal({
                 disabled={isSubmitting}
                 className="border-slate-300"
               />
-              <label htmlFor="hide-already-mapped" className="text-sm font-medium text-slate-700">
+              <label htmlFor="hide-already-mapped" className={`${textSmMediumClass} text-slate-700`}>
                 Hide users already in this role
               </label>
             </div>
@@ -285,7 +302,7 @@ export function UserRoleAssignmentModal({
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search company directory by name or email..."
-                className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm"
+                className={`h-9 rounded-lg border-slate-200 bg-white pl-9 ${textSmRegularClass}`}
                 disabled={isSubmitting}
               />
             </div>
@@ -298,16 +315,16 @@ export function UserRoleAssignmentModal({
                       <div key={directoryUser.id} className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <Avatar className="size-7 rounded-md">
-                            <AvatarFallback className="rounded-md bg-slate-300 text-[10px] font-semibold text-slate-700">
+                            <AvatarFallback className={`rounded-md bg-slate-300 text-slate-700 ${textXsSemiBoldClass}`}>
                               {getInitials(directoryUser.name)}
                             </AvatarFallback>
                           </Avatar>
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">
+                            <p className={`truncate text-slate-900 ${textSmSemiBoldClass}`}>
                               {directoryUser.name}
                             </p>
-                            <p className="truncate text-xs text-slate-500">{directoryUser.email}</p>
+                            <p className={`truncate text-slate-500 ${textXsRegularClass}`}>{directoryUser.email}</p>
                           </div>
                         </div>
 
@@ -326,8 +343,8 @@ export function UserRoleAssignmentModal({
                   </div>
                 ) : (
                   <div className="py-3 text-center">
-                    <p className="text-base font-semibold text-slate-900">No user found</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className={`${textBaseSemiBoldClass} text-slate-900`}>No user found</p>
+                    <p className={`mt-1 text-slate-500 ${textXsRegularClass}`}>
                       Your search &quot;{searchQuery.trim()}&quot; did not match any users.
                     </p>
                   </div>
@@ -342,14 +359,14 @@ export function UserRoleAssignmentModal({
                     <div key={selection.id} className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar className="size-7 rounded-md">
-                          <AvatarFallback className="rounded-md bg-slate-300 text-[10px] font-semibold text-slate-700">
+                          <AvatarFallback className={`rounded-md bg-slate-300 text-slate-700 ${textXsSemiBoldClass}`}>
                             {getInitials(selection.name)}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{selection.name}</p>
-                          <p className="truncate text-xs text-slate-500">{selection.email}</p>
+                          <p className={`truncate text-slate-900 ${textSmSemiBoldClass}`}>{selection.name}</p>
+                          <p className={`truncate text-slate-500 ${textXsRegularClass}`}>{selection.email}</p>
                         </div>
                       </div>
 
@@ -367,13 +384,13 @@ export function UserRoleAssignmentModal({
                   ))}
                 </div>
               ) : (
-                <div className="py-2 text-center text-xs text-slate-500">
+                <div className={`py-2 text-center text-slate-500 ${textXsRegularClass}`}>
                   No users selected for this role.
                 </div>
               )}
             </div>
 
-            {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+            {error ? <p className={`mt-2 text-red-600 ${textSmMediumClass}`}>{error}</p> : null}
 
             <div className="mt-3 flex items-center justify-end gap-2">
               <Button
@@ -397,7 +414,7 @@ export function UserRoleAssignmentModal({
         ) : user ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Change User Role</h3>
+              <h3 className={`${textLgSemiBoldClass} text-slate-900`}>Change User Role</h3>
               <Button
                 type="button"
                 variant="ghost"
@@ -410,14 +427,14 @@ export function UserRoleAssignmentModal({
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="user-role" className="text-sm font-medium text-slate-700">
+              <label htmlFor="user-role" className={`${textSmMediumClass} text-slate-700`}>
                 Role
               </label>
               <select
                 id="user-role"
                 value={selectedRole}
                 onChange={(event) => setSelectedRole(event.target.value as UserRole)}
-                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-slate-300"
+                className={`flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-900 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-slate-300 ${textSmRegularClass}`}
               >
                 {ROLE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -427,7 +444,7 @@ export function UserRoleAssignmentModal({
               </select>
             </div>
 
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            {error ? <p className={`text-red-600 ${textSmMediumClass}`}>{error}</p> : null}
 
             <div className="flex justify-end gap-2 pt-1">
               <Button
