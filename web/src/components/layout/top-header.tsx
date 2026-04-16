@@ -104,7 +104,7 @@ export function TopHeader({ user }: TopHeaderProps) {
     const roleLabel = roleLabelMap[user.role];
 
     return (
-        <header className="grid h-14 grid-cols-[minmax(0,1fr)_28.125rem_auto] items-center gap-4 rounded-lg bg-muted px-2">
+        <header className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 rounded-lg bg-muted px-2">
             <div className="flex min-w-0 items-center gap-2 px-2">
                 <button
                     type="button"

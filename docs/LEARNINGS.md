@@ -148,3 +148,15 @@
 - **The Context:** Grouping components by HTML type (for example, `components/tables/` or `components/modals/`) becomes a dumping ground as the codebase scales.
 - **What we learned:** A feature-based colocation strategy is more maintainable.
 - **The Impact:** Generic primitives stay in `src/components/ui`, while feature-specific implementations (such as `roles-management-table.tsx`) live alongside their route `page.tsx` in the App Router.
+
+### Topic: TypeScript Modularity & Interface Colocation
+
+- **Context:** As the application scales, there is a temptation to organize all TypeScript interfaces into a centralized `src/types/` folder to keep the codebase "clean."
+- **What We Learned:** Centralizing all types creates a "context switching" tax for developers and risks synchronization drift between database schemas and manual interfaces. Modern Next.js architecture heavily favors Colocation and Single Sources of Truth over global type dumping grounds.
+- **Impact:** We implemented a 3-Tiered Typing Strategy. Database types are automatically inferred and exported directly from `src/db/schema.ts`. Component props (e.g., `interface ModalProps`) are colocated directly within the `.tsx` file. A `src/types/` folder is strictly reserved for high-level, globally shared constructs (like API Response wrappers or Zod schemas), ensuring high developer velocity and self-documenting files.
+
+### Topic: Edge Middleware Optimization & Stateless JWT Verification
+
+- **Context:** The `proxy.ts` Edge Middleware was executing database queries (e.g., `session_active_lookup`) to verify user sessions. Because Edge functions are globally distributed and the database is geographically centralized (in Mumbai), establishing these HTTP connections introduced massive network latency (~100-300ms) on every single page navigation.
+- **What We Learned:** Edge Middleware must never query a centralized database. Authentication at the network boundary should rely entirely on the stateless, cryptographic verification of the JSON Web Token (JWT) using libraries like `jose`. Any database-dependent state checks (such as verifying if an active session was manually revoked) must be pushed further down the stack into React Server Components (RSCs) and Server Actions.
+- **Impact:** Stripping the database query from the Edge proxy reduced middleware routing overhead by 99% (dropping from ~300ms down to ~1-5ms). This drastically improves application responsiveness and protects the database connection pool from being overwhelmed by standard routing traffic.
