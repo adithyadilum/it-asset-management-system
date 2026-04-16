@@ -68,9 +68,9 @@ export default async function AppShellLayout({
                 <div className="flex h-full min-w-0 flex-1 flex-col gap-2">
                     <TopHeader user={user} />
 
-                    <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-[#e7ebf0] bg-background">
-                        <div className="flex min-h-0 flex-1 flex-col rounded-md bg-background shadow-box-shadow-shadow-sm">
-                            <div className="flex min-h-0 flex-1 flex-col px-6 py-6">
+                    <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-background">
+                        <div className="flex min-h-0 flex-1 flex-col rounded-md bg-background">
+                            <div className="flex min-h-0 flex-1 flex-col">
                                 {children}
                             </div>
                         </div>

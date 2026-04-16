@@ -20,6 +20,7 @@ export type RoleUser = {
   id: number
   name: string
   email: string
+  department: string
   role: UserRole
 }
 
@@ -232,7 +233,7 @@ export function UserRoleAssignmentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[760px] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
+      <DialogContent className="sm:max-w-190 p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
         <DialogTitle className="sr-only">
           {mode === "add" ? `Assign Users to ${roleLabelForAddMode}` : "Change User Role"}
         </DialogTitle>
@@ -336,7 +337,7 @@ export function UserRoleAssignmentModal({
 
             <div className="mt-3 rounded-lg border border-slate-200 bg-slate-100/80 p-3">
               {mappedSelection.length > 0 ? (
-                <div className="max-h-[100px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-500">
+                <div className="max-h-25 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-500">
                   {mappedSelection.map((selection) => (
                     <div key={selection.id} className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
