@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import { StandardModal } from "@/components/ui/standard-modal";
 
 export default function UIPlaygroundPage() {
     const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,9 @@ export default function UIPlaygroundPage() {
         { value: "tharumuthu", label: "Tharumuthu Ruchiranga" },
         { value: "tharushi", label: "Tharushi Hasinika " },
     ];
+
+
+const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
         <div className="p-10 space-y-8">
@@ -41,6 +45,33 @@ export default function UIPlaygroundPage() {
 
                 
             </div>
+            
+            <div className="p-6 border rounded-xl border-dashed border-slate-300 bg-slate-50">
+    <h2 className="text-lg font-semibold mb-4 text-[#00145a]">Standard Modal Test</h2>
+    <Button variant="outline" onClick={() => setIsModalOpen(true)}>
+        Trigger CRUD Modal
+    </Button>
+
+    <StandardModal
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="Add New Location"
+        description="Enter the details of the new site or office building."
+        footer={
+            <>
+                <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                <Button className="bg-[#00145a] hover:bg-[#000d3d]">Save Location</Button>
+            </>
+        }
+    >
+        <div className="space-y-4">
+            <div className="h-10 bg-slate-100 rounded border border-slate-200 flex items-center px-3 text-xs text-slate-400">
+                [Insert Location Name Input Here]
+            </div>
+        </div>
+    </StandardModal>
+</div>
+
         </div>
     );
 }
