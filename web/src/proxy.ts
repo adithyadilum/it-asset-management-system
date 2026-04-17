@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { neon } from '@neondatabase/serverless';
 import { jwtVerify } from 'jose';
 
 import {
@@ -8,57 +7,36 @@ import {
   sanitizeRedirectPath,
 } from '@/lib/auth-redirect';
 import { getJwtSecretKey } from '@/lib/jwt';
+import { logLatency, startLatencyTimer } from '@/lib/latency';
 
 const SESSION_COOKIE_NAME = 'session_token';
 type TokenRole = 'GlobalAdmin' | 'ITOperator' | 'FinanceAuditor' | 'Employee';
 
-const getDbClient = () => {
-  const databaseUrl = process.env.DATABASE_URL;
+async function verifyTokenAndRole(token: string) {
+  const authTimer = startLatencyTimer();
 
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL is not configured');
+  try {
+    const verified = await jwtVerify(token, getJwtSecretKey());
+    const payload = verified.payload as { role?: unknown };
+
+    const role = normalizeTokenRole(payload.role);
+
+    if (!role) {
+      throw new Error('Role is missing or invalid in token');
+    }
+
+    return { role };
+  } finally {
+    logLatency({
+      scope: 'PROXY AUTH',
+      label: 'verify_token_and_role',
+      startTime: authTimer,
+    });
   }
-
-  return neon(databaseUrl);
-};
-
-async function isSessionActive(sessionId: string) {
-  const client = getDbClient();
-  const result = (await client`
-      SELECT EXISTS (
-        SELECT 1
-        FROM sessions
-        WHERE token_id = ${sessionId}
-          AND revoked_at IS NULL
-          AND expires_at > NOW()
-      ) AS is_active
-        `) as Array<{ is_active: boolean }>;
-
-  return result[0]?.is_active === true;
 }
 
-async function verifyTokenAndSession(token: string) {
-  const verified = await jwtVerify(token, getJwtSecretKey());
-  const payload = verified.payload as { role?: unknown; sid?: unknown };
-
-  if (typeof payload.sid !== 'string' || payload.sid.length === 0) {
-    throw new Error('Session id is missing from token');
-  }
-
-  const role = normalizeTokenRole(payload.role);
-
-  if (!role) {
-    throw new Error('Role is missing or invalid in token');
-  }
-
-  const active = await isSessionActive(payload.sid);
-
-  if (!active) {
-    throw new Error('Session is revoked or expired');
-  }
-
-  return { role };
-}
+// Session revocation checks run in server actions / RSC data boundaries,
+// keeping edge middleware stateless and low-latency.
 
 function normalizeTokenRole(role: unknown): TokenRole | null {
   if (
@@ -128,47 +106,60 @@ function getLoginRedirectResponse(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
+  const requestTimer = startLatencyTimer();
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const { pathname } = request.nextUrl;
   const isProtectedRoute = pathname !== '/login' && pathname !== '/403';
   const isLoginRoute = pathname === '/login';
 
-  // If the user is trying to access a protected route without a token, kick them to login.
-  if (!token && isProtectedRoute) {
-    return getLoginRedirectResponse(request);
-  }
-
-  let payload: { role: TokenRole } | null = null;
-
-  if (token) {
-    try {
-      payload = await verifyTokenAndSession(token);
-    } catch {
-      // Invalid token/session should not bounce on /login.
-      const response = isProtectedRoute
-        ? getLoginRedirectResponse(request)
-        : NextResponse.next();
-      response.cookies.delete(SESSION_COOKIE_NAME);
-      return response;
+  try {
+    // If the user is trying to access a protected route without a token, kick them to login.
+    if (!token && isProtectedRoute) {
+      return getLoginRedirectResponse(request);
     }
+
+    let payload: { role: TokenRole } | null = null;
+
+    if (token) {
+      try {
+        payload = await verifyTokenAndRole(token);
+      } catch {
+        // Invalid token/session should not bounce on /login.
+        const response = isProtectedRoute
+          ? getLoginRedirectResponse(request)
+          : NextResponse.next();
+        response.cookies.delete(SESSION_COOKIE_NAME);
+        return response;
+      }
+    }
+
+    // If the user is already logged in and tries to visit /login, skip it.
+    if (token && isLoginRoute) {
+      // Respect a preserved redirect target when an authenticated user hits /login.
+      const redirectTo = sanitizeRedirectPath(
+        request.nextUrl.searchParams.get('redirectTo'),
+        DEFAULT_POST_LOGIN_REDIRECT
+      );
+
+      return NextResponse.redirect(new URL(redirectTo, request.url));
+    }
+
+    if (
+      payload &&
+      isProtectedRoute &&
+      !canAccessRoute(payload.role, pathname)
+    ) {
+      return NextResponse.redirect(new URL('/403', request.url));
+    }
+
+    return NextResponse.next();
+  } finally {
+    logLatency({
+      scope: 'PROXY',
+      label: pathname,
+      startTime: requestTimer,
+    });
   }
-
-  // If the user is already logged in and tries to visit /login, skip it.
-  if (token && isLoginRoute) {
-    // Respect a preserved redirect target when an authenticated user hits /login.
-    const redirectTo = sanitizeRedirectPath(
-      request.nextUrl.searchParams.get('redirectTo'),
-      DEFAULT_POST_LOGIN_REDIRECT
-    );
-
-    return NextResponse.redirect(new URL(redirectTo, request.url));
-  }
-
-  if (payload && isProtectedRoute && !canAccessRoute(payload.role, pathname)) {
-    return NextResponse.redirect(new URL('/403', request.url));
-  }
-
-  return NextResponse.next();
 }
 
 /*
