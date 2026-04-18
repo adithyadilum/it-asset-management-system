@@ -31,6 +31,33 @@ import { Separator } from '@/components/ui/separator';
 import { useSidebar } from '@/components/ui/sidebar';
 import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
 
+const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
+    '/dashboard': 'Dashboard',
+    '/assets': 'All Assets',
+    '/assets/hardware': 'Hardware',
+    '/assets/software': 'Software',
+    '/assets/furniture': 'Furniture & Fixtures',
+    '/assets/office-electronics': 'Office Electronics',
+    '/operations': 'Operations',
+    '/operations/assignments': 'Assignments & Returns',
+    '/operations/maintenance': 'Maintenance & Repairs',
+    '/operations/disposals': 'Disposals',
+    '/financials': 'Financials',
+    '/financials/depreciation': 'Depreciation Ledger',
+    '/financials/tco': 'Total Cost of Ownership',
+    '/financials/salvage': 'Salvage & Write-Offs',
+    '/reports': 'Reports & Audits',
+    '/reports/audit-log': 'System Audit Log',
+    '/settings': 'Settings',
+    '/settings/master-data': 'Master Data',
+    '/settings/roles': 'User Roles & Access',
+    '/settings/alerts': 'Alerts & Notifications',
+    '/settings/integrations': 'Integrations',
+};
+
+const sidebarDefaultTextClass =
+    'font-text-sm-regular text-sm leading-5 tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]';
+
 function formatBreadcrumbSegment(segment: string) {
     return decodeURIComponent(segment)
         .split('-')
@@ -39,13 +66,21 @@ function formatBreadcrumbSegment(segment: string) {
         .join(' ');
 }
 
+function resolveBreadcrumbLabel(href: string, segment: string) {
+    return SIDEBAR_BREADCRUMB_LABELS[href] ?? formatBreadcrumbSegment(segment);
+}
+
 function buildBreadcrumbs(pathname: string): HeaderBreadcrumb[] {
     const segments = pathname.split('/').filter((segment) => segment !== '');
 
-    return segments.map((segment, index) => ({
-        href: `/${segments.slice(0, index + 1).join('/')}`,
-        label: formatBreadcrumbSegment(segment),
-    }));
+    return segments.map((segment, index) => {
+        const href = `/${segments.slice(0, index + 1).join('/')}`;
+
+        return {
+            href,
+            label: resolveBreadcrumbLabel(href, segment),
+        };
+    });
 }
 
 export function TopHeader({ user }: TopHeaderProps) {
@@ -60,11 +95,17 @@ export function TopHeader({ user }: TopHeaderProps) {
         .substring(0, 2)
         .toUpperCase();
 
-    const roleLabel = user.role === 'Admin' ? 'Global Admin' : 'Employee';
+    const roleLabelMap: Record<typeof user.role, string> = {
+        GlobalAdmin: 'Global Admin',
+        ITOperator: 'IT Ops',
+        FinanceAuditor: 'Finance Audit',
+        Employee: 'Employee',
+    };
+    const roleLabel = roleLabelMap[user.role];
 
     return (
-        <header className="flex h-14 items-center justify-between rounded-lg bg-muted px-2">
-            <div className="flex items-center gap-2 px-2">
+        <header className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 rounded-lg bg-muted px-2">
+            <div className="flex min-w-0 items-center gap-2 px-2">
                 <button
                     type="button"
                     aria-label={state === 'collapsed' ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -86,10 +127,10 @@ export function TopHeader({ user }: TopHeaderProps) {
                 </div>
 
                 <Breadcrumb>
-                    <BreadcrumbList className="flex-nowrap gap-1.5 text-inherit">
+                    <BreadcrumbList className="min-w-0 flex-nowrap gap-1.5 overflow-hidden text-inherit">
                         {breadcrumbs.length === 0 ? (
                             <BreadcrumbItem>
-                                <BreadcrumbPage className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) whitespace-nowrap text-slate-900 [font-style:var(--text-sm-regular-font-style)]">
+                                <BreadcrumbPage className={`${sidebarDefaultTextClass} whitespace-nowrap text-slate-900`}>
                                     Dashboard
                                 </BreadcrumbPage>
                             </BreadcrumbItem>
@@ -100,13 +141,13 @@ export function TopHeader({ user }: TopHeaderProps) {
                                 return [
                                     <BreadcrumbItem key={`${breadcrumb.href}-item`}>
                                         {isLast ? (
-                                            <BreadcrumbPage className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) whitespace-nowrap text-slate-900 [font-style:var(--text-sm-regular-font-style)]">
+                                            <BreadcrumbPage className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-slate-900`}>
                                                 {breadcrumb.label}
                                             </BreadcrumbPage>
                                         ) : (
                                             <BreadcrumbLink
                                                 asChild
-                                                className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) whitespace-nowrap text-slate-500 [font-style:var(--text-sm-regular-font-style)] hover:text-slate-700"
+                                                className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-slate-500 hover:text-slate-700`}
                                             >
                                                 <Link href={breadcrumb.href}>{breadcrumb.label}</Link>
                                             </BreadcrumbLink>
@@ -125,30 +166,32 @@ export function TopHeader({ user }: TopHeaderProps) {
                 </Breadcrumb>
             </div>
 
-            <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-slate-200 bg-white shadow-box-shadow-shadow-xs">
-                <div className="flex items-center py-1.5 pl-3 pr-0">
-                    <Search className="h-4 w-4 shrink-0 text-slate-400" />
-                </div>
-                <div className="flex h-9 flex-1 items-center px-2">
-                    <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) text-slate-500 [font-style:var(--text-sm-regular-font-style)]">
-                        Search...
-                    </span>
-                </div>
-                <div className="flex items-center gap-1 py-1.5 pl-0 pr-3">
-                    {['⌘', 'K'].map((key) => (
-                        <div
-                            key={key}
-                            className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-slate-50 px-1 py-0"
-                        >
-                            <span className="font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-500 [font-style:var(--text-xs-regular-font-style)]">
-                                {key}
-                            </span>
-                        </div>
-                    ))}
+            <div className="justify-self-center">
+                <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-slate-200 bg-white shadow-box-shadow-shadow-xs">
+                    <div className="flex items-center py-1.5 pl-3 pr-0">
+                        <Search className="h-4 w-4 shrink-0 text-slate-400" />
+                    </div>
+                    <div className="flex h-9 flex-1 items-center px-2">
+                        <span className={`flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-500 ${sidebarDefaultTextClass}`}>
+                            Search...
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1 py-1.5 pl-0 pr-3">
+                        {['⌘', 'K'].map((key) => (
+                            <div
+                                key={key}
+                                className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-slate-50 px-1 py-0"
+                            >
+                                <span className="font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-500 [font-style:var(--text-xs-regular-font-style)]">
+                                    {key}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 p-2">
+            <div className="flex items-center gap-4 p-2 justify-self-end">
                 <div className="flex w-13 items-center justify-between">
                     <button
                         type="button"

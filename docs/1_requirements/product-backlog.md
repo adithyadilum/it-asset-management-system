@@ -6,7 +6,7 @@ _Total Tasks across all Epics: 540_
 
 ---
 
-# Epic 1: Authentication & App Shell (Completed - v1 Mock Architecture)
+## Epic 1: Authentication & App Shell (Completed - v1 Mock Architecture)
 
 **Architectural Note:** To accelerate development, this epic was built using a custom **Server-Side JWT Authentication** architecture leveraging Next.js Server Actions and Edge Middleware, rather than the originally planned Client-Side SPA (MSAL.js/Axios) approach. Corporate Azure AD SSO integration has been moved to a post-review Tech Debt ticket.
 
@@ -67,76 +67,71 @@ _To be executed after the core Asset CRUD operations are finalized._
 
 ---
 
-## Epic 2: System Permissions & Role-Based Access Control
+## Epic 2: System Permissions & Role-Based Access Control (Updated Architecture)
 
 ### US-2.1 — Administrator Control Panel for System Permissions
 
 **Frontend**
 
-- [ ] Build the Master-Detail split-view layout component: left panel listing the 4 roles, right panel displaying assigned users for the selected role.
-- [ ] Build the "Add User" modal with a searchable input, multi-select user list, individual trash-icon removal, and a "Confirm Mapping" CTA.
-- [ ] Build the "Remove User Access" confirmation modal with destructive-action styling.
-- [ ] Implement self-lockout prevention logic: disable the trash icon on the current user's own row when the "Global Admin" role is selected.
-- [ ] Build the "No users found" empty state for the user search within the Add User modal.
+- [x] Build the Master-Detail split-view layout component at `src/app/(app-shell)/(management)/settings/roles/page.tsx`.
+- [x] Colocate specific UI components (`roles-management-table.tsx`, `user-role-assignment-modal.tsx`) directly inside the `roles` folder, avoiding global HTML-type folders.
+- [x] Build the "Add User/Change Role" modal with a searchable input, role dropdown, and "Confirm Mapping" CTA.
+- [x] Implement self-lockout prevention logic in the UI: disable the role dropdown/trash icon on the active user's own row.
 
-**Backend**
+**Backend / Infrastructure**
 
-- [ ] Create a `UserRoles` mapping table in the database linking `user_id` to `role_id`.
-- [ ] Create a `POST /api/v1/roles/{roleId}/users` bulk-assignment endpoint accepting an array of user IDs.
-- [ ] Create a `DELETE /api/v1/roles/{roleId}/users/{userId}` revocation endpoint.
-- [ ] Write backend validation to reject any `DELETE` request targeting the active user's own mapping row in the `UserRoles` table (anti-lockout fail-safe).
-- [ ] Create a `GET /api/v1/users/search?q={query}` endpoint to power the user search in the Add User modal, with support for filtering out already-mapped users.
+- [x] Replace the legacy `UserRoles` mapping table with a strict PostgreSQL Enum (`roleEnum`) directly on the `users` table via `src/db/schema.ts`.
+- [x] Create a `src/actions/roles.ts` file using the `"use server"` directive.
+- [x] Write the `assignUserRole(targetUserId, newRole)` action featuring a "Zero-Trust" authorization guard (requires `GlobalAdmin`).
+- [x] Use Drizzle's `.returning()` method in the assignment action to verify the database row was modified.
+- [x] Execute `revalidatePath("/settings/roles")` upon successful role assignment to clear the Next.js cache.
+- [x] Write the `searchUsers(query)` action with an authorization guard to prevent data enumeration by non-admins.
 
 ### US-2.2 — Global Admin Role Capabilities
 
 **Frontend**
 
-- [ ] Implement the role-aware Sidebar component that renders all navigation items when `user.role === 'GlobalAdmin'`.
-- [ ] Ensure all action buttons (Edit, Delete, Assign, Dispose, etc.) render without restriction for this role across all pages.
+- [x] Implement the role-aware `AppSidebar` component using a `.filter()` method on the `allowedRoles` array to dynamically render navigation items.
+- [x] Ensure all action buttons (Edit, Delete, Assign, Dispose) render without restriction for this role across all pages.
+      **Backend / Infrastructure**
 
-**Backend**
-
-- [ ] Configure the backend JWT parser to identify and validate the `GlobalAdmin` claim from the token payload.
-- [ ] Ensure all RBAC middleware grants full pass-through access for requests carrying the `GlobalAdmin` role.
+- [x] Configure the `src/actions/*` files to identify and validate the `GlobalAdmin` claim from the JWT token payload.
+- [x] Ensure the Edge Proxy (`src/proxy.ts`) grants full pass-through access for requests carrying the `GlobalAdmin` role.
 
 ### US-2.3 — IT Operator Role Capabilities
 
 **Frontend**
 
-- [ ] Implement conditional sidebar rendering that hides "Settings", "Integrations", "System Log", and "Master Data" navigation items when `user.role === 'ITOperator'`.
-- [ ] Build a reusable `403 Forbidden` error page component with an illustration and a "Return to Dashboard" navigation button.
-- [ ] Implement frontend route guards that redirect IT Operators to the 403 page if they attempt to access restricted URL paths.
+- [x] Configure the `managementItems` array in the Sidebar to hide the "Settings" namespace when `user.role === 'ITOperator'`.
+- [x] Build a reusable branded error page at `src/app/403/page.tsx` with a "Return to Dashboard" action.
 
-**Backend**
+**Backend / Infrastructure**
 
-- [ ] Implement Azure AD Group-to-Role mapping logic in the SSO callback to automatically assign the "IT Operator" role when the user's token contains the "IT Helpdesk" group claim.
-- [ ] Write RBAC middleware to strictly protect configuration API routes (e.g., `POST /api/categories`, `GET /api/settings`, `POST /api/webhooks`) from this role, returning `403 Forbidden`.
+- [x] Write logic in the Next.js 16 Edge Proxy (`src/proxy.ts`) to extract the JWT payload and verify the active session in the Neon database.
+- [x] Return a `NextResponse.redirect(new URL('/403'))` if an IT Operator attempts to access `pathname.startsWith('/settings')`.
 
 ### US-2.4 — Finance Auditor Role Capabilities
 
 **Frontend**
 
-- [ ] Implement conditional rendering logic to completely remove all write-action buttons (Edit, Assign, Dispose, Delete) from the DOM when `user.role === 'FinanceAuditor'`.
-- [ ] Ensure "Export CSV" and "Download Report" buttons remain visible and fully functional for this role.
-- [ ] Implement the role-aware Sidebar component that shows Financial module navigation but hides operational settings.
+- [x] Configure the `AppSidebar` to display the Financial module and Reports module, but hide the Operations and Settings namespaces.
+- [x] Implement conditional rendering logic on data tables to completely remove write-action buttons (Edit, Assign, Dispose, Delete) from the DOM when `user.role === 'FinanceAuditor'`.
 
-**Backend**
+**Backend / Infrastructure**
 
-- [ ] Apply strict Read-Only (`GET`-only) middleware enforcement for the `FinanceAuditor` role across all `/api/assets/*` and `/api/operations/*` controllers.
-- [ ] Ensure the Finance-specific API endpoints (`GET /api/financials/*`) are accessible to both `FinanceAuditor` and `GlobalAdmin` roles.
+- [x] Apply strict Zero-Trust Server Action enforcement for the `FinanceAuditor` role, ensuring they are blocked from executing state-mutating actions (e.g., `updateAsset`, `deleteAsset`).
+- [x] Ensure Edge Proxy routing allows `FinanceAuditor` access to `/financials/*` and `/reports/*`.
 
 ### US-2.5 — Default "Least Privilege" Access Assignment
 
-**Backend**
+**Database & Seeding**
 
-- [ ] Write user-provisioning logic in the SSO callback: if the incoming `user_id` does not exist in the local `Users` table, insert a new record and set their `role_id` to the database equivalent of "Standard Employee".
-- [ ] Ensure the RBAC middleware strictly treats any `null` or missing role mappings as "Standard Employee" to prevent accidental privilege escalation.
-- [ ] Implement Azure AD group-claims parsing: if the user's JWT contains recognized group memberships (e.g., "IT Helpdesk", "Finance Team"), auto-elevate during provisioning instead of defaulting.
+- [x] Add a `.default("Employee")` constraint on the `role` column in `src/db/schema.ts` to enforce least-privilege strictly at the database schema level.
+- [x] Update the Drizzle seed script (`src/db/seed.ts`) to generate the exact 4 test personas (`GlobalAdmin`, `ITOperator`, `FinanceAuditor`, `Employee`) for frontend testing.
 
-**Database**
+**Backend / Infrastructure**
 
-- [ ] Seed the `Roles` table with the 4 hardcoded role records (Global Admin, IT Operator, Finance Auditor, Standard Employee) during initial database migration.
-- [ ] Add a `NOT NULL DEFAULT` constraint on the `role_id` column in the `Users` table pointing to the "Standard Employee" role ID to enforce least-privilege at the schema level.
+- [x] Ensure the `getAuthenticatedUser()` helper securely defaults to bouncing traffic to `/login` or stripping privileges if the JWT lacks a recognized role string, preventing accidental privilege escalation.
 
 ---
 

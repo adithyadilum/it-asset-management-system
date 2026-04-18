@@ -1,116 +1,174 @@
-"use server"
+'use server';
 
-import { randomUUID } from "node:crypto";
+import { randomUUID } from 'node:crypto';
 
-import bcrypt from "bcryptjs";
-import { and, eq, isNull } from "drizzle-orm";
-import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import bcrypt from 'bcryptjs';
+import { and, eq, isNull } from 'drizzle-orm';
+import { SignJWT, jwtVerify } from 'jose';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-import { db } from "@/db";
-import { sessions, users } from "@/db/schema";
-import { getJwtSecretKey } from "@/lib/jwt";
-import type { LoginActionResult, LoginRequest, UserRole } from "@/types/auth";
+import { db } from '@/db';
+import { sessions, users } from '@/db/schema';
+import { getJwtSecretKey } from '@/lib/jwt';
+import { logLatency, startLatencyTimer } from '@/lib/latency';
+import type { LoginActionResult, LoginRequest, UserRole } from '@/types/auth';
 
-const SESSION_COOKIE_NAME = "session_token";
+const SESSION_COOKIE_NAME = 'session_token';
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
 
 function normalizeRole(role: string): UserRole {
-    return role === "Admin" ? "Admin" : "Employee";
+  if (
+    role === 'GlobalAdmin' ||
+    role === 'ITOperator' ||
+    role === 'FinanceAuditor' ||
+    role === 'Employee'
+  ) {
+    return role;
+  }
+
+  return 'Employee';
 }
 
-export async function mockLogin(credentials: LoginRequest): Promise<LoginActionResult> {
+export async function mockLogin(
+  credentials: LoginRequest
+): Promise<LoginActionResult> {
+  const actionTimer = startLatencyTimer();
+
+  try {
     const email = credentials.email.trim().toLowerCase();
     const password = credentials.password;
 
     if (!email || !password) {
-        return { success: false, error: "Email and password are required." };
+      return { success: false, error: 'Email and password are required.' };
     }
 
+    const userLookupTimer = startLatencyTimer();
     const user = await db.query.users.findFirst({
-        where: eq(users.email, email),
+      where: eq(users.email, email),
+    });
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'auth.mockLogin.find_user',
+      startTime: userLookupTimer,
     });
 
     if (!user) {
-        return { success: false, error: "Invalid credentials" };
+      return { success: false, error: 'Invalid credentials' };
     }
 
     if (!user.isActive) {
-        return { success: false, error: "Your account is inactive. Contact IT support." };
+      return {
+        success: false,
+        error: 'Your account is inactive. Contact IT support.',
+      };
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-        return { success: false, error: "Invalid credentials" };
+      return { success: false, error: 'Invalid credentials' };
     }
 
     const tokenId = randomUUID();
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
     const role = normalizeRole(user.role);
 
+    const createSessionTimer = startLatencyTimer();
     await db.insert(sessions).values({
+      userId: user.id,
+      tokenId,
+      expiresAt,
+    });
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'auth.mockLogin.create_session',
+      startTime: createSessionTimer,
+      metadata: {
         userId: user.id,
-        tokenId,
-        expiresAt,
+      },
     });
 
     const token = await new SignJWT({
-        sid: tokenId,
-        email: user.email,
-        role,
-        name: user.name,
+      sid: tokenId,
+      email: user.email,
+      role,
+      name: user.name,
     })
-        .setProtectedHeader({ alg: "HS256" })
-        .setSubject(String(user.id))
-        .setIssuedAt()
-        .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
-        .sign(getJwtSecretKey());
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(String(user.id))
+      .setIssuedAt()
+      .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
+      .sign(getJwtSecretKey());
 
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: SESSION_TTL_SECONDS,
-        path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_TTL_SECONDS,
+      path: '/',
     });
 
     return {
-        success: true,
-        message: "Login successful",
-        user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role,
-        },
-        sessionId: tokenId,
-        expiresAt: expiresAt.toISOString(),
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role,
+      },
+      sessionId: tokenId,
+      expiresAt: expiresAt.toISOString(),
     };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'auth.mockLogin',
+      startTime: actionTimer,
+    });
+  }
 }
 
 export async function logout() {
+  const actionTimer = startLatencyTimer();
+
+  try {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (token) {
-        try {
-            const verified = await jwtVerify(token, getJwtSecretKey());
-            const sessionId = verified.payload.sid;
+      try {
+        const verified = await jwtVerify(token, getJwtSecretKey());
+        const sessionId = verified.payload.sid;
 
-            if (typeof sessionId === "string") {
-                await db
-                    .update(sessions)
-                    .set({ revokedAt: new Date() })
-                    .where(and(eq(sessions.tokenId, sessionId), isNull(sessions.revokedAt)));
-            }
-        } catch {
-            // Ignore invalid token here; cookie is removed below regardless.
+        if (typeof sessionId === 'string') {
+          const revokeSessionTimer = startLatencyTimer();
+          await db
+            .update(sessions)
+            .set({ revokedAt: new Date() })
+            .where(
+              and(eq(sessions.tokenId, sessionId), isNull(sessions.revokedAt))
+            );
+          logLatency({
+            scope: 'DB ACTION',
+            label: 'auth.logout.revoke_session',
+            startTime: revokeSessionTimer,
+          });
         }
+      } catch {
+        // Ignore invalid token here; cookie is removed below regardless.
+      }
     }
 
     cookieStore.delete(SESSION_COOKIE_NAME);
-    redirect("/login");
+    redirect('/login');
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'auth.logout',
+      startTime: actionTimer,
+    });
+  }
 }

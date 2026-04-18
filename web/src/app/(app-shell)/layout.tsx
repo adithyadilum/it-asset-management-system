@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react"
+import { cache, type CSSProperties, type ReactNode } from "react"
 import { jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
@@ -11,7 +11,7 @@ import type { ShellUser } from "@/types/layout"
 
 const SESSION_COOKIE_NAME = "session_token"
 
-async function getShellUser(): Promise<ShellUser | null> {
+const getShellUser = cache(async (): Promise<ShellUser | null> => {
     const cookieStore = await cookies()
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
@@ -30,7 +30,10 @@ async function getShellUser(): Promise<ShellUser | null> {
         if (
             typeof payload.name !== "string" ||
             typeof payload.email !== "string" ||
-            (payload.role !== "Admin" && payload.role !== "Employee")
+            (payload.role !== "GlobalAdmin" &&
+                payload.role !== "ITOperator" &&
+                payload.role !== "FinanceAuditor" &&
+                payload.role !== "Employee")
         ) {
             return null
         }
@@ -43,7 +46,7 @@ async function getShellUser(): Promise<ShellUser | null> {
     } catch {
         return null
     }
-}
+})
 
 export default async function AppShellLayout({
     children,
@@ -60,14 +63,14 @@ export default async function AppShellLayout({
             style={{ "--sidebar-width": "260px" } as CSSProperties}
         >
             <div className="flex h-screen w-full items-center bg-muted p-3.5">
-                <AppSidebar />
+                <AppSidebar userRole={user.role} />
 
                 <div className="flex h-full min-w-0 flex-1 flex-col gap-2">
                     <TopHeader user={user} />
 
-                    <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-[#e7ebf0] bg-background">
-                        <div className="flex min-h-0 flex-1 flex-col rounded-md bg-background shadow-box-shadow-shadow-sm">
-                            <div className="flex min-h-0 flex-1 flex-col px-6 py-6">
+                    <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-background">
+                        <div className="flex min-h-0 flex-1 flex-col rounded-md bg-background">
+                            <div className="flex min-h-0 flex-1 flex-col">
                                 {children}
                             </div>
                         </div>
