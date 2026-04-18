@@ -7,24 +7,22 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
+export type SlidePanelAction = {
+    id?: string;
+    label: React.ReactNode;
+    variant?: React.ComponentProps<typeof Button>["variant"];
+    onClick?: () => void;
+    disabled?: boolean;
+};
+
 interface SlidePanelProps {
     isOpen: boolean;
     onClose: (open: boolean) => void;
     title: React.ReactNode;
     description?: React.ReactNode;
+    headerContent?: React.ReactNode;
     content?: React.ReactNode;
-    primaryAction?: {
-        label: string;
-        variant?: React.ComponentProps<typeof Button>["variant"];
-        onClick?: () => void;
-        disabled?: boolean;
-    };
-    secondaryAction?: {
-        label: string;
-        variant?: React.ComponentProps<typeof Button>["variant"];
-        onClick?: () => void;
-        disabled?: boolean;
-    };
+    actions?: SlidePanelAction[];
     /** Render close action in header */
     showCloseButton?: boolean;
 }
@@ -62,14 +60,15 @@ export function SlidePanel({
     onClose,
     title,
     description,
+    headerContent,
     content,
-    primaryAction,
-    secondaryAction,
+    actions,
     showCloseButton = true,
 }: SlidePanelProps) {
     const titleId = React.useId();
     const descriptionId = React.useId();
     const hasProvidedContent = React.Children.count(content) > 0;
+    const resolvedActions = actions ?? [];
     const panelStyle = {
         "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
         "--slide-panel-gap": `${DEFAULT_PANEL_GAP}px`,
@@ -126,47 +125,38 @@ export function SlidePanel({
                         </div>
                     </header>
 
+                    {headerContent && (
+                        <div className="shrink-0 px-5 pb-2 sm:px-6">
+                            {headerContent}
+                        </div>
+                    )}
+
                     <ScrollArea className="min-h-0 flex-1">
                         <div className="px-5 py-5 sm:px-6">
                             {hasProvidedContent ? content : <PanelPlaceholder />}
                         </div>
                     </ScrollArea>
 
-                    {(secondaryAction || primaryAction) && (
+                    {resolvedActions.length > 0 && (
                         <footer className="shrink-0 px-5 py-4 sm:px-6">
                             <div className="flex flex-wrap items-center justify-end gap-2">
-                                {secondaryAction && (
+                                {resolvedActions.map((action, index) => (
                                     <Button
+                                        key={action.id ?? `${String(action.label)}-${index}`}
                                         type="button"
-                                        variant={secondaryAction.variant ?? "outline"}
+                                        variant={action.variant ?? (index === resolvedActions.length - 1 ? "default" : "outline")}
                                         onClick={() => {
-                                            if (secondaryAction.onClick) {
-                                                secondaryAction.onClick();
+                                            if (action.onClick) {
+                                                action.onClick();
                                                 return;
                                             }
                                             onClose(false);
                                         }}
-                                        disabled={secondaryAction.disabled}
+                                        disabled={action.disabled}
                                     >
-                                        {secondaryAction.label}
+                                        {action.label}
                                     </Button>
-                                )}
-                                {primaryAction && (
-                                    <Button
-                                        type="button"
-                                        variant={primaryAction.variant ?? "default"}
-                                        onClick={() => {
-                                            if (primaryAction.onClick) {
-                                                primaryAction.onClick();
-                                                return;
-                                            }
-                                            onClose(false);
-                                        }}
-                                        disabled={primaryAction.disabled}
-                                    >
-                                        {primaryAction.label}
-                                    </Button>
-                                )}
+                                ))}
                             </div>
                         </footer>
                     )}
