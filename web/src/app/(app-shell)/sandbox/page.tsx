@@ -16,7 +16,7 @@ export default function UIPlaygroundPage() {
     ]
 
 
-const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isModalOpen, setIsModalOpen] = useState(false)
 
     return (
         <div className="p-10 space-y-8">
