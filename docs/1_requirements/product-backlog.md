@@ -107,7 +107,7 @@ _To be executed after the core Asset CRUD operations are finalized._
 
 **Backend / Infrastructure**
 
-- [x] Write logic in the Next.js 16 Edge Proxy (`src/proxy.ts`) to extract the JWT payload and verify the active session in the Neon database.
+- [x] Write logic in the Next.js 16 Edge Proxy (`src/proxy.ts`) to extract and statelessly verify the JWT payload for the active request.
 - [x] Return a `NextResponse.redirect(new URL('/403'))` if an IT Operator attempts to access `pathname.startsWith('/settings')`.
 
 ### US-2.4 — Finance Auditor Role Capabilities
