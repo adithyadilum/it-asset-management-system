@@ -22,8 +22,12 @@ export function LoadingSpinner({ className, size = "md" }: LoadingSpinnerProps) 
       strokeLinecap="round"
       strokeLinejoin="round"
       className={cn(`animate-spin text-foreground ${sizeClasses[size]}`, className)}
+      role="status"
+      aria-label="Loading"
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      {/* Fallback for older screen readers */}
+      <span className="sr-only">Loading</span>
     </svg>
   );
 }
