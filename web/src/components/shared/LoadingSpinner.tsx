@@ -6,7 +6,6 @@ interface LoadingSpinnerProps {
 }
 
 export function LoadingSpinner({ className, size = "md" }: LoadingSpinnerProps) {
-  
   const sizeClasses = {
     sm: "h-4 w-4",
     md: "h-6 w-6",
@@ -22,8 +21,7 @@ export function LoadingSpinner({ className, size = "md" }: LoadingSpinnerProps) 
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      // overridden by passing a Tailwind text color into className
-      className={cn(`animate-spin text-slate-800 ${sizeClasses[size]}`, className)}
+      className={cn(`animate-spin text-foreground ${sizeClasses[size]}`, className)}
     >
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
     </svg>

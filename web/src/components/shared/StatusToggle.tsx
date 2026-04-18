@@ -1,3 +1,6 @@
+"use client";
+
+import { useId } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils"; 
@@ -8,7 +11,8 @@ interface StatusToggleProps {
   activeText?: string; 
   inactiveText?: string;
   disabled?: boolean;
-  className?: string; // Add the className prop
+  className?: string;
+  id?: string;
 }
 
 export function StatusToggle({
@@ -17,22 +21,26 @@ export function StatusToggle({
   activeText = "Active",
   inactiveText = "Inactive",
   disabled = false,
-  className, 
+  className,
+  id, 
 }: StatusToggleProps) {
+  // Generates a unique ID automatically if one isn't provided
+  const generatedId = useId();
+  const toggleId = id || `status-toggle-${generatedId}`;
+
   return (
-    
     <div className={cn("flex items-center space-x-3", className)}>
       <Switch
-        id="status-toggle"
+        id={toggleId}
         checked={isActive}
         onCheckedChange={onToggle}
         disabled={disabled}
       />
       <Label 
-        htmlFor="status-toggle" 
+        htmlFor={toggleId} 
         className={cn(
           "text-sm font-medium transition-colors",
-          isActive ? "text-slate-900" : "text-slate-500"
+          isActive ? "text-foreground" : "text-muted-foreground"
         )}
       >
         {isActive ? activeText : inactiveText}

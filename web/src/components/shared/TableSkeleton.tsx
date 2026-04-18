@@ -18,22 +18,19 @@ export function TableSkeleton({
     <div className="w-full space-y-4">
       
       {/* Table Header Placeholder */}
-      <div className="flex items-center space-x-4 border-b pb-4 px-2">
-        {showCheckbox && <Skeleton className="h-4 w-4 rounded bg-slate-200" />}
-        {/* Generates a header block for every width in the array */}
+      <div className="flex items-center space-x-4 border-b border-border pb-4 px-2">
+        {showCheckbox && <Skeleton className="h-4 w-4 rounded" />}
         {columnWidths.map((width, index) => (
-          <Skeleton key={`header-col-${index}`} className={`h-6 ${width} bg-slate-200`} />
+          <Skeleton key={`header-col-${index}`} className={`h-6 ${width}`} />
         ))}
       </div>
       
       {/* Table Rows Placeholder */}
       {Array.from({ length: rowCount }).map((_, rowIndex) => (
-        <div key={`row-${rowIndex}`} className="flex items-center space-x-4 py-3 px-2 border-b border-slate-50 last:border-0">
-          {showCheckbox && <Skeleton className="h-4 w-4 rounded bg-slate-100" />}
-          
-          {/* Generates the cells for this specific row based on the same array */}
+        <div key={`row-${rowIndex}`} className="flex items-center space-x-4 py-3 px-2 border-b border-border last:border-0">
+          {showCheckbox && <Skeleton className="h-4 w-4 rounded" />}
           {columnWidths.map((width, colIndex) => (
-            <Skeleton key={`cell-${rowIndex}-${colIndex}`} className={`h-5 ${width} bg-slate-100`} />
+            <Skeleton key={`cell-${rowIndex}-${colIndex}`} className={`h-5 ${width}`} />
           ))}
         </div>
       ))}
