@@ -6,8 +6,6 @@ import { SearchableDropdown } from "@/components/ui/searchable-dropdown"
 import { StandardModal } from "@/components/ui/standard-modal"
 
 export default function UIPlaygroundPage() {
-    const [isOpen, setIsOpen] = useState(false)
-
     const users = [
         { value: "adithya", label: "Adithya Dilum" },
         { value: "chamodi", label: "Chamodi Prathibha" },
@@ -36,16 +34,6 @@ export default function UIPlaygroundPage() {
                 </div>
             </div>
 
-            <div className="p-6 border rounded-xl border-dashed border-slate-300 bg-slate-50">
-                <h2 className="text-lg font-semibold mb-4">Slide Panel Test</h2>
-
-                <Button onClick={() => setIsOpen(true)}>
-                    Open Test Panel
-                </Button>
-
-                
-            </div>
-            
             <div className="p-6 border rounded-xl border-dashed border-slate-300 bg-slate-50">
     <h2 className="text-lg font-semibold mb-4 text-[#00145a]">Standard Modal Test</h2>
     <Button variant="outline" onClick={() => setIsModalOpen(true)}>
