@@ -22,7 +22,7 @@ export interface DeleteItem {
   id: string;
   name: string;
   category?: string;
-  [key: string]: any; // Allow additional properties
+  [key: string]: unknown; // Allow additional properties while preserving type-safety
 }
 
 export interface DestructiveConfirmationDialogProps {
