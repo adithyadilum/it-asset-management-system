@@ -1,9 +1,85 @@
 "use client"
 
+import type { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { DataTable, type DataTableSelectionAction } from "@/components/ui/data-table"
 import { Toaster, tiqriToast } from "@/components/ui/sonner copy"
+
+type SandboxAssetRow = {
+  id: string
+  assetTag: string
+  assetName: string
+  category: string
+  owner: string
+  status: "Available" | "Assigned" | "In Repair"
+}
+
+//deafult: every column is sortable
+const sandboxColumns: ColumnDef<SandboxAssetRow>[] = [
+  {
+    accessorKey: "assetTag",
+    header: "Asset Tag",
+  },
+  {
+    accessorKey: "assetName",
+    header: "Asset Name",
+  },
+  {
+    accessorKey: "category",
+    header: "Category",
+    enableSorting: false,  //column sorting can be set to false
+  },
+  {
+    accessorKey: "owner",
+    header: "Owner",
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+  },
+]
+
+const sandboxData: SandboxAssetRow[] = Array.from({ length: 38 }, (_, index) => {
+  const number = index + 1
+  const statusByIndex: SandboxAssetRow["status"][] = [
+    "Available",
+    "Assigned",
+    "In Repair",
+  ]
+
+  return {
+    id: `asset-${number}`,
+    assetTag: `LAP-${String(number).padStart(4, "0")}`,
+    assetName: `Lenovo ThinkPad ${number}`,
+    category: number % 2 === 0 ? "Laptop" : "Monitor",
+    owner: number % 3 === 0 ? "IT Support" : "Operations",
+    status: statusByIndex[index % statusByIndex.length],
+  }
+})
+
+const sandboxSelectionActions: DataTableSelectionAction<SandboxAssetRow>[] = [
+  {
+    id: "print-qr",
+    label: "Print QR code",
+    onClick: (selectedRows) =>
+      tiqriToast.info(`Printing QR codes for ${selectedRows.length} selected assets.`),
+  },
+  {
+    id: "assign",
+    label: "Assign",
+    onClick: (selectedRows) =>
+      tiqriToast.success(`Assignment started for ${selectedRows.length} selected assets.`),
+  },
+  {
+    id: "dispose",
+    label: "Dispose",
+    tone: "destructive",
+    onClick: (selectedRows) =>
+      tiqriToast.warning(`Disposal workflow opened for ${selectedRows.length} selected assets.`),
+  },
+]
 
 export default function SandboxToastPage() {
   return (
@@ -131,6 +207,23 @@ export default function SandboxToastPage() {
           <Button type="button" variant="secondary" onClick={() => toast.dismiss()}>
             Reset Toasts
           </Button>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-dashed border-chart-2 bg-background p-4 md:p-6">
+        <h2 className="text-lg font-semibold text-foreground">DataTable Sandbox</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Typed reusable DataTable demo using <code>ColumnDef&lt;SandboxAssetRow&gt;</code>.
+        </p>
+
+        <div className="mt-4">
+          <DataTable<SandboxAssetRow, unknown>
+            columns={sandboxColumns}
+            data={sandboxData}
+            initialPageSize={16}
+            selectionActions={sandboxSelectionActions}
+            selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
+          />
         </div>
       </section>
     </div>
