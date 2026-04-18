@@ -174,7 +174,7 @@ export const DestructiveConfirmationDialog = React.forwardRef<
               const itemHasError = hasError(item.id);
               return (
                 <div
-                  key={item.id || index}
+                  key={item.id}
                   className={`flex items-center justify-between rounded-md p-4 transition-colors ${
                     itemHasError
                       ? "border-2 border-red-500 bg-red-50"
