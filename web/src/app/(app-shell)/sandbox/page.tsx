@@ -1,22 +1,22 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
-import { StandardModal } from "@/components/ui/standard-modal";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown"
+import { StandardModal } from "@/components/ui/standard-modal"
 
 export default function UIPlaygroundPage() {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(false)
 
     const users = [
         { value: "adithya", label: "Adithya Dilum" },
         { value: "chamodi", label: "Chamodi Prathibha" },
         { value: "tharumuthu", label: "Tharumuthu Ruchiranga" },
         { value: "tharushi", label: "Tharushi Hasinika " },
-    ];
+    ]
 
 
-const [isModalOpen, setIsModalOpen] = useState(false);
+const [isModalOpen, setIsModalOpen] = useState(false)
 
     return (
         <div className="p-10 space-y-8">
@@ -73,5 +73,5 @@ const [isModalOpen, setIsModalOpen] = useState(false);
 </div>
 
         </div>
-    );
+    )
 }
