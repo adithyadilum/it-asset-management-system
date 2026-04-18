@@ -3,7 +3,8 @@
 import * as React from "react";
 
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type TabbedPanelTab = {
     id: string;
@@ -20,9 +21,6 @@ interface TabbedPanelProps {
     defaultTabId?: string;
     actions?: SlidePanelAction[];
 }
-
-const textSmRegularClass =
-    "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]";
 
 function getInitialTabId(tabs: TabbedPanelTab[], preferredTabId?: string) {
     if (preferredTabId && tabs.some((tab) => tab.id === preferredTabId)) {
@@ -53,8 +51,6 @@ export function TabbedPanel({
         }
     }, [activeTabId, defaultTabId, tabs]);
 
-    const activeTab = tabs.find((tab) => tab.id === activeTabId);
-
     const handleTabChange = (nextTabId: string) => {
         const viewport = contentRef.current
             ?.closest("[data-slot='scroll-area']")
@@ -70,26 +66,30 @@ export function TabbedPanel({
         }
     };
 
-    const tabsHeader =
+    const content =
         tabs.length > 0 ? (
-            <Tabs value={activeTabId} onValueChange={handleTabChange}>
-                <TabsList className="w-full justify-start gap-1 overflow-x-auto">
-                    {tabs.map((tab) => (
-                        <TabsTrigger key={tab.id} value={tab.id} className="shrink-0">
-                            {tab.label}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
-            </Tabs>
-        ) : null;
+            <div ref={contentRef}>
+                <Tabs value={activeTabId} onValueChange={handleTabChange} className="space-y-3">
+                    <TabsList className="w-full justify-start gap-1 overflow-x-auto">
+                        {tabs.map((tab) => (
+                            <TabsTrigger key={tab.id} value={tab.id} className="shrink-0">
+                                {tab.label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
 
-    const content = activeTab ? (
-        <div ref={contentRef}>{activeTab.content}</div>
-    ) : (
-        <div className={`rounded-md bg-muted p-3 ${textSmRegularClass} text-muted-foreground`}>
-            No tabs were provided.
-        </div>
-    );
+                    {tabs.map((tab) => (
+                        <TabsContent key={tab.id} value={tab.id} className="mt-0">
+                            {tab.content}
+                        </TabsContent>
+                    ))}
+                </Tabs>
+            </div>
+        ) : (
+            <div className={`rounded-md bg-muted p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+                No tabs were provided.
+            </div>
+        );
 
     return (
         <SlidePanel
@@ -97,7 +97,6 @@ export function TabbedPanel({
             onClose={onClose}
             title={title}
             description={description}
-            headerContent={tabsHeader}
             content={content}
             actions={actions}
         />

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 
 export type DetailPanelField = {
     label: React.ReactNode;
@@ -19,13 +20,6 @@ interface DetailPanelProps {
     actions?: SlidePanelAction[];
 }
 
-const textXsMediumClass =
-    "font-text-xs-medium text-(length:--text-xs-medium-font-size) leading-(--text-xs-medium-line-height) tracking-(--text-xs-medium-letter-spacing) [font-style:var(--text-xs-medium-font-style)]";
-const textSmRegularClass =
-    "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]";
-const textSmSemiBoldClass =
-    "font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) [font-style:var(--text-sm-semi-bold-font-style)]";
-
 function renderBadge(badge: string | React.ReactNode, index: number) {
     if (typeof badge !== "string") {
         return <React.Fragment key={`badge-node-${index}`}>{badge}</React.Fragment>;
@@ -34,7 +28,7 @@ function renderBadge(badge: string | React.ReactNode, index: number) {
     return (
         <span
             key={`badge-${badge}-${index}`}
-            className={`inline-flex items-center rounded-md bg-muted px-2 py-0.5 ${textXsMediumClass} text-muted-foreground`}
+            className={`inline-flex items-center rounded-md bg-muted px-2 py-0.5 ${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground`}
         >
             {badge}
         </span>
@@ -68,13 +62,13 @@ export function DetailPanel({
             <dl className="grid grid-cols-[minmax(120px,170px)_1fr] gap-x-4 gap-y-3">
                 {fields.map((field, index) => (
                     <React.Fragment key={`detail-field-${index}`}>
-                        <dt className={`${textSmSemiBoldClass} text-foreground`}>{field.label}</dt>
-                        <dd className={`${textSmRegularClass} text-muted-foreground`}>{field.value}</dd>
+                        <dt className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>{field.label}</dt>
+                        <dd className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{field.value}</dd>
                     </React.Fragment>
                 ))}
             </dl>
         ) : (
-            <div className={`rounded-md bg-muted p-3 ${textSmRegularClass} text-muted-foreground`}>
+            <div className={`rounded-md bg-muted p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                 No detail fields were provided.
             </div>
         );

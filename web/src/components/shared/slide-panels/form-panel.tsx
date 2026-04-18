@@ -4,6 +4,7 @@ import * as React from "react";
 import { LoaderCircle } from "lucide-react";
 
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 
 interface FormPanelProps {
     isOpen: boolean;
@@ -18,9 +19,6 @@ interface FormPanelProps {
     cancelLabel?: string;
     showCloseButton?: boolean;
 }
-
-const textSmRegularClass =
-    "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]";
 
 export function FormPanel({
     isOpen,
@@ -65,7 +63,7 @@ export function FormPanel({
             {React.Children.count(children) > 0 ? (
                 children
             ) : (
-                <div className={`rounded-md bg-muted p-3 ${textSmRegularClass} text-muted-foreground`}>
+                <div className={`rounded-md bg-muted p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                     Add form fields as children to the FormPanel component.
                 </div>
             )}

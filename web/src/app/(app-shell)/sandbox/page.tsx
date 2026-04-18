@@ -9,17 +9,7 @@ import { DetailPanel } from "@/components/shared/slide-panels/detail-panel";
 import { FormPanel } from "@/components/shared/slide-panels/form-panel";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TabbedPanel } from "@/components/shared/slide-panels/tabbed-panel";
-
-const textXsRegularClass =
-    "font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) [font-style:var(--text-xs-regular-font-style)]";
-const textSmRegularClass =
-    "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]";
-const textSmMediumClass =
-    "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]";
-const textLgSemiBoldClass =
-    "font-text-lg-semi-bold text-(length:--text-lg-semi-bold-font-size) leading-(--text-lg-semi-bold-line-height) tracking-(--text-lg-semi-bold-letter-spacing) [font-style:var(--text-lg-semi-bold-font-style)]";
-const text2xlSemiBoldClass =
-    "font-text-2xl-semi-bold text-(length:--text-2xl-semi-bold-font-size) leading-(--text-2xl-semi-bold-line-height) tracking-(--text-2xl-semi-bold-letter-spacing) [font-style:var(--text-2xl-semi-bold-font-style)]";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 
 type PanelKey = "form" | "detail" | "tabbed";
 
@@ -63,23 +53,23 @@ export default function UIPlaygroundPage() {
             label: "Details",
             content: (
                 <div className="space-y-3">
-                    <p className={`${textSmMediumClass} text-foreground`}>User Summary</p>
-                    <p className={`${textSmRegularClass} text-muted-foreground`}>
+                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>User Summary</p>
+                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                         Maria is a full-time employee in IT Operations with direct access to asset assignment and maintenance workflows.
                     </p>
                     <div className="rounded-md bg-muted p-3">
                         <dl className="space-y-2">
                             <div className="flex items-center justify-between gap-3">
-                                <dt className={`${textXsRegularClass} text-foreground`}>Department</dt>
-                                <dd className={`${textSmRegularClass} text-muted-foreground`}>IT Operations</dd>
+                                <dt className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-foreground`}>Department</dt>
+                                <dd className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>IT Operations</dd>
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                                <dt className={`${textXsRegularClass} text-foreground`}>Role</dt>
-                                <dd className={`${textSmRegularClass} text-muted-foreground`}>ITOperator</dd>
+                                <dt className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-foreground`}>Role</dt>
+                                <dd className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>ITOperator</dd>
                             </div>
                             <div className="flex items-center justify-between gap-3">
-                                <dt className={`${textXsRegularClass} text-foreground`}>Location</dt>
-                                <dd className={`${textSmRegularClass} text-muted-foreground`}>Colombo HQ</dd>
+                                <dt className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-foreground`}>Location</dt>
+                                <dd className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>Colombo HQ</dd>
                             </div>
                         </dl>
                     </div>
@@ -91,7 +81,7 @@ export default function UIPlaygroundPage() {
             label: "Audit Log",
             content: (
                 <div className="space-y-3">
-                    <p className={`${textSmMediumClass} text-foreground`}>Recent Activity</p>
+                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Recent Activity</p>
                     {[
                         "Assigned LAP-HR-220 to Mark Kim",
                         "Updated warranty metadata",
@@ -99,7 +89,7 @@ export default function UIPlaygroundPage() {
                         "Generated monthly assignment report",
                     ].map((item, index) => (
                         <div key={item} className="rounded-md bg-muted px-3 py-2">
-                            <p className={`${textSmRegularClass} text-muted-foreground`}>{index + 1}. {item}</p>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{index + 1}. {item}</p>
                         </div>
                     ))}
                 </div>
@@ -110,14 +100,14 @@ export default function UIPlaygroundPage() {
             label: "Devices",
             content: (
                 <div className="space-y-3">
-                    <p className={`${textSmMediumClass} text-foreground`}>Assigned Devices</p>
+                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Assigned Devices</p>
                     {[
                         "LAP-HR-220 - ThinkPad T14",
                         "MON-OPS-044 - Dell 27\"",
                         "DOCK-IT-101 - Thunderbolt Dock",
                     ].map((device) => (
                         <div key={device} className="rounded-md bg-muted px-3 py-2">
-                            <p className={`${textSmRegularClass} text-muted-foreground`}>{device}</p>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{device}</p>
                         </div>
                     ))}
                 </div>
@@ -129,13 +119,13 @@ export default function UIPlaygroundPage() {
         <div className="flex h-full min-h-0 bg-muted">
             <div className="flex min-w-0 flex-1 flex-col gap-6 rounded-lg bg-background p-4 sm:p-6">
                 <div className="px-1">
-                    <h1 className={`${text2xlSemiBoldClass} text-foreground`}>TIQRI Design Sandbox</h1>
-                    <p className={`${textSmRegularClass} text-muted-foreground`}>Isolate and test shared components here.</p>
+                    <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>TIQRI Design Sandbox</h1>
+                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>Isolate and test shared components here.</p>
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-dashed border-border bg-muted p-4 sm:p-6">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                        <h2 className={`${textLgSemiBoldClass} text-foreground`}>Slide Panel Archetype Triggers</h2>
+                        <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>Slide Panel Archetype Triggers</h2>
                         <div className="flex flex-wrap items-center gap-2">
                             <Button variant="outline" onClick={() => openPanel("form")}>Open FormPanel</Button>
                             <Button variant="outline" onClick={() => openPanel("detail")}>Open DetailPanel</Button>
@@ -146,22 +136,22 @@ export default function UIPlaygroundPage() {
 
                     <div className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 sm:gap-4">
                         <div className="rounded-xl bg-card p-4">
-                            <p className={`${textSmMediumClass} text-foreground`}>FormPanel</p>
-                            <p className={`${textSmRegularClass} text-muted-foreground`}>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>FormPanel</p>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                 Workhorse for create/edit flows with built-in form wrapper, submit loading state, and standardized Cancel/Submit actions.
                             </p>
                         </div>
 
                         <div className="rounded-xl bg-card p-4">
-                            <p className={`${textSmMediumClass} text-foreground`}>DetailPanel</p>
-                            <p className={`${textSmRegularClass} text-muted-foreground`}>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>DetailPanel</p>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                 Read-only viewer optimized for key-value data using description lists and optional badges in the header.
                             </p>
                         </div>
 
                         <div className="rounded-xl bg-card p-4">
-                            <p className={`${textSmMediumClass} text-foreground`}>TabbedPanel</p>
-                            <p className={`${textSmRegularClass} text-muted-foreground`}>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>TabbedPanel</p>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                 Complex entity viewer with tab navigation below the header and stable scroll behavior while switching tabs.
                             </p>
                         </div>
@@ -170,8 +160,8 @@ export default function UIPlaygroundPage() {
                     <div className="mt-5 rounded-xl bg-card p-4 sm:p-5">
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <p className={`${textSmMediumClass} text-foreground`}>Status Badge Testing Suite</p>
-                                <p className={`${textSmRegularClass} text-muted-foreground`}>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Status Badge Testing Suite</p>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                     Validate all known badge states, icon toggle behavior, and unknown fallback rendering.
                                 </p>
                             </div>
@@ -187,7 +177,7 @@ export default function UIPlaygroundPage() {
 
                         <div className="space-y-4">
                             <div>
-                                <p className={`${textXsRegularClass} text-muted-foreground`}>Asset Status</p>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>Asset Status</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {assetStatusCases.map((value) => (
                                         <StatusBadge key={value} value={value} showIcon={showBadgeIcons} />
@@ -196,7 +186,7 @@ export default function UIPlaygroundPage() {
                             </div>
 
                             <div>
-                                <p className={`${textXsRegularClass} text-muted-foreground`}>Hardware Condition</p>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>Hardware Condition</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {hardwareConditionCases.map((value) => (
                                         <StatusBadge key={value} value={value} showIcon={showBadgeIcons} />
@@ -205,7 +195,7 @@ export default function UIPlaygroundPage() {
                             </div>
 
                             <div>
-                                <p className={`${textXsRegularClass} text-muted-foreground`}>User Role</p>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>User Role</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                     {userRoleCases.map((value) => (
                                         <StatusBadge key={value} value={value} showIcon={showBadgeIcons} />
@@ -214,7 +204,7 @@ export default function UIPlaygroundPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <p className={`${textXsRegularClass} text-muted-foreground`}>Fallback Case (Unknown Value)</p>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>Fallback Case (Unknown Value)</p>
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                     <Input
                                         value={unknownBadgeValue}

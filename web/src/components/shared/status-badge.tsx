@@ -94,10 +94,3 @@ export function StatusBadge({ value, showIcon = true, className }: StatusBadgePr
         </Badge>
     );
 }
-
-// Example usage inside an Asset Detail Panel
-//<div className="flex items-center justify-between py-4 border-b">
-//  <span className="text-sm font-medium text-slate-500">Current Status</span>
-{/* Dev just passes the raw database value! */ }
-// <StatusBadge value={asset.status} />
-//</div >
