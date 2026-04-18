@@ -1,24 +1,25 @@
 "use client"
 
+import type { CSSProperties, ReactNode } from "react"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, toast, type ExternalToast, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-const toastBaseStyle: React.CSSProperties = {
+const toastBaseStyle: CSSProperties = {
   fontFamily: "var(--font-noto-sans), \"Noto Sans\", sans-serif",
   borderRadius: "var(--radius-md, 8px)",
-  background: "var(--background, #FFF)",
+  background: "var(--background)",
   boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.10)",
 }
 
-const toastLayoutStyle: React.CSSProperties = {
+const toastLayoutStyle: CSSProperties = {
   width: "100%",
   minWidth: "min(600px, calc(100vw - 2rem))",
   maxWidth: "min(797px, calc(100vw - 2rem))",
   padding: "12px 16px",
   margin: "0 auto",
   boxSizing: "border-box",
-  color: "var(--card-foreground, #0F172A)",
+  color: "var(--card-foreground)",
 }
 
 type TiqriToastVariant =
@@ -33,53 +34,53 @@ type TiqriToastVariant =
 
 type VariantConfig = {
   borderColor: string
-  icon: React.ReactNode
+  icon: ReactNode
   defaults?: ExternalToast
 }
 
 const variantConfigs: Record<TiqriToastVariant, VariantConfig> = {
   success: {
-    borderColor: "#7CC000",
-    icon: <CircleCheckIcon className="size-4 text-[#7CC000]" />,
+    borderColor: "var(--success)",
+    icon: <CircleCheckIcon className="size-4 text-success" />,
   },
   error: {
-    borderColor: "#EF4444",
-    icon: <OctagonXIcon className="size-4 text-[#EF4444]" />,
+    borderColor: "var(--destructive)",
+    icon: <OctagonXIcon className="size-4 text-destructive" />,
   },
   warning: {
-    borderColor: "#F59E0B",
-    icon: <TriangleAlertIcon className="size-4 text-[#F59E0B]" />,
+    borderColor: "var(--status-lost)",
+    icon: <TriangleAlertIcon className="size-4 text-status-lost" />,
   },
   info: {
-    borderColor: "#040D5A",
-    icon: <InfoIcon className="size-4 text-[#040D5A]" />,
+    borderColor: "var(--status-new)",
+    icon: <InfoIcon className="size-4 text-status-new" />,
   },
   loading: {
-    borderColor: "#64748B",
-    icon: <Loader2Icon className="size-4 animate-spin text-slate-500" />,
+    borderColor: "var(--muted-foreground)",
+    icon: <Loader2Icon className="size-4 animate-spin text-muted-foreground" />,
     defaults: {
       duration: Number.POSITIVE_INFINITY,
     },
   },
   actionable: {
-    borderColor: "#0F172A",
-    icon: <InfoIcon className="size-4 text-[#0F172A]" />,
+    borderColor: "var(--foreground)",
+    icon: <InfoIcon className="size-4 text-foreground" />,
     defaults: {
       closeButton: true,
       dismissible: true,
     },
   },
   warningAction: {
-    borderColor: "#F59E0B",
-    icon: <TriangleAlertIcon className="size-4 text-[#F59E0B]" />,
+    borderColor: "var(--status-lost)",
+    icon: <TriangleAlertIcon className="size-4 text-status-lost" />,
     defaults: {
       closeButton: true,
       dismissible: true,
     },
   },
   infoAction: {
-    borderColor: "#040D5A",
-    icon: <InfoIcon className="size-4 text-[#040D5A]" />,
+    borderColor: "var(--status-new)",
+    icon: <InfoIcon className="size-4 text-status-new" />,
     defaults: {
       closeButton: true,
       dismissible: true,
@@ -87,31 +88,31 @@ const variantConfigs: Record<TiqriToastVariant, VariantConfig> = {
   },
 }
 
-const createVariantToastStyle = (borderColor: string): React.CSSProperties => ({
+const createVariantToastStyle = (borderColor: string): CSSProperties => ({
   ...toastBaseStyle,
   ...toastLayoutStyle,
   border: `var(--border-width, 1px) solid ${borderColor}`,
 })
 
-const mergeToastStyle = (baseStyle: React.CSSProperties, incomingStyle?: React.CSSProperties): React.CSSProperties => ({
+const mergeToastStyle = (
+  baseStyle: CSSProperties,
+  incomingStyle?: CSSProperties
+): CSSProperties => ({
   ...baseStyle,
   ...(incomingStyle ?? {}),
 })
 
-/**
- * TIQRI Convention: Toast messages use a colon (:) as a delimiter. 
- * Text preceding the colon is automatically rendered as a bold title.
- * Example: "Success: The asset has been updated."
- */
+const mergeFontClass = (className?: string) =>
+  `font-sans${className ? ` ${className}` : ""}`
 
-const mergeFontClass = (className?: string) => `font-sans${className ? ` ${className}` : ""}`
 const mergeClassName = (baseClassName: string, incomingClassName?: string) =>
   incomingClassName ? `${baseClassName} ${incomingClassName}` : baseClassName
 
-const twoLineWrapClassName = "whitespace-normal break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
+const twoLineWrapClassName =
+  "whitespace-normal break-words [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
 const toastTextClassName = "text-sm font-normal"
 
-const formatBySplitColon = (message: React.ReactNode): React.ReactNode => {
+const formatBySplitColon = (message: ReactNode): ReactNode => {
   if (typeof message !== "string") {
     return message
   }
@@ -149,38 +150,44 @@ const createToastOptions = (
     ...options,
     icon: options?.icon ?? config.icon,
     className: mergeFontClass(options?.className),
-    style: mergeToastStyle(createVariantToastStyle(config.borderColor), options?.style),
+    style: mergeToastStyle(createVariantToastStyle(config.borderColor), options?.style as CSSProperties | undefined),
     classNames: {
       ...config.defaults?.classNames,
       ...options?.classNames,
-      title: mergeClassName(`${twoLineWrapClassName} ${toastTextClassName}`, options?.classNames?.title),
-      description: mergeClassName(`${twoLineWrapClassName} ${toastTextClassName}`, options?.classNames?.description),
+      title: mergeClassName(
+        `${twoLineWrapClassName} ${toastTextClassName}`,
+        options?.classNames?.title
+      ),
+      description: mergeClassName(
+        `${twoLineWrapClassName} ${toastTextClassName}`,
+        options?.classNames?.description
+      ),
     },
   }
 }
 
 const emitToast = (
   variant: TiqriToastVariant,
-  message: React.ReactNode,
+  message: ReactNode,
   options?: ExternalToast
 ) => toast(formatBySplitColon(message), createToastOptions(variant, options))
 
 export const tiqriToast = {
-  success: (message: React.ReactNode, options?: ExternalToast) =>
+  success: (message: ReactNode, options?: ExternalToast) =>
     emitToast("success", message, options),
-  error: (message: React.ReactNode, options?: ExternalToast) =>
+  error: (message: ReactNode, options?: ExternalToast) =>
     emitToast("error", message, options),
-  warning: (message: React.ReactNode, options?: ExternalToast) =>
+  warning: (message: ReactNode, options?: ExternalToast) =>
     emitToast("warning", message, options),
-  info: (message: React.ReactNode, options?: ExternalToast) =>
+  info: (message: ReactNode, options?: ExternalToast) =>
     emitToast("info", message, options),
-  loading: (message: React.ReactNode, options?: ExternalToast) =>
+  loading: (message: ReactNode, options?: ExternalToast) =>
     emitToast("loading", message, options),
-  actionable: (message: React.ReactNode, options?: ExternalToast) =>
+  actionable: (message: ReactNode, options?: ExternalToast) =>
     emitToast("actionable", message, options),
-  warningAction: (message: React.ReactNode, options?: ExternalToast) =>
+  warningAction: (message: ReactNode, options?: ExternalToast) =>
     emitToast("warningAction", message, options),
-  infoAction: (message: React.ReactNode, options?: ExternalToast) =>
+  infoAction: (message: ReactNode, options?: ExternalToast) =>
     emitToast("infoAction", message, options),
 }
 
@@ -192,21 +199,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
-        success: (
-          <CircleCheckIcon className="size-4 text-[#7CC000]" />
-        ),
-        info: (
-          <InfoIcon className="size-4" />
-        ),
-        warning: (
-          <TriangleAlertIcon className="size-4" />
-        ),
-        error: (
-          <OctagonXIcon className="size-4 text-[#EF4444]" />
-        ),
-        loading: (
-          <Loader2Icon className="size-4 animate-spin" />
-        ),
+        success: <CircleCheckIcon className="size-4 text-success" />,
+        info: <InfoIcon className="size-4 text-status-new" />,
+        warning: <TriangleAlertIcon className="size-4 text-status-lost" />,
+        error: <OctagonXIcon className="size-4 text-destructive" />,
+        loading: <Loader2Icon className="size-4 animate-spin text-muted-foreground" />,
       }}
       style={
         {
@@ -214,7 +211,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
-        } as React.CSSProperties
+        } as CSSProperties
       }
       toastOptions={{
         classNames: {
