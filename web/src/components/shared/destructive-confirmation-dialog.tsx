@@ -142,24 +142,24 @@ export const DestructiveConfirmationDialog = React.forwardRef<
         </AlertDialogTrigger>
 
         {/* ===== DIALOG CONTENT ===== */}
-        <AlertDialogContent className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg">
+        <AlertDialogContent className="w-full max-w-2xl rounded-lg bg-popover p-6 text-popover-foreground shadow-lg">
           {/* ===== HEADER: Title + Close Icon ===== */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
-                <AlertCircle className="h-5 w-5 text-gray-600" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                <AlertCircle className="h-5 w-5 text-muted-foreground" />
               </div>
-              <AlertDialogTitle className="text-lg font-semibold text-gray-900">
+              <AlertDialogTitle className="text-lg font-semibold">
                 {title}
               </AlertDialogTitle>
             </div>
             {/* Close button (visual - X icon) */}
             <button
               onClick={handleCancel}
-              className="rounded p-1 hover:bg-gray-100"
+              className="rounded p-1 hover:bg-muted"
               aria-label="Close dialog"
             >
-              <X className="h-5 w-5 text-gray-400" />
+              <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
