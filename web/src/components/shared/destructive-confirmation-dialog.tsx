@@ -188,7 +188,7 @@ export const DestructiveConfirmationDialog = React.forwardRef<
                         key={col.key}
                         className={`${col.width || "flex-1"} text-sm font-medium text-gray-700`}
                       >
-                        {String(item[col.key] || "-")}
+                        {String(item[col.key] ?? "-")}
                       </div>
                     ))}
                   </div>
