@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DetailPanel } from "@/components/shared/slide-panels/detail-panel";
 import { FormPanel } from "@/components/shared/slide-panels/form-panel";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { TabbedPanel } from "@/components/shared/slide-panels/tabbed-panel";
 
 const textXsRegularClass =
@@ -25,6 +26,12 @@ type PanelKey = "form" | "detail" | "tabbed";
 export default function UIPlaygroundPage() {
     const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showBadgeIcons, setShowBadgeIcons] = useState(true);
+    const [unknownBadgeValue, setUnknownBadgeValue] = useState("Retired");
+
+    const assetStatusCases = ["available", "assigned", "new", "in_repair", "lost", "defective"];
+    const hardwareConditionCases = ["pristine", "damaged", "broken"];
+    const userRoleCases = ["GlobalAdmin", "ITOperator", "Employee"];
 
     const openPanel = (panel: PanelKey) => setActivePanel(panel);
     const closePanel = () => setActivePanel(null);
@@ -157,6 +164,67 @@ export default function UIPlaygroundPage() {
                             <p className={`${textSmRegularClass} text-muted-foreground`}>
                                 Complex entity viewer with tab navigation below the header and stable scroll behavior while switching tabs.
                             </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 rounded-xl bg-card p-4 sm:p-5">
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p className={`${textSmMediumClass} text-foreground`}>Status Badge Testing Suite</p>
+                                <p className={`${textSmRegularClass} text-muted-foreground`}>
+                                    Validate all known badge states, icon toggle behavior, and unknown fallback rendering.
+                                </p>
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowBadgeIcons((value) => !value)}
+                            >
+                                {showBadgeIcons ? "Hide Icons" : "Show Icons"}
+                            </Button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <p className={`${textXsRegularClass} text-muted-foreground`}>Asset Status</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {assetStatusCases.map((value) => (
+                                        <StatusBadge key={value} value={value} showIcon={showBadgeIcons} />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className={`${textXsRegularClass} text-muted-foreground`}>Hardware Condition</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {hardwareConditionCases.map((value) => (
+                                        <StatusBadge key={value} value={value} showIcon={showBadgeIcons} />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className={`${textXsRegularClass} text-muted-foreground`}>User Role</p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {userRoleCases.map((value) => (
+                                        <StatusBadge key={value} value={value} showIcon={showBadgeIcons} />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <p className={`${textXsRegularClass} text-muted-foreground`}>Fallback Case (Unknown Value)</p>
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <Input
+                                        value={unknownBadgeValue}
+                                        onChange={(event) => setUnknownBadgeValue(event.target.value)}
+                                        placeholder="Type unknown badge value"
+                                        className="sm:max-w-70"
+                                    />
+                                    <StatusBadge value={unknownBadgeValue} showIcon={showBadgeIcons} />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
