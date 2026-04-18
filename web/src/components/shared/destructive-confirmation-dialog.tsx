@@ -28,7 +28,7 @@ export interface DeleteItem {
 export interface DestructiveConfirmationDialogProps {
   // Trigger
   triggerLabel?: string;
-  triggerVariant?: "default" | "destructive" | "outline" | "ghost";
+  triggerVariant?: React.ComponentProps<typeof Button>["variant"];
   triggerClassName?: string;
   triggerIcon?: React.ReactNode;
 
