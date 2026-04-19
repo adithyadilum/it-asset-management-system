@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import { cn } from "@/lib/utils";
 
 interface LoadingSpinnerProps {
@@ -6,6 +8,8 @@ interface LoadingSpinnerProps {
 }
 
 export function LoadingSpinner({ className, size = "md" }: LoadingSpinnerProps) {
+  const titleId = useId();
+
   const sizeClasses = {
     sm: "h-4 w-4",
     md: "h-6 w-6",
@@ -23,11 +27,10 @@ export function LoadingSpinner({ className, size = "md" }: LoadingSpinnerProps) 
       strokeLinejoin="round"
       className={cn(`animate-spin text-foreground ${sizeClasses[size]}`, className)}
       role="status"
-      aria-label="Loading"
+      aria-labelledby={titleId}
     >
+      <title id={titleId}>Loading</title>
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-      {/* Fallback for older screen readers */}
-      <span className="sr-only">Loading</span>
     </svg>
   );
 }
