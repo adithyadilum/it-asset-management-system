@@ -8,6 +8,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/db"
 import { departments, sessions, users } from "@/db/schema"
 import { getJwtSecretKey } from "@/lib/jwt"
+import { isValidUuid } from "@/lib/uuid"
 import type { UserRole } from "@/types/auth"
 
 import { RolesAddUserButton } from "./roles-add-user-button"
@@ -43,12 +44,6 @@ const textSmMediumClass =
     "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]"
 const textBaseSemiBoldClass =
     "font-text-base-semi-bold text-(length:--text-base-semi-bold-font-size) leading-(--text-base-semi-bold-line-height) tracking-(--text-base-semi-bold-letter-spacing) [font-style:var(--text-base-semi-bold-font-style)]"
-const UUID_PATTERN =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function isValidUuid(value: unknown): value is string {
-    return typeof value === "string" && UUID_PATTERN.test(value)
-}
 
 type RolesPageProps = {
     searchParams: Promise<{
