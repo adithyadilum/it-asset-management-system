@@ -6,8 +6,9 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { db } from "@/db"
-import { sessions, users } from "@/db/schema"
+import { departments, sessions, users } from "@/db/schema"
 import { getJwtSecretKey } from "@/lib/jwt"
+import { isValidUuid } from "@/lib/uuid"
 import type { UserRole } from "@/types/auth"
 
 import { RolesAddUserButton } from "./roles-add-user-button"
@@ -86,10 +87,10 @@ const getRolesPageAccessState = cache(async () => {
 
     try {
         const { payload } = await jwtVerify(token, getJwtSecretKey())
-        const userId = Number(payload.sub)
+        const userId = payload.sub
         const sessionId = payload.sid
 
-        if (!Number.isInteger(userId) || userId <= 0 || typeof sessionId !== "string") {
+        if (!isValidUuid(userId) || typeof sessionId !== "string") {
             return "unauthorized" as const
         }
 
@@ -138,10 +139,11 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                 id: users.id,
                 name: users.name,
                 email: users.email,
-                department: users.department,
+                department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
                 role: users.role,
             })
             .from(users)
+            .leftJoin(departments, eq(users.departmentId, departments.id))
             .orderBy(asc(users.name))
             .limit(100),
     ])

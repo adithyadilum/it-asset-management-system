@@ -170,16 +170,15 @@ export const DestructiveConfirmationDialog = React.forwardRef<
 
           {/* ===== ITEMS TABLE ===== */}
           <div className="my-4 space-y-3">
-            {itemsToDelete.map((item, index) => {
+            {itemsToDelete.map((item) => {
               const itemHasError = hasError(item.id);
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between rounded-md p-4 transition-colors ${
-                    itemHasError
+                  className={`flex items-center justify-between rounded-md p-4 transition-colors ${itemHasError
                       ? "border-2 border-red-500 bg-red-50"
                       : "bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-1 gap-6">
                     {/* Display all columns */}
