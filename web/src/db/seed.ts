@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { neon } from '@neondatabase/serverless';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as dotenv from 'dotenv';
 
@@ -12,7 +12,6 @@ import {
   brands,
   models,
   assets,
-  vendors,
 } from './schema';
 
 dotenv.config({ path: '.env.local' });
