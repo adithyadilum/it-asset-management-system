@@ -8,7 +8,10 @@ export const categorySchema = z.object({
   // Zod can transform data on the fly! Here we force the prefix to uppercase.
   prefix: z
     .string()
-    .length(3, { message: 'Prefix must be exactly 3 letters.' })
+    .trim()
+    .regex(/^[A-Za-z]{3}$/, {
+      message: 'Prefix must be exactly 3 letters (A-Z).',
+    })
     .toUpperCase(),
   pillar: z.enum([
     'IT & Digital',
