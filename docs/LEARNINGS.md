@@ -178,3 +178,30 @@
 - **Context:** Application code execution was taking ~500ms+ even in production builds. This was caused by sequential database queries (Network Waterfalls), where the app paid the TLS/SSL geographic network latency tax multiple times per page load.
 - **What We Learned:** React Server Components must execute independent database queries concurrently using `Promise.all()`. Furthermore, heavily used data-fetching helpers (e.g., `getAuthenticatedUser`) must be wrapped in React's `cache()` to deduplicate database calls during the render cycle.
 - **Impact:** Eliminates compounding network latency, shaving hundreds of milliseconds off page load times. This maximizes Next.js server performance and ensures the UI remains highly responsive regardless of the physical distance to the database.
+
+### Topic: Component Composition & Three-Tier UI Architecture
+
+- **Context:** Transitioning from base UI components (Shadcn) to specific business requirements (Epic 3 forms) risked creating either repetitive boilerplate code or unmaintainable "God Components" packed with `if/else` logic. Furthermore, managing panel visibility via nested `useState` props causes excessive prop-drilling.
+- **What We Learned:** 1. We must implement a strict Three-Tier UI Architecture:
+  - **Tier 1 (Primitives):** Base layout wrappers (e.g., `SlidePanel.tsx`) that handle strictly UI behavior (animations, scrolling) with zero business logic.
+  - **Tier 2 (Structural Archetypes):** Interaction-specific wrappers (e.g., `FormPanel`, `DetailPanel`) that standardize layouts, `<form>` tags, loading states, and button placements.
+  - **Tier 3 (Feature Implementation):** Highly specific, single-responsibility components (e.g., `CategoryBuilderPanel`) that compose the Archetypes and contain only inputs and API logic.
+  2. Panel state (`isOpen`) should be driven by Next.js URL Search Parameters (`?panel=category-builder`) rather than component state to enable deep-linking, browser history support, and simplified orchestration.
+- **Impact:** Prevents merge conflicts by isolating feature work, guarantees 100% UI consistency across the application, accelerates frontend development velocity, and keeps shared components clean and strictly modular.
+
+### Topic: Enterprise Folder Structure & Separation of Concerns (The Map vs. The Inventory)
+
+- **Context:** Next.js App Router officially supports "colocation" (placing UI component files directly inside the `app/` routing folders). However, utilizing this for complex modules leads to "spaghetti imports" (routes importing from other routes), accidental mixing of Server and Client environments, and unreadable routing trees.
+- **What We Learned:** We strictly enforce a physical boundary between Routing and UI implementation:
+  1. **`app/` (The Map):** Strictly for Server Orchestration. Contains only Next.js convention files (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`). It reads URL parameters and dictates _what_ to render.
+  2. **`src/components/ui/` & `shared/` (The Foundation):** Tier 1 Primitives (Shadcn) and Tier 2 Structural Archetypes (e.g., `FormPanel`).
+  3. **`src/components/features/` (The Inventory):** Tier 3 Feature Implementations (e.g., `CategoryBuilderPanel`). These are Client Components (`"use client"`) that contain the actual business logic, forms, and UI state.
+- **Impact:** Enforces a hard boundary between Server (data fetching) and Client (interactivity), completely eliminates spaghetti cross-route imports, and ensures the application routing tree remains a clean, easily scannable map even as the platform scales to hundreds of components.
+
+### Topic: Next.js App Router Special Files (`loading.tsx` & `error.tsx`)
+
+- **Context:** When rendering Server Components (`page.tsx`), slow database queries cause blank screens (blocking UX), and unhandled server errors crash the entire application routing tree.
+- **What We Learned:** We must leverage Next.js special file conventions to handle these states gracefully:
+  1. **`loading.tsx`:** Automatically wraps the route segment in a React `<Suspense>` boundary. This is where we place Tier-1 UI Skeletons to provide instant visual feedback while the server fetches data.
+  2. **`error.tsx`:** Automatically wraps the route segment in a React `<ErrorBoundary>`. It _must_ be a Client Component (`"use client"`). It catches unhandled exceptions and displays a localized fallback UI with a retry mechanism, keeping the rest of the application shell (navigation, sidebar) intact.
+- **Impact:** Prevents app-wide crashes from localized database/API failures and eliminates "white screen of death" loading delays. This guarantees a resilient, native-feeling user experience even under heavy server latency or outage conditions.
