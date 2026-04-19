@@ -8,15 +8,10 @@ import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import { getJwtSecretKey } from '@/lib/jwt';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import { isValidUuid } from '@/lib/uuid';
 
 const SESSION_COOKIE_NAME = 'session_token';
 type UserRole = typeof users.$inferSelect.role;
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function isValidUuid(value: unknown): value is string {
-  return typeof value === 'string' && UUID_PATTERN.test(value);
-}
 
 function normalizeTokenRole(role: unknown): UserRole | null {
   if (
