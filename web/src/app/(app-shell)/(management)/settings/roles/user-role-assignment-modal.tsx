@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import type { UserRole } from "@/types/auth"
 
 export type RoleUser = {
-  id: number
+  id: string
   name: string
   email: string
   department: string
@@ -76,7 +76,7 @@ function getInitials(name: string) {
 
 // Defensive dedupe protects the staged list when source arrays are rebuilt.
 function dedupeUsers(users: RoleUser[]) {
-  const seen = new Set<number>()
+  const seen = new Set<string>()
   const unique: RoleUser[] = []
 
   for (const roleUser of users) {
@@ -152,7 +152,7 @@ export function UserRoleAssignmentModal({
     })
   }
 
-  const removeUserFromSelection = (roleUserId: number) => {
+  const removeUserFromSelection = (roleUserId: string) => {
     setMappedSelection((currentSelection) =>
       currentSelection.filter((selection) => selection.id !== roleUserId)
     )

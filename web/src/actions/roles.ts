@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { users, sessions } from '@/db/schema';
+import { departments, users, sessions } from '@/db/schema';
 import { eq, ilike, or, and, isNull, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
@@ -11,6 +11,12 @@ import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 const SESSION_COOKIE_NAME = 'session_token';
 type UserRole = typeof users.$inferSelect.role;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
+}
 
 function normalizeTokenRole(role: unknown): UserRole | null {
   if (
@@ -25,11 +31,11 @@ function normalizeTokenRole(role: unknown): UserRole | null {
   return null;
 }
 
-function normalizeTargetUserIds(targetUserIds: number[]) {
-  const normalizedTargetUserIds = new Set<number>();
+function normalizeTargetUserIds(targetUserIds: string[]) {
+  const normalizedTargetUserIds = new Set<string>();
 
   for (const targetUserId of targetUserIds) {
-    if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+    if (!isValidUuid(targetUserId)) {
       continue;
     }
 
@@ -43,7 +49,7 @@ function normalizeTargetUserIds(targetUserIds: number[]) {
  * Helper to get the current user ID and verify session validity.
  */
 async function getAuthenticatedUser(): Promise<{
-  id: number;
+  id: string;
   role: UserRole;
 } | null> {
   const authTimer = startLatencyTimer();
@@ -55,8 +61,8 @@ async function getAuthenticatedUser(): Promise<{
   try {
     const { payload } = await jwtVerify(token, getJwtSecretKey());
 
-    // Validate sub is numeric and sid exists
-    if (!payload.sub || isNaN(Number(payload.sub))) return null;
+    // Validate sub is UUID and sid exists.
+    if (!isValidUuid(payload.sub)) return null;
     if (!payload.sid || typeof payload.sid !== 'string') return null;
 
     const role = normalizeTokenRole(payload.role);
@@ -90,7 +96,7 @@ async function getAuthenticatedUser(): Promise<{
     }
 
     return {
-      id: Number(payload.sub),
+      id: payload.sub,
       role,
     };
   } catch {
@@ -126,10 +132,11 @@ export async function searchUsers(query: string) {
           id: users.id,
           name: users.name,
           email: users.email,
-          department: users.department,
+          department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
           role: users.role,
         })
         .from(users)
+        .leftJoin(departments, eq(users.departmentId, departments.id))
         .where(
           or(
             ilike(users.name, `%${trimmedQuery}%`),
@@ -170,7 +177,7 @@ export async function searchUsers(query: string) {
  * Assigns a role to multiple users via a single atomic update.
  */
 export async function assignUsersRoleBulk(
-  targetUserIds: number[],
+  targetUserIds: string[],
   newRole: UserRole
 ) {
   const actionTimer = startLatencyTimer();
@@ -278,7 +285,7 @@ export async function assignUsersRoleBulk(
 /**
  * Assigns a new role to a user.
  */
-export async function assignUserRole(targetUserId: number, newRole: UserRole) {
+export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
@@ -287,7 +294,7 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
     throw new Error('Forbidden: Only Global Administrators can modify roles.');
   }
 
-  if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+  if (!isValidUuid(targetUserId)) {
     throw new Error('Invalid target user id.');
   }
 
@@ -370,6 +377,6 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
 /**
  * Removes a user from a managed role by assigning the baseline Employee role.
  */
-export async function removeUserFromManagedRole(targetUserId: number) {
+export async function removeUserFromManagedRole(targetUserId: string) {
   return assignUserRole(targetUserId, 'Employee');
 }

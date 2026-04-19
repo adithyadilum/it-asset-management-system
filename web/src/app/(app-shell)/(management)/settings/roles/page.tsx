@@ -6,7 +6,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { db } from "@/db"
-import { sessions, users } from "@/db/schema"
+import { departments, sessions, users } from "@/db/schema"
 import { getJwtSecretKey } from "@/lib/jwt"
 import type { UserRole } from "@/types/auth"
 
@@ -43,6 +43,12 @@ const textSmMediumClass =
     "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]"
 const textBaseSemiBoldClass =
     "font-text-base-semi-bold text-(length:--text-base-semi-bold-font-size) leading-(--text-base-semi-bold-line-height) tracking-(--text-base-semi-bold-letter-spacing) [font-style:var(--text-base-semi-bold-font-style)]"
+const UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function isValidUuid(value: unknown): value is string {
+    return typeof value === "string" && UUID_PATTERN.test(value)
+}
 
 type RolesPageProps = {
     searchParams: Promise<{
@@ -86,10 +92,10 @@ const getRolesPageAccessState = cache(async () => {
 
     try {
         const { payload } = await jwtVerify(token, getJwtSecretKey())
-        const userId = Number(payload.sub)
+        const userId = payload.sub
         const sessionId = payload.sid
 
-        if (!Number.isInteger(userId) || userId <= 0 || typeof sessionId !== "string") {
+        if (!isValidUuid(userId) || typeof sessionId !== "string") {
             return "unauthorized" as const
         }
 
@@ -138,10 +144,11 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                 id: users.id,
                 name: users.name,
                 email: users.email,
-                department: users.department,
+                department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
                 role: users.role,
             })
             .from(users)
+            .leftJoin(departments, eq(users.departmentId, departments.id))
             .orderBy(asc(users.name))
             .limit(100),
     ])
