@@ -39,11 +39,12 @@ export function TimelineItem({
   };
 
   return (
-    <div className="flex gap-4">
-      <div className="flex flex-col items-center gap-2">
+    <div className="flex gap-[16px] w-full">
+      {/* Icon & Line Column */}
+      <div className="flex flex-col items-center gap-[4px]">
         <div
           className={cn(
-            'flex items-center justify-center w-8 h-8 rounded-full',
+            'flex items-center justify-center w-[32px] h-[32px] rounded-full shrink-0',
             iconColorClasses[iconColor]
           )}
         >
@@ -53,36 +54,38 @@ export function TimelineItem({
         {!isLast && (
           <div
             className={cn(
-              'w-1 flex-grow',
+              'w-[2px] flex-grow',
               lineColorClasses[iconColor]
             )}
           />
         )}
       </div>
 
-      <div className="flex-1 pb-6">
-        <div className="text-xs text-slate-400 text-right mb-1">
-          {timestamp}
-        </div>
-
-        <div className="text-sm font-medium text-slate-900 mb-1">
-          {title}
+      {/* Content Column */}
+      <div className="flex-1 pb-[32px] flex flex-col mt-[4px]">
+        <div className="flex justify-between items-start w-full">
+          <div className="text-[14px] font-medium text-slate-900 leading-[20px]">
+            {title}
+          </div>
+          <div className="text-[12px] font-light text-slate-500 leading-[20px]">
+            {timestamp}
+          </div>
         </div>
 
         {performedBy && (
-          <div className="text-xs text-slate-500 mb-2">
+          <div className="text-[14px] font-light text-slate-500 mt-[2px] leading-[20px]">
             Performed by {performedBy}
           </div>
         )}
 
         {description && (
-          <div className="text-sm text-slate-600 mb-2">
+          <div className="text-[14px] font-light text-slate-500 mt-[6px] leading-[20px]">
             {description}
           </div>
         )}
 
         {details && (
-          <div className="text-sm text-slate-600">
+          <div className="text-[14px] font-light text-slate-500 mt-[2px] leading-[20px]">
             {details}
           </div>
         )}

@@ -13,15 +13,7 @@ import { TimelineItem } from './timeline-item';
 export interface HistoryEvent {
   id: string;
   timestamp: string;
-  eventType:
-    | 'Asset Assigned'
-    | 'Status Updated'
-    | 'Condition Updated'
-    | 'Location Assigned'
-    | 'Maintenance Initiated'
-    | 'Repair Initiated'
-    | 'Asset Created'
-    | 'Asset Transferred';
+  eventType: string; // Relaxed to string to match database outputs dynamically
   actor: string;
   description: string;
   details?: string;
@@ -51,10 +43,10 @@ export function HistoryTab({
 }: HistoryTabProps) {
   return (
     <div className={cn('flex flex-col gap-6 w-full', className)}>
-      {/* Timeline */}
       <div className="space-y-0">
         {events.map((event, index) => {
-          const config = eventConfig[event.eventType];
+          // Add a fallback icon and color for unmapped events
+          const config = eventConfig[event.eventType as keyof typeof eventConfig] || { icon: AlertCircle, color: 'info' };
           const IconComponent = config.icon;
 
           return (
@@ -73,13 +65,12 @@ export function HistoryTab({
         })}
       </div>
 
-      {/* View All Link */}
       {onViewAll && events.length > 0 && (
         <button
           onClick={onViewAll}
-          className="text-sm font-light text-blue-500 hover:text-blue-600 transition-colors underline"
+          className="text-sm font-light text-blue-500 hover:text-blue-600 transition-colors underline text-left"
         >
-          View all maintenance records
+          View all history
         </button>
       )}
     </div>
