@@ -16,9 +16,11 @@ import {
     MASTER_DATA_RECORD_ENTITIES,
 } from "@/lib/master-data/shared";
 import type {
+    LocationType,
     MasterDataRecordEntity,
     UpdateMasterDataState,
 } from "@/types/master-data";
+import { LOCATION_TYPE_OPTIONS } from "@/types/master-data";
 import { FormPanel } from "@/components/shared/slide-panels/form-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,7 @@ import type {
     CategoryCustomSchemaField,
     MasterDataBrandRow,
     MasterDataCategoryRow,
+    MasterDataLocationRow,
 } from "./master-data-management-client";
 
 type Pillar =
@@ -65,6 +68,7 @@ interface MasterDataCreatePanelProps {
     onCloseUrl: string;
     entity?: string;
     categories: MasterDataCategoryRow[];
+    locations: MasterDataLocationRow[];
     brands: MasterDataBrandRow[];
     disableTransition?: boolean;
 }
@@ -122,6 +126,7 @@ const PANEL_META: Record<MasterDataRecordEntity, {
 
 const SCHEMA_CHECKBOX_CLASSNAME =
     "size-5 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground";
+const TOP_LEVEL_PARENT_LOCATION_VALUE = "none";
 
 function createCustomAttribute(): CustomAttribute {
     return {
@@ -154,6 +159,7 @@ export function MasterDataCreatePanel({
     onCloseUrl,
     entity,
     categories,
+    locations,
     brands,
     disableTransition = false,
 }: MasterDataCreatePanelProps) {
@@ -165,6 +171,10 @@ export function MasterDataCreatePanel({
     const [isActive, setIsActive] = useState(true);
     const [categoryPillar, setCategoryPillar] = useState<Pillar>("IT & Digital");
     const [modelPillar, setModelPillar] = useState<Pillar>("IT & Digital");
+    const [selectedLocationType, setSelectedLocationType] = useState<LocationType | "">("");
+    const [selectedParentLocationId, setSelectedParentLocationId] = useState(
+        TOP_LEVEL_PARENT_LOCATION_VALUE
+    );
     const [selectedBrandId, setSelectedBrandId] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
     const [categoryPrefixInput, setCategoryPrefixInput] = useState("");
@@ -193,6 +203,14 @@ export function MasterDataCreatePanel({
         : "";
 
     const panelMeta = normalizedEntity ? PANEL_META[normalizedEntity] : null;
+
+    const selectableParentLocations = useMemo(
+        () =>
+            locations
+                .filter((location) => location.isActive)
+                .sort((left, right) => left.name.localeCompare(right.name)),
+        [locations]
+    );
 
     const nextCategoryRecordId = useMemo(
         () => categories.reduce((max, category) => Math.max(max, category.id), 0) + 1,
@@ -260,6 +278,8 @@ export function MasterDataCreatePanel({
         setIsActive(true);
         setCategoryPillar("IT & Digital");
         setModelPillar("IT & Digital");
+        setSelectedLocationType("");
+        setSelectedParentLocationId(TOP_LEVEL_PARENT_LOCATION_VALUE);
         setSelectedBrandId("");
         setSelectedCategoryId("");
         setCategoryPrefixInput("");
@@ -663,6 +683,17 @@ export function MasterDataCreatePanel({
             case "locations":
                 return (
                     <>
+                        <input type="hidden" name="type" value={selectedLocationType} />
+                        <input
+                            type="hidden"
+                            name="parentId"
+                            value={
+                                selectedParentLocationId === TOP_LEVEL_PARENT_LOCATION_VALUE
+                                    ? ""
+                                    : selectedParentLocationId
+                            }
+                        />
+
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
@@ -677,15 +708,63 @@ export function MasterDataCreatePanel({
                             </div>
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                    Type
+                                    Type <span className="text-red-500">*</span>
                                 </label>
-                                <Input name="type" placeholder="HQ, Branch, Remote" />
+                                <Select
+                                    value={selectedLocationType}
+                                    onValueChange={(value) =>
+                                        setSelectedLocationType(value as LocationType)
+                                    }
+                                >
+                                    <SelectTrigger className="h-9">
+                                        <SelectValue placeholder="Select a location type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {LOCATION_TYPE_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                                 {getFieldError("type") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("type")}
                                     </p>
                                 )}
                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Parent Location
+                            </label>
+                            <Select
+                                value={selectedParentLocationId}
+                                onValueChange={setSelectedParentLocationId}
+                            >
+                                <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={TOP_LEVEL_PARENT_LOCATION_VALUE}>
+                                        None (Top-level building)
+                                    </SelectItem>
+                                    {selectableParentLocations.map((location) => (
+                                        <SelectItem key={location.id} value={String(location.id)}>
+                                            {location.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                Select None to create a top-level building.
+                            </p>
+                            {getFieldError("parentId") && (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {getFieldError("parentId")}
+                                </p>
+                            )}
                         </div>
                         {renderActiveSwitch}
                     </>

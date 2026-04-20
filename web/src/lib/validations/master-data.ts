@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { LOCATION_TYPES } from '@/types/master-data';
+
 const pillarSchema = z.enum([
   'IT & Digital',
   'Software',
@@ -53,13 +55,24 @@ export const brandSchema = z.object({
   isActive: z.boolean(),
 });
 
+const parentLocationIdSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const normalized = String(value).trim();
+  if (normalized.length === 0) {
+    return undefined;
+  }
+
+  const numeric = Number(normalized);
+  return Number.isNaN(numeric) ? value : numeric;
+}, z.number().int().positive('Parent location is invalid').optional());
+
 export const locationSchema = z.object({
   name: z.string().trim().min(2, 'Location name is required'),
-  type: z
-    .string()
-    .trim()
-    .max(100, 'Location type must be less than 100 characters')
-    .optional(),
+  type: z.enum(LOCATION_TYPES),
+  parentId: parentLocationIdSchema,
   isActive: z.boolean(),
 });
 
