@@ -120,6 +120,9 @@ const PANEL_META: Record<MasterDataRecordEntity, {
     },
 };
 
+const SCHEMA_CHECKBOX_CLASSNAME =
+    "size-5 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground";
+
 function createCustomAttribute(): CustomAttribute {
     return {
         id: crypto.randomUUID(),
@@ -127,6 +130,19 @@ function createCustomAttribute(): CustomAttribute {
         inputType: "Text",
         required: false,
     };
+}
+
+function buildSchemaSectionPayload(attributes: CustomAttribute[]) {
+    const payload = attributes.map((attribute) => ({
+        fieldName: attribute.fieldName,
+        inputType: attribute.inputType,
+        required: attribute.required,
+    }));
+
+    const hasOnlyDefaultEmptyRow =
+        payload.length === 1 && payload[0].fieldName.trim().length === 0;
+
+    return hasOnlyDefaultEmptyRow ? [] : payload;
 }
 
 function isRecordEntity(value: string | undefined): value is MasterDataRecordEntity {
@@ -151,6 +167,7 @@ export function MasterDataCreatePanel({
     const [modelPillar, setModelPillar] = useState<Pillar>("IT & Digital");
     const [selectedBrandId, setSelectedBrandId] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
+    const [categoryPrefixInput, setCategoryPrefixInput] = useState("");
     const [modelSpecAttributes, setModelSpecAttributes] = useState<CustomAttribute[]>([
         createCustomAttribute(),
     ]);
@@ -177,18 +194,20 @@ export function MasterDataCreatePanel({
 
     const panelMeta = normalizedEntity ? PANEL_META[normalizedEntity] : null;
 
+    const nextCategoryRecordId = useMemo(
+        () => categories.reduce((max, category) => Math.max(max, category.id), 0) + 1,
+        [categories]
+    );
+
+    const nextCategoryIdPreview = useMemo(
+        () => `CAT-${String(nextCategoryRecordId).padStart(4, "0")}`,
+        [nextCategoryRecordId]
+    );
+
     const categorySchemaPayload = useMemo(
         () => ({
-            modelSpecs: modelSpecAttributes.map((attribute) => ({
-                fieldName: attribute.fieldName,
-                inputType: attribute.inputType,
-                required: attribute.required,
-            })),
-            assetTracking: assetTrackingAttributes.map((attribute) => ({
-                fieldName: attribute.fieldName,
-                inputType: attribute.inputType,
-                required: attribute.required,
-            })),
+            modelSpecs: buildSchemaSectionPayload(modelSpecAttributes),
+            assetTracking: buildSchemaSectionPayload(assetTrackingAttributes),
         }),
         [assetTrackingAttributes, modelSpecAttributes]
     );
@@ -243,6 +262,7 @@ export function MasterDataCreatePanel({
         setModelPillar("IT & Digital");
         setSelectedBrandId("");
         setSelectedCategoryId("");
+        setCategoryPrefixInput("");
         setModelSpecAttributes([createCustomAttribute()]);
         setAssetTrackingAttributes([createCustomAttribute()]);
         setModelSpecValues({});
@@ -358,6 +378,15 @@ export function MasterDataCreatePanel({
         setModelSpecValues({});
     }, []);
 
+    const handleCategoryPrefixChange = useCallback((value: string) => {
+        const normalized = value
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "")
+            .slice(0, 3);
+
+        setCategoryPrefixInput(normalized);
+    }, []);
+
     const updateModelSpecValue = useCallback(
         (fieldName: string, value: string) => {
             setModelSpecValues((previous) => ({
@@ -384,13 +413,26 @@ export function MasterDataCreatePanel({
 
     const renderModelSpecificationsSection = (
         <div className="space-y-4 border-t pt-4">
-            <div>
+            <div className="flex items-center gap-2">
                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
                     Section 1: Model Specifications (Global)
                 </h3>
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                    Technical specs shared by every unit of this model (e.g., Processor, RAM, Resolution). These fields will be requested once when adding a new Device Model.
-                </p>
+                <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label="Model specifications help"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:text-slate-700"
+                            >
+                                <Info className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
+                            Technical specs shared by every unit of this model, such as Processor, RAM, and Resolution. These are collected once when adding a Device Model.
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
 
             <div className="rounded-md border bg-slate-50/50">
@@ -444,6 +486,7 @@ export function MasterDataCreatePanel({
                             <div className="col-span-2 flex justify-center">
                                 <Checkbox
                                     checked={attribute.required}
+                                    className={SCHEMA_CHECKBOX_CLASSNAME}
                                     onCheckedChange={(checked) =>
                                         updateModelSpecAttribute(
                                             attribute.id,
@@ -492,13 +535,26 @@ export function MasterDataCreatePanel({
 
     const renderAssetTrackingSection = (
         <div className="space-y-4 border-t pt-4">
-            <div>
+            <div className="flex items-center gap-2">
                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
                     Section 2: Asset Tracking Fields (Unique)
                 </h3>
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                    Data unique to each physical item (e.g., MAC Address, IMEI, Condition Notes). These fields will be requested every time an employee registers a new physical Asset.
-                </p>
+                <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label="Asset tracking fields help"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:text-slate-700"
+                            >
+                                <Info className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
+                            Data unique to each physical item, such as MAC Address, IMEI, and Condition Notes. These are collected whenever a new Asset is registered.
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
 
             <div className="rounded-md border bg-slate-50/50">
@@ -552,6 +608,7 @@ export function MasterDataCreatePanel({
                             <div className="col-span-2 flex justify-center">
                                 <Checkbox
                                     checked={attribute.required}
+                                    className={SCHEMA_CHECKBOX_CLASSNAME}
                                     onCheckedChange={(checked) =>
                                         updateAssetTrackingAttribute(
                                             attribute.id,
@@ -644,30 +701,55 @@ export function MasterDataCreatePanel({
                             value={JSON.stringify(categorySchemaPayload)}
                         />
 
-                        <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                Type
-                            </label>
-                            <Select
-                                value={categoryPillar}
-                                onValueChange={(value) => setCategoryPillar(value as Pillar)}
-                            >
-                                <SelectTrigger className="h-9 w-full md:w-56">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {PILLAR_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {getFieldError("pillar") && (
-                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                                    {getFieldError("pillar")}
-                                </p>
-                            )}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Type
+                                </label>
+                                <Select
+                                    value={categoryPillar}
+                                    onValueChange={(value) => setCategoryPillar(value as Pillar)}
+                                >
+                                    <SelectTrigger className="h-9 w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {PILLAR_OPTIONS.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {getFieldError("pillar") && (
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                        {getFieldError("pillar")}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Category ID (Preview)
+                                </label>
+                                <div className="relative">
+                                    <Input
+                                        value={nextCategoryIdPreview}
+                                        readOnly
+                                        className="h-9 bg-slate-100 pr-10 font-mono tracking-wide text-slate-700"
+                                    />
+                                    <TooltipProvider delayDuration={150}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Info className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" sideOffset={6}>
+                                                Preview of the next category record ID.
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -689,6 +771,10 @@ export function MasterDataCreatePanel({
                                 <div className="relative">
                                     <Input
                                         name="prefix"
+                                        value={categoryPrefixInput}
+                                        onChange={(event) =>
+                                            handleCategoryPrefixChange(event.target.value)
+                                        }
                                         placeholder="WKE"
                                         maxLength={3}
                                         className="uppercase"
@@ -715,10 +801,6 @@ export function MasterDataCreatePanel({
 
                         {renderModelSpecificationsSection}
                         {renderAssetTrackingSection}
-
-                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600`}>
-                            By defining both schemas at the Category level, the Add Model and Register Asset forms can render inputs directly from these rules.
-                        </p>
                         {renderActiveSwitch}
                     </>
                 );
