@@ -17,6 +17,7 @@ import {
 
 // 1. Define the distinct domains we are badging
 export type BadgeType = "assetStatus" | "hardwareCondition" | "userRole";
+export type StatusBadgeVariant = "default" | "linkedAssets";
 
 // 2. The Configuration Dictionary (The Single Source of Truth)
 const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon: LucideIcon }> = {
@@ -56,6 +57,16 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
         className: "bg-slate-50 text-slate-600 border-slate-300",
         icon: Archive,
     },
+    active: {
+        label: "Active",
+        className: "bg-lime-50 text-lime-700 border-lime-300",
+        icon: CheckCircle2,
+    },
+    inactive: {
+        label: "Inactive",
+        className: "bg-slate-50 text-slate-600 border-slate-300",
+        icon: MinusCircle,
+    },
 
     // Hardware Conditions
     pristine: { label: "Pristine", className: "bg-blue-50 text-blue-700 border-blue-200", icon: CheckCircle2 },
@@ -72,15 +83,38 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
 const FALLBACK = { label: "Unknown", className: "bg-slate-100 text-slate-600 border-slate-200", icon: HelpCircle };
 
 interface StatusBadgeProps {
-    value: string;
+    value?: string;
+    variant?: StatusBadgeVariant;
+    count?: number;
     showIcon?: boolean;
     className?: string;
 }
 
-export function StatusBadge({ value, showIcon = true, className }: StatusBadgeProps) {
+export function StatusBadge({
+    value,
+    variant = "default",
+    count,
+    showIcon = true,
+    className,
+}: StatusBadgeProps) {
+    if (variant === "linkedAssets") {
+        const normalizedCount = Number.isFinite(count) ? Math.max(0, Math.trunc(count ?? 0)) : 0;
+        const linkedAssetLabel = `${normalizedCount} ${normalizedCount === 1 ? "Asset" : "Assets"}`;
+
+        return (
+            <Badge
+                variant="outline"
+                className={cn("font-medium whitespace-nowrap bg-slate-100 text-slate-700 border-slate-200", className)}
+            >
+                {linkedAssetLabel}
+            </Badge>
+        );
+    }
+
+    const normalizedValue = typeof value === "string" ? value : "";
     const config =
-        BADGE_DICTIONARY[value] ??
-        BADGE_DICTIONARY[value.trim().toLowerCase().replace(/\s+/g, "_")] ??
+        BADGE_DICTIONARY[normalizedValue] ??
+        BADGE_DICTIONARY[normalizedValue.trim().toLowerCase().replace(/\s+/g, "_")] ??
         FALLBACK;
     const Icon = config.icon;
 
