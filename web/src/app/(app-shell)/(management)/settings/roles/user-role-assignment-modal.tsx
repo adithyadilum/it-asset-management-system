@@ -75,23 +75,6 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
-// Defensive dedupe protects the staged list when source arrays are rebuilt.
-function dedupeUsers(users: RoleUser[]) {
-  const seen = new Set<string>()
-  const unique: RoleUser[] = []
-
-  for (const roleUser of users) {
-    if (seen.has(roleUser.id)) {
-      continue
-    }
-
-    seen.add(roleUser.id)
-    unique.push(roleUser)
-  }
-
-  return unique
-}
-
 export function UserRoleAssignmentModal({
   isOpen,
   onOpenChange,
@@ -121,6 +104,11 @@ export function UserRoleAssignmentModal({
     [mappedSelection]
   )
 
+  const alreadyAssignedIdSet = useMemo(
+    () => new Set(mappedUsers.map((u) => u.id)),
+    [mappedUsers]
+  )
+
   // Directory results exclude already-staged users and optionally hide already-mapped users.
   const directoryResults = useMemo(() => {
     if (mode !== "add" || !normalizedQuery) {
@@ -129,22 +117,27 @@ export function UserRoleAssignmentModal({
 
     return searchResults
       .filter((directoryUser) => {
+        // Hide the current active user so they can't lock themselves out
         if (directoryUser.id === currentUserId) {
           return false
         }
 
+        // Hide users that are already selected in the staging area below
         if (mappedIdSet.has(directoryUser.id)) {
           return false
         }
 
-        if (hideUsersAlreadyInRole && directoryUser.role === defaultRole) {
-          return false
+        // Hide users assigned to ANY role (not Employee) or explicitly in mapped users
+        if (hideUsersAlreadyInRole) {
+          if (directoryUser.role !== "Employee" || alreadyAssignedIdSet.has(directoryUser.id)) {
+            return false
+          }
         }
 
         return true
       })
       .slice(0, 10)
-  }, [currentUserId, defaultRole, hideUsersAlreadyInRole, mappedIdSet, mode, normalizedQuery, searchResults])
+  }, [currentUserId, hideUsersAlreadyInRole, mappedIdSet, alreadyAssignedIdSet, mode, normalizedQuery, searchResults])
 
   const activeUser = mode === "edit" ? user : null
 
@@ -171,8 +164,8 @@ export function UserRoleAssignmentModal({
     setIsSearching(false)
     setSearchError(null)
     setHideUsersAlreadyInRole(false)
-    setMappedSelection(dedupeUsers(mappedUsers))
-  }, [mappedUsers])
+    setMappedSelection([]) // Fix: Start mapped selection empty
+  }, [])
 
   useEffect(() => {
     if (!isOpen || mode !== "add") {
