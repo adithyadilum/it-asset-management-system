@@ -28,6 +28,7 @@ import {
   locationSchema,
   vendorSchema,
 } from '@/lib/validations/master-data';
+import { type LocationType } from '@/types/master-data';
 
 const CATEGORY_PILLARS = new Set([
   'IT & Digital',
@@ -164,7 +165,8 @@ export async function createMasterDataRecord(
       case 'locations': {
         const parsed = locationSchema.safeParse({
           name: formData.get('name'),
-          type: String(formData.get('type') ?? ''),
+          type: formData.get('type'),
+          parentId: formData.get('parentId'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
 
@@ -180,10 +182,8 @@ export async function createMasterDataRecord(
           .insert(locations)
           .values({
             name: parsed.data.name,
-            type:
-              parsed.data.type && parsed.data.type.length > 0
-                ? parsed.data.type
-                : null,
+            type: parsed.data.type,
+            parentId: parsed.data.parentId ?? null,
             isActive: parsed.data.isActive,
           })
           .returning({ id: locations.id });
@@ -425,27 +425,41 @@ export async function updateMasterDataRecord(
   try {
     switch (entity) {
       case 'locations': {
-        const name = parseRequiredText(
-          formData.get('name'),
-          'Location name',
-          2
-        );
-        if (!name.ok) {
+        const hasParentField = formData.has('parentId');
+
+        const parsed = locationSchema.safeParse({
+          name: formData.get('name'),
+          type: formData.get('type'),
+          parentId: hasParentField ? formData.get('parentId') : undefined,
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
           return {
             success: false,
-            message: 'Validation failed.',
-            errors: { name: [name.error] },
+            message: 'Failed to validate location data.',
+            errors: parsed.error.flatten().fieldErrors,
           };
         }
 
-        const typeValue = String(formData.get('type') ?? '').trim();
+        const updateValues: {
+          name: string;
+          type: LocationType;
+          isActive: boolean;
+          parentId?: number | null;
+        } = {
+          name: parsed.data.name,
+          type: parsed.data.type,
+          isActive: parsed.data.isActive,
+        };
+
+        if (hasParentField) {
+          updateValues.parentId = parsed.data.parentId ?? null;
+        }
+
         const updated = await db
           .update(locations)
-          .set({
-            name: name.value,
-            type: typeValue.length > 0 ? typeValue : null,
-            isActive: parseBooleanFormValue(formData.get('isActive')),
-          })
+          .set(updateValues)
           .where(eq(locations.id, idRaw))
           .returning({ id: locations.id });
 

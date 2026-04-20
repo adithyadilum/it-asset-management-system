@@ -50,6 +50,7 @@ export function MasterDataPanels({
                 onCloseUrl={closePanelUrl}
                 entity={entity}
                 categories={categories}
+                locations={locations}
                 brands={brands}
                 disableTransition={disableTransition}
             />
