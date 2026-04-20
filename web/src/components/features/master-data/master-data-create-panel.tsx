@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import type {
+    CategoryCustomSchemaField,
     MasterDataBrandRow,
     MasterDataCategoryRow,
 } from "./master-data-management-client";
@@ -57,12 +58,6 @@ type CustomAttribute = {
     fieldName: string;
     inputType: InputType;
     required: boolean;
-};
-
-type ModelProperty = {
-    id: string;
-    propertyKey: string;
-    propertyValue: string;
 };
 
 interface MasterDataCreatePanelProps {
@@ -107,7 +102,7 @@ const PANEL_META: Record<MasterDataRecordEntity, {
     },
     "device-models": {
         title: "Add New Device Model",
-        description: "Create a model and store technical details as JSONB properties.",
+        description: "Create a model using specifications inherited from the selected category.",
         submitLabel: "Save Device Model",
         submittingLabel: "Saving Device Model...",
     },
@@ -134,14 +129,6 @@ function createCustomAttribute(): CustomAttribute {
     };
 }
 
-function createModelProperty(): ModelProperty {
-    return {
-        id: crypto.randomUUID(),
-        propertyKey: "",
-        propertyValue: "",
-    };
-}
-
 function isRecordEntity(value: string | undefined): value is MasterDataRecordEntity {
     return MASTER_DATA_RECORD_ENTITIES.includes(value as MasterDataRecordEntity);
 }
@@ -164,12 +151,13 @@ export function MasterDataCreatePanel({
     const [modelPillar, setModelPillar] = useState<Pillar>("IT & Digital");
     const [selectedBrandId, setSelectedBrandId] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
-    const [categoryAttributes, setCategoryAttributes] = useState<CustomAttribute[]>([
+    const [modelSpecAttributes, setModelSpecAttributes] = useState<CustomAttribute[]>([
         createCustomAttribute(),
     ]);
-    const [modelProperties, setModelProperties] = useState<ModelProperty[]>([
-        createModelProperty(),
+    const [assetTrackingAttributes, setAssetTrackingAttributes] = useState<CustomAttribute[]>([
+        createCustomAttribute(),
     ]);
+    const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
 
@@ -181,27 +169,67 @@ export function MasterDataCreatePanel({
         [categories, modelPillar]
     );
 
+    const normalizedSelectedCategoryId = activeCategoriesForModel.some(
+        (category) => String(category.id) === selectedCategoryId
+    )
+        ? selectedCategoryId
+        : "";
+
     const panelMeta = normalizedEntity ? PANEL_META[normalizedEntity] : null;
 
     const categorySchemaPayload = useMemo(
-        () =>
-            categoryAttributes.map((attribute) => ({
+        () => ({
+            modelSpecs: modelSpecAttributes.map((attribute) => ({
                 fieldName: attribute.fieldName,
                 inputType: attribute.inputType,
                 required: attribute.required,
             })),
-        [categoryAttributes]
+            assetTracking: assetTrackingAttributes.map((attribute) => ({
+                fieldName: attribute.fieldName,
+                inputType: attribute.inputType,
+                required: attribute.required,
+            })),
+        }),
+        [assetTrackingAttributes, modelSpecAttributes]
+    );
+
+    const selectedCategoryForModel = useMemo(
+        () =>
+            activeCategoriesForModel.find(
+                (category) => String(category.id) === normalizedSelectedCategoryId
+            ) ?? null,
+        [activeCategoriesForModel, normalizedSelectedCategoryId]
+    );
+
+    const selectedCategoryModelSpecs = useMemo<CategoryCustomSchemaField[]>(
+        () => selectedCategoryForModel?.customSchema.modelSpecs ?? [],
+        [selectedCategoryForModel]
     );
 
     const technicalDetailsPayload = useMemo(() => {
         const payload: Record<string, string> = {};
 
-        for (const property of modelProperties) {
-            payload[property.propertyKey.trim()] = property.propertyValue.trim();
+        for (const spec of selectedCategoryModelSpecs) {
+            const key = spec.fieldName.trim();
+            if (key.length === 0) {
+                continue;
+            }
+
+            const rawValue = modelSpecValues[spec.fieldName];
+
+            if (spec.inputType === "Boolean") {
+                payload[spec.fieldName] = rawValue === "true" ? "true" : "false";
+                continue;
+            }
+
+            const normalizedValue = String(rawValue ?? "").trim();
+            if (normalizedValue.length > 0) {
+                payload[spec.fieldName] = normalizedValue;
+            }
         }
 
         return payload;
-    }, [modelProperties]);
+    }, [modelSpecValues, selectedCategoryModelSpecs]);
 
     const getFieldError = useCallback(
         (fieldName: string) => state.errors?.[fieldName]?.[0],
@@ -215,15 +243,10 @@ export function MasterDataCreatePanel({
         setModelPillar("IT & Digital");
         setSelectedBrandId("");
         setSelectedCategoryId("");
-        setCategoryAttributes([createCustomAttribute()]);
-        setModelProperties([createModelProperty()]);
+        setModelSpecAttributes([createCustomAttribute()]);
+        setAssetTrackingAttributes([createCustomAttribute()]);
+        setModelSpecValues({});
     }, []);
-
-    const normalizedSelectedCategoryId = activeCategoriesForModel.some(
-        (category) => String(category.id) === selectedCategoryId
-    )
-        ? selectedCategoryId
-        : "";
 
     const handleClose = useCallback(
         (open: boolean) => {
@@ -266,12 +289,12 @@ export function MasterDataCreatePanel({
         [handleClose, normalizedEntity, router]
     );
 
-    const addCategoryAttribute = useCallback(() => {
-        setCategoryAttributes((previous) => [...previous, createCustomAttribute()]);
+    const addModelSpecAttribute = useCallback(() => {
+        setModelSpecAttributes((previous) => [...previous, createCustomAttribute()]);
     }, []);
 
-    const removeCategoryAttribute = useCallback((id: string) => {
-        setCategoryAttributes((previous) => {
+    const removeModelSpecAttribute = useCallback((id: string) => {
+        setModelSpecAttributes((previous) => {
             if (previous.length === 1) {
                 return previous;
             }
@@ -280,13 +303,13 @@ export function MasterDataCreatePanel({
         });
     }, []);
 
-    const updateCategoryAttribute = useCallback(
+    const updateModelSpecAttribute = useCallback(
         <TKey extends keyof CustomAttribute>(
             id: string,
             key: TKey,
             value: CustomAttribute[TKey]
         ) => {
-            setCategoryAttributes((previous) =>
+            setModelSpecAttributes((previous) =>
                 previous.map((attribute) =>
                     attribute.id === id ? { ...attribute, [key]: value } : attribute
                 )
@@ -295,31 +318,52 @@ export function MasterDataCreatePanel({
         []
     );
 
-    const addModelProperty = useCallback(() => {
-        setModelProperties((previous) => [...previous, createModelProperty()]);
+    const addAssetTrackingAttribute = useCallback(() => {
+        setAssetTrackingAttributes((previous) => [...previous, createCustomAttribute()]);
     }, []);
 
-    const removeModelProperty = useCallback((id: string) => {
-        setModelProperties((previous) => {
+    const removeAssetTrackingAttribute = useCallback((id: string) => {
+        setAssetTrackingAttributes((previous) => {
             if (previous.length === 1) {
                 return previous;
             }
 
-            return previous.filter((property) => property.id !== id);
+            return previous.filter((attribute) => attribute.id !== id);
         });
     }, []);
 
-    const updateModelProperty = useCallback(
-        <TKey extends keyof ModelProperty>(
+    const updateAssetTrackingAttribute = useCallback(
+        <TKey extends keyof CustomAttribute>(
             id: string,
             key: TKey,
-            value: ModelProperty[TKey]
+            value: CustomAttribute[TKey]
         ) => {
-            setModelProperties((previous) =>
-                previous.map((property) =>
-                    property.id === id ? { ...property, [key]: value } : property
+            setAssetTrackingAttributes((previous) =>
+                previous.map((attribute) =>
+                    attribute.id === id ? { ...attribute, [key]: value } : attribute
                 )
             );
+        },
+        []
+    );
+
+    const handleModelPillarChange = useCallback((value: string) => {
+        setModelPillar(value as Pillar);
+        setSelectedCategoryId("");
+        setModelSpecValues({});
+    }, []);
+
+    const handleModelCategoryChange = useCallback((value: string) => {
+        setSelectedCategoryId(value);
+        setModelSpecValues({});
+    }, []);
+
+    const updateModelSpecValue = useCallback(
+        (fieldName: string, value: string) => {
+            setModelSpecValues((previous) => ({
+                ...previous,
+                [fieldName]: value,
+            }));
         },
         []
     );
@@ -338,14 +382,14 @@ export function MasterDataCreatePanel({
         </div>
     );
 
-    const renderCategoryAttributesSection = (
+    const renderModelSpecificationsSection = (
         <div className="space-y-4 border-t pt-4">
             <div>
                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
-                    Custom JSON Schema Fields
+                    Section 1: Model Specifications (Global)
                 </h3>
                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                    Define category-level custom fields saved to JSONB.
+                    Technical specs shared by every unit of this model (e.g., Processor, RAM, Resolution). These fields will be requested once when adding a new Device Model.
                 </p>
             </div>
 
@@ -358,13 +402,13 @@ export function MasterDataCreatePanel({
                 </div>
 
                 <div className="space-y-2 p-2">
-                    {categoryAttributes.map((attribute) => (
+                    {modelSpecAttributes.map((attribute) => (
                         <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
                             <div className="col-span-5">
                                 <Input
                                     value={attribute.fieldName}
                                     onChange={(event) =>
-                                        updateCategoryAttribute(
+                                        updateModelSpecAttribute(
                                             attribute.id,
                                             "fieldName",
                                             event.target.value
@@ -378,7 +422,7 @@ export function MasterDataCreatePanel({
                                 <Select
                                     value={attribute.inputType}
                                     onValueChange={(value) =>
-                                        updateCategoryAttribute(
+                                        updateModelSpecAttribute(
                                             attribute.id,
                                             "inputType",
                                             value as InputType
@@ -401,7 +445,7 @@ export function MasterDataCreatePanel({
                                 <Checkbox
                                     checked={attribute.required}
                                     onCheckedChange={(checked) =>
-                                        updateCategoryAttribute(
+                                        updateModelSpecAttribute(
                                             attribute.id,
                                             "required",
                                             checked === true
@@ -414,8 +458,8 @@ export function MasterDataCreatePanel({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => removeCategoryAttribute(attribute.id)}
-                                    disabled={categoryAttributes.length === 1}
+                                    onClick={() => removeModelSpecAttribute(attribute.id)}
+                                    disabled={modelSpecAttributes.length === 1}
                                     className="text-slate-400 hover:text-red-500"
                                 >
                                     <Trash2 className="h-4 w-4" />
@@ -430,7 +474,7 @@ export function MasterDataCreatePanel({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={addCategoryAttribute}
+                        onClick={addModelSpecAttribute}
                         className="w-full text-slate-500 hover:bg-slate-200"
                     >
                         <Plus className="mr-2 h-4 w-4" />
@@ -446,53 +490,75 @@ export function MasterDataCreatePanel({
         </div>
     );
 
-    const renderModelPropertiesSection = (
+    const renderAssetTrackingSection = (
         <div className="space-y-4 border-t pt-4">
             <div>
                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
-                    Technical Details (JSONB)
+                    Section 2: Asset Tracking Fields (Unique)
                 </h3>
                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                    Add model-specific key/value properties saved in JSONB.
+                    Data unique to each physical item (e.g., MAC Address, IMEI, Condition Notes). These fields will be requested every time an employee registers a new physical Asset.
                 </p>
             </div>
 
             <div className="rounded-md border bg-slate-50/50">
                 <div className="grid grid-cols-12 gap-4 border-b bg-slate-50 p-3 text-xs font-medium text-slate-500">
-                    <div className="col-span-5">Property Key</div>
-                    <div className="col-span-6">Property Value</div>
+                    <div className="col-span-5">Field Name</div>
+                    <div className="col-span-4">Input Type</div>
+                    <div className="col-span-2 text-center">Required?</div>
                     <div className="col-span-1"></div>
                 </div>
 
                 <div className="space-y-2 p-2">
-                    {modelProperties.map((property) => (
-                        <div key={property.id} className="grid grid-cols-12 items-center gap-4 p-1">
+                    {assetTrackingAttributes.map((attribute) => (
+                        <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
                             <div className="col-span-5">
                                 <Input
-                                    value={property.propertyKey}
+                                    value={attribute.fieldName}
                                     onChange={(event) =>
-                                        updateModelProperty(
-                                            property.id,
-                                            "propertyKey",
+                                        updateAssetTrackingAttribute(
+                                            attribute.id,
+                                            "fieldName",
                                             event.target.value
                                         )
                                     }
-                                    placeholder="e.g., cpu"
+                                    placeholder="e.g., MAC Address"
                                     className="h-9 bg-white"
                                 />
                             </div>
-                            <div className="col-span-6">
-                                <Input
-                                    value={property.propertyValue}
-                                    onChange={(event) =>
-                                        updateModelProperty(
-                                            property.id,
-                                            "propertyValue",
-                                            event.target.value
+                            <div className="col-span-4">
+                                <Select
+                                    value={attribute.inputType}
+                                    onValueChange={(value) =>
+                                        updateAssetTrackingAttribute(
+                                            attribute.id,
+                                            "inputType",
+                                            value as InputType
                                         )
                                     }
-                                    placeholder="e.g., Intel i7"
-                                    className="h-9 bg-white"
+                                >
+                                    <SelectTrigger className="h-9 bg-white">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Text">Text</SelectItem>
+                                        <SelectItem value="Number">Number</SelectItem>
+                                        <SelectItem value="Date">Date</SelectItem>
+                                        <SelectItem value="Dropdown">Dropdown</SelectItem>
+                                        <SelectItem value="Boolean">Yes/No</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="col-span-2 flex justify-center">
+                                <Checkbox
+                                    checked={attribute.required}
+                                    onCheckedChange={(checked) =>
+                                        updateAssetTrackingAttribute(
+                                            attribute.id,
+                                            "required",
+                                            checked === true
+                                        )
+                                    }
                                 />
                             </div>
                             <div className="col-span-1 flex justify-end">
@@ -500,8 +566,8 @@ export function MasterDataCreatePanel({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => removeModelProperty(property.id)}
-                                    disabled={modelProperties.length === 1}
+                                    onClick={() => removeAssetTrackingAttribute(attribute.id)}
+                                    disabled={assetTrackingAttributes.length === 1}
                                     className="text-slate-400 hover:text-red-500"
                                 >
                                     <Trash2 className="h-4 w-4" />
@@ -516,7 +582,7 @@ export function MasterDataCreatePanel({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={addModelProperty}
+                        onClick={addAssetTrackingAttribute}
                         className="w-full text-slate-500 hover:bg-slate-200"
                     >
                         <Plus className="mr-2 h-4 w-4" />
@@ -524,11 +590,6 @@ export function MasterDataCreatePanel({
                     </Button>
                 </div>
             </div>
-            {getFieldError("technicalDetails") && (
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                    {getFieldError("technicalDetails")}
-                </p>
-            )}
         </div>
     );
 
@@ -652,7 +713,12 @@ export function MasterDataCreatePanel({
                             </div>
                         </div>
 
-                        {renderCategoryAttributesSection}
+                        {renderModelSpecificationsSection}
+                        {renderAssetTrackingSection}
+
+                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600`}>
+                            By defining both schemas at the Category level, the Add Model and Register Asset forms can render inputs directly from these rules.
+                        </p>
                         {renderActiveSwitch}
                     </>
                 );
@@ -700,7 +766,7 @@ export function MasterDataCreatePanel({
                             </label>
                             <Select
                                 value={modelPillar}
-                                onValueChange={(value) => setModelPillar(value as Pillar)}
+                                onValueChange={handleModelPillarChange}
                             >
                                 <SelectTrigger className="h-9 w-full md:w-56">
                                     <SelectValue />
@@ -745,7 +811,7 @@ export function MasterDataCreatePanel({
                                 </label>
                                 <Select
                                     value={normalizedSelectedCategoryId}
-                                    onValueChange={setSelectedCategoryId}
+                                    onValueChange={handleModelCategoryChange}
                                 >
                                     <SelectTrigger className="h-9">
                                         <SelectValue placeholder="Select a category" />
@@ -778,7 +844,87 @@ export function MasterDataCreatePanel({
                             )}
                         </div>
 
-                        {renderModelPropertiesSection}
+                        <div className="space-y-4 border-t pt-4">
+                            <div>
+                                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                                    Model Specifications (Inherited)
+                                </h3>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                    Fields below are sourced from Section 1 of the selected Category schema.
+                                </p>
+                            </div>
+
+                            {!selectedCategoryForModel && (
+                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                    Select a category to load model specification fields.
+                                </div>
+                            )}
+
+                            {selectedCategoryForModel && selectedCategoryModelSpecs.length === 0 && (
+                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                    This category has no model specification fields yet.
+                                </div>
+                            )}
+
+                            {selectedCategoryModelSpecs.length > 0 && (
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    {selectedCategoryModelSpecs.map((spec) => {
+                                        const fieldValue = modelSpecValues[spec.fieldName] ?? "";
+
+                                        if (spec.inputType === "Boolean") {
+                                            const checked = fieldValue === "true";
+
+                                            return (
+                                                <div key={spec.fieldName} className="space-y-2">
+                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                        {spec.fieldName}
+                                                        {spec.required && <span className="text-red-500"> *</span>}
+                                                    </label>
+                                                    <div className="flex h-10 items-center justify-between rounded-md border border-border px-3">
+                                                        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+                                                            {checked ? "Yes" : "No"}
+                                                        </span>
+                                                        <Switch
+                                                            checked={checked}
+                                                            onCheckedChange={(value) =>
+                                                                updateModelSpecValue(
+                                                                    spec.fieldName,
+                                                                    value ? "true" : "false"
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={spec.fieldName} className="space-y-2">
+                                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                    {spec.fieldName}
+                                                    {spec.required && <span className="text-red-500"> *</span>}
+                                                </label>
+                                                <Input
+                                                    type={spec.inputType === "Number" ? "number" : spec.inputType === "Date" ? "date" : "text"}
+                                                    value={fieldValue}
+                                                    onChange={(event) =>
+                                                        updateModelSpecValue(spec.fieldName, event.target.value)
+                                                    }
+                                                    placeholder={spec.inputType === "Dropdown" ? "Enter option value" : `Enter ${spec.fieldName}`}
+                                                    required={spec.required}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {getFieldError("technicalDetails") && (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {getFieldError("technicalDetails")}
+                                </p>
+                            )}
+                        </div>
                         {renderActiveSwitch}
                     </>
                 );

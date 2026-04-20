@@ -13,6 +13,13 @@ const customAttributeSchema = z.object({
   required: z.boolean().default(false),
 });
 
+const categoryCustomSchemaShape = z
+  .object({
+    modelSpecs: z.array(customAttributeSchema),
+    assetTracking: z.array(customAttributeSchema),
+  })
+  .strict();
+
 const technicalDetailsSchema = z
   .string()
   .transform((value, ctx) => {
@@ -39,9 +46,6 @@ const technicalDetailsSchema = z
           message: 'Technical details must contain non-empty keys and values.',
         }
       )
-      .refine((record) => Object.keys(record).length > 0, {
-        message: 'Add at least one technical detail property.',
-      })
   );
 
 export const brandSchema = z.object({
@@ -106,7 +110,5 @@ export const categorySchema = z.object({
         return z.NEVER;
       }
     })
-    .pipe(
-      z.array(customAttributeSchema).min(1, 'Add at least one custom attribute')
-    ),
+    .pipe(categoryCustomSchemaShape),
 });

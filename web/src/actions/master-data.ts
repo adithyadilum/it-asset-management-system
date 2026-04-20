@@ -106,7 +106,9 @@ export async function createCategory(
     pillar: formData.get('pillar'),
     name: formData.get('name'),
     prefix: formData.get('prefix'),
-    customSchema: String(formData.get('customSchema') ?? '[]'),
+    customSchema: String(
+      formData.get('customSchema') ?? '{"modelSpecs":[],"assetTracking":[]}'
+    ),
   });
 
   if (!parsed.success) {
@@ -201,7 +203,10 @@ export async function createMasterDataRecord(
           pillar: formData.get('pillar'),
           name: formData.get('name'),
           prefix: formData.get('prefix'),
-          customSchema: String(formData.get('customSchema') ?? '[]'),
+          customSchema: String(
+            formData.get('customSchema') ??
+              '{"modelSpecs":[],"assetTracking":[]}'
+          ),
         });
 
         if (!parsed.success) {
