@@ -9,6 +9,7 @@
     "lint": "eslint",
     "check": "npm run lint && tsc --noEmit",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed:assets": "tsx src/db/seed.assets.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

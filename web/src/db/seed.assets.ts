@@ -25,7 +25,7 @@ async function seedAssets() {
   const neonClient = neon(databaseUrl);
   const db = drizzle(neonClient);
 
-  console.log('🌱 Seeding Epic 8 Asset Data...\n');
+  console.log('Seeding Epic 8 Asset Data...\n');
 
   try {
     // ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ async function seedAssets() {
       }
       vendorIds[vendor.name] = v[0].id;
     }
-    console.log(`  ✓ ${Object.keys(vendorIds).length} vendors created\n`);
+    console.log(`${Object.keys(vendorIds).length} vendors created\n`);
 
     // ---------------------------------------------------------------------------
     // 2. SEED LOCATIONS
@@ -93,7 +93,7 @@ async function seedAssets() {
       }
       locationIds[loc.name] = location[0].id;
     }
-    console.log(`  ✓ ${Object.keys(locationIds).length} locations created\n`);
+    console.log(`${Object.keys(locationIds).length} locations created\n`);
 
     // ---------------------------------------------------------------------------
     // 3. SEED BRANDS
@@ -128,7 +128,7 @@ async function seedAssets() {
       }
       brandIds[b] = brand[0].id;
     }
-    console.log(`  ✓ ${Object.keys(brandIds).length} brands created\n`);
+    console.log(`${Object.keys(brandIds).length} brands created\n`);
 
     // ---------------------------------------------------------------------------
     // 4. SEED CATEGORIES
@@ -260,7 +260,7 @@ async function seedAssets() {
       }
       categoryIds[cat.name] = category[0].id;
     }
-    console.log(`  ✓ ${Object.keys(categoryIds).length} categories created\n`);
+    console.log(`${Object.keys(categoryIds).length} categories created\n`);
 
     // ---------------------------------------------------------------------------
     // 5. SEED MODELS
@@ -306,7 +306,7 @@ async function seedAssets() {
       }
       modelIds[m.name] = model[0].id;
     }
-    console.log(`  ✓ ${Object.keys(modelIds).length} models created\n`);
+    console.log(`${Object.keys(modelIds).length} models created\n`);
 
     // ---------------------------------------------------------------------------
     // 6. SEED ASSETS
@@ -611,7 +611,7 @@ async function seedAssets() {
         purchaseCount++;
         } catch (purchaseError) {
         console.warn(
-            `  ⚠️  Could not insert purchase for ${a.tag}:`,
+            `  Could not insert purchase for ${a.tag}:`,
             purchaseError
         );
         }
@@ -622,11 +622,11 @@ async function seedAssets() {
       }
     }
 
-    console.log(`  ✓ ${createdCount} assets created`);
-    console.log(`  ✓ ${purchaseCount} purchase records created\n`);
+    console.log(`${createdCount} assets created`);
+    console.log(`${purchaseCount} purchase records created\n`);
 
-    console.log('✅ Epic 8 Asset Seeding Completed!\n');
-    console.log('📊 Summary:');
+    console.log('Epic 8 Asset Seeding Completed!\n');
+    console.log('Summary:');
     console.log(`  • Vendors: ${Object.keys(vendorIds).length}`);
     console.log(`  • Locations: ${Object.keys(locationIds).length}`);
     console.log(`  • Brands: ${Object.keys(brandIds).length}`);
@@ -634,9 +634,9 @@ async function seedAssets() {
     console.log(`  • Models: ${Object.keys(modelIds).length}`);
     console.log(`  • Assets: ${createdCount}`);
     console.log(`  • Purchase Records: ${purchaseCount}`);
-    console.log('\n💡 Tip: Navigate to /assets to view all assets\n');
+    console.log('\n Tip: Navigate to /assets to view all assets\n');
   } catch (error) {
-    console.error('Epic 8 Asset Seeding Failed:', error);
+    console.error('Asset Seeding Failed:', error);
     process.exitCode = 1;
   }
 }
