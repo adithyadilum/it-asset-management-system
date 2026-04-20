@@ -86,6 +86,86 @@ function normalizePillarsValue(value: unknown): string[] {
   return [];
 }
 
+type CustomSchemaInputType =
+  | "Text"
+  | "Number"
+  | "Date"
+  | "Dropdown"
+  | "Boolean";
+
+type CategoryCustomSchemaField = {
+  fieldName: string;
+  inputType: CustomSchemaInputType;
+  required: boolean;
+};
+
+type CategoryCustomSchema = {
+  modelSpecs: CategoryCustomSchemaField[];
+  assetTracking: CategoryCustomSchemaField[];
+};
+
+const VALID_CUSTOM_INPUT_TYPES: ReadonlySet<CustomSchemaInputType> = new Set([
+  "Text",
+  "Number",
+  "Date",
+  "Dropdown",
+  "Boolean",
+]);
+
+function normalizeCustomSchemaField(value: unknown): CategoryCustomSchemaField | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const fieldName = String(record.fieldName ?? "").trim();
+  const inputType = String(record.inputType ?? "").trim() as CustomSchemaInputType;
+
+  if (fieldName.length === 0 || !VALID_CUSTOM_INPUT_TYPES.has(inputType)) {
+    return null;
+  }
+
+  return {
+    fieldName,
+    inputType,
+    required: record.required === true,
+  };
+}
+
+function normalizeCustomSchemaList(value: unknown): CategoryCustomSchemaField[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => normalizeCustomSchemaField(item))
+    .filter((item): item is CategoryCustomSchemaField => item !== null);
+}
+
+function normalizeCategoryCustomSchema(value: unknown): CategoryCustomSchema {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+
+    return {
+      modelSpecs: normalizeCustomSchemaList(record.modelSpecs),
+      assetTracking: normalizeCustomSchemaList(record.assetTracking),
+    };
+  }
+
+  if (Array.isArray(value)) {
+    // Backward compatibility for older flat-array schemas in existing rows.
+    return {
+      modelSpecs: normalizeCustomSchemaList(value),
+      assetTracking: [],
+    };
+  }
+
+  return {
+    modelSpecs: [],
+    assetTracking: [],
+  };
+}
+
 type MasterDataPageProps = {
   searchParams: Promise<{
     panel?: string | string[];
@@ -179,6 +259,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         name: categories.name,
         prefix: categories.prefix,
         pillar: categories.pillar,
+        customSchema: categories.customSchema,
         isActive: categories.isActive,
         linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
       })
@@ -190,6 +271,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         categories.name,
         categories.prefix,
         categories.pillar,
+        categories.customSchema,
         categories.isActive
       )
       .orderBy(asc(categories.name)),
@@ -220,6 +302,11 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     pillars: normalizePillarsValue(row.pillars),
   }));
 
+  const normalizedCategories = categoriesData.map((row) => ({
+    ...row,
+    customSchema: normalizeCategoryCustomSchema(row.customSchema),
+  }));
+
   const normalizedVendors = vendorsData.map((row) => ({
     ...row,
     pillars: normalizePillarsValue(row.pillars),
@@ -231,7 +318,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     >
       <MasterDataManagementClient
         key={`master-data-${activeTab ?? "asset-categories"}`}
-        categories={categoriesData}
+        categories={normalizedCategories}
         locations={locationsData}
         brands={normalizedBrands}
         initialTab={activeTab}
@@ -247,7 +334,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         entity={recordEntity}
         recordId={recordId ?? undefined}
         recordMode={recordMode ?? undefined}
-        categories={categoriesData}
+        categories={normalizedCategories}
         locations={locationsData}
         brands={normalizedBrands}
         deviceModels={normalizedDeviceModels}

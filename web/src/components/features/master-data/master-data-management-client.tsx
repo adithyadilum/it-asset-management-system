@@ -35,11 +35,30 @@ type PillarFilter =
     | "Office Furniture"
     | "Office Electronics";
 
+export type CustomSchemaInputType =
+    | "Text"
+    | "Number"
+    | "Date"
+    | "Dropdown"
+    | "Boolean";
+
+export type CategoryCustomSchemaField = {
+    fieldName: string;
+    inputType: CustomSchemaInputType;
+    required: boolean;
+};
+
+export type CategoryCustomSchema = {
+    modelSpecs: CategoryCustomSchemaField[];
+    assetTracking: CategoryCustomSchemaField[];
+};
+
 export type MasterDataCategoryRow = {
     id: number;
     name: string;
     prefix: string;
     pillar: string;
+    customSchema: CategoryCustomSchema;
     isActive: boolean;
     linkedAssets: number;
 };
