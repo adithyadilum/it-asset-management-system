@@ -1,21 +1,26 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { TabbedPanel, type TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
+import React, { useEffect, useMemo } from 'react';
+import { TabbedPanel, type TabbedPanelTab } from './tabbed-panel';
 import { type SlidePanelAction } from '@/components/shared/slide-panel';
-import { AssetDetailsTab } from '../assets/asset-details-tab';
-import { TechnicalDetailsTab } from '../assets/technical-details-tab';
-import { PurchaseDetailsTab } from '../assets/purchase-details-tab';
-import { HistoryTab, type HistoryEvent } from '../assets/history-tab';
+import { AssetDetailsTab } from '@/components/shared/assets/asset-details-tab';
+import { TechnicalDetailsTab } from '@/components/shared/assets/technical-details-tab';
+import { PurchaseDetailsTab } from '@/components/shared/assets/purchase-details-tab';
+import { HistoryTab, type HistoryEvent } from '@/components/shared/assets/history-tab';
+import { AssetLoadingSkeleton } from '@/components/shared/assets/asset-loading-skeleton';
+import { useSidebar } from '@/lib/context/sidebar-context';
+
+export type AssetTabType = 'Asset Details' | 'Technical Details' | 'Physical Details' | 'Purchase Details' | 'History';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  isLoading?: boolean;
   
   // Asset Data
   assetId: string;
   assetTag: string;
-  assetCategory: 'Hardware' | 'Software' | 'Furniture' | 'Office Electronics';
+  assetCategory: 'IT & Digital' | 'Software' | 'Office Furniture' | 'Office Electronics';
   model: string;
   brand: string;
   serialNumber?: string;
@@ -42,7 +47,7 @@ export interface AssetDetailsPanelProps {
   totalCost?: string;
   warrantyPeriod?: string;
   totalRepairCost?: string;
-  invoicePdf?: string;
+  invoiceUrl?: string;
   vendorInfo?: {
     vendorId: string;
     vendorName: string;
@@ -67,6 +72,7 @@ export interface AssetDetailsPanelProps {
 export function AssetDetailsPanel({
   isOpen,
   onClose,
+  isLoading = false,
   assetId,
   assetTag,
   assetCategory,
@@ -92,7 +98,7 @@ export function AssetDetailsPanel({
   totalCost,
   warrantyPeriod,
   totalRepairCost,
-  invoicePdf,
+  invoiceUrl,
   vendorInfo,
   historyEvents = [],
   onEdit,
@@ -101,10 +107,21 @@ export function AssetDetailsPanel({
   onQRCodeClick,
   onCurrencyChange,
 }: AssetDetailsPanelProps) {
+  const { collapseSidebar, expandSidebar } = useSidebar();
+
+  // Collapse sidebar when panel opens
+  useEffect(() => {
+    if (isOpen) {
+      collapseSidebar();
+    } else {
+      expandSidebar();
+    }
+  }, [isOpen, collapseSidebar, expandSidebar]);
+
   // Determine action button label based on category
   const getActionButtonLabel = () => {
     switch (assetCategory) {
-      case 'Furniture':
+      case 'Office Furniture':
         return 'Transfer';
       case 'Software':
         return 'Return';
@@ -115,64 +132,67 @@ export function AssetDetailsPanel({
 
   // Build tabs based on asset category
   const tabs: TabbedPanelTab[] = useMemo(() => {
-    const tabsList: TabbedPanelTab[] = [
-      {
-        id: 'asset-details',
-        label: 'Asset Details',
-        content: (
-          <AssetDetailsTab
-            assetId={assetId}
-            assetTag={assetTag}
-            category={assetCategory}
-            model={model}
-            brand={brand}
-            serialNumber={serialNumber}
-            owner={owner}
-            group={group}
-            warranty={warranty}
-            lastRepaired={lastRepaired}
-            dateCreated={dateCreated}
-            updatedAt={updatedAt}
-            note={note}
-            imageUrl={imageUrl}
-            status={status}
-            onQRCodeClick={onQRCodeClick}
-          />
-        ),
-      },
-    ];
+    const tabsList: TabbedPanelTab[] = [];
 
-    // Add technical/physical details tab based on category
-    if (assetCategory === 'Hardware' || assetCategory === 'Office Electronics') {
+    // Always add Asset Details tab
+    tabsList.push({
+      id: 'asset-details',
+      label: 'Asset Details',
+      content: isLoading ? (
+        <AssetLoadingSkeleton />
+      ) : (
+        <AssetDetailsTab
+          assetId={assetId}
+          assetTag={assetTag}
+          category={assetCategory}
+          model={model}
+          brand={brand}
+          serialNumber={serialNumber}
+          owner={owner}
+          group={group}
+          warranty={warranty}
+          lastRepaired={lastRepaired}
+          dateCreated={dateCreated}
+          updatedAt={updatedAt}
+          note={note}
+          imageUrl={imageUrl}
+          status={status}
+          onQRCodeClick={onQRCodeClick}
+        />
+      ),
+    });
+
+    // Add Technical/Physical Details tab based on category
+    if (assetCategory === 'IT & Digital' || assetCategory === 'Office Electronics') {
       tabsList.push({
         id: 'technical-details',
         label: 'Technical Details',
-        content: (
-          <TechnicalDetailsTab
-            specs={specs}
-            note={techNote}
-          />
+        content: isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
+          <TechnicalDetailsTab specs={specs} note={techNote} />
         ),
       });
-    } else if (assetCategory === 'Furniture') {
+    } else if (assetCategory === 'Office Furniture') {
       tabsList.push({
         id: 'physical-details',
         label: 'Physical Details',
-        content: (
-          <TechnicalDetailsTab
-            specs={specs}
-            note={techNote}
-          />
+        content: isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
+          <TechnicalDetailsTab specs={specs} note={techNote} />
         ),
       });
     }
 
-    // Add purchase details tab
-    if (vendorInfo) {
+    // Add Purchase Details tab (all categories except Software sometimes)
+    if (vendorInfo || purchaseDate) {
       tabsList.push({
         id: 'purchase-details',
         label: 'Purchase Details',
-        content: (
+        content: isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
           <PurchaseDetailsTab
             currency={currency}
             purchaseDate={purchaseDate || '-'}
@@ -182,34 +202,74 @@ export function AssetDetailsPanel({
             totalCost={totalCost || '-'}
             warrantyPeriod={warrantyPeriod || '-'}
             totalRepairCost={totalRepairCost}
-            invoicePdf={invoicePdf}
-            vendor={vendorInfo}
+            invoicePdf={invoiceUrl}
+            vendor={vendorInfo || {
+              vendorId: '',
+              vendorName: 'N/A',
+            }}
             onCurrencyChange={onCurrencyChange}
           />
         ),
       });
     }
 
-    // Add history tab
-    if (historyEvents.length > 0) {
+    // Add History tab (not for Software)
+    if (assetCategory !== 'Software' && historyEvents.length > 0) {
       tabsList.push({
         id: 'history',
         label: 'History',
-        content: (
-          <HistoryTab
-            events={historyEvents}
-            onViewAll={onViewAllHistory}
-          />
+        content: isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
+          <HistoryTab events={historyEvents} onViewAll={onViewAllHistory} />
         ),
       });
     }
 
     return tabsList;
-  }, [assetId, assetTag, assetCategory, model, brand, serialNumber, owner, group, warranty, lastRepaired, dateCreated, updatedAt, note, imageUrl, status, specs, techNote, currency, purchaseDate, basePrice, shippingCost, tax, totalCost, warrantyPeriod, totalRepairCost, invoicePdf, vendorInfo, historyEvents, onQRCodeClick, onCurrencyChange, onViewAllHistory]);
+  }, [
+    isLoading,
+    assetId,
+    assetTag,
+    assetCategory,
+    model,
+    brand,
+    serialNumber,
+    owner,
+    group,
+    warranty,
+    lastRepaired,
+    dateCreated,
+    updatedAt,
+    note,
+    imageUrl,
+    status,
+    specs,
+    techNote,
+    currency,
+    purchaseDate,
+    basePrice,
+    shippingCost,
+    tax,
+    totalCost,
+    warrantyPeriod,
+    totalRepairCost,
+    invoiceUrl,
+    vendorInfo,
+    historyEvents,
+    onQRCodeClick,
+    onCurrencyChange,
+    onViewAllHistory,
+  ]);
 
   const actions: SlidePanelAction[] = [
     { id: 'edit', label: 'Edit', variant: 'outline', onClick: onEdit },
-    { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: onActionButtonClick },
+    {
+      id: 'action',
+      label: getActionButtonLabel(),
+      variant: 'default',
+      onClick: onActionButtonClick,
+    },
   ];
 
   return (
