@@ -1,6 +1,9 @@
-export type FormErrorMap<TFields extends string> = Partial<
-  Record<TFields, string[]>
->;
+import type {
+  BrandFormState,
+  CategoryFormState,
+  MasterDataRecordEntity,
+  UpdateMasterDataState,
+} from '@/types/master-data';
 
 export const MASTER_DATA_RECORD_ENTITIES = [
   'locations',
@@ -9,28 +12,7 @@ export const MASTER_DATA_RECORD_ENTITIES = [
   'device-models',
   'vendors',
   'departments',
-] as const;
-
-export type MasterDataRecordEntity =
-  (typeof MASTER_DATA_RECORD_ENTITIES)[number];
-
-export type BrandFormState = {
-  success: boolean;
-  message: string;
-  errors?: FormErrorMap<'name' | 'isActive'>;
-};
-
-export type CategoryFormState = {
-  success: boolean;
-  message: string;
-  errors?: FormErrorMap<'pillar' | 'name' | 'prefix' | 'customSchema'>;
-};
-
-export type UpdateMasterDataState = {
-  success: boolean;
-  message: string;
-  errors?: FormErrorMap<string>;
-};
+] as const satisfies ReadonlyArray<MasterDataRecordEntity>;
 
 export const INITIAL_BRAND_FORM_STATE: BrandFormState = {
   success: false,

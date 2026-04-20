@@ -16,8 +16,8 @@ import {
 import {
     INITIAL_UPDATE_MASTER_DATA_STATE,
     MASTER_DATA_RECORD_ENTITIES,
-    type MasterDataRecordEntity,
 } from "@/lib/master-data/shared";
+import type { MasterDataRecordEntity } from "@/types/master-data";
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Input } from "@/components/ui/input";
