@@ -1,12 +1,11 @@
 import { asc, eq, sql } from "drizzle-orm";
 
-import { BrandFormPanel } from "@/components/features/master-data/brand-form-panel";
-import { CategoryFormPanel } from "@/components/features/master-data/category-form-panel";
 import { MasterDataManagementClient } from "@/components/features/master-data/master-data-management-client";
-import { MasterDataRecordPanel } from "@/components/features/master-data/master-data-record-panel";
+import { MasterDataPanels } from "@/components/features/master-data/master-data-panels";
 import { db } from "@/db";
 import {
   assets,
+  assetPurchases,
   brands,
   categories,
   departments,
@@ -42,9 +41,55 @@ function normalizeMasterDataTab(value: string | undefined): MasterDataTabId | un
     : undefined;
 }
 
+function normalizePillarsValue(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item ?? "").trim())
+      .filter((item) => item.length > 0);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (trimmed.length === 0) {
+      return [];
+    }
+
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item) => String(item ?? "").trim())
+            .filter((item) => item.length > 0);
+        }
+      } catch {
+        return [];
+      }
+    }
+
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      const inner = trimmed.slice(1, -1).trim();
+      if (inner.length === 0) {
+        return [];
+      }
+
+      return inner
+        .split(",")
+        .map((item) => item.trim().replace(/^"|"$/g, ""))
+        .filter((item) => item.length > 0);
+    }
+
+    return [trimmed];
+  }
+
+  return [];
+}
+
 type MasterDataPageProps = {
   searchParams: Promise<{
     panel?: string | string[];
+    animate?: string | string[];
     tab?: string | string[];
     entity?: string | string[];
     id?: string | string[];
@@ -55,6 +100,9 @@ type MasterDataPageProps = {
 export default async function MasterDataPage({ searchParams }: MasterDataPageProps) {
   const params = await searchParams;
   const currentPanel = Array.isArray(params.panel) ? params.panel[0] : params.panel;
+  const panelAnimation = Array.isArray(params.animate)
+    ? params.animate[0]
+    : params.animate;
   const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const recordEntity = Array.isArray(params.entity) ? params.entity[0] : params.entity;
   const recordId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -85,18 +133,35 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
       .select({
         id: brands.id,
         name: brands.name,
+        pillars:
+          sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
         isActive: brands.isActive,
       })
       .from(brands)
+      .leftJoin(models, eq(models.brandId, brands.id))
+      .leftJoin(categories, eq(categories.id, models.categoryId))
+      .groupBy(brands.id, brands.name, brands.isActive)
       .orderBy(asc(brands.name)),
     db
       .select({
         id: vendors.id,
         companyName: vendors.companyName,
         contactInfo: vendors.contactInfo,
+        pillars:
+          sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
         isActive: vendors.isActive,
       })
       .from(vendors)
+      .leftJoin(assetPurchases, eq(assetPurchases.vendorId, vendors.id))
+      .leftJoin(assets, eq(assetPurchases.assetId, assets.id))
+      .leftJoin(models, eq(assets.modelId, models.id))
+      .leftJoin(categories, eq(models.categoryId, categories.id))
+      .groupBy(
+        vendors.id,
+        vendors.companyName,
+        vendors.contactInfo,
+        vendors.isActive
+      )
       .orderBy(asc(vendors.companyName)),
     db
       .select({
@@ -134,6 +199,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         name: models.name,
         brandName: brands.name,
         categoryName: categories.name,
+        pillar: categories.pillar,
         isActive: models.isActive,
       })
       .from(models)
@@ -141,6 +207,23 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
       .leftJoin(categories, eq(models.categoryId, categories.id))
       .orderBy(asc(models.name)),
   ]);
+
+  const normalizedDeviceModels = deviceModelsData.map((row) => ({
+    ...row,
+    brandName: row.brandName ?? "Unknown",
+    categoryName: row.categoryName ?? "Unknown",
+    pillar: row.pillar ?? "IT & Digital",
+  }));
+
+  const normalizedBrands = brandsData.map((row) => ({
+    ...row,
+    pillars: normalizePillarsValue(row.pillars),
+  }));
+
+  const normalizedVendors = vendorsData.map((row) => ({
+    ...row,
+    pillars: normalizePillarsValue(row.pillars),
+  }));
 
   return (
     <div
@@ -150,42 +233,25 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         key={`master-data-${activeTab ?? "asset-categories"}`}
         categories={categoriesData}
         locations={locationsData}
-        brands={brandsData}
+        brands={normalizedBrands}
         initialTab={activeTab}
-        deviceModels={deviceModelsData.map((row) => ({
-          ...row,
-          brandName: row.brandName ?? "Unknown",
-          categoryName: row.categoryName ?? "Unknown",
-        }))}
-        vendors={vendorsData}
+        deviceModels={normalizedDeviceModels}
+        vendors={normalizedVendors}
         departments={departmentsData}
       />
 
-      <BrandFormPanel
-        isOpen={currentPanel === "brand"}
-        onCloseUrl={closePanelUrl}
-      />
-
-      <CategoryFormPanel
-        isOpen={currentPanel === "category"}
-        onCloseUrl={closePanelUrl}
-      />
-
-      <MasterDataRecordPanel
-        isOpen={currentPanel === "record"}
-        onCloseUrl={closePanelUrl}
+      <MasterDataPanels
+        currentPanel={currentPanel}
+        panelAnimation={panelAnimation}
+        closePanelUrl={closePanelUrl}
         entity={recordEntity}
-        recordId={recordId}
-        initialMode={recordMode}
+        recordId={recordId ?? undefined}
+        recordMode={recordMode ?? undefined}
         categories={categoriesData}
         locations={locationsData}
-        brands={brandsData}
-        deviceModels={deviceModelsData.map((row) => ({
-          ...row,
-          brandName: row.brandName ?? "Unknown",
-          categoryName: row.categoryName ?? "Unknown",
-        }))}
-        vendors={vendorsData}
+        brands={normalizedBrands}
+        deviceModels={normalizedDeviceModels}
+        vendors={normalizedVendors}
         departments={departmentsData}
       />
     </div>

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -28,9 +28,9 @@ export type MasterDataTabId =
     | "vendors"
     | "departments";
 
-type CategoryTypeFilter =
+type PillarFilter =
     | "all"
-    | "Hardware"
+    | "IT & Digital"
     | "Software"
     | "Office Furniture"
     | "Office Electronics";
@@ -54,6 +54,7 @@ export type MasterDataLocationRow = {
 export type MasterDataBrandRow = {
     id: number;
     name: string;
+    pillars: string[];
     isActive: boolean;
 };
 
@@ -62,6 +63,7 @@ export type MasterDataDeviceModelRow = {
     name: string;
     brandName: string;
     categoryName: string;
+    pillar: string;
     isActive: boolean;
 };
 
@@ -69,6 +71,7 @@ export type MasterDataVendorRow = {
     id: number;
     companyName: string;
     contactInfo: string | null;
+    pillars: string[];
     isActive: boolean;
 };
 
@@ -112,21 +115,20 @@ const EMPTY_SEARCH_STATE: Record<MasterDataTabId, string> = {
     departments: "",
 };
 
-function getCategoryTypeLabel(pillar: string): CategoryTypeFilter {
-    if (pillar === "IT & Digital") {
-        return "Hardware";
-    }
+const TYPE_FILTER_TAB_IDS = new Set<MasterDataTabId>([
+    "asset-categories",
+    "brands",
+    "device-models",
+    "vendors",
+]);
 
-    if (
-        pillar === "Software" ||
-        pillar === "Office Furniture" ||
-        pillar === "Office Electronics"
-    ) {
-        return pillar;
-    }
-
-    return "all";
-}
+const PILLAR_OPTIONS: Array<{ label: string; value: PillarFilter }> = [
+    { label: "All", value: "all" },
+    { label: "IT & Digital", value: "IT & Digital" },
+    { label: "Software", value: "Software" },
+    { label: "Office Furniture", value: "Office Furniture" },
+    { label: "Office Electronics", value: "Office Electronics" },
+];
 
 function containsSearch(fields: Array<string | number | null | undefined>, searchTerm: string) {
     if (!searchTerm.trim()) {
@@ -138,6 +140,59 @@ function containsSearch(fields: Array<string | number | null | undefined>, searc
     return fields.some((field) =>
         String(field ?? "").toLowerCase().includes(normalized)
     );
+}
+
+function normalizePillarsValue(value: unknown): string[] {
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => String(item ?? "").trim())
+            .filter((item) => item.length > 0);
+    }
+
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+
+        if (trimmed.length === 0) {
+            return [];
+        }
+
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                    return parsed
+                        .map((item) => String(item ?? "").trim())
+                        .filter((item) => item.length > 0);
+                }
+            } catch {
+                return [];
+            }
+        }
+
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+            const inner = trimmed.slice(1, -1).trim();
+            if (inner.length === 0) {
+                return [];
+            }
+
+            return inner
+                .split(",")
+                .map((item) => item.trim().replace(/^"|"$/g, ""))
+                .filter((item) => item.length > 0);
+        }
+
+        return [trimmed];
+    }
+
+    return [];
+}
+
+function matchesPillarFilter(pillars: string[], filter: PillarFilter) {
+    if (filter === "all") {
+        return true;
+    }
+
+    return pillars.includes(filter);
 }
 
 function isMasterDataTabId(value: string): value is MasterDataTabId {
@@ -160,7 +215,7 @@ export function MasterDataManagementClient({
     const [searchByTab, setSearchByTab] = useState<Record<MasterDataTabId, string>>(
         EMPTY_SEARCH_STATE
     );
-    const [categoryType, setCategoryType] = useState<CategoryTypeFilter>("Hardware");
+    const [pillarType, setPillarType] = useState<PillarFilter>("all");
 
     const categoryColumns = useMemo<ColumnDef<MasterDataCategoryRow>[]>(
         () => [
@@ -176,6 +231,10 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "prefix",
                 header: "Prefix Code",
+            },
+            {
+                accessorKey: "pillar",
+                header: "Type",
             },
             {
                 accessorKey: "isActive",
@@ -234,6 +293,11 @@ export function MasterDataManagementClient({
             },
             { accessorKey: "name", header: "Brand Name" },
             {
+                accessorKey: "pillars",
+                header: "Type",
+                cell: ({ row }) => normalizePillarsValue(row.original.pillars).join(", ") || "N/A",
+            },
+            {
                 accessorKey: "isActive",
                 header: "Status",
                 cell: ({ row }) => (
@@ -255,6 +319,7 @@ export function MasterDataManagementClient({
                 cell: ({ row }) => `MDL-${String(row.original.id).padStart(4, "0")}`,
             },
             { accessorKey: "name", header: "Model Name" },
+            { accessorKey: "pillar", header: "Type" },
             { accessorKey: "categoryName", header: "Category" },
             { accessorKey: "brandName", header: "Brand" },
             {
@@ -283,6 +348,11 @@ export function MasterDataManagementClient({
                 accessorKey: "contactInfo",
                 header: "Contact Info",
                 cell: ({ row }) => row.original.contactInfo ?? "N/A",
+            },
+            {
+                accessorKey: "pillars",
+                header: "Type",
+                cell: ({ row }) => normalizePillarsValue(row.original.pillars).join(", ") || "N/A",
             },
             {
                 accessorKey: "isActive",
@@ -324,8 +394,7 @@ export function MasterDataManagementClient({
 
     const filteredCategories = useMemo(() => {
         return categories.filter((item) => {
-            const typeLabel = getCategoryTypeLabel(item.pillar);
-            const matchesType = categoryType === "all" || typeLabel === categoryType;
+            const matchesType = matchesPillarFilter([item.pillar], pillarType);
 
             if (!matchesType) {
                 return false;
@@ -336,7 +405,7 @@ export function MasterDataManagementClient({
                 searchByTab["asset-categories"]
             );
         });
-    }, [categories, categoryType, searchByTab]);
+    }, [categories, pillarType, searchByTab]);
 
     const filteredLocations = useMemo(
         () =>
@@ -348,32 +417,41 @@ export function MasterDataManagementClient({
 
     const filteredBrands = useMemo(
         () =>
-            brands.filter((item) =>
-                containsSearch([item.id, item.name], searchByTab.brands)
-            ),
-        [brands, searchByTab.brands]
+            brands.filter((item) => {
+                const pillars = normalizePillarsValue(item.pillars);
+                return (
+                    matchesPillarFilter(pillars, pillarType) &&
+                    containsSearch([item.id, item.name, pillars.join(" ")], searchByTab.brands)
+                );
+            }),
+        [brands, pillarType, searchByTab.brands]
     );
 
     const filteredModels = useMemo(
         () =>
             deviceModels.filter((item) =>
+                matchesPillarFilter([item.pillar], pillarType) &&
                 containsSearch(
-                    [item.id, item.name, item.categoryName, item.brandName],
+                    [item.id, item.name, item.categoryName, item.brandName, item.pillar],
                     searchByTab["device-models"]
                 )
             ),
-        [deviceModels, searchByTab]
+        [deviceModels, pillarType, searchByTab]
     );
 
     const filteredVendors = useMemo(
         () =>
-            vendors.filter((item) =>
-                containsSearch(
-                    [item.id, item.companyName, item.contactInfo],
-                    searchByTab.vendors
-                )
-            ),
-        [vendors, searchByTab.vendors]
+            vendors.filter((item) => {
+                const pillars = normalizePillarsValue(item.pillars);
+                return (
+                    matchesPillarFilter(pillars, pillarType) &&
+                    containsSearch(
+                        [item.id, item.companyName, item.contactInfo, pillars.join(" ")],
+                        searchByTab.vendors
+                    )
+                );
+            }),
+        [vendors, pillarType, searchByTab.vendors]
     );
 
     const filteredDepartments = useMemo(
@@ -388,9 +466,11 @@ export function MasterDataManagementClient({
     );
 
     const activeSearchValue = searchByTab[activeTab];
+    const isPanelOpen = Boolean(searchParams.get("panel"));
+    const showTypeFilter = TYPE_FILTER_TAB_IDS.has(activeTab);
 
     const buildMasterDataUrl = useCallback(
-        (overrides: Partial<Record<"tab" | "panel" | "entity" | "id" | "mode", string | undefined>>) => {
+        (overrides: Partial<Record<"tab" | "panel" | "entity" | "id" | "mode" | "animate", string | undefined>>) => {
             const params = new URLSearchParams(searchParams.toString());
 
             for (const [key, value] of Object.entries(overrides)) {
@@ -418,6 +498,7 @@ export function MasterDataManagementClient({
                 buildMasterDataUrl({
                     tab: value,
                     panel: undefined,
+                    animate: undefined,
                     entity: undefined,
                     id: undefined,
                     mode: undefined,
@@ -434,6 +515,7 @@ export function MasterDataManagementClient({
                 buildMasterDataUrl({
                     tab: entity,
                     panel: "record",
+                    animate: isPanelOpen ? "0" : "1",
                     entity,
                     id: String(id),
                     mode: "detail",
@@ -441,31 +523,20 @@ export function MasterDataManagementClient({
                 { scroll: false }
             );
         },
-        [buildMasterDataUrl, router]
+        [buildMasterDataUrl, isPanelOpen, router]
     );
 
-    const categoryPanelHref = useMemo(
+    const addPanelHref = useMemo(
         () =>
             buildMasterDataUrl({
                 tab: activeTab,
-                panel: "category",
-                entity: undefined,
+                panel: "create",
+                animate: isPanelOpen ? "0" : "1",
+                entity: activeTab,
                 id: undefined,
                 mode: undefined,
             }),
-        [activeTab, buildMasterDataUrl]
-    );
-
-    const brandPanelHref = useMemo(
-        () =>
-            buildMasterDataUrl({
-                tab: activeTab,
-                panel: "brand",
-                entity: undefined,
-                id: undefined,
-                mode: undefined,
-            }),
-        [activeTab, buildMasterDataUrl]
+        [activeTab, buildMasterDataUrl, isPanelOpen]
     );
 
     return (
@@ -496,24 +567,24 @@ export function MasterDataManagementClient({
                 <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-                            {activeTab === "asset-categories" && (
+                            {showTypeFilter && (
                                 <div className="flex items-center gap-2">
                                     <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-700`}>
                                         Type:
                                     </span>
                                     <Select
-                                        value={categoryType}
-                                        onValueChange={(value) => setCategoryType(value as CategoryTypeFilter)}
+                                        value={pillarType}
+                                        onValueChange={(value) => setPillarType(value as PillarFilter)}
                                     >
                                         <SelectTrigger className="h-9 w-44 bg-white">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All</SelectItem>
-                                            <SelectItem value="Hardware">Hardware</SelectItem>
-                                            <SelectItem value="Software">Software</SelectItem>
-                                            <SelectItem value="Office Furniture">Office Furniture</SelectItem>
-                                            <SelectItem value="Office Electronics">Office Electronics</SelectItem>
+                                            {PILLAR_OPTIONS.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -547,17 +618,12 @@ export function MasterDataManagementClient({
                             </div>
                         </div>
 
-                        {activeTab === "asset-categories" && (
-                            <Link href={categoryPanelHref}>
-                                <Button>Add New Category</Button>
+                        <Button asChild>
+                            <Link href={addPanelHref}>
+                                <Plus className="h-4 w-4" />
+                                Add New
                             </Link>
-                        )}
-
-                        {activeTab === "brands" && (
-                            <Link href={brandPanelHref}>
-                                <Button variant="outline">Add New Brand</Button>
-                            </Link>
-                        )}
+                        </Button>
                     </div>
 
                     <TabsContent value="asset-categories" className="min-h-0">

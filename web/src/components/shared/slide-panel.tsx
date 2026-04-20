@@ -18,6 +18,7 @@ export type SlidePanelAction = {
 
 interface SlidePanelProps {
     isOpen: boolean;
+    disableTransition?: boolean;
     onClose: (open: boolean) => void;
     title: React.ReactNode;
     description?: React.ReactNode;
@@ -54,6 +55,7 @@ function PanelPlaceholder() {
 
 export function SlidePanel({
     isOpen,
+    disableTransition = false,
     onClose,
     title,
     description,
@@ -75,7 +77,8 @@ export function SlidePanel({
         <aside
             className={cn(
                 "relative h-full shrink-0 overflow-hidden",
-                "transition-[width,margin] duration-300 ease-out",
+                "transition-[width,margin] ease-out",
+                disableTransition ? "duration-0" : "duration-300",
                 isOpen ? "ml-(--slide-panel-gap) w-(--slide-panel-width)" : "ml-0 w-0"
             )}
             style={panelStyle}
@@ -90,7 +93,8 @@ export function SlidePanel({
                     className={cn(
                         "absolute inset-y-0 right-0 w-(--slide-panel-width)",
                         "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg",
-                        "transition-transform duration-300 ease-out",
+                        "transition-transform ease-out",
+                        disableTransition ? "duration-0" : "duration-300",
                         "translate-x-0",
                     )}
                 >

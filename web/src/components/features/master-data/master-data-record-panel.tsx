@@ -52,6 +52,7 @@ type EditableFieldConfig = {
 interface MasterDataRecordPanelProps {
     isOpen: boolean;
     onCloseUrl: string;
+    disableTransition?: boolean;
     entity?: string;
     recordId?: string;
     initialMode?: string;
@@ -200,6 +201,7 @@ function resolveRecordByEntity(
 export function MasterDataRecordPanel({
     isOpen,
     onCloseUrl,
+    disableTransition = false,
     entity,
     recordId,
     initialMode,
@@ -488,6 +490,7 @@ export function MasterDataRecordPanel({
     return (
         <SlidePanel
             isOpen={isOpen}
+            disableTransition={disableTransition}
             onClose={handleClose}
             title={panelTitle}
             description={panelDescription}
