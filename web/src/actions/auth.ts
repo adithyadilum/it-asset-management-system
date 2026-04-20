@@ -3,7 +3,7 @@
 import { randomUUID } from 'node:crypto';
 
 import bcrypt from 'bcryptjs';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -12,6 +12,7 @@ import { db } from '@/db';
 import { sessions, users } from '@/db/schema';
 import { getJwtSecretKey } from '@/lib/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
+import { isValidUuid } from '@/lib/uuid';
 import type { LoginActionResult, LoginRequest, UserRole } from '@/types/auth';
 
 const SESSION_COOKIE_NAME = 'session_token';
@@ -168,6 +169,77 @@ export async function logout() {
     logLatency({
       scope: 'ACTION',
       label: 'auth.logout',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function getAuthenticatedUser(): Promise<{
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+} | null> {
+  const actionTimer = startLatencyTimer();
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
+
+    if (!isValidUuid(payload.sub)) return null;
+    if (!payload.sid || typeof payload.sid !== 'string') return null;
+
+    const role = normalizeRole(payload.role as string);
+    if (!role) return null;
+
+    const [activeSession, user] = await Promise.all([
+      db
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.tokenId, payload.sid),
+            eq(sessions.userId, payload.sub), 
+            isNull(sessions.revokedAt),
+            sql`${sessions.expiresAt} > NOW()`
+          )
+        )
+        .limit(1),
+      db
+        .select({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          role: users.role,
+          isActive: users.isActive,
+        })
+        .from(users)
+        .where(eq(users.id, payload.sub))
+        .limit(1),
+    ]);
+
+    if (activeSession.length === 0 || user.length === 0) {
+      return null;
+    }
+
+    if (!user[0].isActive) return null;
+
+    return {
+      id: user[0].id,
+      email: user[0].email,
+      name: user[0].name,
+      role: user[0].role,
+    };
+  } catch {
+    
+    return null;
+  } finally {
+    logLatency({
+      scope: 'ACTION AUTH',
+      label: 'auth.getAuthenticatedUser',
       startTime: actionTimer,
     });
   }
