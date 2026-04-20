@@ -5,12 +5,12 @@ import {
     Bell,
     PanelLeftClose,
     PanelLeftOpen,
-    Search,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { logout } from '@/actions/auth';
+import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     Breadcrumb,
@@ -167,28 +167,7 @@ export function TopHeader({ user }: TopHeaderProps) {
             </div>
 
             <div className="justify-self-center">
-                <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-slate-200 bg-white shadow-box-shadow-shadow-xs">
-                    <div className="flex items-center py-1.5 pl-3 pr-0">
-                        <Search className="h-4 w-4 shrink-0 text-slate-400" />
-                    </div>
-                    <div className="flex h-9 flex-1 items-center px-2">
-                        <span className={`flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-slate-500 ${sidebarDefaultTextClass}`}>
-                            Search...
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-1 py-1.5 pl-0 pr-3">
-                        {['⌘', 'K'].map((key) => (
-                            <div
-                                key={key}
-                                className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-slate-50 px-1 py-0"
-                            >
-                                <span className="font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-500 [font-style:var(--text-xs-regular-font-style)]">
-                                    {key}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <OmniSearchTrigger userRole={user.role} />
             </div>
 
             <div className="flex items-center gap-4 p-2 justify-self-end">
