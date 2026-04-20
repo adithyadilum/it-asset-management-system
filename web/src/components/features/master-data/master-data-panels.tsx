@@ -46,7 +46,6 @@ export function MasterDataPanels({
     return (
         <>
             <MasterDataCreatePanel
-                key={`master-data-create-${currentPanel === "create" ? "open" : "closed"}-${entity ?? "none"}`}
                 isOpen={currentPanel === "create"}
                 onCloseUrl={closePanelUrl}
                 entity={entity}
@@ -56,7 +55,6 @@ export function MasterDataPanels({
             />
 
             <MasterDataRecordPanel
-                key={`master-data-record-${currentPanel === "record" ? "open" : "closed"}-${entity ?? "none"}-${recordId ?? "none"}-${recordMode ?? "detail"}`}
                 isOpen={currentPanel === "record"}
                 onCloseUrl={closePanelUrl}
                 entity={entity}

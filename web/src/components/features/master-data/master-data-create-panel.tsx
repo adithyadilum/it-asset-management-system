@@ -208,6 +208,17 @@ export function MasterDataCreatePanel({
         [state.errors]
     );
 
+    const resetCreateFormState = useCallback(() => {
+        setState(INITIAL_CREATE_MASTER_DATA_STATE);
+        setIsActive(true);
+        setCategoryPillar("IT & Digital");
+        setModelPillar("IT & Digital");
+        setSelectedBrandId("");
+        setSelectedCategoryId("");
+        setCategoryAttributes([createCustomAttribute()]);
+        setModelProperties([createModelProperty()]);
+    }, []);
+
     const normalizedSelectedCategoryId = activeCategoriesForModel.some(
         (category) => String(category.id) === selectedCategoryId
     )
@@ -217,10 +228,11 @@ export function MasterDataCreatePanel({
     const handleClose = useCallback(
         (open: boolean) => {
             if (!open) {
+                resetCreateFormState();
                 router.push(onCloseUrl, { scroll: false });
             }
         },
-        [onCloseUrl, router]
+        [onCloseUrl, resetCreateFormState, router]
     );
 
     const handleSubmit = useCallback(
