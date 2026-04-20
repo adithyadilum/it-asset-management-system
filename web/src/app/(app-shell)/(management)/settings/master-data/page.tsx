@@ -3,6 +3,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { BrandFormPanel } from "@/components/features/master-data/brand-form-panel";
 import { CategoryFormPanel } from "@/components/features/master-data/category-form-panel";
 import { MasterDataManagementClient } from "@/components/features/master-data/master-data-management-client";
+import { MasterDataRecordPanel } from "@/components/features/master-data/master-data-record-panel";
 import { db } from "@/db";
 import {
   assets,
@@ -14,16 +15,54 @@ import {
   vendors,
 } from "@/db/schema";
 
+type MasterDataTabId =
+  | "locations"
+  | "asset-categories"
+  | "brands"
+  | "device-models"
+  | "vendors"
+  | "departments";
+
+const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>([
+  "locations",
+  "asset-categories",
+  "brands",
+  "device-models",
+  "vendors",
+  "departments",
+]);
+
+function normalizeMasterDataTab(value: string | undefined): MasterDataTabId | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return MASTER_DATA_TAB_IDS.has(value as MasterDataTabId)
+    ? (value as MasterDataTabId)
+    : undefined;
+}
+
 type MasterDataPageProps = {
   searchParams: Promise<{
     panel?: string | string[];
+    tab?: string | string[];
+    entity?: string | string[];
+    id?: string | string[];
+    mode?: string | string[];
   }>;
 };
 
 export default async function MasterDataPage({ searchParams }: MasterDataPageProps) {
   const params = await searchParams;
   const currentPanel = Array.isArray(params.panel) ? params.panel[0] : params.panel;
-  const isPanelOpen = !!currentPanel;
+  const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+  const recordEntity = Array.isArray(params.entity) ? params.entity[0] : params.entity;
+  const recordId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const recordMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const activeTab = normalizeMasterDataTab(requestedTab);
+  const closePanelUrl = activeTab
+    ? `/settings/master-data?tab=${encodeURIComponent(activeTab)}`
+    : "/settings/master-data";
 
   const [
     locationsData,
@@ -105,13 +144,14 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
 
   return (
     <div
-      className="flex h-full w-full overflow-hidden bg-slate-50 transition-[gap] duration-300 ease-out"
-      style={{ gap: isPanelOpen ? "0.5rem" : "0" }}
+      className="flex h-full w-full overflow-hidden bg-slate-50"
     >
       <MasterDataManagementClient
+        key={`master-data-${activeTab ?? "asset-categories"}`}
         categories={categoriesData}
         locations={locationsData}
         brands={brandsData}
+        initialTab={activeTab}
         deviceModels={deviceModelsData.map((row) => ({
           ...row,
           brandName: row.brandName ?? "Unknown",
@@ -123,12 +163,30 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
 
       <BrandFormPanel
         isOpen={currentPanel === "brand"}
-        onCloseUrl="/settings/master-data"
+        onCloseUrl={closePanelUrl}
       />
 
       <CategoryFormPanel
         isOpen={currentPanel === "category"}
-        onCloseUrl="/settings/master-data"
+        onCloseUrl={closePanelUrl}
+      />
+
+      <MasterDataRecordPanel
+        isOpen={currentPanel === "record"}
+        onCloseUrl={closePanelUrl}
+        entity={recordEntity}
+        recordId={recordId}
+        initialMode={recordMode}
+        categories={categoriesData}
+        locations={locationsData}
+        brands={brandsData}
+        deviceModels={deviceModelsData.map((row) => ({
+          ...row,
+          brandName: row.brandName ?? "Unknown",
+          categoryName: row.categoryName ?? "Unknown",
+        }))}
+        vendors={vendorsData}
+        departments={departmentsData}
       />
     </div>
   );

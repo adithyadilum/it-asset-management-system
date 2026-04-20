@@ -30,7 +30,7 @@ interface SlidePanelProps {
 
 const DEFAULT_PANEL_WIDTH = 700;
 const DEFAULT_PANEL_MAX_WIDTH = "92vw";
-const DEFAULT_PANEL_GAP = 12;
+const DEFAULT_PANEL_GAP = 8;
 const DEFAULT_PLACEHOLDER_ROWS = 10;
 
 function PanelPlaceholder() {

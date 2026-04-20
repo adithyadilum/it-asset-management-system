@@ -4,8 +4,8 @@ import { useActionState, useCallback, useEffect, useState, type FormEvent } from
 import { useRouter } from "next/navigation";
 import {
     createBrand,
-    INITIAL_BRAND_FORM_STATE,
 } from "@/actions/master-data";
+import { INITIAL_BRAND_FORM_STATE } from "@/lib/master-data/shared";
 import { FormPanel } from "@/components/shared/slide-panels/form-panel";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

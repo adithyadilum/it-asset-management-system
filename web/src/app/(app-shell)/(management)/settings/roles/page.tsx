@@ -10,9 +10,8 @@ import { departments, sessions, users } from "@/db/schema"
 import { getJwtSecretKey } from "@/lib/jwt"
 import { isValidUuid } from "@/lib/uuid"
 import type { UserRole } from "@/types/auth"
-
-import { RolesAddUserButton } from "./roles-add-user-button"
-import { RolesManagementTable } from "./roles-management-table"
+import { RolesAddUserButton } from "@/components/features/roles/roles-add-user-button"
+import { RolesManagementTable } from "@/components/features/roles/roles-management-table"
 
 const SESSION_COOKIE_NAME = "session_token"
 
