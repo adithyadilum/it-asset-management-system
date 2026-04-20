@@ -215,8 +215,8 @@ export const assetPurchases = pgTable('asset_purchases', {
   currencyCode: varchar('currency_code', { length: 3 }).default('USD'),
   warrantyExpiry: date('warranty_expiry'),
   invoiceUrl: varchar('invoice_url', { length: 500 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),    // ADD THIS
-  updatedAt: timestamp('updated_at').defaultNow().notNull(), 
+  createdAt: timestamp('created_at').defaultNow().notNull(),     
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),   
 });
 
 export const assetDocuments = pgTable('asset_documents', {
@@ -274,7 +274,8 @@ export const maintenanceRecords = pgTable('maintenance_records', {
   actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
   serviceDate: date('service_date'),
   closedAt: timestamp('closed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),     
+  updatedAt: timestamp('updated_at').defaultNow().notNull(), 
 });
 
 export const assetDisposals = pgTable('asset_disposals', {
@@ -345,11 +346,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   assignments: many(assetAssignments),
 }));
 
-export const modelsRelations = relations(models, ({ one }) => ({
-  brand: one(brands, { fields: [models.brandId], references: [brands.id] }),
-  category: one(categories, { fields: [models.categoryId], references: [categories.id] }),
-}));
-
 export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
   asset: one(assets, { fields: [assetPurchases.assetId], references: [assets.id] }),
   vendor: one(vendors, { fields: [assetPurchases.vendorId], references: [vendors.id] }),
@@ -360,4 +356,5 @@ export const maintenanceRelations = relations(maintenanceRecords, ({ one }) => (
   reporter: one(users, { fields: [maintenanceRecords.reportedById], references: [users.id] }),
   vendor: one(vendors, { fields: [maintenanceRecords.vendorId], references: [vendors.id] }),
 }));
+
 // Add other standard relation definitions here as needed for your specific nested queries.
