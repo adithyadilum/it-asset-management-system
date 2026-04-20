@@ -20,7 +20,14 @@ import type {
   MasterDataRecordEntity,
   UpdateMasterDataState,
 } from '@/types/master-data';
-import { brandSchema, categorySchema } from '@/lib/validations/master-data';
+import {
+  brandSchema,
+  categorySchema,
+  departmentSchema,
+  deviceModelSchema,
+  locationSchema,
+  vendorSchema,
+} from '@/lib/validations/master-data';
 
 const CATEGORY_PILLARS = new Set([
   'IT & Digital',
@@ -129,6 +136,258 @@ export async function createCategory(
     return {
       success: false,
       message: 'Database error: category name or prefix may already exist.',
+    };
+  }
+}
+
+export async function createMasterDataRecord(
+  _prevState: UpdateMasterDataState,
+  formData: FormData
+): Promise<UpdateMasterDataState> {
+  const entityRaw = String(formData.get('entity') ?? '');
+
+  if (
+    !MASTER_DATA_RECORD_ENTITIES.includes(entityRaw as MasterDataRecordEntity)
+  ) {
+    return {
+      success: false,
+      message: 'Invalid record type supplied.',
+    };
+  }
+
+  const entity = entityRaw as MasterDataRecordEntity;
+
+  try {
+    switch (entity) {
+      case 'locations': {
+        const parsed = locationSchema.safeParse({
+          name: formData.get('name'),
+          type: String(formData.get('type') ?? ''),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate location data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(locations)
+          .values({
+            name: parsed.data.name,
+            type:
+              parsed.data.type && parsed.data.type.length > 0
+                ? parsed.data.type
+                : null,
+            isActive: parsed.data.isActive,
+          })
+          .returning({ id: locations.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create location.',
+          };
+        }
+
+        break;
+      }
+
+      case 'asset-categories': {
+        const parsed = categorySchema.safeParse({
+          pillar: formData.get('pillar'),
+          name: formData.get('name'),
+          prefix: formData.get('prefix'),
+          customSchema: String(formData.get('customSchema') ?? '[]'),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate category data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(categories)
+          .values({
+            pillar: parsed.data.pillar,
+            name: parsed.data.name,
+            prefix: parsed.data.prefix,
+            customSchema: parsed.data.customSchema,
+            requiresSerial: true,
+            isActive: parseBooleanFormValue(formData.get('isActive')),
+          })
+          .returning({ id: categories.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create category.',
+          };
+        }
+
+        break;
+      }
+
+      case 'brands': {
+        const parsed = brandSchema.safeParse({
+          name: formData.get('name'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate brand data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(brands)
+          .values({
+            name: parsed.data.name,
+            isActive: parsed.data.isActive,
+          })
+          .returning({ id: brands.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create brand.',
+          };
+        }
+
+        break;
+      }
+
+      case 'device-models': {
+        const parsed = deviceModelSchema.safeParse({
+          name: formData.get('name'),
+          brandId: formData.get('brandId'),
+          categoryId: formData.get('categoryId'),
+          technicalDetails: String(formData.get('technicalDetails') ?? '{}'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate model data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(models)
+          .values({
+            name: parsed.data.name,
+            brandId: parsed.data.brandId,
+            categoryId: parsed.data.categoryId,
+            technicalDetails: parsed.data.technicalDetails,
+            isActive: parsed.data.isActive,
+          })
+          .returning({ id: models.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create device model.',
+          };
+        }
+
+        break;
+      }
+
+      case 'vendors': {
+        const parsed = vendorSchema.safeParse({
+          companyName: formData.get('companyName'),
+          contactInfo: String(formData.get('contactInfo') ?? ''),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate vendor data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(vendors)
+          .values({
+            companyName: parsed.data.companyName,
+            contactInfo:
+              parsed.data.contactInfo && parsed.data.contactInfo.length > 0
+                ? parsed.data.contactInfo
+                : null,
+            isActive: parsed.data.isActive,
+          })
+          .returning({ id: vendors.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create vendor.',
+          };
+        }
+
+        break;
+      }
+
+      case 'departments': {
+        const parsed = departmentSchema.safeParse({
+          name: formData.get('name'),
+          shortCode: formData.get('shortCode'),
+          costCenterId: formData.get('costCenterId'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate department data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(departments)
+          .values({
+            name: parsed.data.name,
+            shortCode: parsed.data.shortCode,
+            costCenterId: parsed.data.costCenterId,
+            isActive: parsed.data.isActive,
+          })
+          .returning({ id: departments.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create department.',
+          };
+        }
+
+        break;
+      }
+    }
+
+    revalidatePath('/settings/master-data');
+
+    return {
+      success: true,
+      message: 'Record created successfully.',
+    };
+  } catch {
+    return {
+      success: false,
+      message: 'Database error: failed to create record.',
     };
   }
 }

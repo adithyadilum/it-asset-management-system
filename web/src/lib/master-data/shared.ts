@@ -28,3 +28,8 @@ export const INITIAL_UPDATE_MASTER_DATA_STATE: UpdateMasterDataState = {
   success: false,
   message: '',
 };
+
+export const INITIAL_CREATE_MASTER_DATA_STATE: UpdateMasterDataState = {
+  success: false,
+  message: '',
+};
