@@ -12,14 +12,14 @@ import {
   models,
   vendors,
 } from '@/db/schema';
-import {
-  MASTER_DATA_RECORD_ENTITIES,
-  type BrandFormState,
-  type CategoryFormState,
-  type FormErrorMap,
-  type MasterDataRecordEntity,
-  type UpdateMasterDataState,
-} from '@/lib/master-data/shared';
+import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
+import type {
+  BrandFormState,
+  CategoryFormState,
+  FormErrorMap,
+  MasterDataRecordEntity,
+  UpdateMasterDataState,
+} from '@/types/master-data';
 import { brandSchema, categorySchema } from '@/lib/validations/master-data';
 
 const CATEGORY_PILLARS = new Set([
