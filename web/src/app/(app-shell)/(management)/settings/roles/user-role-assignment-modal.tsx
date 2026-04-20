@@ -32,6 +32,7 @@ interface UserRoleAssignmentModalProps {
   defaultRole?: UserRole
   mappedUsers?: RoleUser[]
   onUpdated?: () => void
+  currentUserId: string
 }
 
 const ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
@@ -99,6 +100,7 @@ export function UserRoleAssignmentModal({
   defaultRole = "Employee",
   mappedUsers = [],
   onUpdated,
+  currentUserId,
 }: UserRoleAssignmentModalProps) {
   const [selectedRole, setSelectedRole] = useState<UserRole>("Employee")
   const [searchQuery, setSearchQuery] = useState("")
@@ -127,6 +129,10 @@ export function UserRoleAssignmentModal({
 
     return searchResults
       .filter((directoryUser) => {
+        if (directoryUser.id === currentUserId) {
+          return false
+        }
+
         if (mappedIdSet.has(directoryUser.id)) {
           return false
         }
@@ -138,7 +144,7 @@ export function UserRoleAssignmentModal({
         return true
       })
       .slice(0, 10)
-  }, [defaultRole, hideUsersAlreadyInRole, mappedIdSet, mode, normalizedQuery, searchResults])
+  }, [currentUserId, defaultRole, hideUsersAlreadyInRole, mappedIdSet, mode, normalizedQuery, searchResults])
 
   const activeUser = mode === "edit" ? user : null
 
@@ -490,6 +496,7 @@ export function UserRoleAssignmentModal({
                 id="user-role"
                 value={selectedRole}
                 onChange={(event) => setSelectedRole(event.target.value as UserRole)}
+                disabled={isSubmitting || activeUser?.id === currentUserId}
                 className={`flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-900 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-slate-300 ${textSmRegularClass}`}
               >
                 {ROLE_OPTIONS.map((option) => (
@@ -516,7 +523,7 @@ export function UserRoleAssignmentModal({
                 type="button"
                 className={textSmMediumClass}
                 onClick={handleSubmit}
-                disabled={isSubmitting || !activeUser}
+                disabled={isSubmitting || !activeUser || activeUser.id === currentUserId}
               >
                 {isSubmitting ? "Updating..." : "Update Role"}
               </Button>
