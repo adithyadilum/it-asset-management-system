@@ -202,6 +202,7 @@ export async function getAuthenticatedUser(): Promise<{
         .where(
           and(
             eq(sessions.tokenId, payload.sid),
+            eq(sessions.userId, payload.sub), 
             isNull(sessions.revokedAt),
             sql`${sessions.expiresAt} > NOW()`
           )
@@ -232,6 +233,9 @@ export async function getAuthenticatedUser(): Promise<{
       name: user[0].name,
       role: user[0].role,
     };
+  } catch {
+    
+    return null;
   } finally {
     logLatency({
       scope: 'ACTION AUTH',

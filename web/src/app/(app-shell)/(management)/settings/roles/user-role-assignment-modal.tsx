@@ -49,23 +49,6 @@ const ROLE_ASSIGNMENT_LABELS: Record<UserRole, string> = {
   Employee: "Employee",
 }
 
-const textXsRegularClass =
-  "font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) [font-style:var(--text-xs-regular-font-style)]"
-const textXsSemiBoldClass =
-  "font-text-xs-semi-bold text-(length:--text-xs-semi-bold-font-size) leading-(--text-xs-semi-bold-line-height) tracking-(--text-xs-semi-bold-letter-spacing) [font-style:var(--text-xs-semi-bold-font-style)]"
-const textSmRegularClass =
-  "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]"
-const textSmMediumClass =
-  "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]"
-const textSmSemiBoldClass =
-  "font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) [font-style:var(--text-sm-semi-bold-font-style)]"
-const textBaseSemiBoldClass =
-  "font-text-base-semi-bold text-(length:--text-base-semi-bold-font-size) leading-(--text-base-semi-bold-line-height) tracking-(--text-base-semi-bold-letter-spacing) [font-style:var(--text-base-semi-bold-font-style)]"
-const textLgSemiBoldClass =
-  "font-text-lg-semi-bold text-(length:--text-lg-semi-bold-font-size) leading-(--text-lg-semi-bold-line-height) tracking-(--text-lg-semi-bold-letter-spacing) [font-style:var(--text-lg-semi-bold-font-style)]"
-const textLgBoldClass =
-  "font-text-lg-bold text-(length:--text-lg-bold-font-size) leading-(--text-lg-bold-line-height) tracking-(--text-lg-bold-letter-spacing) [font-style:var(--text-lg-bold-font-style)]"
-
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -127,9 +110,9 @@ export function UserRoleAssignmentModal({
           return false
         }
 
-        // Hide users assigned to ANY role (not Employee) or explicitly in mapped users
+        // Accurately hide users already assigned to the target role
         if (hideUsersAlreadyInRole) {
-          if (directoryUser.role !== "Employee" || alreadyAssignedIdSet.has(directoryUser.id)) {
+          if (directoryUser.role === defaultRole || alreadyAssignedIdSet.has(directoryUser.id)) {
             return false
           }
         }
@@ -137,7 +120,7 @@ export function UserRoleAssignmentModal({
         return true
       })
       .slice(0, 10)
-  }, [currentUserId, hideUsersAlreadyInRole, mappedIdSet, alreadyAssignedIdSet, mode, normalizedQuery, searchResults])
+  }, [currentUserId, hideUsersAlreadyInRole, mappedIdSet, alreadyAssignedIdSet, mode, normalizedQuery, searchResults, defaultRole])
 
   const activeUser = mode === "edit" ? user : null
 
@@ -164,7 +147,7 @@ export function UserRoleAssignmentModal({
     setIsSearching(false)
     setSearchError(null)
     setHideUsersAlreadyInRole(false)
-    setMappedSelection([]) // Fix: Start mapped selection empty
+    setMappedSelection([])
   }, [])
 
   useEffect(() => {
@@ -173,7 +156,10 @@ export function UserRoleAssignmentModal({
     }
 
     if (!normalizedQuery) {
-      setSearchResults([])
+      // FIX: Strict if statement to satisfy ESLint no-unused-expressions
+      if (searchResults.length > 0) {
+        setSearchResults([])
+      }
       setIsSearching(false)
       setSearchError(null)
       return
@@ -213,7 +199,7 @@ export function UserRoleAssignmentModal({
       isCancelled = true
       clearTimeout(searchDebounce)
     }
-  }, [isOpen, mode, normalizedQuery])
+  }, [isOpen, mode, normalizedQuery, searchResults.length])
 
   useEffect(() => {
     if (isOpen) {
@@ -313,7 +299,7 @@ export function UserRoleAssignmentModal({
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Info className="h-5 w-5 text-slate-500" />
-                <h2 className={`${textLgBoldClass} text-slate-900`}>
+                <h2 className="text-lg font-bold text-slate-900">
                   Assign Users to {roleLabelForAddMode}
                 </h2>
               </div>
@@ -337,7 +323,7 @@ export function UserRoleAssignmentModal({
                 disabled={isSubmitting}
                 className="border-slate-300"
               />
-              <label htmlFor="hide-already-mapped" className={`${textSmMediumClass} text-slate-700`}>
+              <label htmlFor="hide-already-mapped" className="text-sm font-medium text-slate-700">
                 Hide users already in this role
               </label>
             </div>
@@ -348,7 +334,7 @@ export function UserRoleAssignmentModal({
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search company directory by name or email..."
-                className={`h-9 rounded-lg border-slate-200 bg-white pl-9 ${textSmRegularClass}`}
+                className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal"
                 disabled={isSubmitting}
               />
             </div>
@@ -357,11 +343,11 @@ export function UserRoleAssignmentModal({
               <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                 {isSearching ? (
                   <div className="py-3 text-center">
-                    <p className={`text-slate-500 ${textSmRegularClass}`}>Searching users...</p>
+                    <p className="text-sm font-normal text-slate-500">Searching users...</p>
                   </div>
                 ) : searchError ? (
                   <div className="py-3 text-center">
-                    <p className={`text-red-600 ${textSmMediumClass}`}>{searchError}</p>
+                    <p className="text-sm font-medium text-red-600">{searchError}</p>
                   </div>
                 ) : directoryResults.length > 0 ? (
                   <div className="space-y-2">
@@ -369,16 +355,16 @@ export function UserRoleAssignmentModal({
                       <div key={directoryUser.id} className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <Avatar className="size-7 rounded-md">
-                            <AvatarFallback className={`rounded-md bg-slate-300 text-slate-700 ${textXsSemiBoldClass}`}>
+                            <AvatarFallback className="rounded-md bg-slate-300 text-xs font-semibold text-slate-700">
                               {getInitials(directoryUser.name)}
                             </AvatarFallback>
                           </Avatar>
 
                           <div className="min-w-0">
-                            <p className={`truncate text-slate-900 ${textSmSemiBoldClass}`}>
+                            <p className="truncate text-sm font-semibold text-slate-900">
                               {directoryUser.name}
                             </p>
-                            <p className={`truncate text-slate-500 ${textXsRegularClass}`}>{directoryUser.email}</p>
+                            <p className="truncate text-xs font-normal text-slate-500">{directoryUser.email}</p>
                           </div>
                         </div>
 
@@ -397,8 +383,8 @@ export function UserRoleAssignmentModal({
                   </div>
                 ) : (
                   <div className="py-3 text-center">
-                    <p className={`${textBaseSemiBoldClass} text-slate-900`}>No user found</p>
-                    <p className={`mt-1 text-slate-500 ${textXsRegularClass}`}>
+                    <p className="text-base font-semibold text-slate-900">No user found</p>
+                    <p className="mt-1 text-xs font-normal text-slate-500">
                       Your search &quot;{searchQuery.trim()}&quot; did not match any users.
                     </p>
                   </div>
@@ -413,14 +399,14 @@ export function UserRoleAssignmentModal({
                     <div key={selection.id} className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar className="size-7 rounded-md">
-                          <AvatarFallback className={`rounded-md bg-slate-300 text-slate-700 ${textXsSemiBoldClass}`}>
+                          <AvatarFallback className="rounded-md bg-slate-300 text-xs font-semibold text-slate-700">
                             {getInitials(selection.name)}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="min-w-0">
-                          <p className={`truncate text-slate-900 ${textSmSemiBoldClass}`}>{selection.name}</p>
-                          <p className={`truncate text-slate-500 ${textXsRegularClass}`}>{selection.email}</p>
+                          <p className="truncate text-sm font-semibold text-slate-900">{selection.name}</p>
+                          <p className="truncate text-xs font-normal text-slate-500">{selection.email}</p>
                         </div>
                       </div>
 
@@ -438,19 +424,19 @@ export function UserRoleAssignmentModal({
                   ))}
                 </div>
               ) : (
-                <div className={`py-2 text-center text-slate-500 ${textXsRegularClass}`}>
+                <div className="py-2 text-center text-xs font-normal text-slate-500">
                   No users selected for this role.
                 </div>
               )}
             </div>
 
-            {error ? <p className={`mt-2 text-red-600 ${textSmMediumClass}`}>{error}</p> : null}
+            {error ? <p className="mt-2 text-sm font-medium text-red-600">{error}</p> : null}
 
             <div className="mt-3 flex items-center justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className={textSmMediumClass}
+                className="text-sm font-medium"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
@@ -460,7 +446,7 @@ export function UserRoleAssignmentModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting || mappedSelection.length === 0}
-                className={`bg-primary px-4 text-primary-foreground hover:bg-primary/90 ${textSmMediumClass}`}
+                className="bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 {isSubmitting ? "Confirming..." : "Confirm Mapping"}
               </Button>
@@ -469,7 +455,7 @@ export function UserRoleAssignmentModal({
         ) : user ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className={`${textLgSemiBoldClass} text-slate-900`}>Change User Role</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Change User Role</h3>
               <Button
                 type="button"
                 variant="ghost"
@@ -482,7 +468,7 @@ export function UserRoleAssignmentModal({
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="user-role" className={`${textSmMediumClass} text-slate-700`}>
+              <label htmlFor="user-role" className="text-sm font-medium text-slate-700">
                 Role
               </label>
               <select
@@ -490,7 +476,7 @@ export function UserRoleAssignmentModal({
                 value={selectedRole}
                 onChange={(event) => setSelectedRole(event.target.value as UserRole)}
                 disabled={isSubmitting || activeUser?.id === currentUserId}
-                className={`flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-900 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-slate-300 ${textSmRegularClass}`}
+                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-slate-300"
               >
                 {ROLE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -500,26 +486,34 @@ export function UserRoleAssignmentModal({
               </select>
             </div>
 
-            {error ? <p className={`text-red-600 ${textSmMediumClass}`}>{error}</p> : null}
+            {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
 
-            <div className="flex justify-end gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                className={textSmMediumClass}
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                className={textSmMediumClass}
-                onClick={handleSubmit}
-                disabled={isSubmitting || !activeUser || activeUser.id === currentUserId}
-              >
-                {isSubmitting ? "Updating..." : "Update Role"}
-              </Button>
+            <div className="flex flex-col items-end gap-2 pt-1">
+              <div className="flex w-full justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-sm font-medium"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className="text-sm font-medium"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || !activeUser || activeUser.id === currentUserId}
+                >
+                  {isSubmitting ? "Updating..." : "Update Role"}
+                </Button>
+              </div>
+              
+              {activeUser?.id === currentUserId && (
+                <p className="text-right text-xs font-normal text-slate-500">
+                  You cannot modify your own role.
+                </p>
+              )}
             </div>
           </div>
         ) : null}
