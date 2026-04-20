@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 import {
     createCategory,
-    INITIAL_CATEGORY_FORM_STATE,
 } from "@/actions/master-data";
+import { INITIAL_CATEGORY_FORM_STATE } from "@/lib/master-data/shared";
 import { FormPanel } from "@/components/shared/slide-panels/form-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Input } from "@/components/ui/input";

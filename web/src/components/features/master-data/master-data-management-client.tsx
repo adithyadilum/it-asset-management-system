@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Search } from "lucide-react";
 
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type MasterDataTabId =
+export type MasterDataTabId =
     | "locations"
     | "asset-categories"
     | "brands"
@@ -86,16 +87,21 @@ interface MasterDataManagementClientProps {
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
     departments: MasterDataDepartmentRow[];
+    initialTab?: MasterDataTabId;
 }
 
 const TAB_LABELS: Array<{ id: MasterDataTabId; label: string }> = [
-    { id: "locations", label: "Locations" },
     { id: "asset-categories", label: "Asset Categories" },
+    { id: "locations", label: "Locations" },
     { id: "brands", label: "Brands" },
     { id: "device-models", label: "Device Models" },
     { id: "vendors", label: "Vendors" },
     { id: "departments", label: "Departments" },
 ];
+
+const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>(
+    TAB_LABELS.map((tab) => tab.id)
+);
 
 const EMPTY_SEARCH_STATE: Record<MasterDataTabId, string> = {
     locations: "",
@@ -134,6 +140,10 @@ function containsSearch(fields: Array<string | number | null | undefined>, searc
     );
 }
 
+function isMasterDataTabId(value: string): value is MasterDataTabId {
+    return MASTER_DATA_TAB_IDS.has(value as MasterDataTabId);
+}
+
 export function MasterDataManagementClient({
     categories,
     locations,
@@ -141,8 +151,12 @@ export function MasterDataManagementClient({
     deviceModels,
     vendors,
     departments,
+    initialTab,
 }: MasterDataManagementClientProps) {
-    const [activeTab, setActiveTab] = useState<MasterDataTabId>("asset-categories");
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [activeTab, setActiveTab] = useState<MasterDataTabId>(initialTab ?? "asset-categories");
     const [searchByTab, setSearchByTab] = useState<Record<MasterDataTabId, string>>(
         EMPTY_SEARCH_STATE
     );
@@ -375,8 +389,87 @@ export function MasterDataManagementClient({
 
     const activeSearchValue = searchByTab[activeTab];
 
+    const buildMasterDataUrl = useCallback(
+        (overrides: Partial<Record<"tab" | "panel" | "entity" | "id" | "mode", string | undefined>>) => {
+            const params = new URLSearchParams(searchParams.toString());
+
+            for (const [key, value] of Object.entries(overrides)) {
+                if (!value) {
+                    params.delete(key);
+                } else {
+                    params.set(key, value);
+                }
+            }
+
+            const query = params.toString();
+            return query ? `${pathname}?${query}` : pathname;
+        },
+        [pathname, searchParams]
+    );
+
+    const handleTabChange = useCallback(
+        (value: string) => {
+            if (!isMasterDataTabId(value)) {
+                return;
+            }
+
+            setActiveTab(value);
+            router.replace(
+                buildMasterDataUrl({
+                    tab: value,
+                    panel: undefined,
+                    entity: undefined,
+                    id: undefined,
+                    mode: undefined,
+                }),
+                { scroll: false }
+            );
+        },
+        [buildMasterDataUrl, router]
+    );
+
+    const openRecordPanel = useCallback(
+        (entity: MasterDataTabId, id: number) => {
+            router.push(
+                buildMasterDataUrl({
+                    tab: entity,
+                    panel: "record",
+                    entity,
+                    id: String(id),
+                    mode: "detail",
+                }),
+                { scroll: false }
+            );
+        },
+        [buildMasterDataUrl, router]
+    );
+
+    const categoryPanelHref = useMemo(
+        () =>
+            buildMasterDataUrl({
+                tab: activeTab,
+                panel: "category",
+                entity: undefined,
+                id: undefined,
+                mode: undefined,
+            }),
+        [activeTab, buildMasterDataUrl]
+    );
+
+    const brandPanelHref = useMemo(
+        () =>
+            buildMasterDataUrl({
+                tab: activeTab,
+                panel: "brand",
+                entity: undefined,
+                id: undefined,
+                mode: undefined,
+            }),
+        [activeTab, buildMasterDataUrl]
+    );
+
     return (
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-box-shadow-shadow-sm">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-lg border border-slate-200 bg-white p-6">
             <div className="mb-4">
                 <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
                     Master Data Management
@@ -385,7 +478,7 @@ export function MasterDataManagementClient({
 
             <Tabs
                 value={activeTab}
-                onValueChange={(value) => setActiveTab(value as MasterDataTabId)}
+                onValueChange={handleTabChange}
                 className="min-h-0 flex-1"
             >
                 <TabsList className="h-9 gap-1 rounded-lg bg-slate-100 p-1">
@@ -455,26 +548,17 @@ export function MasterDataManagementClient({
                         </div>
 
                         {activeTab === "asset-categories" && (
-                            <Link href="/settings/master-data?panel=category">
+                            <Link href={categoryPanelHref}>
                                 <Button>Add New Category</Button>
                             </Link>
                         )}
 
                         {activeTab === "brands" && (
-                            <Link href="/settings/master-data?panel=brand">
+                            <Link href={brandPanelHref}>
                                 <Button variant="outline">Add New Brand</Button>
                             </Link>
                         )}
                     </div>
-
-                    <TabsContent value="locations" className="min-h-0">
-                        <DataTable
-                            columns={locationColumns}
-                            data={filteredLocations}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
-                        />
-                    </TabsContent>
 
                     <TabsContent value="asset-categories" className="min-h-0">
                         <DataTable
@@ -482,6 +566,17 @@ export function MasterDataManagementClient({
                             data={filteredCategories}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            onRowClick={(row) => openRecordPanel("asset-categories", row.id)}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="locations" className="min-h-0">
+                        <DataTable
+                            columns={locationColumns}
+                            data={filteredLocations}
+                            initialPageSize={10}
+                            pageSizeOptions={[10, 20, 50]}
+                            onRowClick={(row) => openRecordPanel("locations", row.id)}
                         />
                     </TabsContent>
 
@@ -491,6 +586,7 @@ export function MasterDataManagementClient({
                             data={filteredBrands}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            onRowClick={(row) => openRecordPanel("brands", row.id)}
                         />
                     </TabsContent>
 
@@ -500,6 +596,7 @@ export function MasterDataManagementClient({
                             data={filteredModels}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            onRowClick={(row) => openRecordPanel("device-models", row.id)}
                         />
                     </TabsContent>
 
@@ -509,6 +606,7 @@ export function MasterDataManagementClient({
                             data={filteredVendors}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            onRowClick={(row) => openRecordPanel("vendors", row.id)}
                         />
                     </TabsContent>
 
@@ -518,6 +616,7 @@ export function MasterDataManagementClient({
                             data={filteredDepartments}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            onRowClick={(row) => openRecordPanel("departments", row.id)}
                         />
                     </TabsContent>
                 </div>
