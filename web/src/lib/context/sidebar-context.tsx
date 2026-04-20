@@ -1,10 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useSidebar as useShadcnSidebar } from '@/components/ui/sidebar';
 
 interface SidebarContextType {
-  isCollapsed: boolean;
-  setIsCollapsed: (collapsed: boolean) => void;
   collapseSidebar: () => void;
   expandSidebar: () => void;
 }
@@ -12,20 +11,22 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { toggleSidebar, state } = useShadcnSidebar();
 
-  const collapseSidebar = () => setIsCollapsed(true);
-  const expandSidebar = () => setIsCollapsed(false);
+  const collapseSidebar = () => {
+    if (state === 'expanded') {
+      toggleSidebar();
+    }
+  };
+
+  const expandSidebar = () => {
+    if (state === 'collapsed') {
+      toggleSidebar();
+    }
+  };
 
   return (
-    <SidebarContext.Provider
-      value={{
-        isCollapsed,
-        setIsCollapsed,
-        collapseSidebar,
-        expandSidebar,
-      }}
-    >
+    <SidebarContext.Provider value={{ collapseSidebar, expandSidebar }}>
       {children}
     </SidebarContext.Provider>
   );

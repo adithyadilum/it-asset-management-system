@@ -108,6 +108,7 @@ export function TabbedPanel({
             description={description}
             content={content}
             actions={actions}
+            showCloseButton={true}
         />
     );
 }
