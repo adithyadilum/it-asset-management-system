@@ -8,6 +8,7 @@ import {
     INITIAL_CATEGORY_FORM_STATE,
 } from "@/actions/master-data";
 import { FormPanel } from "@/components/shared/slide-panels/form-panel";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -85,7 +86,6 @@ export function CategoryFormPanel({ isOpen, onCloseUrl }: CategoryFormPanelProps
             isOpen={isOpen}
             onClose={handleClose}
             title="Add New Category"
-            description="Define category metadata and custom attributes for asset onboarding."
             onSubmit={handleSubmit}
             isSubmitting={isPending}
             submitLabel="Save Category"
@@ -94,30 +94,30 @@ export function CategoryFormPanel({ isOpen, onCloseUrl }: CategoryFormPanelProps
             <input type="hidden" name="pillar" value={pillar} />
             <input type="hidden" name="customSchema" value={JSON.stringify(attributes)} />
 
-            <div className="space-y-8">
+            <div className="space-y-6">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Type:</label>
+                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>Type:</label>
                     <Select value={pillar} onValueChange={(value) => setPillar(value as Pillar)}>
-                        <SelectTrigger className="w-50"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="IT & Digital">IT &amp; Digital</SelectItem>
+                            <SelectItem value="IT & Digital">Hardware</SelectItem>
                             <SelectItem value="Software">Software</SelectItem>
-                            <SelectItem value="Office Furniture">Office Furniture</SelectItem>
-                            <SelectItem value="Office Electronics">Office Electronics</SelectItem>
                         </SelectContent>
                     </Select>
                     {state.errors?.pillar && <p className="text-sm text-red-500">{state.errors.pillar[0]}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-red-500">Category Name: *</label>
+                        <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            Category Name: <span className="text-red-500">*</span>
+                        </label>
                         <Input name="name" placeholder="Wireless Keyboards" required />
                         {state.errors?.name && <p className="text-sm text-red-500">{state.errors.name[0]}</p>}
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Prefix Code :</label>
+                        <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>Prefix Code :</label>
                         <div className="relative">
                             <Input name="prefix" placeholder="WKE" maxLength={3} className="uppercase" required />
                             <TooltipProvider delayDuration={150}>
@@ -126,7 +126,7 @@ export function CategoryFormPanel({ isOpen, onCloseUrl }: CategoryFormPanelProps
                                         <Info className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
                                     </TooltipTrigger>
                                     <TooltipContent side="top" sideOffset={6}>
-                                        Prefix is used in asset tag generation and must be unique.
+                                        Used to generate Asset IDs. This cannot be changed after creation.
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -135,22 +135,20 @@ export function CategoryFormPanel({ isOpen, onCloseUrl }: CategoryFormPanelProps
                     </div>
                 </div>
 
-                <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-4 border-t pt-4">
                     <div>
-                        <h3 className="text-sm font-semibold">Custom Attributes</h3>
-                        <p className="text-sm text-slate-500">Define any specific details to track for this category.</p>
+                        <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>Custom Attributes</h3>
+                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>Define any specific details to track for this category.</p>
                     </div>
 
-                    <div className="border rounded-md bg-slate-50/50">
-                        {/* Table Header */}
-                        <div className="grid grid-cols-12 gap-4 p-3 border-b text-xs font-medium text-slate-500 bg-slate-50">
+                    <div className="rounded-md border bg-slate-50/50">
+                        <div className="grid grid-cols-12 gap-4 border-b bg-slate-50 p-3 text-xs font-medium text-slate-500">
                             <div className="col-span-5">Field Name</div>
                             <div className="col-span-4">Input Type</div>
                             <div className="col-span-2 text-center">Required?</div>
                             <div className="col-span-1"></div>
                         </div>
 
-                        {/* Dynamic Rows */}
                         <div className="p-2 space-y-2">
                             {attributes.map((attr) => (
                                 <div key={attr.id} className="grid grid-cols-12 gap-4 items-center p-1">
@@ -199,7 +197,7 @@ export function CategoryFormPanel({ isOpen, onCloseUrl }: CategoryFormPanelProps
                             ))}
                         </div>
 
-                        <div className="p-3 border-t bg-slate-50">
+                        <div className="border-t bg-slate-50 p-3">
                             <Button type="button" variant="ghost" size="sm" onClick={addAttribute} className="text-slate-500 w-full hover:bg-slate-200">
                                 <Plus className="h-4 w-4 mr-2" /> Add more
                             </Button>
