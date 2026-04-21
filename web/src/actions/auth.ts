@@ -1,7 +1,6 @@
 'use server';
 
 import { randomUUID } from 'node:crypto';
-import { cache } from 'react';
 
 import bcrypt from 'bcryptjs';
 import { and, eq, isNull, sql } from 'drizzle-orm';
@@ -16,8 +15,8 @@ import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/uuid';
 import type { LoginActionResult, LoginRequest, UserRole } from '@/types/auth';
 import { authSessionCache, buildAuthCacheKey } from '@/lib/auth-session-cache';
+import { SESSION_COOKIE_NAME } from '@/lib/session';
 
-const SESSION_COOKIE_NAME = 'session_token';
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
 
 function normalizeRole(role: unknown): UserRole {
@@ -151,16 +150,20 @@ export async function logout() {
 
         if (typeof sessionId === 'string') {
           const revokeSessionTimer = startLatencyTimer();
-          await db
+          const result = await db
             .update(sessions)
             .set({ revokedAt: new Date() })
             .where(
               and(eq(sessions.tokenId, sessionId), isNull(sessions.revokedAt))
             );
+
           logLatency({
             scope: 'DB ACTION',
             label: 'auth.logout.revoke_session',
             startTime: revokeSessionTimer,
+            metadata: {
+              updated: (result as unknown as { rowCount?: number } | undefined)?.rowCount,
+            },
           });
         }
       } catch {
@@ -179,12 +182,12 @@ export async function logout() {
   }
 }
 
-export const getAuthenticatedUser = cache(async (): Promise<{
+export async function getAuthenticatedUser(): Promise<{
   id: string;
   email: string;
   name: string;
   role: UserRole;
-} | null> => {
+} | null> {
   const actionTimer = startLatencyTimer();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
@@ -198,16 +201,14 @@ export const getAuthenticatedUser = cache(async (): Promise<{
     if (!payload.sid || typeof payload.sid !== 'string') return null;
 
     const cacheKey = buildAuthCacheKey({ sid: payload.sid, sub: payload.sub });
+    const cached = authSessionCache.get(cacheKey);
 
-    if (authSessionCache.has(cacheKey)) {
-      const cached = authSessionCache.get(cacheKey)!;
-
+    if (cached !== undefined) {
       logLatency({
         scope: 'ACTION AUTH',
         label: 'auth.getAuthenticatedUser.cache_hit',
         startTime: actionTimer,
       });
-
       return cached;
     }
 
@@ -267,4 +268,4 @@ export const getAuthenticatedUser = cache(async (): Promise<{
       startTime: actionTimer,
     });
   }
-});
+}
