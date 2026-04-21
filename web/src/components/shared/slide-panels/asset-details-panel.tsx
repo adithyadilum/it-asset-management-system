@@ -6,10 +6,11 @@ import { type SlidePanelAction } from '@/components/shared/slide-panel';
 import { AssetDetailsTab } from '@/components/features/assets/asset-details-tab';
 import { TechnicalDetailsTab } from '@/components/features/assets/technical-details-tab';
 import { PurchaseDetailsTab } from '@/components/features/assets/purchase-details-tab';
-import { HistoryTab, type HistoryEvent } from '@/components/features/assets/history-tab';
+import { HistoryTab } from '@/components/features/assets/history-tab';
+import type { HistoryEvent, MaintenanceEvent } from '@/actions/assets';
 import { AssetLoadingSkeleton } from '@/components/features/assets/asset-loading-skeleton';
 import { useSidebar } from '@/lib/context/sidebar-context';
-import type { MaintenanceEvent } from '@/actions/assets';
+
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
@@ -58,20 +59,23 @@ export interface AssetDetailsPanelProps {
   onEdit?: () => void;
   onActionButtonClick?: () => void;
   onViewAllHistory?: () => void;
+  onViewAllMaintenance?: () => void;
   onQRCodeClick?: () => void;
   onCurrencyChange?: (currency: string) => void;
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
-  const { collapseSidebar, expandSidebar } = useSidebar();
+  const { isCollapsed, collapseSidebar, expandSidebar } = useSidebar();
+  const wasCollapsedRef = React.useRef(isCollapsed);
 
   useEffect(() => {
     if (props.isOpen) {
-      collapseSidebar();
+      wasCollapsedRef.current = isCollapsed;
+      if (!isCollapsed) collapseSidebar();
     } else {
-      expandSidebar();
+      if (!wasCollapsedRef.current) expandSidebar();
     }
-  }, [props.isOpen, collapseSidebar, expandSidebar]);
+  }, [props.isOpen, collapseSidebar, expandSidebar]); // removed isCollapsed from deps
 
   const getActionButtonLabel = () => {
     if (props.assetCategory === 'Office Furniture') return 'Transfer';
@@ -138,7 +142,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
           hideMaintenance={isSoftware}
           maintenanceRecords={props.maintenanceEvents}
           onQRCodeClick={props.onQRCodeClick}
-          onViewAllMaintenance={props.onViewAllHistory}
+          onViewAllMaintenance={props.onViewAllMaintenance}
         />
       ),
     });

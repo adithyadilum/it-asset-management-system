@@ -10,14 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './timeline-item';
 
-export interface HistoryEvent {
-  id: string;
-  timestamp: string;
-  eventType: string; // Relaxed to string to match database outputs dynamically
-  actor: string;
-  description: string;
-  details?: string;
-}
+import { type HistoryEvent } from '@/actions/assets';
 
 export interface HistoryTabProps {
   events: HistoryEvent[];

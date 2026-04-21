@@ -90,13 +90,16 @@ export function PurchaseDetailsTab({
           <dt className="font-medium">Invoice PDF :</dt>
           <dd>
             {invoicePdf ? (
-              <button
+              <a
+                href={invoicePdf}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={onInvoiceClick}
                 className="h-[34px] px-[16px] py-[8px] rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-colors flex items-center justify-center gap-[10px] font-medium text-slate-900 w-fit"
               >
                 <FileText size={16} />
                 <span>Invoice.pdf</span>
-              </button>
+              </a>
             ) : (
               <span className="font-light text-slate-500">-</span>
             )}

@@ -49,6 +49,7 @@ export function useAssetSelection(): UseAssetSelectionReturn {
       if (!details) {
         setError('Asset not found');
         setSelectedAssetId(null);
+        setAssetData(null);
         return;
       }
 

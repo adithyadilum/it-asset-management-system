@@ -641,4 +641,7 @@ async function seedAssets() {
   }
 }
 
-seedAssets();
+seedAssets().catch((error) => {
+  console.error('Asset Seeding Failed:', error);
+  process.exitCode = 1;
+});
