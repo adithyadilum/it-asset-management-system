@@ -205,9 +205,19 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         id: locations.id,
         name: locations.name,
         type: locations.type,
+        parentId: locations.parentId,
+        linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
         isActive: locations.isActive,
       })
       .from(locations)
+      .leftJoin(assets, eq(assets.locationId, locations.id))
+      .groupBy(
+        locations.id,
+        locations.name,
+        locations.type,
+        locations.parentId,
+        locations.isActive
+      )
       .orderBy(asc(locations.name)),
     db
       .select({
@@ -230,6 +240,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         website: vendors.website,
         pillars:
           sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
+        linkedAssets: sql<number>`coalesce(count(distinct ${assetPurchases.assetId}), 0)::int`,
         isActive: vendors.isActive,
       })
       .from(vendors)
@@ -252,6 +263,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         name: departments.name,
         shortCode: departments.shortCode,
         costCenterId: departments.costCenterId,
+        linkedAssets: sql<number>`0::int`,
         isActive: departments.isActive,
       })
       .from(departments)
@@ -282,19 +294,35 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
       .select({
         id: models.id,
         name: models.name,
+        brandId: models.brandId,
+        categoryId: models.categoryId,
         brandName: brands.name,
         categoryName: categories.name,
         pillar: categories.pillar,
+        linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
         isActive: models.isActive,
       })
       .from(models)
       .leftJoin(brands, eq(models.brandId, brands.id))
       .leftJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assets, eq(assets.modelId, models.id))
+      .groupBy(
+        models.id,
+        models.name,
+        models.brandId,
+        models.categoryId,
+        brands.name,
+        categories.name,
+        categories.pillar,
+        models.isActive
+      )
       .orderBy(asc(models.name)),
   ]);
 
   const normalizedDeviceModels = deviceModelsData.map((row) => ({
     ...row,
+    brandId: row.brandId,
+    categoryId: row.categoryId,
     brandName: row.brandName ?? "Unknown",
     categoryName: row.categoryName ?? "Unknown",
     pillar: row.pillar ?? "IT & Digital",

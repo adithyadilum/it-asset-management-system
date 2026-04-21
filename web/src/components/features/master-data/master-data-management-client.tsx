@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Plus, Search } from "lucide-react";
 
+import { deleteMasterDataRecords } from "@/actions/master-data";
 import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
@@ -19,6 +20,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { tiqriToast } from "@/components/shared/sonner";
 
 export type MasterDataTabId =
     | "locations"
@@ -67,6 +69,8 @@ export type MasterDataLocationRow = {
     id: number;
     name: string;
     type: string | null;
+    parentId?: number | null;
+    linkedAssets: number;
     isActive: boolean;
 };
 
@@ -80,9 +84,12 @@ export type MasterDataBrandRow = {
 export type MasterDataDeviceModelRow = {
     id: number;
     name: string;
+    brandId: number;
+    categoryId: number;
     brandName: string;
     categoryName: string;
     pillar: string;
+    linkedAssets: number;
     isActive: boolean;
 };
 
@@ -93,6 +100,7 @@ export type MasterDataVendorRow = {
     phone: string | null;
     website: string | null;
     pillars: string[];
+    linkedAssets: number;
     isActive: boolean;
 };
 
@@ -101,6 +109,7 @@ export type MasterDataDepartmentRow = {
     name: string;
     shortCode: string;
     costCenterId: string;
+    linkedAssets: number;
     isActive: boolean;
 };
 
@@ -231,11 +240,60 @@ export function MasterDataManagementClient({
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const [, startTransition] = useTransition();
     const [activeTab, setActiveTab] = useState<MasterDataTabId>(initialTab ?? "asset-categories");
     const [searchByTab, setSearchByTab] = useState<Record<MasterDataTabId, string>>(
         EMPTY_SEARCH_STATE
     );
     const [pillarType, setPillarType] = useState<PillarFilter>("all");
+
+    const handleBulkDelete = useCallback(
+        (entity: MasterDataTabId, selectedRows: Array<{ id: number; linkedAssets: number }>) => {
+            if (selectedRows.length === 0) {
+                return;
+            }
+
+            const blockedCount = selectedRows.filter((row) => row.linkedAssets > 0).length;
+
+            if (blockedCount > 0) {
+                tiqriToast.error(
+                    blockedCount === 1
+                        ? "Delete blocked: 1 selected record still has linked assets."
+                        : `Delete blocked: ${blockedCount} selected records still have linked assets.`
+                );
+                return;
+            }
+
+            startTransition(async () => {
+                const result = await deleteMasterDataRecords(
+                    entity,
+                    selectedRows.map((row) => row.id)
+                );
+
+                if (result.success) {
+                    tiqriToast.success(result.message);
+                    router.refresh();
+                    return;
+                }
+
+                tiqriToast.error(result.message);
+            });
+        },
+        [router, startTransition]
+    );
+
+    const buildSelectionActions = useCallback(
+        (entity: MasterDataTabId) => [
+            {
+                id: `${entity}-delete-selected`,
+                label: "Delete Selected",
+                tone: "destructive" as const,
+                onClick: (selectedRows: Array<{ id: number; linkedAssets: number }>) =>
+                    handleBulkDelete(entity, selectedRows),
+            },
+        ],
+        [handleBulkDelete]
+    );
 
     const categoryColumns = useMemo<ColumnDef<MasterDataCategoryRow>[]>(
         () => [
@@ -655,6 +713,7 @@ export function MasterDataManagementClient({
                             data={filteredCategories}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            selectionActions={buildSelectionActions("asset-categories")}
                             onRowClick={(row) => openRecordPanel("asset-categories", row.id)}
                         />
                     </TabsContent>
@@ -665,6 +724,7 @@ export function MasterDataManagementClient({
                             data={filteredLocations}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            selectionActions={buildSelectionActions("locations")}
                             onRowClick={(row) => openRecordPanel("locations", row.id)}
                         />
                     </TabsContent>
@@ -675,6 +735,7 @@ export function MasterDataManagementClient({
                             data={filteredBrands}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            selectionActions={buildSelectionActions("brands")}
                             onRowClick={(row) => openRecordPanel("brands", row.id)}
                         />
                     </TabsContent>
@@ -685,6 +746,7 @@ export function MasterDataManagementClient({
                             data={filteredModels}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            selectionActions={buildSelectionActions("device-models")}
                             onRowClick={(row) => openRecordPanel("device-models", row.id)}
                         />
                     </TabsContent>
@@ -695,6 +757,7 @@ export function MasterDataManagementClient({
                             data={filteredVendors}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            selectionActions={buildSelectionActions("vendors")}
                             onRowClick={(row) => openRecordPanel("vendors", row.id)}
                         />
                     </TabsContent>
@@ -705,6 +768,7 @@ export function MasterDataManagementClient({
                             data={filteredDepartments}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            selectionActions={buildSelectionActions("departments")}
                             onRowClick={(row) => openRecordPanel("departments", row.id)}
                         />
                     </TabsContent>
