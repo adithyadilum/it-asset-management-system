@@ -8,19 +8,21 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useRef, useState, useEffect } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import {
   bulkUpdateAssets,
   getAssetsByPillar,
-} from '@/actions/assets-registry';
+} from '@/actions/asset-registry';
 import {
   type RegistryViewConfig,
-} from '@/components/features/assets-registry/registry-config';
+} from '@/components/features/asset-registry/registry-config';
 import {
   DataTable,
   type DataTableSelectionAction,
 } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -210,13 +212,20 @@ interface AssetRegistryClientProps {
   config: RegistryViewConfig;
   initialCategories: AssetRegistryCategory[];
   initialResult: AssetRegistryResult;
+  currentPanel?: string;
 }
 
 export function AssetRegistryClient({
   config,
   initialCategories,
   initialResult,
+  currentPanel,
 }: AssetRegistryClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isPanelOpen = Boolean(currentPanel);
+
   const [rows, setRows] = useState<AssetRegistryRow[]>(initialResult.data);
   const [searchValue, setSearchValue] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -798,16 +807,16 @@ export function AssetRegistryClient({
           : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
 
   return (
-    <div className="h-full rounded-lg bg-white p-4">
-      <div className="flex items-center gap-2">
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+      <div className="mb-4">
         <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md text-3xl font-semibold text-slate-900"
+              className={`inline-flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}
             >
-              <span className="text-[33px] leading-10">{selectedCategoryOption.name}</span>
-              <ChevronDown className="size-4 text-slate-700" />
+              <span>{selectedCategoryOption.name}</span>
+              <ChevronDown className="size-5 text-slate-700 mt-1" />
             </button>
           </PopoverTrigger>
           <PopoverContent
@@ -832,16 +841,17 @@ export function AssetRegistryClient({
         </Popover>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="relative w-full max-w-[545px]">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder={config.searchPlaceholder}
-            className="h-8 rounded-lg border-slate-200 bg-white pl-8 text-sm text-slate-700"
-          />
-        </div>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative w-full max-w-[545px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={config.searchPlaceholder}
+              className="h-9 pl-9"
+            />
+          </div>
 
         <div className="flex items-center gap-2">
           <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
@@ -1010,7 +1020,7 @@ export function AssetRegistryClient({
         </div>
       ) : null}
 
-      <div className="mt-3">
+      <div className="min-h-0">
         {isLoading ? (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
             <TableSkeleton
@@ -1026,6 +1036,13 @@ export function AssetRegistryClient({
             initialPageSize={config.defaultPageSize}
             selectionActions={selectionActions}
             selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
+            onRowClick={(row) => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set('panel', 'record');
+              params.set('id', row.id);
+              params.set('animate', isPanelOpen ? '0' : '1');
+              router.push(`${pathname}?${params.toString()}`, { scroll: false });
+            }}
             className="rounded-lg border-slate-200"
           />
         )}
@@ -1158,6 +1175,7 @@ export function AssetRegistryClient({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </main>
   );
 }

@@ -1,4 +1,4 @@
-import type { RegistryPillar } from '@/lib/data/assets-registry-repo';
+import type { RegistryPillar } from '@/lib/data/asset-registry-repo';
 
 export type RegistryView =
   | 'hardware'

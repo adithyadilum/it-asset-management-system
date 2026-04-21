@@ -16,7 +16,7 @@ import {
   type AssetStatus,
   type BulkAssetUpdatePayload,
   type RegistryPillar,
-} from '@/lib/data/assets-registry-repo';
+} from '@/lib/data/asset-registry-repo';
 import { getJwtSecretKey } from '@/lib/jwt';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/uuid';

@@ -1,5 +1,9 @@
-﻿import { AssetRegistryShell } from '@/components/features/assets-registry/asset-registry-shell';
+import { AssetRegistryShell } from '@/components/features/asset-registry/asset-registry-shell';
 
-export default function OfficeElectronicsPage() {
-  return <AssetRegistryShell view="office-electronics" />;
+export default function OfficeElectronicsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ panel?: string | string[]; animate?: string | string[]; id?: string | string[] }>;
+}) {
+  return <AssetRegistryShell view="office-electronics" searchParams={searchParams} />;
 }
