@@ -16,10 +16,8 @@ import {
   locations,
   maintenanceRecords,
   models,
-  sessions,
-  systemAuditLogs,
-  users,
   vendors,
+  assets,
 } from './schema';
 import { type LocationType } from '../types/master-data';
 
@@ -526,6 +524,24 @@ async function seed() {
       .returning({ id: categories.id });
 
     categoryIdsByPrefix[categorySeed.prefix] = inserted[0].id;
+  }
+  const categoryId = laptopCat[0].id;
+
+  // Vendors
+  let primaryVendor = await db
+    .select()
+    .from(vendors)
+    .where(eq(vendors.companyName, 'TechSource Lanka'))
+    .limit(1);
+  if (primaryVendor.length === 0) {
+    primaryVendor = await db
+      .insert(vendors)
+      .values({
+        companyName: 'TechSource Lanka',
+        contactInfo: 'sales@techsource.lk',
+        isActive: true,
+      })
+      .returning();
   }
 
   // ---------------------------------------------------------------------------

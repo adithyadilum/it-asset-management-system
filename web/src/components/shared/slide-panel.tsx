@@ -167,7 +167,7 @@ export function SlidePanel({
                         )}
 
                         <ScrollArea className="min-h-0 flex-1">
-                            <div className="px-5 py-5 sm:px-6">
+                            <div className="h-full px-5 py-5 sm:px-6">
                                 {hasProvidedContent ? content : <PanelPlaceholder />}
                             </div>
                         </ScrollArea>
