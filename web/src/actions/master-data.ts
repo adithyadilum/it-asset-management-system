@@ -151,7 +151,7 @@ function parseRequiredText(
 async function countLinkedAssetsForEntity(
   entity: MasterDataRecordEntity,
   recordIds: number[]
-) {
+): Promise<number> {
   switch (entity) {
     case 'locations': {
       const linked = await db
@@ -215,7 +215,9 @@ async function countLinkedAssetsForEntity(
   }
 }
 
-async function countLinkedUsersForDepartments(recordIds: number[]) {
+async function countLinkedUsersForDepartments(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${users.id}), 0)::int`,
@@ -226,7 +228,7 @@ async function countLinkedUsersForDepartments(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countChildLocations(recordIds: number[]) {
+async function countChildLocations(recordIds: number[]): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${locations.id}), 0)::int`,
@@ -237,7 +239,7 @@ async function countChildLocations(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countLocationAssignments(recordIds: number[]) {
+async function countLocationAssignments(recordIds: number[]): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${assetAssignments.id}), 0)::int`,
@@ -248,7 +250,9 @@ async function countLocationAssignments(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countLinkedModelsForCategories(recordIds: number[]) {
+async function countLinkedModelsForCategories(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${models.id}), 0)::int`,
@@ -259,7 +263,9 @@ async function countLinkedModelsForCategories(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countLinkedModelsForBrands(recordIds: number[]) {
+async function countLinkedModelsForBrands(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${models.id}), 0)::int`,
@@ -270,7 +276,9 @@ async function countLinkedModelsForBrands(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countVendorPurchaseReferences(recordIds: number[]) {
+async function countVendorPurchaseReferences(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${assetPurchases.id}), 0)::int`,
@@ -281,7 +289,9 @@ async function countVendorPurchaseReferences(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countVendorMaintenanceReferences(recordIds: number[]) {
+async function countVendorMaintenanceReferences(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${maintenanceRecords.id}), 0)::int`,
