@@ -2,10 +2,10 @@ import Link from 'next/link';
 import { asc, eq, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
+import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 import { departments, users } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
-import { getAuthenticatedUser } from '@/actions/auth';
 
 import { RolesAddUserButton } from './roles-add-user-button';
 import { RolesManagementTable } from './roles-management-table';
@@ -72,8 +72,10 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
     redirect('/403');
   }
 
-  const [params, initialUsers] = await Promise.all([
-    searchParams,
+  const params = await searchParams;
+  const selectedRole = normalizeSelectedRole(params.role);
+
+  const [usersInRole, roleCountsRows] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -84,10 +86,19 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
       })
       .from(users)
       .leftJoin(departments, eq(users.departmentId, departments.id))
+      .where(eq(users.role, selectedRole))
       .orderBy(asc(users.name))
       .limit(100),
+
+    // Count users per role using the DB (fast + small payload)
+    db
+      .select({
+        role: users.role,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(users)
+      .groupBy(users.role),
   ]);
-  const selectedRole = normalizeSelectedRole(params.role);
 
   const roleCounts: Record<UserRole, number> = {
     GlobalAdmin: 0,
@@ -96,18 +107,17 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
     Employee: 0,
   };
 
-  for (const user of initialUsers) {
-    roleCounts[user.role] += 1;
+  for (const row of roleCountsRows) {
+    roleCounts[row.role] = row.count;
   }
 
-  const usersInRole = initialUsers.filter((user) => user.role === selectedRole);
   const selectedRoleInfo =
     ROLE_CONFIG.find((role) => role.id === selectedRole) ?? ROLE_CONFIG[1];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-stretch gap-2.5 bg-muted lg:flex-row">
       <section className="flex w-full flex-col items-start gap-4 rounded-lg bg-white p-6 shadow-box-shadow-shadow-sm lg:max-w-100">
-        <h1 className="font-text-2xl-semi-bold text-(length:--text-2xl-semi-bold-font-size) leading-(--text-2xl-semi-bold-line-height) tracking-(--text-2xl-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-2xl-semi-bold-font-style)]">
+        <h1 className="font-text-2xl-semi-bold text-(length:--text-2xl-semi-bold-font-size) leading-(--text-2xl-semi-bold-line-height) tracking-(--text-2xl-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-text-2xl-semi-bold-font-style,var(--text-2xl-semi-bold-font-style))]">
           Role Assignment
         </h1>
 
