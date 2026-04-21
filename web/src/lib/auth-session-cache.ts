@@ -11,12 +11,13 @@ export type CachedAuthUser = {
 const TTL_MS = 5_000
 
 declare global {
-  
+  // eslint-disable-next-line no-var
   var __authSessionCache: TtlCache<CachedAuthUser> | undefined
 }
 
 export const authSessionCache =
-  globalThis.__authSessionCache ?? new TtlCache<CachedAuthUser>(TTL_MS)
+  globalThis.__authSessionCache ??
+  new TtlCache<CachedAuthUser>(TTL_MS, { maxEntries: 10_000, cleanupBatchSize: 100 })
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__authSessionCache = authSessionCache
