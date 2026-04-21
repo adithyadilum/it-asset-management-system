@@ -12,8 +12,11 @@ import {
   decimal,
   date,
   uuid,
+  foreignKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+import { LOCATION_TYPES } from '@/types/master-data';
 
 // -----------------------------------------------------------------------------
 // 1. ENUMS (Replaces legacy lookup tables)
@@ -30,6 +33,7 @@ export const pillarEnum = pgEnum('pillar', [
   'Office Furniture',
   'Office Electronics',
 ]);
+export const locationTypeEnum = pgEnum('location_type', LOCATION_TYPES);
 export const assetStatusEnum = pgEnum('asset_status', [
   'Available',
   'Assigned',
@@ -100,17 +104,30 @@ export const sessions = pgTable('sessions', {
 // -----------------------------------------------------------------------------
 // 3. MASTER DATA (Categories, Brands, Models)
 // -----------------------------------------------------------------------------
-export const locations = pgTable('locations', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  type: varchar('type', { length: 100 }), // e.g., 'HQ', 'Branch', 'Remote'
-  isActive: boolean('is_active').default(true).notNull(),
-});
+export const locations = pgTable(
+  'locations',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    type: locationTypeEnum('type').notNull(),
+    parentId: integer('parent_id'),
+    isActive: boolean('is_active').default(true).notNull(),
+  },
+  (table) => ({
+    parentLocationFk: foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+      name: 'locations_parent_id_fkey',
+    }),
+  })
+);
 
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
-  contactInfo: text('contact_info'), // Merged from ER diagram
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  website: varchar('website', { length: 255 }),
   isActive: boolean('is_active').default(true).notNull(),
 });
 

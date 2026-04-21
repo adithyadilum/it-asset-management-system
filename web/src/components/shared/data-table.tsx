@@ -28,6 +28,9 @@ import { cn } from "@/lib/utils"
 
 type DataTableSelectionActionTone = "secondary" | "destructive"
 
+const INTERACTIVE_SELECTOR =
+  "button,a,input,textarea,select,[role='checkbox'],[data-row-panel-ignore='true']"
+
 export type DataTableSelectionAction<TData> = {
   id: string
   label: string
@@ -43,6 +46,7 @@ type DataTableProps<TData, TValue> = {
   initialPageSize?: number
   selectionActions?: DataTableSelectionAction<TData>[]
   selectionLabel?: (selectedCount: number) => string
+  onRowClick?: (row: TData, rowIndex: number) => void
   className?: string
 }
 
@@ -53,6 +57,7 @@ export function DataTable<TData, TValue>({
   initialPageSize = 16,
   selectionActions = [],
   selectionLabel,
+  onRowClick,
   className,
 }: DataTableProps<TData, TValue>) {
   const sortedPageSizes = React.useMemo(() => {
@@ -78,7 +83,11 @@ export function DataTable<TData, TValue>({
       enableSorting: false,
       enableHiding: false,
       header: ({ table }) => (
-        <div className="flex items-center justify-center">
+        <div
+          className="flex items-center justify-center"
+          data-row-panel-ignore="true"
+          onClick={(event) => event.stopPropagation()}
+        >
           <Checkbox
             aria-label="Select all rows"
             checked={
@@ -90,7 +99,11 @@ export function DataTable<TData, TValue>({
         </div>
       ),
       cell: ({ row }) => (
-        <div className="flex items-center justify-center">
+        <div
+          className="flex items-center justify-center"
+          data-row-panel-ignore="true"
+          onClick={(event) => event.stopPropagation()}
+        >
           <Checkbox
             aria-label="Select row"
             checked={row.getIsSelected()}
@@ -125,6 +138,24 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
   })
 
+  const isRowClickable = typeof onRowClick === "function"
+
+  const handleRowClick = React.useCallback(
+    (event: React.MouseEvent<HTMLTableRowElement>, rowData: TData, rowIndex: number) => {
+      if (!onRowClick) {
+        return
+      }
+
+      const clickedElement = event.target as HTMLElement
+      if (clickedElement.closest(INTERACTIVE_SELECTOR)) {
+        return
+      }
+
+      onRowClick(rowData, rowIndex)
+    },
+    [onRowClick]
+  )
+
   const totalRows = table.getCoreRowModel().rows.length
   const selectedRows = table.getSelectedRowModel().rows.length
   const selectedRowData = table.getSelectedRowModel().rows.map((row) => row.original)
@@ -137,20 +168,20 @@ export function DataTable<TData, TValue>({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[8px] border border-border bg-card font-sans",
+        "overflow-hidden rounded-md border border-border bg-card font-sans",
         className
       )}
     >
       <Table>
         <TableHeader className="bg-muted [&_tr]:border-b [&_tr]:border-border">
           {selectedRows > 0 ? (
-            <TableRow className="h-[53px] border-border bg-secondary hover:bg-secondary">
+            <TableRow className="h-13.25 border-border bg-secondary hover:bg-secondary">
               <TableHead
                 colSpan={table.getAllLeafColumns().length}
-                className="h-[53px] bg-secondary px-6 py-0 font-medium text-secondary-foreground [&:has([role=checkbox])]:pr-6"
+                className="h-13.25 bg-secondary px-6 py-0 font-medium text-secondary-foreground [&:has([role=checkbox])]:pr-6"
               >
-                <div className="flex h-[53px] w-full items-center justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-13.25 w-full items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3" data-row-panel-ignore="true">
                     <Checkbox
                       aria-label="Select all rows"
                       checked={
@@ -165,7 +196,7 @@ export function DataTable<TData, TValue>({
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5" data-row-panel-ignore="true">
                     {selectionActions.map((action) => {
                       const isDisabled =
                         typeof action.disabled === "function"
@@ -181,7 +212,7 @@ export function DataTable<TData, TValue>({
                           disabled={isDisabled}
                           onClick={() => action.onClick?.(selectedRowData)}
                           className={cn(
-                            "h-9 rounded-[8px] px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]",
+                            "h-9 rounded-md px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]",
                             action.tone === "destructive"
                               ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               : "border-border bg-muted text-foreground hover:bg-muted/80"
@@ -197,7 +228,7 @@ export function DataTable<TData, TValue>({
             </TableRow>
           ) : (
             table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="h-[53px] border-border">
+              <TableRow key={headerGroup.id} className="h-13.25 border-border">
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort()
                   const sortState = header.column.getIsSorted()
@@ -212,9 +243,9 @@ export function DataTable<TData, TValue>({
                     <TableHead
                       key={header.id}
                       className={cn(
-                        "h-[53px] bg-muted px-4 text-foreground",
+                        "h-13.25 bg-muted px-4 text-foreground",
                         "font-medium",
-                        header.column.id === "select" && "w-[52px] px-0"
+                        header.column.id === "select" && "w-13 px-0"
                       )}
                     >
                       {header.isPlaceholder ? null : canSort ? (
@@ -245,15 +276,19 @@ export function DataTable<TData, TValue>({
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
-                className="h-[53px] border-border"
+                onClick={(event) => handleRowClick(event, row.original, row.index)}
+                className={cn(
+                  "h-13.25 border-border",
+                  isRowClickable && "cursor-pointer hover:bg-muted/50"
+                )}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
                     className={cn(
-                      "h-[53px] px-4 text-foreground",
+                      "h-13.25 px-4 text-foreground",
                       "font-normal",
-                      cell.column.id === "select" && "w-[52px] px-0"
+                      cell.column.id === "select" && "w-13 px-0"
                     )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -262,10 +297,10 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ))
           ) : (
-            <TableRow className="h-[53px] border-border">
+            <TableRow className="h-13.25 border-border">
               <TableCell
                 colSpan={table.getAllLeafColumns().length}
-                className="h-[53px] text-center font-normal text-muted-foreground"
+                className="h-13.25 text-center font-normal text-muted-foreground"
               >
                 No results found
               </TableCell>

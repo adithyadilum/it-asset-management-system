@@ -8,9 +8,7 @@ import {
 } from '@/lib/auth-redirect';
 import { getJwtSecretKey } from '@/lib/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-
-const SESSION_COOKIE_NAME = 'session_token';
-type TokenRole = 'GlobalAdmin' | 'ITOperator' | 'FinanceAuditor' | 'Employee';
+import { normalizeTokenRole, SESSION_COOKIE_NAME, type TokenRole } from '@/lib/session';
 
 async function verifyTokenAndRole(token: string) {
   const authTimer = startLatencyTimer();
@@ -35,21 +33,8 @@ async function verifyTokenAndRole(token: string) {
   }
 }
 
-// Session revocation checks run in server actions / RSC data boundaries,
-// keeping edge middleware stateless and low-latency.
-
-function normalizeTokenRole(role: unknown): TokenRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
-  }
-
-  return null;
-}
+// Session revocation checks run in server actions / RSC boundaries,
+// keeping edge interception stateless and low-latency.
 
 function getTopLevelSegment(pathname: string) {
   return pathname.split('/').filter(Boolean)[0] ?? null;
@@ -63,11 +48,7 @@ function getTopLevelSegment(pathname: string) {
  * - Employee: /dashboard only
  */
 function canAccessRoute(role: TokenRole, pathname: string) {
-  if (
-    pathname === '/' ||
-    pathname === '/dashboard' ||
-    pathname === '/dashboard/'
-  ) {
+  if (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/') {
     return true;
   }
 
@@ -94,14 +75,12 @@ function canAccessRoute(role: TokenRole, pathname: string) {
 
 function getLoginRedirectResponse(request: NextRequest) {
   const loginUrl = new URL('/login', request.url);
-  // Preserve the originally requested path so login can send the user back.
   const requestedPath = sanitizeRedirectPath(
     `${request.nextUrl.pathname}${request.nextUrl.search}`,
     DEFAULT_POST_LOGIN_REDIRECT
   );
 
   loginUrl.searchParams.set('redirectTo', requestedPath);
-
   return NextResponse.redirect(loginUrl);
 }
 
@@ -113,7 +92,6 @@ export async function proxy(request: NextRequest) {
   const isLoginRoute = pathname === '/login';
 
   try {
-    // If the user is trying to access a protected route without a token, kick them to login.
     if (!token && isProtectedRoute) {
       return getLoginRedirectResponse(request);
     }
@@ -124,7 +102,6 @@ export async function proxy(request: NextRequest) {
       try {
         payload = await verifyTokenAndRole(token);
       } catch {
-        // Invalid token/session should not bounce on /login.
         const response = isProtectedRoute
           ? getLoginRedirectResponse(request)
           : NextResponse.next();
@@ -133,9 +110,7 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    // If the user is already logged in and tries to visit /login, skip it.
     if (token && isLoginRoute) {
-      // Respect a preserved redirect target when an authenticated user hits /login.
       const redirectTo = sanitizeRedirectPath(
         request.nextUrl.searchParams.get('redirectTo'),
         DEFAULT_POST_LOGIN_REDIRECT
@@ -144,11 +119,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(redirectTo, request.url));
     }
 
-    if (
-      payload &&
-      isProtectedRoute &&
-      !canAccessRoute(payload.role, pathname)
-    ) {
+    if (payload && isProtectedRoute && !canAccessRoute(payload.role, pathname)) {
       return NextResponse.redirect(new URL('/403', request.url));
     }
 
@@ -162,14 +133,6 @@ export async function proxy(request: NextRequest) {
   }
 }
 
-/*
- * Match all request paths except for the ones starting with:
- * - api (API routes)
- * - _next/static (static files)
- * - _next/image (image optimization files)
- * - favicon.ico (favicon file)
- * - any file path with an extension (public/static assets)
- */
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };
