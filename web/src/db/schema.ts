@@ -12,6 +12,7 @@ import {
   decimal,
   date,
   uuid,
+  index,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -84,18 +85,26 @@ export const users = pgTable('users', {
     .notNull(),
 });
 
-export const sessions = pgTable('sessions', {
-  id: serial('id').primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  tokenId: text('token_id').notNull().unique(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  revokedAt: timestamp('revoked_at', { withTimezone: true }),
-});
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: serial('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenId: text('token_id').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => ({
+    // Enables efficient session revocation queries that filter on userId
+    // (e.g. after a role change or account deactivation).
+    userIdIdx: index('sessions_user_id_idx').on(table.userId),
+  })
+);
 
 // -----------------------------------------------------------------------------
 // 3. MASTER DATA (Categories, Brands, Models)

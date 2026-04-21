@@ -6,10 +6,10 @@ import {
   DEFAULT_POST_LOGIN_REDIRECT,
   sanitizeRedirectPath,
 } from '@/lib/auth-redirect';
+import { SESSION_COOKIE_NAME } from '@/lib/auth-config';
 import { getJwtSecretKey } from '@/lib/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 
-const SESSION_COOKIE_NAME = 'session_token';
 type TokenRole = 'GlobalAdmin' | 'ITOperator' | 'FinanceAuditor' | 'Employee';
 
 async function verifyTokenAndRole(token: string) {
