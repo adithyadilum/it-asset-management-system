@@ -35,6 +35,7 @@ import {
   Popover,
   PopoverAnchor,
   PopoverContent,
+  PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -803,7 +804,7 @@ export function AssetRegistryClient({
     <div className="h-full rounded-lg bg-white p-4">
       <div className="flex items-center gap-2">
         <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
-          <PopoverAnchor asChild>
+          <PopoverTrigger asChild>
             <button
               type="button"
               className="inline-flex items-center gap-1 rounded-md text-3xl font-semibold text-slate-900"
@@ -811,27 +812,25 @@ export function AssetRegistryClient({
               <span className="text-[33px] leading-10">{selectedCategoryOption.name}</span>
               <ChevronDown className="size-4 text-slate-700" />
             </button>
-          </PopoverAnchor>
+          </PopoverTrigger>
           <PopoverContent
             align="start"
             sideOffset={10}
-            className="w-[220px] rounded-lg border border-slate-200 p-3 shadow-xl"
+            className="w-fit rounded-lg border border-slate-200 p-2 shadow-xl"
           >
-            <ScrollArea className="max-h-64 pr-2">
-              <div className="space-y-1">
-                {categoryOptions
-                  .map((categoryOption) => (
-                    <button
-                      key={categoryOption.name}
-                      type="button"
-                      className="flex w-full items-center rounded-md px-2 py-1 text-left text-[30px] font-semibold leading-9 text-slate-800 hover:bg-slate-100"
-                      onClick={() => handleCategorySelect(categoryOption.name)}
-                    >
-                      {categoryOption.name}
-                    </button>
-                  ))}
-              </div>
-            </ScrollArea>
+            <div className="w-max space-y-1">
+              {categoryOptions
+                .map((categoryOption) => (
+                  <button
+                    key={categoryOption.name}
+                    type="button"
+                    className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-slate-800 hover:bg-slate-100"
+                    onClick={() => handleCategorySelect(categoryOption.name)}
+                  >
+                    {categoryOption.name}
+                  </button>
+                ))}
+            </div>
           </PopoverContent>
         </Popover>
       </div>
