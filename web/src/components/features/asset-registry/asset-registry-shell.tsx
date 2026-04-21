@@ -1,3 +1,5 @@
+import { cache } from 'react';
+
 import {
   getAssetsByPillar,
   getCategoriesByPillar,
@@ -8,6 +10,10 @@ import {
 } from '@/components/features/asset-registry/registry-config';
 import { AssetRegistryPanels } from './asset-registry-panels';
 import { AssetRegistryClient } from './asset-registry-client';
+
+const getCachedCategoriesByPillar = cache(
+  (pillar: string) => getCategoriesByPillar(pillar)
+);
 
 export interface AssetRegistryShellProps {
   view: RegistryView;
@@ -28,7 +34,7 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
   const closePanelUrl = `/assets/${view}`;
 
   const [categories, initialResult] = await Promise.all([
-    getCategoriesByPillar(config.pillar),
+    getCachedCategoriesByPillar(config.pillar),
     getAssetsByPillar({
       pillar: config.pillar,
       page: 1,
