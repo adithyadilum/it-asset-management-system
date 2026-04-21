@@ -86,6 +86,32 @@ function normalizePillarsValue(value: unknown): string[] {
   return [];
 }
 
+function normalizeModelTechnicalDetails(
+  value: unknown
+): Record<string, string> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {};
+  }
+
+  const record = value as Record<string, unknown>;
+  const next: Record<string, string> = {};
+
+  for (const [key, rawValue] of Object.entries(record)) {
+    const normalizedKey = key.trim();
+    if (normalizedKey.length === 0) {
+      continue;
+    }
+
+    if (rawValue === null || rawValue === undefined) {
+      continue;
+    }
+
+    next[normalizedKey] = String(rawValue);
+  }
+
+  return next;
+}
+
 type CustomSchemaInputType =
   | "Text"
   | "Number"
@@ -299,6 +325,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         brandName: brands.name,
         categoryName: categories.name,
         pillar: categories.pillar,
+        technicalDetails: models.technicalDetails,
         linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
         isActive: models.isActive,
       })
@@ -314,6 +341,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         brands.name,
         categories.name,
         categories.pillar,
+        models.technicalDetails,
         models.isActive
       )
       .orderBy(asc(models.name)),
@@ -326,6 +354,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     brandName: row.brandName ?? "Unknown",
     categoryName: row.categoryName ?? "Unknown",
     pillar: row.pillar ?? "IT & Digital",
+    technicalDetails: normalizeModelTechnicalDetails(row.technicalDetails),
   }));
 
   const normalizedCategories = categoriesData.map((row) => ({

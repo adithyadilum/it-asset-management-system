@@ -40,6 +40,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { tiqriToast } from "@/components/shared/sonner";
 
 import type {
     CategoryCustomSchemaField,
@@ -111,10 +112,10 @@ const PANEL_META: Record<MasterDataRecordEntity, {
         submittingLabel: "Saving Brand...",
     },
     "device-models": {
-        title: "Add New Device Model",
+        title: "Add New Model",
         description: "Create a model using specifications inherited from the selected category.",
-        submitLabel: "Save Device Model",
-        submittingLabel: "Saving Device Model...",
+        submitLabel: "Save Model",
+        submittingLabel: "Saving Model...",
     },
     vendors: {
         title: "Add New Vendor",
@@ -391,6 +392,7 @@ export function MasterDataCreatePanel({
             event.preventDefault();
 
             if (!normalizedEntity) {
+                tiqriToast.error("Invalid master data entity selected.");
                 setState({
                     success: false,
                     message: "Invalid master data entity selected.",
@@ -409,9 +411,13 @@ export function MasterDataCreatePanel({
                 setState(result);
 
                 if (result.success) {
+                    tiqriToast.success(result.message);
                     router.refresh();
                     handleClose(false);
+                    return;
                 }
+
+                tiqriToast.error(result.message);
             });
         },
         [handleClose, normalizedEntity, router]
@@ -537,7 +543,7 @@ export function MasterDataCreatePanel({
                             </button>
                         </TooltipTrigger>
                         <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
-                            Technical specs shared by every unit of this model, such as Processor, RAM, and Resolution. These are collected once when adding a Device Model.
+                            Technical specs shared by every unit of this model, such as Processor, RAM, and Resolution. These are collected once when adding a Model.
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
