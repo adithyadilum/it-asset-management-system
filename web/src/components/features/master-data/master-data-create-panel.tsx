@@ -481,6 +481,26 @@ export function MasterDataCreatePanel({
         []
     );
 
+    const handleCategoryPillarChange = useCallback((value: string) => {
+        const pillar = value as Pillar;
+        setCategoryPillar(pillar);
+
+        if (pillar === "Software") {
+            setAssetTrackingAttributes([
+                { id: crypto.randomUUID(), fieldName: "License Key", inputType: "Text", required: true },
+                { id: crypto.randomUUID(), fieldName: "Total Seats", inputType: "Number", required: true },
+                { id: crypto.randomUUID(), fieldName: "Available Seats", inputType: "Number", required: true },
+                { id: crypto.randomUUID(), fieldName: "Expiration Date", inputType: "Date", required: true },
+            ]);
+        } else if (pillar === "Office Electronics") {
+            setAssetTrackingAttributes([
+                { id: crypto.randomUUID(), fieldName: "IP/MAC Address", inputType: "Text", required: false },
+            ]);
+        } else {
+            setAssetTrackingAttributes([createCustomAttribute()]);
+        }
+    }, []);
+
     const handleModelPillarChange = useCallback((value: string) => {
         setModelPillar(value as Pillar);
         setSelectedCategoryId("");
@@ -885,7 +905,7 @@ export function MasterDataCreatePanel({
                                 </label>
                                 <Select
                                     value={categoryPillar}
-                                    onValueChange={(value) => setCategoryPillar(value as Pillar)}
+                                    onValueChange={handleCategoryPillarChange}
                                 >
                                     <SelectTrigger className="h-9 w-full">
                                         <SelectValue />

@@ -65,6 +65,7 @@ type AssetRegistryRow = {
   locationId: number | null;
   location: string | null;
   assignedTo: string | null;
+  instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date | string;
 };
 
@@ -194,19 +195,6 @@ function renderElectronicsConditionBadge(condition: string) {
   );
 }
 
-function parseIpOrMac(row: AssetRegistryRow) {
-  const candidate = row.serialNumber ?? row.name ?? '';
-
-  if (/\b(?:\d{1,3}\.){3}\d{1,3}\b/.test(candidate)) {
-    return candidate.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/)?.[0] ?? 'N/A';
-  }
-
-  if (/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/.test(candidate)) {
-    return candidate.match(/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/)?.[0] ?? 'N/A';
-  }
-
-  return 'N/A';
-}
 
 interface AssetRegistryClientProps {
   config: RegistryViewConfig;
@@ -608,11 +596,6 @@ export function AssetRegistryClient({
           cell: ({ row }) => toCellText(row.original.name),
         },
         {
-          accessorKey: 'category',
-          header: 'Category',
-          cell: ({ row }) => renderCategoryBadge(row.original.category),
-        },
-        {
           accessorKey: 'location',
           header: 'Location',
           cell: ({ row }) => toCellText(row.original.location),
@@ -639,11 +622,6 @@ export function AssetRegistryClient({
           cell: ({ row }) => toCellText(row.original.name),
         },
         {
-          accessorKey: 'category',
-          header: 'Category',
-          cell: ({ row }) => renderCategoryBadge(row.original.category),
-        },
-        {
           accessorKey: 'location',
           header: 'Location',
           cell: ({ row }) => toCellText(row.original.location),
@@ -651,7 +629,7 @@ export function AssetRegistryClient({
         {
           id: 'ipOrMacAddress',
           header: 'IP/MAC Address',
-          cell: ({ row }) => parseIpOrMac(row.original),
+          cell: ({ row }) => String(row.original.instanceAttributes?.['IP/MAC Address'] ?? '-'),
           enableSorting: false,
         },
         {
@@ -687,19 +665,19 @@ export function AssetRegistryClient({
         {
           id: 'totalSeats',
           header: 'Total Seats',
-          cell: () => '-',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['Total Seats'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'availableSeats',
           header: 'Available Seats',
-          cell: () => '-',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['Available Seats'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'expirationDate',
           header: 'Expiration Date',
-          cell: () => '-',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
           enableSorting: false,
         },
       ];
@@ -719,11 +697,6 @@ export function AssetRegistryClient({
         accessorKey: 'serialNumber',
         header: 'Serial Number',
         cell: ({ row }) => toCellText(row.original.serialNumber),
-      },
-      {
-        accessorKey: 'category',
-        header: 'Category',
-        cell: ({ row }) => renderCategoryBadge(row.original.category),
       },
       {
         accessorKey: 'assignedTo',

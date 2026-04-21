@@ -480,7 +480,22 @@ async function seed() {
         ],
         assetTracking: [
           { fieldName: 'License Key', inputType: 'Text', required: true },
-          { fieldName: 'Assigned Tenant', inputType: 'Text', required: false },
+          { fieldName: 'Total Seats', inputType: 'Number', required: true },
+          { fieldName: 'Available Seats', inputType: 'Number', required: true },
+          { fieldName: 'Expiration Date', inputType: 'Date', required: true },
+        ],
+      },
+    },
+    {
+      name: 'Network Switch',
+      pillar: 'Office Electronics' as const,
+      prefix: 'NSW',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'Ports', inputType: 'Number', required: true },
+        ],
+        assetTracking: [
+          { fieldName: 'IP/MAC Address', inputType: 'Text', required: false },
         ],
       },
     },
@@ -576,6 +591,18 @@ async function seed() {
       categoryPrefix: 'LAP',
       technicalDetails: { processor: 'Intel i7', display: '14-inch' },
     },
+    {
+      name: 'Office 365 Enterprise',
+      brandName: 'Logitech', // using existing brand for simplicity
+      categoryPrefix: 'ASF',
+      technicalDetails: { licenseType: 'Subscription' },
+    },
+    {
+      name: 'Cisco Catalyst 9200',
+      brandName: 'HP', // using existing brand for simplicity
+      categoryPrefix: 'NSW',
+      technicalDetails: { ports: '48' },
+    },
   ] as const;
 
   const modelIdsByName: Record<string, number> = {};
@@ -629,6 +656,8 @@ async function seed() {
     { prefix: 'MON', modelName: 'UltraSharp U2723', quantity: 6 },
     { prefix: 'DES', modelName: 'OptiPlex 7010', quantity: 6 },
     { prefix: 'WKE', modelName: 'MX Keys S', quantity: 6 },
+    { prefix: 'ASF', modelName: 'Office 365 Enterprise', quantity: 2 },
+    { prefix: 'NSW', modelName: 'Cisco Catalyst 9200', quantity: 2 },
   ] as const;
 
   const locationRotation = [
@@ -659,6 +688,20 @@ async function seed() {
         locationRotation[(index - 1) % Math.max(locationRotation.length, 1)] ??
         null;
 
+      let instanceAttributes = null;
+      if (assetPlan.prefix === 'ASF') {
+        instanceAttributes = {
+          'License Key': `LIC-${serialNumber}`,
+          'Total Seats': 100 * index,
+          'Available Seats': 50 * index,
+          'Expiration Date': `202${6 + index}-12-31`,
+        };
+      } else if (assetPlan.prefix === 'NSW') {
+        instanceAttributes = {
+          'IP/MAC Address': `192.168.1.${100 + index}`,
+        };
+      }
+
       const existing = await db
         .select({ id: assets.id, assetTag: assets.assetTag })
         .from(assets)
@@ -675,6 +718,7 @@ async function seed() {
             name: `${assetPlan.modelName} Unit ${index}`,
             status: statusCycle[(index - 1) % statusCycle.length],
             condition: conditionCycle[(index - 1) % conditionCycle.length],
+            instanceAttributes,
           })
           .where(eq(assets.id, existing[0].id));
 
@@ -696,6 +740,7 @@ async function seed() {
           locationId,
           status: statusCycle[(index - 1) % statusCycle.length],
           condition: conditionCycle[(index - 1) % conditionCycle.length],
+          instanceAttributes,
         })
         .returning({ id: assets.id, assetTag: assets.assetTag });
 
