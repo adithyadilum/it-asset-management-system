@@ -38,6 +38,10 @@ import {
   furnitureRegistrationSchema,
   type RegisterFurnitureAssetActionState,
 } from '@/validations/furniture-asset';
+import {
+  officeElectronicsRegistrationSchema,
+  type RegisterOfficeElectronicsAssetActionState,
+} from '@/validations/office-electronics-asset';
 
 const SESSION_COOKIE_NAME = 'session_token';
 const MAX_INVOICE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -226,6 +230,28 @@ function parseFurnitureRegistrationInput(formData: FormData) {
   return furnitureRegistrationSchema.safeParse(rawInput);
 }
 
+function parseOfficeElectronicsRegistrationInput(formData: FormData) {
+  const rawInput = {
+    categoryId: toFormValue(formData, 'categoryId'),
+    brandId: toFormValue(formData, 'brandId'),
+    serialNumber: toFormValue(formData, 'serialNumber'),
+    ipOrMacAddress: toFormValue(formData, 'ipOrMacAddress'),
+    locationId: toFormValue(formData, 'locationId'),
+    note: toFormValue(formData, 'note'),
+    purchaseDate: toFormValue(formData, 'purchaseDate'),
+    basePrice: toFormValue(formData, 'basePrice'),
+    shippingCost: toFormValue(formData, 'shippingCost'),
+    tax: toFormValue(formData, 'tax'),
+    currencyCode: toFormValue(formData, 'currencyCode'),
+    vendorId: toFormValue(formData, 'vendorId'),
+    warrantyMonths: toFormValue(formData, 'warrantyMonths'),
+    purchaseNote: toFormValue(formData, 'purchaseNote'),
+    pillar: toFormValue(formData, 'pillar'),
+  };
+
+  return officeElectronicsRegistrationSchema.safeParse(rawInput);
+}
+
 function validateInvoiceFile(file: File | null) {
   if (!file) {
     return null;
@@ -360,6 +386,7 @@ export async function registerAsset(
           where: eq(brands.id, input.brandId),
           columns: {
             id: true,
+            name: true,
             isActive: true,
           },
         }),
@@ -1236,6 +1263,351 @@ export async function registerFurnitureAsset(
     logLatency({
       scope: 'ACTION',
       label: 'assets.registerFurnitureAsset',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function registerOfficeElectronicsAsset(
+  _prevState: RegisterOfficeElectronicsAssetActionState,
+  formData: FormData
+): Promise<RegisterOfficeElectronicsAssetActionState> {
+  const actionTimer = startLatencyTimer();
+  let uploadedInvoiceUrl: string | null = null;
+  let assetWasCreated = false;
+  let createdAssetId: string | null = null;
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+
+    if (!currentUser) {
+      return {
+        success: false,
+        message: 'Please sign in to register office electronics assets.',
+        errors: {
+          form: ['Please sign in to register office electronics assets.'],
+        },
+      };
+    }
+
+    if (currentUser.role !== 'GlobalAdmin' && currentUser.role !== 'ITOperator') {
+      return {
+        success: false,
+        message:
+          'Forbidden: You do not have permission to register office electronics assets.',
+        errors: {
+          form: [
+            'Forbidden: You do not have permission to register office electronics assets.',
+          ],
+        },
+      };
+    }
+
+    const parsed = parseOfficeElectronicsRegistrationInput(formData);
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Please correct the highlighted fields and try again.',
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const invoiceFile = toFormFile(formData, 'invoiceFile');
+    const invoiceFileError = validateInvoiceFile(invoiceFile);
+
+    if (invoiceFileError) {
+      return {
+        success: false,
+        message: 'Please correct the highlighted fields and try again.',
+        errors: {
+          invoiceFile: [invoiceFileError],
+        },
+      };
+    }
+
+    const input = parsed.data;
+
+    const [categoryRecord, brandRecord, locationRecord, vendorRecord, duplicateSerialRecord, existingModel] =
+      await Promise.all([
+        db.query.categories.findFirst({
+          where: eq(categories.id, input.categoryId),
+          columns: {
+            id: true,
+            prefix: true,
+            pillar: true,
+            isActive: true,
+          },
+        }),
+        db.query.brands.findFirst({
+          where: eq(brands.id, input.brandId),
+          columns: {
+            id: true,
+            name: true,
+            isActive: true,
+          },
+        }),
+        db.query.locations.findFirst({
+          where: eq(locations.id, input.locationId),
+          columns: {
+            id: true,
+            isActive: true,
+          },
+        }),
+        db.query.vendors.findFirst({
+          where: eq(vendors.id, input.vendorId),
+          columns: {
+            id: true,
+            pillar: true,
+            isActive: true,
+          },
+        }),
+        db.query.assets.findFirst({
+          where: eq(assets.serialNumber, input.serialNumber),
+          columns: {
+            id: true,
+            assetTag: true,
+          },
+        }),
+        db.query.models.findFirst({
+          where: and(
+            eq(models.brandId, input.brandId),
+            eq(models.categoryId, input.categoryId)
+          ),
+          columns: {
+            id: true,
+            isActive: true,
+          },
+        }),
+      ]);
+
+    if (!categoryRecord || !categoryRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active category.',
+        errors: {
+          categoryId: ['Please select an active category.'],
+        },
+      };
+    }
+
+    if (categoryRecord.pillar !== 'Office Electronics') {
+      return {
+        success: false,
+        message: 'Selected category does not belong to Office Electronics pillar.',
+        errors: {
+          categoryId: [
+            'Selected category does not belong to Office Electronics pillar.',
+          ],
+        },
+      };
+    }
+
+    if (!brandRecord || !brandRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active brand.',
+        errors: {
+          brandId: ['Please select an active brand.'],
+        },
+      };
+    }
+
+    if (!locationRecord || !locationRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active location.',
+        errors: {
+          locationId: ['Please select an active location.'],
+        },
+      };
+    }
+
+    if (!vendorRecord || !vendorRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active vendor.',
+        errors: {
+          vendorId: ['Please select an active vendor.'],
+        },
+      };
+    }
+
+    if (vendorRecord.pillar !== 'Office Electronics') {
+      return {
+        success: false,
+        message: 'Selected vendor does not belong to Office Electronics pillar.',
+        errors: {
+          vendorId: [
+            'Selected vendor does not belong to Office Electronics pillar.',
+          ],
+        },
+      };
+    }
+
+    if (duplicateSerialRecord) {
+      return {
+        success: false,
+        message: 'Serial number already exists.',
+        errors: {
+          serialNumber: [
+            `Serial number is already used by ${duplicateSerialRecord.assetTag}.`,
+          ],
+        },
+      };
+    }
+
+    if (existingModel && !existingModel.isActive) {
+      return {
+        success: false,
+        message: 'Model exists but is inactive.',
+        errors: {
+          brandId: ['Model exists but is inactive.'],
+        },
+      };
+    }
+
+    if (invoiceFile) {
+      try {
+        uploadedInvoiceUrl = await saveInvoiceFile(invoiceFile);
+      } catch {
+        return {
+          success: false,
+          message: 'Please correct the highlighted fields and try again.',
+          errors: {
+            invoiceFile: ['Unable to upload invoice PDF. Please try again.'],
+          },
+        };
+      }
+    }
+
+    const shippingCost = input.shippingCost ?? 0;
+    const tax = input.tax ?? 0;
+    const totalCost = input.basePrice + shippingCost + tax;
+    const currencyCode = input.currencyCode ?? 'USD';
+    const warrantyExpiry = input.warrantyMonths
+      ? toDateString(addMonths(input.purchaseDate, input.warrantyMonths))
+      : null;
+
+    const resolvedModelId = existingModel?.id
+      ? existingModel.id
+      : (
+          await db
+            .insert(models)
+            .values({
+              brandId: input.brandId,
+              categoryId: input.categoryId,
+              name: `${categoryRecord.prefix} Standard`,
+              isActive: true,
+            })
+            .returning({ id: models.id })
+        )[0]?.id;
+
+    if (!resolvedModelId) {
+      return {
+        success: false,
+        message: 'Unable to resolve office electronics model.',
+        errors: {
+          brandId: ['Unable to resolve office electronics model.'],
+        },
+      };
+    }
+
+    const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
+    const pillarPrefix = PILLAR_PREFIX_MAP['Office Electronics'];
+    const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
+
+    const countResult = await db
+      .select({ value: sql<number>`cast(count(*) as integer)` })
+      .from(assets)
+      .where(like(assets.assetTag, `${assetTagPrefix}-%`));
+
+    const nextSequence = (countResult[0]?.value ?? 0) + 1;
+    const generatedAssetTag = buildAssetTag(
+      pillarPrefix,
+      normalizedCategoryPrefix,
+      nextSequence
+    );
+
+    const [insertedAsset] = await db
+      .insert(assets)
+      .values({
+        assetTag: generatedAssetTag,
+        serialNumber: input.serialNumber,
+        name: `${brandRecord.name} ${input.serialNumber}`,
+        modelId: resolvedModelId,
+        locationId: input.locationId,
+        instanceAttributes: {
+          ipOrMacAddress: input.ipOrMacAddress,
+          note: input.note ?? null,
+          purchaseNote: input.purchaseNote ?? null,
+        },
+      })
+      .returning({
+        id: assets.id,
+        assetTag: assets.assetTag,
+      });
+
+    if (!insertedAsset) {
+      throw new Error('Unable to create office electronics asset.');
+    }
+
+    createdAssetId = insertedAsset.id;
+
+    await db.insert(assetPurchases).values({
+      assetId: insertedAsset.id,
+      vendorId: input.vendorId,
+      purchaseDate: toDateString(input.purchaseDate),
+      basePrice: input.basePrice.toFixed(2),
+      shippingCost: shippingCost.toFixed(2),
+      tax: tax.toFixed(2),
+      totalCost: totalCost.toFixed(2),
+      currencyCode,
+      warrantyExpiry,
+      invoiceUrl: uploadedInvoiceUrl,
+    });
+
+    assetWasCreated = true;
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/office-electronics');
+
+    return {
+      success: true,
+      message: `Office electronics asset ${insertedAsset.assetTag} was registered successfully.`,
+      assetId: insertedAsset.assetTag,
+      errors: {},
+    };
+  } catch (error) {
+    if (createdAssetId) {
+      try {
+        await db.delete(assets).where(eq(assets.id, createdAssetId));
+      } catch {
+        // Best-effort rollback if follow-up write fails.
+      }
+    }
+
+    if (uploadedInvoiceUrl && !assetWasCreated) {
+      await removeUploadedInvoice(uploadedInvoiceUrl);
+    }
+
+    logError({
+      scope: 'ACTION',
+      label: 'assets.registerOfficeElectronicsAsset',
+      error,
+    });
+
+    return {
+      success: false,
+      message: 'Unexpected error while registering office electronics asset.',
+      errors: {
+        form: ['Unexpected error while registering office electronics asset.'],
+      },
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assets.registerOfficeElectronicsAsset',
       startTime: actionTimer,
     });
   }

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Filter, Paperclip, Plus, Search } from 'lucide-react';
 import Image from 'next/image';
 
+import { registerOfficeElectronicsAsset } from '@/actions/assets';
 import { useOpenRegistrationPanel } from '@/components/assets/use-open-registration-panel';
 import { FormPanel } from '@/components/shared/slide-panels/form-panel';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -12,6 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
+import {
+  initialRegisterOfficeElectronicsAssetActionState,
+  type RegisterOfficeElectronicsAssetActionState,
+} from '@/validations/office-electronics-asset';
+
 import {
   Table,
   TableBody,
@@ -36,6 +42,7 @@ type OfficeElectronicsRegistryPageClientProps = {
 type FieldRowProps = {
   label: string;
   htmlFor?: string;
+  error?: string;
   alignTop?: boolean;
   children: React.ReactNode;
 };
@@ -48,6 +55,7 @@ type DropdownFieldRowProps = {
   options: RegistrationOption[];
   placeholder: string;
   emptyMessage: string;
+  error?: string;
 };
 
 const CURRENCY_OPTIONS: RegistrationOption[] = [
@@ -68,7 +76,20 @@ function getTodayDateValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function FieldRow({ label, htmlFor, alignTop = false, children }: FieldRowProps) {
+function getError(
+  state: RegisterOfficeElectronicsAssetActionState,
+  key: keyof NonNullable<RegisterOfficeElectronicsAssetActionState['errors']>
+) {
+  return state.errors?.[key]?.[0];
+}
+
+function FieldRow({
+  label,
+  htmlFor,
+  error,
+  alignTop = false,
+  children,
+}: FieldRowProps) {
   return (
     <div className="space-y-1">
       <div
@@ -85,6 +106,8 @@ function FieldRow({ label, htmlFor, alignTop = false, children }: FieldRowProps)
         </Label>
         <div className="min-w-0">{children}</div>
       </div>
+
+      {error ? <p className="pl-[140px] text-xs text-destructive">{error}</p> : null}
     </div>
   );
 }
@@ -97,9 +120,10 @@ function DropdownFieldRow({
   options,
   placeholder,
   emptyMessage,
+  error,
 }: DropdownFieldRowProps) {
   return (
-    <FieldRow label={label} alignTop>
+    <FieldRow label={label} error={error} alignTop>
       <>
         <SearchableDropdown
           options={options}
@@ -179,7 +203,10 @@ export function OfficeElectronicsRegistryPageClient({
   const [isPanelOpen, setIsPanelOpen] = React.useState(false);
   const openRegistrationPanel = useOpenRegistrationPanel(setIsPanelOpen);
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [state, formAction, isPending] = React.useActionState(
+    registerOfficeElectronicsAsset,
+    initialRegisterOfficeElectronicsAssetActionState
+  );
 
   const [categoryId, setCategoryId] = React.useState('');
   const [brandId, setBrandId] = React.useState('');
@@ -200,6 +227,7 @@ export function OfficeElectronicsRegistryPageClient({
   );
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
   const [imagePreviewUrl, setImagePreviewUrl] = React.useState('');
+  const lastToastKeyRef = React.useRef<string>('');
 
   React.useEffect(() => {
     return () => {
@@ -208,6 +236,29 @@ export function OfficeElectronicsRegistryPageClient({
       }
     };
   }, [imagePreviewUrl]);
+
+  React.useEffect(() => {
+    const resolvedMessage = state.message || getError(state, 'form');
+
+    if (!resolvedMessage) {
+      return;
+    }
+
+    const toastKey = `${state.success ? 'success' : 'error'}:${resolvedMessage}`;
+
+    if (lastToastKeyRef.current === toastKey) {
+      return;
+    }
+
+    if (state.success) {
+      tiqriToast.success(resolvedMessage);
+      setIsPanelOpen(false);
+    } else {
+      tiqriToast.error(resolvedMessage);
+    }
+
+    lastToastKeyRef.current = toastKey;
+  }, [state]);
 
   const handleImageChange = React.useCallback((file: File | null) => {
     if (!file) {
@@ -225,7 +276,7 @@ export function OfficeElectronicsRegistryPageClient({
   }, []);
 
   const panelBody = (
-    <div className={cn('space-y-4', isSubmitting && 'pointer-events-none opacity-70')}>
+    <div className={cn('space-y-4', isPending && 'pointer-events-none opacity-70')}>
       <input type="hidden" name="pillar" value="Office Electronics" />
 
       <CircleImageUpload
@@ -245,6 +296,7 @@ export function OfficeElectronicsRegistryPageClient({
           options={categoryOptions}
           placeholder="Select Category.."
           emptyMessage="No categories found."
+          error={getError(state, 'categoryId')}
         />
 
         <DropdownFieldRow
@@ -255,9 +307,14 @@ export function OfficeElectronicsRegistryPageClient({
           options={brandOptions}
           placeholder="Select Brand.."
           emptyMessage="No brands found."
+          error={getError(state, 'brandId')}
         />
 
-        <FieldRow label="Serial Number :" htmlFor="serialNumber">
+        <FieldRow
+          label="Serial Number :"
+          htmlFor="serialNumber"
+          error={getError(state, 'serialNumber')}
+        >
           <Input
             id="serialNumber"
             name="serialNumber"
@@ -266,7 +323,11 @@ export function OfficeElectronicsRegistryPageClient({
           />
         </FieldRow>
 
-        <FieldRow label="IP/MAC Address :" htmlFor="ipOrMacAddress">
+        <FieldRow
+          label="IP/MAC Address :"
+          htmlFor="ipOrMacAddress"
+          error={getError(state, 'ipOrMacAddress')}
+        >
           <Input
             id="ipOrMacAddress"
             name="ipOrMacAddress"
@@ -284,9 +345,10 @@ export function OfficeElectronicsRegistryPageClient({
           options={locationOptions}
           placeholder="Select Location.."
           emptyMessage="No locations found."
+          error={getError(state, 'locationId')}
         />
 
-        <FieldRow label="Note :" htmlFor="note">
+        <FieldRow label="Note :" htmlFor="note" error={getError(state, 'note')}>
           <Input
             id="note"
             name="note"
@@ -318,7 +380,11 @@ export function OfficeElectronicsRegistryPageClient({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
-          <FieldRow label="Purchase Date :" htmlFor="purchaseDate">
+          <FieldRow
+            label="Purchase Date :"
+            htmlFor="purchaseDate"
+            error={getError(state, 'purchaseDate')}
+          >
             <Input
               id="purchaseDate"
               name="purchaseDate"
@@ -328,7 +394,11 @@ export function OfficeElectronicsRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Base Price :" htmlFor="basePrice">
+          <FieldRow
+            label="Base Price :"
+            htmlFor="basePrice"
+            error={getError(state, 'basePrice')}
+          >
             <Input
               id="basePrice"
               name="basePrice"
@@ -341,7 +411,11 @@ export function OfficeElectronicsRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Shipping Cost :" htmlFor="shippingCost">
+          <FieldRow
+            label="Shipping Cost :"
+            htmlFor="shippingCost"
+            error={getError(state, 'shippingCost')}
+          >
             <Input
               id="shippingCost"
               name="shippingCost"
@@ -354,7 +428,7 @@ export function OfficeElectronicsRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Tax :" htmlFor="tax">
+          <FieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
             <Input
               id="tax"
               name="tax"
@@ -375,6 +449,7 @@ export function OfficeElectronicsRegistryPageClient({
             options={vendorOptions}
             placeholder="Select Vendor.."
             emptyMessage="No vendors found."
+            error={getError(state, 'vendorId')}
           />
 
           <DropdownFieldRow
@@ -385,9 +460,14 @@ export function OfficeElectronicsRegistryPageClient({
             options={WARRANTY_MONTH_OPTIONS}
             placeholder="Warranty Period.."
             emptyMessage="No warranty periods found."
+            error={getError(state, 'warrantyMonths')}
           />
 
-          <FieldRow label="Note :" htmlFor="purchaseNote">
+          <FieldRow
+            label="Note :"
+            htmlFor="purchaseNote"
+            error={getError(state, 'purchaseNote')}
+          >
             <Input
               id="purchaseNote"
               name="purchaseNote"
@@ -397,7 +477,12 @@ export function OfficeElectronicsRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Invoice PDF :" htmlFor="invoiceFile" alignTop>
+          <FieldRow
+            label="Invoice PDF :"
+            htmlFor="invoiceFile"
+            alignTop
+            error={getError(state, 'invoiceFile')}
+          >
             <div className="space-y-2">
               <input
                 id="invoiceFile"
@@ -501,20 +586,12 @@ export function OfficeElectronicsRegistryPageClient({
         onClose={setIsPanelOpen}
         title="Asset Registry"
         description="Office Electronics"
-        onSubmit={async (event) => {
+        onSubmit={(event) => {
           event.preventDefault();
-          setIsSubmitting(true);
-
-          // Frontend-first form shell for office electronics registration.
-          await Promise.resolve();
-
-          setIsSubmitting(false);
-          setIsPanelOpen(false);
-          tiqriToast.success(
-            'Office electronics registration form is ready for backend integration.'
-          );
+          const submittedFormData = new FormData(event.currentTarget);
+          formAction(submittedFormData);
         }}
-        isSubmitting={isSubmitting}
+        isSubmitting={isPending}
         submitLabel="Add Asset"
         submittingLabel="Adding asset..."
         cancelLabel="Discard"
