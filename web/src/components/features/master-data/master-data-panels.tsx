@@ -52,6 +52,9 @@ export function MasterDataPanels({
                 categories={categories}
                 locations={locations}
                 brands={brands}
+                deviceModels={deviceModels}
+                vendors={vendors}
+                departments={departments}
                 disableTransition={disableTransition}
             />
 

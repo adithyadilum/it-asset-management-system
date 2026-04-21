@@ -1,6 +1,6 @@
 'use server';
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db';
@@ -357,10 +357,19 @@ export async function createMasterDataRecord(
       }
 
       case 'departments': {
+        const nextDepartmentIdResult = await db
+          .select({
+            nextId: sql<number>`coalesce(max(${departments.id}), 0)::int + 1`,
+          })
+          .from(departments);
+
+        const nextDepartmentId = nextDepartmentIdResult[0]?.nextId ?? 1;
+        const autoCostCenterId = `CC-${String(nextDepartmentId).padStart(4, '0')}`;
+
         const parsed = departmentSchema.safeParse({
           name: formData.get('name'),
           shortCode: formData.get('shortCode'),
-          costCenterId: formData.get('costCenterId'),
+          costCenterId: autoCostCenterId,
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
 

@@ -45,7 +45,10 @@ import type {
     CategoryCustomSchemaField,
     MasterDataBrandRow,
     MasterDataCategoryRow,
+    MasterDataDepartmentRow,
+    MasterDataDeviceModelRow,
     MasterDataLocationRow,
+    MasterDataVendorRow,
 } from "./master-data-management-client";
 
 type Pillar =
@@ -70,6 +73,9 @@ interface MasterDataCreatePanelProps {
     categories: MasterDataCategoryRow[];
     locations: MasterDataLocationRow[];
     brands: MasterDataBrandRow[];
+    deviceModels: MasterDataDeviceModelRow[];
+    vendors: MasterDataVendorRow[];
+    departments: MasterDataDepartmentRow[];
     disableTransition?: boolean;
 }
 
@@ -127,6 +133,21 @@ const PANEL_META: Record<MasterDataRecordEntity, {
 const SCHEMA_CHECKBOX_CLASSNAME =
     "size-5 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground";
 const TOP_LEVEL_PARENT_LOCATION_VALUE = "none";
+const READ_ONLY_PREVIEW_INPUT_CLASSNAME =
+    "h-9 bg-slate-100 font-mono tracking-wide text-slate-700 pointer-events-none";
+
+const NEXT_ID_LABELS: Record<MasterDataRecordEntity, string> = {
+    locations: "Location ID (Preview)",
+    "asset-categories": "Category ID (Preview)",
+    brands: "Brand ID (Preview)",
+    "device-models": "Model ID (Preview)",
+    vendors: "Vendor ID (Preview)",
+    departments: "Department ID (Preview)",
+};
+
+function formatPreviewId(prefix: string, nextId: number) {
+    return `${prefix}-${String(nextId).padStart(4, "0")}`;
+}
 
 function createCustomAttribute(): CustomAttribute {
     return {
@@ -161,6 +182,9 @@ export function MasterDataCreatePanel({
     categories,
     locations,
     brands,
+    deviceModels,
+    vendors,
+    departments,
     disableTransition = false,
 }: MasterDataCreatePanelProps) {
     const router = useRouter();
@@ -212,14 +236,63 @@ export function MasterDataCreatePanel({
         [locations]
     );
 
+    const nextLocationRecordId = useMemo(
+        () => locations.reduce((max, location) => Math.max(max, location.id), 0) + 1,
+        [locations]
+    );
+
     const nextCategoryRecordId = useMemo(
         () => categories.reduce((max, category) => Math.max(max, category.id), 0) + 1,
         [categories]
     );
 
-    const nextCategoryIdPreview = useMemo(
-        () => `CAT-${String(nextCategoryRecordId).padStart(4, "0")}`,
-        [nextCategoryRecordId]
+    const nextBrandRecordId = useMemo(
+        () => brands.reduce((max, brand) => Math.max(max, brand.id), 0) + 1,
+        [brands]
+    );
+
+    const nextDeviceModelRecordId = useMemo(
+        () =>
+            deviceModels.reduce(
+                (max, model) => Math.max(max, model.id),
+                0
+            ) + 1,
+        [deviceModels]
+    );
+
+    const nextVendorRecordId = useMemo(
+        () => vendors.reduce((max, vendor) => Math.max(max, vendor.id), 0) + 1,
+        [vendors]
+    );
+
+    const nextDepartmentRecordId = useMemo(
+        () =>
+            departments.reduce((max, department) => Math.max(max, department.id), 0) + 1,
+        [departments]
+    );
+
+    const nextIdPreviewByEntity = useMemo<Record<MasterDataRecordEntity, string>>(
+        () => ({
+            locations: formatPreviewId("LOC", nextLocationRecordId),
+            "asset-categories": formatPreviewId("CAT", nextCategoryRecordId),
+            brands: formatPreviewId("BRD", nextBrandRecordId),
+            "device-models": formatPreviewId("MDL", nextDeviceModelRecordId),
+            vendors: formatPreviewId("VND", nextVendorRecordId),
+            departments: formatPreviewId("DEP", nextDepartmentRecordId),
+        }),
+        [
+            nextBrandRecordId,
+            nextCategoryRecordId,
+            nextDepartmentRecordId,
+            nextDeviceModelRecordId,
+            nextLocationRecordId,
+            nextVendorRecordId,
+        ]
+    );
+
+    const nextDepartmentCostCenterIdPreview = useMemo(
+        () => `CC-${String(nextDepartmentRecordId).padStart(4, "0")}`,
+        [nextDepartmentRecordId]
     );
 
     const categorySchemaPayload = useMemo(
@@ -272,6 +345,21 @@ export function MasterDataCreatePanel({
         (fieldName: string) => state.errors?.[fieldName]?.[0],
         [state.errors]
     );
+
+    const nextIdPreviewField = normalizedEntity ? (
+        <div className="space-y-2">
+            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                {NEXT_ID_LABELS[normalizedEntity]}
+            </label>
+            <Input
+                value={nextIdPreviewByEntity[normalizedEntity]}
+                readOnly
+                tabIndex={-1}
+                onFocus={(event) => event.currentTarget.blur()}
+                className={READ_ONLY_PREVIEW_INPUT_CLASSNAME}
+            />
+        </div>
+    ) : null;
 
     const resetCreateFormState = useCallback(() => {
         setState(INITIAL_CREATE_MASTER_DATA_STATE);
@@ -694,6 +782,8 @@ export function MasterDataCreatePanel({
                             }
                         />
 
+                        {nextIdPreviewField}
+
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
@@ -780,6 +870,8 @@ export function MasterDataCreatePanel({
                             value={JSON.stringify(categorySchemaPayload)}
                         />
 
+                        {nextIdPreviewField}
+
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
@@ -805,29 +897,6 @@ export function MasterDataCreatePanel({
                                         {getFieldError("pillar")}
                                     </p>
                                 )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                    Category ID (Preview)
-                                </label>
-                                <div className="relative">
-                                    <Input
-                                        value={nextCategoryIdPreview}
-                                        readOnly
-                                        className="h-9 bg-slate-100 pr-10 font-mono tracking-wide text-slate-700"
-                                    />
-                                    <TooltipProvider delayDuration={150}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Info className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" sideOffset={6}>
-                                                Preview of the next category record ID.
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                </div>
                             </div>
                         </div>
 
@@ -887,6 +956,8 @@ export function MasterDataCreatePanel({
             case "brands":
                 return (
                     <>
+                        {nextIdPreviewField}
+
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                 Brand Name <span className="text-red-500">*</span>
@@ -920,6 +991,8 @@ export function MasterDataCreatePanel({
                             name="categoryId"
                             value={normalizedSelectedCategoryId}
                         />
+
+                        {nextIdPreviewField}
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
@@ -1093,6 +1166,8 @@ export function MasterDataCreatePanel({
             case "vendors":
                 return (
                     <>
+                        {nextIdPreviewField}
+
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
@@ -1157,6 +1232,8 @@ export function MasterDataCreatePanel({
             case "departments":
                 return (
                     <>
+                        {nextIdPreviewField}
+
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
@@ -1185,14 +1262,15 @@ export function MasterDataCreatePanel({
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                Cost Center ID <span className="text-red-500">*</span>
+                                Cost Center ID (Auto Assigned)
                             </label>
-                            <Input name="costCenterId" placeholder="CC-1020" required />
-                            {getFieldError("costCenterId") && (
-                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                                    {getFieldError("costCenterId")}
-                                </p>
-                            )}
+                            <Input
+                                value={nextDepartmentCostCenterIdPreview}
+                                readOnly
+                                tabIndex={-1}
+                                onFocus={(event) => event.currentTarget.blur()}
+                                className={READ_ONLY_PREVIEW_INPUT_CLASSNAME}
+                            />
                         </div>
 
                         {renderActiveSwitch}
