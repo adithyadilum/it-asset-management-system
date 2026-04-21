@@ -18,7 +18,11 @@ export default function OfficeElectronicsPage() {
 
   const handleClosePanel = () => {
     setIsPanelOpen(false);
-    clearSelection();
+    
+    // Wait for the 300ms CSS slide-out animation to finish before clearing data
+    setTimeout(() => {
+      clearSelection();
+    }, 300);
   };
 
   return (
