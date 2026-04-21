@@ -1,4 +1,8 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { cache } from "react";
+import { jwtVerify } from "jose";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { MasterDataManagementClient } from "@/components/features/master-data/master-data-management-client";
 import { MasterDataPanels } from "@/components/features/master-data/master-data-panels";
@@ -11,8 +15,14 @@ import {
   departments,
   locations,
   models,
+  sessions,
+  users,
   vendors,
 } from "@/db/schema";
+import { getJwtSecretKey } from "@/lib/jwt";
+import { isValidUuid } from "@/lib/uuid";
+
+const SESSION_COOKIE_NAME = "session_token";
 
 type MasterDataTabId =
   | "locations"
@@ -204,6 +214,8 @@ type MasterDataPageProps = {
 };
 
 export default async function MasterDataPage({ searchParams }: MasterDataPageProps) {
+  await assertMasterDataPageAccess();
+
   const params = await searchParams;
   const currentPanel = Array.isArray(params.panel) ? params.panel[0] : params.panel;
   const panelAnimation = Array.isArray(params.animate)
@@ -399,3 +411,66 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     </div>
   );
 }
+
+async function assertMasterDataPageAccess() {
+  const accessState = await getMasterDataPageAccessState();
+
+  if (accessState === "forbidden") {
+    redirect("/403");
+  }
+
+  if (accessState !== "authorized") {
+    redirect("/login");
+  }
+}
+
+const getMasterDataPageAccessState = cache(async () => {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return "unauthorized" as const;
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
+    const userId = payload.sub;
+    const sessionId = payload.sid;
+
+    if (!isValidUuid(userId) || typeof sessionId !== "string") {
+      return "unauthorized" as const;
+    }
+
+    const [activeSession, currentUser] = await Promise.all([
+      db
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.userId, userId),
+            eq(sessions.tokenId, sessionId),
+            isNull(sessions.revokedAt),
+            sql`${sessions.expiresAt} > NOW()`
+          )
+        )
+        .limit(1),
+      db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1),
+    ]);
+
+    if (activeSession.length === 0 || currentUser.length === 0) {
+      return "unauthorized" as const;
+    }
+
+    if (currentUser[0].role !== "GlobalAdmin") {
+      return "forbidden" as const;
+    }
+
+    return "authorized" as const;
+  } catch {
+    return "unauthorized" as const;
+  }
+});
