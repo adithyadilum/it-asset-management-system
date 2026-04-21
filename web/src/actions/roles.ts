@@ -4,13 +4,11 @@ import { db } from '@/db';
 import { departments, users, sessions } from '@/db/schema';
 import { eq, ilike, or, and, isNull, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
-import { getJwtSecretKey } from '@/lib/jwt';
+
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/uuid';
+import { getAuthenticatedUser } from '@/actions/auth';
 
-const SESSION_COOKIE_NAME = 'session_token';
 type UserRole = typeof users.$inferSelect.role;
 
 function normalizeTokenRole(role: unknown): UserRole | null {
@@ -41,76 +39,11 @@ function normalizeTargetUserIds(targetUserIds: string[]) {
 }
 
 /**
- * Helper to get the current user ID and verify session validity.
- */
-async function getAuthenticatedUser(): Promise<{
-  id: string;
-  role: UserRole;
-} | null> {
-  const authTimer = startLatencyTimer();
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) return null;
-
-  try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-
-    // Validate sub is UUID and sid exists.
-    if (!isValidUuid(payload.sub)) return null;
-    if (!payload.sid || typeof payload.sid !== 'string') return null;
-
-    const role = normalizeTokenRole(payload.role);
-    if (!role) return null;
-
-    // Verify the session against the database to ensure it hasn't been revoked.
-    let activeSession: Array<{ id: number }> = [];
-    const sessionLookupTimer = startLatencyTimer();
-    try {
-      activeSession = await db
-        .select({ id: sessions.id })
-        .from(sessions)
-        .where(
-          and(
-            eq(sessions.tokenId, payload.sid),
-            isNull(sessions.revokedAt),
-            sql`${sessions.expiresAt} > NOW()`
-          )
-        )
-        .limit(1);
-    } finally {
-      logLatency({
-        scope: 'DB ACTION',
-        label: 'roles.getAuthenticatedUser.session_lookup',
-        startTime: sessionLookupTimer,
-      });
-    }
-
-    if (activeSession.length === 0) {
-      return null; // Session is revoked or expired
-    }
-
-    return {
-      id: payload.sub,
-      role,
-    };
-  } catch {
-    return null;
-  } finally {
-    logLatency({
-      scope: 'ACTION AUTH',
-      label: 'roles.getAuthenticatedUser',
-      startTime: authTimer,
-    });
-  }
-}
-
-/**
  * Search for users by name or email.
  */
 export async function searchUsers(query: string) {
   const actionTimer = startLatencyTimer();
-  // Authentication & Authorization Guard (prevents data enumeration).
+
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || currentUser.role !== 'GlobalAdmin') {
     throw new Error('Forbidden: You do not have permission to search users.');
