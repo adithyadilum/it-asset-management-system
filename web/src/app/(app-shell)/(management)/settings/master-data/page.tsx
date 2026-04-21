@@ -225,7 +225,9 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
       .select({
         id: vendors.id,
         companyName: vendors.companyName,
-        contactInfo: vendors.contactInfo,
+        email: vendors.email,
+        phone: vendors.phone,
+        website: vendors.website,
         pillars:
           sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
         isActive: vendors.isActive,
@@ -238,7 +240,9 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
       .groupBy(
         vendors.id,
         vendors.companyName,
-        vendors.contactInfo,
+        vendors.email,
+        vendors.phone,
+        vendors.website,
         vendors.isActive
       )
       .orderBy(asc(vendors.companyName)),

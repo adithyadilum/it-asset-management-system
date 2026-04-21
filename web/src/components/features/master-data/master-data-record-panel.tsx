@@ -105,7 +105,9 @@ const EDITABLE_FIELDS: Record<MasterDataRecordEntity, EditableFieldConfig[]> = {
     ],
     vendors: [
         { key: "companyName", label: "Vendor Name", inputType: "text" },
-        { key: "contactInfo", label: "Contact Info", inputType: "text" },
+        { key: "email", label: "Email", inputType: "text" },
+        { key: "phone", label: "Phone", inputType: "text" },
+        { key: "website", label: "Website", inputType: "text" },
         { key: "isActive", label: "Active", inputType: "boolean" },
     ],
     departments: [
