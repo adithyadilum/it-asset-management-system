@@ -4,6 +4,8 @@ import * as React from 'react';
 import { Paperclip, Plus } from 'lucide-react';
 import Image from 'next/image';
 
+import { registerSoftwareAsset } from '@/actions/assets';
+import { useOpenRegistrationPanel } from '@/components/assets/use-open-registration-panel';
 import { FormPanel } from '@/components/shared/slide-panels/form-panel';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -11,12 +13,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
-import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import {
+  initialRegisterSoftwareAssetActionState,
+  type RegisterSoftwareAssetActionState,
+} from '@/validations/software-asset';
 
 type RegistrationOption = React.ComponentProps<
   typeof SearchableDropdown
 >['options'][number];
+
+type SoftwareRegistryPageClientProps = {
+  categoryOptions: RegistrationOption[];
+  publisherOptions: RegistrationOption[];
+  vendorOptions: RegistrationOption[];
+};
 
 type FieldRowProps = {
   label: string;
@@ -37,15 +48,6 @@ type DropdownFieldRowProps = {
   error?: string;
 };
 
-const SOFTWARE_CATEGORY_OPTIONS: RegistrationOption[] = [
-  { value: 'productivity', label: 'Productivity' },
-  { value: 'design', label: 'Design & Media' },
-  { value: 'security', label: 'Security' },
-  { value: 'development', label: 'Development' },
-  { value: 'erp', label: 'ERP' },
-  { value: 'utilities', label: 'Utilities' },
-];
-
 const AGREEMENT_TYPE_OPTIONS: RegistrationOption[] = [
   { value: 'perpetual', label: 'Perpetual' },
   { value: 'subscription', label: 'Subscription' },
@@ -62,23 +64,6 @@ const PAYMENT_MODEL_OPTIONS: RegistrationOption[] = [
   { value: 'enterprise', label: 'Enterprise' },
 ];
 
-const PUBLISHER_OPTIONS: RegistrationOption[] = [
-  { value: 'microsoft', label: 'Microsoft' },
-  { value: 'adobe', label: 'Adobe' },
-  { value: 'atlassian', label: 'Atlassian' },
-  { value: 'jetbrains', label: 'JetBrains' },
-  { value: 'oracle', label: 'Oracle' },
-  { value: 'google', label: 'Google' },
-];
-
-const VENDOR_OPTIONS: RegistrationOption[] = [
-  { value: 'softline', label: 'Softline' },
-  { value: 'ingram-micro', label: 'Ingram Micro' },
-  { value: 'tech-data', label: 'Tech Data' },
-  { value: 'synnex', label: 'Synnex' },
-  { value: 'crayon', label: 'Crayon' },
-];
-
 const CURRENCY_OPTIONS: RegistrationOption[] = [
   { value: 'USD', label: 'USD' },
   { value: 'LKR', label: 'LKR' },
@@ -87,6 +72,13 @@ const CURRENCY_OPTIONS: RegistrationOption[] = [
 
 function getTodayDateValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getError(
+  state: RegisterSoftwareAssetActionState,
+  key: keyof NonNullable<RegisterSoftwareAssetActionState['errors']>
+) {
+  return state.errors?.[key]?.[0];
 }
 
 function FieldRow({
@@ -202,10 +194,19 @@ function BuildCircleUpload({
   );
 }
 
-export function SoftwareRegistryPageClient() {
+export function SoftwareRegistryPageClient({
+  categoryOptions,
+  publisherOptions,
+  vendorOptions,
+}: SoftwareRegistryPageClientProps) {
   const [isPanelOpen, setIsPanelOpen] = React.useState(false);
-  const { setOpen, setOpenMobile } = useSidebar();
+  const openRegistrationPanel = useOpenRegistrationPanel(setIsPanelOpen);
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
+  const [state, formAction, isPending] = React.useActionState(
+    registerSoftwareAsset,
+    initialRegisterSoftwareAssetActionState
+  );
+
   const [softwareName, setSoftwareName] = React.useState('');
   const [categoryId, setCategoryId] = React.useState('');
   const [agreementType, setAgreementType] = React.useState('');
@@ -221,9 +222,10 @@ export function SoftwareRegistryPageClient() {
   const [currencyCode, setCurrencyCode] = React.useState(
     CURRENCY_OPTIONS[0]?.value ?? ''
   );
-  const [note, setNote] = React.useState('');
+  const [notes, setNotes] = React.useState('');
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
   const [imagePreviewUrl, setImagePreviewUrl] = React.useState('');
+  const lastToastKeyRef = React.useRef<string>('');
 
   React.useEffect(() => {
     return () => {
@@ -232,6 +234,29 @@ export function SoftwareRegistryPageClient() {
       }
     };
   }, [imagePreviewUrl]);
+
+  React.useEffect(() => {
+    const resolvedMessage = state.message || getError(state, 'form');
+
+    if (!resolvedMessage) {
+      return;
+    }
+
+    const toastKey = `${state.success ? 'success' : 'error'}:${resolvedMessage}`;
+
+    if (lastToastKeyRef.current === toastKey) {
+      return;
+    }
+
+    if (state.success) {
+      tiqriToast.success(resolvedMessage);
+      setIsPanelOpen(false);
+    } else {
+      tiqriToast.error(resolvedMessage);
+    }
+
+    lastToastKeyRef.current = toastKey;
+  }, [state]);
 
   const handleImageChange = React.useCallback((file: File | null) => {
     if (!file) {
@@ -248,18 +273,10 @@ export function SoftwareRegistryPageClient() {
     });
   }, []);
 
-  const resetAndClose = () => {
-    setIsPanelOpen(false);
-  };
-
-  const openRegistrationPanel = () => {
-    setOpen(false);
-    setOpenMobile(false);
-    setIsPanelOpen(true);
-  };
-
   const panelBody = (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', isPending && 'pointer-events-none opacity-70')}>
+      <input type="hidden" name="pillar" value="Software" />
+
       <div className="flex flex-col items-center gap-2 py-2">
         <BuildCircleUpload
           inputId="softwareImage"
@@ -271,7 +288,11 @@ export function SoftwareRegistryPageClient() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        <FieldRow label="Software Name :" htmlFor="softwareName">
+        <FieldRow
+          label="Software Name :"
+          htmlFor="softwareName"
+          error={getError(state, 'softwareName')}
+        >
           <Input
             id="softwareName"
             name="softwareName"
@@ -283,12 +304,13 @@ export function SoftwareRegistryPageClient() {
 
         <DropdownFieldRow
           label="Category :"
-          name="category"
+          name="categoryId"
           value={categoryId}
           onChange={setCategoryId}
-          options={SOFTWARE_CATEGORY_OPTIONS}
+          options={categoryOptions}
           placeholder="Select Category.."
           emptyMessage="No categories found."
+          error={getError(state, 'categoryId')}
         />
 
         <DropdownFieldRow
@@ -299,6 +321,7 @@ export function SoftwareRegistryPageClient() {
           options={AGREEMENT_TYPE_OPTIONS}
           placeholder="Select Agreement.."
           emptyMessage="No agreement types found."
+          error={getError(state, 'agreementType')}
         />
 
         <DropdownFieldRow
@@ -306,9 +329,10 @@ export function SoftwareRegistryPageClient() {
           name="publisherId"
           value={publisherId}
           onChange={setPublisherId}
-          options={PUBLISHER_OPTIONS}
+          options={publisherOptions}
           placeholder="Select Publisher.."
           emptyMessage="No publishers found."
+          error={getError(state, 'publisherId')}
         />
 
         <DropdownFieldRow
@@ -319,9 +343,14 @@ export function SoftwareRegistryPageClient() {
           options={PAYMENT_MODEL_OPTIONS}
           placeholder="Select Payment.."
           emptyMessage="No payment models found."
+          error={getError(state, 'paymentModel')}
         />
 
-        <FieldRow label="License Key :" htmlFor="licenseKey">
+        <FieldRow
+          label="License Key :"
+          htmlFor="licenseKey"
+          error={getError(state, 'licenseKey')}
+        >
           <Input
             id="licenseKey"
             name="licenseKey"
@@ -331,7 +360,11 @@ export function SoftwareRegistryPageClient() {
           />
         </FieldRow>
 
-        <FieldRow label="Licensed Email :" htmlFor="licenseEmail">
+        <FieldRow
+          label="Licensed Email :"
+          htmlFor="licenseEmail"
+          error={getError(state, 'licenseEmail')}
+        >
           <Input
             id="licenseEmail"
             name="licenseEmail"
@@ -342,7 +375,11 @@ export function SoftwareRegistryPageClient() {
           />
         </FieldRow>
 
-        <FieldRow label="Total Seats :" htmlFor="totalSeats">
+        <FieldRow
+          label="Total Seats :"
+          htmlFor="totalSeats"
+          error={getError(state, 'totalSeats')}
+        >
           <Input
             id="totalSeats"
             name="totalSeats"
@@ -376,7 +413,11 @@ export function SoftwareRegistryPageClient() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
-          <FieldRow label="Purchase Date :" htmlFor="purchaseDate">
+          <FieldRow
+            label="Purchase Date :"
+            htmlFor="purchaseDate"
+            error={getError(state, 'purchaseDate')}
+          >
             <Input
               id="purchaseDate"
               name="purchaseDate"
@@ -386,7 +427,11 @@ export function SoftwareRegistryPageClient() {
             />
           </FieldRow>
 
-          <FieldRow label="Base Price :" htmlFor="basePrice">
+          <FieldRow
+            label="Base Price :"
+            htmlFor="basePrice"
+            error={getError(state, 'basePrice')}
+          >
             <Input
               id="basePrice"
               name="basePrice"
@@ -399,7 +444,7 @@ export function SoftwareRegistryPageClient() {
             />
           </FieldRow>
 
-          <FieldRow label="Tax :" htmlFor="tax">
+          <FieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
             <Input
               id="tax"
               name="tax"
@@ -417,22 +462,28 @@ export function SoftwareRegistryPageClient() {
             name="vendorId"
             value={vendorId}
             onChange={setVendorId}
-            options={VENDOR_OPTIONS}
+            options={vendorOptions}
             placeholder="Select Vendor.."
             emptyMessage="No vendors found."
+            error={getError(state, 'vendorId')}
           />
 
-          <FieldRow label="Note :" htmlFor="note">
+          <FieldRow label="Note :" htmlFor="notes" error={getError(state, 'notes')}>
             <Input
-              id="note"
-              name="note"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
+              id="notes"
+              name="notes"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
               placeholder="Additional notes"
             />
           </FieldRow>
 
-          <FieldRow label="Invoice PDF :" htmlFor="invoiceFile" alignTop>
+          <FieldRow
+            label="Invoice PDF :"
+            htmlFor="invoiceFile"
+            error={getError(state, 'invoiceFile')}
+            alignTop
+          >
             <div className="space-y-2">
               <input
                 id="invoiceFile"
@@ -500,9 +551,10 @@ export function SoftwareRegistryPageClient() {
         description="Create and track software licenses and subscriptions"
         onSubmit={(event) => {
           event.preventDefault();
-          tiqriToast.success('Software registration UI is ready for backend wiring.');
-          resetAndClose();
+          const submittedFormData = new FormData(event.currentTarget);
+          formAction(submittedFormData);
         }}
+        isSubmitting={isPending}
         submitLabel="Save Software Asset"
         submittingLabel="Saving software asset..."
         cancelLabel="Discard"

@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
-import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useOpenRegistrationPanel } from '@/components/assets/use-open-registration-panel';
 import {
   DB_PILLAR_VALUES,
   initialRegisterAssetActionState,
@@ -644,13 +644,7 @@ export function HardwareRegistryPageClient({
   vendorOptions,
 }: HardwareRegistryPageClientProps) {
   const [isPanelOpen, setIsPanelOpen] = React.useState(false);
-  const { setOpen, setOpenMobile } = useSidebar();
-
-  const openRegistrationPanel = () => {
-    setOpen(false);
-    setOpenMobile(false);
-    setIsPanelOpen(true);
-  };
+  const openRegistrationPanel = useOpenRegistrationPanel(setIsPanelOpen);
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden p-4 md:p-6">

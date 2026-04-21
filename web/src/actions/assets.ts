@@ -29,6 +29,10 @@ import {
   type DbPillar,
   type RegisterAssetActionState,
 } from '@/validations/asset';
+import {
+  softwareRegistrationSchema,
+  type RegisterSoftwareAssetActionState,
+} from '@/validations/software-asset';
 
 const SESSION_COOKIE_NAME = 'session_token';
 const MAX_INVOICE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -168,6 +172,28 @@ function parseRegistrationInput(formData: FormData) {
   };
 
   return registrationSchema.safeParse(rawInput);
+}
+
+function parseSoftwareRegistrationInput(formData: FormData) {
+  const rawInput = {
+    softwareName: toFormValue(formData, 'softwareName'),
+    categoryId: toFormValue(formData, 'categoryId'),
+    publisherId: toFormValue(formData, 'publisherId'),
+    agreementType: toFormValue(formData, 'agreementType'),
+    paymentModel: toFormValue(formData, 'paymentModel'),
+    licenseKey: toFormValue(formData, 'licenseKey'),
+    licenseEmail: toFormValue(formData, 'licenseEmail'),
+    totalSeats: toFormValue(formData, 'totalSeats'),
+    purchaseDate: toFormValue(formData, 'purchaseDate'),
+    basePrice: toFormValue(formData, 'basePrice'),
+    tax: toFormValue(formData, 'tax'),
+    currencyCode: toFormValue(formData, 'currencyCode'),
+    vendorId: toFormValue(formData, 'vendorId'),
+    notes: toFormValue(formData, 'notes'),
+    pillar: toFormValue(formData, 'pillar'),
+  };
+
+  return softwareRegistrationSchema.safeParse(rawInput);
 }
 
 function validateInvoiceFile(file: File | null) {
@@ -320,6 +346,7 @@ export async function registerAsset(
           where: eq(vendors.id, input.vendorId),
           columns: {
             id: true,
+            pillar: true,
             isActive: true,
           },
         }),
@@ -362,6 +389,12 @@ export async function registerAsset(
     if (!vendorRecord || !vendorRecord.isActive) {
       return validationState('Please select an active vendor.', {
         vendorId: ['Please select an active vendor.'],
+      });
+    }
+
+    if (vendorRecord.pillar !== normalizedDbPillar) {
+      return validationState('Vendor does not belong to selected pillar.', {
+        vendorId: ['Vendor does not belong to selected pillar.'],
       });
     }
 
@@ -518,6 +551,336 @@ export async function registerAsset(
     logLatency({
       scope: 'ACTION',
       label: 'assets.registerAsset',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function registerSoftwareAsset(
+  _prevState: RegisterSoftwareAssetActionState,
+  formData: FormData
+): Promise<RegisterSoftwareAssetActionState> {
+  const actionTimer = startLatencyTimer();
+  let uploadedInvoiceUrl: string | null = null;
+  let assetWasCreated = false;
+  let createdAssetId: string | null = null;
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+
+    if (!currentUser) {
+      return {
+        success: false,
+        message: 'Please sign in to register software assets.',
+        errors: {
+          form: ['Please sign in to register software assets.'],
+        },
+      };
+    }
+
+    if (currentUser.role !== 'GlobalAdmin' && currentUser.role !== 'ITOperator') {
+      return {
+        success: false,
+        message: 'Forbidden: You do not have permission to register software assets.',
+        errors: {
+          form: ['Forbidden: You do not have permission to register software assets.'],
+        },
+      };
+    }
+
+    const parsed = parseSoftwareRegistrationInput(formData);
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Please correct the highlighted fields and try again.',
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const invoiceFile = toFormFile(formData, 'invoiceFile');
+    const invoiceFileError = validateInvoiceFile(invoiceFile);
+
+    if (invoiceFileError) {
+      return {
+        success: false,
+        message: 'Please correct the highlighted fields and try again.',
+        errors: {
+          invoiceFile: [invoiceFileError],
+        },
+      };
+    }
+
+    const input = parsed.data;
+
+    const [categoryRecord, publisherRecord, vendorRecord, duplicateLicenseRecord, existingModel] =
+      await Promise.all([
+        db.query.categories.findFirst({
+          where: eq(categories.id, input.categoryId),
+          columns: {
+            id: true,
+            prefix: true,
+            pillar: true,
+            isActive: true,
+          },
+        }),
+        db.query.brands.findFirst({
+          where: eq(brands.id, input.publisherId),
+          columns: {
+            id: true,
+            isActive: true,
+          },
+        }),
+        db.query.vendors.findFirst({
+          where: eq(vendors.id, input.vendorId),
+          columns: {
+            id: true,
+            pillar: true,
+            isActive: true,
+          },
+        }),
+        db.query.assets.findFirst({
+          where: eq(assets.serialNumber, input.licenseKey),
+          columns: {
+            id: true,
+            assetTag: true,
+          },
+        }),
+        db.query.models.findFirst({
+          where: and(
+            eq(models.brandId, input.publisherId),
+            eq(models.name, input.softwareName)
+          ),
+          columns: {
+            id: true,
+            categoryId: true,
+            isActive: true,
+          },
+        }),
+      ]);
+
+    if (!categoryRecord || !categoryRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active category.',
+        errors: {
+          categoryId: ['Please select an active category.'],
+        },
+      };
+    }
+
+    if (categoryRecord.pillar !== 'Software') {
+      return {
+        success: false,
+        message: 'Selected category does not belong to Software pillar.',
+        errors: {
+          categoryId: ['Selected category does not belong to Software pillar.'],
+        },
+      };
+    }
+
+    if (!publisherRecord || !publisherRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active publisher.',
+        errors: {
+          publisherId: ['Please select an active publisher.'],
+        },
+      };
+    }
+
+    if (!vendorRecord || !vendorRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active vendor.',
+        errors: {
+          vendorId: ['Please select an active vendor.'],
+        },
+      };
+    }
+
+    if (vendorRecord.pillar !== 'Software') {
+      return {
+        success: false,
+        message: 'Selected vendor does not belong to Software pillar.',
+        errors: {
+          vendorId: ['Selected vendor does not belong to Software pillar.'],
+        },
+      };
+    }
+
+    if (duplicateLicenseRecord) {
+      return {
+        success: false,
+        message: 'License key already exists.',
+        errors: {
+          licenseKey: [
+            `License key is already used by ${duplicateLicenseRecord.assetTag}.`,
+          ],
+        },
+      };
+    }
+
+    if (existingModel && existingModel.categoryId !== input.categoryId) {
+      return {
+        success: false,
+        message: 'Software model exists under a different category.',
+        errors: {
+          softwareName: ['Software model exists under a different category.'],
+        },
+      };
+    }
+
+    if (existingModel && !existingModel.isActive) {
+      return {
+        success: false,
+        message: 'Software model exists but is inactive.',
+        errors: {
+          softwareName: ['Software model exists but is inactive.'],
+        },
+      };
+    }
+
+    if (invoiceFile) {
+      try {
+        uploadedInvoiceUrl = await saveInvoiceFile(invoiceFile);
+      } catch {
+        return {
+          success: false,
+          message: 'Please correct the highlighted fields and try again.',
+          errors: {
+            invoiceFile: ['Unable to upload invoice PDF. Please try again.'],
+          },
+        };
+      }
+    }
+
+    const shippingCost = 0;
+    const tax = input.tax ?? 0;
+    const totalCost = input.basePrice + tax;
+    const currencyCode = input.currencyCode ?? 'USD';
+
+    const resolvedModelId = existingModel?.id
+      ? existingModel.id
+      : (
+          await db
+            .insert(models)
+            .values({
+              brandId: input.publisherId,
+              categoryId: input.categoryId,
+              name: input.softwareName,
+              isActive: true,
+            })
+            .returning({ id: models.id })
+        )[0]?.id;
+
+    if (!resolvedModelId) {
+      return {
+        success: false,
+        message: 'Unable to resolve software model.',
+        errors: {
+          softwareName: ['Unable to resolve software model.'],
+        },
+      };
+    }
+
+    const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
+    const pillarPrefix = PILLAR_PREFIX_MAP.Software;
+    const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
+
+    const countResult = await db
+      .select({ value: sql<number>`cast(count(*) as integer)` })
+      .from(assets)
+      .where(like(assets.assetTag, `${assetTagPrefix}-%`));
+
+    const nextSequence = (countResult[0]?.value ?? 0) + 1;
+    const generatedAssetTag = buildAssetTag(
+      pillarPrefix,
+      normalizedCategoryPrefix,
+      nextSequence
+    );
+
+    const [insertedAsset] = await db
+      .insert(assets)
+      .values({
+        assetTag: generatedAssetTag,
+        serialNumber: input.licenseKey,
+        name: input.softwareName,
+        modelId: resolvedModelId,
+        instanceAttributes: {
+          softwareName: input.softwareName,
+          agreementType: input.agreementType,
+          paymentModel: input.paymentModel,
+          licenseEmail: input.licenseEmail,
+          totalSeats: input.totalSeats,
+          notes: input.notes ?? null,
+        },
+      })
+      .returning({
+        id: assets.id,
+        assetTag: assets.assetTag,
+      });
+
+    if (!insertedAsset) {
+      throw new Error('Unable to create software asset.');
+    }
+
+    createdAssetId = insertedAsset.id;
+
+    await db.insert(assetPurchases).values({
+      assetId: insertedAsset.id,
+      vendorId: input.vendorId,
+      purchaseDate: toDateString(input.purchaseDate),
+      basePrice: input.basePrice.toFixed(2),
+      shippingCost: shippingCost.toFixed(2),
+      tax: tax.toFixed(2),
+      totalCost: totalCost.toFixed(2),
+      currencyCode,
+      warrantyExpiry: null,
+      invoiceUrl: uploadedInvoiceUrl,
+    });
+
+    assetWasCreated = true;
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/software');
+
+    return {
+      success: true,
+      message: `Software asset ${insertedAsset.assetTag} was registered successfully.`,
+      assetId: insertedAsset.assetTag,
+      errors: {},
+    };
+  } catch (error) {
+    if (createdAssetId) {
+      try {
+        await db.delete(assets).where(eq(assets.id, createdAssetId));
+      } catch {
+        // Best-effort rollback if follow-up write fails.
+      }
+    }
+
+    if (uploadedInvoiceUrl && !assetWasCreated) {
+      await removeUploadedInvoice(uploadedInvoiceUrl);
+    }
+
+    logError({
+      scope: 'ACTION',
+      label: 'assets.registerSoftwareAsset',
+      error,
+    });
+
+    return {
+      success: false,
+      message: 'Unexpected error while registering software asset.',
+      errors: {
+        form: ['Unexpected error while registering software asset.'],
+      },
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assets.registerSoftwareAsset',
       startTime: actionTimer,
     });
   }

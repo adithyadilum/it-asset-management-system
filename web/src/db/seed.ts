@@ -538,6 +538,7 @@ async function seed() {
       .insert(vendors)
       .values({
         companyName: 'TechSource Lanka',
+        pillar: 'IT & Digital',
         contactInfo: 'sales@techsource.lk',
         isActive: true,
       })

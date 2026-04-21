@@ -55,7 +55,12 @@ async function getHardwareRegistrationOptions() {
         db
           .select({ id: vendors.id, name: vendors.companyName })
           .from(vendors)
-          .where(eq(vendors.isActive, true))
+          .where(
+            and(
+              eq(vendors.isActive, true),
+              eq(vendors.pillar, 'IT & Digital')
+            )
+          )
           .orderBy(asc(vendors.companyName)),
       ]);
 
