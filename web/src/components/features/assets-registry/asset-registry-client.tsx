@@ -131,10 +131,7 @@ function toCategoryDisplayLabel(value: string) {
 }
 
 function toHardwareDisplayStatus(row: AssetRegistryRow) {
-  if (row.condition?.toLowerCase() === 'new') {
-    return 'new';
-  }
-
+  // Status column must always represent the persisted asset status from DB.
   return row.status;
 }
 
