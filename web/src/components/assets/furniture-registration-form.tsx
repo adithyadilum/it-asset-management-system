@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Filter, Paperclip, Plus, Search } from 'lucide-react';
 import Image from 'next/image';
 
+import { registerFurnitureAsset } from '@/actions/assets';
 import { useOpenRegistrationPanel } from '@/components/assets/use-open-registration-panel';
 import { FormPanel } from '@/components/shared/slide-panels/form-panel';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -12,6 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
+import {
+  initialRegisterFurnitureAssetActionState,
+  type RegisterFurnitureAssetActionState,
+} from '@/validations/furniture-asset';
+
 import {
   Table,
   TableBody,
@@ -82,6 +88,13 @@ const WARRANTY_MONTH_OPTIONS: RegistrationOption[] = [
 
 function getTodayDateValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getError(
+  state: RegisterFurnitureAssetActionState,
+  key: keyof NonNullable<RegisterFurnitureAssetActionState['errors']>
+) {
+  return state.errors?.[key]?.[0];
 }
 
 function FieldRow({
@@ -206,7 +219,10 @@ export function FurnitureRegistryPageClient({
   const openRegistrationPanel = useOpenRegistrationPanel(setIsPanelOpen);
 
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [state, formAction, isPending] = React.useActionState(
+    registerFurnitureAsset,
+    initialRegisterFurnitureAssetActionState
+  );
 
   const [categoryId, setCategoryId] = React.useState('');
   const [manufacturerId, setManufacturerId] = React.useState('');
@@ -229,6 +245,7 @@ export function FurnitureRegistryPageClient({
   );
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
   const [imagePreviewUrl, setImagePreviewUrl] = React.useState('');
+  const lastToastKeyRef = React.useRef<string>('');
 
   React.useEffect(() => {
     return () => {
@@ -237,6 +254,29 @@ export function FurnitureRegistryPageClient({
       }
     };
   }, [imagePreviewUrl]);
+
+  React.useEffect(() => {
+    const resolvedMessage = state.message || getError(state, 'form');
+
+    if (!resolvedMessage) {
+      return;
+    }
+
+    const toastKey = `${state.success ? 'success' : 'error'}:${resolvedMessage}`;
+
+    if (lastToastKeyRef.current === toastKey) {
+      return;
+    }
+
+    if (state.success) {
+      tiqriToast.success(resolvedMessage);
+      setIsPanelOpen(false);
+    } else {
+      tiqriToast.error(resolvedMessage);
+    }
+
+    lastToastKeyRef.current = toastKey;
+  }, [state]);
 
   const handleImageChange = React.useCallback((file: File | null) => {
     if (!file) {
@@ -289,7 +329,7 @@ export function FurnitureRegistryPageClient({
       : 'No product lines found.';
 
   const panelBody = (
-    <div className={cn('space-y-4', isSubmitting && 'pointer-events-none opacity-70')}>
+    <div className={cn('space-y-4', isPending && 'pointer-events-none opacity-70')}>
       <input type="hidden" name="pillar" value="Office Furniture" />
 
       <CircleImageUpload
@@ -309,6 +349,7 @@ export function FurnitureRegistryPageClient({
           options={categoryOptions}
           placeholder="Select Category.."
           emptyMessage="No categories found."
+          error={getError(state, 'categoryId')}
         />
 
         <DropdownFieldRow
@@ -319,6 +360,7 @@ export function FurnitureRegistryPageClient({
           options={manufacturerOptions}
           placeholder="Select Manufacturer.."
           emptyMessage="No manufacturers found."
+          error={getError(state, 'manufacturerId')}
         />
 
         <DropdownFieldRow
@@ -329,6 +371,7 @@ export function FurnitureRegistryPageClient({
           options={locationOptions}
           placeholder="Select Location.."
           emptyMessage="No locations found."
+          error={getError(state, 'locationId')}
         />
 
         <DropdownFieldRow
@@ -339,9 +382,10 @@ export function FurnitureRegistryPageClient({
           options={filteredProductLineOptions}
           placeholder="Select Product.."
           emptyMessage={productLineEmptyMessage}
+          error={getError(state, 'productLineId')}
         />
 
-        <FieldRow label="Floor :" htmlFor="floor">
+        <FieldRow label="Floor :" htmlFor="floor" error={getError(state, 'floor')}>
           <Input
             id="floor"
             name="floor"
@@ -359,9 +403,14 @@ export function FurnitureRegistryPageClient({
           options={CONDITION_OPTIONS}
           placeholder="Select Condition.."
           emptyMessage="No conditions found."
+          error={getError(state, 'condition')}
         />
 
-        <FieldRow label="Material :" htmlFor="material">
+        <FieldRow
+          label="Material :"
+          htmlFor="material"
+          error={getError(state, 'material')}
+        >
           <Input
             id="material"
             name="material"
@@ -371,7 +420,11 @@ export function FurnitureRegistryPageClient({
           />
         </FieldRow>
 
-        <FieldRow label="Note :" htmlFor="headerNote">
+        <FieldRow
+          label="Note :"
+          htmlFor="headerNote"
+          error={getError(state, 'headerNote')}
+        >
           <Input
             id="headerNote"
             name="headerNote"
@@ -381,7 +434,11 @@ export function FurnitureRegistryPageClient({
           />
         </FieldRow>
 
-        <FieldRow label="Dimensions :" htmlFor="dimensions">
+        <FieldRow
+          label="Dimensions :"
+          htmlFor="dimensions"
+          error={getError(state, 'dimensions')}
+        >
           <Input
             id="dimensions"
             name="dimensions"
@@ -413,7 +470,11 @@ export function FurnitureRegistryPageClient({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
-          <FieldRow label="Purchase Date :" htmlFor="purchaseDate">
+          <FieldRow
+            label="Purchase Date :"
+            htmlFor="purchaseDate"
+            error={getError(state, 'purchaseDate')}
+          >
             <Input
               id="purchaseDate"
               name="purchaseDate"
@@ -423,7 +484,11 @@ export function FurnitureRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Base Price :" htmlFor="basePrice">
+          <FieldRow
+            label="Base Price :"
+            htmlFor="basePrice"
+            error={getError(state, 'basePrice')}
+          >
             <Input
               id="basePrice"
               name="basePrice"
@@ -436,7 +501,11 @@ export function FurnitureRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Shipping Cost :" htmlFor="shippingCost">
+          <FieldRow
+            label="Shipping Cost :"
+            htmlFor="shippingCost"
+            error={getError(state, 'shippingCost')}
+          >
             <Input
               id="shippingCost"
               name="shippingCost"
@@ -449,7 +518,7 @@ export function FurnitureRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Tax :" htmlFor="tax">
+          <FieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
             <Input
               id="tax"
               name="tax"
@@ -470,6 +539,7 @@ export function FurnitureRegistryPageClient({
             options={vendorOptions}
             placeholder="Select Vendor.."
             emptyMessage="No vendors found."
+            error={getError(state, 'vendorId')}
           />
 
           <DropdownFieldRow
@@ -480,9 +550,14 @@ export function FurnitureRegistryPageClient({
             options={WARRANTY_MONTH_OPTIONS}
             placeholder="Warranty Period.."
             emptyMessage="No warranty periods found."
+            error={getError(state, 'warrantyMonths')}
           />
 
-          <FieldRow label="Note :" htmlFor="purchaseNote">
+          <FieldRow
+            label="Note :"
+            htmlFor="purchaseNote"
+            error={getError(state, 'purchaseNote')}
+          >
             <Input
               id="purchaseNote"
               name="purchaseNote"
@@ -492,7 +567,12 @@ export function FurnitureRegistryPageClient({
             />
           </FieldRow>
 
-          <FieldRow label="Invoice PDF :" htmlFor="invoiceFile" alignTop>
+          <FieldRow
+            label="Invoice PDF :"
+            htmlFor="invoiceFile"
+            alignTop
+            error={getError(state, 'invoiceFile')}
+          >
             <div className="space-y-2">
               <input
                 id="invoiceFile"
@@ -596,18 +676,12 @@ export function FurnitureRegistryPageClient({
         onClose={setIsPanelOpen}
         title="Asset Registry"
         description="Furniture & Fixtures"
-        onSubmit={async (event) => {
+        onSubmit={(event) => {
           event.preventDefault();
-          setIsSubmitting(true);
-
-          // Frontend-first form shell for furniture registration.
-          await Promise.resolve();
-
-          setIsSubmitting(false);
-          setIsPanelOpen(false);
-          tiqriToast.success('Furniture registration form is ready for backend integration.');
+          const submittedFormData = new FormData(event.currentTarget);
+          formAction(submittedFormData);
         }}
-        isSubmitting={isSubmitting}
+        isSubmitting={isPending}
         submitLabel="Add Asset"
         submittingLabel="Adding asset..."
         cancelLabel="Discard"

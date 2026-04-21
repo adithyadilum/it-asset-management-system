@@ -16,6 +16,7 @@ import {
   assets,
   brands,
   categories,
+  locations,
   models,
   sessions,
   users,
@@ -33,6 +34,10 @@ import {
   softwareRegistrationSchema,
   type RegisterSoftwareAssetActionState,
 } from '@/validations/software-asset';
+import {
+  furnitureRegistrationSchema,
+  type RegisterFurnitureAssetActionState,
+} from '@/validations/furniture-asset';
 
 const SESSION_COOKIE_NAME = 'session_token';
 const MAX_INVOICE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -194,6 +199,31 @@ function parseSoftwareRegistrationInput(formData: FormData) {
   };
 
   return softwareRegistrationSchema.safeParse(rawInput);
+}
+
+function parseFurnitureRegistrationInput(formData: FormData) {
+  const rawInput = {
+    categoryId: toFormValue(formData, 'categoryId'),
+    manufacturerId: toFormValue(formData, 'manufacturerId'),
+    productLineId: toFormValue(formData, 'productLineId'),
+    locationId: toFormValue(formData, 'locationId'),
+    floor: toFormValue(formData, 'floor'),
+    condition: toFormValue(formData, 'condition'),
+    material: toFormValue(formData, 'material'),
+    dimensions: toFormValue(formData, 'dimensions'),
+    headerNote: toFormValue(formData, 'headerNote'),
+    purchaseDate: toFormValue(formData, 'purchaseDate'),
+    basePrice: toFormValue(formData, 'basePrice'),
+    shippingCost: toFormValue(formData, 'shippingCost'),
+    tax: toFormValue(formData, 'tax'),
+    currencyCode: toFormValue(formData, 'currencyCode'),
+    vendorId: toFormValue(formData, 'vendorId'),
+    warrantyMonths: toFormValue(formData, 'warrantyMonths'),
+    purchaseNote: toFormValue(formData, 'purchaseNote'),
+    pillar: toFormValue(formData, 'pillar'),
+  };
+
+  return furnitureRegistrationSchema.safeParse(rawInput);
 }
 
 function validateInvoiceFile(file: File | null) {
@@ -881,6 +911,331 @@ export async function registerSoftwareAsset(
     logLatency({
       scope: 'ACTION',
       label: 'assets.registerSoftwareAsset',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function registerFurnitureAsset(
+  _prevState: RegisterFurnitureAssetActionState,
+  formData: FormData
+): Promise<RegisterFurnitureAssetActionState> {
+  const actionTimer = startLatencyTimer();
+  let uploadedInvoiceUrl: string | null = null;
+  let assetWasCreated = false;
+  let createdAssetId: string | null = null;
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+
+    if (!currentUser) {
+      return {
+        success: false,
+        message: 'Please sign in to register furniture assets.',
+        errors: {
+          form: ['Please sign in to register furniture assets.'],
+        },
+      };
+    }
+
+    if (currentUser.role !== 'GlobalAdmin' && currentUser.role !== 'ITOperator') {
+      return {
+        success: false,
+        message: 'Forbidden: You do not have permission to register furniture assets.',
+        errors: {
+          form: [
+            'Forbidden: You do not have permission to register furniture assets.',
+          ],
+        },
+      };
+    }
+
+    const parsed = parseFurnitureRegistrationInput(formData);
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Please correct the highlighted fields and try again.',
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const invoiceFile = toFormFile(formData, 'invoiceFile');
+    const invoiceFileError = validateInvoiceFile(invoiceFile);
+
+    if (invoiceFileError) {
+      return {
+        success: false,
+        message: 'Please correct the highlighted fields and try again.',
+        errors: {
+          invoiceFile: [invoiceFileError],
+        },
+      };
+    }
+
+    const input = parsed.data;
+
+    const [categoryRecord, manufacturerRecord, modelRecord, locationRecord, vendorRecord] =
+      await Promise.all([
+        db.query.categories.findFirst({
+          where: eq(categories.id, input.categoryId),
+          columns: {
+            id: true,
+            prefix: true,
+            pillar: true,
+            isActive: true,
+          },
+        }),
+        db.query.brands.findFirst({
+          where: eq(brands.id, input.manufacturerId),
+          columns: {
+            id: true,
+            isActive: true,
+          },
+        }),
+        db.query.models.findFirst({
+          where: eq(models.id, input.productLineId),
+          columns: {
+            id: true,
+            name: true,
+            categoryId: true,
+            brandId: true,
+            isActive: true,
+          },
+        }),
+        db.query.locations.findFirst({
+          where: eq(locations.id, input.locationId),
+          columns: {
+            id: true,
+            isActive: true,
+          },
+        }),
+        db.query.vendors.findFirst({
+          where: eq(vendors.id, input.vendorId),
+          columns: {
+            id: true,
+            pillar: true,
+            isActive: true,
+          },
+        }),
+      ]);
+
+    if (!categoryRecord || !categoryRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active category.',
+        errors: {
+          categoryId: ['Please select an active category.'],
+        },
+      };
+    }
+
+    if (categoryRecord.pillar !== 'Office Furniture') {
+      return {
+        success: false,
+        message: 'Selected category does not belong to Office Furniture pillar.',
+        errors: {
+          categoryId: [
+            'Selected category does not belong to Office Furniture pillar.',
+          ],
+        },
+      };
+    }
+
+    if (!manufacturerRecord || !manufacturerRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active manufacturer.',
+        errors: {
+          manufacturerId: ['Please select an active manufacturer.'],
+        },
+      };
+    }
+
+    if (!modelRecord || !modelRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active product line.',
+        errors: {
+          productLineId: ['Please select an active product line.'],
+        },
+      };
+    }
+
+    if (modelRecord.categoryId !== input.categoryId) {
+      return {
+        success: false,
+        message: 'Product line does not belong to selected category.',
+        errors: {
+          productLineId: ['Product line does not belong to selected category.'],
+        },
+      };
+    }
+
+    if (modelRecord.brandId !== input.manufacturerId) {
+      return {
+        success: false,
+        message: 'Product line does not belong to selected manufacturer.',
+        errors: {
+          productLineId: [
+            'Product line does not belong to selected manufacturer.',
+          ],
+        },
+      };
+    }
+
+    if (!locationRecord || !locationRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active location.',
+        errors: {
+          locationId: ['Please select an active location.'],
+        },
+      };
+    }
+
+    if (!vendorRecord || !vendorRecord.isActive) {
+      return {
+        success: false,
+        message: 'Please select an active vendor.',
+        errors: {
+          vendorId: ['Please select an active vendor.'],
+        },
+      };
+    }
+
+    if (vendorRecord.pillar !== 'Office Furniture') {
+      return {
+        success: false,
+        message: 'Selected vendor does not belong to Office Furniture pillar.',
+        errors: {
+          vendorId: [
+            'Selected vendor does not belong to Office Furniture pillar.',
+          ],
+        },
+      };
+    }
+
+    if (invoiceFile) {
+      try {
+        uploadedInvoiceUrl = await saveInvoiceFile(invoiceFile);
+      } catch {
+        return {
+          success: false,
+          message: 'Please correct the highlighted fields and try again.',
+          errors: {
+            invoiceFile: ['Unable to upload invoice PDF. Please try again.'],
+          },
+        };
+      }
+    }
+
+    const shippingCost = input.shippingCost ?? 0;
+    const tax = input.tax ?? 0;
+    const totalCost = input.basePrice + shippingCost + tax;
+    const currencyCode = input.currencyCode ?? 'USD';
+    const warrantyExpiry = input.warrantyMonths
+      ? toDateString(addMonths(input.purchaseDate, input.warrantyMonths))
+      : null;
+
+    const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
+    const pillarPrefix = PILLAR_PREFIX_MAP['Office Furniture'];
+    const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
+
+    const countResult = await db
+      .select({ value: sql<number>`cast(count(*) as integer)` })
+      .from(assets)
+      .where(like(assets.assetTag, `${assetTagPrefix}-%`));
+
+    const nextSequence = (countResult[0]?.value ?? 0) + 1;
+    const generatedAssetTag = buildAssetTag(
+      pillarPrefix,
+      normalizedCategoryPrefix,
+      nextSequence
+    );
+
+    const [insertedAsset] = await db
+      .insert(assets)
+      .values({
+        assetTag: generatedAssetTag,
+        serialNumber: null,
+        name: modelRecord.name,
+        modelId: input.productLineId,
+        locationId: input.locationId,
+        condition: input.condition,
+        instanceAttributes: {
+          floor: input.floor,
+          material: input.material,
+          dimensions: input.dimensions,
+          headerNote: input.headerNote ?? null,
+          purchaseNote: input.purchaseNote ?? null,
+        },
+      })
+      .returning({
+        id: assets.id,
+        assetTag: assets.assetTag,
+      });
+
+    if (!insertedAsset) {
+      throw new Error('Unable to create furniture asset.');
+    }
+
+    createdAssetId = insertedAsset.id;
+
+    await db.insert(assetPurchases).values({
+      assetId: insertedAsset.id,
+      vendorId: input.vendorId,
+      purchaseDate: toDateString(input.purchaseDate),
+      basePrice: input.basePrice.toFixed(2),
+      shippingCost: shippingCost.toFixed(2),
+      tax: tax.toFixed(2),
+      totalCost: totalCost.toFixed(2),
+      currencyCode,
+      warrantyExpiry,
+      invoiceUrl: uploadedInvoiceUrl,
+    });
+
+    assetWasCreated = true;
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/furniture');
+
+    return {
+      success: true,
+      message: `Furniture asset ${insertedAsset.assetTag} was registered successfully.`,
+      assetId: insertedAsset.assetTag,
+      errors: {},
+    };
+  } catch (error) {
+    if (createdAssetId) {
+      try {
+        await db.delete(assets).where(eq(assets.id, createdAssetId));
+      } catch {
+        // Best-effort rollback if follow-up write fails.
+      }
+    }
+
+    if (uploadedInvoiceUrl && !assetWasCreated) {
+      await removeUploadedInvoice(uploadedInvoiceUrl);
+    }
+
+    logError({
+      scope: 'ACTION',
+      label: 'assets.registerFurnitureAsset',
+      error,
+    });
+
+    return {
+      success: false,
+      message: 'Unexpected error while registering furniture asset.',
+      errors: {
+        form: ['Unexpected error while registering furniture asset.'],
+      },
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assets.registerFurnitureAsset',
       startTime: actionTimer,
     });
   }

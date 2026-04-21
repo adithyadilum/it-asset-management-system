@@ -46,7 +46,14 @@ async function getFurnitureRegistrationOptions() {
           })
           .from(models)
           .leftJoin(brands, eq(models.brandId, brands.id))
-          .where(eq(models.isActive, true))
+          .leftJoin(categories, eq(models.categoryId, categories.id))
+          .where(
+            and(
+              eq(models.isActive, true),
+              eq(categories.isActive, true),
+              eq(categories.pillar, 'Office Furniture')
+            )
+          )
           .orderBy(asc(models.name)),
         db
           .select({ id: locations.id, name: locations.name })
