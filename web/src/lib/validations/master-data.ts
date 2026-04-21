@@ -78,7 +78,19 @@ export const locationSchema = z.object({
 
 export const vendorSchema = z.object({
   companyName: z.string().trim().min(2, 'Vendor name is required'),
-  contactInfo: z.string().trim().optional(),
+  email: z
+    .string()
+    .trim()
+    .email('Enter a valid email address')
+    .optional()
+    .or(z.literal('')),
+  phone: z.string().trim().max(50, 'Phone number is too long').optional(),
+  website: z
+    .string()
+    .trim()
+    .url('Enter a valid website URL')
+    .optional()
+    .or(z.literal('')),
   isActive: z.boolean(),
 });
 

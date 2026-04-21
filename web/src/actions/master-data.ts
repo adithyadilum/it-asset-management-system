@@ -312,7 +312,9 @@ export async function createMasterDataRecord(
       case 'vendors': {
         const parsed = vendorSchema.safeParse({
           companyName: formData.get('companyName'),
-          contactInfo: String(formData.get('contactInfo') ?? ''),
+          email: String(formData.get('email') ?? ''),
+          phone: String(formData.get('phone') ?? ''),
+          website: String(formData.get('website') ?? ''),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
 
@@ -328,9 +330,17 @@ export async function createMasterDataRecord(
           .insert(vendors)
           .values({
             companyName: parsed.data.companyName,
-            contactInfo:
-              parsed.data.contactInfo && parsed.data.contactInfo.length > 0
-                ? parsed.data.contactInfo
+            email:
+              parsed.data.email && parsed.data.email.length > 0
+                ? parsed.data.email
+                : null,
+            phone:
+              parsed.data.phone && parsed.data.phone.length > 0
+                ? parsed.data.phone
+                : null,
+            website:
+              parsed.data.website && parsed.data.website.length > 0
+                ? parsed.data.website
                 : null,
             isActive: parsed.data.isActive,
           })
@@ -580,28 +590,39 @@ export async function updateMasterDataRecord(
       }
 
       case 'vendors': {
-        const companyName = parseRequiredText(
-          formData.get('companyName'),
-          'Vendor name',
-          2
-        );
-        if (!companyName.ok) {
+        const parsed = vendorSchema.safeParse({
+          companyName: formData.get('companyName'),
+          email: String(formData.get('email') ?? ''),
+          phone: String(formData.get('phone') ?? ''),
+          website: String(formData.get('website') ?? ''),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
           return {
             success: false,
             message: 'Validation failed.',
-            errors: { companyName: [companyName.error] },
+            errors: parsed.error.flatten().fieldErrors,
           };
         }
 
-        const contactInfoValue = String(
-          formData.get('contactInfo') ?? ''
-        ).trim();
         const updated = await db
           .update(vendors)
           .set({
-            companyName: companyName.value,
-            contactInfo: contactInfoValue.length > 0 ? contactInfoValue : null,
-            isActive: parseBooleanFormValue(formData.get('isActive')),
+            companyName: parsed.data.companyName,
+            email:
+              parsed.data.email && parsed.data.email.length > 0
+                ? parsed.data.email
+                : null,
+            phone:
+              parsed.data.phone && parsed.data.phone.length > 0
+                ? parsed.data.phone
+                : null,
+            website:
+              parsed.data.website && parsed.data.website.length > 0
+                ? parsed.data.website
+                : null,
+            isActive: parsed.data.isActive,
           })
           .where(eq(vendors.id, idRaw))
           .returning({ id: vendors.id });

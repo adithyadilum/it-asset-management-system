@@ -89,7 +89,9 @@ export type MasterDataDeviceModelRow = {
 export type MasterDataVendorRow = {
     id: number;
     companyName: string;
-    contactInfo: string | null;
+    email: string | null;
+    phone: string | null;
+    website: string | null;
     pillars: string[];
     isActive: boolean;
 };
@@ -365,14 +367,19 @@ export function MasterDataManagementClient({
             },
             { accessorKey: "companyName", header: "Vendor" },
             {
-                accessorKey: "contactInfo",
-                header: "Contact Info",
-                cell: ({ row }) => row.original.contactInfo ?? "N/A",
+                accessorKey: "email",
+                header: "Email",
+                cell: ({ row }) => row.original.email ?? "N/A",
             },
             {
-                accessorKey: "pillars",
-                header: "Type",
-                cell: ({ row }) => normalizePillarsValue(row.original.pillars).join(", ") || "N/A",
+                accessorKey: "phone",
+                header: "Phone",
+                cell: ({ row }) => row.original.phone ?? "N/A",
+            },
+            {
+                accessorKey: "website",
+                header: "Website",
+                cell: ({ row }) => row.original.website ?? "N/A",
             },
             {
                 accessorKey: "isActive",
@@ -462,7 +469,7 @@ export function MasterDataManagementClient({
                 return (
                     matchesPillarFilter(pillars, pillarType) &&
                     containsSearch(
-                        [item.id, item.companyName, item.contactInfo, pillars.join(" ")],
+                        [item.id, item.companyName, item.email, item.phone, item.website, pillars.join(" ")],
                         searchByTab.vendors
                     )
                 );

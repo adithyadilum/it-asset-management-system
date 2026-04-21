@@ -125,7 +125,9 @@ export const locations = pgTable(
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
-  contactInfo: text('contact_info'), // Merged from ER diagram
+  email: varchar('email', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
+  website: varchar('website', { length: 255 }),
   isActive: boolean('is_active').default(true).notNull(),
 });
 

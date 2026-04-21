@@ -1107,15 +1107,45 @@ export function MasterDataCreatePanel({
                             </div>
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                    Contact Info
+                                    Email
                                 </label>
                                 <Input
-                                    name="contactInfo"
-                                    placeholder="ops@acme.com | +94 11 555 0000"
+                                    type="email"
+                                    name="email"
+                                    placeholder="ops@acme.com"
                                 />
-                                {getFieldError("contactInfo") && (
+                                {getFieldError("email") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                                        {getFieldError("contactInfo")}
+                                        {getFieldError("email")}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Phone
+                                </label>
+                                <Input name="phone" placeholder="+94 11 555 0000" />
+                                {getFieldError("phone") && (
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                        {getFieldError("phone")}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Website
+                                </label>
+                                <Input
+                                    type="url"
+                                    name="website"
+                                    placeholder="https://acme.com"
+                                />
+                                {getFieldError("website") && (
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                        {getFieldError("website")}
                                     </p>
                                 )}
                             </div>

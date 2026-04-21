@@ -293,15 +293,21 @@ async function seed() {
   const vendorSeeds = [
     {
       companyName: 'Tech Source Lanka',
-      contactInfo: 'sales@techsource.lk | +94 11 255 1000',
+      email: 'sales@techsource.lk',
+      phone: '+94 11 255 1000',
+      website: 'https://techsource.lk',
     },
     {
       companyName: 'OfficeHub Suppliers',
-      contactInfo: 'accounts@officehub.lk | +94 11 266 7788',
+      email: 'accounts@officehub.lk',
+      phone: '+94 11 266 7788',
+      website: 'https://officehub.lk',
     },
     {
       companyName: 'Enterprise Devices Pvt Ltd',
-      contactInfo: 'support@edpl.com | +94 77 500 1234',
+      email: 'support@edpl.com',
+      phone: '+94 77 500 1234',
+      website: 'https://edpl.com',
     },
   ] as const;
 
@@ -318,7 +324,9 @@ async function seed() {
       await db
         .update(vendors)
         .set({
-          contactInfo: vendorSeed.contactInfo,
+          email: vendorSeed.email,
+          phone: vendorSeed.phone,
+          website: vendorSeed.website,
           isActive: true,
         })
         .where(eq(vendors.id, existing[0].id));
@@ -331,7 +339,9 @@ async function seed() {
       .insert(vendors)
       .values({
         companyName: vendorSeed.companyName,
-        contactInfo: vendorSeed.contactInfo,
+        email: vendorSeed.email,
+        phone: vendorSeed.phone,
+        website: vendorSeed.website,
         isActive: true,
       })
       .returning({ id: vendors.id });
