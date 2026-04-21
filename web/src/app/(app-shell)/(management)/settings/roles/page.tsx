@@ -7,8 +7,8 @@ import { db } from '@/db';
 import { departments, users } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
 
-import { RolesAddUserButton } from './roles-add-user-button';
-import { RolesManagementTable } from './roles-management-table';
+import { RolesAddUserButton } from '@/components/features/roles/roles-add-user-button';
+import { RolesManagementTable } from '@/components/features/roles/roles-management-table';
 
 const ROLE_CONFIG: Array<{
   id: UserRole;
