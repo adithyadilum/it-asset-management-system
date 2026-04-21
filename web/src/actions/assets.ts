@@ -415,24 +415,26 @@ export async function registerAsset(
       }
     }
 
-    const createdAsset = await db.transaction(async (tx) => {
-      const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
-      const pillarPrefix = PILLAR_PREFIX_MAP[normalizedDbPillar];
-      const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
+    const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
+    const pillarPrefix = PILLAR_PREFIX_MAP[normalizedDbPillar];
+    const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
 
-      const countResult = await tx
-        .select({ value: sql<number>`cast(count(*) as integer)` })
-        .from(assets)
-        .where(like(assets.assetTag, `${assetTagPrefix}-%`));
+    const countResult = await db
+      .select({ value: sql<number>`cast(count(*) as integer)` })
+      .from(assets)
+      .where(like(assets.assetTag, `${assetTagPrefix}-%`));
 
-      const nextSequence = (countResult[0]?.value ?? 0) + 1;
-      const generatedAssetTag = buildAssetTag(
-        pillarPrefix,
-        normalizedCategoryPrefix,
-        nextSequence
-      );
+    const nextSequence = (countResult[0]?.value ?? 0) + 1;
+    const generatedAssetTag = buildAssetTag(
+      pillarPrefix,
+      normalizedCategoryPrefix,
+      nextSequence
+    );
 
-      const [insertedAsset] = await tx
+    let createdAssetId: string | null = null;
+
+    try {
+      const [insertedAsset] = await db
         .insert(assets)
         .values({
           assetTag: generatedAssetTag,
@@ -450,7 +452,9 @@ export async function registerAsset(
         throw new Error('Unable to create asset.');
       }
 
-      await tx.insert(assetPurchases).values({
+      createdAssetId = insertedAsset.id;
+
+      await db.insert(assetPurchases).values({
         assetId: insertedAsset.id,
         vendorId: input.vendorId,
         purchaseDate: toDateString(input.purchaseDate),
@@ -464,26 +468,34 @@ export async function registerAsset(
       });
 
       if (input.ownerId) {
-        await tx.insert(assetAssignments).values({
+        await db.insert(assetAssignments).values({
           assetId: insertedAsset.id,
           assignedToUserId: input.ownerId,
           assignedById: currentUser.id,
         });
       }
 
-      return insertedAsset;
-    });
+      assetWasCreated = true;
 
-    assetWasCreated = true;
+      revalidatePath('/assets');
 
-    revalidatePath('/assets');
+      return {
+        success: true,
+        message: `Asset ${insertedAsset.assetTag} was registered successfully.`,
+        assetId: insertedAsset.assetTag,
+        errors: {},
+      };
+    } catch (writeError) {
+      if (createdAssetId) {
+        try {
+          await db.delete(assets).where(eq(assets.id, createdAssetId));
+        } catch {
+          // Best-effort rollback when follow-up writes fail.
+        }
+      }
 
-    return {
-      success: true,
-      message: `Asset ${createdAsset.assetTag} was registered successfully.`,
-      assetId: createdAsset.assetTag,
-      errors: {},
-    };
+      throw writeError;
+    }
   } catch (error) {
     if (uploadedInvoiceUrl && !assetWasCreated) {
       await removeUploadedInvoice(uploadedInvoiceUrl);

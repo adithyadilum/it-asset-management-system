@@ -27,6 +27,12 @@ interface SlidePanelProps {
     actions?: SlidePanelAction[];
     /** Render close action in header */
     showCloseButton?: boolean;
+    /** Render panel header area */
+    showHeader?: boolean;
+    /** Render content without internal scroll area */
+    scrollable?: boolean;
+    /** Additional classes for the content wrapper */
+    contentClassName?: string;
 }
 
 const DEFAULT_PANEL_WIDTH = 700;
@@ -63,6 +69,9 @@ export function SlidePanel({
     content,
     actions,
     showCloseButton = true,
+    showHeader = true,
+    scrollable = true,
+    contentClassName,
 }: SlidePanelProps) {
     const titleId = React.useId();
     const descriptionId = React.useId();
@@ -132,33 +141,35 @@ export function SlidePanel({
                     )}
                 >
                     <div className="flex h-full min-h-0 flex-col">
-                        <header className="shrink-0 px-5 py-4 sm:px-6">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <h2 id={titleId} className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
-                                        {title}
-                                    </h2>
-                                    {description && (
-                                        <p id={descriptionId} className={`mt-1 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-                                            {description}
-                                        </p>
+                        {showHeader && (
+                            <header className="shrink-0 px-5 py-4 sm:px-6">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <h2 id={titleId} className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+                                            {title}
+                                        </h2>
+                                        {description && (
+                                            <p id={descriptionId} className={`mt-1 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+                                                {description}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {showCloseButton && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className="-mr-1 -mt-1 text-muted-foreground hover:bg-muted"
+                                            onClick={() => onClose(false)}
+                                            aria-label="Close panel"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </Button>
                                     )}
                                 </div>
-
-                                {showCloseButton && (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="-mr-1 -mt-1 text-muted-foreground hover:bg-muted"
-                                        onClick={() => onClose(false)}
-                                        aria-label="Close panel"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </Button>
-                                )}
-                            </div>
-                        </header>
+                            </header>
+                        )}
 
                         {headerContent && (
                             <div className="shrink-0 px-5 pb-2 sm:px-6">
@@ -166,11 +177,17 @@ export function SlidePanel({
                             </div>
                         )}
 
-                        <ScrollArea className="min-h-0 flex-1">
-                            <div className="h-full px-5 py-5 sm:px-6">
+                        {scrollable ? (
+                            <ScrollArea className="min-h-0 flex-1">
+                                <div className={cn("px-5 py-5 sm:px-6", contentClassName)}>
+                                    {hasProvidedContent ? content : <PanelPlaceholder />}
+                                </div>
+                            </ScrollArea>
+                        ) : (
+                            <div className={cn("min-h-0 flex-1 overflow-hidden px-5 py-5 sm:px-6", contentClassName)}>
                                 {hasProvidedContent ? content : <PanelPlaceholder />}
                             </div>
-                        </ScrollArea>
+                        )}
 
                         {resolvedActions.length > 0 && (
                             <footer className="shrink-0 px-5 py-4 sm:px-6">

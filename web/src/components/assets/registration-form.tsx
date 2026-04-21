@@ -1,10 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { LoaderCircle, Plus } from 'lucide-react';
+import { LoaderCircle, Paperclip, Plus } from 'lucide-react';
+import Image from 'next/image';
 
 import { registerAsset } from '@/actions/assets';
-import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
+import {
+  SlidePanel,
+  type SlidePanelAction,
+} from '@/components/shared/slide-panel';
+import { tiqriToast } from '@/components/shared/sonner';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +26,13 @@ import {
 type RegistrationOption = React.ComponentProps<
   typeof SearchableDropdown
 >['options'][number];
+
 type ModelRegistrationOption = RegistrationOption & {
   brandId: string;
   categoryId: string;
 };
-export type { RegistrationOption };
+
+export type { RegistrationOption, ModelRegistrationOption };
 
 type RegistrationFormProps = {
   isOpen: boolean;
@@ -56,6 +63,19 @@ type SearchableFieldRowProps = {
   emptyMessage: string;
   error?: string;
 };
+
+const CURRENCY_OPTIONS: RegistrationOption[] = [
+  { value: 'USD', label: 'USD' },
+  { value: 'LKR', label: 'LKR' },
+  { value: 'NOK', label: 'NOK' },
+];
+
+const WARRANTY_MONTH_OPTIONS: RegistrationOption[] = [
+  { value: '3', label: '3 Months' },
+  { value: '6', label: '6 Months' },
+  { value: '12', label: '12 Months' },
+  { value: '24', label: '24 Months' },
+];
 
 function getTodayDateValue() {
   return new Date().toISOString().slice(0, 10);
@@ -160,6 +180,8 @@ export function RegistrationForm({
   vendorOptions = [],
 }: RegistrationFormProps) {
   const formRef = React.useRef<HTMLFormElement>(null);
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
+  const invoiceInputRef = React.useRef<HTMLInputElement>(null);
   const [state, formAction, isPending] = React.useActionState(
     registerAsset,
     initialRegisterAssetActionState
@@ -174,8 +196,22 @@ export function RegistrationForm({
   const [modelId, setModelId] = React.useState('');
   const [ownerId, setOwnerId] = React.useState('');
   const [vendorId, setVendorId] = React.useState('');
+  const [currencyCode, setCurrencyCode] = React.useState(
+    CURRENCY_OPTIONS[0]?.value ?? ''
+  );
+  const [warrantyMonths, setWarrantyMonths] = React.useState('');
   const [purchaseDate, setPurchaseDate] = React.useState(getTodayDateValue);
+  const [imagePreviewUrl, setImagePreviewUrl] = React.useState('');
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
+  const lastToastKeyRef = React.useRef<string>('');
+
+  React.useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
 
   React.useEffect(() => {
     setPillar(resolveStartingPillar(initialPillar));
@@ -222,7 +258,29 @@ export function RegistrationForm({
     serialNumber.trim() || selectedModelLabel.trim() || 'Hardware Asset';
   const panelDescription = resolvePanelDescription(initialPillar);
 
-  const actions: SlidePanelAction[] = [
+  React.useEffect(() => {
+    const resolvedMessage = state.message || formError;
+
+    if (!resolvedMessage) {
+      return;
+    }
+
+    const toastKey = `${state.success ? 'success' : 'error'}:${resolvedMessage}`;
+
+    if (lastToastKeyRef.current === toastKey) {
+      return;
+    }
+
+    if (state.success) {
+      tiqriToast.success(resolvedMessage);
+    } else {
+      tiqriToast.error(resolvedMessage);
+    }
+
+    lastToastKeyRef.current = toastKey;
+  }, [formError, state.message, state.success]);
+
+  const panelActions: SlidePanelAction[] = [
     {
       id: 'discard',
       label: 'Discard',
@@ -231,7 +289,7 @@ export function RegistrationForm({
       disabled: isPending,
     },
     {
-      id: 'add-asset',
+      id: 'submit',
       label: isPending ? (
         <span className="inline-flex items-center gap-2">
           <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -246,286 +304,325 @@ export function RegistrationForm({
   ];
 
   const panelContent = (
-    <div className="h-full min-h-full rounded-2xl border border-border bg-card p-6 shadow-lg">
-      <form
-        ref={formRef}
-        action={formAction}
-        encType="multipart/form-data"
-        className={cn('h-full space-y-5', isPending && 'pointer-events-none opacity-70')}
-      >
-        <input type="hidden" name="name" value={derivedAssetName} />
+    <form
+      ref={formRef}
+      action={formAction}
+      className={cn('space-y-4', isPending && 'pointer-events-none opacity-70')}
+    >
+      <input type="hidden" name="name" value={derivedAssetName} />
 
-        <div>
-          <h3 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
-            Asset Registry
-          </h3>
-          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-            {panelDescription}
-          </p>
-        </div>
-
-        <hr className="my-6 border-border" />
-
-        {isPillarLocked ? (
-          <input type="hidden" name="pillar" value={pillar} />
-        ) : (
-          <InlineFieldRow
-            label="Pillar :"
-            htmlFor="pillar"
-            error={getError(state, 'pillar')}
+      {isPillarLocked ? (
+        <input type="hidden" name="pillar" value={pillar} />
+      ) : (
+        <InlineFieldRow
+          label="Pillar :"
+          htmlFor="pillar"
+          error={getError(state, 'pillar')}
+        >
+          <select
+            id="pillar"
+            name="pillar"
+            value={pillar}
+            onChange={(event) =>
+              setPillar(event.target.value as RegistrationPillarInput)
+            }
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            aria-invalid={Boolean(getError(state, 'pillar'))}
           >
-            <select
-              id="pillar"
-              name="pillar"
-              value={pillar}
-              onChange={(event) =>
-                setPillar(event.target.value as RegistrationPillarInput)
-              }
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-              aria-invalid={Boolean(getError(state, 'pillar'))}
-            >
-              {DB_PILLAR_VALUES.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </InlineFieldRow>
-        )}
+            {DB_PILLAR_VALUES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </InlineFieldRow>
+      )}
 
-        <div className="flex justify-center py-1">
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-dashed border-border">
+      <div className="flex flex-col items-center gap-2 py-2">
+        <input
+          ref={imageInputRef}
+          id="assetImage"
+          name="assetImage"
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(event) => {
+            const selectedFile = event.target.files?.[0];
+            if (!selectedFile) {
+              setImagePreviewUrl('');
+              return;
+            }
+
+            setImagePreviewUrl((previous) => {
+              if (previous) {
+                URL.revokeObjectURL(previous);
+              }
+              return URL.createObjectURL(selectedFile);
+            });
+          }}
+        />
+
+        <Button
+          type="button"
+          variant="ghost"
+          className="relative h-24 w-24 rounded-full border border-dashed border-border p-0 hover:bg-muted/20"
+          onClick={() => imageInputRef.current?.click()}
+          aria-label="Upload asset image"
+        >
+          {imagePreviewUrl ? (
+            <Image
+              src={imagePreviewUrl}
+              alt="Selected asset"
+              fill
+              sizes="96px"
+              unoptimized
+              className="h-full w-full rounded-full object-cover"
+            />
+          ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground">
               <span className="text-xs">IMG</span>
             </div>
-            <span className="pointer-events-none absolute inset-0 rounded-full ring-8 ring-background/40" />
+          )}
+          <span className="pointer-events-none absolute inset-0 rounded-full ring-8 ring-background/40" />
+        </Button>
+
+        <p className="text-xs text-muted-foreground">Click to upload image</p>
+      </div>
+
+      <hr className="my-5 border-border" />
+
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+        <SearchableFieldRow
+          label="Category :"
+          name="categoryId"
+          value={categoryId}
+          onChange={setCategoryId}
+          options={categoryOptions}
+          placeholder="Select Category.."
+          emptyMessage="No categories found."
+          error={getError(state, 'categoryId')}
+        />
+
+        <SearchableFieldRow
+          label="Brand :"
+          name="brandId"
+          value={brandId}
+          onChange={setBrandId}
+          options={brandOptions}
+          placeholder="Select Brand.."
+          emptyMessage="No brands found."
+          error={getError(state, 'brandId')}
+        />
+
+        <InlineFieldRow
+          label="Serial Number :"
+          htmlFor="serialNumber"
+          error={getError(state, 'serialNumber')}
+        >
+          <Input
+            id="serialNumber"
+            name="serialNumber"
+            value={serialNumber}
+            onChange={(event) => setSerialNumber(event.target.value)}
+            aria-invalid={Boolean(getError(state, 'serialNumber'))}
+          />
+        </InlineFieldRow>
+
+        <SearchableFieldRow
+          label="Model :"
+          name="modelId"
+          value={modelId}
+          onChange={setModelId}
+          options={filteredModelOptions}
+          placeholder="Select Model.."
+          emptyMessage={modelEmptyMessage}
+          error={getError(state, 'modelId')}
+        />
+
+        <SearchableFieldRow
+          label="Owner :"
+          name="ownerId"
+          value={ownerId}
+          onChange={setOwnerId}
+          options={ownerOptions}
+          placeholder="Select Owner.."
+          emptyMessage="No owners found."
+          error={getError(state, 'ownerId')}
+        />
+
+        <InlineFieldRow label="Note :" htmlFor="displayNote">
+          <Input id="displayNote" name="displayNote" />
+        </InlineFieldRow>
+      </div>
+
+      <hr className="my-5 border-border" />
+
+      <section className="rounded-lg border border-border bg-muted/60 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+            Purchase Details
+          </h3>
+
+          <div className="w-24">
+            <SearchableDropdown
+              options={CURRENCY_OPTIONS}
+              placeholder="USD"
+              emptyMessage="No currencies found."
+              onSelect={setCurrencyCode}
+              defaultValue={currencyCode}
+            />
+            <input type="hidden" name="currencyCode" value={currencyCode} />
           </div>
         </div>
 
-        <hr className="my-6 border-border" />
-
-        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-          <SearchableFieldRow
-            label="Category :"
-            name="categoryId"
-            value={categoryId}
-            onChange={setCategoryId}
-            options={categoryOptions}
-            placeholder="Select Category.."
-            emptyMessage="No categories found."
-            error={getError(state, 'categoryId')}
-          />
-
-          <SearchableFieldRow
-            label="Brand :"
-            name="brandId"
-            value={brandId}
-            onChange={setBrandId}
-            options={brandOptions}
-            placeholder="Select Brand.."
-            emptyMessage="No brands found."
-            error={getError(state, 'brandId')}
-          />
-
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
           <InlineFieldRow
-            label="Serial Number :"
-            htmlFor="serialNumber"
-            error={getError(state, 'serialNumber')}
+            label="Purchase Date :"
+            htmlFor="purchaseDate"
+            error={getError(state, 'purchaseDate')}
           >
             <Input
-              id="serialNumber"
-              name="serialNumber"
-              value={serialNumber}
-              onChange={(event) => setSerialNumber(event.target.value)}
-              aria-invalid={Boolean(getError(state, 'serialNumber'))}
+              id="purchaseDate"
+              name="purchaseDate"
+              type="date"
+              value={purchaseDate}
+              onChange={(event) => setPurchaseDate(event.target.value)}
+              aria-invalid={Boolean(getError(state, 'purchaseDate'))}
+            />
+          </InlineFieldRow>
+
+          <InlineFieldRow
+            label="Base Price :"
+            htmlFor="basePrice"
+            error={getError(state, 'basePrice')}
+          >
+            <Input
+              id="basePrice"
+              name="basePrice"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              aria-invalid={Boolean(getError(state, 'basePrice'))}
+            />
+          </InlineFieldRow>
+
+          <InlineFieldRow
+            label="Shipping Cost :"
+            htmlFor="shippingCost"
+            error={getError(state, 'shippingCost')}
+          >
+            <Input
+              id="shippingCost"
+              name="shippingCost"
+              type="number"
+              min="0"
+              step="0.01"
+              aria-invalid={Boolean(getError(state, 'shippingCost'))}
+            />
+          </InlineFieldRow>
+
+          <InlineFieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
+            <Input
+              id="tax"
+              name="tax"
+              type="number"
+              min="0"
+              step="0.01"
+              aria-invalid={Boolean(getError(state, 'tax'))}
             />
           </InlineFieldRow>
 
           <SearchableFieldRow
-            label="Model :"
-            name="modelId"
-            value={modelId}
-            onChange={setModelId}
-            options={filteredModelOptions}
-            placeholder="Select Model.."
-            emptyMessage={modelEmptyMessage}
-            error={getError(state, 'modelId')}
+            label="Vendor :"
+            name="vendorId"
+            value={vendorId}
+            onChange={setVendorId}
+            options={vendorOptions}
+            placeholder="Select Vendor.."
+            emptyMessage="No vendors found."
+            error={getError(state, 'vendorId')}
           />
 
-          <SearchableFieldRow
-            label="Owner :"
-            name="ownerId"
-            value={ownerId}
-            onChange={setOwnerId}
-            options={ownerOptions}
-            placeholder="Select Owner.."
-            emptyMessage="No owners found."
-            error={getError(state, 'ownerId')}
-          />
-        </div>
-
-        <hr className="my-6 border-border" />
-
-        <section className="rounded-lg border border-border bg-muted/60 p-4">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
-              Purchase Details
-            </h3>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-            <InlineFieldRow
-              label="Purchase Date :"
-              htmlFor="purchaseDate"
-              error={getError(state, 'purchaseDate')}
-            >
-              <Input
-                id="purchaseDate"
-                name="purchaseDate"
-                type="date"
-                value={purchaseDate}
-                onChange={(event) => setPurchaseDate(event.target.value)}
-                aria-invalid={Boolean(getError(state, 'purchaseDate'))}
+          <InlineFieldRow
+            label="Warranty Period :"
+            error={getError(state, 'warrantyMonths')}
+            alignTop
+          >
+            <>
+              <SearchableDropdown
+                options={WARRANTY_MONTH_OPTIONS}
+                placeholder="Warranty Period.."
+                emptyMessage="No warranty periods found."
+                onSelect={setWarrantyMonths}
+                defaultValue={warrantyMonths}
               />
-            </InlineFieldRow>
+              <input type="hidden" name="warrantyMonths" value={warrantyMonths} />
+            </>
+          </InlineFieldRow>
 
-            <InlineFieldRow
-              label="Base Price :"
-              htmlFor="basePrice"
-              error={getError(state, 'basePrice')}
-            >
-              <Input
-                id="basePrice"
-                name="basePrice"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                aria-invalid={Boolean(getError(state, 'basePrice'))}
-              />
-            </InlineFieldRow>
-
-            <InlineFieldRow
-              label="Shipping Cost :"
-              htmlFor="shippingCost"
-              error={getError(state, 'shippingCost')}
-            >
-              <Input
-                id="shippingCost"
-                name="shippingCost"
-                type="number"
-                min="0"
-                step="0.01"
-              />
-            </InlineFieldRow>
-
-            <InlineFieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
-              <Input id="tax" name="tax" type="number" min="0" step="0.01" />
-            </InlineFieldRow>
-
-            <InlineFieldRow
-              label="Currency :"
-              htmlFor="currencyCode"
-              error={getError(state, 'currencyCode')}
-            >
-              <Input
-                id="currencyCode"
-                name="currencyCode"
-                maxLength={3}
-                placeholder="USD"
-                aria-invalid={Boolean(getError(state, 'currencyCode'))}
-              />
-            </InlineFieldRow>
-
-            <SearchableFieldRow
-              label="Vendor :"
-              name="vendorId"
-              value={vendorId}
-              onChange={setVendorId}
-              options={vendorOptions}
-              placeholder="Select Vendor.."
-              emptyMessage="No vendors found."
-              error={getError(state, 'vendorId')}
+          <InlineFieldRow
+            label="Note :"
+            htmlFor="notes"
+            error={getError(state, 'notes')}
+          >
+            <Input
+              id="notes"
+              name="notes"
+              aria-invalid={Boolean(getError(state, 'notes'))}
             />
+          </InlineFieldRow>
 
-            <InlineFieldRow
-              label="Warranty Months :"
-              htmlFor="warrantyMonths"
-              error={getError(state, 'warrantyMonths')}
-            >
-              <Input
-                id="warrantyMonths"
-                name="warrantyMonths"
-                type="number"
-                min="1"
-                max="120"
-                step="1"
-                placeholder="12"
-                aria-invalid={Boolean(getError(state, 'warrantyMonths'))}
+          <InlineFieldRow
+            label="Invoice PDF :"
+            htmlFor="invoiceFile"
+            error={getError(state, 'invoiceFile')}
+            alignTop
+          >
+            <div className="space-y-2">
+              <input
+                ref={invoiceInputRef}
+                id="invoiceFile"
+                name="invoiceFile"
+                type="file"
+                accept="application/pdf"
+                className="sr-only"
+                onChange={(event) => {
+                  const selectedFile = event.target.files?.[0];
+                  setInvoiceFileName(selectedFile?.name ?? '');
+                }}
               />
-            </InlineFieldRow>
 
-            <InlineFieldRow
-              label="Note :"
-              htmlFor="notes"
-              error={getError(state, 'notes')}
-            >
-              <Input
-                id="notes"
-                name="notes"
-                aria-invalid={Boolean(getError(state, 'notes'))}
-              />
-            </InlineFieldRow>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-center gap-2"
+                onClick={() => invoiceInputRef.current?.click()}
+              >
+                <Paperclip className="h-4 w-4" />
+                Attach Invoice
+              </Button>
 
-            <InlineFieldRow
-              label="Invoice PDF :"
-              htmlFor="invoiceFile"
-              error={getError(state, 'invoiceFile')}
-              alignTop
-            >
-              <div className="space-y-2">
-                <Input
-                  id="invoiceFile"
-                  name="invoiceFile"
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    setInvoiceFileName(file?.name ?? '');
-                  }}
-                  aria-invalid={Boolean(getError(state, 'invoiceFile'))}
-                />
+              {invoiceFileName ? (
+                <p className="text-xs text-muted-foreground">{invoiceFileName}</p>
+              ) : null}
+            </div>
+          </InlineFieldRow>
+        </div>
+      </section>
 
-                {invoiceFileName ? (
-                  <p className="text-xs text-muted-foreground">{invoiceFileName}</p>
-                ) : null}
-              </div>
-            </InlineFieldRow>
-          </div>
-        </section>
-
-        {state.message ? (
-          <p className={cn('text-sm', state.success ? 'text-success' : 'text-destructive')}>
-            {state.message}
-          </p>
-        ) : null}
-
-        {formError && !state.message ? (
-          <p className="text-sm text-destructive">{formError}</p>
-        ) : null}
-
-        <hr className="my-6 border-border" />
-      </form>
-    </div>
+    </form>
   );
 
   return (
     <SlidePanel
       isOpen={isOpen}
       onClose={onClose}
-      title={<span className="sr-only">Asset Registry</span>}
+      title="Asset Registry"
+      description={panelDescription}
       content={panelContent}
-      actions={actions}
+      actions={panelActions}
+      contentClassName="pt-1 pb-2 sm:pt-2"
     />
   );
 }
@@ -552,15 +649,23 @@ export function HardwareRegistryPageClient({
       <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border p-4">
           <div>
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+            <h1
+              className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+            >
               Hardware Registry
             </h1>
-            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+            <p
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+            >
               Register and manage hardware assets.
             </p>
           </div>
 
-          <Button type="button" onClick={() => setIsPanelOpen(true)} className="gap-2">
+          <Button
+            type="button"
+            onClick={() => setIsPanelOpen(true)}
+            className="gap-2"
+          >
             <Plus className="h-4 w-4" />
             Add Asset
           </Button>
@@ -568,7 +673,9 @@ export function HardwareRegistryPageClient({
 
         <div className="min-h-0 flex-1 p-6">
           <div className="flex h-full min-h-0 flex-col rounded-xl border border-dashed border-border bg-background p-6">
-            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+            <p
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+            >
               Asset table integration can be mounted here.
             </p>
           </div>

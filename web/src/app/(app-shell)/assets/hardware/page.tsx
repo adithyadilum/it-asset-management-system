@@ -1,5 +1,4 @@
 import { and, asc, eq } from 'drizzle-orm';
-
 import { HardwareRegistryPageClient } from '@/components/assets/registration-form';
 import { db } from '@/db';
 import { brands, categories, models, users, vendors } from '@/db/schema';
