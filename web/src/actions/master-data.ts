@@ -1,10 +1,12 @@
 'use server';
 
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db';
 import {
+  assets,
+  assetPurchases,
   brands,
   categories,
   departments,
@@ -60,6 +62,189 @@ function parseRequiredText(
     ok: true as const,
     value: normalized,
   };
+}
+
+async function countLinkedAssetsForEntity(
+  entity: MasterDataRecordEntity,
+  recordIds: number[]
+) {
+  switch (entity) {
+    case 'locations': {
+      const linked = await db
+        .select({
+          count: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+        })
+        .from(assets)
+        .where(inArray(assets.locationId, recordIds));
+
+      return linked[0]?.count ?? 0;
+    }
+
+    case 'asset-categories': {
+      const linked = await db
+        .select({
+          count: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+        })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .where(inArray(models.categoryId, recordIds));
+
+      return linked[0]?.count ?? 0;
+    }
+
+    case 'brands': {
+      const linked = await db
+        .select({
+          count: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+        })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .where(inArray(models.brandId, recordIds));
+
+      return linked[0]?.count ?? 0;
+    }
+
+    case 'device-models': {
+      const linked = await db
+        .select({
+          count: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+        })
+        .from(assets)
+        .where(inArray(assets.modelId, recordIds));
+
+      return linked[0]?.count ?? 0;
+    }
+
+    case 'vendors': {
+      const linked = await db
+        .select({
+          count: sql<number>`coalesce(count(distinct ${assetPurchases.assetId}), 0)::int`,
+        })
+        .from(assetPurchases)
+        .where(inArray(assetPurchases.vendorId, recordIds));
+
+      return linked[0]?.count ?? 0;
+    }
+
+    case 'departments':
+      return 0;
+  }
+}
+
+export async function deleteMasterDataRecords(
+  entityRaw: string,
+  ids: number[]
+): Promise<UpdateMasterDataState> {
+  if (
+    !MASTER_DATA_RECORD_ENTITIES.includes(entityRaw as MasterDataRecordEntity)
+  ) {
+    return {
+      success: false,
+      message: 'Invalid record type supplied.',
+    };
+  }
+
+  const entity = entityRaw as MasterDataRecordEntity;
+  const recordIds = Array.from(
+    new Set(ids.filter((id) => Number.isInteger(id) && id > 0))
+  );
+
+  if (recordIds.length === 0) {
+    return {
+      success: false,
+      message: 'No valid records were selected.',
+    };
+  }
+
+  try {
+    const linkedAssetCount = await countLinkedAssetsForEntity(entity, recordIds);
+
+    if (linkedAssetCount > 0) {
+      return {
+        success: false,
+        message:
+          linkedAssetCount === 1
+            ? 'Delete blocked: selected records include 1 linked asset.'
+            : `Delete blocked: selected records include ${linkedAssetCount} linked assets.`,
+      };
+    }
+
+    let deletedCount = 0;
+
+    switch (entity) {
+      case 'locations': {
+        const deleted = await db
+          .delete(locations)
+          .where(inArray(locations.id, recordIds))
+          .returning({ id: locations.id });
+        deletedCount = deleted.length;
+        break;
+      }
+      case 'asset-categories': {
+        const deleted = await db
+          .delete(categories)
+          .where(inArray(categories.id, recordIds))
+          .returning({ id: categories.id });
+        deletedCount = deleted.length;
+        break;
+      }
+      case 'brands': {
+        const deleted = await db
+          .delete(brands)
+          .where(inArray(brands.id, recordIds))
+          .returning({ id: brands.id });
+        deletedCount = deleted.length;
+        break;
+      }
+      case 'device-models': {
+        const deleted = await db
+          .delete(models)
+          .where(inArray(models.id, recordIds))
+          .returning({ id: models.id });
+        deletedCount = deleted.length;
+        break;
+      }
+      case 'vendors': {
+        const deleted = await db
+          .delete(vendors)
+          .where(inArray(vendors.id, recordIds))
+          .returning({ id: vendors.id });
+        deletedCount = deleted.length;
+        break;
+      }
+      case 'departments': {
+        const deleted = await db
+          .delete(departments)
+          .where(inArray(departments.id, recordIds))
+          .returning({ id: departments.id });
+        deletedCount = deleted.length;
+        break;
+      }
+    }
+
+    if (deletedCount === 0) {
+      return {
+        success: false,
+        message: 'No records were deleted.',
+      };
+    }
+
+    revalidatePath('/settings/master-data');
+
+    return {
+      success: true,
+      message:
+        deletedCount === 1
+          ? 'Record deleted successfully.'
+          : `${deletedCount} records deleted successfully.`,
+    };
+  } catch {
+    return {
+      success: false,
+      message:
+        'Delete blocked: one or more selected records are referenced by existing data.',
+    };
+  }
 }
 
 export async function createBrand(
@@ -575,11 +760,28 @@ export async function updateMasterDataRecord(
 
       case 'device-models': {
         const name = parseRequiredText(formData.get('name'), 'Model name', 2);
+        const brandId = Number(formData.get('brandId'));
+        const categoryId = Number(formData.get('categoryId'));
+
+        const errors: FormErrorMap<string> = {};
+
         if (!name.ok) {
+          errors.name = [name.error];
+        }
+
+        if (!Number.isInteger(brandId) || brandId <= 0) {
+          errors.brandId = ['Brand is required.'];
+        }
+
+        if (!Number.isInteger(categoryId) || categoryId <= 0) {
+          errors.categoryId = ['Category is required.'];
+        }
+
+        if (Object.keys(errors).length > 0) {
           return {
             success: false,
             message: 'Validation failed.',
-            errors: { name: [name.error] },
+            errors,
           };
         }
 
@@ -587,6 +789,8 @@ export async function updateMasterDataRecord(
           .update(models)
           .set({
             name: name.value,
+            brandId,
+            categoryId,
             isActive: parseBooleanFormValue(formData.get('isActive')),
           })
           .where(eq(models.id, idRaw))
