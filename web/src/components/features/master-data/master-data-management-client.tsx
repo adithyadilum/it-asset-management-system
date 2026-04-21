@@ -89,6 +89,7 @@ export type MasterDataDeviceModelRow = {
     brandName: string;
     categoryName: string;
     pillar: string;
+    technicalDetails: Record<string, string>;
     linkedAssets: number;
     isActive: boolean;
 };
@@ -127,7 +128,7 @@ const TAB_LABELS: Array<{ id: MasterDataTabId; label: string }> = [
     { id: "asset-categories", label: "Asset Categories" },
     { id: "locations", label: "Locations" },
     { id: "brands", label: "Brands" },
-    { id: "device-models", label: "Device Models" },
+    { id: "device-models", label: "Models" },
     { id: "vendors", label: "Vendors" },
     { id: "departments", label: "Departments" },
 ];
@@ -256,7 +257,7 @@ export function MasterDataManagementClient({
             const blockedCount = selectedRows.filter((row) => row.linkedAssets > 0).length;
 
             if (blockedCount > 0) {
-                tiqriToast.error(
+                tiqriToast.warning(
                     blockedCount === 1
                         ? "Delete blocked: 1 selected record still has linked assets."
                         : `Delete blocked: ${blockedCount} selected records still have linked assets.`
@@ -276,7 +277,7 @@ export function MasterDataManagementClient({
                     return;
                 }
 
-                tiqriToast.error(result.message);
+                tiqriToast.warning(result.message);
             });
         },
         [router, startTransition]
@@ -690,7 +691,7 @@ export function MasterDataManagementClient({
                                                 : activeTab === "brands"
                                                     ? "Search brands..."
                                                     : activeTab === "device-models"
-                                                        ? "Search device models..."
+                                                        ? "Search models..."
                                                         : activeTab === "vendors"
                                                             ? "Search vendors..."
                                                             : "Search departments..."

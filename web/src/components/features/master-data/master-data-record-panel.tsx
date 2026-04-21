@@ -18,7 +18,6 @@ import {
 import { LOCATION_TYPE_OPTIONS } from "@/types/master-data";
 import type { MasterDataRecordEntity } from "@/types/master-data";
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Input } from "@/components/ui/input";
 import {
@@ -63,7 +62,7 @@ const ENTITY_LABELS: Record<MasterDataRecordEntity, string> = {
     locations: "Location",
     "asset-categories": "Category",
     brands: "Brand",
-    "device-models": "Device Model",
+    "device-models": "Model",
     vendors: "Vendor",
     departments: "Department",
 };
@@ -105,6 +104,32 @@ function asString(value: DraftValue | null | undefined): string {
 
 function asBoolean(value: DraftValue | null | undefined): boolean {
     return value === true || String(value).toLowerCase() === "true";
+}
+
+function normalizeModelTechnicalDetails(
+    value: unknown
+): Record<string, string> {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return {};
+    }
+
+    const record = value as Record<string, unknown>;
+    const next: Record<string, string> = {};
+
+    for (const [key, rawValue] of Object.entries(record)) {
+        const normalizedKey = key.trim();
+        if (normalizedKey.length === 0) {
+            continue;
+        }
+
+        if (rawValue === null || rawValue === undefined) {
+            continue;
+        }
+
+        next[normalizedKey] = String(rawValue);
+    }
+
+    return next;
 }
 
 function formatPreviewId(prefix: string, id: number) {
@@ -240,7 +265,6 @@ export function MasterDataRecordPanel({
         vendors,
     ]);
     const linkedAssetsCount = selectedRecord?.linkedAssets ?? 0;
-    const canDeleteRecord = Boolean(selectedRecord) && linkedAssetsCount === 0;
 
     const initialDraft = useMemo<DraftState>(() => {
         if (!selectedRecord || !normalizedEntity) {
@@ -303,8 +327,20 @@ export function MasterDataRecordPanel({
         return nextDraft;
     }, [normalizedEntity, selectedRecord]);
 
+    const initialModelSpecValues = useMemo<Record<string, string>>(() => {
+        if (!selectedRecord || normalizedEntity !== "device-models") {
+            return {};
+        }
+
+        const model = selectedRecord as MasterDataDeviceModelRow;
+        return normalizeModelTechnicalDetails(model.technicalDetails);
+    }, [normalizedEntity, selectedRecord]);
+
     const [mode, setMode] = useState<PanelMode>(normalizePanelMode(initialMode));
     const [draft, setDraft] = useState<DraftState>(initialDraft);
+    const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>(
+        initialModelSpecValues
+    );
 
     const fieldError = useCallback(
         (fieldName: string) => state.errors?.[fieldName]?.[0],
@@ -340,11 +376,57 @@ export function MasterDataRecordPanel({
     }, [draft.parentId, locations]);
 
     const modelPillar = asString(draft.pillar) || "IT & Digital";
+    const selectedModelCategoryId = asString(draft.categoryId);
 
     const categoryOptionsForModel = useMemo(
         () => categories.filter((category) => category.pillar === modelPillar),
         [categories, modelPillar]
     );
+
+    const selectedModelCategory = useMemo(
+        () =>
+            categories.find(
+                (category) => String(category.id) === selectedModelCategoryId
+            ) ?? null,
+        [categories, selectedModelCategoryId]
+    );
+
+    const selectedModelSpecs = useMemo(
+        () => selectedModelCategory?.customSchema.modelSpecs ?? [],
+        [selectedModelCategory]
+    );
+
+    const technicalDetailsPayload = useMemo(() => {
+        const payload: Record<string, string> = {};
+
+        for (const spec of selectedModelSpecs) {
+            const key = spec.fieldName.trim();
+            if (key.length === 0) {
+                continue;
+            }
+
+            const rawValue = modelSpecValues[spec.fieldName];
+
+            if (spec.inputType === "Boolean") {
+                payload[spec.fieldName] = rawValue === "true" ? "true" : "false";
+                continue;
+            }
+
+            const normalizedValue = String(rawValue ?? "").trim();
+            if (normalizedValue.length > 0) {
+                payload[spec.fieldName] = normalizedValue;
+            }
+        }
+
+        return payload;
+    }, [modelSpecValues, selectedModelSpecs]);
+
+    const setModelSpecValue = useCallback((fieldName: string, value: string) => {
+        setModelSpecValues((previous) => ({
+            ...previous,
+            [fieldName]: value,
+        }));
+    }, []);
 
     const panelTitle = useMemo(() => {
         if (!normalizedEntity || !selectedRecord) {
@@ -367,10 +449,11 @@ export function MasterDataRecordPanel({
                 setMode("detail");
                 setState(INITIAL_UPDATE_MASTER_DATA_STATE);
                 setDraft(initialDraft);
+                setModelSpecValues(initialModelSpecValues);
                 router.push(onCloseUrl, { scroll: false });
             }
         },
-        [initialDraft, onCloseUrl, router]
+        [initialDraft, initialModelSpecValues, onCloseUrl, router]
     );
 
     const handleSubmit = useCallback(
@@ -387,9 +470,13 @@ export function MasterDataRecordPanel({
                 setState(result);
 
                 if (result.success) {
+                    tiqriToast.success(result.message);
                     setMode("detail");
                     router.refresh();
+                    return;
                 }
+
+                tiqriToast.error(result.message);
             });
         },
         [router]
@@ -401,7 +488,7 @@ export function MasterDataRecordPanel({
         }
 
         if (linkedAssetsCount > 0) {
-            tiqriToast.error(
+            tiqriToast.warning(
                 linkedAssetsCount === 1
                     ? "Delete blocked: this record still has 1 linked asset."
                     : `Delete blocked: this record still has ${linkedAssetsCount} linked assets.`
@@ -421,7 +508,7 @@ export function MasterDataRecordPanel({
                 return;
             }
 
-            tiqriToast.error(result.message);
+            tiqriToast.warning(result.message);
         });
     }, [linkedAssetsCount, normalizedEntity, onCloseUrl, router, selectedRecord]);
 
@@ -694,12 +781,13 @@ export function MasterDataRecordPanel({
                                 required: true,
                                 placeholder: "WKE",
                                 autoUppercase: true,
+                                readOnly: true,
                             })}
                         </div>
 
                         {renderSchemaRows(
                             "Model Specifications (Common)",
-                            "Fields used when creating device models.",
+                            "Fields used when creating models.",
                             category.customSchema.modelSpecs
                         )}
 
@@ -750,6 +838,14 @@ export function MasterDataRecordPanel({
 
                 return (
                     <>
+                        {!isDetailMode ? (
+                            <input
+                                type="hidden"
+                                name="technicalDetails"
+                                value={JSON.stringify(technicalDetailsPayload)}
+                            />
+                        ) : null}
+
                         {renderRecordIdPreview()}
 
                         <div className="space-y-2">
@@ -781,6 +877,7 @@ export function MasterDataRecordPanel({
                                             )
                                         ) {
                                             setDraftField("categoryId", "");
+                                            setModelSpecValues({});
                                         }
                                     }}
                                 >
@@ -870,6 +967,7 @@ export function MasterDataRecordPanel({
                                                 if (selectedCategory) {
                                                     setDraftField("pillar", selectedCategory.pillar);
                                                 }
+                                                setModelSpecValues({});
                                             }}
                                         >
                                             <SelectTrigger className="h-9">
@@ -897,6 +995,135 @@ export function MasterDataRecordPanel({
                             required: true,
                             placeholder: "ThinkPad T14",
                         })}
+
+                        <div className="space-y-4 border-t pt-4">
+                            <div>
+                                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                                    Model Specifications
+                                </h3>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                    Fields below are sourced from common section of the selected Category.
+                                </p>
+                            </div>
+
+                            {!selectedModelCategory ? (
+                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                    Select a category to load model specification fields.
+                                </div>
+                            ) : null}
+
+                            {selectedModelCategory && selectedModelSpecs.length === 0 ? (
+                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                    This category has no model specification fields yet.
+                                </div>
+                            ) : null}
+
+                            {selectedModelSpecs.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    {selectedModelSpecs.map((spec) => {
+                                        const fieldValue = modelSpecValues[spec.fieldName] ?? "";
+
+                                        if (spec.inputType === "Boolean") {
+                                            const checked = fieldValue === "true";
+
+                                            if (isDetailMode) {
+                                                return (
+                                                    <div key={spec.fieldName} className="space-y-2">
+                                                        <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                            {spec.fieldName}
+                                                        </label>
+                                                        <Input
+                                                            value={checked ? "Yes" : "No"}
+                                                            readOnly
+                                                            tabIndex={-1}
+                                                            onFocus={(event) => event.currentTarget.blur()}
+                                                            className={READ_ONLY_INPUT_CLASSNAME}
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div key={spec.fieldName} className="space-y-2">
+                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                        {spec.fieldName}
+                                                        {spec.required ? <span className="text-red-500"> *</span> : null}
+                                                    </label>
+                                                    <div className="flex h-10 items-center justify-between rounded-md border border-border px-3">
+                                                        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+                                                            {checked ? "Yes" : "No"}
+                                                        </span>
+                                                        <Switch
+                                                            checked={checked}
+                                                            onCheckedChange={(value) =>
+                                                                setModelSpecValue(
+                                                                    spec.fieldName,
+                                                                    value ? "true" : "false"
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        if (isDetailMode) {
+                                            return (
+                                                <div key={spec.fieldName} className="space-y-2">
+                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                        {spec.fieldName}
+                                                    </label>
+                                                    <Input
+                                                        value={fieldValue.length > 0 ? fieldValue : "N/A"}
+                                                        readOnly
+                                                        tabIndex={-1}
+                                                        onFocus={(event) => event.currentTarget.blur()}
+                                                        className={READ_ONLY_INPUT_CLASSNAME}
+                                                    />
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={spec.fieldName} className="space-y-2">
+                                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                    {spec.fieldName}
+                                                    {spec.required ? <span className="text-red-500"> *</span> : null}
+                                                </label>
+                                                <Input
+                                                    type={
+                                                        spec.inputType === "Number"
+                                                            ? "number"
+                                                            : spec.inputType === "Date"
+                                                                ? "date"
+                                                                : "text"
+                                                    }
+                                                    value={fieldValue}
+                                                    onChange={(event) =>
+                                                        setModelSpecValue(
+                                                            spec.fieldName,
+                                                            event.target.value
+                                                        )
+                                                    }
+                                                    placeholder={
+                                                        spec.inputType === "Dropdown"
+                                                            ? "Enter option value"
+                                                            : `Enter ${spec.fieldName}`
+                                                    }
+                                                    required={spec.required}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : null}
+
+                            {!isDetailMode && fieldError("technicalDetails") ? (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {fieldError("technicalDetails")}
+                                </p>
+                            ) : null}
+                        </div>
 
                         {renderActiveStatus()}
                     </>
@@ -980,15 +1207,6 @@ export function MasterDataRecordPanel({
     const detailContent = (
         <div className="space-y-4">
             {renderEntityFields()}
-
-            {linkedAssetsCount > 0 ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    <div className="flex items-center gap-2">
-                        <StatusBadge variant="linkedAssets" count={linkedAssetsCount} />
-                        <span>Delete is disabled until these linked assets are removed.</span>
-                    </div>
-                </div>
-            ) : null}
         </div>
     );
 
@@ -1024,13 +1242,14 @@ export function MasterDataRecordPanel({
                 label: "Delete",
                 variant: "destructive",
                 onClick: handleDelete,
-                disabled: isPending || !canDeleteRecord,
+                disabled: isPending || !selectedRecord,
             },
             {
                 id: "edit",
                 label: "Edit",
                 onClick: () => {
                     setDraft(initialDraft);
+                    setModelSpecValues(initialModelSpecValues);
                     setState(INITIAL_UPDATE_MASTER_DATA_STATE);
                     setMode("edit");
                 },
@@ -1044,6 +1263,7 @@ export function MasterDataRecordPanel({
                 variant: "outline",
                 onClick: () => {
                     setDraft(initialDraft);
+                    setModelSpecValues(initialModelSpecValues);
                     setState(INITIAL_UPDATE_MASTER_DATA_STATE);
                     setMode("detail");
                 },

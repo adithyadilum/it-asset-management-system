@@ -12,6 +12,7 @@ import {
   departments,
   locations,
   models,
+  users,
   vendors,
 } from '@/db/schema';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
@@ -131,6 +132,17 @@ async function countLinkedAssetsForEntity(
   }
 }
 
+async function countLinkedUsersForDepartments(recordIds: number[]) {
+  const linked = await db
+    .select({
+      count: sql<number>`coalesce(count(${users.id}), 0)::int`,
+    })
+    .from(users)
+    .where(inArray(users.departmentId, recordIds));
+
+  return linked[0]?.count ?? 0;
+}
+
 export async function deleteMasterDataRecords(
   entityRaw: string,
   ids: number[]
@@ -157,7 +169,10 @@ export async function deleteMasterDataRecords(
   }
 
   try {
-    const linkedAssetCount = await countLinkedAssetsForEntity(entity, recordIds);
+    const linkedAssetCount = await countLinkedAssetsForEntity(
+      entity,
+      recordIds
+    );
 
     if (linkedAssetCount > 0) {
       return {
@@ -167,6 +182,20 @@ export async function deleteMasterDataRecords(
             ? 'Delete blocked: selected records include 1 linked asset.'
             : `Delete blocked: selected records include ${linkedAssetCount} linked assets.`,
       };
+    }
+
+    if (entity === 'departments') {
+      const linkedUserCount = await countLinkedUsersForDepartments(recordIds);
+
+      if (linkedUserCount > 0) {
+        return {
+          success: false,
+          message:
+            linkedUserCount === 1
+              ? 'Delete blocked: selected departments are assigned to 1 user.'
+              : `Delete blocked: selected departments are assigned to ${linkedUserCount} users.`,
+        };
+      }
     }
 
     let deletedCount = 0;
@@ -487,7 +516,7 @@ export async function createMasterDataRecord(
         if (inserted.length === 0) {
           return {
             success: false,
-            message: 'Failed to create device model.',
+            message: 'Failed to create model.',
           };
         }
 
@@ -679,9 +708,6 @@ export async function updateMasterDataRecord(
           'Category name',
           2
         );
-        const prefix = String(formData.get('prefix') ?? '')
-          .trim()
-          .toUpperCase();
         const pillar = String(formData.get('pillar') ?? '').trim();
 
         if (!name.ok) {
@@ -689,16 +715,6 @@ export async function updateMasterDataRecord(
             success: false,
             message: 'Validation failed.',
             errors: { name: [name.error] },
-          };
-        }
-
-        if (!/^[A-Z0-9]{3}$/.test(prefix)) {
-          return {
-            success: false,
-            message: 'Validation failed.',
-            errors: {
-              prefix: ['Prefix must be exactly 3 alphanumeric characters.'],
-            },
           };
         }
 
@@ -716,7 +732,6 @@ export async function updateMasterDataRecord(
           .update(categories)
           .set({
             name: name.value,
-            prefix,
             pillar: pillar as
               | 'IT & Digital'
               | 'Software'
@@ -759,45 +774,36 @@ export async function updateMasterDataRecord(
       }
 
       case 'device-models': {
-        const name = parseRequiredText(formData.get('name'), 'Model name', 2);
-        const brandId = Number(formData.get('brandId'));
-        const categoryId = Number(formData.get('categoryId'));
+        const parsed = deviceModelSchema.safeParse({
+          name: formData.get('name'),
+          brandId: formData.get('brandId'),
+          categoryId: formData.get('categoryId'),
+          technicalDetails: String(formData.get('technicalDetails') ?? '{}'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
 
-        const errors: FormErrorMap<string> = {};
-
-        if (!name.ok) {
-          errors.name = [name.error];
-        }
-
-        if (!Number.isInteger(brandId) || brandId <= 0) {
-          errors.brandId = ['Brand is required.'];
-        }
-
-        if (!Number.isInteger(categoryId) || categoryId <= 0) {
-          errors.categoryId = ['Category is required.'];
-        }
-
-        if (Object.keys(errors).length > 0) {
+        if (!parsed.success) {
           return {
             success: false,
             message: 'Validation failed.',
-            errors,
+            errors: parsed.error.flatten().fieldErrors,
           };
         }
 
         const updated = await db
           .update(models)
           .set({
-            name: name.value,
-            brandId,
-            categoryId,
-            isActive: parseBooleanFormValue(formData.get('isActive')),
+            name: parsed.data.name,
+            brandId: parsed.data.brandId,
+            categoryId: parsed.data.categoryId,
+            technicalDetails: parsed.data.technicalDetails,
+            isActive: parsed.data.isActive,
           })
           .where(eq(models.id, idRaw))
           .returning({ id: models.id });
 
         if (updated.length === 0) {
-          return { success: false, message: 'Device model not found.' };
+          return { success: false, message: 'Model not found.' };
         }
         break;
       }
