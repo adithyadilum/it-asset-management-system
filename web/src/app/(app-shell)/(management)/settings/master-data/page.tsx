@@ -213,13 +213,12 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
       .select({
         id: brands.id,
         name: brands.name,
-        pillars:
-          sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
+        linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
         isActive: brands.isActive,
       })
       .from(brands)
       .leftJoin(models, eq(models.brandId, brands.id))
-      .leftJoin(categories, eq(categories.id, models.categoryId))
+      .leftJoin(assets, eq(assets.modelId, models.id))
       .groupBy(brands.id, brands.name, brands.isActive)
       .orderBy(asc(brands.name)),
     db
@@ -297,11 +296,6 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     pillar: row.pillar ?? "IT & Digital",
   }));
 
-  const normalizedBrands = brandsData.map((row) => ({
-    ...row,
-    pillars: normalizePillarsValue(row.pillars),
-  }));
-
   const normalizedCategories = categoriesData.map((row) => ({
     ...row,
     customSchema: normalizeCategoryCustomSchema(row.customSchema),
@@ -320,7 +314,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         key={`master-data-${activeTab ?? "asset-categories"}`}
         categories={normalizedCategories}
         locations={locationsData}
-        brands={normalizedBrands}
+        brands={brandsData}
         initialTab={activeTab}
         deviceModels={normalizedDeviceModels}
         vendors={normalizedVendors}
@@ -336,7 +330,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         recordMode={recordMode ?? undefined}
         categories={normalizedCategories}
         locations={locationsData}
-        brands={normalizedBrands}
+        brands={brandsData}
         deviceModels={normalizedDeviceModels}
         vendors={normalizedVendors}
         departments={departmentsData}

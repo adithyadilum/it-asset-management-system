@@ -73,7 +73,7 @@ export type MasterDataLocationRow = {
 export type MasterDataBrandRow = {
     id: number;
     name: string;
-    pillars: string[];
+    linkedAssets: number;
     isActive: boolean;
 };
 
@@ -136,7 +136,6 @@ const EMPTY_SEARCH_STATE: Record<MasterDataTabId, string> = {
 
 const TYPE_FILTER_TAB_IDS = new Set<MasterDataTabId>([
     "asset-categories",
-    "brands",
     "device-models",
     "vendors",
 ]);
@@ -312,9 +311,11 @@ export function MasterDataManagementClient({
             },
             { accessorKey: "name", header: "Brand Name" },
             {
-                accessorKey: "pillars",
-                header: "Type",
-                cell: ({ row }) => normalizePillarsValue(row.original.pillars).join(", ") || "N/A",
+                accessorKey: "linkedAssets",
+                header: "No. of Assets",
+                cell: ({ row }) => (
+                    <StatusBadge variant="linkedAssets" count={row.original.linkedAssets} />
+                ),
             },
             {
                 accessorKey: "isActive",
@@ -436,14 +437,10 @@ export function MasterDataManagementClient({
 
     const filteredBrands = useMemo(
         () =>
-            brands.filter((item) => {
-                const pillars = normalizePillarsValue(item.pillars);
-                return (
-                    matchesPillarFilter(pillars, pillarType) &&
-                    containsSearch([item.id, item.name, pillars.join(" ")], searchByTab.brands)
-                );
-            }),
-        [brands, pillarType, searchByTab.brands]
+            brands.filter((item) =>
+                containsSearch([item.id, item.name, item.linkedAssets], searchByTab.brands)
+            ),
+        [brands, searchByTab.brands]
     );
 
     const filteredModels = useMemo(
@@ -559,7 +556,7 @@ export function MasterDataManagementClient({
     );
 
     return (
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-lg border border-slate-200 bg-white p-6">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
             <div className="mb-4">
                 <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
                     Master Data Management

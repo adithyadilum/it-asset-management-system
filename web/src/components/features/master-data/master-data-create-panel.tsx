@@ -435,7 +435,7 @@ export function MasterDataCreatePanel({
         <div className="space-y-4 border-t pt-4">
             <div className="flex items-center gap-2">
                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
-                    Section 1: Model Specifications (Global)
+                    Model Specifications (Common)
                 </h3>
                 <TooltipProvider delayDuration={150}>
                     <Tooltip>
@@ -557,7 +557,7 @@ export function MasterDataCreatePanel({
         <div className="space-y-4 border-t pt-4">
             <div className="flex items-center gap-2">
                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
-                    Section 2: Asset Tracking Fields (Unique)
+                    Asset Tracking Fields (Unique)
                 </h3>
                 <TooltipProvider delayDuration={150}>
                     <Tooltip>
@@ -748,7 +748,7 @@ export function MasterDataCreatePanel({
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value={TOP_LEVEL_PARENT_LOCATION_VALUE}>
-                                        None (Top-level building)
+                                        None (Building)
                                     </SelectItem>
                                     {selectableParentLocations.map((location) => (
                                         <SelectItem key={location.id} value={String(location.id)}>
@@ -758,7 +758,7 @@ export function MasterDataCreatePanel({
                                 </SelectContent>
                             </Select>
                             <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                                Select None to create a top-level building.
+                                Select None to create a Building.
                             </p>
                             {getFieldError("parentId") && (
                                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
@@ -1008,10 +1008,10 @@ export function MasterDataCreatePanel({
                         <div className="space-y-4 border-t pt-4">
                             <div>
                                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
-                                    Model Specifications (Inherited)
+                                    Model Specifications
                                 </h3>
                                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                                    Fields below are sourced from Section 1 of the selected Category schema.
+                                    Fields below are sourced from common section of the selected Category.
                                 </p>
                             </div>
 
