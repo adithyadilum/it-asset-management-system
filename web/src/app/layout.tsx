@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Noto_Sans } from "next/font/google";
+import { Toaster } from "@/components/shared/sonner";
 import "./globals.css";
 
 const notoSans = Noto_Sans({
@@ -29,7 +30,10 @@ export default function RootLayout({
       lang="en"
       className={`${notoSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster position="bottom-center" />
+      </body>
     </html>
   );
 }
