@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
+import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import {
   DB_PILLAR_VALUES,
@@ -643,6 +644,13 @@ export function HardwareRegistryPageClient({
   vendorOptions,
 }: HardwareRegistryPageClientProps) {
   const [isPanelOpen, setIsPanelOpen] = React.useState(false);
+  const { setOpen, setOpenMobile } = useSidebar();
+
+  const openRegistrationPanel = () => {
+    setOpen(false);
+    setOpenMobile(false);
+    setIsPanelOpen(true);
+  };
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden p-4 md:p-6">
@@ -663,7 +671,7 @@ export function HardwareRegistryPageClient({
 
           <Button
             type="button"
-            onClick={() => setIsPanelOpen(true)}
+            onClick={openRegistrationPanel}
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
