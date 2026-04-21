@@ -1,15 +1,14 @@
 'use server';
 
 import { db } from '@/db';
-import { users, sessions } from '@/db/schema';
+import { departments, users, sessions } from '@/db/schema';
 import { eq, ilike, or, and, isNull, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
-import { getJwtSecretKey } from '@/lib/jwt';
-import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
-const SESSION_COOKIE_NAME = 'session_token';
+import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import { isValidUuid } from '@/lib/uuid';
+import { getAuthenticatedUser } from '@/actions/auth';
+
 type UserRole = typeof users.$inferSelect.role;
 
 function normalizeTokenRole(role: unknown): UserRole | null {
@@ -25,11 +24,11 @@ function normalizeTokenRole(role: unknown): UserRole | null {
   return null;
 }
 
-function normalizeTargetUserIds(targetUserIds: number[]) {
-  const normalizedTargetUserIds = new Set<number>();
+function normalizeTargetUserIds(targetUserIds: string[]) {
+  const normalizedTargetUserIds = new Set<string>();
 
   for (const targetUserId of targetUserIds) {
-    if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+    if (!isValidUuid(targetUserId)) {
       continue;
     }
 
@@ -40,76 +39,11 @@ function normalizeTargetUserIds(targetUserIds: number[]) {
 }
 
 /**
- * Helper to get the current user ID and verify session validity.
- */
-async function getAuthenticatedUser(): Promise<{
-  id: number;
-  role: UserRole;
-} | null> {
-  const authTimer = startLatencyTimer();
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) return null;
-
-  try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-
-    // Validate sub is numeric and sid exists
-    if (!payload.sub || isNaN(Number(payload.sub))) return null;
-    if (!payload.sid || typeof payload.sid !== 'string') return null;
-
-    const role = normalizeTokenRole(payload.role);
-    if (!role) return null;
-
-    // Verify the session against the database to ensure it hasn't been revoked.
-    let activeSession: Array<{ id: number }> = [];
-    const sessionLookupTimer = startLatencyTimer();
-    try {
-      activeSession = await db
-        .select({ id: sessions.id })
-        .from(sessions)
-        .where(
-          and(
-            eq(sessions.tokenId, payload.sid),
-            isNull(sessions.revokedAt),
-            sql`${sessions.expiresAt} > NOW()`
-          )
-        )
-        .limit(1);
-    } finally {
-      logLatency({
-        scope: 'DB ACTION',
-        label: 'roles.getAuthenticatedUser.session_lookup',
-        startTime: sessionLookupTimer,
-      });
-    }
-
-    if (activeSession.length === 0) {
-      return null; // Session is revoked or expired
-    }
-
-    return {
-      id: Number(payload.sub),
-      role,
-    };
-  } catch {
-    return null;
-  } finally {
-    logLatency({
-      scope: 'ACTION AUTH',
-      label: 'roles.getAuthenticatedUser',
-      startTime: authTimer,
-    });
-  }
-}
-
-/**
  * Search for users by name or email.
  */
 export async function searchUsers(query: string) {
   const actionTimer = startLatencyTimer();
-  // Authentication & Authorization Guard (prevents data enumeration).
+
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || currentUser.role !== 'GlobalAdmin') {
     throw new Error('Forbidden: You do not have permission to search users.');
@@ -126,10 +60,11 @@ export async function searchUsers(query: string) {
           id: users.id,
           name: users.name,
           email: users.email,
-          department: users.department,
+          department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
           role: users.role,
         })
         .from(users)
+        .leftJoin(departments, eq(users.departmentId, departments.id))
         .where(
           or(
             ilike(users.name, `%${trimmedQuery}%`),
@@ -170,7 +105,7 @@ export async function searchUsers(query: string) {
  * Assigns a role to multiple users via a single atomic update.
  */
 export async function assignUsersRoleBulk(
-  targetUserIds: number[],
+  targetUserIds: string[],
   newRole: UserRole
 ) {
   const actionTimer = startLatencyTimer();
@@ -278,7 +213,7 @@ export async function assignUsersRoleBulk(
 /**
  * Assigns a new role to a user.
  */
-export async function assignUserRole(targetUserId: number, newRole: UserRole) {
+export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
@@ -287,7 +222,7 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
     throw new Error('Forbidden: Only Global Administrators can modify roles.');
   }
 
-  if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+  if (!isValidUuid(targetUserId)) {
     throw new Error('Invalid target user id.');
   }
 
@@ -370,6 +305,6 @@ export async function assignUserRole(targetUserId: number, newRole: UserRole) {
 /**
  * Removes a user from a managed role by assigning the baseline Employee role.
  */
-export async function removeUserFromManagedRole(targetUserId: number) {
+export async function removeUserFromManagedRole(targetUserId: string) {
   return assignUserRole(targetUserId, 'Employee');
 }

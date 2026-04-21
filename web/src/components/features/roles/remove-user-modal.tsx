@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import type { UserRole } from "@/types/auth"
 
 export interface SystemUser {
-  id: number
+  id: string
   name: string
   email: string
   role: UserRole
