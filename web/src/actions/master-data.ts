@@ -1,21 +1,28 @@
 'use server';
 
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { jwtVerify } from 'jose';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
 import { db } from '@/db';
 import {
+  assetAssignments,
   assets,
   assetPurchases,
   brands,
   categories,
   departments,
   locations,
+  maintenanceRecords,
   models,
+  sessions,
   users,
   vendors,
 } from '@/db/schema';
+import { getJwtSecretKey } from '@/lib/jwt';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
+import { isValidUuid } from '@/lib/uuid';
 import type {
   BrandFormState,
   CategoryFormState,
@@ -33,12 +40,88 @@ import {
 } from '@/lib/validations/master-data';
 import { type LocationType } from '@/types/master-data';
 
+const SESSION_COOKIE_NAME = 'session_token';
+
+type UserRole = typeof users.$inferSelect.role;
+
 const CATEGORY_PILLARS = new Set([
   'IT & Digital',
   'Software',
   'Office Furniture',
   'Office Electronics',
 ]);
+
+function normalizeTokenRole(role: unknown): UserRole | null {
+  if (
+    role === 'GlobalAdmin' ||
+    role === 'ITOperator' ||
+    role === 'FinanceAuditor' ||
+    role === 'Employee'
+  ) {
+    return role;
+  }
+
+  return null;
+}
+
+async function getAuthenticatedUser(): Promise<{
+  id: string;
+  role: UserRole;
+} | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
+
+    if (!isValidUuid(payload.sub)) {
+      return null;
+    }
+
+    if (!payload.sid || typeof payload.sid !== 'string') {
+      return null;
+    }
+
+    const role = normalizeTokenRole(payload.role);
+    if (!role) {
+      return null;
+    }
+
+    const activeSession = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.tokenId, payload.sid),
+          isNull(sessions.revokedAt),
+          sql`${sessions.expiresAt} > NOW()`
+        )
+      )
+      .limit(1);
+
+    if (activeSession.length === 0) {
+      return null;
+    }
+
+    return {
+      id: payload.sub,
+      role,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function unauthorizedMasterDataResult(): UpdateMasterDataState {
+  return {
+    success: false,
+    message: 'Forbidden: only Global Administrators can manage master data.',
+  };
+}
 
 function parseBooleanFormValue(entry: FormDataEntryValue | null) {
   const value = String(entry ?? '').toLowerCase();
@@ -143,10 +226,81 @@ async function countLinkedUsersForDepartments(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
+async function countChildLocations(recordIds: number[]) {
+  const linked = await db
+    .select({
+      count: sql<number>`coalesce(count(${locations.id}), 0)::int`,
+    })
+    .from(locations)
+    .where(inArray(locations.parentId, recordIds));
+
+  return linked[0]?.count ?? 0;
+}
+
+async function countLocationAssignments(recordIds: number[]) {
+  const linked = await db
+    .select({
+      count: sql<number>`coalesce(count(${assetAssignments.id}), 0)::int`,
+    })
+    .from(assetAssignments)
+    .where(inArray(assetAssignments.assignedToLocationId, recordIds));
+
+  return linked[0]?.count ?? 0;
+}
+
+async function countLinkedModelsForCategories(recordIds: number[]) {
+  const linked = await db
+    .select({
+      count: sql<number>`coalesce(count(${models.id}), 0)::int`,
+    })
+    .from(models)
+    .where(inArray(models.categoryId, recordIds));
+
+  return linked[0]?.count ?? 0;
+}
+
+async function countLinkedModelsForBrands(recordIds: number[]) {
+  const linked = await db
+    .select({
+      count: sql<number>`coalesce(count(${models.id}), 0)::int`,
+    })
+    .from(models)
+    .where(inArray(models.brandId, recordIds));
+
+  return linked[0]?.count ?? 0;
+}
+
+async function countVendorPurchaseReferences(recordIds: number[]) {
+  const linked = await db
+    .select({
+      count: sql<number>`coalesce(count(${assetPurchases.id}), 0)::int`,
+    })
+    .from(assetPurchases)
+    .where(inArray(assetPurchases.vendorId, recordIds));
+
+  return linked[0]?.count ?? 0;
+}
+
+async function countVendorMaintenanceReferences(recordIds: number[]) {
+  const linked = await db
+    .select({
+      count: sql<number>`coalesce(count(${maintenanceRecords.id}), 0)::int`,
+    })
+    .from(maintenanceRecords)
+    .where(inArray(maintenanceRecords.vendorId, recordIds));
+
+  return linked[0]?.count ?? 0;
+}
+
 export async function deleteMasterDataRecords(
   entityRaw: string,
   ids: number[]
 ): Promise<UpdateMasterDataState> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
+    return unauthorizedMasterDataResult();
+  }
+
   if (
     !MASTER_DATA_RECORD_ENTITIES.includes(entityRaw as MasterDataRecordEntity)
   ) {
@@ -194,6 +348,82 @@ export async function deleteMasterDataRecords(
             linkedUserCount === 1
               ? 'Delete blocked: selected departments are assigned to 1 user.'
               : `Delete blocked: selected departments are assigned to ${linkedUserCount} users.`,
+        };
+      }
+    }
+
+    if (entity === 'locations') {
+      const childLocationCount = await countChildLocations(recordIds);
+      if (childLocationCount > 0) {
+        return {
+          success: false,
+          message:
+            childLocationCount === 1
+              ? 'Delete blocked: selected locations include 1 child location.'
+              : `Delete blocked: selected locations include ${childLocationCount} child locations.`,
+        };
+      }
+
+      const assignmentCount = await countLocationAssignments(recordIds);
+      if (assignmentCount > 0) {
+        return {
+          success: false,
+          message:
+            assignmentCount === 1
+              ? 'Delete blocked: selected locations are referenced by 1 asset assignment.'
+              : `Delete blocked: selected locations are referenced by ${assignmentCount} asset assignments.`,
+        };
+      }
+    }
+
+    if (entity === 'asset-categories') {
+      const linkedModelCount = await countLinkedModelsForCategories(recordIds);
+      if (linkedModelCount > 0) {
+        return {
+          success: false,
+          message:
+            linkedModelCount === 1
+              ? 'Delete blocked: selected categories are used by 1 model.'
+              : `Delete blocked: selected categories are used by ${linkedModelCount} models.`,
+        };
+      }
+    }
+
+    if (entity === 'brands') {
+      const linkedModelCount = await countLinkedModelsForBrands(recordIds);
+      if (linkedModelCount > 0) {
+        return {
+          success: false,
+          message:
+            linkedModelCount === 1
+              ? 'Delete blocked: selected brands are used by 1 model.'
+              : `Delete blocked: selected brands are used by ${linkedModelCount} models.`,
+        };
+      }
+    }
+
+    if (entity === 'vendors') {
+      const purchaseReferenceCount =
+        await countVendorPurchaseReferences(recordIds);
+      if (purchaseReferenceCount > 0) {
+        return {
+          success: false,
+          message:
+            purchaseReferenceCount === 1
+              ? 'Delete blocked: selected vendors are referenced by 1 purchase record.'
+              : `Delete blocked: selected vendors are referenced by ${purchaseReferenceCount} purchase records.`,
+        };
+      }
+
+      const maintenanceReferenceCount =
+        await countVendorMaintenanceReferences(recordIds);
+      if (maintenanceReferenceCount > 0) {
+        return {
+          success: false,
+          message:
+            maintenanceReferenceCount === 1
+              ? 'Delete blocked: selected vendors are referenced by 1 maintenance record.'
+              : `Delete blocked: selected vendors are referenced by ${maintenanceReferenceCount} maintenance records.`,
         };
       }
     }
@@ -280,6 +510,14 @@ export async function createBrand(
   _prevState: BrandFormState,
   formData: FormData
 ): Promise<BrandFormState> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
+    return {
+      success: false,
+      message: unauthorizedMasterDataResult().message,
+    };
+  }
+
   const parsed = brandSchema.safeParse({
     name: formData.get('name'),
     isActive: formData.get('isActive') === 'true',
@@ -317,6 +555,14 @@ export async function createCategory(
   _prevState: CategoryFormState,
   formData: FormData
 ): Promise<CategoryFormState> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
+    return {
+      success: false,
+      message: unauthorizedMasterDataResult().message,
+    };
+  }
+
   const parsed = categorySchema.safeParse({
     pillar: formData.get('pillar'),
     name: formData.get('name'),
@@ -361,6 +607,11 @@ export async function createMasterDataRecord(
   _prevState: UpdateMasterDataState,
   formData: FormData
 ): Promise<UpdateMasterDataState> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
+    return unauthorizedMasterDataResult();
+  }
+
   const entityRaw = String(formData.get('entity') ?? '');
 
   if (
@@ -634,6 +885,11 @@ export async function updateMasterDataRecord(
   _prevState: UpdateMasterDataState,
   formData: FormData
 ): Promise<UpdateMasterDataState> {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
+    return unauthorizedMasterDataResult();
+  }
+
   const entityRaw = String(formData.get('entity') ?? '');
   const idRaw = Number(formData.get('id'));
 
