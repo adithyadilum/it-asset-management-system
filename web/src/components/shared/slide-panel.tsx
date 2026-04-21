@@ -18,6 +18,7 @@ export type SlidePanelAction = {
 
 interface SlidePanelProps {
     isOpen: boolean;
+    disableTransition?: boolean;
     onClose: (open: boolean) => void;
     title: React.ReactNode;
     description?: React.ReactNode;
@@ -30,7 +31,7 @@ interface SlidePanelProps {
 
 const DEFAULT_PANEL_WIDTH = 700;
 const DEFAULT_PANEL_MAX_WIDTH = "92vw";
-const DEFAULT_PANEL_GAP = 12;
+const DEFAULT_PANEL_GAP = 8;
 const DEFAULT_PLACEHOLDER_ROWS = 10;
 
 function PanelPlaceholder() {
@@ -54,6 +55,7 @@ function PanelPlaceholder() {
 
 export function SlidePanel({
     isOpen,
+    disableTransition = false,
     onClose,
     title,
     description,
@@ -66,22 +68,56 @@ export function SlidePanel({
     const descriptionId = React.useId();
     const hasProvidedContent = React.Children.count(content) > 0;
     const resolvedActions = actions ?? [];
+    const [shouldRender, setShouldRender] = React.useState(isOpen);
+    const [isVisible, setIsVisible] = React.useState(false);
     const panelStyle = {
         "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
         "--slide-panel-gap": `${DEFAULT_PANEL_GAP}px`,
     } as React.CSSProperties;
 
+    React.useEffect(() => {
+        if (isOpen) {
+            setShouldRender(true);
+
+            if (disableTransition) {
+                setIsVisible(true);
+                return;
+            }
+
+            const frameId = window.requestAnimationFrame(() => {
+                setIsVisible(true);
+            });
+
+            return () => window.cancelAnimationFrame(frameId);
+        }
+
+        setIsVisible(false);
+
+        if (disableTransition) {
+            setShouldRender(false);
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setShouldRender(false);
+        }, 300);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [disableTransition, isOpen]);
+
     return (
         <aside
             className={cn(
                 "relative h-full shrink-0 overflow-hidden",
-                "transition-[width,margin] duration-300 ease-out",
-                isOpen ? "ml-(--slide-panel-gap) w-(--slide-panel-width)" : "ml-0 w-0"
+                "transition-[width,margin] ease-out",
+                disableTransition ? "duration-0" : "duration-300",
+                isVisible ? "ml-(--slide-panel-gap) w-(--slide-panel-width)" : "ml-0 w-0",
+                !isVisible && "pointer-events-none"
             )}
             style={panelStyle}
-            aria-hidden={!isOpen}
+            aria-hidden={!shouldRender || !isVisible}
         >
-            {isOpen ? (
+            {shouldRender ? (
                 <section
                     role="dialog"
                     aria-modal="false"
@@ -90,8 +126,9 @@ export function SlidePanel({
                     className={cn(
                         "absolute inset-y-0 right-0 w-(--slide-panel-width)",
                         "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg",
-                        "transition-transform duration-300 ease-out",
-                        "translate-x-0",
+                        "transition-transform ease-out",
+                        disableTransition ? "duration-0" : "duration-300",
+                        isVisible ? "translate-x-0" : "translate-x-full",
                     )}
                 >
                     <div className="flex h-full min-h-0 flex-col">

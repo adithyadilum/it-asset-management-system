@@ -15,24 +15,24 @@ const ROLE_CONFIG: Array<{
   name: string;
   description: string;
 }> = [
-  {
-    id: 'GlobalAdmin',
-    name: 'Global Admin',
-    description: 'These users manage all system settings and role assignments.',
-  },
-  {
-    id: 'ITOperator',
-    name: 'IT Operations',
-    description:
-      'These users have full read/write access to the Asset Registry and Maintenance modules.',
-  },
-  {
-    id: 'FinanceAuditor',
-    name: 'Auditor',
-    description:
-      'These users have read-only access to financial ledgers and audit records.',
-  },
-];
+    {
+      id: 'GlobalAdmin',
+      name: 'Global Admin',
+      description: 'These users manage all system settings and role assignments.',
+    },
+    {
+      id: 'ITOperator',
+      name: 'IT Operations',
+      description:
+        'These users have full read/write access to the Asset Registry and Maintenance modules.',
+    },
+    {
+      id: 'FinanceAuditor',
+      name: 'Auditor',
+      description:
+        'These users have read-only access to financial ledgers and audit records.',
+    },
+  ];
 
 const textSmRegularClass =
   'font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]';

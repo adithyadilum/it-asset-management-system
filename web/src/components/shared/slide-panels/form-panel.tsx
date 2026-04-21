@@ -8,6 +8,7 @@ import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 
 interface FormPanelProps {
     isOpen: boolean;
+    disableTransition?: boolean;
     onClose: (open: boolean) => void;
     title: React.ReactNode;
     description?: React.ReactNode;
@@ -22,6 +23,7 @@ interface FormPanelProps {
 
 export function FormPanel({
     isOpen,
+    disableTransition = false,
     onClose,
     title,
     description,
@@ -73,6 +75,7 @@ export function FormPanel({
     return (
         <SlidePanel
             isOpen={isOpen}
+            disableTransition={disableTransition}
             onClose={onClose}
             title={title}
             description={description}
