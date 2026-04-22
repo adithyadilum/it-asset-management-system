@@ -275,13 +275,29 @@ async function seedAssets() {
       { name: 'iMac 27"', brand: 'Apple', category: 'Desktop Computer' },
       { name: 'iPhone 15 Pro', brand: 'Apple', category: 'Mobile Device' },
       { name: 'Galaxy S24', brand: 'Samsung', category: 'Mobile Device' },
-      { name: 'Windows 11 Pro', brand: 'Microsoft', category: 'Operating System License' },
-      { name: 'Office 365', brand: 'Microsoft', category: 'Productivity Software' },
-      { name: 'Adobe Creative Cloud', brand: 'Adobe', category: 'Productivity Software' },
+      {
+        name: 'Windows 11 Pro',
+        brand: 'Microsoft',
+        category: 'Operating System License',
+      },
+      {
+        name: 'Office 365',
+        brand: 'Microsoft',
+        category: 'Productivity Software',
+      },
+      {
+        name: 'Adobe Creative Cloud',
+        brand: 'Adobe',
+        category: 'Productivity Software',
+      },
       { name: 'Aeron Chair', brand: 'Herman Miller', category: 'Chair' },
       { name: 'Executive Desk', brand: 'Steelcase', category: 'Desk' },
       { name: 'LaserJet Pro M404n', brand: 'HP', category: 'Printer' },
-      { name: 'Webex Room Device', brand: 'Cisco', category: 'Conference Equipment' },
+      {
+        name: 'Webex Room Device',
+        brand: 'Cisco',
+        category: 'Conference Equipment',
+      },
     ];
 
     const modelIds: Record<string, number> = {};
@@ -593,28 +609,28 @@ async function seedAssets() {
           if (newAsset[0]?.id) {
             createdCount++;
 
-        // Insert purchase record
-        try {
-        await db.insert(assetPurchases).values({
-            assetId: newAsset[0].id,
-            vendorId: vendorIds[a.vendorName],
-            purchaseDate: '2024-01-15',     // <-- CHANGED: Removed new Date()
-            basePrice: a.basePrice,
-            tax: a.tax,
-            shippingCost: a.shippingCost,
-            totalCost: a.totalCost,
-            currencyCode: 'USD',
-            warrantyExpiry: '2025-01-15',   // <-- CHANGED: Removed new Date()
-            invoiceUrl: `https://storage.example.com/invoices/${a.tag}.pdf`,
-        });
+            // Insert purchase record
+            try {
+              await db.insert(assetPurchases).values({
+                assetId: newAsset[0].id,
+                vendorId: vendorIds[a.vendorName],
+                purchaseDate: '2024-01-15', // <-- CHANGED: Removed new Date()
+                basePrice: a.basePrice,
+                tax: a.tax,
+                shippingCost: a.shippingCost,
+                totalCost: a.totalCost,
+                currencyCode: 'USD',
+                warrantyExpiry: '2025-01-15', // <-- CHANGED: Removed new Date()
+                invoiceUrl: `https://storage.example.com/invoices/${a.tag}.pdf`,
+              });
 
-        purchaseCount++;
-        } catch (purchaseError) {
-        console.warn(
-            `  Could not insert purchase for ${a.tag}:`,
-            purchaseError
-        );
-        }
+              purchaseCount++;
+            } catch (purchaseError) {
+              console.warn(
+                `  Could not insert purchase for ${a.tag}:`,
+                purchaseError
+              );
+            }
           }
         } catch (error) {
           console.error(`Failed to seed asset ${a.tag}:`, error);

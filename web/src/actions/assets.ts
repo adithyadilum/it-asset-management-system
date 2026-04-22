@@ -314,7 +314,11 @@ function formatSequence(value: number) {
   return String(value).padStart(3, '0');
 }
 
-function buildAssetTag(pillarPrefix: string, categoryPrefix: string, sequence: number) {
+function buildAssetTag(
+  pillarPrefix: string,
+  categoryPrefix: string,
+  sequence: number
+) {
   return `${pillarPrefix}-${categoryPrefix}-${formatSequence(sequence)}`;
 }
 
@@ -328,7 +332,10 @@ function unauthorizedState(message: string): RegisterAssetActionState {
   };
 }
 
-function validationState(message: string, errors?: RegisterAssetActionState['errors']): RegisterAssetActionState {
+function validationState(
+  message: string,
+  errors?: RegisterAssetActionState['errors']
+): RegisterAssetActionState {
   return {
     success: false,
     message,
@@ -351,81 +358,98 @@ export async function registerAsset(
       return unauthorizedState('Please sign in to register assets.');
     }
 
-    if (currentUser.role !== 'GlobalAdmin' && currentUser.role !== 'ITOperator') {
-      return unauthorizedState('Forbidden: You do not have permission to register assets.');
+    if (
+      currentUser.role !== 'GlobalAdmin' &&
+      currentUser.role !== 'ITOperator'
+    ) {
+      return unauthorizedState(
+        'Forbidden: You do not have permission to register assets.'
+      );
     }
 
     const parsed = parseRegistrationInput(formData);
 
     if (!parsed.success) {
-      return validationState('Please correct the highlighted fields and try again.', parsed.error.flatten().fieldErrors);
+      return validationState(
+        'Please correct the highlighted fields and try again.',
+        parsed.error.flatten().fieldErrors
+      );
     }
 
     const invoiceFile = toFormFile(formData, 'invoiceFile');
     const invoiceFileError = validateInvoiceFile(invoiceFile);
 
     if (invoiceFileError) {
-      return validationState('Please correct the highlighted fields and try again.', {
-        invoiceFile: [invoiceFileError],
-      });
+      return validationState(
+        'Please correct the highlighted fields and try again.',
+        {
+          invoiceFile: [invoiceFileError],
+        }
+      );
     }
 
     const input = parsed.data;
     const normalizedDbPillar = input.pillar;
 
-    const [categoryRecord, brandRecord, modelRecord, vendorRecord, ownerRecord, duplicateSerialRecord] =
-      await Promise.all([
-        db.query.categories.findFirst({
-          where: eq(categories.id, input.categoryId),
-          columns: {
-            id: true,
-            prefix: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-        db.query.brands.findFirst({
-          where: eq(brands.id, input.brandId),
-          columns: {
-            id: true,
-            name: true,
-            isActive: true,
-          },
-        }),
-        db.query.models.findFirst({
-          where: eq(models.id, input.modelId),
-          columns: {
-            id: true,
-            categoryId: true,
-            brandId: true,
-            isActive: true,
-          },
-        }),
-        db.query.vendors.findFirst({
-          where: eq(vendors.id, input.vendorId),
-          columns: {
-            id: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-        input.ownerId
-          ? db.query.users.findFirst({
-              where: eq(users.id, input.ownerId),
-              columns: {
-                id: true,
-                isActive: true,
-              },
-            })
-          : Promise.resolve(null),
-        db.query.assets.findFirst({
-          where: eq(assets.serialNumber, input.serialNumber),
-          columns: {
-            id: true,
-            assetTag: true,
-          },
-        }),
-      ]);
+    const [
+      categoryRecord,
+      brandRecord,
+      modelRecord,
+      vendorRecord,
+      ownerRecord,
+      duplicateSerialRecord,
+    ] = await Promise.all([
+      db.query.categories.findFirst({
+        where: eq(categories.id, input.categoryId),
+        columns: {
+          id: true,
+          prefix: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+      db.query.brands.findFirst({
+        where: eq(brands.id, input.brandId),
+        columns: {
+          id: true,
+          name: true,
+          isActive: true,
+        },
+      }),
+      db.query.models.findFirst({
+        where: eq(models.id, input.modelId),
+        columns: {
+          id: true,
+          categoryId: true,
+          brandId: true,
+          isActive: true,
+        },
+      }),
+      db.query.vendors.findFirst({
+        where: eq(vendors.id, input.vendorId),
+        columns: {
+          id: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+      input.ownerId
+        ? db.query.users.findFirst({
+            where: eq(users.id, input.ownerId),
+            columns: {
+              id: true,
+              isActive: true,
+            },
+          })
+        : Promise.resolve(null),
+      db.query.assets.findFirst({
+        where: eq(assets.serialNumber, input.serialNumber),
+        columns: {
+          id: true,
+          assetTag: true,
+        },
+      }),
+    ]);
 
     if (!categoryRecord || !categoryRecord.isActive) {
       return validationState('Please select an active category.', {
@@ -501,9 +525,12 @@ export async function registerAsset(
       try {
         uploadedInvoiceUrl = await saveInvoiceFile(invoiceFile);
       } catch {
-        return validationState('Please correct the highlighted fields and try again.', {
-          invoiceFile: ['Unable to upload invoice PDF. Please try again.'],
-        });
+        return validationState(
+          'Please correct the highlighted fields and try again.',
+          {
+            invoiceFile: ['Unable to upload invoice PDF. Please try again.'],
+          }
+        );
       }
     }
 
@@ -637,12 +664,18 @@ export async function registerSoftwareAsset(
       };
     }
 
-    if (currentUser.role !== 'GlobalAdmin' && currentUser.role !== 'ITOperator') {
+    if (
+      currentUser.role !== 'GlobalAdmin' &&
+      currentUser.role !== 'ITOperator'
+    ) {
       return {
         success: false,
-        message: 'Forbidden: You do not have permission to register software assets.',
+        message:
+          'Forbidden: You do not have permission to register software assets.',
         errors: {
-          form: ['Forbidden: You do not have permission to register software assets.'],
+          form: [
+            'Forbidden: You do not have permission to register software assets.',
+          ],
         },
       };
     }
@@ -672,51 +705,56 @@ export async function registerSoftwareAsset(
 
     const input = parsed.data;
 
-    const [categoryRecord, publisherRecord, vendorRecord, duplicateLicenseRecord, existingModel] =
-      await Promise.all([
-        db.query.categories.findFirst({
-          where: eq(categories.id, input.categoryId),
-          columns: {
-            id: true,
-            prefix: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-        db.query.brands.findFirst({
-          where: eq(brands.id, input.publisherId),
-          columns: {
-            id: true,
-            isActive: true,
-          },
-        }),
-        db.query.vendors.findFirst({
-          where: eq(vendors.id, input.vendorId),
-          columns: {
-            id: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-        db.query.assets.findFirst({
-          where: eq(assets.serialNumber, input.licenseKey),
-          columns: {
-            id: true,
-            assetTag: true,
-          },
-        }),
-        db.query.models.findFirst({
-          where: and(
-            eq(models.brandId, input.publisherId),
-            eq(models.name, input.softwareName)
-          ),
-          columns: {
-            id: true,
-            categoryId: true,
-            isActive: true,
-          },
-        }),
-      ]);
+    const [
+      categoryRecord,
+      publisherRecord,
+      vendorRecord,
+      duplicateLicenseRecord,
+      existingModel,
+    ] = await Promise.all([
+      db.query.categories.findFirst({
+        where: eq(categories.id, input.categoryId),
+        columns: {
+          id: true,
+          prefix: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+      db.query.brands.findFirst({
+        where: eq(brands.id, input.publisherId),
+        columns: {
+          id: true,
+          isActive: true,
+        },
+      }),
+      db.query.vendors.findFirst({
+        where: eq(vendors.id, input.vendorId),
+        columns: {
+          id: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+      db.query.assets.findFirst({
+        where: eq(assets.serialNumber, input.licenseKey),
+        columns: {
+          id: true,
+          assetTag: true,
+        },
+      }),
+      db.query.models.findFirst({
+        where: and(
+          eq(models.brandId, input.publisherId),
+          eq(models.name, input.softwareName)
+        ),
+        columns: {
+          id: true,
+          categoryId: true,
+          isActive: true,
+        },
+      }),
+    ]);
 
     if (!categoryRecord || !categoryRecord.isActive) {
       return {
@@ -967,10 +1005,14 @@ export async function registerFurnitureAsset(
       };
     }
 
-    if (currentUser.role !== 'GlobalAdmin' && currentUser.role !== 'ITOperator') {
+    if (
+      currentUser.role !== 'GlobalAdmin' &&
+      currentUser.role !== 'ITOperator'
+    ) {
       return {
         success: false,
-        message: 'Forbidden: You do not have permission to register furniture assets.',
+        message:
+          'Forbidden: You do not have permission to register furniture assets.',
         errors: {
           form: [
             'Forbidden: You do not have permission to register furniture assets.',
@@ -1004,50 +1046,55 @@ export async function registerFurnitureAsset(
 
     const input = parsed.data;
 
-    const [categoryRecord, manufacturerRecord, modelRecord, locationRecord, vendorRecord] =
-      await Promise.all([
-        db.query.categories.findFirst({
-          where: eq(categories.id, input.categoryId),
-          columns: {
-            id: true,
-            prefix: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-        db.query.brands.findFirst({
-          where: eq(brands.id, input.manufacturerId),
-          columns: {
-            id: true,
-            isActive: true,
-          },
-        }),
-        db.query.models.findFirst({
-          where: eq(models.id, input.productLineId),
-          columns: {
-            id: true,
-            name: true,
-            categoryId: true,
-            brandId: true,
-            isActive: true,
-          },
-        }),
-        db.query.locations.findFirst({
-          where: eq(locations.id, input.locationId),
-          columns: {
-            id: true,
-            isActive: true,
-          },
-        }),
-        db.query.vendors.findFirst({
-          where: eq(vendors.id, input.vendorId),
-          columns: {
-            id: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-      ]);
+    const [
+      categoryRecord,
+      manufacturerRecord,
+      modelRecord,
+      locationRecord,
+      vendorRecord,
+    ] = await Promise.all([
+      db.query.categories.findFirst({
+        where: eq(categories.id, input.categoryId),
+        columns: {
+          id: true,
+          prefix: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+      db.query.brands.findFirst({
+        where: eq(brands.id, input.manufacturerId),
+        columns: {
+          id: true,
+          isActive: true,
+        },
+      }),
+      db.query.models.findFirst({
+        where: eq(models.id, input.productLineId),
+        columns: {
+          id: true,
+          name: true,
+          categoryId: true,
+          brandId: true,
+          isActive: true,
+        },
+      }),
+      db.query.locations.findFirst({
+        where: eq(locations.id, input.locationId),
+        columns: {
+          id: true,
+          isActive: true,
+        },
+      }),
+      db.query.vendors.findFirst({
+        where: eq(vendors.id, input.vendorId),
+        columns: {
+          id: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+    ]);
 
     if (!categoryRecord || !categoryRecord.isActive) {
       return {
@@ -1062,7 +1109,8 @@ export async function registerFurnitureAsset(
     if (categoryRecord.pillar !== 'Office Furniture') {
       return {
         success: false,
-        message: 'Selected category does not belong to Office Furniture pillar.',
+        message:
+          'Selected category does not belong to Office Furniture pillar.',
         errors: {
           categoryId: [
             'Selected category does not belong to Office Furniture pillar.',
@@ -1292,7 +1340,10 @@ export async function registerOfficeElectronicsAsset(
       };
     }
 
-    if (currentUser.role !== 'GlobalAdmin' && currentUser.role !== 'ITOperator') {
+    if (
+      currentUser.role !== 'GlobalAdmin' &&
+      currentUser.role !== 'ITOperator'
+    ) {
       return {
         success: false,
         message:
@@ -1330,58 +1381,64 @@ export async function registerOfficeElectronicsAsset(
 
     const input = parsed.data;
 
-    const [categoryRecord, brandRecord, locationRecord, vendorRecord, duplicateSerialRecord, existingModel] =
-      await Promise.all([
-        db.query.categories.findFirst({
-          where: eq(categories.id, input.categoryId),
-          columns: {
-            id: true,
-            prefix: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-        db.query.brands.findFirst({
-          where: eq(brands.id, input.brandId),
-          columns: {
-            id: true,
-            name: true,
-            isActive: true,
-          },
-        }),
-        db.query.locations.findFirst({
-          where: eq(locations.id, input.locationId),
-          columns: {
-            id: true,
-            isActive: true,
-          },
-        }),
-        db.query.vendors.findFirst({
-          where: eq(vendors.id, input.vendorId),
-          columns: {
-            id: true,
-            pillar: true,
-            isActive: true,
-          },
-        }),
-        db.query.assets.findFirst({
-          where: eq(assets.serialNumber, input.serialNumber),
-          columns: {
-            id: true,
-            assetTag: true,
-          },
-        }),
-        db.query.models.findFirst({
-          where: and(
-            eq(models.brandId, input.brandId),
-            eq(models.categoryId, input.categoryId)
-          ),
-          columns: {
-            id: true,
-            isActive: true,
-          },
-        }),
-      ]);
+    const [
+      categoryRecord,
+      brandRecord,
+      locationRecord,
+      vendorRecord,
+      duplicateSerialRecord,
+      existingModel,
+    ] = await Promise.all([
+      db.query.categories.findFirst({
+        where: eq(categories.id, input.categoryId),
+        columns: {
+          id: true,
+          prefix: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+      db.query.brands.findFirst({
+        where: eq(brands.id, input.brandId),
+        columns: {
+          id: true,
+          name: true,
+          isActive: true,
+        },
+      }),
+      db.query.locations.findFirst({
+        where: eq(locations.id, input.locationId),
+        columns: {
+          id: true,
+          isActive: true,
+        },
+      }),
+      db.query.vendors.findFirst({
+        where: eq(vendors.id, input.vendorId),
+        columns: {
+          id: true,
+          pillar: true,
+          isActive: true,
+        },
+      }),
+      db.query.assets.findFirst({
+        where: eq(assets.serialNumber, input.serialNumber),
+        columns: {
+          id: true,
+          assetTag: true,
+        },
+      }),
+      db.query.models.findFirst({
+        where: and(
+          eq(models.brandId, input.brandId),
+          eq(models.categoryId, input.categoryId)
+        ),
+        columns: {
+          id: true,
+          isActive: true,
+        },
+      }),
+    ]);
 
     if (!categoryRecord || !categoryRecord.isActive) {
       return {
@@ -1396,7 +1453,8 @@ export async function registerOfficeElectronicsAsset(
     if (categoryRecord.pillar !== 'Office Electronics') {
       return {
         success: false,
-        message: 'Selected category does not belong to Office Electronics pillar.',
+        message:
+          'Selected category does not belong to Office Electronics pillar.',
         errors: {
           categoryId: [
             'Selected category does not belong to Office Electronics pillar.',
@@ -1438,7 +1496,8 @@ export async function registerOfficeElectronicsAsset(
     if (vendorRecord.pillar !== 'Office Electronics') {
       return {
         success: false,
-        message: 'Selected vendor does not belong to Office Electronics pillar.',
+        message:
+          'Selected vendor does not belong to Office Electronics pillar.',
         errors: {
           vendorId: [
             'Selected vendor does not belong to Office Electronics pillar.',
@@ -1718,7 +1777,9 @@ const ACTION_DESCRIPTION_MAP: Record<string, string> = {
   DELETE: 'Asset was deleted',
 };
 
-export async function getAssetDetails(assetTag: string): Promise<AssetDetailsData | null> {
+export async function getAssetDetails(
+  assetTag: string
+): Promise<AssetDetailsData | null> {
   const assetRecord = await db.query.assets.findFirst({
     where: eq(assets.assetTag, assetTag),
     with: {
@@ -1770,7 +1831,10 @@ export async function getAssetDetails(assetTag: string): Promise<AssetDetailsDat
       name: assetRecord.name,
       status: assetRecord.status,
       condition: assetRecord.condition,
-      instanceAttributes: assetRecord.instanceAttributes as Record<string, unknown> | null,
+      instanceAttributes: assetRecord.instanceAttributes as Record<
+        string,
+        unknown
+      > | null,
       usefulLifeMonths: assetRecord.usefulLifeMonths,
       salvageValue: assetRecord.salvageValue?.toString() ?? null,
       createdAt: assetRecord.createdAt.toISOString(),
@@ -1779,14 +1843,23 @@ export async function getAssetDetails(assetTag: string): Promise<AssetDetailsDat
     model: {
       id: assetRecord.model.id,
       name: assetRecord.model.name,
-      technicalDetails: assetRecord.model.technicalDetails as Record<string, unknown> | null,
-      brand: { id: assetRecord.model.brand.id, name: assetRecord.model.brand.name },
+      technicalDetails: assetRecord.model.technicalDetails as Record<
+        string,
+        unknown
+      > | null,
+      brand: {
+        id: assetRecord.model.brand.id,
+        name: assetRecord.model.brand.name,
+      },
       category: {
         id: assetRecord.model.category.id,
         name: assetRecord.model.category.name,
         pillar: assetRecord.model.category.pillar,
         prefix: assetRecord.model.category.prefix,
-        customSchema: assetRecord.model.category.customSchema as Record<string, unknown> | null,
+        customSchema: assetRecord.model.category.customSchema as Record<
+          string,
+          unknown
+        > | null,
       },
     },
     location: assetRecord.location
@@ -1814,7 +1887,8 @@ export async function getAssetDetails(assetTag: string): Promise<AssetDetailsDat
       ? {
           id: purchaseRecord.vendor.id,
           companyName: purchaseRecord.vendor.companyName,
-          contactInfo: purchaseRecord.vendor.email ?? purchaseRecord.vendor.phone ?? null,
+          contactInfo:
+            purchaseRecord.vendor.email ?? purchaseRecord.vendor.phone ?? null,
         }
       : null,
     assignment: assignmentRecord
@@ -1827,14 +1901,17 @@ export async function getAssetDetails(assetTag: string): Promise<AssetDetailsDat
               }
             : null,
           assignedDate: assignmentRecord.assignedDate.toISOString(),
-          expectedReturnDate: assignmentRecord.expectedReturnDate?.toString() ?? null,
+          expectedReturnDate:
+            assignmentRecord.expectedReturnDate?.toString() ?? null,
           notes: assignmentRecord.notes,
         }
       : null,
   };
 }
 
-export async function getAssetHistory(assetTag: string): Promise<HistoryEvent[]> {
+export async function getAssetHistory(
+  assetTag: string
+): Promise<HistoryEvent[]> {
   const asset = await db.query.assets.findFirst({
     where: eq(assets.assetTag, assetTag),
     columns: { id: true },
@@ -1859,7 +1936,8 @@ export async function getAssetHistory(assetTag: string): Promise<HistoryEvent[]>
     timestamp: formatTimestamp(record.performedAt),
     eventType: ACTION_TYPE_MAP[record.actionType] ?? 'Status Updated',
     actor: `${record.performedBy?.name ?? 'Unknown'} (${record.performedBy?.role ?? 'User'})`,
-    description: ACTION_DESCRIPTION_MAP[record.actionType] ?? 'Asset was modified',
+    description:
+      ACTION_DESCRIPTION_MAP[record.actionType] ?? 'Asset was modified',
     details: formatAuditDetails(
       record.oldValue as Record<string, unknown> | null,
       record.newValue as Record<string, unknown> | null
@@ -1867,7 +1945,9 @@ export async function getAssetHistory(assetTag: string): Promise<HistoryEvent[]>
   }));
 }
 
-export async function getAssetMaintenance(assetTag: string): Promise<MaintenanceEvent[]> {
+export async function getAssetMaintenance(
+  assetTag: string
+): Promise<MaintenanceEvent[]> {
   const asset = await db.query.assets.findFirst({
     where: eq(assets.assetTag, assetTag),
     columns: { id: true },
@@ -1903,7 +1983,14 @@ export async function getAssetMaintenance(assetTag: string): Promise<Maintenance
 export async function updateAsset(
   assetId: string,
   data: {
-    status?: 'Available' | 'Assigned' | 'In Repair' | 'Defective' | 'Lost' | 'Retired' | 'Disposed';
+    status?:
+      | 'Available'
+      | 'Assigned'
+      | 'In Repair'
+      | 'Defective'
+      | 'Lost'
+      | 'Retired'
+      | 'Disposed';
     condition?: 'New' | 'Excellent' | 'Fair' | 'Poor' | 'Damaged' | null;
     name?: string | null;
     locationId?: number | null;
@@ -1911,7 +1998,9 @@ export async function updateAsset(
   },
   userId: string
 ) {
-  const currentAsset = await db.query.assets.findFirst({ where: eq(assets.id, assetId) });
+  const currentAsset = await db.query.assets.findFirst({
+    where: eq(assets.id, assetId),
+  });
 
   if (!currentAsset) {
     throw new Error('Asset not found');
