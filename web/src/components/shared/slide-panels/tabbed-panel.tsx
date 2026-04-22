@@ -79,13 +79,20 @@ export function TabbedPanel({
         tabs.length > 0 ? (
             <div ref={contentRef}>
                 <Tabs value={activeTabId} onValueChange={handleTabChange} className="space-y-3">
-                    <TabsList className="w-full justify-start gap-1 overflow-x-auto">
-                        {tabs.map((tab) => (
-                            <TabsTrigger key={tab.id} value={tab.id} className="shrink-0">
-                                {tab.label}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
+                    {/* Added a wrapper to push it left, and changed w-full to w-fit with Figma colors */}
+                    <div className="w-full flex justify-start mb-[18px]">
+                        <TabsList className="flex h-[36px] w-fit items-center justify-start rounded-[8px] bg-[#f8fafc] p-[3px] gap-[4px]">
+                            {tabs.map((tab) => (
+                                <TabsTrigger 
+                                    key={tab.id} 
+                                    value={tab.id} 
+                                    className="h-[29px] rounded-[6px] px-[12px] py-[4px] text-[14px] font-medium text-[#64748b] transition-all data-[state=active]:bg-[#ffffff] data-[state=active]:text-[#0f172a] data-[state=active]:shadow-[0px_1px_3px_rgba(0,0,0,0.1)] data-[state=active]:border data-[state=active]:border-[#e2e8f0] border border-transparent shrink-0"
+                                >
+                                    {tab.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </div>
 
                     {tabs.map((tab) => (
                         <TabsContent key={tab.id} value={tab.id} className="mt-0">
@@ -108,6 +115,7 @@ export function TabbedPanel({
             description={description}
             content={content}
             actions={actions}
+            showCloseButton={true}
         />
     );
 }
