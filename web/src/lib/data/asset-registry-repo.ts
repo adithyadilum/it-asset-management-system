@@ -48,6 +48,7 @@ export interface AssetRegistryRow {
   locationId: number | null;
   location: string | null;
   assignedTo: string | null;
+  instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date;
 }
 
@@ -163,6 +164,7 @@ export async function getAssetsByPillar(
       model: models.name,
       locationId: assets.locationId,
       location: locations.name,
+      instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
     })
     .from(assets)
@@ -208,6 +210,7 @@ export async function getAssetsByPillar(
 
   const data: AssetRegistryRow[] = rows.map((row) => ({
     ...row,
+    instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
     assignedTo: assignedUserByAssetId.get(row.id) ?? null,
   }));
 

@@ -4,25 +4,28 @@ import type { ColumnDef } from '@tanstack/react-table';
 import {
   CalendarDays,
   ChevronDown,
+  Plus,
   Search,
   X,
 } from 'lucide-react';
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect, useTransition } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import {
   bulkUpdateAssets,
   getAssetsByPillar,
-} from '@/actions/assets-registry';
+} from '@/actions/asset-registry';
 import {
   type RegistryViewConfig,
-} from '@/components/features/assets-registry/registry-config';
+  type RegistryFilterField,
+} from '@/components/features/asset-registry/registry-config';
 import {
   DataTable,
   type DataTableSelectionAction,
 } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,7 +42,7 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-type FilterField = 'Status' | 'User';
+type FilterField = RegistryFilterField;
 type FilterOperator = 'is' | 'is not';
 
 type AssetRegistryCategory = {
@@ -63,6 +66,7 @@ type AssetRegistryRow = {
   locationId: number | null;
   location: string | null;
   assignedTo: string | null;
+  instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date | string;
 };
 
@@ -117,18 +121,7 @@ function normalizeCategoryLabel(value: string) {
     .replace(/s$/, '');
 }
 
-function toCategoryDisplayLabel(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return value;
-  }
 
-  if (trimmed.endsWith('s')) {
-    return trimmed;
-  }
-
-  return `${trimmed}s`;
-}
 
 function toHardwareDisplayStatus(row: AssetRegistryRow) {
   // Status column must always represent the persisted asset status from DB.
@@ -167,16 +160,7 @@ function toCellText(value: string | null | undefined) {
   return value;
 }
 
-function renderCategoryBadge(category: string) {
-  return (
-    <Badge
-      variant="outline"
-      className="h-5 rounded-full border-slate-200 bg-slate-50 px-2 text-[11px] font-normal text-slate-500"
-    >
-      {category}
-    </Badge>
-  );
-}
+
 
 function renderElectronicsConditionBadge(condition: string) {
   const className =
@@ -192,38 +176,32 @@ function renderElectronicsConditionBadge(condition: string) {
   );
 }
 
-function parseIpOrMac(row: AssetRegistryRow) {
-  const candidate = row.serialNumber ?? row.name ?? '';
-
-  if (/\b(?:\d{1,3}\.){3}\d{1,3}\b/.test(candidate)) {
-    return candidate.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/)?.[0] ?? 'N/A';
-  }
-
-  if (/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/.test(candidate)) {
-    return candidate.match(/([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}/)?.[0] ?? 'N/A';
-  }
-
-  return 'N/A';
-}
 
 interface AssetRegistryClientProps {
   config: RegistryViewConfig;
   initialCategories: AssetRegistryCategory[];
   initialResult: AssetRegistryResult;
+  currentPanel?: string;
 }
 
 export function AssetRegistryClient({
   config,
   initialCategories,
   initialResult,
+  currentPanel,
 }: AssetRegistryClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isPanelOpen = Boolean(currentPanel);
+
   const [rows, setRows] = useState<AssetRegistryRow[]>(initialResult.data);
   const [searchValue, setSearchValue] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCategoryName, setSelectedCategoryName] = useState(
     config.defaultCategoryLabel
   );
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
@@ -255,41 +233,33 @@ export function AssetRegistryClient({
   }, [searchValue]);
 
   const categoryOptions = useMemo(() => {
-    const merged = new Map<string, CategoryOption>();
+    const options: CategoryOption[] = [];
 
     if (config.showAllCategoryOption) {
-      merged.set(config.allCategoryLabel, {
+      options.push({
         name: config.allCategoryLabel,
         isAll: true,
       });
     }
 
     for (const category of initialCategories) {
-      const displayName = toCategoryDisplayLabel(category.name);
-      merged.set(displayName, {
+      options.push({
         id: category.id,
-        name: displayName,
+        name: category.name,
       });
     }
 
-    for (const fallbackCategory of config.fallbackCategories) {
-      if (!merged.has(fallbackCategory)) {
-        merged.set(fallbackCategory, { name: fallbackCategory });
-      }
-    }
-
-    if (!merged.has(config.defaultCategoryLabel)) {
-      merged.set(config.defaultCategoryLabel, {
+    if (options.length === 0) {
+      options.push({
         name: config.defaultCategoryLabel,
-        isAll: config.defaultCategoryLabel === config.allCategoryLabel,
+        isAll: true,
       });
     }
 
-    return [...merged.values()];
+    return options;
   }, [
     config.allCategoryLabel,
     config.defaultCategoryLabel,
-    config.fallbackCategories,
     config.showAllCategoryOption,
     initialCategories,
   ]);
@@ -310,13 +280,19 @@ export function AssetRegistryClient({
       : undefined;
 
   const statusFilter = appliedFilters.find((filter) => filter.field === 'Status');
-  const userFilter = appliedFilters.find((filter) => filter.field === 'User');
+  const conditionFilter = appliedFilters.find((filter) => filter.field === 'Condition');
+  const locationFilter = appliedFilters.find((filter) => filter.field === 'Location');
+  const modelFilter = appliedFilters.find((filter) => filter.field === 'Model');
+  const assignedToFilter = appliedFilters.find((filter) => filter.field === 'Assigned To');
 
   const backendStatusFilter =
     statusFilter?.operator === 'is' ? statusFilter.value : undefined;
 
   const hasLocalFiltering =
-    Boolean(userFilter) ||
+    Boolean(conditionFilter) ||
+    Boolean(locationFilter) ||
+    Boolean(modelFilter) ||
+    Boolean(assignedToFilter) ||
     statusFilter?.operator === 'is not' ||
     Boolean(
       selectedCategoryOption.name &&
@@ -326,7 +302,6 @@ export function AssetRegistryClient({
 
   useEffect(() => {
     const requestSequence = ++requestSequenceRef.current;
-    setIsLoading(true);
     setErrorMessage(null);
 
     const loadRows = async () => {
@@ -364,24 +339,26 @@ export function AssetRegistryClient({
           aggregatedRows = aggregatedRows.concat(nextPage.data);
         }
 
-        setRows(aggregatedRows);
+        startTransition(() => {
+          setRows(aggregatedRows);
+        });
       } catch (error) {
         if (requestSequence !== requestSequenceRef.current) {
           return;
         }
 
-        setRows([]);
-        setErrorMessage(
-          error instanceof Error ? error.message : 'Failed to load assets.'
-        );
-      } finally {
-        if (requestSequence === requestSequenceRef.current) {
-          setIsLoading(false);
-        }
+        startTransition(() => {
+          setRows([]);
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Failed to load assets.'
+          );
+        });
       }
     };
 
-    void loadRows();
+    startTransition(() => {
+      void loadRows();
+    });
   }, [
     backendStatusFilter,
     config.pillar,
@@ -408,20 +385,43 @@ export function AssetRegistryClient({
       nextRows = nextRows.filter((row) => row.status !== statusFilter.value);
     }
 
-    if (userFilter) {
+    if (conditionFilter) {
+      nextRows = nextRows.filter((row) => {
+        const condition = row.condition ?? '-';
+        return conditionFilter.operator === 'is not'
+          ? condition !== conditionFilter.value
+          : condition === conditionFilter.value;
+      });
+    }
+
+    if (locationFilter) {
+      nextRows = nextRows.filter((row) => {
+        const location = row.location ?? '-';
+        return locationFilter.operator === 'is not'
+          ? location !== locationFilter.value
+          : location === locationFilter.value;
+      });
+    }
+
+    if (modelFilter) {
+      nextRows = nextRows.filter((row) => {
+        return modelFilter.operator === 'is not'
+          ? row.model !== modelFilter.value
+          : row.model === modelFilter.value;
+      });
+    }
+
+    if (assignedToFilter) {
       nextRows = nextRows.filter((row) => {
         const assignedTo = row.assignedTo ?? '-';
-
-        if (userFilter.operator === 'is not') {
-          return assignedTo !== userFilter.value;
-        }
-
-        return assignedTo === userFilter.value;
+        return assignedToFilter.operator === 'is not'
+          ? assignedTo !== assignedToFilter.value
+          : assignedTo === assignedToFilter.value;
       });
     }
 
     return nextRows;
-  }, [rows, selectedCategoryOption, statusFilter, userFilter]);
+  }, [rows, selectedCategoryOption, statusFilter, conditionFilter, locationFilter, modelFilter, assignedToFilter]);
 
   const visibleRows = hasLocalFiltering ? filteredRows : rows;
 
@@ -448,23 +448,45 @@ export function AssetRegistryClient({
   }, [transferSelectionRows]);
 
   const filterValueOptions = useMemo(() => {
-    if (draftField === 'User') {
-      const users = new Set<string>();
-
-      for (const row of rows) {
-        users.add(row.assignedTo ?? '-');
+    switch (draftField) {
+      case 'Status': {
+        const statuses = new Set<string>(STATUS_OPTIONS);
+        for (const row of rows) {
+          statuses.add(row.status);
+        }
+        return [...statuses];
       }
-
-      return [...users].sort((a, b) => a.localeCompare(b));
+      case 'Condition': {
+        const conditions = new Set<string>();
+        for (const row of rows) {
+          conditions.add(row.condition ?? '-');
+        }
+        return [...conditions].sort((a, b) => a.localeCompare(b));
+      }
+      case 'Location': {
+        const locations = new Set<string>();
+        for (const row of rows) {
+          locations.add(row.location ?? '-');
+        }
+        return [...locations].sort((a, b) => a.localeCompare(b));
+      }
+      case 'Model': {
+        const models = new Set<string>();
+        for (const row of rows) {
+          models.add(row.model);
+        }
+        return [...models].sort((a, b) => a.localeCompare(b));
+      }
+      case 'Assigned To': {
+        const users = new Set<string>();
+        for (const row of rows) {
+          users.add(row.assignedTo ?? '-');
+        }
+        return [...users].sort((a, b) => a.localeCompare(b));
+      }
+      default:
+        return [];
     }
-
-    const statuses = new Set<string>(STATUS_OPTIONS);
-
-    for (const row of rows) {
-      statuses.add(row.status);
-    }
-
-    return [...statuses];
   }, [draftField, rows]);
 
   useEffect(() => {
@@ -599,11 +621,6 @@ export function AssetRegistryClient({
           cell: ({ row }) => toCellText(row.original.name),
         },
         {
-          accessorKey: 'category',
-          header: 'Category',
-          cell: ({ row }) => renderCategoryBadge(row.original.category),
-        },
-        {
           accessorKey: 'location',
           header: 'Location',
           cell: ({ row }) => toCellText(row.original.location),
@@ -630,11 +647,6 @@ export function AssetRegistryClient({
           cell: ({ row }) => toCellText(row.original.name),
         },
         {
-          accessorKey: 'category',
-          header: 'Category',
-          cell: ({ row }) => renderCategoryBadge(row.original.category),
-        },
-        {
           accessorKey: 'location',
           header: 'Location',
           cell: ({ row }) => toCellText(row.original.location),
@@ -642,7 +654,7 @@ export function AssetRegistryClient({
         {
           id: 'ipOrMacAddress',
           header: 'IP/MAC Address',
-          cell: ({ row }) => parseIpOrMac(row.original),
+          cell: ({ row }) => String(row.original.instanceAttributes?.['IP/MAC Address'] ?? '-'),
           enableSorting: false,
         },
         {
@@ -678,19 +690,19 @@ export function AssetRegistryClient({
         {
           id: 'totalSeats',
           header: 'Total Seats',
-          cell: () => '-',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['Total Seats'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'availableSeats',
           header: 'Available Seats',
-          cell: () => '-',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['Available Seats'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'expirationDate',
           header: 'Expiration Date',
-          cell: () => '-',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
           enableSorting: false,
         },
       ];
@@ -710,11 +722,6 @@ export function AssetRegistryClient({
         accessorKey: 'serialNumber',
         header: 'Serial Number',
         cell: ({ row }) => toCellText(row.original.serialNumber),
-      },
-      {
-        accessorKey: 'category',
-        header: 'Category',
-        cell: ({ row }) => renderCategoryBadge(row.original.category),
       },
       {
         accessorKey: 'assignedTo',
@@ -798,16 +805,16 @@ export function AssetRegistryClient({
           : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
 
   return (
-    <div className="h-full rounded-lg bg-white p-4">
-      <div className="flex items-center gap-2">
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+      <div className="mb-4">
         <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md text-3xl font-semibold text-slate-900"
+              className={`inline-flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}
             >
-              <span className="text-[33px] leading-10">{selectedCategoryOption.name}</span>
-              <ChevronDown className="size-4 text-slate-700" />
+              <span>{selectedCategoryOption.name}</span>
+              <ChevronDown className="size-5 text-slate-700 mt-1" />
             </button>
           </PopoverTrigger>
           <PopoverContent
@@ -832,16 +839,17 @@ export function AssetRegistryClient({
         </Popover>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="relative w-full max-w-[545px]">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder={config.searchPlaceholder}
-            className="h-8 rounded-lg border-slate-200 bg-white pl-8 text-sm text-slate-700"
-          />
-        </div>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative w-full max-w-[545px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder={config.searchPlaceholder}
+              className="h-9 pl-9"
+            />
+          </div>
 
         <div className="flex items-center gap-2">
           <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
@@ -954,11 +962,8 @@ export function AssetRegistryClient({
           <Button
             type="button"
             size="sm"
-            className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
           >
-            <span className="inline-flex size-4 items-center justify-center rounded-full border border-white/60 text-xs">
-              +
-            </span>
+            <Plus className="h-4 w-4" />
             {config.addAssetLabel}
           </Button>
         </div>
@@ -1010,8 +1015,8 @@ export function AssetRegistryClient({
         </div>
       ) : null}
 
-      <div className="mt-3">
-        {isLoading ? (
+      <div className="min-h-0">
+        {isPending ? (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
             <TableSkeleton
               rowCount={8}
@@ -1026,6 +1031,13 @@ export function AssetRegistryClient({
             initialPageSize={config.defaultPageSize}
             selectionActions={selectionActions}
             selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
+            onRowClick={(row) => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set('panel', 'record');
+              params.set('id', row.id);
+              params.set('animate', isPanelOpen ? '0' : '1');
+              router.push(`${pathname}?${params.toString()}`, { scroll: false });
+            }}
             className="rounded-lg border-slate-200"
           />
         )}
@@ -1158,6 +1170,7 @@ export function AssetRegistryClient({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </main>
   );
 }

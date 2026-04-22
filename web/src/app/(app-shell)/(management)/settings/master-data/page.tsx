@@ -213,6 +213,143 @@ type MasterDataPageProps = {
   }>;
 };
 
+const getLocationsData = cache(() =>
+  db
+    .select({
+      id: locations.id,
+      name: locations.name,
+      type: locations.type,
+      parentId: locations.parentId,
+      linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+      isActive: locations.isActive,
+    })
+    .from(locations)
+    .leftJoin(assets, eq(assets.locationId, locations.id))
+    .groupBy(
+      locations.id,
+      locations.name,
+      locations.type,
+      locations.parentId,
+      locations.isActive
+    )
+    .orderBy(asc(locations.name))
+);
+
+const getBrandsData = cache(() =>
+  db
+    .select({
+      id: brands.id,
+      name: brands.name,
+      linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+      isActive: brands.isActive,
+    })
+    .from(brands)
+    .leftJoin(models, eq(models.brandId, brands.id))
+    .leftJoin(assets, eq(assets.modelId, models.id))
+    .groupBy(brands.id, brands.name, brands.isActive)
+    .orderBy(asc(brands.name))
+);
+
+const getVendorsData = cache(() =>
+  db
+    .select({
+      id: vendors.id,
+      companyName: vendors.companyName,
+      email: vendors.email,
+      phone: vendors.phone,
+      website: vendors.website,
+      pillars:
+        sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
+      linkedAssets: sql<number>`coalesce(count(distinct ${assetPurchases.assetId}), 0)::int`,
+      isActive: vendors.isActive,
+    })
+    .from(vendors)
+    .leftJoin(assetPurchases, eq(assetPurchases.vendorId, vendors.id))
+    .leftJoin(assets, eq(assetPurchases.assetId, assets.id))
+    .leftJoin(models, eq(assets.modelId, models.id))
+    .leftJoin(categories, eq(models.categoryId, categories.id))
+    .groupBy(
+      vendors.id,
+      vendors.companyName,
+      vendors.email,
+      vendors.phone,
+      vendors.website,
+      vendors.isActive
+    )
+    .orderBy(asc(vendors.companyName))
+);
+
+const getDepartmentsData = cache(() =>
+  db
+    .select({
+      id: departments.id,
+      name: departments.name,
+      shortCode: departments.shortCode,
+      costCenterId: departments.costCenterId,
+      linkedAssets: sql<number>`0::int`,
+      isActive: departments.isActive,
+    })
+    .from(departments)
+    .orderBy(asc(departments.name))
+);
+
+const getCategoriesData = cache(() =>
+  db
+    .select({
+      id: categories.id,
+      name: categories.name,
+      prefix: categories.prefix,
+      pillar: categories.pillar,
+      customSchema: categories.customSchema,
+      isActive: categories.isActive,
+      linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+    })
+    .from(categories)
+    .leftJoin(models, eq(models.categoryId, categories.id))
+    .leftJoin(assets, eq(assets.modelId, models.id))
+    .groupBy(
+      categories.id,
+      categories.name,
+      categories.prefix,
+      categories.pillar,
+      categories.customSchema,
+      categories.isActive
+    )
+    .orderBy(asc(categories.name))
+);
+
+const getDeviceModelsData = cache(() =>
+  db
+    .select({
+      id: models.id,
+      name: models.name,
+      brandId: models.brandId,
+      categoryId: models.categoryId,
+      brandName: brands.name,
+      categoryName: categories.name,
+      pillar: categories.pillar,
+      technicalDetails: models.technicalDetails,
+      linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+      isActive: models.isActive,
+    })
+    .from(models)
+    .leftJoin(brands, eq(models.brandId, brands.id))
+    .leftJoin(categories, eq(models.categoryId, categories.id))
+    .leftJoin(assets, eq(assets.modelId, models.id))
+    .groupBy(
+      models.id,
+      models.name,
+      models.brandId,
+      models.categoryId,
+      brands.name,
+      categories.name,
+      categories.pillar,
+      models.technicalDetails,
+      models.isActive
+    )
+    .orderBy(asc(models.name))
+);
+
 export default async function MasterDataPage({ searchParams }: MasterDataPageProps) {
   await assertMasterDataPageAccess();
 
@@ -238,125 +375,12 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     categoriesData,
     deviceModelsData,
   ] = await Promise.all([
-    db
-      .select({
-        id: locations.id,
-        name: locations.name,
-        type: locations.type,
-        parentId: locations.parentId,
-        linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
-        isActive: locations.isActive,
-      })
-      .from(locations)
-      .leftJoin(assets, eq(assets.locationId, locations.id))
-      .groupBy(
-        locations.id,
-        locations.name,
-        locations.type,
-        locations.parentId,
-        locations.isActive
-      )
-      .orderBy(asc(locations.name)),
-    db
-      .select({
-        id: brands.id,
-        name: brands.name,
-        linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
-        isActive: brands.isActive,
-      })
-      .from(brands)
-      .leftJoin(models, eq(models.brandId, brands.id))
-      .leftJoin(assets, eq(assets.modelId, models.id))
-      .groupBy(brands.id, brands.name, brands.isActive)
-      .orderBy(asc(brands.name)),
-    db
-      .select({
-        id: vendors.id,
-        companyName: vendors.companyName,
-        email: vendors.email,
-        phone: vendors.phone,
-        website: vendors.website,
-        pillars:
-          sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
-        linkedAssets: sql<number>`coalesce(count(distinct ${assetPurchases.assetId}), 0)::int`,
-        isActive: vendors.isActive,
-      })
-      .from(vendors)
-      .leftJoin(assetPurchases, eq(assetPurchases.vendorId, vendors.id))
-      .leftJoin(assets, eq(assetPurchases.assetId, assets.id))
-      .leftJoin(models, eq(assets.modelId, models.id))
-      .leftJoin(categories, eq(models.categoryId, categories.id))
-      .groupBy(
-        vendors.id,
-        vendors.companyName,
-        vendors.email,
-        vendors.phone,
-        vendors.website,
-        vendors.isActive
-      )
-      .orderBy(asc(vendors.companyName)),
-    db
-      .select({
-        id: departments.id,
-        name: departments.name,
-        shortCode: departments.shortCode,
-        costCenterId: departments.costCenterId,
-        linkedAssets: sql<number>`0::int`,
-        isActive: departments.isActive,
-      })
-      .from(departments)
-      .orderBy(asc(departments.name)),
-    db
-      .select({
-        id: categories.id,
-        name: categories.name,
-        prefix: categories.prefix,
-        pillar: categories.pillar,
-        customSchema: categories.customSchema,
-        isActive: categories.isActive,
-        linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
-      })
-      .from(categories)
-      .leftJoin(models, eq(models.categoryId, categories.id))
-      .leftJoin(assets, eq(assets.modelId, models.id))
-      .groupBy(
-        categories.id,
-        categories.name,
-        categories.prefix,
-        categories.pillar,
-        categories.customSchema,
-        categories.isActive
-      )
-      .orderBy(asc(categories.name)),
-    db
-      .select({
-        id: models.id,
-        name: models.name,
-        brandId: models.brandId,
-        categoryId: models.categoryId,
-        brandName: brands.name,
-        categoryName: categories.name,
-        pillar: categories.pillar,
-        technicalDetails: models.technicalDetails,
-        linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
-        isActive: models.isActive,
-      })
-      .from(models)
-      .leftJoin(brands, eq(models.brandId, brands.id))
-      .leftJoin(categories, eq(models.categoryId, categories.id))
-      .leftJoin(assets, eq(assets.modelId, models.id))
-      .groupBy(
-        models.id,
-        models.name,
-        models.brandId,
-        models.categoryId,
-        brands.name,
-        categories.name,
-        categories.pillar,
-        models.technicalDetails,
-        models.isActive
-      )
-      .orderBy(asc(models.name)),
+    getLocationsData(),
+    getBrandsData(),
+    getVendorsData(),
+    getDepartmentsData(),
+    getCategoriesData(),
+    getDeviceModelsData(),
   ]);
 
   const normalizedDeviceModels = deviceModelsData.map((row) => ({

@@ -13,6 +13,7 @@ import {
   date,
   uuid,
   foreignKey,
+  index,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -171,6 +172,8 @@ export const models = pgTable(
   },
   (table) => ({
     brandModelUnique: unique('brand_model_idx').on(table.brandId, table.name),
+    brandIdIdx: index('models_brand_id_idx').on(table.brandId),
+    categoryIdIdx: index('models_category_id_idx').on(table.categoryId),
   })
 );
 
@@ -200,7 +203,10 @@ export const assets = pgTable('assets', {
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  modelIdIdx: index('assets_model_id_idx').on(table.modelId),
+  locationIdIdx: index('assets_location_id_idx').on(table.locationId),
+}));
 
 export const assetPurchases = pgTable('asset_purchases', {
   id: serial('id').primaryKey(),
