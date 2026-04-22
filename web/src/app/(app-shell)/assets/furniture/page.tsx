@@ -1,4 +1,4 @@
-﻿import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import { FurnitureRegistryPageClient } from '@/components/assets/furniture-registration-form';
 import { db } from '@/db';

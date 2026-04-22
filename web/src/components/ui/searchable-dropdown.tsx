@@ -78,7 +78,7 @@ export function SearchableDropdown({
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={(currentValue) => {
+                  onSelect={(currentValue: string) => {    //add explicit type annotation to searchable dropdown(String)
                     setValue(currentValue === value ? "" : currentValue)
                     onSelect(currentValue)
                     setOpen(false)
