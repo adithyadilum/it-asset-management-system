@@ -153,11 +153,11 @@ function formatAuditDetails(
 // Read Queries
 // ---------------------------------------------------------------------------
 
-export async function getAssetDetailsByTag(
-  assetTag: string
+export async function getAssetDetailsById(
+  id: string
 ): Promise<AssetDetailsData | null> {
   const assetRecord = await db.query.assets.findFirst({
-    where: eq(assets.assetTag, assetTag),
+    where: eq(assets.id, id),
     with: {
       model: {
         with: {
@@ -285,22 +285,13 @@ export async function getAssetDetailsByTag(
   };
 }
 
-export async function getAssetHistoryByTag(
-  assetTag: string
+export async function getAssetHistoryById(
+  id: string
 ): Promise<HistoryEvent[]> {
-  const asset = await db.query.assets.findFirst({
-    where: eq(assets.assetTag, assetTag),
-    columns: { id: true },
-  });
-
-  if (!asset) {
-    return [];
-  }
-
   const auditRecords = await db.query.systemAuditLogs.findMany({
     where: and(
       eq(systemAuditLogs.entityType, 'Asset'),
-      eq(systemAuditLogs.entityId, asset.id)
+      eq(systemAuditLogs.entityId, id)
     ),
     orderBy: (logs, { desc }) => [desc(logs.performedAt)],
     limit: 20,
@@ -321,20 +312,11 @@ export async function getAssetHistoryByTag(
   }));
 }
 
-export async function getAssetMaintenanceByTag(
-  assetTag: string
+export async function getAssetMaintenanceById(
+  id: string
 ): Promise<MaintenanceEvent[]> {
-  const asset = await db.query.assets.findFirst({
-    where: eq(assets.assetTag, assetTag),
-    columns: { id: true },
-  });
-
-  if (!asset) {
-    return [];
-  }
-
   const maintenanceList = await db.query.maintenanceRecords.findMany({
-    where: eq(maintenanceRecords.assetId, asset.id),
+    where: eq(maintenanceRecords.assetId, id),
     orderBy: (records, { desc }) => [desc(records.createdAt)],
     limit: 5,
     with: { vendor: { columns: { companyName: true } } },

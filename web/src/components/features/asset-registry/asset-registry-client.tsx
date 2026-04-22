@@ -962,6 +962,12 @@ export function AssetRegistryClient({
           <Button
             type="button"
             size="sm"
+            onClick={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set('panel', 'registration');
+              params.set('animate', isPanelOpen ? '0' : '1');
+              router.push(`${pathname}?${params.toString()}`, { scroll: false });
+            }}
           >
             <Plus className="h-4 w-4" />
             {config.addAssetLabel}

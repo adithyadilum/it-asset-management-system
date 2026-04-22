@@ -25,9 +25,9 @@ import {
   canManageAssets,
 } from '@/lib/auth/get-authenticated-user';
 import {
-  getAssetDetailsByTag,
-  getAssetHistoryByTag,
-  getAssetMaintenanceByTag,
+  getAssetDetailsById,
+  getAssetHistoryById,
+  getAssetMaintenanceById,
 } from '@/lib/data/asset-details-repo';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import {
@@ -485,34 +485,26 @@ export async function registerAsset(
 // Read Actions (thin wrappers with auth over repo)
 // ---------------------------------------------------------------------------
 
-export async function getAssetDetails(assetTag: string) {
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser) {
-    return null;
-  }
-
-  return getAssetDetailsByTag(assetTag);
+export async function getAssetDetails(id: string) {
+  return getAssetDetailsById(id);
 }
 
-export async function getAssetHistory(assetTag: string) {
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser) {
-    return [];
-  }
-
-  return getAssetHistoryByTag(assetTag);
+/**
+ * Fetch the history events for an asset (delegated to repository)
+ * @param id The asset id
+ * @returns History events
+ */
+export async function getAssetHistory(id: string) {
+  return getAssetHistoryById(id);
 }
 
-export async function getAssetMaintenance(assetTag: string) {
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser) {
-    return [];
-  }
-
-  return getAssetMaintenanceByTag(assetTag);
+/**
+ * Fetch the maintenance records for an asset (delegated to repository)
+ * @param id The asset id
+ * @returns Maintenance events
+ */
+export async function getAssetMaintenance(id: string) {
+  return getAssetMaintenanceById(id);
 }
 
 // ---------------------------------------------------------------------------

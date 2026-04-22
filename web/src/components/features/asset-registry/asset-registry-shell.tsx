@@ -55,6 +55,7 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
         panelAnimation={panelAnimation}
         recordId={recordId}
         closePanelUrl={closePanelUrl}
+        pillar={config.pillar}
       />
     </div>
   );
