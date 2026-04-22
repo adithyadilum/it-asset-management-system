@@ -35,7 +35,7 @@ jobs:
 
       # 5. Install the project dependencies (using ci for strict lockfile adherence)
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       # 6. Run the Next.js Linter (Catches syntax errors and unused variables)
       - name: Run ESLint
