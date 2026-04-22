@@ -527,6 +527,23 @@ async function seed() {
 
     categoryIdsByPrefix[categorySeed.prefix] = inserted[0].id;
   }
+  // Vendors
+  let primaryVendor = await db
+    .select()
+    .from(vendors)
+    .where(eq(vendors.companyName, 'TechSource Lanka'))
+    .limit(1);
+  if (primaryVendor.length === 0) {
+    primaryVendor = await db
+      .insert(vendors)
+      .values({
+        companyName: 'TechSource Lanka',
+        pillar: 'IT & Digital',
+        email: 'sales@techsource.lk',
+        isActive: true,
+      })
+      .returning();
+  }
 
   // ---------------------------------------------------------------------------
   // 8. MODELS
