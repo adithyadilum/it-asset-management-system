@@ -21,8 +21,9 @@ import {
   DB_PILLAR_VALUES,
   initialRegisterAssetActionState,
   type RegisterAssetActionState,
+  type AssetRegistrationInput,
   type RegistrationPillarInput,
-} from '@/validations/asset';
+} from '@/lib/validations/asset-registration';
 
 type RegistrationOption = React.ComponentProps<
   typeof SearchableDropdown

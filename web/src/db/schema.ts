@@ -126,7 +126,6 @@ export const locations = pgTable(
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
-  pillar: pillarEnum('pillar'),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
   website: varchar('website', { length: 255 }),

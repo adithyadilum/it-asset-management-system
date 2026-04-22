@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Filter, Paperclip, Plus, Search } from 'lucide-react';
 import Image from 'next/image';
 
-import { registerFurnitureAsset } from '@/actions/assets';
+import { registerAsset } from '@/actions/assets';
 import { useOpenRegistrationPanel } from '@/components/assets/use-open-registration-panel';
 import { FormPanel } from '@/components/shared/slide-panels/form-panel';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -14,9 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import {
-  initialRegisterFurnitureAssetActionState,
-  type RegisterFurnitureAssetActionState,
-} from '@/validations/furniture-asset';
+  initialRegisterAssetActionState,
+  type RegisterAssetActionState,
+} from '@/lib/validations/asset-registration';
 
 import {
   Table,
@@ -91,8 +91,8 @@ function getTodayDateValue() {
 }
 
 function getError(
-  state: RegisterFurnitureAssetActionState,
-  key: keyof NonNullable<RegisterFurnitureAssetActionState['errors']>
+  state: RegisterAssetActionState,
+  key: keyof NonNullable<RegisterAssetActionState['errors']>
 ) {
   return state.errors?.[key]?.[0];
 }
@@ -220,8 +220,8 @@ export function FurnitureRegistryPageClient({
 
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
   const [state, formAction, isPending] = React.useActionState(
-    registerFurnitureAsset,
-    initialRegisterFurnitureAssetActionState
+    registerAsset,
+    initialRegisterAssetActionState
   );
 
   const [categoryId, setCategoryId] = React.useState('');

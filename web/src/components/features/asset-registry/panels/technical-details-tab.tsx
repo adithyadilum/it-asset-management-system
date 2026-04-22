@@ -19,16 +19,16 @@ export function TechnicalDetailsTab({
   );
 
   return (
-    <div className={cn('flex flex-col gap-[32px] w-full text-[14px] text-slate-900', className)}>
+    <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
       {/* Specifications Grid */}
-      <div className="w-full mt-2">
-        <dl className="grid grid-cols-[165px_1fr_165px_1fr] gap-x-[10px] gap-y-[24px] items-start leading-[20px]">
+      <div className="mt-2 w-full">
+        <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-2.5 gap-y-6 text-sm leading-5">
           {specEntries.map(([key, value], index) => (
             <React.Fragment key={index}>
-              <dt className="font-medium text-slate-900 capitalize">
-                {key.replace(/_/g, ' ')} :
+              <dt className="font-medium capitalize text-foreground">
+                {key.replace(/_/g, ' ')}
               </dt>
-              <dd className="font-light text-slate-900">{value}</dd>
+              <dd className="font-light text-foreground">{value}</dd>
             </React.Fragment>
           ))}
         </dl>
@@ -36,9 +36,9 @@ export function TechnicalDetailsTab({
 
       {/* Note Section */}
       {note && (
-        <div className="bg-slate-50 rounded-lg border border-slate-200 p-[24px] flex flex-col gap-[10px] w-full shadow-[0px_1px_3px_rgba(0,0,0,0.1)]">
-          <div className="font-medium text-slate-900 leading-[20px]">Note :</div>
-          <div className="font-light text-slate-900 leading-[20px]">
+        <div className="flex w-full flex-col gap-2.5 rounded-lg border border-border bg-muted/50 p-6 shadow-sm">
+          <div className="font-medium leading-5 text-foreground">Note</div>
+          <div className="font-light leading-5 text-foreground">
             {note}
           </div>
         </div>

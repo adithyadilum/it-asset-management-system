@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
-import { TabbedPanel, type TabbedPanelTab } from './tabbed-panel';
+import React, { useMemo } from 'react';
+import { TabbedPanel, type TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 import { type SlidePanelAction } from '@/components/shared/slide-panel';
-import { AssetDetailsTab } from '@/components/features/assets/asset-details-tab';
-import { TechnicalDetailsTab } from '@/components/features/assets/technical-details-tab';
-import { PurchaseDetailsTab } from '@/components/features/assets/purchase-details-tab';
-import { HistoryTab } from '@/components/features/assets/history-tab';
-import type { HistoryEvent, MaintenanceEvent } from '@/actions/assets';
-import { AssetLoadingSkeleton } from '@/components/features/assets/asset-loading-skeleton';
-import { useSidebar } from '@/lib/context/sidebar-context';
+import { AssetDetailsTab } from './asset-details-tab';
+import { TechnicalDetailsTab } from './technical-details-tab';
+import { PurchaseDetailsTab } from './purchase-details-tab';
+import { HistoryTab } from './history-tab';
+import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-repo';
+import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 
 
 export interface AssetDetailsPanelProps {
@@ -65,18 +64,6 @@ export interface AssetDetailsPanelProps {
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
-  const { isCollapsed, collapseSidebar, expandSidebar } = useSidebar();
-  const wasCollapsedRef = React.useRef(isCollapsed);
-
-  useEffect(() => {
-    if (props.isOpen) {
-      wasCollapsedRef.current = isCollapsed;
-      if (!isCollapsed) collapseSidebar();
-    } else {
-      if (!wasCollapsedRef.current) expandSidebar();
-    }
-  }, [props.isOpen, collapseSidebar, expandSidebar]); // removed isCollapsed from deps
-
   const getActionButtonLabel = () => {
     if (props.assetCategory === 'Office Furniture') return 'Transfer';
     if (props.assetCategory === 'Software') return 'Return';
@@ -90,41 +77,41 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
-    detailsFields.push({ label: 'Asset ID :', value: props.assetId });
+    detailsFields.push({ label: 'Asset ID', value: props.assetId });
     if (isFurniture) {
       detailsFields.push(
-        { label: 'Category :', value: props.assetCategory },
-        { label: 'Product Line :', value: props.model },
-        { label: 'Manufacturer :', value: props.brand },
-        { label: 'Location :', value: props.location || '-' },
-        { label: 'Condition :', value: props.condition || '-' }
+        { label: 'Category', value: props.assetCategory },
+        { label: 'Product Line', value: props.model },
+        { label: 'Manufacturer', value: props.brand },
+        { label: 'Location', value: props.location || '-' },
+        { label: 'Condition', value: props.condition || '-' }
       );
     } else if (isSoftware) {
       detailsFields.push(
-        { label: 'License Type :', value: props.specs?.license_type?.toString() || 'Subscription' },
-        { label: 'Version :', value: props.specs?.version?.toString() || '-' },
-        { label: 'Publisher :', value: props.brand },
-        { label: 'Assigned to :', value: props.owner || '-' },
-        { label: 'Group :', value: props.group || '-' }
+        { label: 'License Type', value: props.specs?.license_type?.toString() || 'Subscription' },
+        { label: 'Version', value: props.specs?.version?.toString() || '-' },
+        { label: 'Publisher', value: props.brand },
+        { label: 'Assigned to', value: props.owner || '-' },
+        { label: 'Group', value: props.group || '-' }
       );
     } else {
       detailsFields.push(
-        { label: 'Category :', value: props.assetCategory },
-        { label: 'Model :', value: props.model },
-        { label: 'Brand :', value: props.brand },
-        { label: 'Serial Number :', value: props.serialNumber || '-' },
-        { label: 'Owner :', value: props.owner || 'TIQRI' },
-        { label: 'Assigned to :', value: props.owner || '-' },
-        { label: 'Group :', value: props.group || '-' }
+        { label: 'Category', value: props.assetCategory },
+        { label: 'Model', value: props.model },
+        { label: 'Brand', value: props.brand },
+        { label: 'Serial Number', value: props.serialNumber || '-' },
+        { label: 'Owner', value: props.owner || '-' },
+        { label: 'Assigned to', value: props.owner || '-' },
+        { label: 'Group', value: props.group || '-' }
       );
     }
 
     // Common Footer fields
     detailsFields.push(
-      { label: 'Date Created :', value: props.dateCreated },
-      { label: 'Warranty :', value: props.warranty || '-' },
-      { label: 'Updated at :', value: props.updatedAt },
-      { label: 'Last Repaired :', value: props.lastRepaired || '-' }
+      { label: 'Date Created', value: props.dateCreated },
+      { label: 'Warranty', value: props.warranty || '-' },
+      { label: 'Updated at', value: props.updatedAt },
+      { label: 'Last Repaired', value: props.lastRepaired || '-' }
     );
 
     tabsList.push({

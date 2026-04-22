@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Paperclip, Plus } from 'lucide-react';
 import Image from 'next/image';
 
-import { registerSoftwareAsset } from '@/actions/assets';
+import { registerAsset } from '@/actions/assets';
 import { useOpenRegistrationPanel } from '@/components/assets/use-open-registration-panel';
 import { FormPanel } from '@/components/shared/slide-panels/form-panel';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -15,9 +15,9 @@ import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import { cn } from '@/lib/utils';
 import {
-  initialRegisterSoftwareAssetActionState,
-  type RegisterSoftwareAssetActionState,
-} from '@/validations/software-asset';
+  initialRegisterAssetActionState,
+  type RegisterAssetActionState,
+} from '@/lib/validations/asset-registration';
 
 type RegistrationOption = React.ComponentProps<
   typeof SearchableDropdown
@@ -75,8 +75,8 @@ function getTodayDateValue() {
 }
 
 function getError(
-  state: RegisterSoftwareAssetActionState,
-  key: keyof NonNullable<RegisterSoftwareAssetActionState['errors']>
+  state: RegisterAssetActionState,
+  key: keyof NonNullable<RegisterAssetActionState['errors']>
 ) {
   return state.errors?.[key]?.[0];
 }
@@ -203,8 +203,8 @@ export function SoftwareRegistryPageClient({
   const openRegistrationPanel = useOpenRegistrationPanel(setIsPanelOpen);
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
   const [state, formAction, isPending] = React.useActionState(
-    registerSoftwareAsset,
-    initialRegisterSoftwareAssetActionState
+    registerAsset,
+    initialRegisterAssetActionState
   );
 
   const [softwareName, setSoftwareName] = React.useState('');

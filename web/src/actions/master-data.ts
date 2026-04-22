@@ -1,9 +1,7 @@
 'use server';
 
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { jwtVerify } from 'jose';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
 
 import { db } from '@/db';
 import {
@@ -16,13 +14,11 @@ import {
   locations,
   maintenanceRecords,
   models,
-  sessions,
   users,
   vendors,
 } from '@/db/schema';
-import { getJwtSecretKey } from '@/lib/jwt';
+import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
-import { isValidUuid } from '@/lib/uuid';
 import type {
   BrandFormState,
   CategoryFormState,
@@ -40,9 +36,7 @@ import {
 } from '@/lib/validations/master-data';
 import { type LocationType } from '@/types/master-data';
 
-const SESSION_COOKIE_NAME = 'session_token';
 
-type UserRole = typeof users.$inferSelect.role;
 
 const CATEGORY_PILLARS = new Set([
   'IT & Digital',
@@ -50,71 +44,6 @@ const CATEGORY_PILLARS = new Set([
   'Office Furniture',
   'Office Electronics',
 ]);
-
-function normalizeTokenRole(role: unknown): UserRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
-  }
-
-  return null;
-}
-
-async function getAuthenticatedUser(): Promise<{
-  id: string;
-  role: UserRole;
-} | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-
-    if (!isValidUuid(payload.sub)) {
-      return null;
-    }
-
-    if (!payload.sid || typeof payload.sid !== 'string') {
-      return null;
-    }
-
-    const role = normalizeTokenRole(payload.role);
-    if (!role) {
-      return null;
-    }
-
-    const activeSession = await db
-      .select({ id: sessions.id })
-      .from(sessions)
-      .where(
-        and(
-          eq(sessions.tokenId, payload.sid),
-          isNull(sessions.revokedAt),
-          sql`${sessions.expiresAt} > NOW()`
-        )
-      )
-      .limit(1);
-
-    if (activeSession.length === 0) {
-      return null;
-    }
-
-    return {
-      id: payload.sub,
-      role,
-    };
-  } catch {
-    return null;
-  }
-}
 
 function unauthorizedMasterDataResult(): UpdateMasterDataState {
   return {

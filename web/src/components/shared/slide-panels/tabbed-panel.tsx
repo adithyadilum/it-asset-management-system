@@ -79,14 +79,14 @@ export function TabbedPanel({
         tabs.length > 0 ? (
             <div ref={contentRef}>
                 <Tabs value={activeTabId} onValueChange={handleTabChange} className="space-y-3">
-                    {/* Added a wrapper to push it left, and changed w-full to w-fit with Figma colors */}
-                    <div className="w-full flex justify-start mb-[18px]">
-                        <TabsList className="flex h-[36px] w-fit items-center justify-start rounded-[8px] bg-[#f8fafc] p-[3px] gap-[4px]">
+                    {/* Tab bar aligned left */}
+                    <div className="mb-4 flex w-full justify-start">
+                        <TabsList className="flex h-9 w-fit items-center justify-start gap-1 rounded-lg bg-muted p-0.5">
                             {tabs.map((tab) => (
-                                <TabsTrigger 
-                                    key={tab.id} 
-                                    value={tab.id} 
-                                    className="h-[29px] rounded-[6px] px-[12px] py-[4px] text-[14px] font-medium text-[#64748b] transition-all data-[state=active]:bg-[#ffffff] data-[state=active]:text-[#0f172a] data-[state=active]:shadow-[0px_1px_3px_rgba(0,0,0,0.1)] data-[state=active]:border data-[state=active]:border-[#e2e8f0] border border-transparent shrink-0"
+                                <TabsTrigger
+                                    key={tab.id}
+                                    value={tab.id}
+                                    className="h-7 shrink-0 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground transition-all data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                                 >
                                     {tab.label}
                                 </TabsTrigger>

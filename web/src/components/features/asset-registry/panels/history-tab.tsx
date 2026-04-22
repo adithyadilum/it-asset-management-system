@@ -10,7 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 import { TimelineItem } from './timeline-item';
 
-import { type HistoryEvent } from '@/actions/assets';
+import { type HistoryEvent } from '@/lib/data/asset-details-repo';
 
 export interface HistoryTabProps {
   events: HistoryEvent[];
