@@ -10,12 +10,15 @@ import { redirect } from 'next/navigation';
 
 import { db } from '@/db';
 import { sessions, users } from '@/db/schema';
-import { getJwtSecretKey } from '@/lib/jwt';
+import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import { isValidUuid } from '@/lib/uuid';
+import { isValidUuid } from '@/lib/auth/uuid';
 import type { LoginActionResult, LoginRequest, UserRole } from '@/types/auth';
-import { authSessionCache, buildAuthCacheKey } from '@/lib/auth-session-cache';
-import { SESSION_COOKIE_NAME } from '@/lib/session';
+import {
+  authSessionCache,
+  buildAuthCacheKey,
+} from '@/lib/auth/auth-session-cache';
+import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
 
@@ -162,7 +165,8 @@ export async function logout() {
             label: 'auth.logout.revoke_session',
             startTime: revokeSessionTimer,
             metadata: {
-              updated: (result as unknown as { rowCount?: number } | undefined)?.rowCount,
+              updated: (result as unknown as { rowCount?: number } | undefined)
+                ?.rowCount,
             },
           });
         }

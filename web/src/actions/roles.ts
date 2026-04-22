@@ -6,7 +6,7 @@ import { eq, ilike, or, and, isNull, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { isValidUuid } from '@/lib/uuid';
+import { isValidUuid } from '@/lib/auth/uuid';
 import { getAuthenticatedUser } from '@/actions/auth';
 
 type UserRole = typeof users.$inferSelect.role;

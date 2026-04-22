@@ -165,16 +165,20 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+  const [prevNormalizedQuery, setPrevNormalizedQuery] = useState(normalizedQuery);
 
+  if (normalizedQuery !== prevNormalizedQuery) {
+    setPrevNormalizedQuery(normalizedQuery);
     if (normalizedQuery.length < 2) {
       setAssetsResults([]);
       setUsersResults([]);
       setSearchError(null);
       setIsSearching(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen || normalizedQuery.length < 2) {
       return;
     }
 

@@ -1,12 +1,7 @@
 'use server';
 
-import { and, eq, isNull, sql } from 'drizzle-orm';
-import { jwtVerify } from 'jose';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
 
-import { db } from '@/db';
-import { sessions, users } from '@/db/schema';
 import {
   bulkUpdateAssets as bulkUpdateAssetsRepo,
   getAssetsByPillar as getAssetsByPillarRepo,
@@ -17,16 +12,16 @@ import {
   type BulkAssetUpdatePayload,
   type RegistryPillar,
 } from '@/lib/data/asset-registry-repo';
-import { getJwtSecretKey } from '@/lib/jwt';
+import {
+  getAuthenticatedUser,
+  canManageAssets,
+} from '@/lib/auth/get-authenticated-user';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { isValidUuid } from '@/lib/uuid';
+import { isValidUuid } from '@/lib/auth/uuid';
 
-const SESSION_COOKIE_NAME = 'session_token';
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 16;
 const MAX_PAGE_SIZE = 100;
-
-type UserRole = typeof users.$inferSelect.role;
 
 export interface AssetsGridQueryInput {
   pillar: unknown;
@@ -41,23 +36,6 @@ export interface BulkUpdateAssetsInput {
   assetIds: string[];
   updates: Partial<BulkAssetUpdatePayload>;
   actionType?: string;
-}
-
-function normalizeTokenRole(role: unknown): UserRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
-  }
-
-  return null;
-}
-
-function canManageAssetsRegistry(role: UserRole) {
-  return role === 'GlobalAdmin' || role === 'ITOperator';
 }
 
 function normalizePillar(pillar: unknown): RegistryPillar | null {
@@ -228,76 +206,11 @@ function normalizeBulkUpdates(updates: Partial<BulkAssetUpdatePayload>) {
   return normalizedUpdates;
 }
 
-/**
- * Helper to get the current user ID and verify session validity.
- */
-async function getAuthenticatedUser(): Promise<{
-  id: string;
-  role: UserRole;
-} | null> {
-  const authTimer = startLatencyTimer();
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) return null;
-
-  try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-
-    // Validate sub is UUID and sid exists.
-    if (!isValidUuid(payload.sub)) return null;
-    if (!payload.sid || typeof payload.sid !== 'string') return null;
-
-    const role = normalizeTokenRole(payload.role);
-    if (!role) return null;
-
-    // Verify the session against the database to ensure it has not been revoked.
-    let activeSession: Array<{ id: number }> = [];
-    const sessionLookupTimer = startLatencyTimer();
-    try {
-      activeSession = await db
-        .select({ id: sessions.id })
-        .from(sessions)
-        .where(
-          and(
-            eq(sessions.tokenId, payload.sid),
-            isNull(sessions.revokedAt),
-            sql`${sessions.expiresAt} > NOW()`
-          )
-        )
-        .limit(1);
-    } finally {
-      logLatency({
-        scope: 'DB ACTION',
-        label: 'assetsRegistry.getAuthenticatedUser.session_lookup',
-        startTime: sessionLookupTimer,
-      });
-    }
-
-    if (activeSession.length === 0) {
-      return null; // Session is revoked or expired
-    }
-
-    return {
-      id: payload.sub,
-      role,
-    };
-  } catch {
-    return null;
-  } finally {
-    logLatency({
-      scope: 'ACTION AUTH',
-      label: 'assetsRegistry.getAuthenticatedUser',
-      startTime: authTimer,
-    });
-  }
-}
-
 export async function getCategoriesByPillar(pillarInput: unknown) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || !canManageAssetsRegistry(currentUser.role)) {
+  if (!currentUser || !canManageAssets(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to read asset categories.'
     );
@@ -348,7 +261,7 @@ export async function getAssetsByPillar(input: AssetsGridQueryInput) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || !canManageAssetsRegistry(currentUser.role)) {
+  if (!currentUser || !canManageAssets(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to read asset registry data.'
     );
@@ -414,7 +327,7 @@ export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || !canManageAssetsRegistry(currentUser.role)) {
+  if (!currentUser || !canManageAssets(currentUser.role)) {
     throw new Error('Forbidden: You do not have permission to update assets.');
   }
 
@@ -488,7 +401,9 @@ export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : 'Failed to update selected assets.',
+        error instanceof Error
+          ? error.message
+          : 'Failed to update selected assets.',
     };
   } finally {
     logLatency({

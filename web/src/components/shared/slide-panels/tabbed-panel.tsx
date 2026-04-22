@@ -48,17 +48,15 @@ export function TabbedPanel({
         [defaultTabId, tabs]
     );
 
-    React.useEffect(() => {
-        if (!fallbackTabId) {
-            return;
-        }
+    const [prevTabs, setPrevTabs] = React.useState(tabs);
 
+    if (tabs !== prevTabs) {
+        setPrevTabs(tabs);
         const hasActiveTab = tabs.some((tab) => tab.id === activeTabId);
-
-        if (!hasActiveTab) {
+        if (!hasActiveTab && fallbackTabId) {
             setActiveTabId(fallbackTabId);
         }
-    }, [activeTabId, fallbackTabId, tabs]);
+    }
 
     const handleTabChange = (nextTabId: string) => {
         const viewport = contentRef.current
@@ -79,13 +77,20 @@ export function TabbedPanel({
         tabs.length > 0 ? (
             <div ref={contentRef}>
                 <Tabs value={activeTabId} onValueChange={handleTabChange} className="space-y-3">
-                    <TabsList className="w-full justify-start gap-1 overflow-x-auto">
-                        {tabs.map((tab) => (
-                            <TabsTrigger key={tab.id} value={tab.id} className="shrink-0">
-                                {tab.label}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
+                    {/* Tab bar aligned left */}
+                    <div className="mb-4 flex w-full justify-start">
+                        <TabsList className="flex h-9 w-fit items-center justify-start gap-1 rounded-lg bg-muted p-0.5">
+                            {tabs.map((tab) => (
+                                <TabsTrigger
+                                    key={tab.id}
+                                    value={tab.id}
+                                    className="h-7 shrink-0 rounded-md border border-transparent px-3 py-1 text-sm font-medium text-muted-foreground transition-all data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                                >
+                                    {tab.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </div>
 
                     {tabs.map((tab) => (
                         <TabsContent key={tab.id} value={tab.id} className="mt-0">
@@ -108,6 +113,7 @@ export function TabbedPanel({
             description={description}
             content={content}
             actions={actions}
+            showCloseButton={true}
         />
     );
 }

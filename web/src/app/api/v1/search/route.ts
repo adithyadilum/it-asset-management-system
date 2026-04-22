@@ -13,9 +13,9 @@ import {
   systemAuditLogs,
   users,
 } from '@/db/schema';
-import { getJwtSecretKey } from '@/lib/jwt';
+import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { isValidUuid } from '@/lib/uuid';
+import { isValidUuid } from '@/lib/auth/uuid';
 import { omniSearchQuerySchema } from '@/lib/validations/omni-search';
 import type { UserRole } from '@/types/auth';
 import type {
@@ -176,7 +176,9 @@ async function searchAssetsByQuery(
   }
 }
 
-async function searchUsersByQuery(query: string): Promise<OmniSearchUserResult[]> {
+async function searchUsersByQuery(
+  query: string
+): Promise<OmniSearchUserResult[]> {
   const queryTimer = startLatencyTimer();
   const exactQuery = query;
   const startsWithQuery = `${query}%`;
@@ -204,7 +206,10 @@ async function searchUsersByQuery(query: string): Promise<OmniSearchUserResult[]
       .where(
         and(
           eq(users.isActive, true),
-          or(ilike(users.name, containsQuery), ilike(users.email, containsQuery))
+          or(
+            ilike(users.name, containsQuery),
+            ilike(users.email, containsQuery)
+          )
         )
       )
       .orderBy(rankExpression, asc(users.name))
@@ -281,7 +286,8 @@ async function searchReportsByQuery(
           return true;
         }
 
-        const haystack = `${reportCandidate.label} ${reportCandidate.description}`.toLowerCase();
+        const haystack =
+          `${reportCandidate.label} ${reportCandidate.description}`.toLowerCase();
         return haystack.includes(normalizedQuery);
       })
       .slice(0, MAX_RESULTS_PER_GROUP);
@@ -306,7 +312,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (!parsedInput.success) {
-      return NextResponse.json({ error: 'Invalid search query.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid search query.' },
+        { status: 400 }
+      );
     }
 
     const query = parsedInput.data.q;

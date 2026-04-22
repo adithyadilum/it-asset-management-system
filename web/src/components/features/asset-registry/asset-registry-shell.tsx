@@ -29,7 +29,6 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
 
   const params = searchParams ? await searchParams : {};
   const currentPanel = Array.isArray(params.panel) ? params.panel[0] : params.panel;
-  const panelAnimation = Array.isArray(params.animate) ? params.animate[0] : params.animate;
   const recordId = Array.isArray(params.id) ? params.id[0] : params.id;
   const closePanelUrl = `/assets/${view}`;
 
@@ -52,9 +51,9 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
       />
       <AssetRegistryPanels
         currentPanel={currentPanel}
-        panelAnimation={panelAnimation}
         recordId={recordId}
         closePanelUrl={closePanelUrl}
+        pillar={config.pillar}
       />
     </div>
   );

@@ -296,8 +296,8 @@ export function AssetRegistryClient({
     statusFilter?.operator === 'is not' ||
     Boolean(
       selectedCategoryOption.name &&
-        !selectedCategoryOption.isAll &&
-        !selectedCategoryOption.id
+      !selectedCategoryOption.isAll &&
+      !selectedCategoryOption.id
     );
 
   useEffect(() => {
@@ -746,41 +746,41 @@ export function AssetRegistryClient({
     },
     ...(config.view === 'hardware'
       ? [
-          {
-            id: 'assign-or-return',
-            label: 'Assign / Return',
-            disabled: isMutating,
-            onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
-              const allSelectedAssigned =
-                selectedRowsForAction.length > 0 &&
-                selectedRowsForAction.every(
-                  (selectedRow) => selectedRow.status === 'Assigned'
-                );
-
-              const nextStatus = allSelectedAssigned ? 'Available' : 'Assigned';
-
-              void performBulkStatusChange(
-                nextStatus,
-                selectedRowsForAction.map((selectedRow) => selectedRow.id)
+        {
+          id: 'assign-or-return',
+          label: 'Assign / Return',
+          disabled: isMutating,
+          onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+            const allSelectedAssigned =
+              selectedRowsForAction.length > 0 &&
+              selectedRowsForAction.every(
+                (selectedRow) => selectedRow.status === 'Assigned'
               );
-            },
-          } as DataTableSelectionAction<AssetRegistryRow>,
-        ]
+
+            const nextStatus = allSelectedAssigned ? 'Available' : 'Assigned';
+
+            void performBulkStatusChange(
+              nextStatus,
+              selectedRowsForAction.map((selectedRow) => selectedRow.id)
+            );
+          },
+        } as DataTableSelectionAction<AssetRegistryRow>,
+      ]
       : []),
     ...(config.view !== 'software'
       ? [
-          {
-            id: 'bulk-transfer',
-            label: 'Bulk Transfer',
-            disabled: isMutating,
-            onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
-              setTransferSelectionRows(selectedRowsForAction);
-              setDestinationLocationId(null);
-              setTransferDate('');
-              setIsTransferDialogOpen(true);
-            },
-          } as DataTableSelectionAction<AssetRegistryRow>,
-        ]
+        {
+          id: 'bulk-transfer',
+          label: 'Bulk Transfer',
+          disabled: isMutating,
+          onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+            setTransferSelectionRows(selectedRowsForAction);
+            setDestinationLocationId(null);
+            setTransferDate('');
+            setIsTransferDialogOpen(true);
+          },
+        } as DataTableSelectionAction<AssetRegistryRow>,
+      ]
       : []),
     {
       id: 'dispose',
@@ -841,7 +841,7 @@ export function AssetRegistryClient({
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="relative w-full max-w-[545px]">
+          <div className="relative w-full max-w-136.25">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               value={searchValue}
@@ -851,325 +851,331 @@ export function AssetRegistryClient({
             />
           </div>
 
-        <div className="flex items-center gap-2">
-          <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-            <PopoverAnchor asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
-                onClick={() => setIsFilterPopoverOpen((currentOpen) => !currentOpen)}
-              >
-                Filters
-                <ChevronDown className="size-4" />
-              </Button>
-            </PopoverAnchor>
-            <PopoverContent
-              align="end"
-              side="bottom"
-              sideOffset={10}
-              className="w-[245px] rounded-lg border border-slate-200 p-0 shadow-xl"
-            >
-              <div className="border-b border-slate-200 px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-slate-600"
-                    onClick={() => setIsFilterPopoverOpen(false)}
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3 px-3 py-3">
-                <select
-                  value={draftField}
-                  onChange={(event) => setDraftField(event.target.value as FilterField)}
-                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-                >
-                  {config.filterFieldOptions.map((filterFieldOption) => (
-                    <option key={filterFieldOption.value} value={filterFieldOption.value}>
-                      {filterFieldOption.label}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="space-y-2 text-sm text-slate-700">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={draftOperator === 'is'}
-                      onChange={() => setDraftOperator('is')}
-                    />
-                    is
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      checked={draftOperator === 'is not'}
-                      onChange={() => setDraftOperator('is not')}
-                    />
-                    is not
-                  </label>
-                </div>
-
-                <select
-                  value={draftValue}
-                  onChange={(event) => setDraftValue(event.target.value)}
-                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-                >
-                  {filterValueOptions.map((filterValueOption) => (
-                    <option key={filterValueOption} value={filterValueOption}>
-                      {filterValueOption}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+              <PopoverAnchor asChild>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-lg border-slate-200 px-3 text-sm"
-                  onClick={() => setIsFilterPopoverOpen(false)}
+                  className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
+                  onClick={() => setIsFilterPopoverOpen((currentOpen) => !currentOpen)}
                 >
-                  Cancel
+                  Filters
+                  <ChevronDown className="size-4" />
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
-                  onClick={() => {
-                    if (draftValue) {
-                      setOrReplaceFilter({
-                        field: draftField,
-                        operator: draftOperator,
-                        value: draftValue,
-                      });
-                    }
-                  }}
-                >
-                  Apply Filter
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Button
-            type="button"
-            size="sm"
-          >
-            <Plus className="h-4 w-4" />
-            {config.addAssetLabel}
-          </Button>
-        </div>
-      </div>
-
-      {appliedFilters.length > 0 ? (
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {appliedFilters.map((appliedFilter) => (
-              <span
-                key={appliedFilter.field}
-                className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700"
+              </PopoverAnchor>
+              <PopoverContent
+                align="end"
+                side="bottom"
+                sideOffset={10}
+                className="w-61.25 rounded-lg border border-slate-200 p-0 shadow-xl"
               >
-                {`${appliedFilter.field} ${appliedFilter.operator} ${appliedFilter.value}`}
-                <button
-                  type="button"
-                  className="text-slate-500 hover:text-slate-700"
-                  onClick={() => clearFilter(appliedFilter.field)}
-                >
-                  <X className="size-4" />
-                </button>
-              </span>
-            ))}
-
-            <button
-              type="button"
-              className="inline-flex size-8 items-center justify-center rounded-lg text-xl text-slate-600 hover:bg-slate-100"
-              onClick={() => setIsFilterPopoverOpen(true)}
-            >
-              +
-            </button>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
-            onClick={clearAllFilters}
-          >
-            Clear Filters
-          </Button>
-        </div>
-      ) : null}
-
-      {errorMessage ? (
-        <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {errorMessage}
-        </div>
-      ) : null}
-
-      <div className="min-h-0">
-        {isPending ? (
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
-            <TableSkeleton
-              rowCount={8}
-              columnWidths={tableSkeletonColumnWidths}
-            />
-          </div>
-        ) : (
-          <DataTable<AssetRegistryRow, unknown>
-            columns={tableColumns}
-            data={visibleRows}
-            pageSizeOptions={config.rowsPerPageOptions}
-            initialPageSize={config.defaultPageSize}
-            selectionActions={selectionActions}
-            selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
-            onRowClick={(row) => {
-              const params = new URLSearchParams(searchParams.toString());
-              params.set('panel', 'record');
-              params.set('id', row.id);
-              params.set('animate', isPanelOpen ? '0' : '1');
-              router.push(`${pathname}?${params.toString()}`, { scroll: false });
-            }}
-            className="rounded-lg border-slate-200"
-          />
-        )}
-      </div>
-
-      <Dialog
-        open={isTransferDialogOpen}
-        onOpenChange={(open) => {
-          setIsTransferDialogOpen(open);
-
-          if (!open) {
-            setTransferSelectionRows([]);
-            setDestinationLocationId(null);
-            setTransferDate('');
-          }
-        }}
-      >
-        <DialogContent className="max-w-[360px] rounded-xl border border-slate-200 bg-white p-0">
-          <DialogTitle className="sr-only">Transfer assets</DialogTitle>
-          <DialogDescription className="sr-only">
-            Transfer selected assets to a destination location.
-          </DialogDescription>
-
-          <div className="border-b border-slate-200 px-4 py-3">
-            <h3 className="text-2xl font-semibold text-slate-900">
-              Transfer {transferSelectionRows.length} Assets
-            </h3>
-          </div>
-
-          <div className="space-y-3 px-4 py-3">
-            <ScrollArea className="max-h-24 rounded-lg border border-slate-200 bg-slate-50 p-2">
-              <div className="space-y-1">
-                {transferSelectionRows.map((selectedRow) => (
-                  <div
-                    key={selectedRow.id}
-                    className="grid grid-cols-[88px_1fr] gap-2 text-sm text-slate-700"
-                  >
-                    <span className="font-medium text-slate-800">
-                      {selectedRow.assetTag}
-                    </span>
-                    <span className="truncate">{toCellText(selectedRow.name)}</span>
+                <div className="border-b border-slate-200 px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-slate-600"
+                      onClick={() => setIsFilterPopoverOpen(false)}
+                    >
+                      <X className="size-4" />
+                    </button>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700">Current Location</label>
-              <Input
-                value={
-                  uniqueSelectedLocations.length === 0
-                    ? '-'
-                    : uniqueSelectedLocations.length === 1
-                    ? uniqueSelectedLocations[0]
-                    : 'Multiple locations'
-                }
-                disabled
-                className="h-9 rounded-lg border-slate-200 bg-slate-50"
-              />
-            </div>
+                <div className="space-y-3 px-3 py-3">
+                  <select
+                    value={draftField}
+                    onChange={(event) => setDraftField(event.target.value as FilterField)}
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  >
+                    {config.filterFieldOptions.map((filterFieldOption) => (
+                      <option key={filterFieldOption.value} value={filterFieldOption.value}>
+                        {filterFieldOption.label}
+                      </option>
+                    ))}
+                  </select>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700">
-                Destination Location
-              </label>
-              <select
-                value={destinationLocationId ?? ''}
-                onChange={(event) => {
-                  const parsedValue = Number(event.target.value);
-                  setDestinationLocationId(
-                    Number.isInteger(parsedValue) && parsedValue > 0
-                      ? parsedValue
-                      : null
-                  );
-                }}
-                className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-              >
-                <option value="">Select destination</option>
-                {locationOptions.map((locationOption) => (
-                  <option key={locationOption.id} value={locationOption.id}>
-                    {locationOption.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={draftOperator === 'is'}
+                        onChange={() => setDraftOperator('is')}
+                      />
+                      is
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={draftOperator === 'is not'}
+                        onChange={() => setDraftOperator('is not')}
+                      />
+                      is not
+                    </label>
+                  </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700">Transfer Date</label>
-              <div className="relative">
-                <Input
-                  type="date"
-                  value={transferDate}
-                  onChange={(event) => setTransferDate(event.target.value)}
-                  className="h-9 rounded-lg border-slate-200 pr-9"
-                />
-                <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              </div>
-            </div>
+                  <select
+                    value={draftValue}
+                    onChange={(event) => setDraftValue(event.target.value)}
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  >
+                    {filterValueOptions.map((filterValueOption) => (
+                      <option key={filterValueOption} value={filterValueOption}>
+                        {filterValueOption}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-3 py-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-lg border-slate-200 px-3 text-sm"
+                    onClick={() => setIsFilterPopoverOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
+                    onClick={() => {
+                      if (draftValue) {
+                        setOrReplaceFilter({
+                          field: draftField,
+                          operator: draftOperator,
+                          value: draftValue,
+                        });
+                      }
+                    }}
+                  >
+                    Apply Filter
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('panel', 'registration');
+                params.set('animate', isPanelOpen ? '0' : '1');
+                router.push(`${pathname}?${params.toString()}`, { scroll: false });
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              {config.addAssetLabel}
+            </Button>
           </div>
+        </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
+        {appliedFilters.length > 0 ? (
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {appliedFilters.map((appliedFilter) => (
+                <span
+                  key={appliedFilter.field}
+                  className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700"
+                >
+                  {`${appliedFilter.field} ${appliedFilter.operator} ${appliedFilter.value}`}
+                  <button
+                    type="button"
+                    className="text-slate-500 hover:text-slate-700"
+                    onClick={() => clearFilter(appliedFilter.field)}
+                  >
+                    <X className="size-4" />
+                  </button>
+                </span>
+              ))}
+
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center rounded-lg text-xl text-slate-600 hover:bg-slate-100"
+                onClick={() => setIsFilterPopoverOpen(true)}
+              >
+                +
+              </button>
+            </div>
+
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 rounded-lg border-slate-200 px-3 text-sm"
-              onClick={() => {
-                setIsTransferDialogOpen(false);
-                setTransferSelectionRows([]);
-                setDestinationLocationId(null);
-                setTransferDate('');
-              }}
-              disabled={isMutating}
+              className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
+              onClick={clearAllFilters}
             >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
-              onClick={() => void performBulkTransfer()}
-              disabled={
-                !destinationLocationId ||
-                transferSelectionRows.length === 0 ||
-                isMutating
-              }
-            >
-              Confirm Transfer
+              Clear Filters
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : null}
+
+        {errorMessage ? (
+          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        ) : null}
+
+        <div className="min-h-0">
+          {isPending ? (
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
+              <TableSkeleton
+                rowCount={8}
+                columnWidths={tableSkeletonColumnWidths}
+              />
+            </div>
+          ) : (
+            <DataTable<AssetRegistryRow, unknown>
+              columns={tableColumns}
+              data={visibleRows}
+              pageSizeOptions={config.rowsPerPageOptions}
+              initialPageSize={config.defaultPageSize}
+              selectionActions={selectionActions}
+              selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
+              onRowClick={(row) => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('panel', 'record');
+                params.set('id', row.id);
+                params.set('animate', isPanelOpen ? '0' : '1');
+                router.push(`${pathname}?${params.toString()}`, { scroll: false });
+              }}
+              className="rounded-lg border-slate-200"
+            />
+          )}
+        </div>
+
+        <Dialog
+          open={isTransferDialogOpen}
+          onOpenChange={(open) => {
+            setIsTransferDialogOpen(open);
+
+            if (!open) {
+              setTransferSelectionRows([]);
+              setDestinationLocationId(null);
+              setTransferDate('');
+            }
+          }}
+        >
+          <DialogContent className="max-w-90 rounded-xl border border-slate-200 bg-white p-0">
+            <DialogTitle className="sr-only">Transfer assets</DialogTitle>
+            <DialogDescription className="sr-only">
+              Transfer selected assets to a destination location.
+            </DialogDescription>
+
+            <div className="border-b border-slate-200 px-4 py-3">
+              <h3 className="text-2xl font-semibold text-slate-900">
+                Transfer {transferSelectionRows.length} Assets
+              </h3>
+            </div>
+
+            <div className="space-y-3 px-4 py-3">
+              <ScrollArea className="max-h-24 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <div className="space-y-1">
+                  {transferSelectionRows.map((selectedRow) => (
+                    <div
+                      key={selectedRow.id}
+                      className="grid grid-cols-[88px_1fr] gap-2 text-sm text-slate-700"
+                    >
+                      <span className="font-medium text-slate-800">
+                        {selectedRow.assetTag}
+                      </span>
+                      <span className="truncate">{toCellText(selectedRow.name)}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">Current Location</label>
+                <Input
+                  value={
+                    uniqueSelectedLocations.length === 0
+                      ? '-'
+                      : uniqueSelectedLocations.length === 1
+                        ? uniqueSelectedLocations[0]
+                        : 'Multiple locations'
+                  }
+                  disabled
+                  className="h-9 rounded-lg border-slate-200 bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">
+                  Destination Location
+                </label>
+                <select
+                  value={destinationLocationId ?? ''}
+                  onChange={(event) => {
+                    const parsedValue = Number(event.target.value);
+                    setDestinationLocationId(
+                      Number.isInteger(parsedValue) && parsedValue > 0
+                        ? parsedValue
+                        : null
+                    );
+                  }}
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                >
+                  <option value="">Select destination</option>
+                  {locationOptions.map((locationOption) => (
+                    <option key={locationOption.id} value={locationOption.id}>
+                      {locationOption.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700">Transfer Date</label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    value={transferDate}
+                    onChange={(event) => setTransferDate(event.target.value)}
+                    className="h-9 rounded-lg border-slate-200 pr-9"
+                  />
+                  <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg border-slate-200 px-3 text-sm"
+                onClick={() => {
+                  setIsTransferDialogOpen(false);
+                  setTransferSelectionRows([]);
+                  setDestinationLocationId(null);
+                  setTransferDate('');
+                }}
+                disabled={isMutating}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
+                onClick={() => void performBulkTransfer()}
+                disabled={
+                  !destinationLocationId ||
+                  transferSelectionRows.length === 0 ||
+                  isMutating
+                }
+              >
+                Confirm Transfer
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );

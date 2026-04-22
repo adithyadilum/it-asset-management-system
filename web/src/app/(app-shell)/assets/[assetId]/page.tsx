@@ -3,11 +3,11 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { assets, models, categories } from '@/db/schema';
-import { isValidUuid } from '@/lib/uuid';
+import { isValidUuid } from '@/lib/auth/uuid';
 
 export default async function AssetIdPage({ params }: { params: Promise<{ assetId: string }> }) {
     const { assetId } = await params;
-    
+
     if (!isValidUuid(assetId)) {
         redirect('/assets');
     }

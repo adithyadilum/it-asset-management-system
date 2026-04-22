@@ -126,7 +126,6 @@ export const locations = pgTable(
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
-  pillar: pillarEnum('pillar'),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
   website: varchar('website', { length: 255 }),
@@ -222,6 +221,8 @@ export const assetPurchases = pgTable('asset_purchases', {
   currencyCode: varchar('currency_code', { length: 3 }).default('USD'),
   warrantyExpiry: date('warranty_expiry'),
   invoiceUrl: varchar('invoice_url', { length: 500 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),     
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),   
 });
 
 export const assetDocuments = pgTable('asset_documents', {
@@ -279,6 +280,8 @@ export const maintenanceRecords = pgTable('maintenance_records', {
   actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
   serviceDate: date('service_date'),
   closedAt: timestamp('closed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),     
+  updatedAt: timestamp('updated_at').defaultNow().notNull(), 
 });
 
 export const assetDisposals = pgTable('asset_disposals', {
@@ -328,7 +331,8 @@ export const systemAuditLogs = pgTable('system_audit_logs', {
 // -----------------------------------------------------------------------------
 // 7. RELATIONS (For Drizzle Query Builder)
 // -----------------------------------------------------------------------------
-export const assetsRelations = relations(assets, ({ one, many }) => ({
+
+export const assetRelations = relations(assets, ({ one, many }) => ({
   model: one(models, { fields: [assets.modelId], references: [models.id] }),
   location: one(locations, {
     fields: [assets.locationId],
@@ -349,4 +353,64 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   assignments: many(assetAssignments),
 }));
 
+export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
+  asset: one(assets, { fields: [assetPurchases.assetId], references: [assets.id] }),
+  vendor: one(vendors, { fields: [assetPurchases.vendorId], references: [vendors.id] }),
+}));
+
+export const maintenanceRecordsRelations = relations(
+  maintenanceRecords,
+  ({ one }) => ({
+    asset: one(assets, {
+      fields: [maintenanceRecords.assetId],
+      references: [assets.id],
+    }),
+    vendor: one(vendors, {
+      fields: [maintenanceRecords.vendorId],
+      references: [vendors.id],
+    }),
+    reporter: one(users, {
+      fields: [maintenanceRecords.reportedById],
+      references: [users.id],
+    }),
+  })
+);
+
+export const modelRelations = relations(models, ({ one, many }) => ({
+  brand: one(brands, { fields: [models.brandId], references: [brands.id] }),
+  category: one(categories, {
+    fields: [models.categoryId],
+    references: [categories.id],
+  }),
+  assets: many(assets),
+}));
+
+export const assetAssignmentsRelations = relations(
+  assetAssignments,
+  ({ one }) => ({
+    asset: one(assets, {
+      fields: [assetAssignments.assetId],
+      references: [assets.id],
+    }),
+    assignedToUser: one(users, {
+      fields: [assetAssignments.assignedToUserId],
+      references: [users.id],
+    }),
+    assignedBy: one(users, {
+      fields: [assetAssignments.assignedById],
+      references: [users.id],
+    }),
+  })
+);
+
+export const systemAuditLogsRelations = relations(
+  systemAuditLogs,
+  ({ one }) => ({
+    performedBy: one(users, {
+      fields: [systemAuditLogs.performedById],
+      references: [users.id],
+    }),
+  })
+);
 // Add other standard relation definitions here as needed for your specific nested queries.
+
