@@ -7,36 +7,8 @@ import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-pan
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 
 interface FormPanelProps {
-<<<<<<< HEAD
-    isOpen: boolean;
-    disableTransition?: boolean;
-    onClose: (open: boolean) => void;
-    title: React.ReactNode;
-    description?: React.ReactNode;
-    children?: React.ReactNode;
-    onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
-    isSubmitting?: boolean;
-    submitLabel?: string;
-    submittingLabel?: string;
-    cancelLabel?: string;
-    showCloseButton?: boolean;
-}
-
-export function FormPanel({
-    isOpen,
-    disableTransition = false,
-    onClose,
-    title,
-    description,
-    children,
-    onSubmit,
-    isSubmitting = false,
-    submitLabel = "Submit",
-    submittingLabel = "Submitting...",
-    cancelLabel = "Cancel",
-    showCloseButton = true,
-=======
   isOpen: boolean;
+  disableTransition?: boolean;
   onClose: (open: boolean) => void;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -51,6 +23,7 @@ export function FormPanel({
 
 export function FormPanel({
   isOpen,
+  disableTransition = false,
   onClose,
   title,
   description,
@@ -61,7 +34,6 @@ export function FormPanel({
   submittingLabel = "Submitting...",
   cancelLabel = "Cancel",
   showCloseButton = true,
->>>>>>> 64c675b (feat: implement asset registration form and related functionalities)
 }: FormPanelProps) {
   const formRef = React.useRef<HTMLFormElement>(null);
 
@@ -100,23 +72,10 @@ export function FormPanel({
     </form>
   );
 
-<<<<<<< HEAD
-    return (
-        <SlidePanel
-            isOpen={isOpen}
-            disableTransition={disableTransition}
-            onClose={onClose}
-            title={title}
-            description={description}
-            content={formContent}
-            actions={actions}
-            showCloseButton={showCloseButton}
-        />
-    );
-=======
   return (
     <SlidePanel
       isOpen={isOpen}
+      disableTransition={disableTransition}
       onClose={onClose}
       title={title}
       description={description}
@@ -125,5 +84,4 @@ export function FormPanel({
       showCloseButton={showCloseButton}
     />
   );
->>>>>>> 64c675b (feat: implement asset registration form and related functionalities)
 }

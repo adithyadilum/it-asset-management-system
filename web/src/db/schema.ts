@@ -125,14 +125,10 @@ export const locations = pgTable(
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
-<<<<<<< HEAD
+  pillar: pillarEnum('pillar'),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
   website: varchar('website', { length: 255 }),
-=======
-  pillar: pillarEnum('pillar').notNull(),
-  contactInfo: text('contact_info'), // Merged from ER diagram
->>>>>>> 4bcb15b (feat: implement software asset registration functionality and UI enhancements)
   isActive: boolean('is_active').default(true).notNull(),
 });
 

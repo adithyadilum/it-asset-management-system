@@ -16,8 +16,10 @@ import {
   locations,
   maintenanceRecords,
   models,
+  sessions,
+  systemAuditLogs,
+  users,
   vendors,
-  assets,
 } from './schema';
 import { type LocationType } from '../types/master-data';
 
@@ -525,8 +527,6 @@ async function seed() {
 
     categoryIdsByPrefix[categorySeed.prefix] = inserted[0].id;
   }
-  const categoryId = laptopCat[0].id;
-
   // Vendors
   let primaryVendor = await db
     .select()
@@ -539,7 +539,7 @@ async function seed() {
       .values({
         companyName: 'TechSource Lanka',
         pillar: 'IT & Digital',
-        contactInfo: 'sales@techsource.lk',
+        email: 'sales@techsource.lk',
         isActive: true,
       })
       .returning();
