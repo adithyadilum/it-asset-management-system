@@ -48,17 +48,15 @@ export function TabbedPanel({
         [defaultTabId, tabs]
     );
 
-    React.useEffect(() => {
-        if (!fallbackTabId) {
-            return;
-        }
+    const [prevTabs, setPrevTabs] = React.useState(tabs);
 
+    if (tabs !== prevTabs) {
+        setPrevTabs(tabs);
         const hasActiveTab = tabs.some((tab) => tab.id === activeTabId);
-
-        if (!hasActiveTab) {
+        if (!hasActiveTab && fallbackTabId) {
             setActiveTabId(fallbackTabId);
         }
-    }, [activeTabId, fallbackTabId, tabs]);
+    }
 
     const handleTabChange = (nextTabId: string) => {
         const viewport = contentRef.current

@@ -21,7 +21,6 @@ import {
   DB_PILLAR_VALUES,
   initialRegisterAssetActionState,
   type RegisterAssetActionState,
-  type AssetRegistrationInput,
   type RegistrationPillarInput,
 } from '@/lib/validations/asset-registration';
 
@@ -215,14 +214,12 @@ export function RegistrationForm({
     };
   }, [imagePreviewUrl]);
 
-  React.useEffect(() => {
+  const [prevInitialPillar, setPrevInitialPillar] = React.useState(initialPillar);
+  if (initialPillar !== prevInitialPillar) {
+    setPrevInitialPillar(initialPillar);
     setPillar(resolveStartingPillar(initialPillar));
-  }, [initialPillar]);
+  }
 
-  const isPillarLocked = Boolean(initialPillar);
-  const formError = state.errors?.form?.[0];
-  const selectedModelLabel =
-    modelOptions.find((option) => option.value === modelId)?.label ?? '';
   const filteredModelOptions = React.useMemo(
     () =>
       modelOptions
@@ -238,24 +235,27 @@ export function RegistrationForm({
     [brandId, categoryId, modelOptions]
   );
 
-  React.useEffect(() => {
-    if (modelId.length === 0) {
-      return;
+  const [prevFilteredModelOptions, setPrevFilteredModelOptions] = React.useState(filteredModelOptions);
+  if (filteredModelOptions !== prevFilteredModelOptions) {
+    setPrevFilteredModelOptions(filteredModelOptions);
+    if (modelId.length > 0) {
+      const stillValidModel = filteredModelOptions.some(
+        (option) => option.value === modelId
+      );
+      if (!stillValidModel) {
+        setModelId('');
+      }
     }
+  }
 
-    const stillValidModel = filteredModelOptions.some(
-      (option) => option.value === modelId
-    );
-
-    if (!stillValidModel) {
-      setModelId('');
-    }
-  }, [filteredModelOptions, modelId]);
-
+  const isPillarLocked = Boolean(initialPillar);
+  const formError = state.errors?.form?.[0];
   const modelEmptyMessage =
     brandId.length > 0 || categoryId.length > 0
       ? 'No models found for selected category and brand.'
       : 'No models found.';
+  const selectedModelLabel =
+    modelOptions.find((option) => option.value === modelId)?.label ?? '';
   const derivedAssetName =
     serialNumber.trim() || selectedModelLabel.trim() || 'Hardware Asset';
   const panelDescription = resolvePanelDescription(initialPillar);

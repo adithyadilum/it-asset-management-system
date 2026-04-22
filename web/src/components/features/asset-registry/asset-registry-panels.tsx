@@ -6,7 +6,6 @@ import { RegistrationPanelWrapper } from "./panels/registration-panel-wrapper";
 
 interface AssetRegistryPanelsProps {
     currentPanel?: string;
-    panelAnimation?: string;
     recordId?: string;
     closePanelUrl: string;
     pillar: string;
@@ -14,7 +13,6 @@ interface AssetRegistryPanelsProps {
 
 export function AssetRegistryPanels({
     currentPanel,
-    panelAnimation,
     recordId,
     closePanelUrl,
     pillar,

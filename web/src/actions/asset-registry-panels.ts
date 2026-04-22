@@ -2,7 +2,7 @@
 
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { brands, categories, models, users, vendors } from '@/db/schema';
+import { brands, categories, models, pillarEnum, users, vendors } from '@/db/schema';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 
 export async function getAssetDetailsByIdAction(id: string) {
@@ -38,7 +38,7 @@ export async function getRegistrationOptionsAction(pillar: string) {
   const user = await getAuthenticatedUser();
   if (!user) return { success: false, message: 'Unauthorized', data: null };
 
-  const pillarEnum = pillar as any;
+  const pillarValue = pillar as (typeof pillarEnum.enumValues)[number];
 
   const [
     categoriesList,
@@ -48,7 +48,7 @@ export async function getRegistrationOptionsAction(pillar: string) {
     usersList,
   ] = await Promise.all([
     db.query.categories.findMany({
-      where: and(eq(categories.isActive, true), eq(categories.pillar, pillarEnum)),
+      where: and(eq(categories.isActive, true), eq(categories.pillar, pillarValue)),
       columns: { id: true, name: true }
     }),
     db.query.brands.findMany({

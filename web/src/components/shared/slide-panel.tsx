@@ -79,6 +79,22 @@ export function SlidePanel({
     const resolvedActions = actions ?? [];
     const [shouldRender, setShouldRender] = React.useState(isOpen);
     const [isVisible, setIsVisible] = React.useState(false);
+    const [prevIsOpen, setPrevIsOpen] = React.useState(isOpen);
+
+    if (isOpen && !prevIsOpen) {
+        setPrevIsOpen(true);
+        setShouldRender(true);
+        if (disableTransition) {
+            setIsVisible(true);
+        }
+    } else if (!isOpen && prevIsOpen) {
+        setPrevIsOpen(false);
+        if (disableTransition) {
+            setIsVisible(false);
+            setShouldRender(false);
+        }
+    }
+
     const panelStyle = {
         "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
         "--slide-panel-gap": `${DEFAULT_PANEL_GAP}px`,
@@ -86,10 +102,7 @@ export function SlidePanel({
 
     React.useEffect(() => {
         if (isOpen) {
-            setShouldRender(true);
-
             if (disableTransition) {
-                setIsVisible(true);
                 return;
             }
 
@@ -100,18 +113,22 @@ export function SlidePanel({
             return () => window.cancelAnimationFrame(frameId);
         }
 
-        setIsVisible(false);
-
         if (disableTransition) {
-            setShouldRender(false);
             return;
         }
+
+        const frameId = window.requestAnimationFrame(() => {
+            setIsVisible(false);
+        });
 
         const timeoutId = window.setTimeout(() => {
             setShouldRender(false);
         }, 300);
 
-        return () => window.clearTimeout(timeoutId);
+        return () => {
+            window.cancelAnimationFrame(frameId);
+            window.clearTimeout(timeoutId);
+        };
     }, [disableTransition, isOpen]);
 
     return (

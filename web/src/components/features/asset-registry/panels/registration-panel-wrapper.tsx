@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getRegistrationOptionsAction } from "@/actions/asset-registry-panels";
 import { RegistrationForm } from "@/components/features/asset-registry/panels/registration-form";
 import { tiqriToast } from "@/components/shared/sonner";
+import { type RegistrationPillarInput } from "@/lib/validations/asset-registration";
 
 export interface RegistrationPanelWrapperProps {
   isOpen: boolean;
@@ -11,19 +12,33 @@ export interface RegistrationPanelWrapperProps {
   pillar: string;
 }
 
+interface RegistrationOptions {
+  categories: { value: string; label: string }[];
+  brands: { value: string; label: string }[];
+  models: { value: string; label: string; brandId: string; categoryId: string }[];
+  vendors: { value: string; label: string }[];
+  owners: { value: string; label: string }[];
+}
+
 export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: RegistrationPanelWrapperProps) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<RegistrationOptions | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [prevPillar, setPrevPillar] = useState<string | null>(null);
+
+  if (isOpen && pillar !== prevPillar) {
+    setPrevPillar(pillar);
+    setIsLoading(true);
+  }
 
   useEffect(() => {
     if (isOpen && pillar) {
       let isMounted = true;
-      setIsLoading(true);
+      // setIsLoading(true) moved to render phase check
 
       getRegistrationOptionsAction(pillar)
         .then((res) => {
           if (isMounted) {
-            if (res.success) {
+            if (res.success && res.data) {
               setData(res.data);
             } else {
               tiqriToast.error("Failed to load registration options");
@@ -57,7 +72,7 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
   const props = {
     isOpen,
     onClose: (open: boolean) => { if (!open) onClose(); },
-    initialPillar: pillar as any,
+    initialPillar: pillar as RegistrationPillarInput,
     categoryOptions: data.categories,
     brandOptions: data.brands,
     modelOptions: data.models,

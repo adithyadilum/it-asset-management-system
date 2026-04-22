@@ -21,7 +21,6 @@ export interface AssetDetailsTabProps {
 }
 
 export function AssetDetailsTab({
-  assetTag,
   imageUrl,
   status,
   note,

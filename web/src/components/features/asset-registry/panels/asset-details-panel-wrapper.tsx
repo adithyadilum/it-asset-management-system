@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AssetDetailsPanel } from "./asset-details-panel";
 import { getAssetDetailsByIdAction } from "@/actions/asset-registry-panels";
 import { tiqriToast } from "@/components/shared/sonner";
+import { type AssetDetailsData } from "@/lib/data/asset-details-repo";
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
@@ -12,13 +13,18 @@ export interface AssetDetailsPanelWrapperProps {
 }
 
 export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDetailsPanelWrapperProps) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AssetDetailsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
+
+  if (isOpen && recordId !== prevRecordId) {
+    setPrevRecordId(recordId);
+    setIsLoading(true);
+  }
 
   useEffect(() => {
     if (isOpen && recordId) {
       let isMounted = true;
-      setIsLoading(true);
 
       getAssetDetailsByIdAction(recordId)
         .then((res) => {
@@ -61,17 +67,17 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       dateCreated={data?.asset.createdAt ?? ""}
       updatedAt={data?.asset.updatedAt ?? ""}
       note={data?.assignment?.notes ?? ""}
-      specs={data?.model.technicalDetails ?? {}}
+      specs={(data?.model.technicalDetails as Record<string, string | number | undefined>) ?? {}}
       techNote={""} // techNote doesn't exist
       currency={data?.purchase?.currencyCode ?? ""}
       purchaseDate={data?.purchase?.purchaseDate ?? ""}
       basePrice={data?.purchase?.basePrice ?? ""}
       shippingCost={data?.purchase?.shippingCost ?? ""}
       tax={data?.purchase?.tax ?? ""}
-      totalCost={data?.purchase?.totalCost ?? ""}
+      totalCost={String(data?.purchase?.totalCost ?? "")}
       warranty={data?.purchase?.warrantyExpiry ?? ""}
       vendorInfo={{
-        vendorId: data?.vendor?.id ?? "",
+        vendorId: data?.vendor?.id ? String(data.vendor.id) : "",
         vendorName: data?.vendor?.companyName ?? "",
         contactNumber: data?.vendor?.contactInfo ?? ""
       }}

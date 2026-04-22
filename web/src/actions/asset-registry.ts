@@ -15,7 +15,6 @@ import {
 import {
   getAuthenticatedUser,
   canManageAssets,
-  type UserRole,
 } from '@/lib/auth/get-authenticated-user';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/auth/uuid';

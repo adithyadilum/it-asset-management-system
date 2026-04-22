@@ -45,10 +45,12 @@ export function SearchableDropdown({
 }: SearchableDropdownProps) {
   const [open, setOpen] = React.useState(false)
   const [value, setValue] = React.useState(defaultValue)
+  const [prevDefaultValue, setPrevDefaultValue] = React.useState(defaultValue)
 
-  React.useEffect(() => {
+  if (defaultValue !== prevDefaultValue) {
+    setPrevDefaultValue(defaultValue)
     setValue(defaultValue)
-  }, [defaultValue])
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
