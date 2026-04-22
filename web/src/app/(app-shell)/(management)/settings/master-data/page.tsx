@@ -19,8 +19,8 @@ import {
   users,
   vendors,
 } from "@/db/schema";
-import { getJwtSecretKey } from "@/lib/jwt";
-import { isValidUuid } from "@/lib/uuid";
+import { getJwtSecretKey } from "@/lib/auth/jwt";
+import { isValidUuid } from "@/lib/auth/uuid";
 
 const SESSION_COOKIE_NAME = "session_token";
 

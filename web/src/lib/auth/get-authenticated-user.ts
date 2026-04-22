@@ -4,9 +4,9 @@ import { cookies } from 'next/headers';
 
 import { db } from '@/db';
 import { sessions, users } from '@/db/schema';
-import { getJwtSecretKey } from '@/lib/jwt';
+import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import { isValidUuid } from '@/lib/uuid';
+import { isValidUuid } from '@/lib/auth/uuid';
 
 const SESSION_COOKIE_NAME = 'session_token';
 

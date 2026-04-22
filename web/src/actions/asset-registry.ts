@@ -18,12 +18,11 @@ import {
   type UserRole,
 } from '@/lib/auth/get-authenticated-user';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { isValidUuid } from '@/lib/uuid';
+import { isValidUuid } from '@/lib/auth/uuid';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 16;
 const MAX_PAGE_SIZE = 100;
-
 
 export interface AssetsGridQueryInput {
   pillar: unknown;
@@ -39,8 +38,6 @@ export interface BulkUpdateAssetsInput {
   updates: Partial<BulkAssetUpdatePayload>;
   actionType?: string;
 }
-
-
 
 function normalizePillar(pillar: unknown): RegistryPillar | null {
   if (typeof pillar !== 'string') {
@@ -209,8 +206,6 @@ function normalizeBulkUpdates(updates: Partial<BulkAssetUpdatePayload>) {
 
   return normalizedUpdates;
 }
-
-
 
 export async function getCategoriesByPillar(pillarInput: unknown) {
   const actionTimer = startLatencyTimer();
@@ -407,7 +402,9 @@ export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : 'Failed to update selected assets.',
+        error instanceof Error
+          ? error.message
+          : 'Failed to update selected assets.',
     };
   } finally {
     logLatency({
