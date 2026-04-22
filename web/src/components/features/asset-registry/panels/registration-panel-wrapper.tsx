@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getRegistrationOptionsAction } from "@/actions/asset-registry-panels";
-import { RegistrationForm } from "@/components/assets/registration-form";
+import { RegistrationForm } from "@/components/features/asset-registry/panels/registration-form";
 import { tiqriToast } from "@/components/shared/sonner";
 
 export interface RegistrationPanelWrapperProps {

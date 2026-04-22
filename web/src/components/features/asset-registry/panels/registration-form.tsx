@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import { cn } from '@/lib/utils';
-import { useOpenRegistrationPanel } from '@/components/assets/use-open-registration-panel';
+import { useOpenRegistrationPanel } from '@/components/features/asset-registry/panels/use-open-registration-panel';
 import {
   DB_PILLAR_VALUES,
   initialRegisterAssetActionState,
@@ -137,7 +137,7 @@ function InlineFieldRow({
       </div>
 
       {error ? (
-        <div className="pl-[140px]">
+        <div className="pl-35">
           <ErrorText error={error} />
         </div>
       ) : null}
