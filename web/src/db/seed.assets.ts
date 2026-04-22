@@ -33,14 +33,14 @@ async function seedAssets() {
     // ---------------------------------------------------------------------------
     console.log('Seeding Vendors...');
     const vendorData = [
-      { name: 'Dell Technologies', contact: 'support@dell.com' },
-      { name: 'Apple Inc.', contact: 'support@apple.com' },
-      { name: 'Lenovo Group', contact: 'support@lenovo.com' },
-      { name: 'Microsoft', contact: 'support@microsoft.com' },
-      { name: 'Adobe Systems', contact: 'support@adobe.com' },
-      { name: 'HP Inc.', contact: 'support@hp.com' },
-      { name: 'Herman Miller', contact: 'sales@hermanmiller.com' },
-      { name: 'Steelcase', contact: 'support@steelcase.com' },
+      { name: 'Dell Technologies', email: 'support@dell.com' },
+      { name: 'Apple Inc.', email: 'support@apple.com' },
+      { name: 'Lenovo Group', email: 'support@lenovo.com' },
+      { name: 'Microsoft', email: 'support@microsoft.com' },
+      { name: 'Adobe Systems', email: 'support@adobe.com' },
+      { name: 'HP Inc.', email: 'support@hp.com' },
+      { name: 'Herman Miller', email: 'sales@hermanmiller.com' },
+      { name: 'Steelcase', email: 'support@steelcase.com' },
     ];
 
     const vendorIds: Record<string, number> = {};
@@ -56,7 +56,7 @@ async function seedAssets() {
           .insert(vendors)
           .values({
             companyName: vendor.name,
-            contactInfo: vendor.contact,
+            email: vendor.email,
             isActive: true,
           })
           .returning();
@@ -70,12 +70,12 @@ async function seedAssets() {
     // ---------------------------------------------------------------------------
     console.log('Seeding Locations...');
     const locationData = [
-      { name: 'Colombo HQ - Floor 1', type: 'Office' },
-      { name: 'Colombo HQ - Floor 2', type: 'Office' },
-      { name: 'Colombo HQ - Server Room', type: 'Server Room' },
+      { name: 'Colombo HQ - Floor 1', type: 'Floor' },
+      { name: 'Colombo HQ - Floor 2', type: 'Floor' },
+      { name: 'Colombo HQ - Server Room', type: 'Room' },
       { name: 'Kandy Branch Office', type: 'Branch' },
       { name: 'Galle Remote Office', type: 'Remote' },
-    ];
+    ] as const;
 
     const locationIds: Record<string, number> = {};
     for (const loc of locationData) {

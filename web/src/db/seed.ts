@@ -480,7 +480,124 @@ async function seed() {
         ],
         assetTracking: [
           { fieldName: 'License Key', inputType: 'Text', required: true },
-          { fieldName: 'Assigned Tenant', inputType: 'Text', required: false },
+          { fieldName: 'Total Seats', inputType: 'Number', required: true },
+          { fieldName: 'Available Seats', inputType: 'Number', required: true },
+          { fieldName: 'Expiration Date', inputType: 'Date', required: true },
+        ],
+      },
+    },
+    {
+      name: 'Network Switch',
+      pillar: 'Office Electronics' as const,
+      prefix: 'NSW',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'Ports', inputType: 'Number', required: true },
+        ],
+        assetTracking: [
+          { fieldName: 'IP/MAC Address', inputType: 'Text', required: false },
+        ],
+      },
+    },
+    {
+      name: 'CCTV Camera',
+      pillar: 'Office Electronics' as const,
+      prefix: 'CTV',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'Resolution', inputType: 'Text', required: true },
+          { fieldName: 'Night Vision', inputType: 'Boolean', required: false },
+        ],
+        assetTracking: [
+          { fieldName: 'IP/MAC Address', inputType: 'Text', required: false },
+        ],
+      },
+    },
+    {
+      name: 'Air Conditioner',
+      pillar: 'Office Electronics' as const,
+      prefix: 'ACU',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'BTU Rating', inputType: 'Number', required: true },
+          { fieldName: 'Refrigerant Type', inputType: 'Text', required: false },
+        ],
+        assetTracking: [
+          { fieldName: 'Service Date', inputType: 'Date', required: false },
+        ],
+      },
+    },
+    {
+      name: 'Productivity Suite',
+      pillar: 'Software' as const,
+      prefix: 'PSU',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'License Type', inputType: 'Text', required: true },
+        ],
+        assetTracking: [
+          { fieldName: 'License Key', inputType: 'Text', required: true },
+          { fieldName: 'Total Seats', inputType: 'Number', required: true },
+          { fieldName: 'Available Seats', inputType: 'Number', required: true },
+          { fieldName: 'Expiration Date', inputType: 'Date', required: true },
+        ],
+      },
+    },
+    {
+      name: 'Security Suite',
+      pillar: 'Software' as const,
+      prefix: 'SSU',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'License Type', inputType: 'Text', required: true },
+        ],
+        assetTracking: [
+          { fieldName: 'License Key', inputType: 'Text', required: true },
+          { fieldName: 'Total Seats', inputType: 'Number', required: true },
+          { fieldName: 'Available Seats', inputType: 'Number', required: true },
+          { fieldName: 'Expiration Date', inputType: 'Date', required: true },
+        ],
+      },
+    },
+    {
+      name: 'Office Chair',
+      pillar: 'Office Furniture' as const,
+      prefix: 'OCH',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'Fabric Type', inputType: 'Text', required: false },
+          { fieldName: 'Adjustable Height', inputType: 'Boolean', required: false },
+        ],
+        assetTracking: [
+          { fieldName: 'Color', inputType: 'Text', required: false },
+        ],
+      },
+    },
+    {
+      name: 'Standing Desk',
+      pillar: 'Office Furniture' as const,
+      prefix: 'SDK',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'Width (cm)', inputType: 'Number', required: true },
+          { fieldName: 'Motor Type', inputType: 'Text', required: false },
+        ],
+        assetTracking: [
+          { fieldName: 'Color', inputType: 'Text', required: false },
+        ],
+      },
+    },
+    {
+      name: 'Filing Cabinet',
+      pillar: 'Office Furniture' as const,
+      prefix: 'FCB',
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'Number of Drawers', inputType: 'Number', required: true },
+          { fieldName: 'Lock Type', inputType: 'Text', required: false },
+        ],
+        assetTracking: [
+          { fieldName: 'Key Number', inputType: 'Text', required: false },
         ],
       },
     },
@@ -526,6 +643,23 @@ async function seed() {
       .returning({ id: categories.id });
 
     categoryIdsByPrefix[categorySeed.prefix] = inserted[0].id;
+  }
+  // Vendors
+  let primaryVendor = await db
+    .select()
+    .from(vendors)
+    .where(eq(vendors.companyName, 'TechSource Lanka'))
+    .limit(1);
+  if (primaryVendor.length === 0) {
+    primaryVendor = await db
+      .insert(vendors)
+      .values({
+        companyName: 'TechSource Lanka',
+        pillar: 'IT & Digital',
+        email: 'sales@techsource.lk',
+        isActive: true,
+      })
+      .returning();
   }
 
   // ---------------------------------------------------------------------------
@@ -575,6 +709,60 @@ async function seed() {
       brandName: 'HP',
       categoryPrefix: 'LAP',
       technicalDetails: { processor: 'Intel i7', display: '14-inch' },
+    },
+    {
+      name: 'Office 365 Enterprise',
+      brandName: 'Logitech', // using existing brand for simplicity
+      categoryPrefix: 'ASF',
+      technicalDetails: { licenseType: 'Subscription' },
+    },
+    {
+      name: 'Cisco Catalyst 9200',
+      brandName: 'HP',
+      categoryPrefix: 'NSW',
+      technicalDetails: { ports: '48' },
+    },
+    {
+      name: 'Hikvision DS-2CD2143',
+      brandName: 'Samsung',
+      categoryPrefix: 'CTV',
+      technicalDetails: { resolution: '4MP', nightVision: 'true' },
+    },
+    {
+      name: 'Daikin FTXS-25',
+      brandName: 'Samsung',
+      categoryPrefix: 'ACU',
+      technicalDetails: { btuRating: '9000', refrigerantType: 'R-32' },
+    },
+    {
+      name: 'Google Workspace Business',
+      brandName: 'Logitech',
+      categoryPrefix: 'PSU',
+      technicalDetails: { licenseType: 'Subscription' },
+    },
+    {
+      name: 'CrowdStrike Falcon',
+      brandName: 'Dell',
+      categoryPrefix: 'SSU',
+      technicalDetails: { licenseType: 'Annual' },
+    },
+    {
+      name: 'Herman Miller Aeron',
+      brandName: 'HP',
+      categoryPrefix: 'OCH',
+      technicalDetails: { fabricType: 'Mesh', adjustableHeight: 'true' },
+    },
+    {
+      name: 'FlexiSpot E7',
+      brandName: 'Dell',
+      categoryPrefix: 'SDK',
+      technicalDetails: { width: '160', motorType: 'Dual' },
+    },
+    {
+      name: 'Steelcase Lateral File',
+      brandName: 'HP',
+      categoryPrefix: 'FCB',
+      technicalDetails: { drawers: '4', lockType: 'Keyed' },
     },
   ] as const;
 
@@ -629,6 +817,15 @@ async function seed() {
     { prefix: 'MON', modelName: 'UltraSharp U2723', quantity: 6 },
     { prefix: 'DES', modelName: 'OptiPlex 7010', quantity: 6 },
     { prefix: 'WKE', modelName: 'MX Keys S', quantity: 6 },
+    { prefix: 'ASF', modelName: 'Office 365 Enterprise', quantity: 2 },
+    { prefix: 'NSW', modelName: 'Cisco Catalyst 9200', quantity: 2 },
+    { prefix: 'CTV', modelName: 'Hikvision DS-2CD2143', quantity: 3 },
+    { prefix: 'ACU', modelName: 'Daikin FTXS-25', quantity: 2 },
+    { prefix: 'PSU', modelName: 'Google Workspace Business', quantity: 2 },
+    { prefix: 'SSU', modelName: 'CrowdStrike Falcon', quantity: 2 },
+    { prefix: 'OCH', modelName: 'Herman Miller Aeron', quantity: 4 },
+    { prefix: 'SDK', modelName: 'FlexiSpot E7', quantity: 3 },
+    { prefix: 'FCB', modelName: 'Steelcase Lateral File', quantity: 2 },
   ] as const;
 
   const locationRotation = [
@@ -659,6 +856,28 @@ async function seed() {
         locationRotation[(index - 1) % Math.max(locationRotation.length, 1)] ??
         null;
 
+      let instanceAttributes: Record<string, unknown> | null = null;
+      if (assetPlan.prefix === 'ASF' || assetPlan.prefix === 'PSU' || assetPlan.prefix === 'SSU') {
+        instanceAttributes = {
+          'License Key': `LIC-${serialNumber}`,
+          'Total Seats': 100 * index,
+          'Available Seats': 50 * index,
+          'Expiration Date': `202${6 + index}-12-31`,
+        };
+      } else if (assetPlan.prefix === 'NSW' || assetPlan.prefix === 'CTV') {
+        instanceAttributes = {
+          'IP/MAC Address': `192.168.${assetPlan.prefix === 'CTV' ? 2 : 1}.${100 + index}`,
+        };
+      } else if (assetPlan.prefix === 'ACU') {
+        instanceAttributes = {
+          'Service Date': `2026-0${index + 3}-15`,
+        };
+      } else if (assetPlan.prefix === 'OCH' || assetPlan.prefix === 'SDK' || assetPlan.prefix === 'FCB') {
+        instanceAttributes = {
+          'Color': index % 2 === 0 ? 'Black' : 'Grey',
+        };
+      }
+
       const existing = await db
         .select({ id: assets.id, assetTag: assets.assetTag })
         .from(assets)
@@ -675,6 +894,7 @@ async function seed() {
             name: `${assetPlan.modelName} Unit ${index}`,
             status: statusCycle[(index - 1) % statusCycle.length],
             condition: conditionCycle[(index - 1) % conditionCycle.length],
+            instanceAttributes,
           })
           .where(eq(assets.id, existing[0].id));
 
@@ -696,6 +916,7 @@ async function seed() {
           locationId,
           status: statusCycle[(index - 1) % statusCycle.length],
           condition: conditionCycle[(index - 1) % conditionCycle.length],
+          instanceAttributes,
         })
         .returning({ id: assets.id, assetTag: assets.assetTag });
 

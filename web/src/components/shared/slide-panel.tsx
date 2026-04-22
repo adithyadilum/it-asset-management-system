@@ -4,6 +4,7 @@ import * as React from "react";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { cn } from "@/lib/utils";
 
@@ -24,24 +25,32 @@ interface SlidePanelProps {
     headerContent?: React.ReactNode;
     content?: React.ReactNode;
     actions?: SlidePanelAction[];
+    /** Render close action in header */
     showCloseButton?: boolean;
+    /** Render panel header area */
+    showHeader?: boolean;
+    /** Render content without internal scroll area */
+    scrollable?: boolean;
+    /** Additional classes for the content wrapper */
+    contentClassName?: string;
 }
 
 const DEFAULT_PANEL_WIDTH = 700;
 const DEFAULT_PANEL_MAX_WIDTH = "92vw";
+const DEFAULT_PANEL_GAP = 8;
 const DEFAULT_PLACEHOLDER_ROWS = 10;
 
 function PanelPlaceholder() {
     return (
         <div className="space-y-3">
-            <div className={`rounded-md bg-slate-50 p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+            <div className={`rounded-md bg-muted p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                 No panel body content was provided. Pass the content prop to render custom details.
             </div>
 
             {Array.from({ length: DEFAULT_PLACEHOLDER_ROWS }).map((_, i) => (
                 <div
                     key={i}
-                    className={`flex h-12 items-center rounded-md bg-slate-50 px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}
+                    className={`flex h-12 items-center rounded-md bg-muted px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
                 >
                     Placeholder Row {i + 1}
                 </div>
@@ -60,11 +69,20 @@ export function SlidePanel({
     content,
     actions,
     showCloseButton = true,
+    showHeader = true,
+    scrollable = true,
+    contentClassName,
 }: SlidePanelProps) {
     const titleId = React.useId();
     const descriptionId = React.useId();
     const hasProvidedContent = React.Children.count(content) > 0;
     const resolvedActions = actions ?? [];
+    const [shouldRender, setShouldRender] = React.useState(isOpen);
+    const [isVisible, setIsVisible] = React.useState(false);
+    const panelStyle = {
+        "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
+        "--slide-panel-gap": `${DEFAULT_PANEL_GAP}px`,
+    } as React.CSSProperties;
 
     React.useEffect(() => {
         if (isOpen) {
@@ -99,89 +117,104 @@ export function SlidePanel({
     return (
         <aside
             className={cn(
-                "relative shrink-0",
-                "transition-all duration-300 ease-in-out",
-                isOpen ? "ml-6" : "ml-0"
+                "relative h-full shrink-0 overflow-hidden",
+                "transition-[width,margin] ease-out",
+                disableTransition ? "duration-0" : "duration-300",
+                isVisible ? "ml-(--slide-panel-gap) w-(--slide-panel-width)" : "ml-0 w-0",
+                !isVisible && "pointer-events-none"
             )}
-            style={{
-                width: isOpen ? `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})` : "0px",
-            }}
-            aria-hidden={!isOpen}
+            style={panelStyle}
+            aria-hidden={!shouldRender || !isVisible}
         >
-            <section
-                role="dialog"
-                aria-modal="false"
-                aria-labelledby={titleId}
-                aria-describedby={description ? descriptionId : undefined}
-                // Removed overflow-hidden and absolute h-full to prevent scrolling
-                className="right-0 flex flex-col rounded-xl bg-white shadow-[0px_1px_3px_rgba(0,0,0,0.1)] border border-slate-200 mb-6"
-                style={{ width: `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})` }}
-            >
-                <div className="flex flex-col">
-                    <header className="shrink-0 px-6 py-6">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <h2 id={titleId} className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-slate-900`}>
-                                    {title}
-                                </h2>
-                                {description && (
-                                    <p id={descriptionId} className={`mt-1 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                                        {description}
-                                    </p>
-                                )}
-                            </div>
-
-                            {showCloseButton && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="-mr-2 -mt-2 text-slate-500 hover:bg-slate-100"
-                                    onClick={() => onClose(false)}
-                                    aria-label="Close panel"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
-                    </header>
-
-                    {headerContent && (
-                        <div className="shrink-0 px-6 pb-2">
-                            {headerContent}
-                        </div>
+            {shouldRender ? (
+                <section
+                    role="dialog"
+                    aria-modal="false"
+                    aria-labelledby={titleId}
+                    aria-describedby={description ? descriptionId : undefined}
+                    className={cn(
+                        "absolute inset-y-0 right-0 w-(--slide-panel-width)",
+                        "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg",
+                        "transition-transform ease-out",
+                        disableTransition ? "duration-0" : "duration-300",
+                        isVisible ? "translate-x-0" : "translate-x-full",
                     )}
+                >
+                    <div className="flex h-full min-h-0 flex-col">
+                        {showHeader && (
+                            <header className="shrink-0 px-5 py-4 sm:px-6">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <h2 id={titleId} className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+                                            {title}
+                                        </h2>
+                                        {description && (
+                                            <p id={descriptionId} className={`mt-1 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+                                                {description}
+                                            </p>
+                                        )}
+                                    </div>
 
-                    {/* Standard div instead of ScrollArea */}
-                    <div className="px-6 pb-6 flex-1">
-                        {hasProvidedContent ? content : <PanelPlaceholder />}
+                                    {showCloseButton && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className="-mr-1 -mt-1 text-muted-foreground hover:bg-muted"
+                                            onClick={() => onClose(false)}
+                                            aria-label="Close panel"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </header>
+                        )}
+
+                        {headerContent && (
+                            <div className="shrink-0 px-5 pb-2 sm:px-6">
+                                {headerContent}
+                            </div>
+                        )}
+
+                        {scrollable ? (
+                            <ScrollArea className="min-h-0 flex-1">
+                                <div className={cn("px-5 py-5 sm:px-6", contentClassName)}>
+                                    {hasProvidedContent ? content : <PanelPlaceholder />}
+                                </div>
+                            </ScrollArea>
+                        ) : (
+                            <div className={cn("min-h-0 flex-1 overflow-hidden px-5 py-5 sm:px-6", contentClassName)}>
+                                {hasProvidedContent ? content : <PanelPlaceholder />}
+                            </div>
+                        )}
+
+                        {resolvedActions.length > 0 && (
+                            <footer className="shrink-0 px-5 py-4 sm:px-6">
+                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                    {resolvedActions.map((action, index) => (
+                                        <Button
+                                            key={action.id ?? `${String(action.label)}-${index}`}
+                                            type="button"
+                                            variant={action.variant ?? (index === resolvedActions.length - 1 ? "default" : "outline")}
+                                            onClick={() => {
+                                                if (action.onClick) {
+                                                    action.onClick();
+                                                    return;
+                                                }
+                                                onClose(false);
+                                            }}
+                                            disabled={action.disabled}
+                                        >
+                                            {action.label}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </footer>
+                        )}
                     </div>
-
-                    {resolvedActions.length > 0 && (
-                        <footer className="shrink-0 px-6 py-4 border-t border-slate-200">
-                            <div className="flex flex-wrap items-center justify-end gap-3">
-                                {resolvedActions.map((action, index) => (
-                                    <Button
-                                        key={action.id ?? `${String(action.label)}-${index}`}
-                                        type="button"
-                                        variant={action.variant ?? (index === resolvedActions.length - 1 ? "default" : "outline")}
-                                        onClick={() => {
-                                            if (action.onClick) {
-                                                action.onClick();
-                                                return;
-                                            }
-                                            onClose(false);
-                                        }}
-                                        disabled={action.disabled}
-                                    >
-                                        {action.label}
-                                    </Button>
-                                ))}
-                            </div>
-                        </footer>
-                    )}
-                </div>
-            </section>
+                </section>
+            ) : null}
         </aside>
     );
 }
