@@ -50,6 +50,7 @@ export interface AssetDetailsData {
     warrantyExpiry: string | null;
     invoiceUrl: string | null;
     createdAt: string;
+    updatedAt: string;
   } | null;
   vendor: {
     id: number;
@@ -148,6 +149,16 @@ function formatAuditDetails(
 
   return changes.join(', ');
 }
+ 
+function formatSafeISO(val: unknown): string {
+  if (!val) return new Date().toISOString();
+  try {
+    const d = val instanceof Date ? val : new Date(String(val));
+    return !isNaN(d.getTime()) ? d.toISOString() : new Date().toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Read Queries
@@ -176,6 +187,21 @@ export async function getAssetDetailsById(
       location: { columns: { id: true, name: true, type: true } },
       purchases: {
         limit: 1,
+        columns: {
+          id: true,
+          assetId: true,
+          vendorId: true,
+          purchaseDate: true,
+          basePrice: true,
+          tax: true,
+          shippingCost: true,
+          totalCost: true,
+          currencyCode: true,
+          warrantyExpiry: true,
+          invoiceUrl: true,
+          createdAt: true,
+          updatedAt: true,
+        },
         with: {
           vendor: {
             columns: { id: true, companyName: true, email: true, phone: true },
@@ -256,7 +282,8 @@ export async function getAssetDetailsById(
           currencyCode: purchaseRecord.currencyCode ?? 'USD',
           warrantyExpiry: purchaseRecord.warrantyExpiry?.toString() ?? null,
           invoiceUrl: purchaseRecord.invoiceUrl,
-          createdAt: purchaseRecord.createdAt.toISOString(),
+          createdAt: formatSafeISO(purchaseRecord.createdAt),
+          updatedAt: formatSafeISO(purchaseRecord.updatedAt),
         }
       : null,
     vendor: purchaseRecord?.vendor
