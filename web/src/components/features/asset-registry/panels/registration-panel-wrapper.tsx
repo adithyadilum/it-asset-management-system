@@ -46,10 +46,10 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
 
   if (isLoading || !data) {
     return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[800px] flex-col bg-white shadow-2xl">
-         <div className="flex flex-1 items-center justify-center text-slate-500">
-           Loading options...
-         </div>
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-200 flex-col bg-white shadow-2xl">
+        <div className="flex flex-1 items-center justify-center text-slate-500">
+          Loading options...
+        </div>
       </div>
     );
   }
