@@ -194,6 +194,8 @@ export function AssetRegistryClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isPanelOpen = Boolean(currentPanel);
+  const activeRecordId =
+    currentPanel === 'record' ? searchParams.get('id') : null;
 
   const [rows, setRows] = useState<AssetRegistryRow[]>(initialResult.data);
   const [searchValue, setSearchValue] = useState('');
@@ -1037,10 +1039,11 @@ export function AssetRegistryClient({
               initialPageSize={config.defaultPageSize}
               selectionActions={selectionActions}
               selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
+              isRowActive={(row) => Boolean(activeRecordId && row.assetTag === activeRecordId)}
               onRowClick={(row) => {
                 const params = new URLSearchParams(searchParams.toString());
                 params.set('panel', 'record');
-                params.set('id', row.id);
+                params.set('id', row.assetTag);
                 params.set('animate', isPanelOpen ? '0' : '1');
                 router.push(`${pathname}?${params.toString()}`, { scroll: false });
               }}

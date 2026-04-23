@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { assets, maintenanceRecords, systemAuditLogs } from '@/db/schema';
+import { isValidUuid } from '@/lib/auth/uuid';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -149,7 +150,7 @@ function formatAuditDetails(
 
   return changes.join(', ');
 }
- 
+
 function formatSafeISO(val: unknown): string {
   if (!val) return new Date().toISOString();
   try {
@@ -160,6 +161,27 @@ function formatSafeISO(val: unknown): string {
   }
 }
 
+async function resolveAssetPrimaryId(
+  identifier: string
+): Promise<string | null> {
+  const normalizedIdentifier = identifier.trim();
+  if (normalizedIdentifier.length === 0) {
+    return null;
+  }
+
+  if (isValidUuid(normalizedIdentifier)) {
+    return normalizedIdentifier;
+  }
+
+  const [assetRecord] = await db
+    .select({ id: assets.id })
+    .from(assets)
+    .where(eq(assets.assetTag, normalizedIdentifier))
+    .limit(1);
+
+  return assetRecord?.id ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Read Queries
 // ---------------------------------------------------------------------------
@@ -167,8 +189,13 @@ function formatSafeISO(val: unknown): string {
 export async function getAssetDetailsById(
   id: string
 ): Promise<AssetDetailsData | null> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return null;
+  }
+
   const assetRecord = await db.query.assets.findFirst({
-    where: eq(assets.id, id),
+    where: eq(assets.id, resolvedAssetId),
     with: {
       model: {
         with: {
@@ -312,13 +339,16 @@ export async function getAssetDetailsById(
   };
 }
 
-export async function getAssetHistoryById(
-  id: string
-): Promise<HistoryEvent[]> {
+export async function getAssetHistoryById(id: string): Promise<HistoryEvent[]> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return [];
+  }
+
   const auditRecords = await db.query.systemAuditLogs.findMany({
     where: and(
       eq(systemAuditLogs.entityType, 'Asset'),
-      eq(systemAuditLogs.entityId, id)
+      eq(systemAuditLogs.entityId, resolvedAssetId)
     ),
     orderBy: (logs, { desc }) => [desc(logs.performedAt)],
     limit: 20,
@@ -342,8 +372,13 @@ export async function getAssetHistoryById(
 export async function getAssetMaintenanceById(
   id: string
 ): Promise<MaintenanceEvent[]> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return [];
+  }
+
   const maintenanceList = await db.query.maintenanceRecords.findMany({
-    where: eq(maintenanceRecords.assetId, id),
+    where: eq(maintenanceRecords.assetId, resolvedAssetId),
     orderBy: (records, { desc }) => [desc(records.createdAt)],
     limit: 5,
     with: { vendor: { columns: { companyName: true } } },

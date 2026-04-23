@@ -15,7 +15,7 @@ export default async function AssetIdPage({ params }: { params: Promise<{ assetI
     }
 
     const [assetRecord] = await db
-        .select({ id: assets.id, pillar: categories.pillar })
+        .select({ id: assets.id, assetTag: assets.assetTag, pillar: categories.pillar })
         .from(assets)
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
@@ -36,5 +36,5 @@ export default async function AssetIdPage({ params }: { params: Promise<{ assetI
     else if (assetRecord.pillar === 'Office Furniture') pillarPath = 'furniture';
     else if (assetRecord.pillar === 'Office Electronics') pillarPath = 'office-electronics';
 
-    redirect(`/assets/${pillarPath}?panel=record&id=${assetRecord.id}`);
+    redirect(`/assets/${pillarPath}?panel=record&id=${encodeURIComponent(assetRecord.assetTag)}`);
 }

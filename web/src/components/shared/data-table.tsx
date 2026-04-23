@@ -47,6 +47,7 @@ type DataTableProps<TData, TValue> = {
   selectionActions?: DataTableSelectionAction<TData>[]
   selectionLabel?: (selectedCount: number) => string
   onRowClick?: (row: TData, rowIndex: number) => void
+  isRowActive?: (row: TData, rowIndex: number) => boolean
   className?: string
 }
 
@@ -58,6 +59,7 @@ export function DataTable<TData, TValue>({
   selectionActions = [],
   selectionLabel,
   onRowClick,
+  isRowActive,
   className,
 }: DataTableProps<TData, TValue>) {
   const sortedPageSizes = React.useMemo(() => {
@@ -279,7 +281,8 @@ export function DataTable<TData, TValue>({
                 onClick={(event) => handleRowClick(event, row.original, row.index)}
                 className={cn(
                   "h-13.25 border-border",
-                  isRowClickable && "cursor-pointer hover:bg-muted/50"
+                  isRowClickable && "cursor-pointer hover:bg-muted/50",
+                  isRowActive?.(row.original, row.index) && "bg-slate-50"
                 )}
               >
                 {row.getVisibleCells().map((cell) => (

@@ -59,7 +59,7 @@ export function MasterDataPanels({
             />
 
             <MasterDataRecordPanel
-                key={`record-panel-${entity ?? "none"}-${recordId ?? "none"}-${recordMode ?? "detail"}`}
+                key={`record-panel-${entity ?? "none"}`}
                 isOpen={currentPanel === "record"}
                 onCloseUrl={closePanelUrl}
                 entity={entity}

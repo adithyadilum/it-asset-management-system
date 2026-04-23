@@ -118,6 +118,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       isLoading={isLoading}
       assetId={data?.asset.id ?? ""}
       assetTag={data?.asset.assetTag ?? ""}
+      assetName={data?.asset.name ?? ""}
       assetCategory={data?.model.category.name ?? ""}
       model={data?.model.name ?? ""}
       brand={data?.model.brand.name ?? ""}

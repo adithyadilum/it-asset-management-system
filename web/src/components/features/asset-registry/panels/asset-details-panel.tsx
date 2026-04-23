@@ -9,6 +9,7 @@ import { PurchaseDetailsTab } from './purchase-details-tab';
 import { HistoryTab } from './history-tab';
 import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-repo';
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
+import { StatusBadge } from '@/components/shared/status-badge';
 
 
 export interface AssetDetailsPanelProps {
@@ -19,6 +20,7 @@ export interface AssetDetailsPanelProps {
   // Base Asset
   assetId: string;
   assetTag: string;
+  assetName?: string;
   assetCategory: 'IT & Digital' | 'Software' | 'Office Furniture' | 'Office Electronics' | string;
   model: string;
   brand: string;
@@ -121,10 +123,10 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         <AssetLoadingSkeleton />
       ) : (
         <AssetDetailsTab
-          assetTag={props.assetTag}
           imageUrl={props.imageUrl}
-          status={props.status}
           note={props.note}
+          status={props.status}
+          assetTag={props.assetTag}
           fields={detailsFields}
           hideMaintenance={isSoftware}
           maintenanceRecords={props.maintenanceEvents}
@@ -182,11 +184,22 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
   ];
 
+  const resolvedPanelTitle = (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{props.assetName || props.model || 'Asset'}</span>
+      <StatusBadge
+        variant="metadata"
+        label={`ID: ${props.assetTag || '-'}`}
+      />
+      <StatusBadge value={props.status} showIcon />
+    </div>
+  );
+
   return (
     <TabbedPanel
       isOpen={props.isOpen}
       onClose={props.onClose}
-      title={`${props.model} - ${props.assetTag}`}
+      title={resolvedPanelTitle}
       tabs={tabs}
       defaultTabId="asset-details"
       actions={actions}

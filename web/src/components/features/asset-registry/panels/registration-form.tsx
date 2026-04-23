@@ -38,6 +38,7 @@ export type { RegistrationOption, ModelRegistrationOption };
 type RegistrationFormProps = {
   isOpen: boolean;
   onClose: (open: boolean) => void;
+  isLoading?: boolean;
   initialPillar?: RegistrationPillarInput;
   categoryOptions?: RegistrationOption[];
   brandOptions?: RegistrationOption[];
@@ -170,9 +171,46 @@ function SearchableFieldRow({
   );
 }
 
+function RegistrationFormSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="mx-auto flex flex-col items-center gap-2 py-2">
+        <div className="h-24 w-24 rounded-full border border-dashed border-border bg-muted/60" />
+        <div className="h-3 w-28 rounded-full bg-muted/60" />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="space-y-1.5">
+            <div className="h-4 w-24 rounded bg-muted/60" />
+            <div className="h-8 w-full rounded-lg bg-muted/60" />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/40 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="h-5 w-32 rounded bg-muted/60" />
+          <div className="h-8 w-24 rounded-lg bg-muted/60" />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="space-y-1.5">
+              <div className="h-4 w-24 rounded bg-muted/60" />
+              <div className="h-8 w-full rounded-lg bg-muted/60" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RegistrationForm({
   isOpen,
   onClose,
+  isLoading = false,
   initialPillar,
   categoryOptions = [],
   brandOptions = [],
@@ -282,30 +320,34 @@ export function RegistrationForm({
     lastToastKeyRef.current = toastKey;
   }, [formError, state.message, state.success]);
 
-  const panelActions: SlidePanelAction[] = [
-    {
-      id: 'discard',
-      label: 'Discard',
-      variant: 'outline',
-      onClick: () => onClose(false),
-      disabled: isPending,
-    },
-    {
-      id: 'submit',
-      label: isPending ? (
-        <span className="inline-flex items-center gap-2">
-          <LoaderCircle className="h-4 w-4 animate-spin" />
-          <span>Adding asset...</span>
-        </span>
-      ) : (
-        'Add Asset'
-      ),
-      onClick: () => formRef.current?.requestSubmit(),
-      disabled: isPending,
-    },
-  ];
+  const panelActions: SlidePanelAction[] = isLoading
+    ? []
+    : [
+      {
+        id: 'discard',
+        label: 'Discard',
+        variant: 'outline',
+        onClick: () => onClose(false),
+        disabled: isPending,
+      },
+      {
+        id: 'submit',
+        label: isPending ? (
+          <span className="inline-flex items-center gap-2">
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+            <span>Adding asset...</span>
+          </span>
+        ) : (
+          'Add Asset'
+        ),
+        onClick: () => formRef.current?.requestSubmit(),
+        disabled: isPending,
+      },
+    ];
 
-  const panelContent = (
+  const panelContent = isLoading ? (
+    <RegistrationFormSkeleton />
+  ) : (
     <form
       ref={formRef}
       action={formAction}

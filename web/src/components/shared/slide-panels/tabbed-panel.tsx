@@ -17,6 +17,7 @@ interface TabbedPanelProps {
     onClose: (open: boolean) => void;
     title: React.ReactNode;
     description?: React.ReactNode;
+    headerContent?: React.ReactNode;
     tabs: TabbedPanelTab[];
     defaultTabId?: string;
     actions?: SlidePanelAction[];
@@ -35,6 +36,7 @@ export function TabbedPanel({
     onClose,
     title,
     description,
+    headerContent,
     tabs,
     defaultTabId,
     actions,
@@ -111,6 +113,7 @@ export function TabbedPanel({
             onClose={onClose}
             title={title}
             description={description}
+            headerContent={headerContent}
             content={content}
             actions={actions}
             showCloseButton={true}
