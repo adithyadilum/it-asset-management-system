@@ -49,6 +49,7 @@ import type {
     MasterDataDepartmentRow,
     MasterDataDeviceModelRow,
     MasterDataLocationRow,
+    MasterDataOwnerRow,
     MasterDataVendorRow,
 } from "./master-data-management-client";
 
@@ -76,6 +77,7 @@ interface MasterDataCreatePanelProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
     disableTransition?: boolean;
 }
@@ -123,6 +125,12 @@ const PANEL_META: Record<MasterDataRecordEntity, {
         submitLabel: "Save Vendor",
         submittingLabel: "Saving Vendor...",
     },
+    owners: {
+        title: "Add New Owner",
+        description: "Register a legal company owner for assets (for example, TIQRI LK).",
+        submitLabel: "Save Owner",
+        submittingLabel: "Saving Owner...",
+    },
     departments: {
         title: "Add New Department",
         description: "Register a department for user assignment and ownership mapping.",
@@ -143,6 +151,7 @@ const NEXT_ID_LABELS: Record<MasterDataRecordEntity, string> = {
     brands: "Brand ID (Preview)",
     "device-models": "Model ID (Preview)",
     vendors: "Vendor ID (Preview)",
+    owners: "Owner ID (Preview)",
     departments: "Department ID (Preview)",
 };
 
@@ -185,6 +194,7 @@ export function MasterDataCreatePanel({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
     disableTransition = false,
 }: MasterDataCreatePanelProps) {
@@ -266,6 +276,11 @@ export function MasterDataCreatePanel({
         [vendors]
     );
 
+    const nextOwnerRecordId = useMemo(
+        () => owners.reduce((max, owner) => Math.max(max, owner.id), 0) + 1,
+        [owners]
+    );
+
     const nextDepartmentRecordId = useMemo(
         () =>
             departments.reduce((max, department) => Math.max(max, department.id), 0) + 1,
@@ -279,6 +294,7 @@ export function MasterDataCreatePanel({
             brands: formatPreviewId("BRD", nextBrandRecordId),
             "device-models": formatPreviewId("MDL", nextDeviceModelRecordId),
             vendors: formatPreviewId("VND", nextVendorRecordId),
+            owners: formatPreviewId("OWN", nextOwnerRecordId),
             departments: formatPreviewId("DEP", nextDepartmentRecordId),
         }),
         [
@@ -287,6 +303,7 @@ export function MasterDataCreatePanel({
             nextDepartmentRecordId,
             nextDeviceModelRecordId,
             nextLocationRecordId,
+            nextOwnerRecordId,
             nextVendorRecordId,
         ]
     );
@@ -1316,6 +1333,31 @@ export function MasterDataCreatePanel({
                                 onFocus={(event) => event.currentTarget.blur()}
                                 className={READ_ONLY_PREVIEW_INPUT_CLASSNAME}
                             />
+                        </div>
+
+                        {renderActiveSwitch}
+                    </>
+                );
+
+            case "owners":
+                return (
+                    <>
+                        {nextIdPreviewField}
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Owner Name <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                                name="companyName"
+                                placeholder="TIQRI LK"
+                                required
+                            />
+                            {getFieldError("companyName") && (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {getFieldError("companyName")}
+                                </p>
+                            )}
                         </div>
 
                         {renderActiveSwitch}

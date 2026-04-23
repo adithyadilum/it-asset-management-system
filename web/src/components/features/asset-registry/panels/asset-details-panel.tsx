@@ -26,6 +26,7 @@ export interface AssetDetailsPanelProps {
   brand: string;
   serialNumber?: string;
   owner?: string;
+  assignedTo?: string;
   group?: string;
   location?: string;
   condition?: string;
@@ -96,7 +97,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Version', value: props.specs?.version?.toString() || '-' },
         { label: 'Total Seats', value: props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-' },
         { label: 'Publisher', value: props.brand },
-        { label: 'Assigned to', value: props.owner || '-' },
+        { label: 'Assigned to', value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     } else {
@@ -106,7 +107,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Brand', value: props.brand },
         { label: 'Serial Number', value: props.serialNumber || '-' },
         { label: 'Owner', value: props.owner || '-' },
-        { label: 'Assigned to', value: props.owner || '-' },
+        { label: 'Assigned to', value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     }

@@ -6,8 +6,8 @@ import {
   brands,
   categories,
   models,
+  owners,
   pillarEnum,
-  users,
   vendors,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
@@ -48,7 +48,7 @@ export async function getRegistrationOptionsAction(pillar: string) {
 
   const pillarValue = pillar as (typeof pillarEnum.enumValues)[number];
 
-  const [categoriesList, brandsList, modelsList, vendorsList, usersList] =
+  const [categoriesList, brandsList, modelsList, vendorsList, ownersList] =
     await Promise.all([
       db.query.categories.findMany({
         where: and(
@@ -75,9 +75,9 @@ export async function getRegistrationOptionsAction(pillar: string) {
         where: eq(vendors.isActive, true),
         columns: { id: true, companyName: true },
       }),
-      db.query.users.findMany({
-        where: eq(users.isActive, true),
-        columns: { id: true, name: true, email: true },
+      db.query.owners.findMany({
+        where: eq(owners.isActive, true),
+        columns: { id: true, companyName: true },
       }),
     ]);
 
@@ -120,12 +120,10 @@ export async function getRegistrationOptionsAction(pillar: string) {
         value: String(v.id),
         label: v.companyName,
       })),
-      owners: usersList.map(
-        (u: { id: string; name: string; email: string }) => ({
-          value: String(u.id),
-          label: `${u.name} (${u.email})`,
-        })
-      ),
+      owners: ownersList.map((o: { id: number; companyName: string }) => ({
+        value: String(o.id),
+        label: o.companyName,
+      })),
     },
   };
 }

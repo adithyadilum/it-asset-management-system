@@ -9,6 +9,7 @@ import type {
     MasterDataDepartmentRow,
     MasterDataDeviceModelRow,
     MasterDataLocationRow,
+    MasterDataOwnerRow,
     MasterDataVendorRow,
 } from "./master-data-management-client";
 
@@ -24,6 +25,7 @@ interface MasterDataPanelsProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
 }
 
@@ -39,6 +41,7 @@ export function MasterDataPanels({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
 }: MasterDataPanelsProps) {
     const disableTransition = panelAnimation === "0";
@@ -54,6 +57,7 @@ export function MasterDataPanels({
                 brands={brands}
                 deviceModels={deviceModels}
                 vendors={vendors}
+                owners={owners}
                 departments={departments}
                 disableTransition={disableTransition}
             />
@@ -70,6 +74,7 @@ export function MasterDataPanels({
                 brands={brands}
                 deviceModels={deviceModels}
                 vendors={vendors}
+                owners={owners}
                 departments={departments}
                 disableTransition={disableTransition}
             />

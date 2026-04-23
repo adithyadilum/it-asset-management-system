@@ -28,6 +28,7 @@ export type MasterDataTabId =
     | "brands"
     | "device-models"
     | "vendors"
+    | "owners"
     | "departments";
 
 type PillarFilter =
@@ -57,6 +58,7 @@ export type CategoryCustomSchema = {
 
 export type MasterDataCategoryRow = {
     id: number;
+    code: string | null;
     name: string;
     prefix: string;
     pillar: string;
@@ -67,6 +69,7 @@ export type MasterDataCategoryRow = {
 
 export type MasterDataLocationRow = {
     id: number;
+    code: string | null;
     name: string;
     type: string | null;
     parentId?: number | null;
@@ -76,6 +79,7 @@ export type MasterDataLocationRow = {
 
 export type MasterDataBrandRow = {
     id: number;
+    code: string | null;
     name: string;
     linkedAssets: number;
     isActive: boolean;
@@ -83,6 +87,7 @@ export type MasterDataBrandRow = {
 
 export type MasterDataDeviceModelRow = {
     id: number;
+    code: string | null;
     name: string;
     brandId: number;
     categoryId: number;
@@ -97,6 +102,7 @@ export type MasterDataDeviceModelRow = {
 
 export type MasterDataVendorRow = {
     id: number;
+    code: string | null;
     companyName: string;
     email: string | null;
     phone: string | null;
@@ -108,9 +114,18 @@ export type MasterDataVendorRow = {
 
 export type MasterDataDepartmentRow = {
     id: number;
+    code: string | null;
     name: string;
     shortCode: string;
     costCenterId: string;
+    linkedAssets: number;
+    isActive: boolean;
+};
+
+export type MasterDataOwnerRow = {
+    id: number;
+    code: string | null;
+    companyName: string;
     linkedAssets: number;
     isActive: boolean;
 };
@@ -121,6 +136,7 @@ interface MasterDataManagementClientProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
     initialTab?: MasterDataTabId;
 }
@@ -131,6 +147,7 @@ const TAB_LABELS: Array<{ id: MasterDataTabId; label: string }> = [
     { id: "brands", label: "Brands" },
     { id: "device-models", label: "Models" },
     { id: "vendors", label: "Vendors" },
+    { id: "owners", label: "Owners" },
     { id: "departments", label: "Departments" },
 ];
 
@@ -144,6 +161,7 @@ const EMPTY_SEARCH_STATE: Record<MasterDataTabId, string> = {
     brands: "",
     "device-models": "",
     vendors: "",
+    owners: "",
     departments: "",
 };
 
@@ -160,6 +178,28 @@ const PILLAR_OPTIONS: Array<{ label: string; value: PillarFilter }> = [
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },
 ];
+
+const MASTER_DATA_CODE_PREFIX: Record<MasterDataTabId, string> = {
+    locations: "LOC",
+    "asset-categories": "CAT",
+    brands: "BRD",
+    "device-models": "MDL",
+    vendors: "VND",
+    owners: "OWN",
+    departments: "DEP",
+};
+
+function resolveMasterDataCode(
+    entity: MasterDataTabId,
+    code: string | null,
+    numericId: number
+) {
+    if (code && code.trim().length > 0) {
+        return code;
+    }
+
+    return `${MASTER_DATA_CODE_PREFIX[entity]}-${String(numericId).padStart(4, "0")}`;
+}
 
 function containsSearch(fields: Array<string | number | null | undefined>, searchTerm: string) {
     if (!searchTerm.trim()) {
@@ -236,6 +276,7 @@ export function MasterDataManagementClient({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
     initialTab,
 }: MasterDataManagementClientProps) {
@@ -302,7 +343,12 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `CAT-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode(
+                        "asset-categories",
+                        row.original.code,
+                        row.original.id
+                    ),
             },
             {
                 accessorKey: "name",
@@ -342,7 +388,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `LOC-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("locations", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Location Name" },
             {
@@ -369,7 +416,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `BRD-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("brands", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Brand Name" },
             {
@@ -398,7 +446,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `MDL-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("device-models", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Model Name" },
             { accessorKey: "pillar", header: "Type" },
@@ -423,7 +472,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `VND-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("vendors", row.original.code, row.original.id),
             },
             { accessorKey: "companyName", header: "Vendor" },
             {
@@ -455,12 +505,43 @@ export function MasterDataManagementClient({
         []
     );
 
+    const ownerColumns = useMemo<ColumnDef<MasterDataOwnerRow>[]>(
+        () => [
+            {
+                accessorKey: "id",
+                header: "ID",
+                cell: ({ row }) =>
+                    resolveMasterDataCode("owners", row.original.code, row.original.id),
+            },
+            { accessorKey: "companyName", header: "Owner" },
+            {
+                accessorKey: "linkedAssets",
+                header: "No. of Assets",
+                cell: ({ row }) => (
+                    <StatusBadge variant="linkedAssets" count={row.original.linkedAssets} />
+                ),
+            },
+            {
+                accessorKey: "isActive",
+                header: "Status",
+                cell: ({ row }) => (
+                    <StatusBadge
+                        value={row.original.isActive ? "active" : "inactive"}
+                        showIcon={false}
+                    />
+                ),
+            },
+        ],
+        []
+    );
+
     const departmentColumns = useMemo<ColumnDef<MasterDataDepartmentRow>[]>(
         () => [
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `DEP-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("departments", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Department Name" },
             { accessorKey: "shortCode", header: "Code" },
@@ -488,7 +569,7 @@ export function MasterDataManagementClient({
             }
 
             return containsSearch(
-                [item.id, item.name, item.prefix, item.pillar, item.linkedAssets],
+                [item.id, item.code, item.name, item.prefix, item.pillar, item.linkedAssets],
                 searchByTab["asset-categories"]
             );
         });
@@ -497,7 +578,7 @@ export function MasterDataManagementClient({
     const filteredLocations = useMemo(
         () =>
             locations.filter((item) =>
-                containsSearch([item.id, item.name, item.type], searchByTab.locations)
+                containsSearch([item.id, item.code, item.name, item.type], searchByTab.locations)
             ),
         [locations, searchByTab.locations]
     );
@@ -505,7 +586,7 @@ export function MasterDataManagementClient({
     const filteredBrands = useMemo(
         () =>
             brands.filter((item) =>
-                containsSearch([item.id, item.name, item.linkedAssets], searchByTab.brands)
+                containsSearch([item.id, item.code, item.name, item.linkedAssets], searchByTab.brands)
             ),
         [brands, searchByTab.brands]
     );
@@ -515,7 +596,7 @@ export function MasterDataManagementClient({
             deviceModels.filter((item) =>
                 matchesPillarFilter([item.pillar], pillarType) &&
                 containsSearch(
-                    [item.id, item.name, item.categoryName, item.brandName, item.pillar],
+                    [item.id, item.code, item.name, item.categoryName, item.brandName, item.pillar],
                     searchByTab["device-models"]
                 )
             ),
@@ -529,7 +610,7 @@ export function MasterDataManagementClient({
                 return (
                     matchesPillarFilter(pillars, pillarType) &&
                     containsSearch(
-                        [item.id, item.companyName, item.email, item.phone, item.website, pillars.join(" ")],
+                        [item.id, item.code, item.companyName, item.email, item.phone, item.website, pillars.join(" ")],
                         searchByTab.vendors
                     )
                 );
@@ -537,11 +618,22 @@ export function MasterDataManagementClient({
         [vendors, pillarType, searchByTab.vendors]
     );
 
+    const filteredOwners = useMemo(
+        () =>
+            owners.filter((item) =>
+                containsSearch(
+                    [item.id, item.code, item.companyName, item.linkedAssets],
+                    searchByTab.owners
+                )
+            ),
+        [owners, searchByTab.owners]
+    );
+
     const filteredDepartments = useMemo(
         () =>
             departments.filter((item) =>
                 containsSearch(
-                    [item.id, item.name, item.shortCode, item.costCenterId],
+                    [item.id, item.code, item.name, item.shortCode, item.costCenterId],
                     searchByTab.departments
                 )
             ),
@@ -695,7 +787,9 @@ export function MasterDataManagementClient({
                                                         ? "Search models..."
                                                         : activeTab === "vendors"
                                                             ? "Search vendors..."
-                                                            : "Search departments..."
+                                                            : activeTab === "owners"
+                                                                ? "Search owners..."
+                                                                : "Search departments..."
                                     }
                                 />
                             </div>
@@ -761,6 +855,17 @@ export function MasterDataManagementClient({
                             pageSizeOptions={[10, 20, 50]}
                             selectionActions={buildSelectionActions("vendors")}
                             onRowClick={(row) => openRecordPanel("vendors", row.id)}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="owners" className="min-h-0">
+                        <DataTable
+                            columns={ownerColumns}
+                            data={filteredOwners}
+                            initialPageSize={10}
+                            pageSizeOptions={[10, 20, 50]}
+                            selectionActions={buildSelectionActions("owners")}
+                            onRowClick={(row) => openRecordPanel("owners", row.id)}
                         />
                     </TabsContent>
 

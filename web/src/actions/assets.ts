@@ -9,15 +9,14 @@ import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db';
 import {
-  assetAssignments,
   assetPurchases,
   assets,
   categories,
   brands,
   locations,
   models,
+  owners,
   systemAuditLogs,
-  users,
   vendors,
 } from '@/db/schema';
 import {
@@ -276,8 +275,8 @@ export async function registerAsset(
         columns: { id: true, isActive: true },
       }),
       input.ownerId
-        ? db.query.users.findFirst({
-            where: eq(users.id, input.ownerId),
+        ? db.query.owners.findFirst({
+            where: eq(owners.id, input.ownerId),
             columns: { id: true, isActive: true },
           })
         : Promise.resolve(null),
@@ -407,9 +406,11 @@ export async function registerAsset(
           name: input.name,
           modelId: input.modelId,
           locationId: input.locationId ?? null,
+          ownerId: input.ownerId ?? null,
           condition: input.condition ?? null,
           instanceAttributes:
-            input.instanceAttributes && Object.keys(input.instanceAttributes).length > 0
+            input.instanceAttributes &&
+            Object.keys(input.instanceAttributes).length > 0
               ? input.instanceAttributes
               : input.notes
                 ? { notes: input.notes }
@@ -433,15 +434,6 @@ export async function registerAsset(
         warrantyExpiry,
         invoiceUrl: uploadedInvoiceUrl,
       });
-
-      if (input.ownerId) {
-        await tx.insert(assetAssignments).values({
-          assetId: newAsset.id,
-          assignedToUserId: input.ownerId,
-          assignedById: currentUser.id,
-        });
-      }
-
       return newAsset;
     });
 

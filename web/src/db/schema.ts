@@ -70,6 +70,8 @@ export const disposalStatusEnum = pgEnum('disposal_status', [
 // -----------------------------------------------------------------------------
 export const departments = pgTable('departments', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  departmentCode: varchar('department_code', { length: 50 }).unique(),
   name: varchar('name', { length: 255 }).notNull().unique(),
   shortCode: varchar('short_code', { length: 50 }).notNull().unique(),
   costCenterId: varchar('cost_center_id', { length: 100 }).notNull().unique(),
@@ -109,6 +111,8 @@ export const locations = pgTable(
   'locations',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    locationCode: varchar('location_code', { length: 50 }).unique(),
     name: varchar('name', { length: 255 }).notNull(),
     type: locationTypeEnum('type').notNull(),
     parentId: integer('parent_id'),
@@ -125,6 +129,8 @@ export const locations = pgTable(
 
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  vendorCode: varchar('vendor_code', { length: 50 }).unique(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
@@ -132,10 +138,20 @@ export const vendors = pgTable('vendors', {
   isActive: boolean('is_active').default(true).notNull(),
 });
 
+export const owners = pgTable('owners', {
+  id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  ownerCode: varchar('owner_code', { length: 50 }).unique(),
+  companyName: varchar('company_name', { length: 255 }).notNull().unique(),
+  isActive: boolean('is_active').default(true).notNull(),
+});
+
 export const categories = pgTable(
   'categories',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    categoryCode: varchar('category_code', { length: 50 }).unique(),
     name: varchar('name', { length: 255 }).notNull(),
     pillar: pillarEnum('pillar').notNull(),
     prefix: varchar('prefix', { length: 10 }).notNull().unique(),
@@ -151,6 +167,8 @@ export const categories = pgTable(
 
 export const brands = pgTable('brands', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  brandCode: varchar('brand_code', { length: 50 }).unique(),
   name: varchar('name', { length: 255 }).notNull().unique(),
   isActive: boolean('is_active').default(true).notNull(),
 });
@@ -159,6 +177,8 @@ export const models = pgTable(
   'models',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    modelCode: varchar('model_code', { length: 50 }).unique(),
     brandId: integer('brand_id')
       .notNull()
       .references(() => brands.id, { onDelete: 'restrict' }),
@@ -193,6 +213,7 @@ export const assets = pgTable(
       .notNull()
       .references(() => models.id, { onDelete: 'restrict' }),
     locationId: integer('location_id').references(() => locations.id),
+    ownerId: integer('owner_id').references(() => owners.id),
 
     // Current State
     status: assetStatusEnum('status').default('Available').notNull(),
@@ -209,6 +230,7 @@ export const assets = pgTable(
   (table) => ({
     modelIdIdx: index('assets_model_id_idx').on(table.modelId),
     locationIdIdx: index('assets_location_id_idx').on(table.locationId),
+    ownerIdIdx: index('assets_owner_id_idx').on(table.ownerId),
   })
 );
 
@@ -391,11 +413,19 @@ export const assetRelations = relations(assets, ({ one, many }) => ({
     fields: [assets.locationId],
     references: [locations.id],
   }),
+  owner: one(owners, {
+    fields: [assets.ownerId],
+    references: [owners.id],
+  }),
   purchases: many(assetPurchases),
   assignments: many(assetAssignments),
   maintenance: many(maintenanceRecords),
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
+}));
+
+export const ownersRelations = relations(owners, ({ many }) => ({
+  assets: many(assets),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({

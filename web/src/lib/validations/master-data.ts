@@ -94,6 +94,11 @@ export const vendorSchema = z.object({
   isActive: z.boolean(),
 });
 
+export const ownerSchema = z.object({
+  companyName: z.string().trim().min(2, 'Owner name is required'),
+  isActive: z.boolean(),
+});
+
 export const departmentSchema = z.object({
   name: z.string().trim().min(2, 'Department name is required'),
   shortCode: z

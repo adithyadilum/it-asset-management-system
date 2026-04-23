@@ -674,6 +674,10 @@ export function AssetRegistryClient({
     if (config.view === 'software') {
       return [
         {
+          accessorKey: 'assetTag',
+          header: 'Asset ID',
+        },
+        {
           accessorKey: 'name',
           header: 'Software Name',
           cell: ({ row }) => toCellText(row.original.name),

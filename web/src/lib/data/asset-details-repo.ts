@@ -59,6 +59,10 @@ export interface AssetDetailsData {
     companyName: string;
     contactInfo: string | null;
   } | null;
+  owner: {
+    id: number;
+    companyName: string;
+  } | null;
   assignment: {
     assignedToUser: {
       id: string;
@@ -219,6 +223,7 @@ export async function getAssetDetailsById(
         },
       },
       location: { columns: { id: true, name: true, type: true } },
+      owner: { columns: { id: true, companyName: true } },
       purchases: {
         limit: 1,
         columns: {
@@ -327,6 +332,12 @@ export async function getAssetDetailsById(
           companyName: purchaseRecord.vendor.companyName,
           contactInfo:
             purchaseRecord.vendor.email ?? purchaseRecord.vendor.phone ?? null,
+        }
+      : null,
+    owner: assetRecord.owner
+      ? {
+          id: assetRecord.owner.id,
+          companyName: assetRecord.owner.companyName,
         }
       : null,
     assignment: assignmentRecord

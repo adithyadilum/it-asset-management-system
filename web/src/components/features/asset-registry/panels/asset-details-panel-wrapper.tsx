@@ -124,7 +124,8 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       imageUrl={data?.model.imageUrl ?? ""}
       brand={data?.model.brand.name ?? ""}
       serialNumber={data?.asset.serialNumber ?? ""}
-      owner={data?.assignment?.assignedToUser?.name ?? ""}
+      owner={data?.owner?.companyName ?? ""}
+      assignedTo={data?.assignment?.assignedToUser?.name ?? ""}
       group={""} // Group not in assignment
       location={data?.location?.name ?? ""}
       condition={data?.asset.condition ?? ""}

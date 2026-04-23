@@ -36,6 +36,7 @@ import type {
     MasterDataDepartmentRow,
     MasterDataDeviceModelRow,
     MasterDataLocationRow,
+    MasterDataOwnerRow,
     MasterDataVendorRow,
 } from "./master-data-management-client";
 
@@ -55,6 +56,7 @@ interface MasterDataRecordPanelProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
 }
 
@@ -64,6 +66,7 @@ const ENTITY_LABELS: Record<MasterDataRecordEntity, string> = {
     brands: "Brand",
     "device-models": "Model",
     vendors: "Vendor",
+    owners: "Owner",
     departments: "Department",
 };
 
@@ -73,6 +76,7 @@ const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
     brands: "BRD",
     "device-models": "MDL",
     vendors: "VND",
+    owners: "OWN",
     departments: "DEP",
 };
 
@@ -132,8 +136,16 @@ function normalizeModelTechnicalDetails(
     return next;
 }
 
-function formatPreviewId(prefix: string, id: number) {
-    return `${prefix}-${String(id).padStart(4, "0")}`;
+function resolveRecordCode(
+    entity: MasterDataRecordEntity,
+    code: string | null | undefined,
+    numericId: number
+) {
+    if (code && code.trim().length > 0) {
+        return code;
+    }
+
+    return `${ENTITY_ID_PREFIX[entity]}-${String(numericId).padStart(4, "0")}`;
 }
 
 function resolveRecordByEntity(
@@ -145,6 +157,7 @@ function resolveRecordByEntity(
         brands: MasterDataBrandRow[];
         deviceModels: MasterDataDeviceModelRow[];
         vendors: MasterDataVendorRow[];
+        owners: MasterDataOwnerRow[];
         departments: MasterDataDepartmentRow[];
     }
 ) {
@@ -159,6 +172,8 @@ function resolveRecordByEntity(
             return sources.deviceModels.find((row) => row.id === numericId) ?? null;
         case "vendors":
             return sources.vendors.find((row) => row.id === numericId) ?? null;
+        case "owners":
+            return sources.owners.find((row) => row.id === numericId) ?? null;
         case "departments":
             return sources.departments.find((row) => row.id === numericId) ?? null;
     }
@@ -231,6 +246,7 @@ export function MasterDataRecordPanel({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
 }: MasterDataRecordPanelProps) {
     const router = useRouter();
@@ -252,6 +268,7 @@ export function MasterDataRecordPanel({
             brands,
             deviceModels,
             vendors,
+            owners,
             departments,
         });
     }, [
@@ -262,6 +279,7 @@ export function MasterDataRecordPanel({
         locations,
         normalizedEntity,
         numericRecordId,
+        owners,
         vendors,
     ]);
     const linkedAssetsCount = selectedRecord?.linkedAssets ?? 0;
@@ -321,6 +339,12 @@ export function MasterDataRecordPanel({
                 nextDraft.shortCode = department.shortCode;
                 nextDraft.costCenterId = department.costCenterId;
                 nextDraft.isActive = department.isActive;
+                break;
+            }
+            case "owners": {
+                const owner = selectedRecord as MasterDataOwnerRow;
+                nextDraft.companyName = owner.companyName;
+                nextDraft.isActive = owner.isActive;
                 break;
             }
         }
@@ -516,22 +540,24 @@ export function MasterDataRecordPanel({
     }, [linkedAssetsCount, normalizedEntity, onCloseUrl, router, selectedRecord]);
 
     const renderRecordIdPreview = () => {
-        if (!normalizedEntity || !Number.isFinite(numericRecordId)) {
+        if (!normalizedEntity || !selectedRecord || !Number.isFinite(numericRecordId)) {
             return null;
         }
 
         return (
-            <div className="space-y-2">
-                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                    {ENTITY_LABELS[normalizedEntity]} ID
-                </label>
-                <Input
-                    value={formatPreviewId(ENTITY_ID_PREFIX[normalizedEntity], numericRecordId)}
-                    readOnly
-                    tabIndex={-1}
-                    onFocus={(event) => event.currentTarget.blur()}
-                    className={READ_ONLY_INPUT_CLASSNAME}
-                />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                        {ENTITY_LABELS[normalizedEntity]} ID
+                    </label>
+                    <Input
+                        value={resolveRecordCode(normalizedEntity, selectedRecord.code, numericRecordId)}
+                        readOnly
+                        tabIndex={-1}
+                        onFocus={(event) => event.currentTarget.blur()}
+                        className={READ_ONLY_INPUT_CLASSNAME}
+                    />
+                </div>
             </div>
         );
     };
@@ -1219,6 +1245,36 @@ export function MasterDataRecordPanel({
                             ) : null}
                             <Input
                                 value={asString(draft.costCenterId)}
+                                readOnly
+                                tabIndex={-1}
+                                onFocus={(event) => event.currentTarget.blur()}
+                                className={READ_ONLY_INPUT_CLASSNAME}
+                            />
+                        </div>
+
+                        {renderActiveStatus()}
+                    </>
+                );
+            }
+
+            case "owners": {
+                const owner = selectedRecord as MasterDataOwnerRow;
+
+                return (
+                    <>
+                        {renderRecordIdPreview()}
+
+                        {renderTextField("companyName", "Owner Name", asString(draft.companyName), {
+                            required: true,
+                            placeholder: "TIQRI LK",
+                        })}
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Linked Assets
+                            </label>
+                            <Input
+                                value={`${owner.linkedAssets} Assets`}
                                 readOnly
                                 tabIndex={-1}
                                 onFocus={(event) => event.currentTarget.blur()}
