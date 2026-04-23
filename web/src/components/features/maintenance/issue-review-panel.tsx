@@ -207,9 +207,17 @@ export function IssueReviewPanel({
       <InitiateRepairDialog 
         isOpen={showRepairDialog} 
         onClose={() => setShowRepairDialog(false)} 
-        onConfirm={async (data) => { if (onInitiateRepair) await onInitiateRepair(data); }} 
+        onConfirm={async (formData) => { 
+          if (onInitiateRepair) await onInitiateRepair(formData); 
+        }} 
         vendors={vendors} 
-        isLoading={isInitiatingRepair} 
+        isLoading={isInitiatingRepair}
+        // 👇 Added "|| undefined" to convert database nulls into undefined for React props
+        assetId={ticket.asset.assetTag}
+        assetName={ticket.model?.name || ticket.asset.name || undefined}
+        assetSerial={ticket.asset.serialNumber || undefined}
+        reportedBy={ticket.reportedBy?.name || undefined}
+        reportedDate={ticket.createdAt}
       />
     </>
   );

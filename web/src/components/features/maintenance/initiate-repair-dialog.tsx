@@ -1,11 +1,15 @@
+// web/src/components/features/maintenance/initiate-repair-dialog.tsx
 'use client';
 
 import { useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, Ban, Laptop, CalendarDays } from 'lucide-react';
 import type { Vendor, InitiateRepairFormData } from '@/types/maintenance';
+import { format } from 'date-fns';
 
 interface InitiateRepairDialogProps {
   isOpen: boolean;
@@ -13,22 +17,27 @@ interface InitiateRepairDialogProps {
   onConfirm: (data: InitiateRepairFormData) => Promise<void>;
   vendors: Vendor[];
   isLoading?: boolean;
+  assetId?: string;
+  assetName?: string;
+  assetSerial?: string;
+  reportedBy?: string;
+  reportedDate?: Date | string | null;
 }
 
-const RMA_PLACEHOLDER = 'e.g., RMA-2026-0001';
-const ESTIMATED_COST_PLACEHOLDER = 'e.g., 250.00';
+const RMA_PLACEHOLDER = 'e.g. C02XG12345';
+const ESTIMATED_COST_PLACEHOLDER = '10.00';
 
-/**
- * Initiate Repair Dialog Component
- * Modal to dispatch asset for vendor repair
- * US-15.3 Implementation
- */
 export function InitiateRepairDialog({
   isOpen,
   onClose,
   onConfirm,
   vendors,
   isLoading = false,
+  assetId,
+  assetName,
+  assetSerial,
+  reportedBy,
+  reportedDate,
 }: InitiateRepairDialogProps) {
   const [formData, setFormData] = useState<InitiateRepairFormData>({
     vendorId: '',
@@ -38,24 +47,17 @@ export function InitiateRepairDialog({
   });
   const [errors, setErrors] = useState<Partial<Record<keyof InitiateRepairFormData, string>>>({});
 
-  // Validate form
   const validateForm = () => {
     const newErrors: typeof errors = {};
-
-    if (!formData.vendorId.trim()) {
-      newErrors.vendorId = 'Vendor is required';
-    }
-
+    if (!formData.vendorId.trim()) newErrors.vendorId = 'Vendor is required';
     if (!formData.rmaNumber.trim()) {
       newErrors.rmaNumber = 'RMA/Ticket Number is required';
     } else if (formData.rmaNumber.trim().length < 3) {
       newErrors.rmaNumber = 'RMA/Ticket Number must be at least 3 characters';
     }
-
     if (formData.estimatedCost && isNaN(parseFloat(formData.estimatedCost))) {
       newErrors.estimatedCost = 'Estimated Cost must be a valid number';
     }
-
     if (formData.expectedReturnDate) {
       const selectedDate = new Date(formData.expectedReturnDate);
       const today = new Date();
@@ -64,16 +66,12 @@ export function InitiateRepairDialog({
         newErrors.expectedReturnDate = 'Expected Return Date must be in the future';
       }
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleConfirm = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     try {
       await onConfirm(formData);
       setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', expectedReturnDate: '' });
@@ -86,32 +84,74 @@ export function InitiateRepairDialog({
   };
 
   const handleClose = () => {
-    setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', expectedReturnDate: '' });
-    setErrors({});
-    onClose();
+    if (!isLoading) {
+      setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', expectedReturnDate: '' });
+      setErrors({});
+      onClose();
+    }
   };
 
-  // Check if form is valid for button enable/disable
   const isFormValid = formData.vendorId.trim() !== '' && formData.rmaNumber.trim() !== '';
 
-  // Get selected vendor for display
-  const selectedVendor = vendors.find((v) => v.id.toString() === formData.vendorId);
-
   return (
-    <AlertDialog open={isOpen} onOpenChange={handleClose}>
-      <AlertDialogContent className="max-w-md">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Send Asset for Repair</AlertDialogTitle>
-          <AlertDialogDescription>
-            Dispatch this asset to a vendor for repair. The asset status will be updated to &quot;In Repair&quot;.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      {/* Dialog strictly set to 600px width with 24px (p-6) padding */}
+      <DialogContent className="sm:max-w-[600px] w-full p-6 bg-white rounded-xl shadow-lg border border-slate-200 [&>button]:hidden flex flex-col gap-6">
+        
+        {/* ============ HEADER SECTION ============ */}
+        <div className="flex items-center justify-between">
+          <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[#0f172a] leading-7">
+            <AlertCircle className="h-[28px] w-[28px] opacity-70" strokeWidth={1.5} />
+            Send Asset for Repair
+          </DialogTitle>
+          <button
+            onClick={handleClose}
+            disabled={isLoading}
+            className="text-[#0f172a] opacity-70 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+          >
+            {/* Using Ban icon to match Figma's 'remixforbidIcon' */}
+            <Ban className="h-[16px] w-[16px]" strokeWidth={2} />
+          </button>
+        </div>
 
-        <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
-          {/* Vendor Dropdown */}
-          <div className="space-y-2">
-            <Label htmlFor="vendor" className="text-sm font-medium">
-              Vendor <span className="text-red-500">*</span>
+        {/* ============ ASSET DETAILS CARD ============ */}
+        <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-lg py-6 flex flex-col items-center gap-6 shadow-[0px_1px_3px_rgba(0,0,0,0.1)] w-full">
+          
+          {/* Icon & Name */}
+          <div className="flex items-center justify-center gap-[10px] w-full px-6">
+            <Laptop className="h-[48px] w-[48px] text-[#0f172a] shrink-0" strokeWidth={1} />
+            <span className="font-semibold text-[18px] leading-[28px] text-[#0f172a] truncate">
+              {assetName || 'Unknown Asset'}
+            </span>
+          </div>
+
+          {/* Precise 2-Column Grid matching Figma CSS */}
+          <div className="w-full flex justify-center px-6">
+            <div className="grid grid-cols-[120px_1fr] gap-x-8 gap-y-[10px] text-[14px] text-[#0f172a] w-fit min-w-[280px]">
+              <div className="font-medium">Asset ID:</div>
+              <div className="font-medium truncate">{assetId || 'N/A'}</div>
+              
+              <div className="font-medium">Serial</div>
+              <div className="font-medium truncate">{assetSerial || 'N/A'}</div>
+              
+              <div className="font-medium">Reported By:</div>
+              <div className="font-medium truncate">{reportedBy || 'N/A'}</div>
+              
+              <div className="font-medium">Date:</div>
+              <div className="font-medium truncate">
+                {reportedDate ? format(new Date(reportedDate), 'MMM dd, yyyy') : 'N/A'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============ FORM SECTION ============ */}
+        <div className="flex flex-col gap-6 w-full">
+          
+          {/* Vendor */}
+          <div className="flex flex-col gap-3">
+            <Label htmlFor="vendor" className="text-[14px] font-medium text-[#0f172a] flex items-baseline gap-1">
+              Vendor <span className="text-[#ef4444]">*</span>
             </Label>
             <Select 
               value={formData.vendorId} 
@@ -120,10 +160,11 @@ export function InitiateRepairDialog({
                 setErrors({ ...errors, vendorId: undefined });
               }}
             >
-              <SelectTrigger id="vendor" className={errors.vendorId ? 'border-red-500' : ''}>
-                <SelectValue placeholder="Select a vendor..." />
+              {/* 36px height to match Figma input styling */}
+              <SelectTrigger id="vendor" className={`h-[36px] text-[14px] px-3 border-[#e2e8f0] bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg ${errors.vendorId ? 'border-red-500' : ''}`}>
+                <SelectValue placeholder="Select a reason" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-[14px]">
                 {vendors.length === 0 ? (
                   <div className="p-2 text-sm text-slate-500">No vendors available</div>
                 ) : (
@@ -135,21 +176,13 @@ export function InitiateRepairDialog({
                 )}
               </SelectContent>
             </Select>
-            {errors.vendorId && (
-              <p className="text-sm text-red-500">{errors.vendorId}</p>
-            )}
-            {selectedVendor?.email && (
-              <p className="text-xs text-slate-500">Email: {selectedVendor.email}</p>
-            )}
-            {selectedVendor?.phone && (
-              <p className="text-xs text-slate-500">Phone: {selectedVendor.phone}</p>
-            )}
+            {errors.vendorId && <p className="text-sm text-red-500 mt-[-4px]">{errors.vendorId}</p>}
           </div>
 
-          {/* RMA Number Input */}
-          <div className="space-y-2">
-            <Label htmlFor="rma-number" className="text-sm font-medium">
-              RMA/Ticket Number <span className="text-red-500">*</span>
+          {/* RMA Number */}
+          <div className="flex flex-col gap-3">
+            <Label htmlFor="rma-number" className="text-[14px] font-medium text-[#0f172a] flex items-baseline gap-1">
+              RMA / Ticket Number: <span className="text-[#ef4444]">*</span>
             </Label>
             <Input
               id="rma-number"
@@ -160,79 +193,94 @@ export function InitiateRepairDialog({
                 setErrors({ ...errors, rmaNumber: undefined });
               }}
               disabled={isLoading}
-              className={errors.rmaNumber ? 'border-red-500' : ''}
+              className={`h-[36px] text-[14px] px-3 border-[#e2e8f0] bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg ${errors.rmaNumber ? 'border-red-500' : ''}`}
               maxLength={50}
             />
-            {errors.rmaNumber && (
-              <p className="text-sm text-red-500">{errors.rmaNumber}</p>
-            )}
-            <p className="text-xs text-slate-500">
-              {formData.rmaNumber.length}/50 characters
-            </p>
+            {errors.rmaNumber && <p className="text-sm text-red-500 mt-[-4px]">{errors.rmaNumber}</p>}
           </div>
 
-          {/* Estimated Cost Input */}
-          <div className="space-y-2">
-            <Label htmlFor="estimated-cost" className="text-sm font-medium">
-              Estimated Cost
-            </Label>
-            <Input
-              id="estimated-cost"
-              type="number"
-              placeholder={ESTIMATED_COST_PLACEHOLDER}
-              step="0.01"
-              min="0"
-              value={formData.estimatedCost}
-              onChange={(e) => {
-                setFormData({ ...formData, estimatedCost: e.target.value });
-                setErrors({ ...errors, estimatedCost: undefined });
-              }}
-              disabled={isLoading}
-              className={errors.estimatedCost ? 'border-red-500' : ''}
-            />
-            {errors.estimatedCost && (
-              <p className="text-sm text-red-500">{errors.estimatedCost}</p>
-            )}
-            <p className="text-xs text-slate-500">Optional: Expected repair cost in USD</p>
-          </div>
+          {/* Estimated Cost & Return Date */}
+          <div className="flex items-start gap-5 w-full">
+            
+            {/* Estimated Cost */}
+            <div className="flex flex-col gap-3 flex-1">
+              <Label htmlFor="estimated-cost" className="text-[14px] font-medium text-[#0f172a]">
+                Estimated Cost
+              </Label>
+              <div className="flex items-center shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg border border-[#e2e8f0] bg-white w-full h-[36px] overflow-hidden">
+                <Select defaultValue="USD">
+                  <SelectTrigger className="w-[60px] h-full text-[14px] font-medium border-0 border-r border-[#e2e8f0] rounded-none bg-transparent focus:ring-0 focus:ring-offset-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">$</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="estimated-cost"
+                  type="number"
+                  placeholder={ESTIMATED_COST_PLACEHOLDER}
+                  step="0.01"
+                  min="0"
+                  value={formData.estimatedCost}
+                  onChange={(e) => {
+                    setFormData({ ...formData, estimatedCost: e.target.value });
+                    setErrors({ ...errors, estimatedCost: undefined });
+                  }}
+                  disabled={isLoading}
+                  className={`flex-1 h-full text-[14px] font-medium text-slate-500 border-0 bg-transparent rounded-none focus-visible:ring-0 px-3 ${errors.estimatedCost ? 'bg-red-50' : ''}`}
+                />
+              </div>
+              {errors.estimatedCost && <p className="text-sm text-red-500 mt-[-4px]">{errors.estimatedCost}</p>}
+            </div>
 
-          {/* Expected Return Date Picker */}
-          <div className="space-y-2">
-            <Label htmlFor="return-date" className="text-sm font-medium">
-              Expected Return Date
-            </Label>
-            <Input
-              id="return-date"
-              type="date"
-              value={formData.expectedReturnDate}
-              onChange={(e) => {
-                setFormData({ ...formData, expectedReturnDate: e.target.value });
-                setErrors({ ...errors, expectedReturnDate: undefined });
-              }}
-              disabled={isLoading}
-              className={errors.expectedReturnDate ? 'border-red-500' : ''}
-              min={new Date().toISOString().split('T')[0]}
-            />
-            {errors.expectedReturnDate && (
-              <p className="text-sm text-red-500">{errors.expectedReturnDate}</p>
-            )}
-            <p className="text-xs text-slate-500">Optional: When you expect the asset back</p>
+            {/* Expected Return Date */}
+            <div className="flex flex-col gap-3 flex-1">
+              <Label htmlFor="return-date" className="text-[14px] font-medium text-[#0f172a]">
+                Expected Return Date
+              </Label>
+              <div className="relative w-full shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg h-[36px]">
+                <Input
+                  id="return-date"
+                  type="date"
+                  value={formData.expectedReturnDate}
+                  onChange={(e) => {
+                    setFormData({ ...formData, expectedReturnDate: e.target.value });
+                    setErrors({ ...errors, expectedReturnDate: undefined });
+                  }}
+                  disabled={isLoading}
+                  className={`w-full h-full text-[14px] pl-3 pr-10 border-[#e2e8f0] bg-white rounded-lg focus:border-slate-300 focus:ring-1 focus:ring-slate-300 ${errors.expectedReturnDate ? 'border-red-500' : ''}`}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">
+                  <CalendarDays className="h-[16px] w-[16px]" />
+                </div>
+              </div>
+              {errors.expectedReturnDate && <p className="text-sm text-red-500 mt-[-4px]">{errors.expectedReturnDate}</p>}
+            </div>
           </div>
         </div>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>
+        {/* ============ FOOTER SECTION ============ */}
+        <DialogFooter className="flex items-center gap-2 sm:justify-end w-full">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isLoading}
+            className="h-[36px] px-4 bg-[#f1f5f9] border border-[#e2e8f0] text-[#0f172a] hover:bg-slate-200 shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg"
+          >
             Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
+          </Button>
+          <Button
             onClick={handleConfirm}
             disabled={isLoading || !isFormValid}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="h-[36px] px-4 bg-[#040d5a] text-white hover:bg-[#040d5a]/90 shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg disabled:opacity-50"
           >
             {isLoading ? 'Dispatching...' : 'Confirm & Dispatch'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+
+      </DialogContent>
+    </Dialog>
   );
 }
