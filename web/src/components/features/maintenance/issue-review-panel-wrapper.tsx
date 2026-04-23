@@ -71,7 +71,7 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
       toast.success("Issue resolved successfully");
       onSuccess?.(); // Refresh the table
       onClose();
-    } catch (error) {
+    } catch {
       toast.error("Failed to resolve issue");
     } finally {
       setIsResolving(false);
@@ -92,7 +92,7 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
       toast.success("Repair initiated successfully");
       onSuccess?.(); // Refresh the table
       onClose();
-    } catch (error) {
+    } catch {
       toast.error("Failed to initiate repair");
     } finally {
       setIsInitiating(false);

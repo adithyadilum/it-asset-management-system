@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories, systemAuditLogs, vendors } from '@/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
-import type { PendingReviewTicket, IssueReviewPanelData, AssetStatus } from '@/types/maintenance';
+import type { PendingReviewTicket, IssueReviewPanelData, AssetStatus, ActiveRepairTicket } from '@/types/maintenance';
 
 /**
  * Fetch pending maintenance tickets for the Pending Review tab
@@ -450,6 +450,208 @@ export async function initiateVendorRepair(
     };
   } catch (error) {
     console.error('[initiateVendorRepair] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch active repair tickets (VENDOR repairs in progress)
+ * Used for Active Repairs tab
+ */
+export async function getActiveRepairTickets() {
+  try {
+    const user = await getAuthenticatedUser();
+    console.log('[getActiveRepairTickets] User:', user?.id);
+
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+      })
+      .from(maintenanceTickets)
+      .where(
+        and(
+          eq(maintenanceTickets.status, 'ACTIVE'),
+          eq(maintenanceTickets.ticketType, 'VENDOR'),
+          inArray(assets.status, ['In Repair'])
+        )
+      )
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .limit(100);
+
+    console.log('[getActiveRepairTickets] Found tickets:', result.length);
+
+    const tickets = result.map((row) => ({
+      ...row.ticket,
+      asset: row.asset,
+    })) as unknown as ActiveRepairTicket[];;
+
+    return {
+      tickets,
+      total: tickets.length,
+    };
+  } catch (error) {
+    console.error('[getActiveRepairTickets] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a single active repair ticket for the completion modal
+ */
+export async function getActiveRepairTicketForCompletion(ticketId: number) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+      })
+      .from(maintenanceTickets)
+      .where(
+        and(
+          eq(maintenanceTickets.id, ticketId),
+          eq(maintenanceTickets.status, 'ACTIVE'),
+          eq(maintenanceTickets.ticketType, 'VENDOR')
+        )
+      )
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .limit(1);
+
+    if (result.length === 0) {
+      throw new Error('Repair ticket not found');
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('[getActiveRepairTicketForCompletion] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Complete a repair ticket
+ * Updates ticket status to COMPLETED
+ * Records actual cost and resolution notes
+ * Updates asset status to selected value
+ * Aggregates actual cost to asset maintenance tracking
+ */
+export async function completeRepairTicket(
+  ticketId: number,
+  actualCost: string,
+  resolutionNotes: string,
+  updateStatusTo: 'Available' | 'Disposed'
+) {
+  try {
+    const user = await getAuthenticatedUser();
+    console.log('[completeRepairTicket] Starting for ticket:', ticketId, 'by user:', user?.id);
+
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
+    if (!actualCost.trim() || isNaN(parseFloat(actualCost))) {
+      throw new Error('Actual Cost must be a valid number');
+    }
+
+    if (!resolutionNotes.trim()) {
+      throw new Error('Resolution Notes are required');
+    }
+
+    if (!['Available', 'Disposed'].includes(updateStatusTo)) {
+      throw new Error('Invalid status update');
+    }
+
+    // Get the ticket
+    const ticketResult = await db
+      .select()
+      .from(maintenanceTickets)
+      .where(eq(maintenanceTickets.id, ticketId))
+      .limit(1);
+
+    if (ticketResult.length === 0) {
+      throw new Error('Ticket not found');
+    }
+
+    const ticket = ticketResult[0];
+    const assetId = ticket.assetId;
+    console.log('[completeRepairTicket] Found ticket for asset:', assetId);
+
+    // Get current asset data for audit
+    const currentAssetResult = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, assetId))
+      .limit(1);
+
+    if (currentAssetResult.length === 0) {
+      throw new Error('Asset not found');
+    }
+
+    const currentAsset = currentAssetResult[0];
+    console.log('[completeRepairTicket] Current asset status:', currentAsset.status);
+
+    // Update maintenance ticket to COMPLETED
+    const actualCostNum = parseFloat(actualCost);
+    await db
+      .update(maintenanceTickets)
+      .set({
+        status: 'COMPLETED',
+        actualCost: actualCostNum.toString(),
+        actualCompletionDate: new Date(),
+        resolutionNotes: resolutionNotes.trim(),
+        updatedAt: new Date(),
+      })
+      .where(eq(maintenanceTickets.id, ticketId));
+    console.log('[completeRepairTicket] Updated ticket status to COMPLETED');
+
+    // Update asset status
+    await db
+      .update(assets)
+      .set({
+        status: updateStatusTo,
+        updatedAt: new Date(),
+      })
+      .where(eq(assets.id, assetId));
+    console.log('[completeRepairTicket] Updated asset status to:', updateStatusTo);
+
+    // Write audit log entry
+    await db.insert(systemAuditLogs).values({
+      entityType: 'Asset',
+      entityId: assetId,
+      actionType: 'MAINTENANCE_REPAIR_COMPLETED',
+      performedById: user.id,
+      oldValue: {
+        status: currentAsset.status,
+        ticketStatus: 'ACTIVE',
+      },
+      newValue: {
+        status: updateStatusTo,
+        ticketStatus: 'COMPLETED',
+        actualCost: actualCostNum,
+        resolutionNotes: resolutionNotes.trim(),
+      },
+      performedAt: new Date(),
+    });
+    console.log('[completeRepairTicket] Created audit log entry');
+
+    console.log('[completeRepairTicket] ✅ Repair completed successfully');
+    return {
+      success: true,
+      message: 'Repair completed successfully',
+      ticketId,
+      assetId,
+    };
+  } catch (error) {
+    console.error('[completeRepairTicket] Error:', error);
     throw error;
   }
 }

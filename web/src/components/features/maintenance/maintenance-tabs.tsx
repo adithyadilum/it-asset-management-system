@@ -5,14 +5,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { ActiveRepairsGrid } from './active-repairs-grid';
 import type { ColumnDef } from '@tanstack/react-table';
-import type { PendingReviewTicket,} from '@/types/maintenance';
+import type { PendingReviewTicket, ActiveRepairTicket } from '@/types/maintenance';
 import { format } from 'date-fns';
 
 interface MaintenanceTabsProps {
   pendingTickets: PendingReviewTicket[];
+  activeRepairTickets: ActiveRepairTicket[];
   isLoading: boolean;
   onRowClick: (row: PendingReviewTicket) => void;
+  onActiveRepairRowClick: (ticket: ActiveRepairTicket) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
 }
@@ -20,16 +23,15 @@ interface MaintenanceTabsProps {
 /**
  * Maintenance Tabs Component
  * Displays 3 tabs: Pending Review, Active Repairs, Repair History
- * Handles data grid, search, and filtering
- * 
- * Filters pending tickets by:
- * - Asset Status: Defective or In Repair
- * - Maintenance Ticket Status: ACTIVE
+ * Handles data grids, search, and filtering
+ * US-15.1, US-15.4 Implementation
  */
 export function MaintenanceTabs({
   pendingTickets,
+  activeRepairTickets,
   isLoading,
   onRowClick,
+  onActiveRepairRowClick,
   searchTerm,
   onSearchChange,
 }: MaintenanceTabsProps) {
@@ -71,11 +73,17 @@ export function MaintenanceTabs({
   ];
 
   // Filter tickets based on search term
-  const filteredTickets = pendingTickets.filter(
+  const filteredPendingTickets = pendingTickets.filter(
     (ticket) =>
       ticket.asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.asset.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.reportedIssue.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredActiveTickets = activeRepairTickets.filter(
+    (ticket) =>
+      ticket.rmaNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -98,7 +106,7 @@ export function MaintenanceTabs({
               value="active"
               className="rounded-none border-b-2 border-b-transparent px-4 py-2 text-sm font-medium text-slate-600 data-[state=active]:border-b-blue-600 data-[state=active]:text-slate-900"
             >
-              Active Repairs
+              Active Repairs {activeRepairTickets.length > 0 && `(${activeRepairTickets.length})`}
             </TabsTrigger>
             <TabsTrigger
               value="history"
@@ -114,7 +122,13 @@ export function MaintenanceTabs({
           {/* Search Input */}
           <div className="flex items-center gap-2 shrink-0">
             <Input
-              placeholder="Search by Asset ID, Name, or Issue..."
+              placeholder={
+                activeTab === 'pending'
+                  ? 'Search by Asset ID, Name, or Issue...'
+                  : activeTab === 'active'
+                  ? 'Search by RMA or Vendor...'
+                  : 'Search by RMA or Vendor...'
+              }
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
               className="max-w-sm"
@@ -128,14 +142,14 @@ export function MaintenanceTabs({
                 rowCount={5}
                 columnWidths={['w-[15%]', 'w-[20%]', 'w-[15%]', 'w-[30%]', 'w-[20%]']}
               />
-            ) : filteredTickets.length === 0 ? (
+            ) : filteredPendingTickets.length === 0 ? (
               <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50">
                 <span className="text-sm text-slate-500">No pending maintenance tickets found</span>
               </div>
             ) : (
               <DataTable
                 columns={pendingReviewColumns}
-                data={filteredTickets}
+                data={filteredPendingTickets}
                 pageSizeOptions={[10, 20, 30, 50]}
                 initialPageSize={10}
                 onRowClick={(row) => onRowClick(row)}
@@ -144,10 +158,12 @@ export function MaintenanceTabs({
           </TabsContent>
 
           {/* Active Repairs Tab */}
-          <TabsContent value="active" className="m-0">
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50">
-              <span className="text-sm text-slate-500">Active Repairs tab - Coming in US-15.4</span>
-            </div>
+          <TabsContent value="active" className="m-0 flex-1 overflow-hidden">
+            <ActiveRepairsGrid
+              tickets={filteredActiveTickets}
+              isLoading={isLoading}
+              onRowClick={onActiveRepairRowClick}
+            />
           </TabsContent>
 
           {/* Repair History Tab */}

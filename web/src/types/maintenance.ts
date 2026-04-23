@@ -100,3 +100,31 @@ export interface InitiateRepairFormData {
   estimatedCost: string;
   expectedReturnDate: string;
 }
+
+export interface ActiveRepairTicket {
+  id: number;
+  assetId: string;
+  asset: Asset;
+  ticketType: 'VENDOR' | 'INTERNAL';
+  vendorName: string | null;
+  rmaNumber: string | null;
+  reportedIssue: string;
+  estimatedCost: string | null;
+  estimatedReturnDate: string | null; // Change from Date to string
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CompleteRepairFormData {
+  actualCost: string;
+  resolutionNotes: string;
+  updateStatusTo: 'Available' | 'Disposed';
+}
+
+export interface LogCompleteRepairData {
+  ticketId: number;
+  actualCost: string;
+  resolutionNotes: string;
+  updateStatusTo: 'Available' | 'Disposed';
+}
