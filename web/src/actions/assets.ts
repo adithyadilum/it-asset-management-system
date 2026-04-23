@@ -153,6 +153,33 @@ function validationError(
   return { success: false, message, errors };
 }
 
+function resolveDbErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+
+  const maybeError = error as {
+    code?: string;
+    cause?: { code?: string };
+  };
+
+  return maybeError.code ?? maybeError.cause?.code;
+}
+
+function isAssetTagUniqueViolation(error: unknown): boolean {
+  const code = resolveDbErrorCode(error);
+
+  if (code === '23505') {
+    const message = String(error);
+    return (
+      message.includes('asset_tag') ||
+      message.includes('assets_asset_tag_unique')
+    );
+  }
+
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Unified Asset Registration (all pillars)
 // ---------------------------------------------------------------------------
@@ -384,46 +411,67 @@ export async function registerAsset(
     const pillarPrefix = PILLAR_PREFIX_MAP[input.pillar];
     const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
 
-    const countResult = await db
-      .select({ value: sql<number>`cast(count(*) as integer)` })
-      .from(assets)
-      .where(like(assets.assetTag, `${assetTagPrefix}-%`));
+    // 7. Neon HTTP driver does not support db.transaction(), so use
+    // sequential writes with a compensating rollback for partial failures.
+    let insertedAsset: { id: string; assetTag: string } | null = null;
+    let lastInsertError: unknown = null;
 
-    const nextSequence = (countResult[0]?.value ?? 0) + 1;
-    const generatedAssetTag = buildAssetTag(
-      pillarPrefix,
-      normalizedCategoryPrefix,
-      nextSequence
-    );
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const countResult = await db
+        .select({ value: sql<number>`cast(count(*) as integer)` })
+        .from(assets)
+        .where(like(assets.assetTag, `${assetTagPrefix}-%`));
 
-    // 7. Atomic DB write using transaction
-    const insertedAsset = await db.transaction(async (tx) => {
-      const [newAsset] = await tx
-        .insert(assets)
-        .values({
-          assetTag: generatedAssetTag,
-          serialNumber: input.serialNumber ?? null,
-          name: input.name,
-          modelId: input.modelId,
-          locationId: input.locationId ?? null,
-          ownerId: input.ownerId ?? null,
-          condition: input.condition ?? null,
-          instanceAttributes:
-            input.instanceAttributes &&
-            Object.keys(input.instanceAttributes).length > 0
-              ? input.instanceAttributes
-              : input.notes
-                ? { notes: input.notes }
-                : null,
-        })
-        .returning({ id: assets.id, assetTag: assets.assetTag });
+      const nextSequence = (countResult[0]?.value ?? 0) + 1;
+      const generatedAssetTag = buildAssetTag(
+        pillarPrefix,
+        normalizedCategoryPrefix,
+        nextSequence
+      );
 
-      if (!newAsset) {
-        throw new Error('Unable to create asset.');
+      try {
+        const [newAsset] = await db
+          .insert(assets)
+          .values({
+            assetTag: generatedAssetTag,
+            serialNumber: input.serialNumber ?? null,
+            name: input.name,
+            modelId: input.modelId,
+            locationId: input.locationId ?? null,
+            ownerId: input.ownerId ?? null,
+            condition: input.condition ?? null,
+            instanceAttributes:
+              input.instanceAttributes &&
+              Object.keys(input.instanceAttributes).length > 0
+                ? input.instanceAttributes
+                : input.notes
+                  ? { notes: input.notes }
+                  : null,
+          })
+          .returning({ id: assets.id, assetTag: assets.assetTag });
+
+        if (!newAsset) {
+          throw new Error('Unable to create asset.');
+        }
+
+        insertedAsset = newAsset;
+        break;
+      } catch (error) {
+        lastInsertError = error;
+
+        if (!isAssetTagUniqueViolation(error) || attempt === 2) {
+          throw error;
+        }
       }
+    }
 
-      await tx.insert(assetPurchases).values({
-        assetId: newAsset.id,
+    if (!insertedAsset) {
+      throw lastInsertError ?? new Error('Unable to create asset.');
+    }
+
+    try {
+      await db.insert(assetPurchases).values({
+        assetId: insertedAsset.id,
         vendorId: input.vendorId,
         purchaseDate: toDateString(input.purchaseDate),
         basePrice: input.basePrice.toFixed(2),
@@ -434,8 +482,15 @@ export async function registerAsset(
         warrantyExpiry,
         invoiceUrl: uploadedInvoiceUrl,
       });
-      return newAsset;
-    });
+    } catch (purchaseError) {
+      try {
+        await db.delete(assets).where(eq(assets.id, insertedAsset.id));
+      } catch {
+        // Best effort: preserve original purchase error for observability.
+      }
+
+      throw purchaseError;
+    }
 
     revalidatePath('/assets');
 

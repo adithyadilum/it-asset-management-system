@@ -339,11 +339,16 @@ export function RegistrationForm({
 
   const isPillarLocked = Boolean(initialPillar);
   const isSoftware = pillar === 'Software';
+  const softwareModelLabel = isSoftware ? 'Product' : 'Model';
   const formError = state.errors?.form?.[0];
   const modelEmptyMessage =
     brandId.length > 0 || categoryId.length > 0
-      ? 'No models found for selected category and brand.'
-      : 'No models found.';
+      ? isSoftware
+        ? 'No products found for selected category and brand.'
+        : 'No models found for selected category and brand.'
+      : isSoftware
+        ? 'No products found.'
+        : 'No models found.';
   const selectedModelLabel =
     modelOptions.find((option) => option.value === modelId)?.label ?? '';
   const selectedModelImageUrl = selectedModel?.imageUrl ?? '';
@@ -481,12 +486,12 @@ export function RegistrationForm({
         </InlineFieldRow>
 
         <SearchableFieldRow
-          label="Model :"
+          label={`${softwareModelLabel} :`}
           name="modelId"
           value={modelId}
           onChange={setModelId}
           options={filteredModelOptions}
-          placeholder="Select Model.."
+          placeholder={`Select ${softwareModelLabel}..`}
           emptyMessage={modelEmptyMessage}
           error={getError(state, 'modelId')}
         />
@@ -497,7 +502,7 @@ export function RegistrationForm({
               {selectedModelImageUrl ? (
                 <Image
                   src={selectedModelImageUrl}
-                  alt={selectedModelLabel || 'Selected model'}
+                  alt={selectedModelLabel || `Selected ${softwareModelLabel.toLowerCase()}`}
                   width={80}
                   height={80}
                   className="h-full w-full object-cover"
@@ -509,10 +514,10 @@ export function RegistrationForm({
 
             <div className="min-w-0 flex-1 space-y-1">
               <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                Selected Model
+                {`Selected ${softwareModelLabel}`}
               </div>
               <p className="truncate text-sm text-muted-foreground">
-                {selectedModelLabel || 'Select a model to load its image and custom inputs.'}
+                {selectedModelLabel || `Select a ${softwareModelLabel.toLowerCase()} to load its image and custom inputs.`}
               </p>
             </div>
           </div>
@@ -526,7 +531,7 @@ export function RegistrationForm({
                   Custom Inputs
                 </h3>
                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-                  Fields are driven by the selected model&apos;s category.
+                  {`Fields are driven by the selected ${softwareModelLabel.toLowerCase()}\'s category.`}
                 </p>
               </div>
             </div>

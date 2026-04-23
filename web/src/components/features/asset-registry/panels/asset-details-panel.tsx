@@ -77,6 +77,12 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     const tabsList: TabbedPanelTab[] = [];
     const isSoftware = props.assetCategory === 'Software';
     const isFurniture = props.assetCategory === 'Office Furniture';
+    const softwareLicenseKey = props.serialNumber || props.specs?.license_key?.toString() || '-';
+    const softwareLicenseType = props.specs?.license_type?.toString() || 'Subscription';
+    const softwareVersion = props.specs?.version?.toString() || '-';
+    const softwareExpirationDate = props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || '-';
+    const softwareTotalSeats = props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-';
+    const softwareAvailableSeats = props.specs?.available_seats?.toString() || '-';
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
@@ -91,11 +97,12 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       );
     } else if (isSoftware) {
       detailsFields.push(
-        { label: 'Software Name', value: props.assetName || props.model || '-' },
+        { label: 'Product', value: props.model || props.assetName || '-' },
         { label: 'License Key', value: props.serialNumber || props.specs?.license_key?.toString() || '-' },
         { label: 'License Type', value: props.specs?.license_type?.toString() || 'Subscription' },
         { label: 'Version', value: props.specs?.version?.toString() || '-' },
         { label: 'Total Seats', value: props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-' },
+        { label: 'Expiration Date', value: props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || '-' },
         { label: 'Publisher', value: props.brand },
         { label: 'Assigned to', value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
@@ -129,9 +136,41 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         <AssetDetailsTab
           imageUrl={props.imageUrl}
           note={props.note}
-          status={props.status}
           assetTag={props.assetTag}
           fields={detailsFields}
+          mode={isSoftware ? 'software' : 'default'}
+          softwareSections={isSoftware ? [
+            {
+              title: 'License Details',
+              rows: [
+                { label: 'Product', value: props.model || props.assetName || '-' },
+                { label: 'Publisher', value: props.brand || '-' },
+                { label: 'License Key', value: softwareLicenseKey },
+                { label: 'License Type', value: softwareLicenseType },
+                { label: 'Version', value: softwareVersion },
+                { label: 'Expiration Date', value: softwareExpirationDate },
+              ],
+            },
+            {
+              title: 'Allocation & Ownership',
+              rows: [
+                { label: 'Total Seats', value: softwareTotalSeats },
+                { label: 'Available Seats', value: softwareAvailableSeats },
+                { label: 'Assigned To', value: props.assignedTo || '-' },
+                { label: 'Group', value: props.group || '-' },
+                { label: 'Owner', value: props.owner || '-' },
+              ],
+            },
+            {
+              title: 'Record Metadata',
+              rows: [
+                { label: 'Asset ID', value: props.assetTag || '-' },
+                { label: 'Purchase Date', value: props.purchaseDate || '-' },
+                { label: 'Registered On', value: props.dateCreated || '-' },
+                { label: 'Last Updated', value: props.updatedAt || '-' },
+              ],
+            },
+          ] : undefined}
           hideMaintenance={isSoftware}
           maintenanceRecords={props.maintenanceEvents}
           onQRCodeClick={props.onQRCodeClick}

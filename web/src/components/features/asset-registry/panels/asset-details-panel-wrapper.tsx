@@ -119,7 +119,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       assetId={data?.asset.id ?? ""}
       assetTag={data?.asset.assetTag ?? ""}
       assetName={data?.asset.name ?? ""}
-      assetCategory={data?.model.category.name ?? ""}
+      assetCategory={data?.model.category.pillar ?? ""}
       model={data?.model.name ?? ""}
       imageUrl={data?.model.imageUrl ?? ""}
       brand={data?.model.brand.name ?? ""}

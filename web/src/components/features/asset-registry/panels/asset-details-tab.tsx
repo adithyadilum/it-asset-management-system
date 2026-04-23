@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { QrCode } from 'lucide-react';
 
 import type { MaintenanceEvent } from '@/lib/data/asset-details-repo';
-import { StatusBadge } from '@/components/shared/status-badge';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,9 +13,13 @@ import { cn } from '@/lib/utils';
 export interface AssetDetailsTabProps {
     imageUrl?: string;
     note?: string;
-    status: string;
     assetTag: string;
     fields: { label: string; value: React.ReactNode }[];
+    mode?: 'default' | 'software';
+    softwareSections?: {
+        title: string;
+        rows: { label: string; value: React.ReactNode }[];
+    }[];
     maintenanceRecords?: MaintenanceEvent[];
     hideMaintenance?: boolean;
     onQRCodeClick?: () => void;
@@ -27,9 +30,10 @@ export interface AssetDetailsTabProps {
 export function AssetDetailsTab({
     imageUrl,
     note,
-    status,
     assetTag,
     fields,
+    mode = 'default',
+    softwareSections = [],
     maintenanceRecords = [],
     hideMaintenance = false,
     onQRCodeClick,
@@ -37,6 +41,78 @@ export function AssetDetailsTab({
     className = '',
 }: AssetDetailsTabProps) {
     const hasImage = typeof imageUrl === 'string' && imageUrl.trim().length > 0;
+
+    if (mode === 'software') {
+        return (
+            <div className={cn('flex w-full flex-col gap-4 text-sm text-foreground', className)}>
+                <div className="mt-2 flex w-full flex-col items-center gap-2.5">
+                    {hasImage ? (
+                        <Image
+                            src={imageUrl}
+                            alt="Software Product Image"
+                            width={153}
+                            height={121}
+                            className="object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-30.25 w-38.25 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+                            No product image available
+                        </div>
+                    )}
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onQRCodeClick}
+                        title={assetTag}
+                        aria-label="Asset Tag"
+                        className="h-7 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground shadow-none hover:bg-muted"
+                    >
+                        <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                        Asset Tag
+                    </Button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {softwareSections.map((section) => (
+                        <section key={section.title} className="rounded-lg border border-border bg-background p-4">
+                            <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-2 text-foreground')}>
+                                {section.title}
+                            </h3>
+                            <div className="space-y-0">
+                                {section.rows.map((row, index) => (
+                                    <div
+                                        key={`${section.title}-${index}`}
+                                        className="flex items-center justify-between border-b border-border/40 py-2.5"
+                                    >
+                                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+                                            {row.label}
+                                        </div>
+                                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-slate-900')}>
+                                            {row.value || '-'}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    ))}
+                </div>
+
+                {note ? (
+                    <section className="space-y-2 rounded-lg border border-border bg-background p-4">
+                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'text-foreground')}>
+                            Access Notes
+                        </div>
+                        <Textarea
+                            readOnly
+                            value={note}
+                            className="min-h-24 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+                        />
+                    </section>
+                ) : null}
+            </div>
+        );
+    }
 
     return (
         <div className={cn('flex w-full flex-col items-start gap-4 text-sm text-foreground', className)}>
@@ -57,8 +133,7 @@ export function AssetDetailsTab({
             </div>
 
             <div className="mt-4 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-                <div className="col-span-full mb-1 flex items-center gap-2">
-                    <StatusBadge value={status} showIcon />
+                <div className="col-span-full mb-1 flex items-center justify-center">
                     <Button
                         type="button"
                         variant="outline"
