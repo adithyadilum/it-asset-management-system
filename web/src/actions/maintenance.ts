@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories } from '@/db/schema';
+import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories, systemAuditLogs } from '@/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import type { PendingReviewTicket, IssueReviewPanelData, AssetStatus } from '@/types/maintenance';
@@ -196,6 +196,100 @@ export async function getMaintenanceTicketsByStatus(
     }));
   } catch (error) {
     console.error('[getMaintenanceTicketsByStatus]', error);
+    throw error;
+  }
+}
+
+/**
+ * Resolve a maintenance issue internally
+ * Updates asset status to "Available"
+ * Creates maintenance record with resolution_type: 'Internal'
+ * Writes audit log entry
+ */
+export async function resolveIssueInternally(
+  ticketId: number,
+  resolutionNote: string
+) {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
+    if (!resolutionNote.trim()) {
+      throw new Error('Resolution note is required');
+    }
+
+    // Get the ticket to find the asset
+    const ticketResult = await db
+      .select()
+      .from(maintenanceTickets)
+      .where(eq(maintenanceTickets.id, ticketId))
+      .limit(1);
+
+    if (ticketResult.length === 0) {
+      throw new Error('Ticket not found');
+    }
+
+    const ticket = ticketResult[0];
+    const assetId = ticket.assetId;
+
+    // Get current asset data for audit log
+    const currentAssetResult = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, assetId))
+      .limit(1);
+
+    if (currentAssetResult.length === 0) {
+      throw new Error('Asset not found');
+    }
+
+    const currentAsset = currentAssetResult[0];
+
+    // Update asset status to "Available"
+    await db
+      .update(assets)
+      .set({
+        status: 'Available',
+        updatedAt: new Date(),
+      })
+      .where(eq(assets.id, assetId));
+
+    // Update maintenance ticket to mark as resolved
+    await db
+      .update(maintenanceTickets)
+      .set({
+        status: 'COMPLETED',
+        resolutionNotes: resolutionNote,
+        actualCompletionDate: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(maintenanceTickets.id, ticketId));
+
+    // Write audit log entry
+    await db.insert(systemAuditLogs).values({
+      entityType: 'Asset',
+      entityId: assetId,
+      actionType: 'MAINTENANCE_RESOLVED_INTERNALLY',
+      performedById: user.id,
+      oldValue: {
+        status: currentAsset.status,
+      },
+      newValue: {
+        status: 'Available',
+        resolutionNote: resolutionNote,
+      },
+      performedAt: new Date(),
+    });
+
+    return {
+      success: true,
+      message: 'Issue resolved successfully',
+      assetId,
+    };
+  } catch (error) {
+    console.error('[resolveIssueInternally]', error);
     throw error;
   }
 }

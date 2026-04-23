@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ColumnDef } from '@tanstack/react-table';
-import type { PendingReviewTicket, IssueReviewPanelData } from '@/types/maintenance';
+import type { PendingReviewTicket,} from '@/types/maintenance';
 import { format } from 'date-fns';
 
 interface MaintenanceTabsProps {

@@ -1191,7 +1191,7 @@ async function seed() {
     }
 
     const assetId = assetRecord[0].id;
-    const ticketKey = `${assetId}-${ticketSeed.ticketType}`;
+    const _ticketKey = `${assetId}-${ticketSeed.ticketType}`;
 
     const existing = await db
       .select({ id: maintenanceTickets.id })
