@@ -5,14 +5,15 @@ import { useEffect, useState, useCallback } from 'react';
 import { MaintenanceTabs } from '@/components/features/maintenance/maintenance-tabs';
 import { IssueReviewPanelWrapper } from '@/components/features/maintenance/issue-review-panel-wrapper';
 import { LogCompleteRepairDialog } from '@/components/features/maintenance/log-complete-repair-dialog';
-import { getPendingMaintenanceTickets, getActiveRepairTickets, completeRepairTicket } from '@/actions/maintenance';
+import { getPendingMaintenanceTickets, getActiveRepairTickets, getRepairHistory, completeRepairTicket } from '@/actions/maintenance';
 import { useSidebar } from '@/components/ui/sidebar';
 import { toast } from 'sonner';
-import type { PendingReviewTicket, ActiveRepairTicket, CompleteRepairFormData } from '@/types/maintenance';
+import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket, CompleteRepairFormData } from '@/types/maintenance';
 
 export default function MaintenanceAndRepairsPage() {
   const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>([]);
   const [activeRepairTickets, setActiveRepairTickets] = useState<ActiveRepairTicket[]>([]);
+  const [repairHistoryTickets, setRepairHistoryTickets] = useState<RepairHistoryTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Pending Review (Slide Panel) State
@@ -30,12 +31,14 @@ export default function MaintenanceAndRepairsPage() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [ticketsResult, activeResult] = await Promise.all([
+      const [ticketsResult, activeResult, historyResult] = await Promise.all([
         getPendingMaintenanceTickets(),
-        getActiveRepairTickets()
+        getActiveRepairTickets(),
+        getRepairHistory(1, 100, '') // Fetch history alongside active and pending
       ]);
       setPendingTickets(ticketsResult.tickets);
       setActiveRepairTickets(activeResult.tickets);
+      setRepairHistoryTickets(historyResult.tickets);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -80,7 +83,7 @@ export default function MaintenanceAndRepairsPage() {
       toast.success('Repair logged successfully!');
       setShowCompleteDialog(false);
       setActiveRepairDetails(null);
-      await loadData(); // Refresh tables
+      await loadData(); // Refreshes all 3 tabs simultaneously!
     } catch (err) {
       console.error('Failed to complete repair:', err);
       toast.error('Failed to log completed repair.');
@@ -100,9 +103,11 @@ export default function MaintenanceAndRepairsPage() {
 
       <div className="flex flex-1 gap-4 overflow-hidden">
         <div className="flex-1 h-full overflow-hidden transition-all duration-300 ease-in-out">
+          {/* This one component automatically renders the tabs and all 3 grids inside of it! */}
           <MaintenanceTabs
             pendingTickets={pendingTickets}
             activeRepairTickets={activeRepairTickets}
+            repairHistoryTickets={repairHistoryTickets}
             isLoading={isLoading}
             onRowClick={handlePendingRowClick}
             onActiveRepairRowClick={handleActiveRepairRowClick}

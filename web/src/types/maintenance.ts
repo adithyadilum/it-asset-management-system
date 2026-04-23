@@ -1,4 +1,4 @@
-//web/src/types/maintenance.ts
+// web/src/types/maintenance.ts
 export type MaintenanceTicketType = 'VENDOR' | 'INTERNAL';
 export type MaintenanceTicketStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type AssetStatus = 'Available' | 'Assigned' | 'In Repair' | 'Defective' | 'Lost' | 'Retired' | 'Disposed';
@@ -104,13 +104,13 @@ export interface InitiateRepairFormData {
 export interface ActiveRepairTicket {
   id: number;
   assetId: string;
-  asset: Asset;
+  asset: Asset; // Kept from previous fix!
   ticketType: 'VENDOR' | 'INTERNAL';
   vendorName: string | null;
   rmaNumber: string | null;
   reportedIssue: string;
   estimatedCost: string | null;
-  estimatedReturnDate: string | null; // Change from Date to string
+  estimatedReturnDate: string | null; 
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   createdAt: Date;
   updatedAt: Date;
@@ -127,4 +127,28 @@ export interface LogCompleteRepairData {
   actualCost: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
+}
+
+export interface RepairHistoryTicket {
+  id: number;
+  assetId: string;
+  vendorName: string | null;
+  actualCompletionDate: string | null;
+  actualCost: string | null;
+  resolutionNotes: string | null;
+  status: 'COMPLETED' | 'CANCELLED';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AssetMaintenanceRecord {
+  id: number;
+  assetId: string;
+  ticketType: 'VENDOR' | 'INTERNAL';
+  vendorName: string | null;
+  reportedIssue: string;
+  resolutionNotes: string | null;
+  actualCost: string | null;
+  actualCompletionDate: Date | null;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 }
