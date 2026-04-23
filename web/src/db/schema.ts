@@ -42,6 +42,7 @@ export const assetStatusEnum = pgEnum('asset_status', [
   'Defective',
   'Lost',
   'Retired',
+  'Pending Disposal',
   'Disposed',
 ]);
 export const conditionEnum = pgEnum('asset_condition', [

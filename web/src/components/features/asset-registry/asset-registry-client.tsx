@@ -1,20 +1,11 @@
 'use client';
 
 import type { ColumnDef } from '@tanstack/react-table';
-import {
-  CalendarDays,
-  ChevronDown,
-  Plus,
-  Search,
-  X,
-} from 'lucide-react';
+import { CalendarDays, ChevronDown, Plus, Search, X } from 'lucide-react';
 import { useMemo, useRef, useState, useEffect, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import {
-  bulkUpdateAssets,
-  getAssetsByPillar,
-} from '@/actions/asset-registry';
+import { bulkUpdateAssets, getAssetsByPillar } from '@/actions/asset-registry';
 import {
   type RegistryViewConfig,
   type RegistryFilterField,
@@ -23,9 +14,11 @@ import {
   DataTable,
   type DataTableSelectionAction,
 } from '@/components/shared/data-table';
+import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { tiqriToast } from '@/components/shared/sonner';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -99,6 +92,7 @@ const STATUS_OPTIONS = [
   'Defective',
   'Lost',
   'Retired',
+  'Pending Disposal',
   'Disposed',
   'New',
 ];
@@ -120,8 +114,6 @@ function normalizeCategoryLabel(value: string) {
     .trim()
     .replace(/s$/, '');
 }
-
-
 
 function toHardwareDisplayStatus(row: AssetRegistryRow) {
   // Status column must always represent the persisted asset status from DB.
@@ -160,8 +152,6 @@ function toCellText(value: string | null | undefined) {
   return value;
 }
 
-
-
 function renderElectronicsConditionBadge(condition: string) {
   const className =
     ELECTRONICS_CONDITION_STYLES[condition] ??
@@ -175,7 +165,6 @@ function renderElectronicsConditionBadge(condition: string) {
     </span>
   );
 }
-
 
 interface AssetRegistryClientProps {
   config: RegistryViewConfig;
@@ -210,14 +199,16 @@ export function AssetRegistryClient({
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // disposal request dialog states
+  const [isDisposalDialogOpen, setIsDisposalDialogOpen] = useState(false);
+  const [disposalSelectionRows, setDisposalSelectionRows] = useState<AssetRegistryRow[]>([]);
+
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const [draftField, setDraftField] = useState<FilterField>('Status');
   const [draftOperator, setDraftOperator] = useState<FilterOperator>('is');
   const [draftValue, setDraftValue] = useState('');
 
-  const [destinationLocationId, setDestinationLocationId] = useState<number | null>(
-    null
-  );
+  const [destinationLocationId, setDestinationLocationId] = useState<number | null>(null);
   const [transferDate, setTransferDate] = useState('');
 
   const requestSequenceRef = useRef(0);
@@ -288,6 +279,9 @@ export function AssetRegistryClient({
   const backendStatusFilter =
     statusFilter?.operator === 'is' ? statusFilter.value : undefined;
 
+  // DEFAULT: hide Pending Disposal assets in the registry unless user explicitly filters Status = Pending Disposal
+  const shouldHidePendingDisposalByDefault = backendStatusFilter !== 'Pending Disposal';
+
   const hasLocalFiltering =
     Boolean(conditionFilter) ||
     Boolean(locationFilter) ||
@@ -296,8 +290,8 @@ export function AssetRegistryClient({
     statusFilter?.operator === 'is not' ||
     Boolean(
       selectedCategoryOption.name &&
-      !selectedCategoryOption.isAll &&
-      !selectedCategoryOption.id
+        !selectedCategoryOption.isAll &&
+        !selectedCategoryOption.id
     );
 
   useEffect(() => {
@@ -349,9 +343,7 @@ export function AssetRegistryClient({
 
         startTransition(() => {
           setRows([]);
-          setErrorMessage(
-            error instanceof Error ? error.message : 'Failed to load assets.'
-          );
+          setErrorMessage(error instanceof Error ? error.message : 'Failed to load assets.');
         });
       }
     };
@@ -370,10 +362,13 @@ export function AssetRegistryClient({
   const filteredRows = useMemo(() => {
     let nextRows = rows;
 
+    // DEFAULT hide from registry
+    if (shouldHidePendingDisposalByDefault) {
+      nextRows = nextRows.filter((row) => row.status !== 'Pending Disposal');
+    }
+
     if (!selectedCategoryOption.isAll && !selectedCategoryOption.id) {
-      const selectedCategoryToken = normalizeCategoryLabel(
-        selectedCategoryOption.name
-      );
+      const selectedCategoryToken = normalizeCategoryLabel(selectedCategoryOption.name);
 
       nextRows = nextRows.filter((row) => {
         const rowCategoryToken = normalizeCategoryLabel(row.category);
@@ -421,9 +416,18 @@ export function AssetRegistryClient({
     }
 
     return nextRows;
-  }, [rows, selectedCategoryOption, statusFilter, conditionFilter, locationFilter, modelFilter, assignedToFilter]);
+  }, [
+    rows,
+    shouldHidePendingDisposalByDefault,
+    selectedCategoryOption,
+    statusFilter,
+    conditionFilter,
+    locationFilter,
+    modelFilter,
+    assignedToFilter,
+  ]);
 
-  const visibleRows = hasLocalFiltering ? filteredRows : rows;
+  const visibleRows = filteredRows;
 
   const locationOptions = useMemo(() => {
     const merged = new Map<number, string>();
@@ -561,18 +565,14 @@ export function AssetRegistryClient({
 
       setRefreshNonce((currentNonce) => currentNonce + 1);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Bulk status update failed.'
-      );
+      setErrorMessage(error instanceof Error ? error.message : 'Bulk status update failed.');
     } finally {
       setIsMutating(false);
     }
   };
 
   const performBulkTransfer = async () => {
-    const selectedAssetIds = transferSelectionRows.map(
-      (selectedRow) => selectedRow.id
-    );
+    const selectedAssetIds = transferSelectionRows.map((selectedRow) => selectedRow.id);
 
     if (selectedAssetIds.length === 0 || !destinationLocationId) {
       return;
@@ -600,9 +600,7 @@ export function AssetRegistryClient({
       setDestinationLocationId(null);
       setRefreshNonce((currentNonce) => currentNonce + 1);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Bulk transfer failed.'
-      );
+      setErrorMessage(error instanceof Error ? error.message : 'Bulk transfer failed.');
     } finally {
       setIsMutating(false);
     }
@@ -611,10 +609,7 @@ export function AssetRegistryClient({
   const tableColumns = useMemo<ColumnDef<AssetRegistryRow>[]>(() => {
     if (config.view === 'furniture') {
       return [
-        {
-          accessorKey: 'assetTag',
-          header: 'Asset ID',
-        },
+        { accessorKey: 'assetTag', header: 'Asset ID' },
         {
           accessorKey: 'name',
           header: 'Asset Name',
@@ -637,10 +632,7 @@ export function AssetRegistryClient({
 
     if (config.view === 'office-electronics') {
       return [
-        {
-          accessorKey: 'assetTag',
-          header: 'Asset ID',
-        },
+        { accessorKey: 'assetTag', header: 'Asset ID' },
         {
           accessorKey: 'name',
           header: 'Asset Name',
@@ -661,9 +653,7 @@ export function AssetRegistryClient({
           id: 'electronicsCondition',
           header: 'Condition',
           cell: ({ row }) =>
-            renderElectronicsConditionBadge(
-              toElectronicsDisplayCondition(row.original)
-            ),
+            renderElectronicsConditionBadge(toElectronicsDisplayCondition(row.original)),
           enableSorting: false,
         },
       ];
@@ -681,10 +671,7 @@ export function AssetRegistryClient({
           header: 'License Key',
           cell: ({ row }) => {
             const serialNumber = row.original.serialNumber;
-
-            return serialNumber
-              ? `${serialNumber.slice(0, 4)}-${serialNumber.slice(-4)}`
-              : 'XXXX-XXXX';
+            return serialNumber ? `${serialNumber.slice(0, 4)}-${serialNumber.slice(-4)}` : 'XXXX-XXXX';
           },
         },
         {
@@ -709,10 +696,7 @@ export function AssetRegistryClient({
     }
 
     return [
-      {
-        accessorKey: 'assetTag',
-        header: 'Asset ID',
-      },
+      { accessorKey: 'assetTag', header: 'Asset ID' },
       {
         accessorKey: 'name',
         header: 'Asset Name',
@@ -731,67 +715,58 @@ export function AssetRegistryClient({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => (
-          <StatusBadge value={toHardwareDisplayStatus(row.original)} showIcon />
-        ),
+        cell: ({ row }) => <StatusBadge value={toHardwareDisplayStatus(row.original)} showIcon />,
       },
     ];
   }, [config.view]);
 
   const selectionActions: DataTableSelectionAction<AssetRegistryRow>[] = [
-    {
-      id: 'print-qr',
-      label: 'Print QR code',
-      disabled: isMutating,
-    },
+    { id: 'print-qr', label: 'Print QR code', disabled: isMutating },
     ...(config.view === 'hardware'
       ? [
-        {
-          id: 'assign-or-return',
-          label: 'Assign / Return',
-          disabled: isMutating,
-          onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
-            const allSelectedAssigned =
-              selectedRowsForAction.length > 0 &&
-              selectedRowsForAction.every(
-                (selectedRow) => selectedRow.status === 'Assigned'
+          {
+            id: 'assign-or-return',
+            label: 'Assign / Return',
+            disabled: isMutating,
+            onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+              const allSelectedAssigned =
+                selectedRowsForAction.length > 0 &&
+                selectedRowsForAction.every((selectedRow) => selectedRow.status === 'Assigned');
+
+              const nextStatus = allSelectedAssigned ? 'Available' : 'Assigned';
+
+              void performBulkStatusChange(
+                nextStatus,
+                selectedRowsForAction.map((selectedRow) => selectedRow.id)
               );
-
-            const nextStatus = allSelectedAssigned ? 'Available' : 'Assigned';
-
-            void performBulkStatusChange(
-              nextStatus,
-              selectedRowsForAction.map((selectedRow) => selectedRow.id)
-            );
-          },
-        } as DataTableSelectionAction<AssetRegistryRow>,
-      ]
+            },
+          } as DataTableSelectionAction<AssetRegistryRow>,
+        ]
       : []),
     ...(config.view !== 'software'
       ? [
-        {
-          id: 'bulk-transfer',
-          label: 'Bulk Transfer',
-          disabled: isMutating,
-          onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
-            setTransferSelectionRows(selectedRowsForAction);
-            setDestinationLocationId(null);
-            setTransferDate('');
-            setIsTransferDialogOpen(true);
-          },
-        } as DataTableSelectionAction<AssetRegistryRow>,
-      ]
+          {
+            id: 'bulk-transfer',
+            label: 'Bulk Transfer',
+            disabled: isMutating,
+            onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+              setTransferSelectionRows(selectedRowsForAction);
+              setDestinationLocationId(null);
+              setTransferDate('');
+              setIsTransferDialogOpen(true);
+            },
+          } as DataTableSelectionAction<AssetRegistryRow>,
+        ]
       : []),
     {
       id: 'dispose',
       label: 'Dispose',
       tone: 'destructive',
       disabled: isMutating,
-      onClick: (selectedRowsForAction: AssetRegistryRow[]) =>
-        void performBulkStatusChange(
-          'Disposed',
-          selectedRowsForAction.map((selectedRow) => selectedRow.id)
-        ),
+      onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+        setDisposalSelectionRows(selectedRowsForAction);
+        setIsDisposalDialogOpen(true);
+      },
     },
   ];
 
@@ -799,10 +774,10 @@ export function AssetRegistryClient({
     config.view === 'software'
       ? ['w-[26%]', 'w-[22%]', 'w-[17%]', 'w-[17%]', 'w-[18%]']
       : config.view === 'furniture'
-        ? ['w-[18%]', 'w-[26%]', 'w-[16%]', 'w-[20%]', 'w-[20%]']
-        : config.view === 'office-electronics'
-          ? ['w-[16%]', 'w-[20%]', 'w-[14%]', 'w-[16%]', 'w-[18%]', 'w-[16%]']
-          : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
+      ? ['w-[18%]', 'w-[26%]', 'w-[16%]', 'w-[20%]', 'w-[20%]']
+      : config.view === 'office-electronics'
+      ? ['w-[16%]', 'w-[20%]', 'w-[14%]', 'w-[16%]', 'w-[18%]', 'w-[16%]']
+      : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
@@ -823,17 +798,16 @@ export function AssetRegistryClient({
             className="w-fit rounded-lg border border-slate-200 p-2 shadow-xl"
           >
             <div className="w-max space-y-1">
-              {categoryOptions
-                .map((categoryOption) => (
-                  <button
-                    key={categoryOption.name}
-                    type="button"
-                    className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-slate-800 hover:bg-slate-100"
-                    onClick={() => handleCategorySelect(categoryOption.name)}
-                  >
-                    {categoryOption.name}
-                  </button>
-                ))}
+              {categoryOptions.map((categoryOption) => (
+                <button
+                  key={categoryOption.name}
+                  type="button"
+                  className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-slate-800 hover:bg-slate-100"
+                  onClick={() => handleCategorySelect(categoryOption.name)}
+                >
+                  {categoryOption.name}
+                </button>
+              ))}
             </div>
           </PopoverContent>
         </Popover>
@@ -1024,10 +998,7 @@ export function AssetRegistryClient({
         <div className="min-h-0">
           {isPending ? (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
-              <TableSkeleton
-                rowCount={8}
-                columnWidths={tableSkeletonColumnWidths}
-              />
+              <TableSkeleton rowCount={8} columnWidths={tableSkeletonColumnWidths} />
             </div>
           ) : (
             <DataTable<AssetRegistryRow, unknown>
@@ -1048,6 +1019,32 @@ export function AssetRegistryClient({
             />
           )}
         </div>
+
+        <DisposeAssetsRequestDialog
+          open={isDisposalDialogOpen}
+          onOpenChange={(open) => {
+            setIsDisposalDialogOpen(open);
+            if (!open) setDisposalSelectionRows([]);
+          }}
+          selectedAssets={disposalSelectionRows.map((row) => ({
+            id: row.id,
+            assetTag: row.assetTag,
+            assetName: toCellText(row.name),
+          }))}
+          onSubmitted={({ inserted, skipped }) => {
+            setIsDisposalDialogOpen(false);
+            setDisposalSelectionRows([]);
+            setRefreshNonce((current) => current + 1);
+
+            if (skipped > 0) {
+              tiqriToast.warning(
+                `Submitted ${inserted} request(s). Skipped ${skipped} already pending.`
+              );
+            } else {
+              tiqriToast.success(`Submitted ${inserted} disposal request(s).`);
+            }
+          }}
+        />
 
         <Dialog
           open={isTransferDialogOpen}
@@ -1097,8 +1094,8 @@ export function AssetRegistryClient({
                     uniqueSelectedLocations.length === 0
                       ? '-'
                       : uniqueSelectedLocations.length === 1
-                        ? uniqueSelectedLocations[0]
-                        : 'Multiple locations'
+                      ? uniqueSelectedLocations[0]
+                      : 'Multiple locations'
                   }
                   disabled
                   className="h-9 rounded-lg border-slate-200 bg-slate-50"
@@ -1114,9 +1111,7 @@ export function AssetRegistryClient({
                   onChange={(event) => {
                     const parsedValue = Number(event.target.value);
                     setDestinationLocationId(
-                      Number.isInteger(parsedValue) && parsedValue > 0
-                        ? parsedValue
-                        : null
+                      Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null
                     );
                   }}
                   className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
@@ -1165,11 +1160,7 @@ export function AssetRegistryClient({
                 size="sm"
                 className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
                 onClick={() => void performBulkTransfer()}
-                disabled={
-                  !destinationLocationId ||
-                  transferSelectionRows.length === 0 ||
-                  isMutating
-                }
+                disabled={!destinationLocationId || transferSelectionRows.length === 0 || isMutating}
               >
                 Confirm Transfer
               </Button>
