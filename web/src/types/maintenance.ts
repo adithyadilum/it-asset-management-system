@@ -84,3 +84,19 @@ export interface IssueReviewPanelData {
   bookValue: number;
   originalCost: number | string;
 }
+
+export interface Vendor {
+  id: number;
+  companyName: string;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  isActive?: boolean | null;
+}
+
+export interface InitiateRepairFormData {
+  vendorId: string;
+  rmaNumber: string;
+  estimatedCost: string;
+  expectedReturnDate: string;
+}

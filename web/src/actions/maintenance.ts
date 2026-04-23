@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories, systemAuditLogs } from '@/db/schema';
+import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories, systemAuditLogs, vendors } from '@/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import type { PendingReviewTicket, IssueReviewPanelData, AssetStatus } from '@/types/maintenance';
@@ -279,7 +279,7 @@ export async function resolveIssueInternally(
     console.log('[resolveIssueInternally] Updated ticket status to COMPLETED with notes');
 
     // Write audit log entry
-    const auditEntry = await db.insert(systemAuditLogs).values({
+    await db.insert(systemAuditLogs).values({
       entityType: 'Asset',
       entityId: assetId,
       actionType: 'MAINTENANCE_RESOLVED_INTERNALLY',
@@ -306,3 +306,151 @@ export async function resolveIssueInternally(
     throw error;
   }
 }
+
+/**
+ * Fetch all vendors for the repair dialog dropdown
+ * Only returns active vendors
+ */
+export async function getVendors() {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
+    const vendorsList = await db
+      .select({
+        id: vendors.id,
+        companyName: vendors.companyName,
+        email: vendors.email,
+        phone: vendors.phone,
+        website: vendors.website,
+        isActive: vendors.isActive,
+      })
+      .from(vendors)
+      .where(eq(vendors.isActive, true))
+      .orderBy(vendors.companyName);
+
+    console.log('[getVendors] Fetched vendors:', vendorsList.length);
+    return vendorsList;
+  } catch (error) {
+    console.error('[getVendors] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Initiate a vendor repair
+ * Creates a maintenance ticket
+ * Updates asset status to "In Repair"
+ * Creates audit log entry
+ */
+export async function initiateVendorRepair(
+  assetId: string,
+  vendorId: string,
+  rmaNumber: string,
+  estimatedCost?: string,
+  expectedReturnDate?: string
+) {
+  try {
+    const user = await getAuthenticatedUser();
+    console.log('[initiateVendorRepair] Starting for asset:', assetId, 'by user:', user?.id);
+
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
+    if (!vendorId.trim()) {
+      throw new Error('Vendor is required');
+    }
+
+    if (!rmaNumber.trim()) {
+      throw new Error('RMA/Ticket Number is required');
+    }
+
+    // Get current asset data for audit log
+    const currentAssetResult = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, assetId))
+      .limit(1);
+
+    if (currentAssetResult.length === 0) {
+      throw new Error('Asset not found');
+    }
+
+    const currentAsset = currentAssetResult[0];
+    console.log('[initiateVendorRepair] Current asset status:', currentAsset.status);
+
+    // Get vendor details
+    const vendorResult = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.id, parseInt(vendorId)))
+      .limit(1);
+
+    if (vendorResult.length === 0) {
+      throw new Error('Vendor not found');
+    }
+
+    const vendor = vendorResult[0];
+    console.log('[initiateVendorRepair] Selected vendor:', vendor.companyName);
+
+    // Update asset status to "In Repair"
+    await db
+      .update(assets)
+      .set({
+        status: 'In Repair',
+        updatedAt: new Date(),
+      })
+      .where(eq(assets.id, assetId));
+    console.log('[initiateVendorRepair] Updated asset status to In Repair');
+
+    // Create maintenance ticket
+    const ticketResult = await db.insert(maintenanceTickets).values({
+      assetId,
+      ticketType: 'VENDOR',
+      vendorName: vendor.companyName,
+      rmaNumber: rmaNumber.trim(),
+      reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
+      estimatedCost: estimatedCost ? parseFloat(estimatedCost).toString() : null,
+      estimatedReturnDate: expectedReturnDate ? new Date(expectedReturnDate).toISOString() : null,
+      status: 'ACTIVE',
+      dispatchedById: user.id,
+    }).returning();
+
+    const ticket = ticketResult[0];
+    console.log('[initiateVendorRepair] Created maintenance ticket:', ticket.id);
+
+    // Write audit log entry
+    await db.insert(systemAuditLogs).values({
+      entityType: 'Asset',
+      entityId: assetId,
+      actionType: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
+      performedById: user.id,
+      oldValue: {
+        status: currentAsset.status,
+      },
+      newValue: {
+        status: 'In Repair',
+        vendor: vendor.companyName,
+        rmaNumber: rmaNumber.trim(),
+        estimatedReturnDate: expectedReturnDate || null,
+      },
+      performedAt: new Date(),
+    });
+    console.log('[initiateVendorRepair] Created audit log entry');
+
+    console.log('[initiateVendorRepair] ✅ Repair initiated successfully');
+    return {
+      success: true,
+      message: 'Asset dispatched for repair successfully',
+      ticketId: ticket.id,
+      assetId,
+    };
+  } catch (error) {
+    console.error('[initiateVendorRepair] Error:', error);
+    throw error;
+  }
+}
+

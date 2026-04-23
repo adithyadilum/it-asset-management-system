@@ -1,42 +1,46 @@
+// web/src/components/features/maintenance/issue-review-panel.tsx
 'use client';
 
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
+import { Button } from '@/components/ui/button';
+import { SlidePanel, } from '@/components/shared/slide-panel';
 import { ResolveInternallyDialog } from './resolve-internally-dialog';
-import type { IssueReviewPanelData } from '@/types/maintenance';
+import { InitiateRepairDialog } from './initiate-repair-dialog';
+import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from '@/types/maintenance';
+import { AlertCircle, Ban } from 'lucide-react';
+import Image from 'next/image';
 
 interface IssueReviewPanelProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
   data: IssueReviewPanelData | null;
+  vendors: Vendor[];
   onResolveInternally?: (resolutionNote: string) => Promise<void>;
-  onInitiateRepair?: () => Promise<void>;
+  onInitiateRepair?: (data: InitiateRepairFormData) => Promise<void>;
   isResolvingInternally?: boolean;
+  isInitiatingRepair?: boolean;
 }
 
-/**
- * Issue Review Slide Panel
- * Displays maintenance ticket details and action buttons
- * US-15.1 Implementation with US-15.2 Resolve Internally action
- */
 export function IssueReviewPanel({
   isOpen,
   onClose,
   data,
+  vendors,
   onResolveInternally,
   onInitiateRepair,
   isResolvingInternally = false,
+  isInitiatingRepair = false,
 }: IssueReviewPanelProps) {
   const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [showRepairDialog, setShowRepairDialog] = useState(false);
 
-  if (!data) {
+  if (!isOpen || !data) {
     return null;
   }
 
   const { ticket, warrantyStatus, bookValue, originalCost } = data;
 
-  // Format currency
   const formatCurrency = (value: number | string | null) => {
     if (value === null) return 'N/A';
     const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -48,7 +52,6 @@ export function IssueReviewPanel({
     }).format(num);
   };
 
-  // Format date
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     try {
@@ -62,110 +65,132 @@ export function IssueReviewPanel({
     }
   };
 
-  // Panel actions
-  const panelActions: SlidePanelAction[] = [
-    {
-      id: 'resolve-internally',
-      label: 'Resolve Internally',
-      variant: 'outline',
-      onClick: () => setShowResolveDialog(true),
-      disabled: isResolvingInternally,
-    },
-    {
-      id: 'initiate-repair',
-      label: 'Initiate Repair',
-      variant: 'default',
-      onClick: onInitiateRepair,
-      disabled: isResolvingInternally,
-    },
-  ];
-
-  // Panel content
+  // Figma Styled Content
   const panelContent = (
-    <div className="space-y-6">
-      {/* Asset Image and Details Grid */}
-      <div className="space-y-4">
-        <div className="flex justify-center">
-          <div className="h-32 w-32 rounded-lg bg-slate-100 flex items-center justify-center">
-            {/* Placeholder for asset image */}
-            <span className="text-xs text-slate-500">Asset Image</span>
-          </div>
+    <div className="flex flex-col w-[600px] xl:w-[700px] h-full bg-white border border-slate-200 rounded-lg shadow-sm p-6 overflow-y-auto shrink-0">
+      {/* Header Section */}
+      <div className="flex items-center justify-between pb-6">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-6 h-6 text-slate-500 opacity-70" strokeWidth={2} />
+          <h2 className="text-xl font-semibold text-slate-900">
+            Issue Review : {ticket.asset.assetTag}
+          </h2>
         </div>
+        <button 
+          onClick={() => onClose(false)} 
+          className="text-slate-400 hover:text-slate-600 transition-colors"
+          aria-label="Close panel"
+        >
+          <Ban className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Asset Details Grid */}
-        <div className="grid grid-cols-2 gap-4 py-4">
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-medium text-slate-500">Asset ID</p>
-              <p className="text-sm font-semibold text-slate-900">{ticket.asset.assetTag}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Model</p>
-              <p className="text-sm font-semibold text-slate-900">{ticket.model?.name || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Serial Number</p>
-              <p className="text-sm font-semibold text-slate-900">{ticket.asset.serialNumber || 'N/A'}</p>
-            </div>
+      {/* Asset Image */}
+      <div className="flex justify-center mb-6">
+        {ticket.asset.imageUrl ? (
+          <div className="relative w-[180px] h-[120px] rounded-lg bg-white overflow-hidden">
+            <Image
+              src={ticket.asset.imageUrl}
+              alt={ticket.asset.name || ticket.asset.assetTag}
+              fill
+              className="object-contain p-2"
+            />
           </div>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-medium text-slate-500">Category</p>
-              <p className="text-sm font-semibold text-slate-900">{ticket.category?.name || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Brand</p>
-              <p className="text-sm font-semibold text-slate-900">{ticket.brand?.name || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-500">Date Created</p>
-              <p className="text-sm font-semibold text-slate-900">{formatDate(ticket.asset.createdAt)}</p>
-            </div>
+        ) : (
+          <div className="relative w-[180px] h-[120px] bg-slate-50 rounded-lg flex items-center justify-center border border-dashed border-slate-200">
+             <span className="text-xs text-slate-400">No Image</span>
           </div>
+        )}
+      </div>
+
+      {/* Asset Details Grid */}
+      <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-8 text-[14px]">
+        <div className="grid grid-cols-[140px_1fr] gap-2 items-center">
+          <span className="font-medium text-slate-900">Asset ID :</span>
+          <span className="font-light text-slate-700">{ticket.asset.assetTag}</span>
+
+          <span className="font-medium text-slate-900">Model :</span>
+          <span className="font-light text-slate-700">{ticket.model?.name || 'N/A'}</span>
+
+          <span className="font-medium text-slate-900">Serial Number :</span>
+          <span className="font-light text-slate-700">{ticket.asset.serialNumber || 'N/A'}</span>
+        </div>
+        
+        <div className="grid grid-cols-[140px_1fr] gap-2 items-center">
+          <span className="font-medium text-slate-900">Category :</span>
+          <span className="font-light text-slate-700">{ticket.category?.name || 'N/A'}</span>
+
+          <span className="font-medium text-slate-900">Brand :</span>
+          <span className="font-light text-slate-700">{ticket.brand?.name || 'N/A'}</span>
+
+          <span className="font-medium text-slate-900">Date Created :</span>
+          <span className="font-light text-slate-700">{formatDate(ticket.asset.createdAt)}</span>
         </div>
       </div>
 
-      {/* Reported By and Issue Section */}
-      <div className="rounded-lg bg-slate-50 p-4 space-y-4">
-        <div>
-          <p className="text-xs font-medium text-slate-500">Reported By</p>
-          <p className="text-sm font-semibold text-slate-900">{ticket.reportedBy?.name || 'Unknown'}</p>
+      {/* Reported By and Issue Card */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-8 text-[14px] space-y-4">
+        <div className="grid grid-cols-[140px_1fr] gap-2">
+          <span className="font-medium text-slate-900">Reported By:</span>
+          <span className="font-light text-slate-700">{ticket.reportedBy?.name || 'Unknown'}</span>
         </div>
-        <div>
-          <p className="text-xs font-medium text-slate-500">Issue</p>
-          <p className="text-sm text-slate-700">{ticket.reportedIssue}</p>
+        <div className="flex flex-col gap-2">
+          <span className="font-medium text-slate-900">Issue:</span>
+          <span className="font-light text-slate-700">{ticket.reportedIssue}</span>
         </div>
       </div>
 
-      {/* Financial and Warranty Details */}
-      <div className="space-y-3 py-4">
-        <div className="flex justify-between items-center">
-          <p className="text-xs font-medium text-slate-500">Purchase Date</p>
-          <p className="text-sm font-semibold text-slate-900">
+      {/* Financial and Warranty Details Grid */}
+      <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-10 text-[14px]">
+        <div className="grid grid-cols-[140px_1fr] gap-2 items-center">
+          <span className="font-medium text-slate-900">Purchase Date:</span>
+          <span className="font-light text-slate-700">
             {formatDate(ticket.purchase?.purchaseDate || null)}
-          </p>
+          </span>
+
+          <span className="font-medium text-slate-900">Current Book Value:</span>
+          <span className="font-light text-slate-700">{formatCurrency(bookValue)}</span>
         </div>
-        <div className="flex justify-between items-center">
-          <p className="text-xs font-medium text-slate-500">Original Cost</p>
-          <p className="text-sm font-semibold text-slate-900">{formatCurrency(originalCost)}</p>
+        
+        <div className="grid grid-cols-[140px_1fr] gap-2 items-center">
+          <span className="font-medium text-slate-900">Original Cost:</span>
+          <span className="font-light text-slate-700">{formatCurrency(originalCost)}</span>
+
+          <span className="font-medium text-slate-900">Warranty Status:</span>
+          <div>
+            <Badge
+              variant="outline"
+              className={
+                warrantyStatus === 'Active'
+                  ? 'bg-white border-green-500 text-green-600 rounded-full px-3 py-0.5 font-normal shadow-sm'
+                  : 'bg-white border-red-500 text-red-500 rounded-full px-3 py-0.5 font-normal shadow-sm'
+              }
+            >
+              {warrantyStatus}
+            </Badge>
+          </div>
         </div>
-        <div className="flex justify-between items-center">
-          <p className="text-xs font-medium text-slate-500">Current Book Value</p>
-          <p className="text-sm font-semibold text-slate-900">{formatCurrency(bookValue)}</p>
-        </div>
-        <div className="flex justify-between items-center">
-          <p className="text-xs font-medium text-slate-500">Warranty Status</p>
-          <Badge
-            variant={warrantyStatus === 'Active' ? 'default' : 'destructive'}
-            className={
-              warrantyStatus === 'Active'
-                ? 'bg-green-50 text-green-700 border-green-300'
-                : 'bg-red-50 text-red-700 border-red-300'
-            }
-          >
-            {warrantyStatus}
-          </Badge>
-        </div>
+      </div>
+
+      <div className="mt-auto"></div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+        <Button 
+          variant="outline" 
+          onClick={() => setShowResolveDialog(true)}
+          disabled={isResolvingInternally || isInitiatingRepair}
+          className="text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm"
+        >
+          Resolve Internally
+        </Button>
+        <Button 
+          onClick={() => setShowRepairDialog(true)}
+          disabled={isResolvingInternally || isInitiatingRepair}
+          className="bg-[#040d5a] hover:bg-[#040d5a]/90 text-white shadow-sm"
+        >
+          Initiate Repair
+        </Button>
       </div>
     </div>
   );
@@ -175,23 +200,29 @@ export function IssueReviewPanel({
       <SlidePanel
         isOpen={isOpen}
         onClose={onClose}
-        title={`Issue Review : ${ticket.asset.assetTag}`}
-        description={`Ticket #${ticket.id}`}
+        title="" // Figma UI handles title in content
         content={panelContent}
-        actions={panelActions}
-        showCloseButton={true}
+        showCloseButton={false} // Figma UI handles close button in content
+        showHeader={false} // Hides default header to match Figma
       />
 
-      {/* Resolve Internally Dialog */}
       <ResolveInternallyDialog
         isOpen={showResolveDialog}
         onClose={() => setShowResolveDialog(false)}
         onConfirm={async (resolutionNote) => {
-          if (onResolveInternally) {
-            await onResolveInternally(resolutionNote);
-          }
+          if (onResolveInternally) await onResolveInternally(resolutionNote);
         }}
         isLoading={isResolvingInternally}
+      />
+
+      <InitiateRepairDialog
+        isOpen={showRepairDialog}
+        onClose={() => setShowRepairDialog(false)}
+        onConfirm={async (formData) => {
+          if (onInitiateRepair) await onInitiateRepair(formData);
+        }}
+        vendors={vendors}
+        isLoading={isInitiatingRepair}
       />
     </>
   );

@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { MaintenanceTabs } from '@/components/features/maintenance/maintenance-tabs';
 import { IssueReviewPanel } from '@/components/features/maintenance/issue-review-panel';
-import { getPendingMaintenanceTickets, getTicketForIssueReview, resolveIssueInternally } from '@/actions/maintenance';
-import type { PendingReviewTicket, IssueReviewPanelData } from '@/types/maintenance';
+import { getPendingMaintenanceTickets, getTicketForIssueReview, resolveIssueInternally, initiateVendorRepair, getVendors } from '@/actions/maintenance';
+import type { PendingReviewTicket, IssueReviewPanelData, Vendor } from '@/types/maintenance';
+import type { InitiateRepairFormData } from '@/types/maintenance';
 
 /**
  * Main Maintenance & Repairs Page
  * Orchestrates tabs component and slide panel
- * US-15.1 & US-15.2 Implementation
+ * US-15.1, US-15.2 & US-15.3 Implementation
  * 
  * Filters:
  * - Asset Status: "Defective" or "In Repair"
@@ -22,28 +23,37 @@ export default function MaintenanceAndRepairsPage() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isResolvingInternally, setIsResolvingInternally] = useState(false);
+  const [isInitiatingRepair, setIsInitiatingRepair] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-    // Fetch pending tickets on mount
+  // Fetch pending tickets and vendors on mount
   useEffect(() => {
-    async function loadPendingTickets() {
+    async function loadInitialData() {
       try {
         setIsLoading(true);
         setError(null);
-        console.log('Loading pending tickets...');
-        const result = await getPendingMaintenanceTickets();
-        console.log('Pending tickets result:', result);
-        setPendingTickets(result.tickets);
+        
+        // Fetch both in parallel
+        const [ticketsResult, vendorsList] = await Promise.all([
+          getPendingMaintenanceTickets(),
+          getVendors(),
+        ]);
+        
+        setPendingTickets(ticketsResult.tickets);
+        setVendors(vendorsList);
+        
+        console.log('Loaded initial data - Tickets:', ticketsResult.tickets.length, 'Vendors:', vendorsList.length);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load pending tickets';
-        console.error('Failed to load pending tickets:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
+        console.error('Failed to load initial data:', err);
         setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
     }
 
-    loadPendingTickets();
+    loadInitialData();
   }, []);
 
   // Handle row click to open issue review panel
@@ -86,23 +96,51 @@ export default function MaintenanceAndRepairsPage() {
       // Close panel
       handlePanelClose();
       
-      // Success - could add a toast here
       console.log('Issue resolved successfully');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to resolve issue';
       console.error('Failed to resolve issue:', err);
       setError(errorMessage);
-      throw err; // Re-throw to be caught by dialog
+      throw err;
     } finally {
       setIsResolvingInternally(false);
     }
   };
 
   // Handle initiate repair action
-  const handleInitiateRepair = async () => {
-    // Will implement in US-15.3
-    console.log('Initiate Repair - Coming in US-15.3');
-    handlePanelClose();
+  const handleInitiateRepair = async (formData: InitiateRepairFormData) => {
+    if (!issuePanelData?.ticket) {
+      throw new Error('No ticket selected');
+    }
+
+    try {
+      setIsInitiatingRepair(true);
+      setError(null);
+      
+      await initiateVendorRepair(
+        issuePanelData.ticket.assetId,
+        formData.vendorId,
+        formData.rmaNumber,
+        formData.estimatedCost,
+        formData.expectedReturnDate
+      );
+      
+      // Refresh tickets list
+      const result = await getPendingMaintenanceTickets();
+      setPendingTickets(result.tickets);
+      
+      // Close panel
+      handlePanelClose();
+      
+      console.log('Repair initiated successfully');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to initiate repair';
+      console.error('Failed to initiate repair:', err);
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsInitiatingRepair(false);
+    }
   };
 
   return (
@@ -139,9 +177,11 @@ export default function MaintenanceAndRepairsPage() {
             isOpen={isPanelOpen}
             onClose={handlePanelClose}
             data={issuePanelData}
+            vendors={vendors}
             onResolveInternally={handleResolveInternally}
             onInitiateRepair={handleInitiateRepair}
             isResolvingInternally={isResolvingInternally}
+            isInitiatingRepair={isInitiatingRepair}
           />
         </div>
       </div>
