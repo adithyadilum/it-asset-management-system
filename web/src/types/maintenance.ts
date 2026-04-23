@@ -26,6 +26,7 @@ export interface Asset {
   id: string;
   assetTag: string;
   name: string | null;
+  imageUrl?: string | null;
   status: string;
   condition: string | null;
   modelId: number;

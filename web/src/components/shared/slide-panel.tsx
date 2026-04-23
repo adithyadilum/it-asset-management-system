@@ -13,6 +13,7 @@ export type SlidePanelAction = {
     label: React.ReactNode;
     variant?: React.ComponentProps<typeof Button>["variant"];
     onClick?: () => void;
+    className?: string;
     disabled?: boolean;
 };
 
@@ -151,7 +152,7 @@ export function SlidePanel({
                     aria-describedby={description ? descriptionId : undefined}
                     className={cn(
                         "absolute inset-y-0 right-0 w-(--slide-panel-width)",
-                        "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg",
+                        "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg border border-slate-200",
                         "transition-transform ease-out",
                         disableTransition ? "duration-0" : "duration-300",
                         isVisible ? "translate-x-0" : "translate-x-full",
@@ -214,6 +215,7 @@ export function SlidePanel({
                                             key={action.id ?? `${String(action.label)}-${index}`}
                                             type="button"
                                             variant={action.variant ?? (index === resolvedActions.length - 1 ? "default" : "outline")}
+                                            className={action.className} // <--- This line fixes the issue
                                             onClick={() => {
                                                 if (action.onClick) {
                                                     action.onClick();
