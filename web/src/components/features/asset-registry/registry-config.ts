@@ -73,7 +73,7 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     categoryVisibilityMode: 'always',
     statusColumnLabel: 'Status',
     searchPlaceholder: 'Search...',
-    addAssetLabel: 'Add Asset',
+    addAssetLabel: 'Add Software',
   },
   furniture: {
     view: 'furniture',

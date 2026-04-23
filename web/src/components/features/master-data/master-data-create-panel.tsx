@@ -1104,6 +1104,25 @@ export function MasterDataCreatePanel({
                             )}
                         </div>
 
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Image URL
+                            </label>
+                            <Input
+                                name="imageUrl"
+                                type="url"
+                                placeholder="https://..."
+                            />
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                Store the model image URL here. The asset detail panel will reuse it.
+                            </p>
+                            {getFieldError("imageUrl") && (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {getFieldError("imageUrl")}
+                                </p>
+                            )}
+                        </div>
+
                         <div className="space-y-4 border-t pt-4">
                             <div>
                                 <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>

@@ -25,6 +25,7 @@ export interface AssetDetailsData {
   model: {
     id: number;
     name: string;
+    imageUrl: string | null;
     technicalDetails: Record<string, unknown> | null;
     brand: { id: number; name: string };
     category: {
@@ -210,6 +211,12 @@ export async function getAssetDetailsById(
             },
           },
         },
+        columns: {
+          id: true,
+          name: true,
+          technicalDetails: true,
+          imageUrl: true,
+        },
       },
       location: { columns: { id: true, name: true, type: true } },
       purchases: {
@@ -272,6 +279,7 @@ export async function getAssetDetailsById(
     model: {
       id: assetRecord.model.id,
       name: assetRecord.model.name,
+      imageUrl: assetRecord.model.imageUrl,
       technicalDetails: assetRecord.model.technicalDetails as Record<
         string,
         unknown

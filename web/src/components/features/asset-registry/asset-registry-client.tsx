@@ -682,7 +682,9 @@ export function AssetRegistryClient({
           accessorKey: 'serialNumber',
           header: 'License Key',
           cell: ({ row }) => {
-            const serialNumber = row.original.serialNumber;
+            const serialNumber =
+              row.original.serialNumber ??
+              String(row.original.instanceAttributes?.['license_key'] ?? row.original.instanceAttributes?.['License Key'] ?? '');
 
             return serialNumber
               ? `${serialNumber.slice(0, 4)}-${serialNumber.slice(-4)}`
@@ -690,21 +692,21 @@ export function AssetRegistryClient({
           },
         },
         {
-          id: 'totalSeats',
-          header: 'Total Seats',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['Total Seats'] ?? '-'),
+          id: 'licenseType',
+          header: 'License Type',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['license_type'] ?? row.original.instanceAttributes?.['License Type'] ?? '-'),
           enableSorting: false,
         },
         {
-          id: 'availableSeats',
-          header: 'Available Seats',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['Available Seats'] ?? '-'),
+          id: 'totalSeats',
+          header: 'Total Seats',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['max_seats'] ?? row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'expirationDate',
           header: 'Expiration Date',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
+          cell: ({ row }) => String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['expiration_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
           enableSorting: false,
         },
       ];

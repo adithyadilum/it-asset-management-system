@@ -14,6 +14,13 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import { cn } from '@/lib/utils';
 import { useOpenRegistrationPanel } from '@/components/features/asset-registry/panels/use-open-registration-panel';
@@ -28,9 +35,24 @@ type RegistrationOption = React.ComponentProps<
   typeof SearchableDropdown
 >['options'][number];
 
+type CustomSchemaField = {
+  fieldName: string;
+  inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean';
+  required: boolean;
+};
+
+type CategoryRegistrationOption = RegistrationOption & {
+  pillar?: string;
+  customSchema?: {
+    modelSpecs: CustomSchemaField[];
+    assetTracking: CustomSchemaField[];
+  };
+};
+
 type ModelRegistrationOption = RegistrationOption & {
   brandId: string;
   categoryId: string;
+  imageUrl: string | null;
 };
 
 export type { RegistrationOption, ModelRegistrationOption };
@@ -40,7 +62,7 @@ type RegistrationFormProps = {
   onClose: (open: boolean) => void;
   isLoading?: boolean;
   initialPillar?: RegistrationPillarInput;
-  categoryOptions?: RegistrationOption[];
+  categoryOptions?: CategoryRegistrationOption[];
   brandOptions?: RegistrationOption[];
   modelOptions?: ModelRegistrationOption[];
   ownerOptions?: RegistrationOption[];
@@ -92,6 +114,10 @@ function resolveStartingPillar(
 function resolvePanelDescription(initialPillar?: RegistrationPillarInput) {
   if (initialPillar === 'IT & Digital') {
     return 'Hardware';
+  }
+
+  if (initialPillar === 'Software') {
+    return 'Software';
   }
 
   return initialPillar ?? 'Register a new asset';
@@ -219,7 +245,6 @@ export function RegistrationForm({
   vendorOptions = [],
 }: RegistrationFormProps) {
   const formRef = React.useRef<HTMLFormElement>(null);
-  const imageInputRef = React.useRef<HTMLInputElement>(null);
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
   const [state, formAction, isPending] = React.useActionState(
     registerAsset,
@@ -240,17 +265,9 @@ export function RegistrationForm({
   );
   const [warrantyMonths, setWarrantyMonths] = React.useState('');
   const [purchaseDate, setPurchaseDate] = React.useState(getTodayDateValue);
-  const [imagePreviewUrl, setImagePreviewUrl] = React.useState('');
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
+  const [customFieldValues, setCustomFieldValues] = React.useState<Record<string, string>>({});
   const lastToastKeyRef = React.useRef<string>('');
-
-  React.useEffect(() => {
-    return () => {
-      if (imagePreviewUrl) {
-        URL.revokeObjectURL(imagePreviewUrl);
-      }
-    };
-  }, [imagePreviewUrl]);
 
   const [prevInitialPillar, setPrevInitialPillar] = React.useState(initialPillar);
   if (initialPillar !== prevInitialPillar) {
@@ -286,7 +303,42 @@ export function RegistrationForm({
     }
   }
 
+  const selectedCategory = React.useMemo(
+    () => categoryOptions.find((option) => option.value === categoryId) ?? null,
+    [categoryId, categoryOptions]
+  );
+
+  const selectedModel = React.useMemo(
+    () => modelOptions.find((option) => option.value === modelId) ?? null,
+    [modelId, modelOptions]
+  );
+
+  const assetTrackingFields = React.useMemo(
+    () => selectedCategory?.customSchema?.assetTracking ?? [],
+    [selectedCategory]
+  );
+
+  const instanceAttributesPayload = React.useMemo(() => {
+    const payload: Record<string, string | boolean> = {};
+
+    for (const field of assetTrackingFields) {
+      const value = customFieldValues[field.fieldName] ?? '';
+
+      if (field.inputType === 'Boolean') {
+        payload[field.fieldName] = value === 'true';
+        continue;
+      }
+
+      if (value.trim().length > 0) {
+        payload[field.fieldName] = value.trim();
+      }
+    }
+
+    return payload;
+  }, [assetTrackingFields, customFieldValues]);
+
   const isPillarLocked = Boolean(initialPillar);
+  const isSoftware = pillar === 'Software';
   const formError = state.errors?.form?.[0];
   const modelEmptyMessage =
     brandId.length > 0 || categoryId.length > 0
@@ -294,9 +346,16 @@ export function RegistrationForm({
       : 'No models found.';
   const selectedModelLabel =
     modelOptions.find((option) => option.value === modelId)?.label ?? '';
+  const selectedModelImageUrl = selectedModel?.imageUrl ?? '';
   const derivedAssetName =
-    serialNumber.trim() || selectedModelLabel.trim() || 'Hardware Asset';
+    isSoftware
+      ? selectedModelLabel.trim() || serialNumber.trim() || 'Software License'
+      : serialNumber.trim() || selectedModelLabel.trim() || 'Hardware Asset';
   const panelDescription = resolvePanelDescription(initialPillar);
+  const panelTitle = isSoftware ? 'Software Registry' : 'Asset Registry';
+  const serialLabel = isSoftware ? 'License Key :' : 'Serial Number :';
+  const submitLabel = isSoftware ? 'Add Software' : 'Add Asset';
+  const submittingLabel = isSoftware ? 'Adding software...' : 'Adding asset...';
 
   React.useEffect(() => {
     const resolvedMessage = state.message || formError;
@@ -335,10 +394,10 @@ export function RegistrationForm({
         label: isPending ? (
           <span className="inline-flex items-center gap-2">
             <LoaderCircle className="h-4 w-4 animate-spin" />
-            <span>Adding asset...</span>
+            <span>{submittingLabel}</span>
           </span>
         ) : (
-          'Add Asset'
+          submitLabel
         ),
         onClick: () => formRef.current?.requestSubmit(),
         disabled: isPending,
@@ -382,57 +441,6 @@ export function RegistrationForm({
         </InlineFieldRow>
       )}
 
-      <div className="flex flex-col items-center gap-2 py-2">
-        <input
-          ref={imageInputRef}
-          id="assetImage"
-          name="assetImage"
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={(event) => {
-            const selectedFile = event.target.files?.[0];
-            if (!selectedFile) {
-              setImagePreviewUrl('');
-              return;
-            }
-
-            setImagePreviewUrl((previous) => {
-              if (previous) {
-                URL.revokeObjectURL(previous);
-              }
-              return URL.createObjectURL(selectedFile);
-            });
-          }}
-        />
-
-        <Button
-          type="button"
-          variant="ghost"
-          className="relative h-24 w-24 rounded-full border border-dashed border-border p-0 hover:bg-muted/20"
-          onClick={() => imageInputRef.current?.click()}
-          aria-label="Upload asset image"
-        >
-          {imagePreviewUrl ? (
-            <Image
-              src={imagePreviewUrl}
-              alt="Selected asset"
-              fill
-              sizes="96px"
-              unoptimized
-              className="h-full w-full rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground">
-              <span className="text-xs">IMG</span>
-            </div>
-          )}
-          <span className="pointer-events-none absolute inset-0 rounded-full ring-8 ring-background/40" />
-        </Button>
-
-        <p className="text-xs text-muted-foreground">Click to upload image</p>
-      </div>
-
       <hr className="my-5 border-border" />
 
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
@@ -459,7 +467,7 @@ export function RegistrationForm({
         />
 
         <InlineFieldRow
-          label="Serial Number :"
+          label={serialLabel}
           htmlFor="serialNumber"
           error={getError(state, 'serialNumber')}
         >
@@ -482,6 +490,104 @@ export function RegistrationForm({
           emptyMessage={modelEmptyMessage}
           error={getError(state, 'modelId')}
         />
+
+        <div className="col-span-full rounded-lg border border-border bg-muted/30 p-4 sm:col-span-2">
+          <div className="flex items-start gap-4">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background">
+              {selectedModelImageUrl ? (
+                <Image
+                  src={selectedModelImageUrl}
+                  alt={selectedModelLabel || 'Selected model'}
+                  width={80}
+                  height={80}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground">No image</span>
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                Selected Model
+              </div>
+              <p className="truncate text-sm text-muted-foreground">
+                {selectedModelLabel || 'Select a model to load its image and custom inputs.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {assetTrackingFields.length > 0 ? (
+          <div className="col-span-full rounded-lg border border-border bg-background p-4 sm:col-span-2">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+                  Custom Inputs
+                </h3>
+                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+                  Fields are driven by the selected model&apos;s category.
+                </p>
+              </div>
+            </div>
+
+            <input type="hidden" name="instanceAttributes" value={JSON.stringify(instanceAttributesPayload)} />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {assetTrackingFields.map((field) => {
+                const fieldValue = customFieldValues[field.fieldName] ?? '';
+
+                if (field.inputType === 'Boolean') {
+                  return (
+                    <div key={field.fieldName} className="space-y-2">
+                      <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                        {field.fieldName}
+                        {field.required ? <span className="text-red-500"> *</span> : null}
+                      </label>
+                      <Select
+                        value={fieldValue}
+                        onValueChange={(value) =>
+                          setCustomFieldValues((previous) => ({
+                            ...previous,
+                            [field.fieldName]: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Select value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={field.fieldName} className="space-y-2">
+                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                      {field.fieldName}
+                      {field.required ? <span className="text-red-500"> *</span> : null}
+                    </label>
+                    <Input
+                      type={field.inputType === 'Number' ? 'number' : field.inputType === 'Date' ? 'date' : 'text'}
+                      value={fieldValue}
+                      onChange={(event) =>
+                        setCustomFieldValues((previous) => ({
+                          ...previous,
+                          [field.fieldName]: event.target.value,
+                        }))
+                      }
+                      required={field.required}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <SearchableFieldRow
           label="Owner :"
@@ -662,7 +768,7 @@ export function RegistrationForm({
     <SlidePanel
       isOpen={isOpen}
       onClose={onClose}
-      title="Asset Registry"
+      title={panelTitle}
       description={panelDescription}
       content={panelContent}
       actions={panelActions}

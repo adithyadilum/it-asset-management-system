@@ -121,6 +121,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       assetName={data?.asset.name ?? ""}
       assetCategory={data?.model.category.name ?? ""}
       model={data?.model.name ?? ""}
+      imageUrl={data?.model.imageUrl ?? ""}
       brand={data?.model.brand.name ?? ""}
       serialNumber={data?.asset.serialNumber ?? ""}
       owner={data?.assignment?.assignedToUser?.name ?? ""}

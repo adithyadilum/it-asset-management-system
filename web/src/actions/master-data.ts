@@ -36,8 +36,6 @@ import {
 } from '@/lib/validations/master-data';
 import { type LocationType } from '@/types/master-data';
 
-
-
 const CATEGORY_PILLARS = new Set([
   'IT & Digital',
   'Software',
@@ -680,6 +678,7 @@ export async function createMasterDataRecord(
           name: formData.get('name'),
           brandId: formData.get('brandId'),
           categoryId: formData.get('categoryId'),
+          imageUrl: formData.get('imageUrl'),
           technicalDetails: String(formData.get('technicalDetails') ?? '{}'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
@@ -698,6 +697,11 @@ export async function createMasterDataRecord(
             name: parsed.data.name,
             brandId: parsed.data.brandId,
             categoryId: parsed.data.categoryId,
+            imageUrl:
+              typeof parsed.data.imageUrl === 'string' &&
+              parsed.data.imageUrl.trim().length > 0
+                ? parsed.data.imageUrl.trim()
+                : null,
             technicalDetails: parsed.data.technicalDetails,
             isActive: parsed.data.isActive,
           })
@@ -973,6 +977,7 @@ export async function updateMasterDataRecord(
           name: formData.get('name'),
           brandId: formData.get('brandId'),
           categoryId: formData.get('categoryId'),
+          imageUrl: formData.get('imageUrl'),
           technicalDetails: String(formData.get('technicalDetails') ?? '{}'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
@@ -991,6 +996,11 @@ export async function updateMasterDataRecord(
             name: parsed.data.name,
             brandId: parsed.data.brandId,
             categoryId: parsed.data.categoryId,
+            imageUrl:
+              typeof parsed.data.imageUrl === 'string' &&
+              parsed.data.imageUrl.trim().length > 0
+                ? parsed.data.imageUrl.trim()
+                : null,
             technicalDetails: parsed.data.technicalDetails,
             isActive: parsed.data.isActive,
           })

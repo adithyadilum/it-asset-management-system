@@ -325,6 +325,7 @@ const getDeviceModelsData = cache(() =>
       name: models.name,
       brandId: models.brandId,
       categoryId: models.categoryId,
+      imageUrl: models.imageUrl,
       brandName: brands.name,
       categoryName: categories.name,
       pillar: categories.pillar,
@@ -341,6 +342,7 @@ const getDeviceModelsData = cache(() =>
       models.name,
       models.brandId,
       models.categoryId,
+      models.imageUrl,
       brands.name,
       categories.name,
       categories.pillar,
@@ -390,6 +392,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     brandName: row.brandName ?? "Unknown",
     categoryName: row.categoryName ?? "Unknown",
     pillar: row.pillar ?? "IT & Digital",
+    imageUrl: row.imageUrl ?? null,
     technicalDetails: normalizeModelTechnicalDetails(row.technicalDetails),
   }));
 

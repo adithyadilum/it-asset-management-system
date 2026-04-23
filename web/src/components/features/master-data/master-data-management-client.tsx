@@ -86,6 +86,7 @@ export type MasterDataDeviceModelRow = {
     name: string;
     brandId: number;
     categoryId: number;
+    imageUrl: string | null;
     brandName: string;
     categoryName: string;
     pillar: string;

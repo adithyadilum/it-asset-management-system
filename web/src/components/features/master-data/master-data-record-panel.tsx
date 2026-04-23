@@ -301,6 +301,7 @@ export function MasterDataRecordPanel({
                 nextDraft.name = model.name;
                 nextDraft.brandId = String(model.brandId);
                 nextDraft.categoryId = String(model.categoryId);
+                nextDraft.imageUrl = model.imageUrl ?? "";
                 nextDraft.pillar = model.pillar;
                 nextDraft.isActive = model.isActive;
                 break;
@@ -395,6 +396,8 @@ export function MasterDataRecordPanel({
         () => selectedModelCategory?.customSchema.modelSpecs ?? [],
         [selectedModelCategory]
     );
+
+    const selectedModelImageUrl = asString(draft.imageUrl);
 
     const technicalDetailsPayload = useMemo(() => {
         const payload: Record<string, string> = {};
@@ -893,6 +896,32 @@ export function MasterDataRecordPanel({
                                     </SelectContent>
                                 </Select>
                             )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Image URL
+                            </label>
+                            <Input
+                                name={isDetailMode ? undefined : "imageUrl"}
+                                type="url"
+                                value={selectedModelImageUrl}
+                                readOnly={isDetailMode}
+                                tabIndex={isDetailMode ? -1 : undefined}
+                                onFocus={
+                                    isDetailMode
+                                        ? (event) => event.currentTarget.blur()
+                                        : undefined
+                                }
+                                onChange={(event) => setDraftField("imageUrl", event.target.value)}
+                                placeholder="https://..."
+                                className={!isDetailMode ? undefined : READ_ONLY_INPUT_CLASSNAME}
+                            />
+                            {!isDetailMode && fieldError("imageUrl") ? (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {fieldError("imageUrl")}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

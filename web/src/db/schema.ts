@@ -166,6 +166,7 @@ export const models = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: 'restrict' }),
     name: varchar('name', { length: 255 }).notNull(),
+    imageUrl: varchar('image_url', { length: 500 }),
     technicalDetails: jsonb('technical_details'),
     isActive: boolean('is_active').default(true).notNull(),
   },
@@ -179,33 +180,37 @@ export const models = pgTable(
 // -----------------------------------------------------------------------------
 // 4. CORE ASSET REGISTRY
 // -----------------------------------------------------------------------------
-export const assets = pgTable('assets', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  assetTag: varchar('asset_tag', { length: 100 }).notNull().unique(),
-  serialNumber: varchar('serial_number', { length: 255 }),
-  name: varchar('name', { length: 255 }), // e.g., "Main Conference TV"
+export const assets = pgTable(
+  'assets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    assetTag: varchar('asset_tag', { length: 100 }).notNull().unique(),
+    serialNumber: varchar('serial_number', { length: 255 }),
+    name: varchar('name', { length: 255 }), // e.g., "Main Conference TV"
 
-  // Relations
-  modelId: integer('model_id')
-    .notNull()
-    .references(() => models.id, { onDelete: 'restrict' }),
-  locationId: integer('location_id').references(() => locations.id),
+    // Relations
+    modelId: integer('model_id')
+      .notNull()
+      .references(() => models.id, { onDelete: 'restrict' }),
+    locationId: integer('location_id').references(() => locations.id),
 
-  // Current State
-  status: assetStatusEnum('status').default('Available').notNull(),
-  condition: conditionEnum('condition'),
-  instanceAttributes: jsonb('instance_attributes'), // REPLACES ASSET_CUSTOM_VALUES
+    // Current State
+    status: assetStatusEnum('status').default('Available').notNull(),
+    condition: conditionEnum('condition'),
+    instanceAttributes: jsonb('instance_attributes'), // REPLACES ASSET_CUSTOM_VALUES
 
-  // Lifespan
-  usefulLifeMonths: integer('useful_life_months'),
-  salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
+    // Lifespan
+    usefulLifeMonths: integer('useful_life_months'),
+    salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
 
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  modelIdIdx: index('assets_model_id_idx').on(table.modelId),
-  locationIdIdx: index('assets_location_id_idx').on(table.locationId),
-}));
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    modelIdIdx: index('assets_model_id_idx').on(table.modelId),
+    locationIdIdx: index('assets_location_id_idx').on(table.locationId),
+  })
+);
 
 export const assetPurchases = pgTable('asset_purchases', {
   id: serial('id').primaryKey(),
@@ -221,8 +226,8 @@ export const assetPurchases = pgTable('asset_purchases', {
   currencyCode: varchar('currency_code', { length: 3 }).default('USD'),
   warrantyExpiry: date('warranty_expiry'),
   invoiceUrl: varchar('invoice_url', { length: 500 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),     
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),   
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const assetDocuments = pgTable('asset_documents', {
@@ -280,8 +285,8 @@ export const maintenanceRecords = pgTable('maintenance_records', {
   actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
   serviceDate: date('service_date'),
   closedAt: timestamp('closed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),     
-  updatedAt: timestamp('updated_at').defaultNow().notNull(), 
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const assetDisposals = pgTable('asset_disposals', {
@@ -329,6 +334,54 @@ export const systemAuditLogs = pgTable('system_audit_logs', {
 });
 
 // -----------------------------------------------------------------------------
+// SOFTWARE ASSET MANAGEMENT (SAM)
+// -----------------------------------------------------------------------------
+export const licenseTypeEnum = pgEnum('license_type', [
+  'Perpetual',
+  'Subscription',
+  'Open Source / Free',
+]);
+
+export const softwareLicenses = pgTable('software_licenses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  modelId: integer('model_id')
+    .notNull()
+    .references(() => models.id, { onDelete: 'restrict' }),
+
+  licenseKey: varchar('license_key', { length: 255 }),
+  licenseType: licenseTypeEnum('license_type').notNull(),
+
+  // The crucial "Seats" logic
+  totalSeats: integer('total_seats').notNull().default(1),
+
+  // Software specific lifecycles
+  startDate: date('start_date'),
+  expiryDate: date('expiry_date'), // Crucial for IT alerts
+
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+// Software needs its own assignment table to handle "Seats"
+export const softwareAllocations = pgTable('software_allocations', {
+  id: serial('id').primaryKey(),
+  licenseId: uuid('license_id')
+    .notNull()
+    .references(() => softwareLicenses.id, { onDelete: 'cascade' }),
+  assignedToUserId: uuid('assigned_to_user_id')
+    .notNull()
+    .references(() => users.id),
+
+  allocatedAt: timestamp('allocated_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'),
+});
+
+// -----------------------------------------------------------------------------
 // 7. RELATIONS (For Drizzle Query Builder)
 // -----------------------------------------------------------------------------
 
@@ -354,8 +407,14 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
-  asset: one(assets, { fields: [assetPurchases.assetId], references: [assets.id] }),
-  vendor: one(vendors, { fields: [assetPurchases.vendorId], references: [vendors.id] }),
+  asset: one(assets, {
+    fields: [assetPurchases.assetId],
+    references: [assets.id],
+  }),
+  vendor: one(vendors, {
+    fields: [assetPurchases.vendorId],
+    references: [vendors.id],
+  }),
 }));
 
 export const maintenanceRecordsRelations = relations(
@@ -413,4 +472,3 @@ export const systemAuditLogsRelations = relations(
   })
 );
 // Add other standard relation definitions here as needed for your specific nested queries.
-

@@ -90,8 +90,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       );
     } else if (isSoftware) {
       detailsFields.push(
+        { label: 'Software Name', value: props.assetName || props.model || '-' },
+        { label: 'License Key', value: props.serialNumber || props.specs?.license_key?.toString() || '-' },
         { label: 'License Type', value: props.specs?.license_type?.toString() || 'Subscription' },
         { label: 'Version', value: props.specs?.version?.toString() || '-' },
+        { label: 'Total Seats', value: props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-' },
         { label: 'Publisher', value: props.brand },
         { label: 'Assigned to', value: props.owner || '-' },
         { label: 'Group', value: props.group || '-' }
