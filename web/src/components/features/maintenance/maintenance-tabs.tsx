@@ -39,30 +39,30 @@ export function MaintenanceTabs({
     {
       accessorKey: 'asset.assetTag',
       header: 'Asset ID',
-      cell: ({ row }) => <span className="font-medium">{row.original.asset.assetTag}</span>,
+      cell: ({ row }) => <span className="font-medium text-slate-900">{row.original.asset.assetTag}</span>,
     },
     {
       accessorKey: 'asset.name',
       header: 'Asset Name',
-      cell: ({ row }) => <span>{row.original.asset.name || row.original.model?.name || 'N/A'}</span>,
+      cell: ({ row }) => <span className="text-slate-600">{row.original.asset.name || row.original.model?.name || 'N/A'}</span>,
     },
     {
       accessorKey: 'reportedBy.name',
       header: 'Reported By',
-      cell: ({ row }) => <span>{row.original.reportedBy?.name || 'Unknown'}</span>,
+      cell: ({ row }) => <span className="text-slate-600">{row.original.reportedBy?.name || 'Unknown'}</span>,
     },
     {
       accessorKey: 'reportedIssue',
       header: 'Issue',
       cell: ({ row }) => (
-        <span className="truncate max-w-[250px]">{row.original.reportedIssue}</span>
+        <span className="truncate max-w-[250px] text-slate-600">{row.original.reportedIssue}</span>
       ),
     },
     {
       accessorKey: 'createdAt',
       header: 'Date Reported',
       cell: ({ row }) => (
-        <span>
+        <span className="text-slate-600">
           {format(new Date(row.original.createdAt), 'MM/dd/yyyy')}
         </span>
       ),
@@ -89,37 +89,40 @@ export function MaintenanceTabs({
   );
 
   return (
-    <div className="flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white flex flex-col">
+    // Removed external borders/bg, ensuring it stretches cleanly inside the page.tsx card
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
       <Tabs 
         value={activeTab} 
         onValueChange={(value) => setActiveTab(value as 'pending' | 'active' | 'history')} 
-        className="flex flex-col h-full"
+        className="flex flex-col h-full overflow-hidden"
       >
-        <div className="border-b border-slate-200 px-6 pt-4 shrink-0">
-          <TabsList className="h-auto w-fit gap-0 rounded-none bg-transparent p-0">
+        <div className="border-b border-slate-200 px-6 pt-2 shrink-0">
+          <TabsList className="h-auto w-full justify-start gap-0 rounded-none bg-transparent p-0">
             <TabsTrigger
               value="pending"
-              className="rounded-none border-b-2 border-b-transparent px-0 py-2 text-sm font-medium text-slate-600 data-[state=active]:border-b-blue-600 data-[state=active]:text-slate-900"
+              className="rounded-none border-b-2 border-b-transparent px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:border-b-[#040d5a] data-[state=active]:text-slate-900"
             >
-              Pending Review
+              {/* row count logic */}
+              Pending Review {pendingTickets.length > 0 && `(${pendingTickets.length})`}
             </TabsTrigger>
             <TabsTrigger
               value="active"
-              className="rounded-none border-b-2 border-b-transparent px-4 py-2 text-sm font-medium text-slate-600 data-[state=active]:border-b-blue-600 data-[state=active]:text-slate-900"
+              className="rounded-none border-b-2 border-b-transparent px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:border-b-[#040d5a] data-[state=active]:text-slate-900"
             >
               Active Repairs {activeRepairTickets.length > 0 && `(${activeRepairTickets.length})`}
             </TabsTrigger>
             <TabsTrigger
               value="history"
-              className="rounded-none border-b-2 border-b-transparent px-4 py-2 text-sm font-medium text-slate-600 data-[state=active]:border-b-blue-600 data-[state=active]:text-slate-900"
+              className="rounded-none border-b-2 border-b-transparent px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:border-b-[#040d5a] data-[state=active]:text-slate-900"
             >
               Repair History
             </TabsTrigger>
           </TabsList>
         </div>
 
+        {/* Content area: allows internal scrolling */}
         <div className="flex flex-col gap-4 p-6 flex-1 overflow-hidden">
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center shrink-0">
             <Input
               placeholder={
                 activeTab === 'pending'
@@ -130,15 +133,15 @@ export function MaintenanceTabs({
               }
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="max-w-sm"
+              className="max-w-[400px] h-9"
             />
           </div>
 
-          <TabsContent value="pending" className="m-0 flex-1 overflow-hidden">
+          <TabsContent value="pending" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200">
             {isLoading ? (
               <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[15%]', 'w-[30%]', 'w-[20%]']} />
             ) : filteredPendingTickets.length === 0 ? (
-              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50">
+              <div className="flex h-32 items-center justify-center bg-slate-50">
                 <span className="text-sm text-slate-500">No pending maintenance tickets found</span>
               </div>
             ) : (
@@ -148,15 +151,16 @@ export function MaintenanceTabs({
                 pageSizeOptions={[10, 20, 30, 50]}
                 initialPageSize={10}
                 onRowClick={(row) => onRowClick(row)}
+                className="border-0"
               />
             )}
           </TabsContent>
 
-          <TabsContent value="active" className="m-0 flex-1 overflow-hidden">
+          <TabsContent value="active" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200">
             <ActiveRepairsGrid tickets={filteredActiveTickets} isLoading={isLoading} onRowClick={onActiveRepairRowClick} />
           </TabsContent>
 
-          <TabsContent value="history" className="m-0 flex-1 overflow-hidden">
+          <TabsContent value="history" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200">
             <RepairHistoryGrid tickets={filteredHistoryTickets} isLoading={isLoading} />
           </TabsContent>
         </div>

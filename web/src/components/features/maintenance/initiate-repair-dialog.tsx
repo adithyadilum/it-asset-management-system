@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Ban, Laptop, CalendarDays } from 'lucide-react';
+import { AlertCircle, X, Laptop, CalendarDays } from 'lucide-react';
 import type { Vendor, InitiateRepairFormData } from '@/types/maintenance';
 import { format } from 'date-fns';
 
@@ -109,8 +109,8 @@ export function InitiateRepairDialog({
             disabled={isLoading}
             className="text-[#0f172a] opacity-70 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
           >
-            {/* Using Ban icon to match Figma's 'remixforbidIcon' */}
-            <Ban className="h-[16px] w-[16px]" strokeWidth={2} />
+            {/* Swapped Ban for X */}
+            <X className="h-[20px] w-[20px]" strokeWidth={2} />
           </button>
         </div>
 

@@ -8,6 +8,7 @@ import { LogCompleteRepairDialog } from '@/components/features/maintenance/log-c
 import { getPendingMaintenanceTickets, getActiveRepairTickets, getRepairHistory, completeRepairTicket } from '@/actions/maintenance';
 import { useSidebar } from '@/components/ui/sidebar';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket, CompleteRepairFormData } from '@/types/maintenance';
 
 export default function MaintenanceAndRepairsPage() {
@@ -16,7 +17,7 @@ export default function MaintenanceAndRepairsPage() {
   const [repairHistoryTickets, setRepairHistoryTickets] = useState<RepairHistoryTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Pending Review (Slide Panel) State
+  // Pending Review (Side Card) State
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   
@@ -34,7 +35,7 @@ export default function MaintenanceAndRepairsPage() {
       const [ticketsResult, activeResult, historyResult] = await Promise.all([
         getPendingMaintenanceTickets(),
         getActiveRepairTickets(),
-        getRepairHistory(1, 100, '') // Fetch history alongside active and pending
+        getRepairHistory(1, 100, '')
       ]);
       setPendingTickets(ticketsResult.tickets);
       setActiveRepairTickets(activeResult.tickets);
@@ -50,20 +51,18 @@ export default function MaintenanceAndRepairsPage() {
     loadData();
   }, [loadData]);
 
-  // ============ PENDING REVIEW HANDLERS ============
   const handlePendingRowClick = (row: PendingReviewTicket) => {
     setSelectedTicketId(row.id);
     setIsPanelOpen(true);
-    setOpen(false); // Collapse sidebar
+    setOpen(false); 
   };
 
   const handlePanelClose = () => {
     setIsPanelOpen(false);
     setTimeout(() => setSelectedTicketId(null), 300); 
-    setOpen(true); // Restore sidebar
+    setOpen(true); 
   };
 
-  // ============ ACTIVE REPAIRS HANDLERS ============
   const handleActiveRepairRowClick = (ticket: ActiveRepairTicket) => {
     setActiveRepairDetails(ticket);
     setShowCompleteDialog(true);
@@ -83,7 +82,7 @@ export default function MaintenanceAndRepairsPage() {
       toast.success('Repair logged successfully!');
       setShowCompleteDialog(false);
       setActiveRepairDetails(null);
-      await loadData(); // Refreshes all 3 tabs simultaneously!
+      await loadData();
     } catch (err) {
       console.error('Failed to complete repair:', err);
       toast.error('Failed to log completed repair.');
@@ -93,30 +92,39 @@ export default function MaintenanceAndRepairsPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 bg-slate-50 p-4 sm:p-6">
-      <div className="space-y-1 shrink-0">
-        <h1 className="text-2xl font-semibold text-slate-900">Maintenance & Repairs</h1>
-        <p className="text-sm text-slate-500">
-          Manage asset maintenance requests, repairs, and service history
-        </p>
-      </div>
-
-      <div className="flex flex-1 gap-4 overflow-hidden">
-        <div className="flex-1 h-full overflow-hidden transition-all duration-300 ease-in-out">
-          {/* This one component automatically renders the tabs and all 3 grids inside of it! */}
-          <MaintenanceTabs
-            pendingTickets={pendingTickets}
-            activeRepairTickets={activeRepairTickets}
-            repairHistoryTickets={repairHistoryTickets}
-            isLoading={isLoading}
-            onRowClick={handlePendingRowClick}
-            onActiveRepairRowClick={handleActiveRepairRowClick}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-          />
+    <div className="flex h-[calc(100vh-64px)] w-full bg-slate-50 p-5 overflow-hidden">
+      
+      {/* LEFT CARD */}
+      <div className="flex flex-1 flex-col bg-white rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden min-w-0 transition-all duration-300">
+        <div className="px-6 pt-6 pb-2 shrink-0">
+          <h1 className="text-2xl font-semibold text-slate-900">Maintenance & Repairs</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage asset maintenance requests, repairs, and service history
+          </p>
         </div>
 
-        <div className="h-full shrink-0">
+        <MaintenanceTabs
+          pendingTickets={pendingTickets}
+          activeRepairTickets={activeRepairTickets}
+          repairHistoryTickets={repairHistoryTickets}
+          isLoading={isLoading}
+          onRowClick={handlePendingRowClick}
+          onActiveRepairRowClick={handleActiveRepairRowClick}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+        />
+      </div>
+
+      {/* RIGHT CARD: Increased width to w-[550px] and xl:w-[600px] */}
+      <div 
+        className={cn(
+          "shrink-0 bg-white rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.1)] overflow-hidden transition-all duration-300 ease-in-out transform",
+          isPanelOpen 
+            ? "w-[550px] xl:w-[600px] ml-5 border border-slate-200 opacity-100 translate-x-0" 
+            : "w-0 ml-0 border-0 opacity-0 translate-x-8" 
+        )}
+      >
+        <div className="w-[550px] xl:w-[600px] h-full flex flex-col">
           <IssueReviewPanelWrapper
             isOpen={isPanelOpen}
             onClose={handlePanelClose}
@@ -126,7 +134,6 @@ export default function MaintenanceAndRepairsPage() {
         </div>
       </div>
 
-      {/* Log Complete Repair Modal */}
       <LogCompleteRepairDialog
         isOpen={showCompleteDialog}
         onClose={() => setShowCompleteDialog(false)}
