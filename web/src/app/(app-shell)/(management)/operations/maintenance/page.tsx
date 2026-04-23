@@ -24,13 +24,15 @@ export default function MaintenanceAndRepairsPage() {
   const [isResolvingInternally, setIsResolvingInternally] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch pending tickets on mount
+    // Fetch pending tickets on mount
   useEffect(() => {
     async function loadPendingTickets() {
       try {
         setIsLoading(true);
         setError(null);
+        console.log('Loading pending tickets...');
         const result = await getPendingMaintenanceTickets();
+        console.log('Pending tickets result:', result);
         setPendingTickets(result.tickets);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load pending tickets';

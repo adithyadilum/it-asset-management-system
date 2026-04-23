@@ -16,12 +16,13 @@ import type { PendingReviewTicket, IssueReviewPanelData, AssetStatus } from '@/t
 export async function getPendingMaintenanceTickets() {
   try {
     const user = await getAuthenticatedUser();
+    console.log('[getPendingMaintenanceTickets] User:', user?.id);
+    
     if (!user) {
       throw new Error('Unauthorized');
     }
 
     // Fetch tickets with all relations
-    // Filter by: asset status is Defective or In Repair AND ticket status is ACTIVE
     const result = await db
       .select({
         ticket: maintenanceTickets,
@@ -47,7 +48,10 @@ export async function getPendingMaintenanceTickets() {
       .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
       .limit(100);
 
+    console.log('[getPendingMaintenanceTickets] Found tickets:', result.length);
+
     if (result.length === 0) {
+      console.log('[getPendingMaintenanceTickets] No tickets found matching criteria');
       return { tickets: [], total: 0 };
     }
 
@@ -62,12 +66,13 @@ export async function getPendingMaintenanceTickets() {
       reportedBy: row.reportedBy,
     })) as unknown as PendingReviewTicket[];
 
+    console.log('[getPendingMaintenanceTickets] Returning tickets:', tickets.length);
     return {
       tickets,
       total: tickets.length,
     };
   } catch (error) {
-    console.error('[getPendingMaintenanceTickets]', error);
+    console.error('[getPendingMaintenanceTickets] Error:', error);
     throw error;
   }
 }
