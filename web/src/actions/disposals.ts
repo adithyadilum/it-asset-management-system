@@ -1,16 +1,126 @@
 'use server';
 
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-import { assetDisposals, assets } from '@/db/schema';
+import { assetDisposals, assetPurchases, assets, users } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 
 function assertAllowed(role: string, allowed: string[]) {
   if (!allowed.includes(role)) {
     throw new Error('FORBIDDEN');
+  }
+}
+
+export type DisposalReviewDetails = {
+  disposalId: number;
+  assetId: string;
+  assetTag: string;
+  assetName: string | null;
+
+  requestedBy: string;
+  requestedAt: string; // ISO
+  reason: string;
+  justification: string | null;
+
+  // Financial-ish fields (optional)
+  purchaseDate: string | null; // ISO date string if present
+  originalCost: number | null;
+  warrantyStatus: 'Valid' | 'Expired' | 'Unknown';
+};
+
+/**
+ * Fetch extended details for the Disposal Review side panel.
+ * Client wrapper calls this when a row is clicked.
+ */
+export async function getDisposalReviewDetails(disposalId: number) {
+  const actionTimer = startLatencyTimer();
+  const user = await getAuthenticatedUser();
+
+  if (!user) throw new Error('UNAUTHENTICATED');
+  // Review panel is for admins/finance typically; allow IT too if you want them to view.
+  assertAllowed(user.role, ['ITOperator', 'GlobalAdmin', 'FinanceAuditor']);
+
+  if (!Number.isFinite(disposalId)) {
+    throw new Error('Invalid disposal id.');
+  }
+
+  try {
+    const queryTimer = startLatencyTimer();
+
+    const rows = await db
+      .select({
+        disposalId: assetDisposals.id,
+        assetId: assets.id,
+        assetTag: assets.assetTag,
+        assetName: assets.name,
+
+        requestedBy: users.name,
+        requestedAt: assetDisposals.requestedAt,
+        reason: assetDisposals.reason,
+        justification: assetDisposals.justification,
+
+        purchaseDate: assetPurchases.purchaseDate,
+        // Prefer totalCost if present; fallback to basePrice if not.
+        totalCost: assetPurchases.totalCost,
+        basePrice: assetPurchases.basePrice,
+        warrantyExpiry: assetPurchases.warrantyExpiry,
+      })
+      .from(assetDisposals)
+      .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
+      .innerJoin(users, eq(assetDisposals.requestedById, users.id))
+      .leftJoin(assetPurchases, eq(assetPurchases.assetId, assets.id))
+      .where(eq(assetDisposals.id, disposalId))
+      .orderBy(desc(assetPurchases.createdAt)) // pick latest purchase record if multiple exist
+      .limit(1);
+
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'disposals.getDisposalReviewDetails.query',
+      startTime: queryTimer,
+      metadata: { disposalId },
+    });
+
+    const row = rows[0];
+    if (!row) {
+      throw new Error('Disposal request not found.');
+    }
+
+    const originalCostRaw = row.totalCost ?? row.basePrice ?? null;
+    const originalCost =
+      originalCostRaw === null ? null : Number(originalCostRaw);
+
+    let warrantyStatus: DisposalReviewDetails['warrantyStatus'] = 'Unknown';
+    if (row.warrantyExpiry) {
+      const expiry = new Date(row.warrantyExpiry);
+      warrantyStatus = expiry.getTime() >= Date.now() ? 'Valid' : 'Expired';
+    }
+
+    const details: DisposalReviewDetails = {
+      disposalId: row.disposalId,
+      assetId: row.assetId,
+      assetTag: row.assetTag,
+      assetName: row.assetName,
+
+      requestedBy: row.requestedBy,
+      requestedAt: row.requestedAt.toISOString(),
+      reason: row.reason,
+      justification: row.justification ?? null,
+
+      purchaseDate: row.purchaseDate ? new Date(row.purchaseDate).toISOString() : null,
+      originalCost,
+      warrantyStatus,
+    };
+
+    return details;
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'disposals.getDisposalReviewDetails',
+      startTime: actionTimer,
+    });
   }
 }
 
@@ -20,8 +130,8 @@ function assertAllowed(role: string, allowed: string[]) {
  * requestedById is always derived from the authenticated user (no manual input).
  *
  * NOTE: Neon HTTP driver doesn't support transactions, so this is a 2-step operation:
- *  1) Insert disposal requests (for assets without an existing pending request)
- *  2) Update the corresponding assets' statuses to "Pending Disposal"
+ * 1) Insert disposal requests (for assets without an existing pending request)
+ * 2) Update the corresponding assets' statuses to "Pending Disposal"
  */
 export async function createBulkDisposalRequests(input: {
   assetIds: string[];
@@ -34,7 +144,9 @@ export async function createBulkDisposalRequests(input: {
   if (!user) throw new Error('UNAUTHENTICATED');
   assertAllowed(user.role, ['ITOperator', 'GlobalAdmin']);
 
-  const assetIds = Array.from(new Set(input.assetIds.map((id) => id.trim()).filter(Boolean)));
+  const assetIds = Array.from(
+    new Set(input.assetIds.map((id) => id.trim()).filter(Boolean))
+  );
   const reason = input.reason?.trim();
   const justification = input.justification?.trim() || null;
 
@@ -88,8 +200,7 @@ export async function createBulkDisposalRequests(input: {
       metadata: { inserted: toInsert.length },
     });
 
-    // STEP 3 (robustness): Re-query to confirm which assets now have Pending Approval requests.
-    // This helps if the insert partially failed (network hiccup) or if another request raced in.
+    // STEP 3: Verify
     const verifyTimer = startLatencyTimer();
 
     const insertedOrExistingPending = await db
@@ -102,7 +213,9 @@ export async function createBulkDisposalRequests(input: {
         )
       );
 
-    const assetIdsToMarkPendingDisposal = insertedOrExistingPending.map((r) => r.assetId);
+    const assetIdsToMarkPendingDisposal = insertedOrExistingPending.map(
+      (r) => r.assetId
+    );
 
     logLatency({
       scope: 'DB ACTION',
@@ -114,7 +227,7 @@ export async function createBulkDisposalRequests(input: {
       },
     });
 
-    // STEP 4: Update assets.status -> Pending Disposal (only for verified assets)
+    // STEP 4: Update assets.status -> Pending Disposal
     if (assetIdsToMarkPendingDisposal.length > 0) {
       const updateTimer = startLatencyTimer();
 
@@ -144,6 +257,73 @@ export async function createBulkDisposalRequests(input: {
       skipped: assetIds.length - toInsert.length,
     };
   } finally {
-    logLatency({ scope: 'ACTION', label: 'disposals.bulk_request', startTime: actionTimer });
+    logLatency({
+      scope: 'ACTION',
+      label: 'disposals.bulk_request',
+      startTime: actionTimer,
+    });
+  }
+}
+
+/**
+ * Rejects a pending disposal request and reverts the asset to a fallback status.
+ */
+export async function rejectDisposalRequest(
+  disposalId: number,
+  assetId: string,
+  rejectionReason: string,
+  fallbackStatus: string
+) {
+  const actionTimer = startLatencyTimer();
+  const user = await getAuthenticatedUser();
+
+  if (!user) throw new Error('UNAUTHENTICATED');
+  assertAllowed(user.role, ['GlobalAdmin']);
+
+  const normalizedReason = rejectionReason?.trim() || '';
+
+  if (normalizedReason.length < 10) {
+    throw new Error('Rejection reason must be at least 10 characters long.');
+  }
+
+  try {
+    const dbTimer = startLatencyTimer();
+    
+    // 1. Update the disposal request to Rejected, attach reason and resolver
+    await db
+      .update(assetDisposals)
+      .set({
+        status: 'Rejected' as any,
+        approvedById: user.id, // Assuming approvedById acts as a generic resolvedBy column
+        resolvedAt: new Date(),
+        rejectionReason: normalizedReason,
+      } as any) // Type assertion to bypass strict Drizzle schema checking if rejectionReason is freshly added
+      .where(eq(assetDisposals.id, disposalId));
+
+    // 2. Revert the Asset's status to the selected fallback status (e.g., 'Available', 'In Use')
+    await db
+      .update(assets)
+      .set({
+        status: fallbackStatus as any, 
+      })
+      .where(eq(assets.id, assetId));
+
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'disposals.reject',
+      startTime: dbTimer,
+    });
+
+    // Revalidate relevant pages so the UI updates instantly
+    revalidatePath('/operations/disposals');
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/assets/software');
+
+    return { success: true as const };
+  } finally {
+    logLatency({ scope: 'ACTION', label: 'disposals.reject', startTime: actionTimer });
   }
 }

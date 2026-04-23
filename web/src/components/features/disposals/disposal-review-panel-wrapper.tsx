@@ -1,68 +1,110 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+import { getDisposalReviewDetails, type DisposalReviewDetails } from '@/actions/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
+import { RejectDisposalDialog } from './reject-disposal-dialog';
 import type { PendingDisposalRow } from './pending-disposals-grid';
 
 export interface DisposalReviewPanelWrapperProps {
   isOpen: boolean;
-  onClose: () => void;
+  onCloseUrl: string; 
   row: PendingDisposalRow | null;
 }
 
-export function DisposalReviewPanelWrapper({ isOpen, onClose, row }: DisposalReviewPanelWrapperProps) {
-  const [extendedData, setExtendedData] = useState<any | null>(null);
+export function DisposalReviewPanelWrapper({
+  isOpen,
+  onCloseUrl,
+  row,
+}: DisposalReviewPanelWrapperProps) {
+  const router = useRouter();
+  const [extendedData, setExtendedData] = useState<DisposalReviewDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // New state to control the Reject Modal
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
   useEffect(() => {
-    if (isOpen && row) {
-      setIsLoading(true);
-      
-      // Simulate an API call to get financial/warranty data for the specific row
-      const timer = setTimeout(() => {
-        setExtendedData({
-          brand: 'Standard Brand',
-          serialNumber: `SN-${row.assetTag}-X9`,
-          category: 'IT Equipment',
-          dateCreated: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-          imageUrl: null,
-          justification: `Hardware evaluation complete. ${row.reason} confirmed.`,
-          purchaseDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-          currentBookValue: 120.00,
-          originalCost: 1250.00,
-          warrantyStatus: 'Expired'
-        });
-        setIsLoading(false);
-      }, 600);
+    let cancelled = false;
 
-      return () => clearTimeout(timer);
+    async function run() {
+      if (!isOpen || !row) {
+        setExtendedData(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const data = await getDisposalReviewDetails(row.id);
+        if (cancelled) return;
+        setExtendedData(data);
+      } catch (err) {
+        if (cancelled) return;
+        setExtendedData(null);
+      } finally {
+        if (cancelled) return;
+        setIsLoading(false);
+      }
     }
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, row]);
 
   return (
-    <DisposalReviewPanel
-      isOpen={isOpen}
-      onClose={onClose}
-      isLoading={isLoading}
-      // Pass the REAL data from the clicked row
-      assetTag={row?.assetTag ?? ''}
-      model={row?.assetName ?? ''}
-      requestedBy={row?.flaggedBy ?? ''}
-      dateRequested={row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''}
-      reason={row?.reason ?? ''}
-      // Pass the simulated extended data
-      serialNumber={extendedData?.serialNumber ?? ''}
-      category={extendedData?.category ?? ''}
-      brand={extendedData?.brand ?? ''}
-      dateCreated={extendedData?.dateCreated ?? ''}
-      imageUrl={extendedData?.imageUrl}
-      justification={extendedData?.justification ?? ''}
-      purchaseDate={extendedData?.purchaseDate ?? ''}
-      currentBookValue={extendedData?.currentBookValue}
-      originalCost={extendedData?.originalCost}
-      warrantyStatus={extendedData?.warrantyStatus ?? ''}
-      onReject={() => console.log('Reject')}
-      onApprove={() => console.log('Approve')}
-    />
+    <>
+      <DisposalReviewPanel
+        isOpen={isOpen}
+        onCloseUrl={onCloseUrl}
+        isLoading={isLoading}
+        
+        // Known Row Data
+        assetTag={row?.assetTag ?? ''}
+        model={row?.assetName ?? ''}
+        requestedBy={row?.flaggedBy ?? ''}
+        dateRequested={row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''}
+        reason={row?.reason ?? ''}
+
+        // Fetched Extended Data
+        serialNumber={extendedData?.assetTag ?? 'N/A'} 
+        category={'Hardware'} 
+        brand={'Standard'} 
+        dateCreated={extendedData?.requestedAt ?? ''} 
+        justification={extendedData?.justification ?? ''}
+        purchaseDate={extendedData?.purchaseDate ?? ''}
+        originalCost={extendedData?.originalCost ?? undefined}
+        currentBookValue={undefined}
+        warrantyStatus={extendedData?.warrantyStatus === 'Expired' ? 'Expired' : extendedData?.warrantyStatus === 'Valid' ? 'Valid' : ''}
+
+        // Trigger the modal when Reject is clicked
+        onReject={() => setIsRejectModalOpen(true)}
+        
+        onApprove={() => console.log('Initiate disposal clicked')}
+      />
+
+      {/* Render the modal overlay */}
+      {row && (
+        <RejectDisposalDialog
+          isOpen={isRejectModalOpen}
+          onOpenChange={setIsRejectModalOpen}
+          disposalId={row.id}
+          assetId={row.assetId}
+          assetName={row.assetName ?? 'Unknown Device'}
+          assetTag={row.assetTag}
+          onSuccess={() => {
+            setIsRejectModalOpen(false);
+            // Close the side panel and return to the main table after successful rejection
+            router.push(onCloseUrl, { scroll: false }); 
+          }}
+        />
+      )}
+    </>
   );
 }

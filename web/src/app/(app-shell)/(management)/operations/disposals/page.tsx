@@ -26,9 +26,8 @@ export default async function DisposalsPage() {
     .orderBy(desc(assetDisposals.requestedAt));
 
   return (
-    <div className="flex h-full flex-col p-8 bg-white min-h-[calc(100vh-4rem)]">
-      <h1 className="text-[28px] font-bold text-slate-900 mb-6">Disposals</h1>
+    
       <DisposalsLayout pendingData={pendingData} />
-    </div>
+   
   );
 }
