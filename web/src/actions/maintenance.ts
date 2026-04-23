@@ -1,15 +1,16 @@
-//web/src/actions/maintenance.ts
 'use server';
 
 import { db } from '@/db';
 import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
-import type { PendingReviewTicket, IssueReviewPanelData } from '@/types/maintenance';
+import type { PendingReviewTicket, IssueReviewPanelData, AssetStatus } from '@/types/maintenance';
 
 /**
  * Fetch pending maintenance tickets for the Pending Review tab
- * Filters by ACTIVE status and VENDOR/INTERNAL types
+ * Filters by:
+ * - Asset status: "Defective" or "In Repair"
+ * - Maintenance ticket status: ACTIVE
  * Includes related asset, model, brand, purchase, and user data
  */
 export async function getPendingMaintenanceTickets() {
@@ -20,6 +21,7 @@ export async function getPendingMaintenanceTickets() {
     }
 
     // Fetch tickets with all relations
+    // Filter by: asset status is Defective or In Repair AND ticket status is ACTIVE
     const result = await db
       .select({
         ticket: maintenanceTickets,
@@ -31,7 +33,12 @@ export async function getPendingMaintenanceTickets() {
         reportedBy: users,
       })
       .from(maintenanceTickets)
-      .where(eq(maintenanceTickets.status, 'ACTIVE'))
+      .where(
+        and(
+          eq(maintenanceTickets.status, 'ACTIVE'),
+          inArray(assets.status, ['Defective', 'In Repair'])
+        )
+      )
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(brands, eq(models.brandId, brands.id))
@@ -67,7 +74,11 @@ export async function getPendingMaintenanceTickets() {
 
 /**
  * Fetch a specific maintenance ticket with all details for the Issue Review panel
+ * Validates that:
+ * - Ticket status is ACTIVE
+ * - Asset status is "Defective" or "In Repair"
  * Calculates warranty status based on warranty expiry date
+ * Calculates book value using 3-year linear depreciation
  */
 export async function getTicketForIssueReview(ticketId: number): Promise<IssueReviewPanelData> {
   try {
@@ -87,7 +98,13 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
         reportedBy: users,
       })
       .from(maintenanceTickets)
-      .where(eq(maintenanceTickets.id, ticketId))
+      .where(
+        and(
+          eq(maintenanceTickets.id, ticketId),
+          eq(maintenanceTickets.status, 'ACTIVE'),
+          inArray(assets.status, ['Defective', 'In Repair'])
+        )
+      )
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(brands, eq(models.brandId, brands.id))
@@ -97,7 +114,7 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
       .limit(1);
 
     if (result.length === 0) {
-      throw new Error('Ticket not found');
+      throw new Error('Ticket not found or asset is not in Defective/In Repair status');
     }
 
     const row = result[0];
@@ -111,10 +128,12 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
     }
 
     // Calculate book value (simplified: original cost - depreciation)
-    const originalCost = purchase?.totalCost ? parseFloat(purchase.totalCost) : 0;
+    // Formula: Original Cost - (Original Cost * Months Old / 36)
+    // 36 months = 3-year depreciation period
+    const originalCost = purchase?.totalCost ? parseFloat(purchase.totalCost.toString()) : 0;
     const purchaseDate = purchase?.purchaseDate ? new Date(purchase.purchaseDate) : new Date();
     const monthsOld = Math.max(0, (Date.now() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    const depreciation = (originalCost * monthsOld) / 36; // 3-year depreciation
+    const depreciation = (originalCost * monthsOld) / 36;
     const bookValue = Math.max(0, originalCost - depreciation);
 
     return {
@@ -131,7 +150,6 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
       bookValue: Math.round(bookValue * 100) / 100,
       originalCost,
     } as unknown as IssueReviewPanelData;
-
   } catch (error) {
     console.error('[getTicketForIssueReview]', error);
     throw error;
@@ -139,10 +157,18 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
 }
 
 /**
- * Fetch all maintenance tickets filtered by status and type
+ * Fetch all maintenance tickets filtered by status and asset status
  * Used for Active Repairs and Repair History tabs
+ * 
+ * Filters by:
+ * - Maintenance ticket status (ACTIVE or COMPLETED)
+ * - Asset status (Defective or In Repair by default, configurable)
  */
-export async function getMaintenanceTicketsByStatus(status: 'ACTIVE' | 'COMPLETED', limit = 50) {
+export async function getMaintenanceTicketsByStatus(
+  status: 'ACTIVE' | 'COMPLETED',
+  assetStatuses: AssetStatus[] = ['Defective', 'In Repair'],
+  limit = 50
+) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
@@ -150,12 +176,24 @@ export async function getMaintenanceTicketsByStatus(status: 'ACTIVE' | 'COMPLETE
     }
 
     const ticketsData = await db
-      .select()
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+      })
       .from(maintenanceTickets)
-      .where(eq(maintenanceTickets.status, status))
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(
+        and(
+          eq(maintenanceTickets.status, status),
+          inArray(assets.status, assetStatuses)
+        )
+      )
       .limit(limit);
 
-    return ticketsData;
+    return ticketsData.map((row) => ({
+      ...row.ticket,
+      asset: row.asset,
+    }));
   } catch (error) {
     console.error('[getMaintenanceTicketsByStatus]', error);
     throw error;

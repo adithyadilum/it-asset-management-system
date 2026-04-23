@@ -21,6 +21,10 @@ interface MaintenanceTabsProps {
  * Maintenance Tabs Component
  * Displays 3 tabs: Pending Review, Active Repairs, Repair History
  * Handles data grid, search, and filtering
+ * 
+ * Filters pending tickets by:
+ * - Asset Status: Defective or In Repair
+ * - Maintenance Ticket Status: ACTIVE
  */
 export function MaintenanceTabs({
   pendingTickets,

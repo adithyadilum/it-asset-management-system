@@ -10,6 +10,10 @@ import type { PendingReviewTicket, IssueReviewPanelData } from '@/types/maintena
  * Main Maintenance & Repairs Page
  * Orchestrates tabs component and slide panel
  * US-15.1 Implementation
+ * 
+ * Filters:
+ * - Asset Status: "Defective" or "In Repair"
+ * - Maintenance Ticket Status: "ACTIVE"
  */
 export default function MaintenanceAndRepairsPage() {
   const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>([]);
