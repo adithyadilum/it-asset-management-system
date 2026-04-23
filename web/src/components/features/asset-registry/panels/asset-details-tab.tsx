@@ -49,7 +49,7 @@ export function AssetDetailsTab({
             className="object-cover"
           />
         ) : (
-          <div className="flex h-[121px] w-[153px] items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+          <div className="flex h-30.25 w-38.25 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
             No image available
           </div>
         )}
@@ -108,7 +108,7 @@ export function AssetDetailsTab({
             <Textarea
               readOnly
               value={note}
-              className="min-h-[100px] w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+              className="min-h-25 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
             />
           </div>
         )}

@@ -372,7 +372,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
         align="center"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}
-        className="w-[720px] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-0 shadow-box-shadow-shadow-xl"
+        className="w-180 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-0 shadow-box-shadow-shadow-xl"
       >
         <Command shouldFilter={false} className="rounded-xl! bg-white p-0">
           <CommandList className="max-h-93 px-3 py-2">

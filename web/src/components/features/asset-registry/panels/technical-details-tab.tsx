@@ -53,7 +53,7 @@ export function TechnicalDetailsTab({
             <Textarea
               readOnly
               value={note}
-              className="min-h-[100px] w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+              className="min-h-25 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
             />
           </div>
         )}
