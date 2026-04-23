@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { AssetDetailsPanel } from "./asset-details-panel";
-import { getAssetDetailsByIdAction } from "@/actions/asset-registry-panels";
+import {
+  getAssetDetailsByIdAction,
+  getAssetHistoryByIdAction,
+  getAssetMaintenanceByIdAction,
+} from "@/actions/asset-registry-panels";
 import { tiqriToast } from "@/components/shared/sonner";
-import { type AssetDetailsData } from "@/lib/data/asset-details-repo";
+import {
+  type AssetDetailsData,
+  type HistoryEvent,
+  type MaintenanceEvent,
+} from "@/lib/data/asset-details-repo";
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
@@ -12,8 +20,47 @@ export interface AssetDetailsPanelWrapperProps {
   recordId: string;
 }
 
+function formatDisplayDate(value?: string | null) {
+  if (!value) {
+    return '-';
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '-';
+  }
+
+  return parsedDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatDisplayDateTime(value?: string | null) {
+  if (!value) {
+    return '-';
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '-';
+  }
+
+  return parsedDate.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDetailsPanelWrapperProps) {
   const [data, setData] = useState<AssetDetailsData | null>(null);
+  const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
+  const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
 
@@ -26,13 +73,29 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
     if (isOpen && recordId) {
       let isMounted = true;
 
-      getAssetDetailsByIdAction(recordId)
-        .then((res) => {
+      Promise.all([
+        getAssetDetailsByIdAction(recordId),
+        getAssetHistoryByIdAction(recordId),
+        getAssetMaintenanceByIdAction(recordId),
+      ])
+        .then(([detailsRes, historyRes, maintenanceRes]) => {
           if (isMounted) {
-            if (res.success) {
-              setData(res.data);
+            if (detailsRes.success) {
+              setData(detailsRes.data);
             } else {
               tiqriToast.error("Failed to load asset details");
+            }
+
+            if (historyRes.success) {
+              setHistoryEvents(historyRes.data);
+            } else {
+              setHistoryEvents([]);
+            }
+
+            if (maintenanceRes.success) {
+              setMaintenanceEvents(maintenanceRes.data);
+            } else {
+              setMaintenanceEvents([]);
             }
           }
         })
@@ -64,24 +127,26 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       location={data?.location?.name ?? ""}
       condition={data?.asset.condition ?? ""}
       status={data?.asset.status ?? ""}
-      dateCreated={data?.asset.createdAt ?? ""}
-      updatedAt={data?.asset.updatedAt ?? ""}
+      dateCreated={formatDisplayDateTime(data?.asset.createdAt)}
+      updatedAt={formatDisplayDateTime(data?.asset.updatedAt)}
       note={data?.assignment?.notes ?? ""}
       specs={(data?.model.technicalDetails as Record<string, string | number | undefined>) ?? {}}
       techNote={""} // techNote doesn't exist
       currency={data?.purchase?.currencyCode ?? ""}
-      purchaseDate={data?.purchase?.purchaseDate ?? ""}
+      purchaseDate={formatDisplayDate(data?.purchase?.purchaseDate)}
       basePrice={data?.purchase?.basePrice ?? ""}
       shippingCost={data?.purchase?.shippingCost ?? ""}
       tax={data?.purchase?.tax ?? ""}
       totalCost={String(data?.purchase?.totalCost ?? "")}
-      warranty={data?.purchase?.warrantyExpiry ?? ""}
+      warranty={formatDisplayDate(data?.purchase?.warrantyExpiry)}
       vendorInfo={{
         vendorId: data?.vendor?.id ? String(data.vendor.id) : "",
         vendorName: data?.vendor?.companyName ?? "",
         contactNumber: data?.vendor?.contactInfo ?? ""
       }}
       invoiceUrl={data?.purchase?.invoiceUrl ?? ""}
+      historyEvents={historyEvents}
+      maintenanceEvents={maintenanceEvents}
     />
   );
 }

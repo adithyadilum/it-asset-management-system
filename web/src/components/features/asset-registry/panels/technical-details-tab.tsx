@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { Textarea } from '@/components/ui/textarea';
 
 export interface TechnicalDetailsTabProps {
   specs: Record<string, string | number | undefined>;
@@ -21,28 +23,41 @@ export function TechnicalDetailsTab({
   return (
     <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
       {/* Specifications Grid */}
-      <div className="mt-2 w-full">
-        <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-2.5 gap-y-6 text-sm leading-5">
-          {specEntries.map(([key, value], index) => (
-            <React.Fragment key={index}>
-              <dt className="font-medium capitalize text-foreground">
+      <div className="mt-2 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+        {specEntries.map(([key, value], index) => {
+          const isLongValue = typeof value === 'string' && value.length > 40;
+          return (
+            <div
+              key={index}
+              className={cn(
+                'flex items-center justify-between border-b border-border/40 py-2.5',
+                isLongValue && 'col-span-full'
+              )}
+            >
+              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500 capitalize')}>
                 {key.replace(/_/g, ' ')}
-              </dt>
-              <dd className="font-light text-foreground">{value}</dd>
-            </React.Fragment>
-          ))}
-        </dl>
-      </div>
+              </div>
+              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-slate-900')}>
+                {value}
+              </div>
+            </div>
+          );
+        })}
 
-      {/* Note Section */}
-      {note && (
-        <div className="flex w-full flex-col gap-2.5 rounded-lg border border-border bg-muted/50 p-6 shadow-sm">
-          <div className="font-medium leading-5 text-foreground">Note</div>
-          <div className="font-light leading-5 text-foreground">
-            {note}
+        {/* Note Section */}
+        {note && (
+          <div className="col-span-full mt-4 space-y-2">
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>
+              Note
+            </div>
+            <Textarea
+              readOnly
+              value={note}
+              className="min-h-[100px] w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+            />
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

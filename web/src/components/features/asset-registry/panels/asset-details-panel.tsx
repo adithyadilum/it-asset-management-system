@@ -15,7 +15,7 @@ export interface AssetDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   isLoading?: boolean;
-  
+
   // Base Asset
   assetId: string;
   assetTag: string;
@@ -34,10 +34,10 @@ export interface AssetDetailsPanelProps {
   note?: string;
   status: string;
   imageUrl?: string;
-  
+
   specs?: Record<string, string | number | undefined>;
   techNote?: string;
-  
+
   // Purchase
   currency?: string;
   purchaseDate?: string;
@@ -49,11 +49,11 @@ export interface AssetDetailsPanelProps {
   totalRepairCost?: string;
   invoiceUrl?: string;
   vendorInfo?: { vendorId: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
-  
+
   // Event Data
   historyEvents?: HistoryEvent[];
   maintenanceEvents?: MaintenanceEvent[];
-  
+
   // Actions
   onEdit?: () => void;
   onActionButtonClick?: () => void;
@@ -77,7 +77,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
-    detailsFields.push({ label: 'Asset ID', value: props.assetId });
+    detailsFields.push({ label: 'Asset ID', value: props.assetTag });
     if (isFurniture) {
       detailsFields.push(
         { label: 'Category', value: props.assetCategory },
@@ -166,11 +166,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       });
     }
 
-    if (!isSoftware && props.historyEvents && props.historyEvents.length > 0) {
+    if (!isSoftware) {
       tabsList.push({
         id: 'history',
         label: 'History',
-        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab events={props.historyEvents} onViewAll={props.onViewAllHistory} />,
+        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab events={props.historyEvents ?? []} onViewAll={props.onViewAllHistory} />,
       });
     }
 

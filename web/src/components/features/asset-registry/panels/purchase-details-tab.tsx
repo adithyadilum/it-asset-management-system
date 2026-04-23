@@ -3,6 +3,7 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 export interface PurchaseDetailsTabProps {
   currency: string;
@@ -43,6 +44,28 @@ export function PurchaseDetailsTab({
   onInvoiceClick,
   className = '',
 }: PurchaseDetailsTabProps) {
+  const renderField = (label: string, value: React.ReactNode, isMono: boolean = false, isLong: boolean = false) => (
+    <div
+      className={cn(
+        'flex items-center justify-between border-b border-border/40 py-2.5',
+        isLong && 'col-span-full'
+      )}
+    >
+      <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+        {label}
+      </div>
+      <div
+        className={cn(
+          TYPOGRAPHY_CLASSNAMES.textSmMedium,
+          'text-right text-slate-900',
+          isMono && 'font-mono tracking-wide'
+        )}
+      >
+        {value || '-'}
+      </div>
+    </div>
+  );
+
   return (
     <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
       {/* Currency Selector */}
@@ -60,35 +83,20 @@ export function PurchaseDetailsTab({
       </div>
 
       {/* Purchase Information */}
-      <div className="w-full">
-        <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-2.5 gap-y-6 leading-5">
-          <dt className="font-medium">Purchase Date</dt>
-          <dd className="font-light">{purchaseDate}</dd>
+      <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+        {renderField('Purchase Date', purchaseDate)}
+        {renderField('Base Price', basePrice)}
+        {renderField('Shipping Cost', shippingCost)}
+        {renderField('Tax', tax)}
+        {renderField('Total Cost', totalCost)}
+        {renderField('Warranty Period', warrantyPeriod)}
+        {totalRepairCost && renderField('Total Repair Cost', totalRepairCost)}
 
-          <dt className="font-medium">Base Price</dt>
-          <dd className="font-light">{basePrice}</dd>
-
-          <dt className="font-medium">Shipping Cost</dt>
-          <dd className="font-light">{shippingCost}</dd>
-
-          <dt className="font-medium">Tax</dt>
-          <dd className="font-light">{tax}</dd>
-
-          <dt className="font-medium">Total Cost</dt>
-          <dd className="font-light">{totalCost}</dd>
-
-          <dt className="font-medium">Warranty Period</dt>
-          <dd className="font-light">{warrantyPeriod}</dd>
-
-          {totalRepairCost && (
-            <>
-              <dt className="font-medium">Total Repair Cost</dt>
-              <dd className="font-light">{totalRepairCost}</dd>
-            </>
-          )}
-
-          <dt className="font-medium">Invoice PDF</dt>
-          <dd>
+        <div className="flex items-center justify-between border-b border-border/40 py-2.5">
+          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>
+            Invoice PDF
+          </div>
+          <div>
             {invoicePdf ? (
               <a
                 href={invoicePdf}
@@ -98,40 +106,27 @@ export function PurchaseDetailsTab({
                 className="flex w-fit items-center justify-center gap-2.5 rounded-lg border border-border bg-muted px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent"
               >
                 <FileText size={16} />
-                <span>Invoice.pdf</span>
+                <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Invoice.pdf</span>
               </a>
             ) : (
-              <span className="font-light text-muted-foreground">-</span>
+              <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-400')}>-</span>
             )}
-          </dd>
-        </dl>
+          </div>
+        </div>
       </div>
 
       {/* Vendor Details */}
-      <div className="flex w-full flex-col gap-6 rounded-lg border border-border bg-muted/50 p-6 shadow-sm">
-        <h3 className="text-base font-medium leading-6 text-foreground">Vendor Details</h3>
-        <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-2.5 gap-y-3.5 leading-5">
-          <dt className="font-medium text-foreground">Vendor ID</dt>
-          <dd className="font-light text-muted-foreground">{vendor.vendorId}</dd>
-
-          <dt className="font-medium text-foreground">Vendor Name</dt>
-          <dd className="font-light text-muted-foreground">{vendor.vendorName}</dd>
-
-          <dt className="font-medium text-foreground">Contact Person</dt>
-          <dd className="font-light text-muted-foreground">{vendor.contactPerson || '-'}</dd>
-
-          <dt className="font-medium text-foreground">Contact Number</dt>
-          <dd className="font-light text-muted-foreground">{vendor.contactNumber || '-'}</dd>
-
-          <dt className="font-medium text-foreground">Email</dt>
-          <dd className="font-light text-muted-foreground">{vendor.email || '-'}</dd>
-
-          <dt className="font-medium text-foreground">Website</dt>
-          <dd className="font-light text-muted-foreground">{vendor.website || '-'}</dd>
-
-          <dt className="font-medium text-foreground">Address</dt>
-          <dd className="font-light text-muted-foreground">{vendor.address || '-'}</dd>
-        </dl>
+      <div className="flex w-full flex-col gap-6 rounded-lg border border-border bg-muted/30 p-6 shadow-sm">
+        <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-slate-900')}>Vendor Details</h3>
+        <div className="grid grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+          {renderField('Vendor ID', vendor.vendorId, true)}
+          {renderField('Vendor Name', vendor.vendorName)}
+          {renderField('Contact Person', vendor.contactPerson)}
+          {renderField('Contact Number', vendor.contactNumber)}
+          {renderField('Email', vendor.email)}
+          {renderField('Website', vendor.website)}
+          {renderField('Address', vendor.address, false, true)}
+        </div>
       </div>
     </div>
   );
