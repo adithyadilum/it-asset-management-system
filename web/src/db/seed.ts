@@ -15,6 +15,7 @@ import {
   departments,
   locations,
   maintenanceRecords,
+  maintenanceTickets,
   models,
   sessions,
   systemAuditLogs,
@@ -1091,6 +1092,143 @@ async function seed() {
     }
 
     await db.insert(maintenanceRecords).values(maintenanceValues);
+  }
+
+    // ---------------------------------------------------------------------------
+  // 13.1. MAINTENANCE TICKETS
+  // ---------------------------------------------------------------------------
+  console.log('Seeding Maintenance Tickets...');
+
+  const maintenanceTicketSeeds = [
+    // ACTIVE - INTERNAL (Pending Review)
+    {
+      assetTag: 'LAP-0001',
+      ticketType: 'INTERNAL' as const,
+      vendorName: null,
+      rmaNumber: null,
+      reportedIssue: 'Battery not charging - may be connector issue',
+      estimatedCost: '45.00',
+      estimatedReturnDate: null,
+      status: 'ACTIVE' as const,
+    },
+    // ACTIVE - VENDOR (Pending Review)
+    {
+      assetTag: 'MON-0001',
+      ticketType: 'VENDOR' as const,
+      vendorName: 'Tech Source Lanka',
+      rmaNumber: 'RMA-2026-0001',
+      reportedIssue: 'Screen flickering on startup',
+      estimatedCost: '250.00',
+      estimatedReturnDate: '2026-05-02',
+      status: 'ACTIVE' as const,
+    },
+    // ACTIVE - VENDOR (Active Repairs)
+    {
+      assetTag: 'WKE-0001',
+      ticketType: 'VENDOR' as const,
+      vendorName: 'Enterprise Devices Pvt Ltd',
+      rmaNumber: 'RMA-2026-0002',
+      reportedIssue: 'Keys not responding - possible liquid damage',
+      estimatedCost: '180.00',
+      estimatedReturnDate: '2026-05-05',
+      status: 'ACTIVE' as const,
+    },
+    // COMPLETED - VENDOR
+    {
+      assetTag: 'DES-0001',
+      ticketType: 'VENDOR' as const,
+      vendorName: 'Tech Source Lanka',
+      rmaNumber: 'RMA-2026-0003',
+      reportedIssue: 'Display artifacts and color issues',
+      estimatedCost: '320.00',
+      actualCost: '375.50',
+      estimatedReturnDate: '2026-04-28',
+      actualCompletionDate: new Date('2026-04-27T14:30:00Z'),
+      resolutionNotes: 'GPU driver corruption - reflashed and tested. Issue resolved.',
+      status: 'COMPLETED' as const,
+    },
+    // COMPLETED - INTERNAL
+    {
+      assetTag: 'PHN-0001',
+      ticketType: 'INTERNAL' as const,
+      vendorName: null,
+      rmaNumber: null,
+      reportedIssue: 'Battery draining quickly',
+      estimatedCost: '8.50',
+      actualCost: '8.50',
+      estimatedReturnDate: null,
+      actualCompletionDate: new Date('2026-04-20T10:15:00Z'),
+      resolutionNotes: 'Battery contacts cleaned. Power management reset. Normal operation restored.',
+      status: 'COMPLETED' as const,
+    },
+    // COMPLETED - VENDOR (Old record)
+    {
+      assetTag: 'LAP-0002',
+      ticketType: 'VENDOR' as const,
+      vendorName: 'OfficeHub Suppliers',
+      rmaNumber: 'RMA-2026-0004',
+      reportedIssue: 'Hard drive failing - SMART errors',
+      estimatedCost: '450.00',
+      actualCost: '520.00',
+      estimatedReturnDate: '2026-04-18',
+      actualCompletionDate: new Date('2026-04-14T16:45:00Z'),
+      resolutionNotes: 'HDD replaced with 512GB SSD. Windows reinstalled. All data transferred.',
+      status: 'COMPLETED' as const,
+    },
+  ];
+
+  for (const ticketSeed of maintenanceTicketSeeds) {
+    // Find the asset by assetTag
+    const assetRecord = await db
+      .select({ id: assets.id })
+      .from(assets)
+      .where(eq(assets.assetTag, ticketSeed.assetTag))
+      .limit(1);
+
+    if (assetRecord.length === 0) {
+      console.warn(`⚠️  Asset ${ticketSeed.assetTag} not found, skipping ticket`);
+      continue;
+    }
+
+    const assetId = assetRecord[0].id;
+    const ticketKey = `${assetId}-${ticketSeed.ticketType}`;
+
+    const existing = await db
+      .select({ id: maintenanceTickets.id })
+      .from(maintenanceTickets)
+      .where(
+        and(
+          eq(maintenanceTickets.assetId, assetId),
+          eq(maintenanceTickets.ticketType, ticketSeed.ticketType),
+          eq(maintenanceTickets.reportedIssue, ticketSeed.reportedIssue)
+        )
+      )
+      .limit(1);
+
+    const ticketValues = {
+      assetId,
+      ticketType: ticketSeed.ticketType,
+      vendorName: ticketSeed.vendorName,
+      rmaNumber: ticketSeed.rmaNumber,
+      reportedIssue: ticketSeed.reportedIssue,
+      estimatedCost: ticketSeed.estimatedCost,
+      actualCost: ticketSeed.actualCost || null,
+      estimatedReturnDate: ticketSeed.estimatedReturnDate || null,
+      actualCompletionDate: ticketSeed.actualCompletionDate || null,
+      resolutionNotes: ticketSeed.resolutionNotes || null,
+      status: ticketSeed.status,
+      dispatchedById: itOperatorUserId,
+    };
+
+    if (existing.length > 0) {
+      await db
+        .update(maintenanceTickets)
+        .set(ticketValues)
+        .where(eq(maintenanceTickets.id, existing[0].id));
+      continue;
+    }
+
+    await db.insert(maintenanceTickets).values(ticketValues);
   }
 
   // ---------------------------------------------------------------------------
