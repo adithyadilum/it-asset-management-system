@@ -152,7 +152,7 @@ export function SlidePanel({
                     aria-describedby={description ? descriptionId : undefined}
                     className={cn(
                         "absolute inset-y-0 right-0 w-(--slide-panel-width)",
-                        "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg border border-slate-200",
+                        "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg",
                         "transition-transform ease-out",
                         disableTransition ? "duration-0" : "duration-300",
                         isVisible ? "translate-x-0" : "translate-x-full",
