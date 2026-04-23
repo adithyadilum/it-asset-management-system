@@ -83,6 +83,7 @@ export function RepairHistoryGrid({
       pageSizeOptions={[10, 20, 30, 50]}
       initialPageSize={10}
       onRowClick={onRowClick}
+      enableSelection={false} // <-- BOOM! Checkboxes gone!
     />
   );
 }

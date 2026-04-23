@@ -1,3 +1,4 @@
+// web/src/components/shared/data-table.tsx
 "use client"
 
 import * as React from "react"
@@ -48,6 +49,7 @@ type DataTableProps<TData, TValue> = {
   selectionLabel?: (selectedCount: number) => string
   onRowClick?: (row: TData, rowIndex: number) => void
   className?: string
+  enableSelection?: boolean // <-- ADDED THIS PROP
 }
 
 export function DataTable<TData, TValue>({
@@ -59,6 +61,7 @@ export function DataTable<TData, TValue>({
   selectionLabel,
   onRowClick,
   className,
+  enableSelection = true, // <-- DEFAULT TO TRUE
 }: DataTableProps<TData, TValue>) {
   const sortedPageSizes = React.useMemo(() => {
     const normalized = Array.from(new Set([...pageSizeOptions, initialPageSize])).filter(
@@ -116,8 +119,8 @@ export function DataTable<TData, TValue>({
   )
 
   const tableColumns = React.useMemo(
-    () => [selectionColumn, ...(columns as ColumnDef<TData, unknown>[])],
-    [columns, selectionColumn]
+    () => enableSelection ? [selectionColumn, ...(columns as ColumnDef<TData, unknown>[])] : (columns as ColumnDef<TData, unknown>[]),
+    [columns, selectionColumn, enableSelection]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -132,7 +135,7 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
-    enableRowSelection: true,
+    enableRowSelection: enableSelection, // Pass the toggle here
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -310,8 +313,9 @@ export function DataTable<TData, TValue>({
       </Table>
 
       <div className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3">
+        {/* Adjusted Footer Text to be smart about selections */}
         <p className="text-muted-foreground">
-          {selectedRows} of {totalRows} row(s) selected
+          {enableSelection ? `${selectedRows} of ${totalRows} row(s) selected` : `${totalRows} row(s) total`}
         </p>
 
         <div className="flex items-center justify-start gap-2 sm:justify-center">
