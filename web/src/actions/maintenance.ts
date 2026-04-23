@@ -217,6 +217,8 @@ export async function resolveIssueInternally(
 ) {
   try {
     const user = await getAuthenticatedUser();
+    console.log('[resolveIssueInternally] Starting for ticket:', ticketId, 'by user:', user?.id);
+    
     if (!user) {
       throw new Error('Unauthorized');
     }
@@ -238,6 +240,7 @@ export async function resolveIssueInternally(
 
     const ticket = ticketResult[0];
     const assetId = ticket.assetId;
+    console.log('[resolveIssueInternally] Found ticket for asset:', assetId);
 
     // Get current asset data for audit log
     const currentAssetResult = await db
@@ -251,6 +254,7 @@ export async function resolveIssueInternally(
     }
 
     const currentAsset = currentAssetResult[0];
+    console.log('[resolveIssueInternally] Current asset status:', currentAsset.status);
 
     // Update asset status to "Available"
     await db
@@ -260,6 +264,7 @@ export async function resolveIssueInternally(
         updatedAt: new Date(),
       })
       .where(eq(assets.id, assetId));
+    console.log('[resolveIssueInternally] Updated asset status to Available');
 
     // Update maintenance ticket to mark as resolved
     await db
@@ -271,9 +276,10 @@ export async function resolveIssueInternally(
         updatedAt: new Date(),
       })
       .where(eq(maintenanceTickets.id, ticketId));
+    console.log('[resolveIssueInternally] Updated ticket status to COMPLETED with notes');
 
     // Write audit log entry
-    await db.insert(systemAuditLogs).values({
+    const auditEntry = await db.insert(systemAuditLogs).values({
       entityType: 'Asset',
       entityId: assetId,
       actionType: 'MAINTENANCE_RESOLVED_INTERNALLY',
@@ -287,14 +293,16 @@ export async function resolveIssueInternally(
       },
       performedAt: new Date(),
     });
+    console.log('[resolveIssueInternally] Created audit log entry');
 
+    console.log('[resolveIssueInternally] Issue resolved successfully');
     return {
       success: true,
       message: 'Issue resolved successfully',
       assetId,
     };
   } catch (error) {
-    console.error('[resolveIssueInternally]', error);
+    console.error('[resolveIssueInternally] Error:', error);
     throw error;
   }
 }
