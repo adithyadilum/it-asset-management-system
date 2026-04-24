@@ -2,13 +2,16 @@
 
 import {
     useCallback,
+    useEffect,
     useMemo,
+    useRef,
     useState,
     useTransition,
     type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Info, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { ImagePlus, Info, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
 import { createMasterDataRecord } from "@/actions/master-data";
 import {
@@ -212,6 +215,9 @@ export function MasterDataCreatePanel({
     );
     const [selectedBrandId, setSelectedBrandId] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
+    const [modelImageFile, setModelImageFile] = useState<File | null>(null);
+    const [isModelImageDragOver, setIsModelImageDragOver] = useState(false);
+    const [showModelImageUploader, setShowModelImageUploader] = useState(false);
     const [categoryPrefixInput, setCategoryPrefixInput] = useState("");
     const [modelSpecAttributes, setModelSpecAttributes] = useState<CustomAttribute[]>([
         createCustomAttribute(),
@@ -220,6 +226,7 @@ export function MasterDataCreatePanel({
         createCustomAttribute(),
     ]);
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
+    const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
 
@@ -334,6 +341,19 @@ export function MasterDataCreatePanel({
         [selectedCategoryForModel]
     );
 
+    const modelImagePreviewUrl = useMemo(
+        () => (modelImageFile ? URL.createObjectURL(modelImageFile) : null),
+        [modelImageFile]
+    );
+
+    useEffect(() => {
+        return () => {
+            if (modelImagePreviewUrl) {
+                URL.revokeObjectURL(modelImagePreviewUrl);
+            }
+        };
+    }, [modelImagePreviewUrl]);
+
     const technicalDetailsPayload = useMemo(() => {
         const payload: Record<string, string> = {};
 
@@ -388,6 +408,9 @@ export function MasterDataCreatePanel({
         setSelectedParentLocationId(TOP_LEVEL_PARENT_LOCATION_VALUE);
         setSelectedBrandId("");
         setSelectedCategoryId("");
+        setModelImageFile(null);
+        setIsModelImageDragOver(false);
+        setShowModelImageUploader(false);
         setCategoryPrefixInput("");
         setModelSpecAttributes([createCustomAttribute()]);
         setAssetTrackingAttributes([createCustomAttribute()]);
@@ -419,6 +442,14 @@ export function MasterDataCreatePanel({
 
             const formData = new FormData(event.currentTarget);
 
+            if (normalizedEntity === "device-models") {
+                if (modelImageFile) {
+                    formData.set("modelImage", modelImageFile);
+                } else {
+                    formData.delete("modelImage");
+                }
+            }
+
             startTransition(async () => {
                 const result = await createMasterDataRecord(
                     INITIAL_CREATE_MASTER_DATA_STATE,
@@ -437,8 +468,34 @@ export function MasterDataCreatePanel({
                 tiqriToast.error(result.message);
             });
         },
-        [handleClose, normalizedEntity, router]
+        [handleClose, modelImageFile, normalizedEntity, router]
     );
+
+    const handleModelImageSelection = useCallback((files: FileList | null) => {
+        const selectedFile = files?.[0] ?? null;
+        setModelImageFile(selectedFile);
+        if (selectedFile) {
+            setShowModelImageUploader(true);
+        }
+        setIsModelImageDragOver(false);
+    }, []);
+
+    const handleModelImageDrop = useCallback(
+        (event: React.DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
+            setIsModelImageDragOver(false);
+            handleModelImageSelection(event.dataTransfer.files);
+        },
+        [handleModelImageSelection]
+    );
+
+    const clearSelectedModelImage = useCallback(() => {
+        setModelImageFile(null);
+        setShowModelImageUploader(false);
+        if (modelImageInputRef.current) {
+            modelImageInputRef.current.value = "";
+        }
+    }, []);
 
     const addModelSpecAttribute = useCallback(() => {
         setModelSpecAttributes((previous) => [...previous, createCustomAttribute()]);
@@ -1123,16 +1180,94 @@ export function MasterDataCreatePanel({
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                Image URL
+                                Model Image
                             </label>
                             <Input
-                                name="imageUrl"
-                                type="url"
-                                placeholder="https://..."
+                                ref={modelImageInputRef}
+                                name="modelImage"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(event) => handleModelImageSelection(event.target.files)}
                             />
-                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
-                                Store the model image URL here. The asset detail panel will reuse it.
-                            </p>
+                            <div className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
+                                <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                    {modelImagePreviewUrl ? (
+                                        <Image
+                                            src={modelImagePreviewUrl}
+                                            alt="Selected model preview"
+                                            width={112}
+                                            height={80}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <ImagePlus className="h-5 w-5 text-slate-400" />
+                                    )}
+                                </div>
+                                <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-slate-600`}>
+                                        {modelImageFile ? modelImageFile.name : "No image selected"}
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => {
+                                            setShowModelImageUploader(true);
+                                            modelImageInputRef.current?.click();
+                                        }}
+                                        aria-label="Change model image"
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                            {showModelImageUploader ? (
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => modelImageInputRef.current?.click()}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            modelImageInputRef.current?.click();
+                                        }
+                                    }}
+                                    onDragOver={(event) => {
+                                        event.preventDefault();
+                                        setIsModelImageDragOver(true);
+                                    }}
+                                    onDragLeave={() => setIsModelImageDragOver(false)}
+                                    onDrop={handleModelImageDrop}
+                                    className={`cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors ${isModelImageDragOver
+                                        ? "border-primary bg-primary/5"
+                                        : "border-slate-300 bg-slate-50/70 hover:border-slate-400"
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-center gap-2 text-center">
+                                        <Upload className="h-5 w-5 text-slate-500" />
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                            Drag and drop an image, or click to browse
+                                        </p>
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                            PNG, JPG, WEBP or GIF. Maximum file size: 4.5MB.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : null}
+                            {modelImageFile && (
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearSelectedModelImage}
+                                    >
+                                        Remove image
+                                    </Button>
+                                </div>
+                            )}
                             {getFieldError("imageUrl") && (
                                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                     {getFieldError("imageUrl")}

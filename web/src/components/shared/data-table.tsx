@@ -44,6 +44,7 @@ type DataTableProps<TData, TValue> = {
   data: TData[]
   pageSizeOptions?: number[]
   initialPageSize?: number
+  enableRowScroll?: boolean
   selectionActions?: DataTableSelectionAction<TData>[]
   selectionLabel?: (selectedCount: number) => string
   onRowClick?: (row: TData, rowIndex: number) => void
@@ -56,12 +57,56 @@ export function DataTable<TData, TValue>({
   data,
   pageSizeOptions = [16, 24, 32, 48],
   initialPageSize = 16,
+  enableRowScroll = true,
   selectionActions = [],
   selectionLabel,
   onRowClick,
   isRowActive,
   className,
 }: DataTableProps<TData, TValue>) {
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const footerRef = React.useRef<HTMLDivElement>(null)
+
+  const isCompactIdColumn = React.useCallback((columnId: string) => {
+    return columnId === "id"
+  }, [])
+
+  const getDisplayText = React.useCallback((value: unknown) => {
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      return String(value)
+    }
+
+    return null
+  }, [])
+
+  const syncOverflowTitle = React.useCallback((element: HTMLElement) => {
+    const fullText = element.dataset.fulltext
+
+    if (!fullText) {
+      element.removeAttribute("title")
+      return
+    }
+
+    if (element.scrollWidth > element.clientWidth) {
+      element.title = fullText
+      return
+    }
+
+    element.removeAttribute("title")
+  }, [])
+
+  const handleOverflowTooltip = React.useCallback(
+    (event: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>) => {
+      syncOverflowTitle(event.currentTarget)
+    },
+    [syncOverflowTitle]
+  )
+
+
   const sortedPageSizes = React.useMemo(() => {
     const normalized = Array.from(new Set([...pageSizeOptions, initialPageSize])).filter(
       (value) => value > 0
@@ -169,13 +214,14 @@ export function DataTable<TData, TValue>({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
-        "overflow-hidden rounded-md border border-border bg-card font-sans",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card font-sans",
         className
       )}
     >
-      <Table>
-        <TableHeader className="bg-muted [&_tr]:border-b [&_tr]:border-border">
+      <Table className="table-fixed" containerClassName="flex-1 min-h-0 overflow-auto">
+        <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
           {selectedRows > 0 ? (
             <TableRow className="h-13.25 border-border bg-secondary hover:bg-secondary">
               <TableHead
@@ -247,22 +293,35 @@ export function DataTable<TData, TValue>({
                       className={cn(
                         "h-13.25 bg-muted px-4 text-foreground",
                         "font-medium",
-                        header.column.id === "select" && "w-13 px-0"
+                        header.column.id === "select" && "w-13 px-0",
+                        isCompactIdColumn(header.column.id) && "w-28"
                       )}
                     >
                       {header.isPlaceholder ? null : canSort ? (
                         <button
                           type="button"
                           onClick={header.column.getToggleSortingHandler()}
-                          className="inline-flex items-center gap-2 text-left"
+                          className="inline-flex min-w-0 max-w-full items-center gap-2 text-left"
                         >
-                          <span>
+                          <span
+                            className="truncate"
+                            data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
+                            onMouseEnter={handleOverflowTooltip}
+                            onFocus={handleOverflowTooltip}
+                          >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                           </span>
                           <SortIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
                         </button>
                       ) : (
-                        flexRender(header.column.columnDef.header, header.getContext())
+                        <span
+                          className="block truncate"
+                          data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
+                          onMouseEnter={handleOverflowTooltip}
+                          onFocus={handleOverflowTooltip}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </span>
                       )}
                     </TableHead>
                   )
@@ -272,7 +331,7 @@ export function DataTable<TData, TValue>({
           )}
         </TableHeader>
 
-        <TableBody>
+        <TableBody className={cn(enableRowScroll && "relative")}>
           {table.getRowModel().rows.length > 0 ? (
             table.getRowModel().rows.map((row) => (
               <TableRow
@@ -286,16 +345,32 @@ export function DataTable<TData, TValue>({
                 )}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={cn(
-                      "h-13.25 px-4 text-foreground",
-                      "font-normal",
-                      cell.column.id === "select" && "w-13 px-0"
-                    )}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+                  (() => {
+                    const cellValue = cell.getValue()
+                    const cellTitle = getDisplayText(cellValue)
+                    const compactIdColumn = isCompactIdColumn(cell.column.id)
+
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          "h-13.25 overflow-hidden px-4 text-foreground",
+                          "font-normal",
+                          cell.column.id === "select" && "w-13 px-0",
+                          compactIdColumn && "w-28"
+                        )}
+                      >
+                        <div
+                          className="truncate"
+                          data-fulltext={cellTitle ?? undefined}
+                          onMouseEnter={handleOverflowTooltip}
+                          onFocus={handleOverflowTooltip}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </div>
+                      </TableCell>
+                    )
+                  })()
                 ))}
               </TableRow>
             ))
@@ -312,7 +387,10 @@ export function DataTable<TData, TValue>({
         </TableBody>
       </Table>
 
-      <div className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3">
+      <div
+        ref={footerRef}
+        className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3"
+      >
         <p className="text-muted-foreground">
           {selectedRows} of {totalRows} row(s) selected
         </p>

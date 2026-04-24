@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
+import { faker } from '@faker-js/faker';
 import * as dotenv from 'dotenv';
 
 import {
@@ -35,13 +36,13 @@ type Pillar =
   | 'Office Furniture'
   | 'Office Electronics';
 
-function pick<T>(list: T[], index: number): T {
-  return list[index % list.length];
-}
-
-function intDate(year: number, month: number, day: number) {
-  return new Date(Date.UTC(year, month - 1, day, 9, 0, 0));
-}
+const MOCK_LOCATION_TYPES = [
+  'HQ',
+  'Branch',
+  'Floor',
+  'Room',
+  'Remote',
+] as const;
 
 async function seed() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -52,639 +53,639 @@ async function seed() {
   const neonClient = neon(databaseUrl);
   const db = drizzle(neonClient);
 
-  console.log('🌱 Seeding database for test scenarios...');
+  console.log('🌱 Seeding database with Faker.js test data...');
 
-  // ---------------------------------------------------------------------------
-  // 1) DEPARTMENTS (>=20)
-  // ---------------------------------------------------------------------------
-  const departmentCount = 20;
-  const departmentRows = Array.from({ length: departmentCount }, (_, i) => ({
-    name: `Department ${String(i + 1).padStart(2, '0')}`,
-    shortCode: `D${String(i + 1).padStart(3, '0')}`,
-    costCenterId: `CC-${String(i + 1).padStart(4, '0')}`,
-    isActive: i % 7 !== 0,
-  }));
+  try {
+    // Clear all tables to avoid duplicate key violations
+    console.log('Clearing existing data...');
+    await db.delete(softwareAllocations);
+    await db.delete(softwareLicenses);
+    await db.delete(systemAuditLogs);
+    await db.delete(assetDisposals);
+    await db.delete(maintenanceRecords);
+    await db.delete(assetAssignments);
+    await db.delete(assetDocuments);
+    await db.delete(assetPurchases);
+    await db.delete(assets);
+    await db.delete(models);
+    await db.delete(brands);
+    await db.delete(categories);
+    await db.delete(owners);
+    await db.delete(vendors);
+    await db.delete(locations);
+    await db.delete(sessions);
+    await db.delete(users);
+    await db.delete(departments);
 
-  const insertedDepartments = await db
-    .insert(departments)
-    .values(departmentRows)
-    .returning({ id: departments.id, name: departments.name });
+    // -------------------------------------------------------------------------
+    // 1. DEPARTMENTS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Departments...');
+    const departmentData = Array.from({ length: 50 }).map((_, i) => ({
+      departmentCode: `DPT-${String(i + 1).padStart(4, '0')}`,
+      name: `${faker.commerce.department()} ${i + 1}`,
+      shortCode: faker.string.alphanumeric(5).toUpperCase(),
+      costCenterId: `CC-${faker.finance.accountNumber(6)}`,
+      isActive: true,
+    }));
 
-  // ---------------------------------------------------------------------------
-  // 2) USERS (>=20) - keep existing 4 credentials exactly
-  // ---------------------------------------------------------------------------
-  const fixedUsers: Array<{
-    email: string;
-    name: string;
-    role: UserRole;
-    password: string;
-    departmentIndex: number;
-  }> = [
-    {
-      email: 'admin@tiqri.com',
-      name: 'Admin User',
-      role: 'GlobalAdmin',
-      password: 'Admin@1234',
-      departmentIndex: 0,
-    },
-    {
-      email: 'it@tiqri.com',
-      name: 'IT Support',
-      role: 'ITOperator',
-      password: 'IT@1234',
-      departmentIndex: 1,
-    },
-    {
-      email: 'finance@tiqri.com',
-      name: 'Finance Auditor',
-      role: 'FinanceAuditor',
-      password: 'Finance@1234',
-      departmentIndex: 2,
-    },
-    {
-      email: 'employee@tiqri.com',
-      name: 'Standard Employee',
-      role: 'Employee',
-      password: 'Employee@1234',
-      departmentIndex: 3,
-    },
-  ];
-
-  const extraUsers = Array.from({ length: 16 }, (_, i) => ({
-    email: `user${String(i + 1).padStart(2, '0')}@tiqri.com`,
-    name: `Test User ${String(i + 1).padStart(2, '0')}`,
-    role: pick<UserRole>(
-      ['Employee', 'ITOperator', 'FinanceAuditor', 'Employee'],
-      i
-    ),
-    password: `User@${String(1000 + i)}`,
-    departmentIndex: (i + 4) % insertedDepartments.length,
-  }));
-
-  const allUsers = [...fixedUsers, ...extraUsers];
-  const userRows = [] as Array<{
-    email: string;
-    name: string;
-    password: string;
-    departmentId: number;
-    role: UserRole;
-    isActive: boolean;
-    createdAt: Date;
-  }>;
-
-  for (let i = 0; i < allUsers.length; i += 1) {
-    const u = allUsers[i];
-    userRows.push({
-      email: u.email,
-      name: u.name,
-      password: await bcrypt.hash(u.password, 10),
-      departmentId: insertedDepartments[u.departmentIndex].id,
-      role: u.role,
-      isActive: i % 9 !== 0,
-      createdAt: intDate(2025, 1 + (i % 12), 1 + (i % 27)),
-    });
-  }
-
-  const insertedUsers = await db
-    .insert(users)
-    .values(userRows)
-    .returning({ id: users.id, email: users.email, role: users.role });
-
-  const adminUser = insertedUsers.find((u) => u.email === 'admin@tiqri.com');
-  const itUser = insertedUsers.find((u) => u.email === 'it@tiqri.com');
-  const financeUser = insertedUsers.find(
-    (u) => u.email === 'finance@tiqri.com'
-  );
-
-  if (!adminUser || !itUser || !financeUser) {
-    throw new Error('Seed users missing required baseline accounts.');
-  }
-
-  // ---------------------------------------------------------------------------
-  // 3) SESSIONS (>=20)
-  // ---------------------------------------------------------------------------
-  const sessionRows = Array.from({ length: 20 }, (_, i) => ({
-    userId: insertedUsers[i].id,
-    tokenId: `seed-token-${String(i + 1).padStart(3, '0')}`,
-    expiresAt: intDate(2027, 1 + (i % 12), 5 + (i % 20)),
-    createdAt: intDate(2026, 1 + (i % 12), 1 + (i % 20)),
-    revokedAt: i % 10 === 0 ? intDate(2026, 12, 31) : null,
-  }));
-
-  await db.insert(sessions).values(sessionRows);
-
-  // ---------------------------------------------------------------------------
-  // 4) OWNERS (optional count; referenced by assets)
-  // ---------------------------------------------------------------------------
-  const ownerRows = [
-    { ownerCode: 'OWN-0001', companyName: 'TIQRI LK', isActive: true },
-    { ownerCode: 'OWN-0002', companyName: 'TIQRI Norway', isActive: true },
-    { ownerCode: 'OWN-0003', companyName: 'TIQRI Germany', isActive: true },
-    { ownerCode: 'OWN-0004', companyName: 'TIQRI Sweden', isActive: true },
-    { ownerCode: 'OWN-0005', companyName: 'TIQRI Finland', isActive: true },
-    { ownerCode: 'OWN-0006', companyName: 'TIQRI Denmark', isActive: true },
-    { ownerCode: 'OWN-0007', companyName: 'TIQRI Netherlands', isActive: true },
-    { ownerCode: 'OWN-0008', companyName: 'TIQRI UK', isActive: true },
-  ];
-
-  const insertedOwners = await db
-    .insert(owners)
-    .values(ownerRows)
-    .returning({ id: owners.id, companyName: owners.companyName });
-
-  // ---------------------------------------------------------------------------
-  // 5) LOCATIONS (>=20)
-  // ---------------------------------------------------------------------------
-  const rootLocations = await db
-    .insert(locations)
-    .values([
-      {
-        locationCode: 'LOC-0001',
-        name: 'Colombo HQ',
-        type: 'HQ' as LocationType,
-        parentId: null,
-        isActive: true,
-      },
-      {
-        locationCode: 'LOC-0002',
-        name: 'Kandy Branch',
-        type: 'Branch' as LocationType,
-        parentId: null,
-        isActive: true,
-      },
-      {
-        locationCode: 'LOC-0003',
-        name: 'Galle Branch',
-        type: 'Branch' as LocationType,
-        parentId: null,
-        isActive: true,
-      },
-      {
-        locationCode: 'LOC-0004',
-        name: 'Remote Workforce',
-        type: 'Remote' as LocationType,
-        parentId: null,
-        isActive: true,
-      },
-    ])
-    .returning({ id: locations.id, name: locations.name });
-
-  const locationRows = [] as Array<{
-    locationCode: string;
-    name: string;
-    type: LocationType;
-    parentId: number | null;
-    isActive: boolean;
-  }>;
-
-  for (let i = 5; i <= 20; i += 1) {
-    const type = pick<LocationType>(['Floor', 'Room', 'Branch', 'Remote'], i);
-    locationRows.push({
-      locationCode: `LOC-${String(i).padStart(4, '0')}`,
-      name: `Location ${String(i).padStart(2, '0')}`,
-      type,
-      parentId:
-        i % 3 === 0
-          ? rootLocations[0].id
-          : i % 4 === 0
-            ? rootLocations[1].id
-            : null,
-      isActive: i % 8 !== 0,
-    });
-  }
-
-  const extraLocations = await db
-    .insert(locations)
-    .values(locationRows)
-    .returning({ id: locations.id, name: locations.name });
-
-  const insertedLocations = [...rootLocations, ...extraLocations];
-
-  // ---------------------------------------------------------------------------
-  // 6) VENDORS (>=20)
-  // ---------------------------------------------------------------------------
-  const vendorRows = Array.from({ length: 20 }, (_, i) => ({
-    vendorCode: `VND-${String(i + 1).padStart(4, '0')}`,
-    companyName: `Vendor ${String(i + 1).padStart(2, '0')} Pvt Ltd`,
-    email: `vendor${String(i + 1).padStart(2, '0')}@supply.test`,
-    phone: `+94 11 ${String(3000000 + i).padStart(7, '0')}`,
-    website: `https://vendor${String(i + 1).padStart(2, '0')}.example.com`,
-    isActive: i % 11 !== 0,
-  }));
-
-  const insertedVendors = await db
-    .insert(vendors)
-    .values(vendorRows)
-    .returning({ id: vendors.id, companyName: vendors.companyName });
-
-  // ---------------------------------------------------------------------------
-  // 7) BRANDS (>=20)
-  // ---------------------------------------------------------------------------
-  const brandBaseNames = [
-    'Lenovo',
-    'Dell',
-    'HP',
-    'Apple',
-    'Samsung',
-    'Asus',
-    'Acer',
-    'Logitech',
-    'Cisco',
-    'Juniper',
-    'Sony',
-    'LG',
-    'Philips',
-    'Panasonic',
-    'Microsoft',
-    'Google',
-    'Adobe',
-    'Oracle',
-    'SAP',
-    'VMware',
-  ];
-
-  const brandRows = brandBaseNames.map((name, i) => ({
-    brandCode: `BRD-${String(i + 1).padStart(4, '0')}`,
-    name,
-    isActive: i % 10 !== 0,
-  }));
-
-  const insertedBrands = await db
-    .insert(brands)
-    .values(brandRows)
-    .returning({ id: brands.id, name: brands.name });
-
-  // ---------------------------------------------------------------------------
-  // 8) CATEGORIES (>=20)
-  // ---------------------------------------------------------------------------
-  const categorySeeds = [
-    { name: 'Laptop', pillar: 'IT & Digital' as Pillar, prefix: 'LAP' },
-    { name: 'Desktop', pillar: 'IT & Digital' as Pillar, prefix: 'DES' },
-    { name: 'Monitor', pillar: 'IT & Digital' as Pillar, prefix: 'MON' },
-    { name: 'Network Device', pillar: 'IT & Digital' as Pillar, prefix: 'NET' },
-    { name: 'Phone', pillar: 'IT & Digital' as Pillar, prefix: 'PHN' },
-    { name: 'Accounting Suite', pillar: 'Software' as Pillar, prefix: 'ASF' },
-    { name: 'Productivity Suite', pillar: 'Software' as Pillar, prefix: 'PSF' },
-    { name: 'Security Suite', pillar: 'Software' as Pillar, prefix: 'SSF' },
-    { name: 'Design Suite', pillar: 'Software' as Pillar, prefix: 'DSF' },
-    { name: 'ERP Suite', pillar: 'Software' as Pillar, prefix: 'ERF' },
-    {
-      name: 'Office Chair',
-      pillar: 'Office Furniture' as Pillar,
-      prefix: 'CHR',
-    },
-    {
-      name: 'Office Desk',
-      pillar: 'Office Furniture' as Pillar,
-      prefix: 'DSK',
-    },
-    { name: 'Cabinet', pillar: 'Office Furniture' as Pillar, prefix: 'CAB' },
-    {
-      name: 'Conference Table',
-      pillar: 'Office Furniture' as Pillar,
-      prefix: 'TAB',
-    },
-    { name: 'Shelf', pillar: 'Office Furniture' as Pillar, prefix: 'SHF' },
-    { name: 'Printer', pillar: 'Office Electronics' as Pillar, prefix: 'PRN' },
-    {
-      name: 'Projector',
-      pillar: 'Office Electronics' as Pillar,
-      prefix: 'PJR',
-    },
-    {
-      name: 'CCTV Camera',
-      pillar: 'Office Electronics' as Pillar,
-      prefix: 'CCT',
-    },
-    {
-      name: 'Air Conditioner',
-      pillar: 'Office Electronics' as Pillar,
-      prefix: 'AIR',
-    },
-    { name: 'Switch', pillar: 'Office Electronics' as Pillar, prefix: 'SWT' },
-  ];
-
-  const categoryRows = categorySeeds.map((seed, i) => ({
-    categoryCode: `CAT-${String(i + 1).padStart(4, '0')}`,
-    name: seed.name,
-    pillar: seed.pillar,
-    prefix: seed.prefix,
-    requiresSerial: true,
-    isConsumable: false,
-    customSchema: {
-      modelSpecs: [
-        { fieldName: 'Version', inputType: 'Text', required: false },
-        { fieldName: 'Capacity', inputType: 'Number', required: false },
-      ],
-      assetTracking: [
-        { fieldName: 'Reference', inputType: 'Text', required: false },
-        { fieldName: 'Commission Date', inputType: 'Date', required: false },
-      ],
-    },
-    isActive: i % 9 !== 0,
-  }));
-
-  const insertedCategories = await db
-    .insert(categories)
-    .values(categoryRows)
-    .returning({
-      id: categories.id,
-      name: categories.name,
-      prefix: categories.prefix,
-      pillar: categories.pillar,
-    });
-
-  const softwareCategories = insertedCategories.filter(
-    (category) => category.pillar === 'Software'
-  );
-
-  // ---------------------------------------------------------------------------
-  // 9) MODELS (>=20)
-  // ---------------------------------------------------------------------------
-  const modelRows = Array.from({ length: 30 }, (_, i) => {
-    const brand = insertedBrands[i % insertedBrands.length];
-    const category = insertedCategories[i % insertedCategories.length];
-
-    return {
-      modelCode: `MDL-${String(i + 1).padStart(4, '0')}`,
-      brandId: brand.id,
-      categoryId: category.id,
-      name: `${brand.name} ${category.prefix} Model ${String(i + 1).padStart(2, '0')}`,
-      imageUrl: `https://cdn.example.com/models/${String(i + 1).padStart(2, '0')}.png`,
-      technicalDetails: {
-        sku: `SKU-${String(i + 1).padStart(5, '0')}`,
-        generation: `Gen-${(i % 5) + 1}`,
-      },
-      isActive: i % 12 !== 0,
-    };
-  });
-
-  const insertedModels = await db.insert(models).values(modelRows).returning({
-    id: models.id,
-    name: models.name,
-    categoryId: models.categoryId,
-  });
-
-  // ---------------------------------------------------------------------------
-  // 10) ASSETS (>=20)
-  // ---------------------------------------------------------------------------
-  const statusCycle: Array<
-    | 'Available'
-    | 'Assigned'
-    | 'In Repair'
-    | 'Defective'
-    | 'Lost'
-    | 'Retired'
-    | 'Disposed'
-  > = [
-    'Available',
-    'Assigned',
-    'In Repair',
-    'Defective',
-    'Lost',
-    'Retired',
-    'Disposed',
-  ];
-  const conditionCycle: Array<
-    'New' | 'Excellent' | 'Fair' | 'Poor' | 'Damaged'
-  > = ['New', 'Excellent', 'Fair', 'Poor', 'Damaged'];
-
-  const assetsRows = Array.from({ length: 40 }, (_, i) => {
-    const model = insertedModels[i % insertedModels.length];
-    const category = insertedCategories.find((c) => c.id === model.categoryId);
-
-    if (!category) {
-      throw new Error('Model category not found while building assets seed.');
+    // Insert departments in batches
+    const insertedDepartments: Array<{ id: number }> = [];
+    for (let i = 0; i < departmentData.length; i += 5) {
+      const batch = departmentData.slice(i, i + 5);
+      const result = await db
+        .insert(departments)
+        .values(batch)
+        .returning({ id: departments.id });
+      insertedDepartments.push(...result);
     }
 
-    return {
-      assetTag: `${category.prefix}-${String(i + 1).padStart(4, '0')}`,
-      serialNumber: `SN-${String(900000 + i)}`,
-      name: `${model.name} Asset ${String(i + 1).padStart(2, '0')}`,
-      modelId: model.id,
-      locationId: insertedLocations[i % insertedLocations.length].id,
-      ownerId: insertedOwners[i % insertedOwners.length].id,
-      status: statusCycle[i % statusCycle.length],
-      condition: conditionCycle[i % conditionCycle.length],
-      instanceAttributes: {
-        deploymentSite: insertedLocations[i % insertedLocations.length].name,
-        inventoryBatch: `BATCH-${String(Math.floor(i / 5) + 1).padStart(3, '0')}`,
+    // -------------------------------------------------------------------------
+    // 2. USERS (50 records - keeping baseline credentials)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Users...');
+    const roles: UserRole[] = [
+      'GlobalAdmin',
+      'ITOperator',
+      'FinanceAuditor',
+      'Employee',
+    ];
+
+    // Baseline credentials - kept exactly as before
+    const baselineUsers = [
+      {
+        email: 'admin@tiqri.com',
+        name: 'Admin User',
+        password: 'Admin@1234',
+        role: 'GlobalAdmin' as UserRole,
       },
-      usefulLifeMonths: 24 + (i % 36),
-      salvageValue: (50 + i * 2.5).toFixed(2),
-      createdAt: intDate(2025, 1 + (i % 12), 1 + (i % 27)),
-      updatedAt: intDate(2026, 1 + (i % 12), 1 + (i % 27)),
-    };
-  });
+      {
+        email: 'it@tiqri.com',
+        name: 'IT Support',
+        password: 'IT@1234',
+        role: 'ITOperator' as UserRole,
+      },
+      {
+        email: 'finance@tiqri.com',
+        name: 'Finance Auditor',
+        password: 'Finance@1234',
+        role: 'FinanceAuditor' as UserRole,
+      },
+      {
+        email: 'employee@tiqri.com',
+        name: 'Standard Employee',
+        password: 'Employee@1234',
+        role: 'Employee' as UserRole,
+      },
+    ];
 
-  const insertedAssets = await db
-    .insert(assets)
-    .values(assetsRows)
-    .returning({ id: assets.id, assetTag: assets.assetTag });
+    const fakerUsers = Array.from({ length: 46 }).map((_, i) => ({
+      email: `user${String(i + 1).padStart(2, '0')}@tiqri.com`,
+      name: faker.person.fullName(),
+      password: faker.internet.password(),
+      role: faker.helpers.arrayElement(roles),
+    }));
 
-  // ---------------------------------------------------------------------------
-  // 11) ASSET PURCHASES (>=20)
-  // ---------------------------------------------------------------------------
-  const purchaseRows = Array.from({ length: 30 }, (_, i) => {
-    const basePrice = 500 + i * 25;
-    const tax = Number((basePrice * 0.12).toFixed(2));
-    const shippingCost = 20 + (i % 5) * 4;
-    const totalCost = basePrice + tax + shippingCost;
+    const allUsers = [...baselineUsers, ...fakerUsers];
 
-    return {
-      assetId: insertedAssets[i].id,
-      vendorId: insertedVendors[i % insertedVendors.length].id,
-      purchaseDate: `2025-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
-      basePrice: basePrice.toFixed(2),
-      tax: tax.toFixed(2),
-      shippingCost: shippingCost.toFixed(2),
-      totalCost: totalCost.toFixed(2),
-      currencyCode: pick(['USD', 'LKR', 'NOK'], i),
-      warrantyExpiry: `2028-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
-      invoiceUrl: `https://invoices.example.com/${insertedAssets[i].assetTag}.pdf`,
-      createdAt: intDate(2025, 1 + (i % 12), 2 + (i % 26)),
-      updatedAt: intDate(2026, 1 + (i % 12), 2 + (i % 26)),
-    };
-  });
+    const userData = await Promise.all(
+      allUsers.map(async (u) => ({
+        email: u.email,
+        name: u.name,
+        password: await bcrypt.hash(u.password, 10),
+        departmentId: faker.helpers.arrayElement(insertedDepartments).id,
+        role: u.role,
+        isActive: true,
+        createdAt: faker.date.past({ years: 1 }),
+      }))
+    );
 
-  await db.insert(assetPurchases).values(purchaseRows);
+    // Insert users in batches to avoid Neon HTTP parameter limits
+    const insertedUsers: Array<{ id: string; email: string; role: UserRole }> =
+      [];
+    for (let i = 0; i < userData.length; i += 5) {
+      const batch = userData.slice(i, i + 5);
+      const result = await db
+        .insert(users)
+        .values(batch)
+        .returning({ id: users.id, email: users.email, role: users.role });
+      insertedUsers.push(...result);
+    }
 
-  // ---------------------------------------------------------------------------
-  // 12) ASSET DOCUMENTS (>=20)
-  // ---------------------------------------------------------------------------
-  const documentRows = Array.from({ length: 30 }, (_, i) => ({
-    assetId: insertedAssets[i].id,
-    documentType: pick(['Manual', 'Warranty', 'Certificate'], i),
-    fileUrl: `https://docs.example.com/assets/${insertedAssets[i].assetTag}/${pick(['manual', 'warranty', 'certificate'], i)}.pdf`,
-    uploadedById: insertedUsers[i % insertedUsers.length].id,
-    uploadedAt: intDate(2026, 1 + (i % 12), 3 + (i % 25)),
-  }));
+    const adminUser = insertedUsers.find((u) => u.email === 'admin@tiqri.com');
+    const itUser = insertedUsers.find((u) => u.email === 'it@tiqri.com');
+    const financeUser = insertedUsers.find(
+      (u) => u.email === 'finance@tiqri.com'
+    );
 
-  await db.insert(assetDocuments).values(documentRows);
+    if (!adminUser || !itUser || !financeUser) {
+      throw new Error('Seed users missing required baseline accounts.');
+    }
 
-  // ---------------------------------------------------------------------------
-  // 13) ASSET ASSIGNMENTS (>=20)
-  // ---------------------------------------------------------------------------
-  const assignmentRows = Array.from({ length: 30 }, (_, i) => {
-    const assignedDate = intDate(2026, 1 + (i % 12), 5 + (i % 20));
-    const returned = i % 5 === 0;
+    // -------------------------------------------------------------------------
+    // 3. SESSIONS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Sessions...');
+    const sessionData = insertedUsers.slice(0, 50).map((user) => ({
+      userId: user.id, // UUID string
+      tokenId: `tok_${faker.string.alphanumeric(16).toUpperCase()}`,
+      expiresAt: faker.date.future(),
+      createdAt: faker.date.recent(),
+      revokedAt: Math.random() > 0.9 ? faker.date.past() : null,
+    }));
+    await db.insert(sessions).values(sessionData);
 
-    return {
-      assetId: insertedAssets[i].id,
-      assignedToUserId: insertedUsers[(i + 3) % insertedUsers.length].id,
-      assignedToLocationId:
-        insertedLocations[(i + 2) % insertedLocations.length].id,
-      assignedById: adminUser.id,
-      assignedDate,
-      expectedReturnDate: `2027-${String((i % 12) + 1).padStart(2, '0')}-15`,
-      returnedDate: returned ? intDate(2026, 12, 1 + (i % 20)) : null,
-      returnCondition: returned
-        ? pick(['New', 'Excellent', 'Fair', 'Poor', 'Damaged'] as const, i)
-        : null,
-      notes: `Assignment note ${String(i + 1).padStart(2, '0')}`,
-    };
-  });
+    // -------------------------------------------------------------------------
+    // 4. LOCATIONS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Locations...');
+    const locationData = Array.from({ length: 50 }).map((_, i) => ({
+      locationCode: `LOC-${String(i + 1).padStart(4, '0')}`,
+      name: `${faker.company.name()} Office ${i + 1}`,
+      type: faker.helpers.arrayElement(MOCK_LOCATION_TYPES) as LocationType,
+      parentId: Math.random() > 0.7 ? null : undefined,
+      isActive: true,
+    }));
 
-  await db.insert(assetAssignments).values(assignmentRows);
+    // Insert locations in batches
+    const insertedLocations: Array<{ id: number }> = [];
+    for (let i = 0; i < locationData.length; i += 5) {
+      const batch = locationData.slice(i, i + 5);
+      const result = await db
+        .insert(locations)
+        .values(batch)
+        .returning({ id: locations.id });
+      insertedLocations.push(...result);
+    }
 
-  // ---------------------------------------------------------------------------
-  // 14) MAINTENANCE RECORDS (>=20)
-  // ---------------------------------------------------------------------------
-  const maintenanceRows = Array.from({ length: 25 }, (_, i) => {
-    const closed = i % 4 === 0;
-    const serviceDate = `2026-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`;
+    // -------------------------------------------------------------------------
+    // 5. VENDORS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Vendors...');
+    const vendorData = Array.from({ length: 50 }).map((_, i) => ({
+      vendorCode: `VND-${String(i + 1).padStart(4, '0')}`,
+      companyName: `${faker.company.name()} Solutions`,
+      email: faker.internet.email(),
+      phone: faker.phone.number(),
+      website: faker.internet.url(),
+      isActive: true,
+    }));
 
-    return {
-      assetId: insertedAssets[(i + 5) % insertedAssets.length].id,
-      vendorId: insertedVendors[(i + 1) % insertedVendors.length].id,
-      reportedById: itUser.id,
-      status: closed
-        ? ('Resolved' as const)
-        : pick(['Open', 'In Progress', 'Pending Parts'] as const, i),
-      description: `Maintenance ticket ${String(i + 1).padStart(3, '0')}`,
-      rmaTicketNumber: `RMA-${String(5000 + i)}`,
-      estimatedCost: (80 + i * 9).toFixed(2),
-      actualCost: closed ? (75 + i * 8.5).toFixed(2) : null,
-      serviceDate,
-      closedAt: closed ? intDate(2026, 12, 10 + (i % 15)) : null,
-      createdAt: intDate(2026, 1 + (i % 12), 1 + (i % 25)),
-      updatedAt: intDate(2026, 1 + (i % 12), 2 + (i % 25)),
-    };
-  });
+    // Insert vendors in batches
+    const insertedVendors: Array<{ id: number }> = [];
+    for (let i = 0; i < vendorData.length; i += 5) {
+      const batch = vendorData.slice(i, i + 5);
+      const result = await db
+        .insert(vendors)
+        .values(batch)
+        .returning({ id: vendors.id });
+      insertedVendors.push(...result);
+    }
 
-  await db.insert(maintenanceRecords).values(maintenanceRows);
+    // -------------------------------------------------------------------------
+    // 6. OWNERS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Owners...');
+    const ownerData = Array.from({ length: 50 }).map((_, i) => ({
+      ownerCode: `OWN-${String(i + 1).padStart(4, '0')}`,
+      companyName: `${faker.company.name()} Holdings`,
+      isActive: true,
+    }));
 
-  // ---------------------------------------------------------------------------
-  // 15) ASSET DISPOSALS (>=20)
-  // ---------------------------------------------------------------------------
-  const disposalRows = Array.from({ length: 20 }, (_, i) => ({
-    assetId: insertedAssets[(i + 20) % insertedAssets.length].id,
-    requestedById: adminUser.id,
-    approvedById: financeUser.id,
-    status: pick(
-      ['Pending Approval', 'Approved', 'Rejected', 'Completed'] as const,
-      i
-    ),
-    reason: pick(
-      [
+    // Insert owners in batches
+    const insertedOwners: Array<{ id: number }> = [];
+    for (let i = 0; i < ownerData.length; i += 5) {
+      const batch = ownerData.slice(i, i + 5);
+      const result = await db
+        .insert(owners)
+        .values(batch)
+        .returning({ id: owners.id });
+      insertedOwners.push(...result);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. CATEGORIES (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Categories...');
+    const pillars: Pillar[] = [
+      'IT & Digital',
+      'Software',
+      'Office Furniture',
+      'Office Electronics',
+    ];
+
+    const categoryData = Array.from({ length: 50 }).map((_, i) => ({
+      categoryCode: `CAT-${String(i + 1).padStart(4, '0')}`,
+      name: `${faker.commerce.product()} Category ${String(i + 1).padStart(3, '0')}`,
+      pillar: faker.helpers.arrayElement(pillars),
+      prefix: faker.string.alpha(3).toUpperCase(),
+      requiresSerial: faker.datatype.boolean(),
+      isConsumable: faker.datatype.boolean(),
+      customSchema: {
+        modelSpecs: [
+          { fieldName: 'Version', inputType: 'Text', required: false },
+          { fieldName: 'Capacity', inputType: 'Number', required: false },
+        ],
+        assetTracking: [
+          { fieldName: 'Reference', inputType: 'Text', required: false },
+          { fieldName: 'Commission Date', inputType: 'Date', required: false },
+        ],
+      },
+      isActive: true,
+    }));
+
+    // Insert categories in batches
+    const insertedCategories: Array<{
+      id: number;
+      prefix: string;
+      pillar: Pillar;
+    }> = [];
+    for (let i = 0; i < categoryData.length; i += 5) {
+      const batch = categoryData.slice(i, i + 5);
+      const result = await db.insert(categories).values(batch).returning({
+        id: categories.id,
+        prefix: categories.prefix,
+        pillar: categories.pillar,
+      });
+      insertedCategories.push(...result);
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. BRANDS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Brands...');
+    const brandData = Array.from({ length: 50 }).map((_, i) => ({
+      brandCode: `BRD-${String(i + 1).padStart(4, '0')}`,
+      name: faker.company.name(),
+      isActive: true,
+    }));
+
+    // Insert brands in batches
+    const insertedBrands: Array<{ id: number }> = [];
+    for (let i = 0; i < brandData.length; i += 5) {
+      const batch = brandData.slice(i, i + 5);
+      const result = await db
+        .insert(brands)
+        .values(batch)
+        .returning({ id: brands.id });
+      insertedBrands.push(...result);
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. MODELS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Models...');
+    const modelData = Array.from({ length: 50 }).map((_, i) => ({
+      modelCode: `MDL-${String(i + 1).padStart(4, '0')}`,
+      brandId: faker.helpers.arrayElement(insertedBrands).id,
+      categoryId: faker.helpers.arrayElement(insertedCategories).id,
+      name: faker.commerce.productName(),
+      imageUrl: `https://cdn.example.com/models/${String(i + 1).padStart(2, '0')}.png`,
+      technicalDetails: {
+        sku: `SKU-${faker.string.numeric(6)}`,
+        generation: `Gen-${faker.number.int({ min: 1, max: 5 })}`,
+      },
+      isActive: true,
+    }));
+
+    // Insert models in batches
+    const insertedModels: Array<{ id: number }> = [];
+    for (let i = 0; i < modelData.length; i += 5) {
+      const batch = modelData.slice(i, i + 5);
+      const result = await db
+        .insert(models)
+        .values(batch)
+        .returning({ id: models.id });
+      insertedModels.push(...result);
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. ASSETS (100 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Assets...');
+    const assetStatuses: Array<
+      | 'Available'
+      | 'Assigned'
+      | 'In Repair'
+      | 'Defective'
+      | 'Lost'
+      | 'Retired'
+      | 'Disposed'
+    > = [
+      'Available',
+      'Assigned',
+      'In Repair',
+      'Defective',
+      'Lost',
+      'Retired',
+      'Disposed',
+    ];
+    const conditions: Array<'New' | 'Excellent' | 'Fair' | 'Poor' | 'Damaged'> =
+      ['New', 'Excellent', 'Fair', 'Poor', 'Damaged'];
+
+    const assetData = Array.from({ length: 100 }).map((_, i) => {
+      const category = faker.helpers.arrayElement(insertedCategories);
+      return {
+        assetTag: `${category.prefix}-${String(i + 1).padStart(4, '0')}`,
+        serialNumber: faker.string.uuid(),
+        name: `${faker.commerce.productName()} Asset ${i + 1}`,
+        modelId: faker.helpers.arrayElement(insertedModels).id,
+        locationId: faker.helpers.arrayElement(insertedLocations).id,
+        ownerId: faker.helpers.arrayElement(insertedOwners).id,
+        status: faker.helpers.arrayElement(assetStatuses),
+        condition: faker.helpers.arrayElement(conditions),
+        instanceAttributes: {
+          deploymentSite: faker.company.name(),
+          inventoryBatch: `BATCH-${faker.string.numeric(4)}`,
+        },
+        usefulLifeMonths: faker.number.int({ min: 12, max: 60 }),
+        salvageValue: faker.finance
+          .amount({ min: 50, max: 500, dec: 2 })
+          .toString(),
+        createdAt: faker.date.past({ years: 2 }),
+        updatedAt: faker.date.recent(),
+      };
+    });
+
+    // Insert assets in batches
+    const insertedAssets: Array<{ id: string }> = [];
+    for (let i = 0; i < assetData.length; i += 5) {
+      const batch = assetData.slice(i, i + 5);
+      const result = await db
+        .insert(assets)
+        .values(batch)
+        .returning({ id: assets.id });
+      insertedAssets.push(...result);
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. ASSET PURCHASES (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Asset Purchases...');
+    const purchaseData = Array.from({ length: 50 }).map(() => {
+      const basePrice = faker.number.float({
+        min: 200,
+        max: 3000,
+        fractionDigits: 2,
+      });
+      const tax = Number((basePrice * 0.12).toFixed(2));
+      const shippingCost = Number(
+        faker.number.float({ min: 10, max: 50, fractionDigits: 2 }).toFixed(2)
+      );
+      return {
+        assetId: faker.helpers.arrayElement(insertedAssets).id,
+        vendorId: faker.helpers.arrayElement(insertedVendors).id,
+        purchaseDate: faker.date.past({ years: 2 }).toISOString().split('T')[0],
+        basePrice: basePrice.toFixed(2),
+        tax: tax.toFixed(2),
+        shippingCost: shippingCost.toFixed(2),
+        totalCost: (basePrice + tax + shippingCost).toFixed(2),
+        currencyCode: faker.helpers.arrayElement(['USD', 'LKR', 'NOK']),
+        warrantyExpiry: faker.date
+          .future({ years: 2 })
+          .toISOString()
+          .split('T')[0],
+        invoiceUrl: faker.internet.url(),
+        createdAt: faker.date.past({ years: 2 }),
+        updatedAt: faker.date.recent(),
+      };
+    });
+
+    // Insert purchases in batches
+    for (let i = 0; i < purchaseData.length; i += 5) {
+      const batch = purchaseData.slice(i, i + 5);
+      await db.insert(assetPurchases).values(batch);
+    }
+
+    // -------------------------------------------------------------------------
+    // 12. ASSET DOCUMENTS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Asset Documents...');
+    const documentData = Array.from({ length: 50 }).map(() => ({
+      assetId: faker.helpers.arrayElement(insertedAssets).id,
+      documentType: faker.helpers.arrayElement([
+        'Manual',
+        'Warranty',
+        'Certificate',
+      ]),
+      fileUrl: faker.internet.url(),
+      uploadedById: faker.helpers.arrayElement(insertedUsers).id,
+      uploadedAt: faker.date.past({ years: 1 }),
+    }));
+
+    // Insert documents in batches
+    for (let i = 0; i < documentData.length; i += 5) {
+      const batch = documentData.slice(i, i + 5);
+      await db.insert(assetDocuments).values(batch);
+    }
+
+    // -------------------------------------------------------------------------
+    // 13. ASSET ASSIGNMENTS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Asset Assignments...');
+    const assignmentData = Array.from({ length: 50 }).map(() => {
+      const assignedDate = faker.date.past({ years: 1 });
+      const returned = Math.random() > 0.6;
+      return {
+        assetId: faker.helpers.arrayElement(insertedAssets).id,
+        assignedToUserId: faker.helpers.arrayElement(insertedUsers).id,
+        assignedToLocationId: faker.helpers.arrayElement(insertedLocations).id,
+        assignedById: adminUser.id,
+        assignedDate,
+        expectedReturnDate: faker.date.future().toISOString().split('T')[0],
+        returnedDate: returned ? faker.date.recent() : null,
+        returnCondition: returned
+          ? faker.helpers.arrayElement(conditions)
+          : null,
+        notes: faker.lorem.sentence(),
+      };
+    });
+
+    // Insert assignments in batches
+    for (let i = 0; i < assignmentData.length; i += 5) {
+      const batch = assignmentData.slice(i, i + 5);
+      await db.insert(assetAssignments).values(batch);
+    }
+
+    // -------------------------------------------------------------------------
+    // 14. MAINTENANCE RECORDS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Maintenance Records...');
+    const maintenanceStatuses: Array<
+      'Open' | 'In Progress' | 'Pending Parts' | 'Resolved' | 'Cancelled'
+    > = ['Open', 'In Progress', 'Pending Parts', 'Resolved', 'Cancelled'];
+
+    const maintenanceData = Array.from({ length: 50 }).map(() => {
+      const closed =
+        faker.helpers.arrayElement(maintenanceStatuses) === 'Resolved';
+      return {
+        assetId: faker.helpers.arrayElement(insertedAssets).id,
+        vendorId: faker.helpers.arrayElement(insertedVendors).id,
+        reportedById: itUser.id,
+        status: faker.helpers.arrayElement(maintenanceStatuses),
+        description: faker.lorem.paragraph(),
+        rmaTicketNumber: `RMA-${faker.string.numeric(6)}`,
+        estimatedCost: faker.finance
+          .amount({ min: 50, max: 500, dec: 2 })
+          .toString(),
+        actualCost: closed
+          ? faker.finance.amount({ min: 40, max: 450, dec: 2 }).toString()
+          : null,
+        serviceDate: faker.date.past({ years: 1 }).toISOString().split('T')[0],
+        closedAt: closed ? faker.date.recent() : null,
+        createdAt: faker.date.past({ years: 1 }),
+        updatedAt: faker.date.recent(),
+      };
+    });
+
+    // Insert maintenance in batches
+    for (let i = 0; i < maintenanceData.length; i += 5) {
+      const batch = maintenanceData.slice(i, i + 5);
+      await db.insert(maintenanceRecords).values(batch);
+    }
+
+    // -------------------------------------------------------------------------
+    // 15. ASSET DISPOSALS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Asset Disposals...');
+    const disposalStatuses: Array<
+      'Pending Approval' | 'Approved' | 'Rejected' | 'Completed'
+    > = ['Pending Approval', 'Approved', 'Rejected', 'Completed'];
+
+    const disposalData = Array.from({ length: 50 }).map(() => ({
+      assetId: faker.helpers.arrayElement(insertedAssets).id,
+      requestedById: adminUser.id,
+      approvedById: financeUser.id,
+      status: faker.helpers.arrayElement(disposalStatuses),
+      reason: faker.helpers.arrayElement([
         'End of Life',
         'Damaged Beyond Repair',
         'Upgrade Program',
         'Compliance Disposal',
-      ],
-      i
-    ),
-    justification: `Disposal justification ${String(i + 1).padStart(2, '0')}`,
-    dataWiped: i % 2 === 0,
-    tagsRemoved: i % 3 !== 0,
-    actualSalvageValue: (25 + i * 3.25).toFixed(2),
-    requestedAt: intDate(2026, 1 + (i % 12), 8 + (i % 20)),
-    resolvedAt: intDate(2026, 1 + (i % 12), 12 + (i % 15)),
-    notes: `Disposal notes ${String(i + 1).padStart(2, '0')}`,
-  }));
+      ]),
+      justification: faker.lorem.sentence(),
+      dataWiped: faker.datatype.boolean(),
+      tagsRemoved: faker.datatype.boolean(),
+      actualSalvageValue: faker.finance
+        .amount({ min: 20, max: 200, dec: 2 })
+        .toString(),
+      requestedAt: faker.date.past({ years: 1 }),
+      resolvedAt: faker.date.recent(),
+      notes: faker.lorem.sentence(),
+    }));
 
-  await db.insert(assetDisposals).values(disposalRows);
+    // Insert disposals in batches
+    for (let i = 0; i < disposalData.length; i += 5) {
+      const batch = disposalData.slice(i, i + 5);
+      await db.insert(assetDisposals).values(batch);
+    }
 
-  // ---------------------------------------------------------------------------
-  // 16) SOFTWARE LICENSES (>=20)
-  // ---------------------------------------------------------------------------
-  const softwareModelIds = insertedModels
-    .filter((model) =>
-      softwareCategories.some((category) => category.id === model.categoryId)
-    )
-    .map((model) => model.id);
+    // -------------------------------------------------------------------------
+    // 16. SOFTWARE LICENSES (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Software Licenses...');
+    const licenseTypes: Array<
+      'Perpetual' | 'Subscription' | 'Open Source / Free'
+    > = ['Perpetual', 'Subscription', 'Open Source / Free'];
 
-  if (softwareModelIds.length === 0) {
-    throw new Error(
-      'No software models available for software license seeding.'
+    const licenseData = Array.from({ length: 50 }).map(() => ({
+      id: randomUUID(),
+      modelId: faker.helpers.arrayElement(insertedModels).id,
+      licenseKey: `LIC-${faker.string.alphanumeric(8).toUpperCase()}`,
+      licenseType: faker.helpers.arrayElement(licenseTypes),
+      totalSeats: faker.number.int({ min: 5, max: 100 }),
+      startDate: faker.date.past({ years: 1 }).toISOString().split('T')[0],
+      expiryDate: faker.date.future({ years: 2 }).toISOString().split('T')[0],
+      isActive: true,
+      createdAt: faker.date.past({ years: 1 }),
+      updatedAt: faker.date.recent(),
+    }));
+
+    // Insert licenses in batches
+    const insertedLicenses: Array<{ id: string }> = [];
+    for (let i = 0; i < licenseData.length; i += 5) {
+      const batch = licenseData.slice(i, i + 5);
+      const result = await db
+        .insert(softwareLicenses)
+        .values(batch)
+        .returning({ id: softwareLicenses.id });
+      insertedLicenses.push(...result);
+    }
+
+    // -------------------------------------------------------------------------
+    // 17. SOFTWARE ALLOCATIONS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding Software Allocations...');
+    const allocationData = Array.from({ length: 50 }).map(() => ({
+      licenseId: faker.helpers.arrayElement(insertedLicenses).id,
+      assignedToUserId: faker.helpers.arrayElement(insertedUsers).id,
+      allocatedAt: faker.date.past({ years: 1 }),
+      revokedAt: Math.random() > 0.8 ? faker.date.recent() : null,
+    }));
+
+    // Insert allocations in batches
+    for (let i = 0; i < allocationData.length; i += 5) {
+      const batch = allocationData.slice(i, i + 5);
+      await db.insert(softwareAllocations).values(batch);
+    }
+
+    // -------------------------------------------------------------------------
+    // 18. SYSTEM AUDIT LOGS (50 records)
+    // -------------------------------------------------------------------------
+    console.log('Seeding System Audit Logs...');
+    const auditData = Array.from({ length: 50 }).map(() => ({
+      entityType: faker.helpers.arrayElement([
+        'Asset',
+        'Location',
+        'Category',
+        'Model',
+        'Vendor',
+        'Owner',
+        'License',
+      ]),
+      entityId: faker.string.uuid(),
+      actionType: faker.helpers.arrayElement([
+        'CREATE',
+        'UPDATE',
+        'ASSIGN',
+        'MAINTENANCE',
+        'DISPOSAL_APPROVAL',
+      ]),
+      performedById: faker.helpers.arrayElement(insertedUsers).id,
+      oldValue: { status: 'Available', timestamp: new Date() },
+      newValue: { status: 'Assigned', timestamp: new Date() },
+      ipAddress: faker.internet.ipv4(),
+      performedAt: faker.date.past({ years: 1 }),
+    }));
+
+    // Insert audit logs in batches
+    for (let i = 0; i < auditData.length; i += 5) {
+      const batch = auditData.slice(i, i + 5);
+      await db.insert(systemAuditLogs).values(batch);
+    }
+
+    console.log('✅ Database seeding completed successfully!');
+    console.log('\n📋 Baseline Credentials (unchanged):');
+    console.log('  - admin@tiqri.com / Admin@1234 (GlobalAdmin)');
+    console.log('  - it@tiqri.com / IT@1234 (ITOperator)');
+    console.log('  - finance@tiqri.com / Finance@1234 (FinanceAuditor)');
+    console.log('  - employee@tiqri.com / Employee@1234 (Employee)');
+    console.log('\n📊 Seeded Data Summary:');
+    console.log(
+      '  - 50 Departments, 50 Users (including 4 baseline), 50 Sessions'
     );
+    console.log('  - 50 Locations, 50 Vendors, 50 Owners');
+    console.log('  - 50 Categories, 50 Brands, 50 Models');
+    console.log('  - 100 Assets, 50 Purchases, 50 Documents');
+    console.log('  - 50 Assignments, 50 Maintenance, 50 Disposals');
+    console.log('  - 50 Software Licenses, 50 Allocations');
+    console.log('  - 50 System Audit Logs');
+
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during seeding:', error);
+    process.exit(1);
   }
-
-  const softwareLicenseRows = Array.from({ length: 20 }, (_, i) => ({
-    id: randomUUID(),
-    modelId: softwareModelIds[i % softwareModelIds.length],
-    licenseKey: `LIC-${String(700000 + i)}`,
-    licenseType: pick(
-      ['Subscription', 'Perpetual', 'Open Source / Free'] as const,
-      i
-    ),
-    totalSeats: 25 + i * 5,
-    startDate: `2026-${String((i % 12) + 1).padStart(2, '0')}-01`,
-    expiryDate: `2028-${String((i % 12) + 1).padStart(2, '0')}-01`,
-    isActive: i % 7 !== 0,
-    createdAt: intDate(2026, 1 + (i % 12), 1 + (i % 20)),
-    updatedAt: intDate(2026, 2 + (i % 11), 1 + (i % 20)),
-  }));
-
-  await db.insert(softwareLicenses).values(softwareLicenseRows);
-
-  // ---------------------------------------------------------------------------
-  // 17) SOFTWARE ALLOCATIONS (>=20)
-  // ---------------------------------------------------------------------------
-  const insertedLicenses = await db
-    .select({ id: softwareLicenses.id })
-    .from(softwareLicenses);
-
-  const allocationRows = Array.from({ length: 25 }, (_, i) => ({
-    licenseId: insertedLicenses[i % insertedLicenses.length].id,
-    assignedToUserId: insertedUsers[(i + 6) % insertedUsers.length].id,
-    allocatedAt: intDate(2026, 1 + (i % 12), 3 + (i % 20)),
-    revokedAt: i % 6 === 0 ? intDate(2026, 12, 5 + (i % 20)) : null,
-  }));
-
-  await db.insert(softwareAllocations).values(allocationRows);
-
-  // ---------------------------------------------------------------------------
-  // 18) SYSTEM AUDIT LOGS (>=20)
-  // ---------------------------------------------------------------------------
-  const auditRows = Array.from({ length: 30 }, (_, i) => ({
-    entityType: pick(
-      ['Asset', 'Location', 'Category', 'Model', 'Vendor', 'Owner', 'License'],
-      i
-    ),
-    entityId: String(1000 + i),
-    actionType: pick(
-      ['CREATE', 'UPDATE', 'ASSIGN', 'MAINTENANCE', 'DISPOSAL_APPROVAL'],
-      i
-    ),
-    performedById: insertedUsers[i % insertedUsers.length].id,
-    oldValue: { sequence: i, state: 'previous' },
-    newValue: { sequence: i, state: 'current' },
-    ipAddress: `10.0.${Math.floor(i / 10)}.${10 + (i % 10)}`,
-    performedAt: intDate(2026, 1 + (i % 12), 5 + (i % 20)),
-  }));
-
-  await db.insert(systemAuditLogs).values(auditRows);
-
-  console.log('✅ Database seed completed.');
-  console.log('Credentials (unchanged):');
-  console.log('- admin@tiqri.com / Admin@1234 (GlobalAdmin)');
-  console.log('- it@tiqri.com / IT@1234 (ITOperator)');
-  console.log('- finance@tiqri.com / Finance@1234 (FinanceAuditor)');
-  console.log('- employee@tiqri.com / Employee@1234 (Employee)');
 }
 
-seed().catch((error) => {
-  console.error('❌ Failed to seed database:', error);
-  process.exitCode = 1;
-});
+seed();

@@ -803,7 +803,7 @@ export function MasterDataManagementClient({
                         </Button>
                     </div>
 
-                    <TabsContent value="asset-categories" className="min-h-0">
+                    <TabsContent value="asset-categories" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={categoryColumns}
                             data={filteredCategories}
@@ -814,7 +814,7 @@ export function MasterDataManagementClient({
                         />
                     </TabsContent>
 
-                    <TabsContent value="locations" className="min-h-0">
+                    <TabsContent value="locations" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={locationColumns}
                             data={filteredLocations}
@@ -825,7 +825,7 @@ export function MasterDataManagementClient({
                         />
                     </TabsContent>
 
-                    <TabsContent value="brands" className="min-h-0">
+                    <TabsContent value="brands" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={brandColumns}
                             data={filteredBrands}
@@ -836,7 +836,7 @@ export function MasterDataManagementClient({
                         />
                     </TabsContent>
 
-                    <TabsContent value="device-models" className="min-h-0">
+                    <TabsContent value="device-models" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={deviceModelColumns}
                             data={filteredModels}
@@ -847,7 +847,7 @@ export function MasterDataManagementClient({
                         />
                     </TabsContent>
 
-                    <TabsContent value="vendors" className="min-h-0">
+                    <TabsContent value="vendors" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={vendorColumns}
                             data={filteredVendors}
@@ -858,7 +858,7 @@ export function MasterDataManagementClient({
                         />
                     </TabsContent>
 
-                    <TabsContent value="owners" className="min-h-0">
+                    <TabsContent value="owners" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={ownerColumns}
                             data={filteredOwners}
@@ -869,7 +869,7 @@ export function MasterDataManagementClient({
                         />
                     </TabsContent>
 
-                    <TabsContent value="departments" className="min-h-0">
+                    <TabsContent value="departments" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={departmentColumns}
                             data={filteredDepartments}

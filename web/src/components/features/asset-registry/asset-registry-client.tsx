@@ -1029,7 +1029,7 @@ export function AssetRegistryClient({
           </div>
         ) : null}
 
-        <div className="min-h-0">
+        <div className="min-h-0 flex-1">
           {isPending ? (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
               <TableSkeleton

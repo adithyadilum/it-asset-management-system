@@ -20,6 +20,7 @@ import {
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
+import { uploadFileToStorage } from '@/lib/storage';
 import type {
   BrandFormState,
   CategoryFormState,
@@ -749,11 +750,21 @@ export async function createMasterDataRecord(
           .from(models);
         const nextModelId = nextModelIdResult[0]?.nextId ?? 1;
 
+        const modelImageEntry = formData.get('modelImage');
+        let uploadedImageUrl = '';
+
+        if (modelImageEntry instanceof File && modelImageEntry.size > 0) {
+          uploadedImageUrl = await uploadFileToStorage(
+            modelImageEntry,
+            'models'
+          );
+        }
+
         const parsed = deviceModelSchema.safeParse({
           name: formData.get('name'),
           brandId: formData.get('brandId'),
           categoryId: formData.get('categoryId'),
-          imageUrl: formData.get('imageUrl'),
+          imageUrl: uploadedImageUrl,
           technicalDetails: String(formData.get('technicalDetails') ?? '{}'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
@@ -953,7 +964,14 @@ export async function createMasterDataRecord(
       success: true,
       message: 'Record created successfully.',
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.length > 0) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+
     return {
       success: false,
       message: 'Database error: failed to create record.',
@@ -1110,6 +1128,16 @@ export async function updateMasterDataRecord(
       }
 
       case 'device-models': {
+        const modelImageEntry = formData.get('modelImage');
+        let uploadedImageUrl = '';
+
+        if (modelImageEntry instanceof File && modelImageEntry.size > 0) {
+          uploadedImageUrl = await uploadFileToStorage(
+            modelImageEntry,
+            'models'
+          );
+        }
+
         const parsed = deviceModelSchema.safeParse({
           name: formData.get('name'),
           brandId: formData.get('brandId'),
@@ -1134,10 +1162,11 @@ export async function updateMasterDataRecord(
             brandId: parsed.data.brandId,
             categoryId: parsed.data.categoryId,
             imageUrl:
-              typeof parsed.data.imageUrl === 'string' &&
+              uploadedImageUrl ||
+              (typeof parsed.data.imageUrl === 'string' &&
               parsed.data.imageUrl.trim().length > 0
                 ? parsed.data.imageUrl.trim()
-                : null,
+                : null),
             technicalDetails: parsed.data.technicalDetails,
             isActive: parsed.data.isActive,
           })

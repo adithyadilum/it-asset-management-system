@@ -2,13 +2,17 @@
 
 import {
     useCallback,
+    useEffect,
     useMemo,
     useRef,
     useState,
     useTransition,
     type FormEvent,
+    type DragEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { ImagePlus, Pencil, Upload } from "lucide-react";
 
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
@@ -253,6 +257,10 @@ export function MasterDataRecordPanel({
     const formRef = useRef<HTMLFormElement>(null);
     const [isPending, startTransition] = useTransition();
     const [state, setState] = useState(INITIAL_UPDATE_MASTER_DATA_STATE);
+    const [modelImageFile, setModelImageFile] = useState<File | null>(null);
+    const [isModelImageDragOver, setIsModelImageDragOver] = useState(false);
+    const [showModelImageUploader, setShowModelImageUploader] = useState(false);
+    const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
     const numericRecordId = Number(recordId);
@@ -367,6 +375,31 @@ export function MasterDataRecordPanel({
         initialModelSpecValues
     );
 
+    useEffect(() => {
+        let cancelled = false;
+
+        queueMicrotask(() => {
+            if (cancelled) {
+                return;
+            }
+
+            setState(INITIAL_UPDATE_MASTER_DATA_STATE);
+            setMode(normalizePanelMode(initialMode));
+            setDraft(initialDraft);
+            setModelSpecValues(initialModelSpecValues);
+            setModelImageFile(null);
+            setIsModelImageDragOver(false);
+            setShowModelImageUploader(false);
+            if (modelImageInputRef.current) {
+                modelImageInputRef.current.value = "";
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [initialDraft, initialModelSpecValues, initialMode]);
+
     const fieldError = useCallback(
         (fieldName: string) => state.errors?.[fieldName]?.[0],
         [state.errors]
@@ -423,6 +456,22 @@ export function MasterDataRecordPanel({
 
     const selectedModelImageUrl = asString(draft.imageUrl);
 
+    const modelImagePreviewUrl = useMemo(
+        () => (modelImageFile ? URL.createObjectURL(modelImageFile) : null),
+        [modelImageFile]
+    );
+
+    useEffect(() => {
+        return () => {
+            if (modelImagePreviewUrl) {
+                URL.revokeObjectURL(modelImagePreviewUrl);
+            }
+        };
+    }, [modelImagePreviewUrl]);
+
+    const displayModelImageUrl = modelImagePreviewUrl ?? selectedModelImageUrl;
+    const hasSelectedModelImage = displayModelImageUrl.trim().length > 0;
+
     const technicalDetailsPayload = useMemo(() => {
         const payload: Record<string, string> = {};
 
@@ -477,6 +526,12 @@ export function MasterDataRecordPanel({
                 setState(INITIAL_UPDATE_MASTER_DATA_STATE);
                 setDraft(initialDraft);
                 setModelSpecValues(initialModelSpecValues);
+                setModelImageFile(null);
+                setIsModelImageDragOver(false);
+                setShowModelImageUploader(false);
+                if (modelImageInputRef.current) {
+                    modelImageInputRef.current.value = "";
+                }
                 router.push(onCloseUrl, { scroll: false });
             }
         },
@@ -487,6 +542,14 @@ export function MasterDataRecordPanel({
         (event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
+
+            if (normalizedEntity === "device-models") {
+                if (modelImageFile) {
+                    formData.set("modelImage", modelImageFile);
+                } else {
+                    formData.delete("modelImage");
+                }
+            }
 
             startTransition(async () => {
                 const result = await updateMasterDataRecord(
@@ -506,8 +569,31 @@ export function MasterDataRecordPanel({
                 tiqriToast.error(result.message);
             });
         },
-        [router]
+        [modelImageFile, normalizedEntity, router]
     );
+
+    const handleModelImageSelection = useCallback((files: FileList | null) => {
+        const selectedFile = files?.[0] ?? null;
+        setModelImageFile(selectedFile);
+        if (selectedFile) {
+            setShowModelImageUploader(true);
+        }
+        setIsModelImageDragOver(false);
+    }, []);
+
+    const handleModelImageDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setIsModelImageDragOver(false);
+        handleModelImageSelection(event.dataTransfer.files);
+    }, [handleModelImageSelection]);
+
+    const clearSelectedModelImage = useCallback(() => {
+        setModelImageFile(null);
+        setShowModelImageUploader(false);
+        if (modelImageInputRef.current) {
+            modelImageInputRef.current.value = "";
+        }
+    }, []);
 
     const handleDelete = useCallback(() => {
         if (!normalizedEntity || !selectedRecord) {
@@ -926,23 +1012,119 @@ export function MasterDataRecordPanel({
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                Image URL
+                                Model Image
                             </label>
-                            <Input
-                                name={isDetailMode ? undefined : "imageUrl"}
-                                type="url"
-                                value={selectedModelImageUrl}
-                                readOnly={isDetailMode}
-                                tabIndex={isDetailMode ? -1 : undefined}
-                                onFocus={
-                                    isDetailMode
-                                        ? (event) => event.currentTarget.blur()
-                                        : undefined
-                                }
-                                onChange={(event) => setDraftField("imageUrl", event.target.value)}
-                                placeholder="https://..."
-                                className={!isDetailMode ? undefined : READ_ONLY_INPUT_CLASSNAME}
-                            />
+                            {isDetailMode ? (
+                                <div className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
+                                    <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                        {hasSelectedModelImage ? (
+                                            <Image
+                                                src={displayModelImageUrl}
+                                                alt={`${asString(draft.name) || "Model"} image`}
+                                                width={112}
+                                                height={80}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <ImagePlus className="h-5 w-5 text-slate-400" />
+                                        )}
+                                    </div>
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                        {hasSelectedModelImage ? "Image uploaded" : "No image available"}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3 rounded-lg border bg-slate-50 px-3 py-2">
+                                    <input type="hidden" name="imageUrl" value={selectedModelImageUrl} />
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                            {hasSelectedModelImage ? (
+                                                <Image
+                                                    src={displayModelImageUrl}
+                                                    alt={`${asString(draft.name) || "Model"} image`}
+                                                    width={112}
+                                                    height={80}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <ImagePlus className="h-5 w-5 text-slate-400" />
+                                            )}
+                                        </div>
+                                        <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-slate-600`}>
+                                                {modelImageFile ? modelImageFile.name : hasSelectedModelImage ? "Current image" : "No image selected"}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                                onClick={() => {
+                                                    setShowModelImageUploader(true);
+                                                    modelImageInputRef.current?.click();
+                                                }}
+                                                aria-label="Change model image"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <Input
+                                        ref={modelImageInputRef}
+                                        name="modelImage"
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(event) => handleModelImageSelection(event.target.files)}
+                                    />
+
+                                    {showModelImageUploader ? (
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => modelImageInputRef.current?.click()}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    modelImageInputRef.current?.click();
+                                                }
+                                            }}
+                                            onDragOver={(event) => {
+                                                event.preventDefault();
+                                                setIsModelImageDragOver(true);
+                                            }}
+                                            onDragLeave={() => setIsModelImageDragOver(false)}
+                                            onDrop={handleModelImageDrop}
+                                            className={`cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors ${isModelImageDragOver
+                                                ? "border-primary bg-primary/5"
+                                                : "border-slate-300 bg-white hover:border-slate-400"
+                                                }`}
+                                        >
+                                            <div className="flex flex-col items-center gap-2 text-center">
+                                                <Upload className="h-5 w-5 text-slate-500" />
+                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                    Drag and drop a replacement image, or click to browse
+                                                </p>
+                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                                    PNG, JPG, WEBP or GIF. Maximum file size: 4.5MB.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {modelImageFile ? (
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={clearSelectedModelImage}
+                                                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 hover:text-slate-900`}
+                                            >
+                                                Remove selected file
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            )}
                             {!isDetailMode && fieldError("imageUrl") ? (
                                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                     {fieldError("imageUrl")}
