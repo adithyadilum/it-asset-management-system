@@ -56,8 +56,10 @@ export function PendingDisposalsGrid({
         cell: ({ row }) => {
           const days = Math.floor(
             Math.abs(
-              new Date().getTime() - new Date(row.original.requestedAt).getTime()
-            ) / (1000 * 60 * 60 * 24)
+              new Date().getTime() -
+                new Date(row.original.requestedAt).getTime()
+            ) /
+              (1000 * 60 * 60 * 24)
           );
 
           const badgeClass =
@@ -68,7 +70,9 @@ export function PendingDisposalsGrid({
                 : 'border-slate-200 bg-slate-50 text-slate-600';
 
           return (
-            <span className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[11px] font-semibold ${badgeClass}`}>
+            <span
+              className={`inline-flex h-6 items-center rounded-full border px-2.5 text-[11px] font-semibold ${badgeClass}`}
+            >
               {days} {days === 1 ? 'Day' : 'Days'}
             </span>
           );
@@ -97,9 +101,13 @@ export function PendingDisposalsGrid({
           initialPageSize={10}
           pageSizeOptions={[10, 20, 50]}
           className="cursor-pointer rounded-xl border border-slate-200 bg-white shadow-sm"
-          onRowClick={(row: any) => {
-            // CRITICAL FIX: Extract the actual data from the TanStack Row wrapper
-            const rowData = row?.original ? row.original : row;
+          onRowClick={(
+            row: { original?: PendingDisposalRow } | PendingDisposalRow
+          ) => {
+            const rowData =
+              'original' in row && row.original
+                ? row.original
+                : (row as PendingDisposalRow);
             onRowClick(rowData);
           }}
         />

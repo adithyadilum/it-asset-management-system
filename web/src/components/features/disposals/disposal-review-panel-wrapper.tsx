@@ -42,7 +42,7 @@ export function DisposalReviewPanelWrapper({
         const data = await getDisposalReviewDetails(row.id);
         if (cancelled) return;
         setExtendedData(data);
-      } catch (err) {
+      } catch  {
         if (cancelled) return;
         setExtendedData(null);
       } finally {
@@ -74,8 +74,10 @@ export function DisposalReviewPanelWrapper({
 
         // Fetched Extended Data
         serialNumber={extendedData?.assetTag ?? 'N/A'} 
-        category={'Hardware'} 
-        brand={'Standard'} 
+        // 👇 THESE TWO LINES CHANGED 👇
+        category={extendedData?.category ?? '-'} 
+        brand={extendedData?.brand ?? '-'} 
+        // 👆 ---------------------- 👆
         dateCreated={extendedData?.requestedAt ?? ''} 
         justification={extendedData?.justification ?? ''}
         purchaseDate={extendedData?.purchaseDate ?? ''}

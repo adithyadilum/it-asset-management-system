@@ -278,21 +278,10 @@ export function AssetRegistryClient({
 
   const backendStatusFilter =
     statusFilter?.operator === 'is' ? statusFilter.value : undefined;
-
-  // DEFAULT: hide Pending Disposal assets in the registry unless user explicitly filters Status = Pending Disposal
+//hide pending disposal from registry by default, unless user explicitly filters for it.
   const shouldHidePendingDisposalByDefault = backendStatusFilter !== 'Pending Disposal';
 
-  const hasLocalFiltering =
-    Boolean(conditionFilter) ||
-    Boolean(locationFilter) ||
-    Boolean(modelFilter) ||
-    Boolean(assignedToFilter) ||
-    statusFilter?.operator === 'is not' ||
-    Boolean(
-      selectedCategoryOption.name &&
-        !selectedCategoryOption.isAll &&
-        !selectedCategoryOption.id
-    );
+  
 
   useEffect(() => {
     const requestSequence = ++requestSequenceRef.current;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { AlertCircle, X } from 'lucide-react'; // Added X icon for top-right close
+import { AlertCircle, } from 'lucide-react'; // Added X icon for top-right close
 
 import { rejectDisposalRequest } from '@/actions/disposals';
 import { Button } from '@/components/ui/button';
@@ -120,8 +120,7 @@ export function RejectDisposalDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Available">Available</SelectItem>
-                <SelectItem value="In Use">In Use</SelectItem>
-                <SelectItem value="In Maintenance">In Maintenance</SelectItem>
+                            <SelectItem value="In Repair">Maintenance</SelectItem>
               </SelectContent>
             </Select>
           </div>

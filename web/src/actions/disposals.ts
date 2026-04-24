@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-import { assetDisposals, assetPurchases, assets, users } from '@/db/schema';
+// 1. Updated imports to include models, categories, and brands
+import { assetDisposals, assetPurchases, assets, users, models, categories, brands } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 
 function assertAllowed(role: string, allowed: string[]) {
@@ -19,6 +20,10 @@ export type DisposalReviewDetails = {
   assetId: string;
   assetTag: string;
   assetName: string | null;
+  
+  // 2. Added category and brand to the type definition
+  category: string;
+  brand: string;
 
   requestedBy: string;
   requestedAt: string; // ISO
@@ -56,6 +61,10 @@ export async function getDisposalReviewDetails(disposalId: number) {
         assetId: assets.id,
         assetTag: assets.assetTag,
         assetName: assets.name,
+        
+        // 3. Select the actual names from the joined tables
+        categoryName: categories.name,
+        brandName: brands.name,
 
         requestedBy: users.name,
         requestedAt: assetDisposals.requestedAt,
@@ -72,6 +81,10 @@ export async function getDisposalReviewDetails(disposalId: number) {
       .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
       .innerJoin(users, eq(assetDisposals.requestedById, users.id))
       .leftJoin(assetPurchases, eq(assetPurchases.assetId, assets.id))
+      // 4. Join the models, categories, and brands tables
+      .leftJoin(models, eq(assets.modelId, models.id))
+      .leftJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(brands, eq(models.brandId, brands.id))
       .where(eq(assetDisposals.id, disposalId))
       .orderBy(desc(assetPurchases.createdAt)) // pick latest purchase record if multiple exist
       .limit(1);
@@ -103,6 +116,10 @@ export async function getDisposalReviewDetails(disposalId: number) {
       assetId: row.assetId,
       assetTag: row.assetTag,
       assetName: row.assetName,
+      
+      // 5. Map the joined names to the return object
+      category: row.categoryName ?? 'Unknown',
+      brand: row.brandName ?? 'Unknown',
 
       requestedBy: row.requestedBy,
       requestedAt: row.requestedAt.toISOString(),
@@ -233,7 +250,7 @@ export async function createBulkDisposalRequests(input: {
 
       await db
         .update(assets)
-        .set({ status: 'Pending Disposal' as any })
+        .set({ status: 'Pending Disposal' })
         .where(inArray(assets.id, assetIdsToMarkPendingDisposal));
 
       logLatency({
@@ -293,18 +310,18 @@ export async function rejectDisposalRequest(
     await db
       .update(assetDisposals)
       .set({
-        status: 'Rejected' as any,
-        approvedById: user.id, // Assuming approvedById acts as a generic resolvedBy column
+        status: 'Rejected',
+        approvedById: user.id, 
         resolvedAt: new Date(),
         rejectionReason: normalizedReason,
-      } as any) // Type assertion to bypass strict Drizzle schema checking if rejectionReason is freshly added
+      } ) 
       .where(eq(assetDisposals.id, disposalId));
 
     // 2. Revert the Asset's status to the selected fallback status (e.g., 'Available', 'In Use')
     await db
       .update(assets)
       .set({
-        status: fallbackStatus as any, 
+        status: fallbackStatus as "Available" | "In Repair" , 
       })
       .where(eq(assets.id, assetId));
 

@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+import Image from 'next/image';
 import { AlertCircle, Image as ImageIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AssetLoadingSkeleton } from '@/components/features/asset-registry/panels/asset-loading-skeleton';
@@ -92,9 +93,11 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
             <section>
               <div className="mb-8 flex justify-center">
                 {props.imageUrl ? (
-                  <img
+                  <Image
                     src={props.imageUrl}
                     alt={props.model}
+                    width={192}
+                    height={128}
                     className="h-32 w-auto object-contain drop-shadow-sm"
                   />
                 ) : (
@@ -162,10 +165,14 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
 
       
       <div className="flex justify-end gap-3 border-t border-slate-100 p-6">
-        <Button variant="outline" onClick={props.onReject}>
+        <Button variant="outline" onClick={props.onReject}
+        className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm"
+        >
           Reject
         </Button>
-        <Button variant="destructive" onClick={props.onApprove}>
+        <Button variant="destructive" onClick={props.onApprove}
+        className="bg-red-500 text-white hover:bg-red-600 shadow-sm transition-colors border border-transparent"
+        >
           Initiate Disposal
         </Button>
       </div>
