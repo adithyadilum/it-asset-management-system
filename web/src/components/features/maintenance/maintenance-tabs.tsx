@@ -21,6 +21,7 @@ interface MaintenanceTabsProps {
   onActiveRepairRowClick: (ticket: ActiveRepairTicket) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
+  selectedTicketId?: number | null;
 }
 
 export function MaintenanceTabs({
@@ -32,6 +33,7 @@ export function MaintenanceTabs({
   onActiveRepairRowClick,
   searchTerm,
   onSearchChange,
+  selectedTicketId,
 }: MaintenanceTabsProps) {
   const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'history'>('pending');
 
@@ -152,6 +154,8 @@ export function MaintenanceTabs({
                 initialPageSize={10}
                 onRowClick={(row) => onRowClick(row)}
                 className="border-0"
+                enableSelection={false}
+                activeRowCondition={(row: PendingReviewTicket) => row.id === selectedTicketId}
               />
             )}
           </TabsContent>

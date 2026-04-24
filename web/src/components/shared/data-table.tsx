@@ -49,7 +49,8 @@ type DataTableProps<TData, TValue> = {
   selectionLabel?: (selectedCount: number) => string
   onRowClick?: (row: TData, rowIndex: number) => void
   className?: string
-  enableSelection?: boolean // <-- ADDED THIS PROP
+  enableSelection?: boolean
+  activeRowCondition?: (row: TData) => boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -61,7 +62,8 @@ export function DataTable<TData, TValue>({
   selectionLabel,
   onRowClick,
   className,
-  enableSelection = true, // <-- DEFAULT TO TRUE
+  enableSelection = true,
+  activeRowCondition, // <-- DEFAULT TO TRUE
 }: DataTableProps<TData, TValue>) {
   const sortedPageSizes = React.useMemo(() => {
     const normalized = Array.from(new Set([...pageSizeOptions, initialPageSize])).filter(
@@ -275,30 +277,34 @@ export function DataTable<TData, TValue>({
 
         <TableBody>
           {table.getRowModel().rows.length > 0 ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                onClick={(event) => handleRowClick(event, row.original, row.index)}
-                className={cn(
-                  "h-13.25 border-border",
-                  isRowClickable && "cursor-pointer hover:bg-muted/50"
-                )}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={cn(
-                      "h-13.25 px-4 text-foreground",
-                      "font-normal",
-                      cell.column.id === "select" && "w-13 px-0"
-                    )}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
+            table.getRowModel().rows.map((row) => {
+              const isActive = activeRowCondition ? activeRowCondition(row.original) : false;
+
+              return (
+                <TableRow
+                  key={row.id}
+                  data-state={(row.getIsSelected() || isActive) ? "selected" : undefined}
+                  onClick={(event) => handleRowClick(event, row.original, row.index)}
+                  className={cn(
+                    "h-13.25 border-border",
+                    isRowClickable && "cursor-pointer hover:bg-muted/50"
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        "h-13.25 px-4 text-foreground",
+                        "font-normal",
+                        cell.column.id === "select" && "w-13 px-0"
+                      )}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })
           ) : (
             <TableRow className="h-13.25 border-border">
               <TableCell

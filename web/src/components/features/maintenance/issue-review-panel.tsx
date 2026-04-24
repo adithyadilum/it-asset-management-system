@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ResolveInternallyDialog } from './resolve-internally-dialog';
 import { InitiateRepairDialog } from './initiate-repair-dialog';
 import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from '@/types/maintenance';
-import { AlertCircle, X, Loader2 } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 import Image from 'next/image';
 
 interface IssueReviewPanelProps {

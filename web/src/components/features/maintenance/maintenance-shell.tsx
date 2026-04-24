@@ -112,6 +112,7 @@ export function MaintenanceShell() {
           onActiveRepairRowClick={handleActiveRepairRowClick}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
+          selectedTicketId={selectedTicketId}
         />
       </div>
 

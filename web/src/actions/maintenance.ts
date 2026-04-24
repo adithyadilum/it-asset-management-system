@@ -4,8 +4,7 @@ import { db } from '@/db';
 import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories, systemAuditLogs, vendors } from '@/db/schema';
 import { eq, and, inArray, ilike, or, desc, sql } from 'drizzle-orm'; 
 import { getAuthenticatedUser } from '@/actions/auth';
-import type { PendingReviewTicket, IssueReviewPanelData, AssetStatus, ActiveRepairTicket, RepairHistoryTicket, AssetMaintenanceRecord } from '@/types/maintenance';
-
+import type { PendingReviewTicket, IssueReviewPanelData, ActiveRepairTicket, RepairHistoryTicket, AssetMaintenanceRecord } from '@/types/maintenance';
 export async function getPendingMaintenanceTickets() {
   try {
     const user = await getAuthenticatedUser();
