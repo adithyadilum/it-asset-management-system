@@ -205,3 +205,25 @@
   1. **`loading.tsx`:** Automatically wraps the route segment in a React `<Suspense>` boundary. This is where we place Tier-1 UI Skeletons to provide instant visual feedback while the server fetches data.
   2. **`error.tsx`:** Automatically wraps the route segment in a React `<ErrorBoundary>`. It _must_ be a Client Component (`"use client"`). It catches unhandled exceptions and displays a localized fallback UI with a retry mechanism, keeping the rest of the application shell (navigation, sidebar) intact.
 - **Impact:** Prevents app-wide crashes from localized database/API failures and eliminates "white screen of death" loading delays. This guarantees a resilient, native-feeling user experience even under heavy server latency or outage conditions.
+
+### Topic: Cross-Platform CI/CD Trap (esbuild)
+
+- **Context:** Running `npm install` on Windows can generate a `package-lock.json` that captures Windows-only binary bindings for tools like `esbuild`.
+- **What We Learned:** When Linux CI runs `npm ci` against that lockfile, it may fail with `EBADPLATFORM` because it strictly expects Linux binaries that are not present in the Windows-generated lock.
+- **Impact:** For cross-platform workflows (Windows local to Linux CI), using `npm install` in CI can be safer in some projects because it resolves platform-specific binaries dynamically.
+
+### Topic: Enterprise ITAM Database Architecture (Drizzle ORM)
+
+- **Context:** We needed an inventory model that supports barcode workflows, enterprise reporting, and long-term data integrity.
+- **What We Learned:** A "Two-Key" pattern is essential: keep an internal UUID primary key for relational integrity, and generate a human-readable unique `asset_tag` for UI and physical labels.
+- **Architecture Decision:** We adopted a Y-shaped split: keep shared master catalog data (categories, brands, models), while separating inventory tables into `assets` (hardware) and `software_licenses` (software seats, expiry, and license lifecycle).
+- **Data Integrity Rules:** Operational statuses should be domain-specific (hardware vs. software), while physical condition enums should remain unified across hardware categories for portfolio-level reporting.
+- **Historical Immutability:** Audit and assignment history must survive user lifecycle changes, so foreign keys should use restrictive or nulling delete policies such as `onDelete: 'restrict'` or `onDelete: 'set null'`.
+- **Implementation Detail:** `defaultNow()` only applies on insert. To keep `updatedAt` accurate on edits, use `$onUpdate(() => new Date())`.
+
+### Topic: Next.js UX & State Management
+
+- **Context:** We needed SaaS-grade navigation behavior and scalable form UX for asset workflows.
+- **What We Learned:** Panel and detail state should be URL-driven (for example, `?panel=record&id=...`) instead of hidden component state to support deep-linking, browser history, and view sharing.
+- **DRY UX Principle:** Image management belongs at model level, not per asset instance, with a fallback like `displayImage = model.imageUrl || '/no-image.png'` to avoid repetitive uploads.
+- **Routing Safety Note:** Auth guards must exclude `/login` and static assets from proxy matching to avoid redirect loops (`ERR_TOO_MANY_REDIRECTS`).
