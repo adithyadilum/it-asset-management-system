@@ -29,24 +29,32 @@ export function AssetCard({
         <article className={cn("rounded-lg border border-border bg-card p-4", className)}>
             <header className="flex items-start justify-between gap-3">
                 <p className="text-sm text-muted-foreground">{assetType ?? "Asset"}</p>
-                <StatusBadge value={status} showIcon={false} className="text-xs" />
+                <StatusBadge value={status} showIcon={true} className="text-xs" />
             </header>
 
             <div className="mt-4 flex items-center gap-3">
                 {icon ? <span className="text-muted-foreground">{icon}</span> : null}
-                <h4 className="text-xl font-semibold tracking-tight text-foreground">{name}</h4>
+                <h4 className="text-lg font-semibold tracking-tight text-card-foreground">{name}</h4>
             </div>
 
-            {details.length > 0 ? (
-                <dl className="mt-5 space-y-2 text-sm">
-                    {details.map((detail) => (
-                        <div key={`${detail.label}-${detail.value}`} className="grid grid-cols-[auto_1fr] gap-1">
-                            <dt className="text-muted-foreground">{detail.label}:</dt>
-                            <dd className="text-foreground">{detail.value}</dd>
+            {(() => {
+                const assetId = details.find(d => d.label === 'Asset ID')?.value || '-';
+                const assignedDate = details.find(d => d.label === 'Assigned')?.value || '-';
+
+            return (
+                    <div className="mt-3 flex flex-col space-y-1 font-['Noto_Sans']">
+                        {/* Asset ID Line */}
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">
+                            Asset ID: <span className="text-slate-700">{assetId}</span>
                         </div>
-                    ))}
-                </dl>
-            ) : null}
+                        
+                        {/* Assigned Date Line */}
+                        <div className="text-sm font-medium leading-5 text-muted-foreground">
+                            Assigned: <span className="text-slate-700">{assignedDate}</span>
+                        </div>
+                    </div>
+                );
+            })()}
         </article>
     )
 }

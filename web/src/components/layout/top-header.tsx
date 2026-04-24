@@ -33,6 +33,8 @@ import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
 
 const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
     '/dashboard': 'Dashboard',
+    '/my-assets': 'My Assets',
+    '/service-requests': 'Service Requests',
     '/assets': 'All Assets',
     '/assets/hardware': 'Hardware',
     '/assets/software': 'Software',
