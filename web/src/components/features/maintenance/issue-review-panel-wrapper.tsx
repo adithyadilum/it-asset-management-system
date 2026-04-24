@@ -25,10 +25,12 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
   const [isInitiating, setIsInitiating] = useState(false);
 
   // Trigger loading state if a new ticket is opened
-  if (isOpen && ticketId !== prevTicketId) {
-    setPrevTicketId(ticketId);
-    setIsLoading(true);
-  }
+  useEffect(() => {
+    if (isOpen && ticketId !== prevTicketId) {
+      setPrevTicketId(ticketId);
+      setIsLoading(true);
+    }
+  }, [isOpen, ticketId, prevTicketId]);
 
   useEffect(() => {
     if (isOpen && ticketId) {

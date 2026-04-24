@@ -273,3 +273,32 @@ export async function getAuthenticatedUser(): Promise<{
     });
   }
 }
+
+// ============================================================================
+// ROLE-BASED ACCESS CONTROL (RBAC) HELPERS
+// ============================================================================
+
+/**
+ * Checks if the user has permission to manage assets and maintenance tickets.
+ * Typically restricted to Global Admins and IT Operators.
+ */
+export function canManageAssets(user: { role: UserRole } | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === 'GlobalAdmin' || user.role === 'ITOperator';
+}
+
+/**
+ * Checks if the user is a Global Administrator.
+ */
+export function isGlobalAdmin(user: { role: UserRole } | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === 'GlobalAdmin';
+}
+
+/**
+ * Checks if the user has read-only auditor access.
+ */
+export function isAuditor(user: { role: UserRole } | null | undefined): boolean {
+  if (!user) return false;
+  return user.role === 'FinanceAuditor' || user.role === 'GlobalAdmin';
+}

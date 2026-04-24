@@ -27,7 +27,7 @@ export interface Asset {
   assetTag: string;
   name: string | null;
   imageUrl?: string | null;
-  status: string;
+  status: AssetStatus;
   condition: string | null;
   modelId: number;
   locationId: number | null;
@@ -97,8 +97,8 @@ export interface Vendor {
 export interface InitiateRepairFormData {
   vendorId: string;
   rmaNumber: string;
-  estimatedCost: string;
-  expectedReturnDate: string;
+  estimatedCost?: string;       
+  expectedReturnDate?: string;   
 }
 
 export interface ActiveRepairTicket {

@@ -43,8 +43,15 @@ export function ActiveRepairsGrid({
     {
       accessorKey: 'estimatedReturnDate',
       header: ({ column }) => (
-        // Changed from <button> to <div role="button"> to fix hydration error!
         <div
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              column.toggleSorting(column.getIsSorted() === 'asc');
+            }
+          }}
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           className="flex items-center gap-2 hover:text-slate-900 cursor-pointer select-none"
         >

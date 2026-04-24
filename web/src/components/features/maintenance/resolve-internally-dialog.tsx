@@ -55,7 +55,7 @@ export function ResolveInternallyDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Resolve Issue Internally</AlertDialogTitle>
           <AlertDialogDescription>
-            Resolving this issue will update the asset status to &quot;Available&quot; and create a maintenance record.
+            Resolving this issue will update the asset status to &quot;Available&quot;, update the maintenance ticket, and add an audit log entry.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
