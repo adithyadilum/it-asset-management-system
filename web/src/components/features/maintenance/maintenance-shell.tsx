@@ -48,7 +48,19 @@ export function MaintenanceShell() {
   }, []);
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    
+    const initLoad = async () => {
+      if (isMounted) {
+        await loadData();
+      }
+    };
+    
+    initLoad();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [loadData]);
 
   const handlePendingRowClick = (row: PendingReviewTicket) => {
