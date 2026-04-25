@@ -1,11 +1,12 @@
-// web/src/components/features/maintenance/maintenance-tabs.tsx
 'use client';
 
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs'; // We only need TabsContent now!
 import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs';
 import { ActiveRepairsGrid } from './active-repairs-grid';
 import { RepairHistoryGrid } from './repair-history-grid';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -90,56 +91,51 @@ export function MaintenanceTabs({
       ticket.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    // Removed external borders/bg, ensuring it stretches cleanly inside the page.tsx card
-    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-      <Tabs 
-        value={activeTab} 
-        onValueChange={(value) => setActiveTab(value as 'pending' | 'active' | 'history')} 
-        className="flex flex-col h-full overflow-hidden"
-      >
-        <div className="border-b border-slate-200 px-6 pt-2 shrink-0">
-          <TabsList className="h-auto w-full justify-start gap-0 rounded-none bg-transparent p-0">
-            <TabsTrigger
-              value="pending"
-              className="rounded-none border-b-2 border-b-transparent px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:border-b-[#040d5a] data-[state=active]:text-slate-900"
-            >
-              {/* row count logic */}
-              Pending Review {pendingTickets.length > 0 && `(${pendingTickets.length})`}
-            </TabsTrigger>
-            <TabsTrigger
-              value="active"
-              className="rounded-none border-b-2 border-b-transparent px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:border-b-[#040d5a] data-[state=active]:text-slate-900"
-            >
-              Active Repairs {activeRepairTickets.length > 0 && `(${activeRepairTickets.length})`}
-            </TabsTrigger>
-            <TabsTrigger
-              value="history"
-              className="rounded-none border-b-2 border-b-transparent px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:border-b-[#040d5a] data-[state=active]:text-slate-900"
-            >
-              Repair History
-            </TabsTrigger>
-          </TabsList>
-        </div>
+  // Configure the tabs for the shared component
+  const tabConfig = [
+    {
+      id: 'pending',
+      label: `Pending Review ${pendingTickets.length > 0 ? `(${pendingTickets.length})` : ''}`,
+    },
+    {
+      id: 'active',
+      label: `Active Repairs ${activeRepairTickets.length > 0 ? `(${activeRepairTickets.length})` : ''}`,
+    },
+    {
+      id: 'history',
+      label: 'Repair History',
+    },
+  ];
 
-        {/* Content area: allows internal scrolling */}
-        <div className="flex flex-col gap-4 p-6 flex-1 overflow-hidden">
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0 px-6 pt-2 pb-6">
+      <ModuleNavigationTabs
+        tabs={tabConfig}
+        defaultTab={activeTab}
+        onTabChange={(value) => setActiveTab(value as 'pending' | 'active' | 'history')}
+        containerClassName="flex flex-col h-full overflow-hidden"
+      >
+        {/* Content area: Injecting the search bar and grids via children */}
+        <div className="flex flex-col gap-4 flex-1 overflow-hidden mt-1">
           <div className="flex items-center shrink-0">
-            <Input
-              placeholder={
-                activeTab === 'pending'
-                  ? 'Search by Asset ID, Name, or Issue...'
-                  : activeTab === 'active'
-                  ? 'Search by RMA or Vendor...'
-                  : 'Search by Asset ID or Vendor...'
-              }
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="max-w-[400px] h-9"
-            />
+            <div className="relative w-full max-w-[400px]">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder={
+                  activeTab === 'pending'
+                    ? 'Search by Asset ID, Name, or Issue...'
+                    : activeTab === 'active'
+                    ? 'Search by RMA or Vendor...'
+                    : 'Search by Asset ID or Vendor...'
+                }
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-9 h-9 bg-white"
+              />
+            </div>
           </div>
 
-          <TabsContent value="pending" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200">
+          <TabsContent value="pending" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200 bg-white">
             {isLoading ? (
               <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[15%]', 'w-[30%]', 'w-[20%]']} />
             ) : filteredPendingTickets.length === 0 ? (
@@ -160,15 +156,15 @@ export function MaintenanceTabs({
             )}
           </TabsContent>
 
-          <TabsContent value="active" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200">
+          <TabsContent value="active" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200 bg-white">
             <ActiveRepairsGrid tickets={filteredActiveTickets} isLoading={isLoading} onRowClick={onActiveRepairRowClick} />
           </TabsContent>
 
-          <TabsContent value="history" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200">
+          <TabsContent value="history" className="m-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-slate-200 bg-white">
             <RepairHistoryGrid tickets={filteredHistoryTickets} isLoading={isLoading} />
           </TabsContent>
         </div>
-      </Tabs>
+      </ModuleNavigationTabs>
     </div>
   );
 }

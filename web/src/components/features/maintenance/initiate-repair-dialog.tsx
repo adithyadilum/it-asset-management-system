@@ -162,7 +162,7 @@ export function InitiateRepairDialog({
             >
               {/* 36px height to match Figma input styling */}
               <SelectTrigger id="vendor" className={`h-[36px] text-[14px] px-3 border-[#e2e8f0] bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg ${errors.vendorId ? 'border-red-500' : ''}`}>
-                <SelectValue placeholder="Select a reason" />
+                <SelectValue placeholder="Select a vendor" />
               </SelectTrigger>
               <SelectContent className="text-[14px]">
                 {vendors.length === 0 ? (
