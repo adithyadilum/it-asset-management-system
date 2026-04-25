@@ -43,6 +43,7 @@ export interface AssetDetailsData {
   } | null;
   purchase: {
     id: number;
+    vendorId: number | null;
     purchaseDate: string | null;
     basePrice: string | null;
     tax: string | null;
@@ -314,6 +315,7 @@ export async function getAssetDetailsById(
     purchase: purchaseRecord
       ? {
           id: purchaseRecord.id,
+          vendorId: purchaseRecord.vendorId,
           purchaseDate: purchaseRecord.purchaseDate?.toString() ?? null,
           basePrice: purchaseRecord.basePrice?.toString() ?? null,
           tax: purchaseRecord.tax?.toString() ?? null,

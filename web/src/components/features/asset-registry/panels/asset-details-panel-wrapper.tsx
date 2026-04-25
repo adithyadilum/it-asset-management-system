@@ -59,6 +59,7 @@ function formatDisplayDateTime(value?: string | null) {
 
 export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDetailsPanelWrapperProps) {
   const [data, setData] = useState<AssetDetailsData | null>(null);
+  const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
   const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +68,11 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
   if (isOpen && recordId !== prevRecordId) {
     setPrevRecordId(recordId);
     setIsLoading(true);
+    setDisplayCurrencyOverride(null);
   }
+
+  const sourceCurrency = data?.purchase?.currencyCode?.trim() || 'USD';
+  const displayCurrency = displayCurrencyOverride ?? sourceCurrency;
 
   useEffect(() => {
     if (isOpen && recordId) {
@@ -135,7 +140,8 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       note={data?.assignment?.notes ?? ""}
       specs={(data?.model.technicalDetails as Record<string, string | number | undefined>) ?? {}}
       techNote={""} // techNote doesn't exist
-      currency={data?.purchase?.currencyCode ?? ""}
+      currency={displayCurrency}
+      sourceCurrency={sourceCurrency}
       purchaseDate={formatDisplayDate(data?.purchase?.purchaseDate)}
       basePrice={data?.purchase?.basePrice ?? ""}
       shippingCost={data?.purchase?.shippingCost ?? ""}
@@ -143,13 +149,19 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       totalCost={String(data?.purchase?.totalCost ?? "")}
       warranty={formatDisplayDate(data?.purchase?.warrantyExpiry)}
       vendorInfo={{
-        vendorId: data?.vendor?.id ? String(data.vendor.id) : "",
+        vendorId:
+          data?.vendor?.id != null
+            ? String(data.vendor.id)
+            : data?.purchase?.vendorId != null
+              ? String(data.purchase.vendorId)
+              : "",
         vendorName: data?.vendor?.companyName ?? "",
         contactNumber: data?.vendor?.contactInfo ?? ""
       }}
       invoiceUrl={data?.purchase?.invoiceUrl ?? ""}
       historyEvents={historyEvents}
       maintenanceEvents={maintenanceEvents}
+      onCurrencyChange={setDisplayCurrencyOverride}
     />
   );
 }

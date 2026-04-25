@@ -25,6 +25,11 @@ import {
 } from '@/components/ui/select';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  formatCurrencySymbol,
+  parseCurrencyAmount,
+  SUPPORTED_CURRENCIES,
+} from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { useOpenRegistrationPanel } from '@/components/features/asset-registry/panels/use-open-registration-panel';
 import {
@@ -91,11 +96,12 @@ type SearchableFieldRowProps = {
   error?: string;
 };
 
-const CURRENCY_OPTIONS: RegistrationOption[] = [
-  { value: 'USD', label: 'USD' },
-  { value: 'LKR', label: 'LKR' },
-  { value: 'NOK', label: 'NOK' },
-];
+const CURRENCY_OPTIONS: RegistrationOption[] = SUPPORTED_CURRENCIES.map(
+  (currencyCode) => ({
+    value: currencyCode,
+    label: currencyCode,
+  })
+);
 
 const WARRANTY_MONTH_OPTIONS: RegistrationOption[] = [
   { value: '3', label: '3 Months' },
@@ -156,27 +162,6 @@ function sanitizeCurrencyInput(rawValue: string) {
   }
 
   return `${integerPart}.${fractionPart.slice(0, 2)}`;
-}
-
-function parseCurrencyAmount(rawValue: string) {
-  const parsedValue = Number.parseFloat(rawValue);
-  return Number.isFinite(parsedValue) ? parsedValue : 0;
-}
-
-function formatCurrencySymbol(currencyCode: string) {
-  if (currencyCode === 'USD') {
-    return '$';
-  }
-
-  if (currencyCode === 'LKR') {
-    return 'Rs';
-  }
-
-  if (currencyCode === 'NOK') {
-    return 'kr';
-  }
-
-  return currencyCode;
 }
 
 function resolveStartingPillar(

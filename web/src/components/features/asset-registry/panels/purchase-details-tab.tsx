@@ -2,11 +2,25 @@
 
 import React from 'react';
 import { FileText } from 'lucide-react';
+import {
+  convertCurrencyAmount,
+  formatMoneyByCurrency,
+  SUPPORTED_CURRENCIES,
+  tryParseCurrencyAmount,
+} from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export interface PurchaseDetailsTabProps {
   currency: string;
+  sourceCurrency?: string;
   purchaseDate: string;
   basePrice: string;
   shippingCost: string;
@@ -31,6 +45,7 @@ export interface PurchaseDetailsTabProps {
 
 export function PurchaseDetailsTab({
   currency,
+  sourceCurrency,
   purchaseDate,
   basePrice,
   shippingCost,
@@ -44,6 +59,31 @@ export function PurchaseDetailsTab({
   onInvoiceClick,
   className = '',
 }: PurchaseDetailsTabProps) {
+  const resolvedSourceCurrency = sourceCurrency ?? currency;
+
+  const formatConvertedMoney = (value: string | undefined) => {
+    const parsedValue = tryParseCurrencyAmount(value);
+    if (parsedValue === null) {
+      return value || '-';
+    }
+
+    const convertedValue = convertCurrencyAmount(
+      parsedValue,
+      resolvedSourceCurrency,
+      currency
+    );
+
+    return formatMoneyByCurrency(convertedValue, currency);
+  };
+
+  const formattedBasePrice = formatConvertedMoney(basePrice);
+  const formattedShippingCost = formatConvertedMoney(shippingCost);
+  const formattedTax = formatConvertedMoney(tax);
+  const formattedTotalCost = formatConvertedMoney(totalCost);
+  const formattedTotalRepairCost = totalRepairCost
+    ? formatConvertedMoney(totalRepairCost)
+    : undefined;
+
   const renderField = (label: string, value: React.ReactNode, isMono: boolean = false, isLong: boolean = false) => (
     <div
       className={cn(
@@ -58,7 +98,7 @@ export function PurchaseDetailsTab({
         className={cn(
           TYPOGRAPHY_CLASSNAMES.textSmMedium,
           'text-right text-slate-900',
-          isMono && 'font-mono tracking-wide'
+          isMono && 'font-mono tabular-nums tracking-wide'
         )}
       >
         {value || '-'}
@@ -70,27 +110,30 @@ export function PurchaseDetailsTab({
     <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
       {/* Currency Selector */}
       <div className="mt-2 flex w-full items-center">
-        <select
-          value={currency}
-          onChange={(e) => onCurrencyChange?.(e.target.value)}
-          className="h-8 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm hover:bg-muted focus:outline-none"
-        >
-          <option value="USD">USD</option>
-          <option value="EUR">EUR</option>
-          <option value="GBP">GBP</option>
-          <option value="LKR">LKR</option>
-        </select>
+        <Select value={currency} onValueChange={onCurrencyChange}>
+          <SelectTrigger className="h-8 w-28">
+            <SelectValue placeholder="Currency" />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_CURRENCIES.map((currencyOption) => (
+              <SelectItem key={currencyOption} value={currencyOption}>
+                {currencyOption}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Purchase Information */}
       <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
         {renderField('Purchase Date', purchaseDate)}
-        {renderField('Base Price', basePrice)}
-        {renderField('Shipping Cost', shippingCost)}
-        {renderField('Tax', tax)}
-        {renderField('Total Cost', totalCost)}
+        {renderField('Base Price', formattedBasePrice, true)}
+        {renderField('Shipping Cost', formattedShippingCost, true)}
+        {renderField('Tax', formattedTax, true)}
+        {renderField('Total Cost', formattedTotalCost, true)}
         {renderField('Warranty Period', warrantyPeriod)}
-        {totalRepairCost && renderField('Total Repair Cost', totalRepairCost)}
+        {formattedTotalRepairCost &&
+          renderField('Total Repair Cost', formattedTotalRepairCost, true)}
 
         <div className="flex items-center justify-between border-b border-border/40 py-2.5">
           <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>

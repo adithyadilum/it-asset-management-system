@@ -43,6 +43,7 @@ export interface AssetDetailsPanelProps {
 
   // Purchase
   currency?: string;
+  sourceCurrency?: string;
   purchaseDate?: string;
   basePrice?: string;
   shippingCost?: string;
@@ -196,6 +197,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         ) : (
           <PurchaseDetailsTab
             currency={props.currency || 'USD'}
+            sourceCurrency={props.sourceCurrency || props.currency || 'USD'}
             purchaseDate={props.purchaseDate || '-'}
             basePrice={props.basePrice || '-'}
             shippingCost={props.shippingCost || '-'}
