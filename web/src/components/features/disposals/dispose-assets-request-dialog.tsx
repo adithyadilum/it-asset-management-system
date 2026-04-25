@@ -21,11 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { tiqriToast } from '@/components/shared/sonner';
 
 export type SelectedAssetLite = {
-  id: string;        // assets.id (uuid)
-  assetTag: string;  // AST-###
-  assetName: string; // Device name
+  id: string;        
+  assetTag: string;  
+  assetName: string; 
 };
 
 export function DisposeAssetsRequestDialog({
@@ -41,7 +42,6 @@ export function DisposeAssetsRequestDialog({
 }) {
   const [reason, setReason] = useState('');
   const [justification, setJustification] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const assetIds = useMemo(() => selectedAssets.map((a) => a.id), [selectedAssets]);
@@ -49,8 +49,25 @@ export function DisposeAssetsRequestDialog({
   function reset() {
     setReason('');
     setJustification('');
-    setError(null);
   }
+
+  const handleSubmit = () => {
+    startTransition(async () => {
+      try {
+        const result = await createBulkDisposalRequests({
+          assetIds,
+          reason,
+          justification,
+        });
+        
+        tiqriToast.success(`Disposal request created: ${result.inserted} submitted.`);
+        onOpenChange(false);
+        onSubmitted({ inserted: result.inserted, skipped: result.skipped });
+      } catch (error) {
+        tiqriToast.error(error instanceof Error ? error.message : 'Failed to submit disposal requests.');
+      }
+    });
+  };
 
   return (
     <Dialog
@@ -60,12 +77,11 @@ export function DisposeAssetsRequestDialog({
         if (!next) reset();
       }}
     >
-      <DialogContent className="sm:max-w-[560px]">
-        {/* HEADER: Remains fixed at the top */}
+      <DialogContent className="sm:max-w-140">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100">
-              <MonitorX className="h-4 w-4 text-slate-600" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+              <MonitorX className="h-4 w-4 text-muted-foreground" />
             </div>
             <DialogTitle className="text-xl">Request Asset Disposal</DialogTitle>
           </div>
@@ -74,43 +90,40 @@ export function DisposeAssetsRequestDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* BODY: Scrollable container added here (max-h-[60vh] and overflow-y-auto) */}
         <div className="grid gap-5 py-2 max-h-[60vh] overflow-y-auto pr-2">
           
-          {/* Selected Assets */}
           <div className="grid gap-2">
-            <Label className="font-semibold text-slate-700">
+            <Label className="font-semibold text-foreground">
               Selected Assets{' '}
-              <span className="font-normal text-slate-500">({selectedAssets.length})</span>
+              <span className="font-normal text-muted-foreground">({selectedAssets.length})</span>
             </Label>
 
-            <div className="max-h-[160px] overflow-y-auto rounded-md border border-slate-200 bg-white">
+            <div className="max-h-40 overflow-y-auto rounded-md border border-border bg-background">
               {selectedAssets.length === 0 ? (
-                <div className="p-3 text-sm text-slate-600">No assets selected.</div>
+                <div className="p-3 text-sm text-muted-foreground">No assets selected.</div>
               ) : (
-                <ul className="divide-y divide-slate-100">
+                <ul className="divide-y divide-border">
                   {selectedAssets.map((asset) => (
                     <li key={asset.id} className="px-3 py-2 text-sm">
-                      <div className="font-medium text-slate-900">{asset.assetTag}</div>
-                      <div className="text-slate-600">{asset.assetName}</div>
+                      <div className="font-medium text-foreground">{asset.assetTag}</div>
+                      <div className="text-muted-foreground">{asset.assetName}</div>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
 
-            <p className="text-[0.8rem] text-slate-500">
+            <p className="text-[0.8rem] text-muted-foreground">
               These assets will be flagged as <strong>Pending Disposal</strong> for Global Admin review.
             </p>
           </div>
 
-          {/* Reason */}
           <div className="grid gap-2">
-            <Label className="font-semibold text-slate-700">
-              Disposal Reason <span className="text-red-500">*</span>
+            <Label className="font-semibold text-foreground">
+              Disposal Reason <span className="text-destructive">*</span>
             </Label>
             <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger className="bg-slate-50/50">
+              <SelectTrigger className="bg-muted/50">
                 <SelectValue placeholder="Select a standard reason..." />
               </SelectTrigger>
               <SelectContent>
@@ -124,38 +137,28 @@ export function DisposeAssetsRequestDialog({
             </Select>
           </div>
 
-          {/* Justification */}
           <div className="grid gap-2">
-            <Label className="font-semibold text-slate-700">
-              Justification <span className="font-normal text-slate-500">(Optional)</span>
+            <Label className="font-semibold text-foreground">
+              Justification <span className="font-normal text-muted-foreground">(Optional)</span>
             </Label>
             <Textarea
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
               placeholder="Provide additional context for the reviewing admin..."
-              className="min-h-[80px] resize-none bg-slate-50/50"
+              className="min-h-20 resize-none bg-muted/50"
             />
           </div>
 
-         
-          <div className="flex items-start gap-3 rounded-md bg-blue-50 p-3 text-sm text-blue-800">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+          <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/10 p-3 text-sm text-primary">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <p>
               Submitting this request will flag the assets as <strong>Pending Disposal</strong>.
               A <strong>Global Admin</strong> must approve before final disposal is executed.
             </p>
           </div>
-
-         
-          {error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
         </div>
 
-       
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-border">
           <Button
             type="button"
             variant="outline"
@@ -168,22 +171,8 @@ export function DisposeAssetsRequestDialog({
           <Button
             type="button"
             disabled={isPending || assetIds.length === 0 || !reason}
-            className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800"
-            onClick={() => {
-              setError(null);
-              startTransition(async () => {
-                try {
-                  const result = await createBulkDisposalRequests({
-                    assetIds,
-                    reason,
-                    justification,
-                  });
-                  onSubmitted({ inserted: result.inserted, skipped: result.skipped });
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : 'Failed to submit requests.');
-                }
-              });
-            }}
+            className="w-full sm:w-auto"
+            onClick={handleSubmit}
           >
             {isPending ? 'Submitting...' : 'Submit Request'}
           </Button>

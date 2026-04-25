@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Search } from 'lucide-react';
+
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/shared/data-table';
 
@@ -62,12 +63,13 @@ export function PendingDisposalsGrid({
               (1000 * 60 * 60 * 24)
           );
 
+          // Now mapping to standard design system tokens
           const badgeClass =
             days > 30
-              ? 'border-red-200 bg-red-600 text-white'
+              ? 'border-destructive bg-destructive text-destructive-foreground'
               : days >= 1 && days <= 14
-                ? 'border-amber-300 bg-amber-50/50 text-amber-600'
-                : 'border-slate-200 bg-slate-50 text-slate-600';
+                ? 'border-primary/20 bg-primary/10 text-primary' 
+                : 'border-border bg-muted text-muted-foreground';
 
           return (
             <span
@@ -85,12 +87,12 @@ export function PendingDisposalsGrid({
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-4">
       <div className="relative w-full max-w-[320px]">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder="Search..."
-          className="h-10 rounded-lg border-slate-200 bg-white pl-9"
+          className="h-10 rounded-lg border-border bg-background pl-9"
         />
       </div>
 
@@ -100,7 +102,7 @@ export function PendingDisposalsGrid({
           data={filteredData}
           initialPageSize={10}
           pageSizeOptions={[10, 20, 50]}
-          className="cursor-pointer rounded-xl border border-slate-200 bg-white shadow-sm"
+          className="cursor-pointer rounded-xl border border-border bg-background shadow-sm"
           onRowClick={(
             row: { original?: PendingDisposalRow } | PendingDisposalRow
           ) => {

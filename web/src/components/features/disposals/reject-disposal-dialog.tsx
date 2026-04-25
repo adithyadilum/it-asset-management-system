@@ -77,8 +77,7 @@ export function RejectDisposalDialog({
         if (!next) handleReset();
       }}
     >
-      <DialogContent className="sm:max-w-[500px] rounded-xl">
-        {/* Header Section */}
+      <DialogContent className="sm:max-w-125 rounded-xl">
         <DialogHeader className="relative pr-8">
           <div className="flex items-center gap-2 text-foreground">
             <AlertCircle className="h-5 w-5 text-muted-foreground" />
@@ -90,7 +89,6 @@ export function RejectDisposalDialog({
         </DialogHeader>
 
         <div className="grid gap-6 py-4">
-          {/* Rejection Reason */}
           <div className="grid gap-2">
             <Label htmlFor="reason" className="text-[13px] font-semibold text-foreground">
               Rejection Reason <span className="text-destructive">*</span>
@@ -100,15 +98,14 @@ export function RejectDisposalDialog({
               autoFocus
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g., Device is still under manufacturer warranty. Please initiate an RMA with Lenovo..."
-              className="min-h-[100px] resize-none bg-background border-input focus-visible:ring-ring"
+              placeholder="e.g., Device is still under manufacturer warranty..."
+              className="min-h-25 resize-none bg-background border-input focus-visible:ring-ring"
             />
             {reason.length > 0 && reason.length < 10 && (
               <p className="text-[11px] text-destructive font-medium">Minimum 10 characters required.</p>
             )}
           </div>
 
-          {/* Fallback Status Dropdown */}
           <div className="grid gap-2">
             <Label htmlFor="status" className="text-[13px] font-semibold text-foreground">
               Update Status To <span className="text-destructive">*</span>
@@ -125,9 +122,7 @@ export function RejectDisposalDialog({
           </div>
         </div>
 
-        {/* Footer Buttons */}
         <div className="flex justify-end gap-3 pt-2">
-          {/* Shadcn's outline variant automatically handles the border, bg, and hover states using variables */}
           <Button
             type="button"
             variant="outline"
@@ -137,12 +132,12 @@ export function RejectDisposalDialog({
           >
             Cancel
           </Button>
-          {/* Standard primary button classes tied to global CSS variables */}
           <Button
             type="button"
+            variant="destructive"
             disabled={!isValid || isPending}
             onClick={handleSubmit}
-            className="h-10 px-6 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-md transition-all active:scale-95"
+            className="h-10 px-6 shadow-md transition-all active:scale-95"
           >
             {isPending ? 'Processing...' : 'Confirm Rejection'}
           </Button>

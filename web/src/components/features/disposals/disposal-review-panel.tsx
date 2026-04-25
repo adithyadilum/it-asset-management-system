@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { AlertCircle, Image as ImageIcon, X } from 'lucide-react';
+
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { AssetLoadingSkeleton } from '@/components/features/asset-registry/panels/asset-loading-skeleton';
 
@@ -72,9 +74,9 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
     <div className="flex h-full w-full flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-2 text-amber-500">
+        <div className={cn("flex items-center gap-2", "text-destructive")}>
           <AlertCircle className="h-5 w-5" strokeWidth={2.5} />
-          <h2 className="text-lg font-semibold text-amber-500">Disposal Request Review</h2>
+          <h2 className="text-lg font-semibold text-destructive">Disposal Request Review</h2>
         </div>
         <button 
           onClick={handleClose} 
@@ -150,7 +152,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
                       props.warrantyStatus === 'Expired' ? (
                         <span className="inline-flex items-center rounded-full border border-destructive/20 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">Expired</span>
                       ) : props.warrantyStatus ? (
-                        <span className="font-medium text-emerald-600">{props.warrantyStatus}</span>
+                        <span className="font-medium text-success">{props.warrantyStatus}</span>
                       ) : (
                         '-'
                       )
@@ -165,7 +167,6 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
 
       {/* Footer Buttons */}
       <div className="flex justify-end gap-3 border-t border-border p-6">
-        {/* Variant 'outline' handles the background, text, and hover states automatically */}
         <Button 
           variant="outline" 
           onClick={props.onReject}
@@ -173,7 +174,6 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
         >
           Reject
         </Button>
-        {/* Variant 'destructive' pulls the red variable defined in globals.css */}
         <Button 
           variant="destructive" 
           onClick={props.onApprove}
