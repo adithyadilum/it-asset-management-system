@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob';
+import { isInvoiceAttachmentFile, isModelImageFile } from '@/lib/file-types';
 
 // Define the allowed "folders" so developers don't make typos
 type StorageFolder =
@@ -20,6 +21,18 @@ export async function uploadFileToStorage(
   const MAX_FILE_SIZE = Math.floor(4.5 * 1024 * 1024);
   if (file.size > MAX_FILE_SIZE) {
     throw new Error('File exceeds the 4.5MB limit.');
+  }
+
+  if (folder === 'models' && !isModelImageFile(file)) {
+    throw new Error(
+      'Model image must be a valid image file (PNG, JPG, JPEG, WEBP, GIF, BMP, SVG, or AVIF).'
+    );
+  }
+
+  if (folder !== 'models' && !isInvoiceAttachmentFile(file)) {
+    throw new Error(
+      'File must be a supported document or image (PDF, DOC, DOCX, XLS, XLSX, CSV, TXT, RTF, PNG, JPG, JPEG, WEBP, GIF, BMP, SVG, or AVIF).'
+    );
   }
 
   // Sanitize the file name (remove spaces and special characters)

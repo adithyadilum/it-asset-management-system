@@ -44,6 +44,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { tiqriToast } from "@/components/shared/sonner";
+import { isModelImageFile, MODEL_IMAGE_ACCEPT } from "@/lib/file-types";
 
 import type {
     CategoryCustomSchemaField,
@@ -473,12 +474,23 @@ export function MasterDataCreatePanel({
 
     const handleModelImageSelection = useCallback((files: FileList | null) => {
         const selectedFile = files?.[0] ?? null;
+
+        if (selectedFile && !isModelImageFile(selectedFile)) {
+            tiqriToast.error("Upload a valid image file (PNG, JPG, JPEG, WEBP, GIF, BMP, SVG, or AVIF).");
+            if (modelImageInputRef.current) {
+                modelImageInputRef.current.value = "";
+            }
+            setModelImageFile(null);
+            setIsModelImageDragOver(false);
+            return;
+        }
+
         setModelImageFile(selectedFile);
         if (selectedFile) {
             setShowModelImageUploader(true);
         }
         setIsModelImageDragOver(false);
-    }, []);
+    }, [modelImageInputRef]);
 
     const handleModelImageDrop = useCallback(
         (event: React.DragEvent<HTMLDivElement>) => {
@@ -1186,7 +1198,7 @@ export function MasterDataCreatePanel({
                                 ref={modelImageInputRef}
                                 name="modelImage"
                                 type="file"
-                                accept="image/*"
+                                accept={MODEL_IMAGE_ACCEPT}
                                 className="hidden"
                                 onChange={(event) => handleModelImageSelection(event.target.files)}
                             />

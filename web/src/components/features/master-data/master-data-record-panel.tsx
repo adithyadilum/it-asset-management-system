@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { tiqriToast } from "@/components/shared/sonner";
+import { isModelImageFile, MODEL_IMAGE_ACCEPT } from "@/lib/file-types";
 
 import type {
     MasterDataBrandRow,
@@ -574,12 +575,23 @@ export function MasterDataRecordPanel({
 
     const handleModelImageSelection = useCallback((files: FileList | null) => {
         const selectedFile = files?.[0] ?? null;
+
+        if (selectedFile && !isModelImageFile(selectedFile)) {
+            tiqriToast.error("Upload a valid image file (PNG, JPG, JPEG, WEBP, GIF, BMP, SVG, or AVIF).");
+            if (modelImageInputRef.current) {
+                modelImageInputRef.current.value = "";
+            }
+            setModelImageFile(null);
+            setIsModelImageDragOver(false);
+            return;
+        }
+
         setModelImageFile(selectedFile);
         if (selectedFile) {
             setShowModelImageUploader(true);
         }
         setIsModelImageDragOver(false);
-    }, []);
+    }, [modelImageInputRef]);
 
     const handleModelImageDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -1073,7 +1085,7 @@ export function MasterDataRecordPanel({
                                         ref={modelImageInputRef}
                                         name="modelImage"
                                         type="file"
-                                        accept="image/*"
+                                        accept={MODEL_IMAGE_ACCEPT}
                                         className="hidden"
                                         onChange={(event) => handleModelImageSelection(event.target.files)}
                                     />

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarDays, LoaderCircle, Paperclip, Plus } from 'lucide-react';
+import { CalendarDays, LoaderCircle, Paperclip, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
 
 import { registerAsset } from '@/actions/assets';
@@ -30,6 +30,10 @@ import {
   parseCurrencyAmount,
   SUPPORTED_CURRENCIES,
 } from '@/lib/currency';
+import {
+  INVOICE_ATTACHMENT_ACCEPT,
+  isInvoiceAttachmentFile,
+} from '@/lib/file-types';
 import { cn } from '@/lib/utils';
 import { useOpenRegistrationPanel } from '@/components/features/asset-registry/panels/use-open-registration-panel';
 import {
@@ -328,8 +332,39 @@ export function RegistrationForm({
   const [shippingCost, setShippingCost] = React.useState('');
   const [tax, setTax] = React.useState('');
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
+  const [showInvoiceUploader, setShowInvoiceUploader] = React.useState(false);
+  const [isInvoiceDragOver, setIsInvoiceDragOver] = React.useState(false);
   const [customFieldValues, setCustomFieldValues] = React.useState<Record<string, string>>({});
   const lastToastKeyRef = React.useRef<string>('');
+
+  const handleInvoiceSelection = React.useCallback((files: FileList | null) => {
+    const selectedFile = files?.[0] ?? null;
+
+    if (selectedFile && !isInvoiceAttachmentFile(selectedFile)) {
+      tiqriToast.error(
+        'Upload a supported document or image file for invoice attachment.'
+      );
+      if (invoiceInputRef.current) {
+        invoiceInputRef.current.value = '';
+      }
+      setInvoiceFileName('');
+      setIsInvoiceDragOver(false);
+      return;
+    }
+
+    setInvoiceFileName(selectedFile?.name ?? '');
+    setShowInvoiceUploader(true);
+    setIsInvoiceDragOver(false);
+  }, []);
+
+  const handleInvoiceDrop = React.useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      setIsInvoiceDragOver(false);
+      handleInvoiceSelection(event.dataTransfer.files);
+    },
+    [handleInvoiceSelection]
+  );
 
   const [prevInitialPillar, setPrevInitialPillar] = React.useState(initialPillar);
   if (initialPillar !== prevInitialPillar) {
@@ -889,7 +924,7 @@ export function RegistrationForm({
 
           <div className="col-span-full">
             <InlineFieldRow
-              label="Invoice PDF :"
+              label="Invoice Attachment :"
               htmlFor="invoiceFile"
               error={getError(state, 'invoiceFile')}
               alignTop
@@ -900,23 +935,59 @@ export function RegistrationForm({
                   id="invoiceFile"
                   name="invoiceFile"
                   type="file"
-                  accept="application/pdf"
+                  accept={INVOICE_ATTACHMENT_ACCEPT}
                   className="sr-only"
-                  onChange={(event) => {
-                    const selectedFile = event.target.files?.[0];
-                    setInvoiceFileName(selectedFile?.name ?? '');
-                  }}
+                  onChange={(event) => handleInvoiceSelection(event.target.files)}
                 />
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-center gap-2"
-                  onClick={() => invoiceInputRef.current?.click()}
-                >
-                  <Paperclip className="h-4 w-4" />
-                  Attach Invoice
-                </Button>
+                {!showInvoiceUploader ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-center gap-2"
+                    onClick={() => {
+                      setShowInvoiceUploader(true);
+                      invoiceInputRef.current?.click();
+                    }}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    Add Invoice
+                  </Button>
+                ) : (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => invoiceInputRef.current?.click()}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        invoiceInputRef.current?.click();
+                      }
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setIsInvoiceDragOver(true);
+                    }}
+                    onDragLeave={() => setIsInvoiceDragOver(false)}
+                    onDrop={handleInvoiceDrop}
+                    className={cn(
+                      'cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors',
+                      isInvoiceDragOver
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border bg-background hover:border-primary/50'
+                    )}
+                  >
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <Upload className="h-5 w-5 text-muted-foreground" />
+                      <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                        Drag and drop invoice attachment, or click to browse
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Supports documents and images. Max 4.5MB.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {invoiceFileName ? (
                   <p className="text-xs text-muted-foreground">{invoiceFileName}</p>

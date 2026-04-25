@@ -1,9 +1,5 @@
 'use server';
 
-import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { eq, like, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -34,6 +30,8 @@ import {
   PILLAR_PREFIX_MAP,
   type RegisterAssetActionState,
 } from '@/lib/validations/asset-registration';
+import { isInvoiceAttachmentFile } from '@/lib/file-types';
+import { uploadFileToStorage } from '@/lib/storage';
 
 // Re-export repo types for consumers
 export type {
@@ -46,14 +44,7 @@ export type {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MAX_INVOICE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const INVOICE_UPLOAD_URL_PREFIX = '/uploads/invoices';
-const INVOICE_UPLOAD_DIRECTORY = path.join(
-  process.cwd(),
-  'public',
-  'uploads',
-  'invoices'
-);
+const MAX_INVOICE_FILE_SIZE_BYTES = Math.floor(4.5 * 1024 * 1024);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -106,44 +97,24 @@ function validateInvoiceFile(file: File | null) {
   }
 
   if (file.size > MAX_INVOICE_FILE_SIZE_BYTES) {
-    return 'Invoice PDF must be 10MB or smaller.';
+    return 'Invoice attachment must be 4.5MB or smaller.';
   }
 
-  const hasPdfMimeType = file.type === 'application/pdf';
-  const hasPdfExtension = file.name.toLowerCase().endsWith('.pdf');
-
-  if (!hasPdfMimeType && !hasPdfExtension) {
-    return 'Invoice file must be a PDF.';
+  if (!isInvoiceAttachmentFile(file)) {
+    return 'Invoice attachment must be a supported document or image file.';
   }
 
   return null;
 }
 
 async function saveInvoiceFile(file: File) {
-  await mkdir(INVOICE_UPLOAD_DIRECTORY, { recursive: true });
-
-  const fileName = `${randomUUID()}.pdf`;
-  const absolutePath = path.join(INVOICE_UPLOAD_DIRECTORY, fileName);
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-  await writeFile(absolutePath, fileBuffer);
-
-  return `${INVOICE_UPLOAD_URL_PREFIX}/${fileName}`;
+  return uploadFileToStorage(file, 'invoices');
 }
 
 async function removeUploadedInvoice(invoiceUrl: string) {
-  if (!invoiceUrl.startsWith(`${INVOICE_UPLOAD_URL_PREFIX}/`)) {
-    return;
-  }
-
-  const relativeFilePath = invoiceUrl.replace(/^\//, '');
-  const absoluteFilePath = path.join(process.cwd(), 'public', relativeFilePath);
-
-  try {
-    await unlink(absoluteFilePath);
-  } catch {
-    // Best-effort cleanup if a DB transaction fails after upload.
-  }
+  // Blob cleanup is intentionally skipped because uploads are immutable URLs
+  // and rollback failures should not block the action response.
+  void invoiceUrl;
 }
 
 function validationError(
@@ -393,7 +364,11 @@ export async function registerAsset(
       } catch {
         return validationError(
           'Please correct the highlighted fields and try again.',
-          { invoiceFile: ['Unable to upload invoice PDF. Please try again.'] }
+          {
+            invoiceFile: [
+              'Unable to upload invoice attachment. Please upload a supported document or image and try again.',
+            ],
+          }
         );
       }
     }
