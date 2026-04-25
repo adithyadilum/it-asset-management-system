@@ -6,12 +6,14 @@ import {
   getAssetDetailsByIdAction,
   getAssetHistoryByIdAction,
   getAssetMaintenanceByIdAction,
+  getAssetAllocationsAction,
 } from "@/actions/asset-registry-panels";
 import { tiqriToast } from "@/components/shared/sonner";
 import {
   type AssetDetailsData,
   type HistoryEvent,
   type MaintenanceEvent,
+  type AllocationData,
 } from "@/lib/data/asset-details-repo";
 
 export interface AssetDetailsPanelWrapperProps {
@@ -62,6 +64,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
   const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
   const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
+  const [allocations, setAllocations] = useState<AllocationData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
 
@@ -82,8 +85,9 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
         getAssetDetailsByIdAction(recordId),
         getAssetHistoryByIdAction(recordId),
         getAssetMaintenanceByIdAction(recordId),
+        getAssetAllocationsAction(recordId),
       ])
-        .then(([detailsRes, historyRes, maintenanceRes]) => {
+        .then(([detailsRes, historyRes, maintenanceRes, allocationsRes]) => {
           if (isMounted) {
             if (detailsRes.success) {
               setData(detailsRes.data);
@@ -101,6 +105,12 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
               setMaintenanceEvents(maintenanceRes.data);
             } else {
               setMaintenanceEvents([]);
+            }
+
+            if (allocationsRes.success) {
+              setAllocations(allocationsRes.data);
+            } else {
+              setAllocations([]);
             }
           }
         })
@@ -161,6 +171,8 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       invoiceUrl={data?.purchase?.invoiceUrl ?? ""}
       historyEvents={historyEvents}
       maintenanceEvents={maintenanceEvents}
+      allocations={allocations}
+      totalSeats={parseInt(String(data?.model.technicalDetails?.max_seats ?? data?.model.technicalDetails?.total_seats ?? 0), 10)}
       onCurrencyChange={setDisplayCurrencyOverride}
     />
   );

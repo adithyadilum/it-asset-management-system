@@ -7,6 +7,7 @@ import { AssetDetailsTab } from './asset-details-tab';
 import { TechnicalDetailsTab } from './technical-details-tab';
 import { PurchaseDetailsTab } from './purchase-details-tab';
 import { HistoryTab } from './history-tab';
+import { AllocationsTab, type AllocationUser } from './allocations-tab';
 import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-repo';
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -58,6 +59,10 @@ export interface AssetDetailsPanelProps {
   historyEvents?: HistoryEvent[];
   maintenanceEvents?: MaintenanceEvent[];
 
+  // Allocations (Software only)
+  allocations?: AllocationUser[];
+  totalSeats?: number;
+
   // Actions
   onEdit?: () => void;
   onActionButtonClick?: () => void;
@@ -65,6 +70,7 @@ export interface AssetDetailsPanelProps {
   onViewAllMaintenance?: () => void;
   onQRCodeClick?: () => void;
   onCurrencyChange?: (currency: string) => void;
+  onRevokeAllocation?: (userId: string) => void;
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
@@ -208,6 +214,27 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             invoicePdf={props.invoiceUrl}
             vendor={props.vendorInfo || { vendorId: '', vendorName: 'N/A' }}
             onCurrencyChange={props.onCurrencyChange}
+          />
+        ),
+      });
+    }
+
+    if (isSoftware) {
+      const allocatedCount = props.allocations?.length ?? 0;
+      const totalSeats = props.totalSeats ?? 0;
+
+      tabsList.push({
+        id: 'allocations',
+        label: 'Allocations',
+        content: props.isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
+          <AllocationsTab
+            totalSeats={totalSeats}
+            allocatedCount={allocatedCount}
+            allocations={props.allocations ?? []}
+            onRevoke={props.onRevokeAllocation}
+            isReadOnly={true}
           />
         ),
       });

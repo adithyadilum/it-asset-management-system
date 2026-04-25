@@ -100,6 +100,13 @@ export interface MaintenanceEvent {
   vendor: { companyName: string } | null;
 }
 
+export interface AllocationData {
+  id: string;
+  name: string;
+  email: string;
+  assignedDate: string;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -419,4 +426,38 @@ export async function getAssetMaintenanceById(
     createdAt: record.createdAt.toISOString(),
     vendor: record.vendor,
   }));
+}
+
+export async function getAssetAllocationsById(
+  id: string
+): Promise<AllocationData[]> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return [];
+  }
+
+  const allocations = await db.query.assets.findFirst({
+    where: eq(assets.id, resolvedAssetId),
+    with: {
+      assignments: {
+        orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
+        with: {
+          assignedToUser: { columns: { id: true, name: true, email: true } },
+        },
+      },
+    },
+  });
+
+  if (!allocations || !allocations.assignments) {
+    return [];
+  }
+
+  return allocations.assignments
+    .filter((assignment) => assignment.assignedToUser)
+    .map((assignment) => ({
+      id: assignment.assignedToUser!.id,
+      name: assignment.assignedToUser!.name,
+      email: assignment.assignedToUser!.email,
+      assignedDate: assignment.assignedDate.toISOString(),
+    }));
 }

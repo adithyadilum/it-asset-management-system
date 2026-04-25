@@ -21,6 +21,7 @@ import {
 } from "@/lib/master-data/shared";
 import { LOCATION_TYPE_OPTIONS } from "@/types/master-data";
 import type { MasterDataRecordEntity } from "@/types/master-data";
+import { DestructiveConfirmationDialog } from "@/components/shared/destructive-confirmation-dialog";
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Input } from "@/components/ui/input";
@@ -261,6 +262,8 @@ export function MasterDataRecordPanel({
     const [modelImageFile, setModelImageFile] = useState<File | null>(null);
     const [isModelImageDragOver, setIsModelImageDragOver] = useState(false);
     const [showModelImageUploader, setShowModelImageUploader] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
     const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
@@ -607,25 +610,27 @@ export function MasterDataRecordPanel({
         }
     }, []);
 
-    const handleDelete = useCallback(() => {
+    const handleDeleteClick = useCallback(() => {
         if (!normalizedEntity || !selectedRecord) {
             return;
         }
 
-        if (linkedAssetsCount > 0) {
-            tiqriToast.warning(
-                linkedAssetsCount === 1
-                    ? "Delete blocked: this record still has 1 linked asset."
-                    : `Delete blocked: this record still has ${linkedAssetsCount} linked assets.`
-            );
+        setDeleteDialogOpen(true);
+    }, [normalizedEntity, selectedRecord]);
+
+    const handleConfirmDelete = useCallback(async () => {
+        if (!normalizedEntity || !selectedRecord) {
             return;
         }
 
-        startTransition(async () => {
+        setIsDeleteInProgress(true);
+
+        try {
             const result = await deleteMasterDataRecords(normalizedEntity, [selectedRecord.id]);
 
             if (result.success) {
                 tiqriToast.success(result.message);
+                setDeleteDialogOpen(false);
                 setMode("detail");
                 setState(INITIAL_UPDATE_MASTER_DATA_STATE);
                 router.push(onCloseUrl, { scroll: false });
@@ -634,8 +639,10 @@ export function MasterDataRecordPanel({
             }
 
             tiqriToast.warning(result.message);
-        });
-    }, [linkedAssetsCount, normalizedEntity, onCloseUrl, router, selectedRecord]);
+        } finally {
+            setIsDeleteInProgress(false);
+        }
+    }, [normalizedEntity, selectedRecord, onCloseUrl, router]);
 
     const renderRecordIdPreview = () => {
         if (!normalizedEntity || !selectedRecord || !Number.isFinite(numericRecordId)) {
@@ -855,9 +862,21 @@ export function MasterDataRecordPanel({
 
                 return (
                     <>
-                        {renderRecordIdPreview()}
-
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            {normalizedEntity && selectedRecord && Number.isFinite(numericRecordId) && (
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        {ENTITY_LABELS[normalizedEntity]} ID
+                                    </label>
+                                    <Input
+                                        value={resolveRecordCode(normalizedEntity, selectedRecord.code, numericRecordId)}
+                                        readOnly
+                                        tabIndex={-1}
+                                        onFocus={(event) => event.currentTarget.blur()}
+                                        className={READ_ONLY_INPUT_CLASSNAME}
+                                    />
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Type
@@ -1520,8 +1539,8 @@ export function MasterDataRecordPanel({
                 id: "delete",
                 label: "Delete",
                 variant: "destructive",
-                onClick: handleDelete,
-                disabled: isPending || !selectedRecord,
+                onClick: handleDeleteClick,
+                disabled: isPending || isDeleteInProgress || !selectedRecord,
             },
             {
                 id: "edit",
@@ -1556,15 +1575,74 @@ export function MasterDataRecordPanel({
             },
         ];
 
+    const getRecordDisplayName = (): string => {
+        if (!selectedRecord) return "Record";
+        type RecordWithName = typeof selectedRecord & { name?: string; companyName?: string };
+        const record = selectedRecord as RecordWithName;
+        const recordName = record.name || record.companyName || "Record";
+        return recordName;
+    };
+
+    const getEntityLabel = (): string => {
+        if (!normalizedEntity) return "Record";
+        const labels: Record<MasterDataRecordEntity, string> = {
+            "asset-categories": "Category",
+            "device-models": "Device Model",
+            locations: "Location",
+            brands: "Brand",
+            vendors: "Vendor",
+            owners: "Owner",
+            departments: "Department",
+        };
+        return labels[normalizedEntity] || "Record";
+    };
+
     return (
-        <SlidePanel
-            isOpen={isOpen}
-            disableTransition={disableTransition}
-            onClose={handleClose}
-            title={panelTitle}
-            description={panelDescription}
-            content={isDetailMode ? detailContent : formContent}
-            actions={actions}
-        />
+        <>
+            <SlidePanel
+                isOpen={isOpen}
+                disableTransition={disableTransition}
+                onClose={handleClose}
+                title={panelTitle}
+                description={panelDescription}
+                content={isDetailMode ? detailContent : formContent}
+                actions={actions}
+            />
+
+            <DestructiveConfirmationDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                title={`Delete ${getEntityLabel()}`}
+                description={
+                    linkedAssetsCount > 0
+                        ? `Cannot delete this record because it still has ${linkedAssetsCount} linked asset${linkedAssetsCount > 1 ? "s" : ""}. Please unlink these assets first.`
+                        : `Are you sure you want to delete this record? This action cannot be undone.`
+                }
+                itemsToDelete={
+                    selectedRecord
+                        ? [{
+                            id: String(selectedRecord.id),
+                            name: getRecordDisplayName(),
+                        }]
+                        : []
+                }
+                columns={[
+                    { key: "id", label: "ID", width: "w-1/3" },
+                    { key: "name", label: "Name", width: "w-2/3" },
+                ]}
+                canDelete={linkedAssetsCount === 0}
+                errorItemIds={linkedAssetsCount > 0 ? [String(selectedRecord?.id || "")] : []}
+                errorMessage={
+                    linkedAssetsCount > 0
+                        ? `This record has ${linkedAssetsCount} linked asset${linkedAssetsCount > 1 ? "s" : ""} and cannot be deleted.`
+                        : undefined
+                }
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setDeleteDialogOpen(false)}
+                isLoading={isDeleteInProgress}
+                deleteButtonLabel="Delete"
+                cancelButtonLabel="Cancel"
+            />
+        </>
     );
 }

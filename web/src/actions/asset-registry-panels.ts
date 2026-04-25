@@ -42,6 +42,16 @@ export async function getAssetMaintenanceByIdAction(id: string) {
   return { success: true, data: maintenance };
 }
 
+export async function getAssetAllocationsAction(id: string) {
+  const user = await getAuthenticatedUser();
+  if (!user) return { success: false, message: 'Unauthorized', data: [] };
+
+  const { getAssetAllocationsById } =
+    await import('@/lib/data/asset-details-repo');
+  const allocations = await getAssetAllocationsById(id);
+  return { success: true, data: allocations };
+}
+
 export async function getRegistrationOptionsAction(pillar: string) {
   const user = await getAuthenticatedUser();
   if (!user) return { success: false, message: 'Unauthorized', data: null };

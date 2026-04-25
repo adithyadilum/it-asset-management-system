@@ -36,6 +36,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Switch } from "@/components/ui/switch";
 import {
     Tooltip,
@@ -912,23 +913,14 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Type <span className="text-red-500">*</span>
                                 </label>
-                                <Select
-                                    value={selectedLocationType}
-                                    onValueChange={(value) =>
+                                <SearchableDropdown
+                                    options={LOCATION_TYPE_OPTIONS}
+                                    placeholder="Select a location type"
+                                    defaultValue={selectedLocationType}
+                                    onSelect={(value) =>
                                         setSelectedLocationType(value as LocationType)
                                     }
-                                >
-                                    <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Select a location type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {LOCATION_TYPE_OPTIONS.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                />
                                 {getFieldError("type") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("type")}
@@ -941,24 +933,18 @@ export function MasterDataCreatePanel({
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                 Parent Location
                             </label>
-                            <Select
-                                value={selectedParentLocationId}
-                                onValueChange={setSelectedParentLocationId}
-                            >
-                                <SelectTrigger className="h-9">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={TOP_LEVEL_PARENT_LOCATION_VALUE}>
-                                        None (Building)
-                                    </SelectItem>
-                                    {selectableParentLocations.map((location) => (
-                                        <SelectItem key={location.id} value={String(location.id)}>
-                                            {location.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <SearchableDropdown
+                                options={[
+                                    { value: TOP_LEVEL_PARENT_LOCATION_VALUE, label: "None (Building)" },
+                                    ...selectableParentLocations.map((location) => ({
+                                        value: String(location.id),
+                                        label: location.name,
+                                    })),
+                                ]}
+                                placeholder="Select a location"
+                                defaultValue={selectedParentLocationId}
+                                onSelect={setSelectedParentLocationId}
+                            />
                             <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
                                 Select None to create a Building.
                             </p>
@@ -989,21 +975,12 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Type
                                 </label>
-                                <Select
-                                    value={categoryPillar}
-                                    onValueChange={handleCategoryPillarChange}
-                                >
-                                    <SelectTrigger className="h-9 w-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {PILLAR_OPTIONS.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableDropdown
+                                    options={PILLAR_OPTIONS}
+                                    placeholder="Select a type"
+                                    defaultValue={categoryPillar}
+                                    onSelect={handleCategoryPillarChange}
+                                />
                                 {getFieldError("pillar") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("pillar")}
@@ -1110,21 +1087,12 @@ export function MasterDataCreatePanel({
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                 Type
                             </label>
-                            <Select
-                                value={modelPillar}
-                                onValueChange={handleModelPillarChange}
-                            >
-                                <SelectTrigger className="h-9 w-full md:w-56">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {PILLAR_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <SearchableDropdown
+                                options={PILLAR_OPTIONS}
+                                placeholder="Select a type"
+                                defaultValue={modelPillar}
+                                onSelect={handleModelPillarChange}
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1132,18 +1100,15 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Brand <span className="text-red-500">*</span>
                                 </label>
-                                <Select value={selectedBrandId} onValueChange={setSelectedBrandId}>
-                                    <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Select a brand" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {brands.map((brand) => (
-                                            <SelectItem key={brand.id} value={String(brand.id)}>
-                                                {brand.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableDropdown
+                                    options={brands.map((brand) => ({
+                                        value: String(brand.id),
+                                        label: brand.name,
+                                    }))}
+                                    placeholder="Select a brand"
+                                    defaultValue={selectedBrandId}
+                                    onSelect={setSelectedBrandId}
+                                />
                                 {getFieldError("brandId") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("brandId")}
@@ -1155,21 +1120,15 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Category <span className="text-red-500">*</span>
                                 </label>
-                                <Select
-                                    value={normalizedSelectedCategoryId}
-                                    onValueChange={handleModelCategoryChange}
-                                >
-                                    <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {activeCategoriesForModel.map((category) => (
-                                            <SelectItem key={category.id} value={String(category.id)}>
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableDropdown
+                                    options={activeCategoriesForModel.map((category) => ({
+                                        value: String(category.id),
+                                        label: category.name,
+                                    }))}
+                                    placeholder="Select a category"
+                                    defaultValue={normalizedSelectedCategoryId}
+                                    onSelect={handleModelCategoryChange}
+                                />
                                 {getFieldError("categoryId") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("categoryId")}

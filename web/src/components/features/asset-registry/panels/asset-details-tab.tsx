@@ -44,18 +44,18 @@ export function AssetDetailsTab({
 
     if (mode === 'software') {
         return (
-            <div className={cn('flex w-full flex-col gap-4 text-sm text-foreground', className)}>
-                <div className="mt-2 flex w-full flex-col items-center gap-2.5">
+            <div className={cn('flex w-full flex-col gap-6 text-sm text-foreground', className)}>
+                <div className="mt-2 flex w-full flex-col items-center gap-3">
                     {hasImage ? (
                         <Image
                             src={imageUrl}
                             alt="Software Product Image"
                             width={153}
                             height={121}
-                            className="object-cover"
+                            className="rounded object-cover shadow-sm"
                         />
                     ) : (
-                        <div className="flex h-30.25 w-38.25 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+                        <div className="flex h-30.25 w-38.25 items-center justify-center rounded border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
                             No product image available
                         </div>
                     )}
@@ -73,40 +73,46 @@ export function AssetDetailsTab({
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     {softwareSections.map((section) => (
-                        <section key={section.title} className="rounded-lg border border-border bg-background p-4">
-                            <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-2 text-foreground')}>
+                        <section key={section.title} className="rounded-lg border border-border/60 bg-card p-5 shadow-xs">
+                            <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-4 text-sm text-foreground')}>
                                 {section.title}
                             </h3>
                             <div className="space-y-0">
-                                {section.rows.map((row, index) => (
-                                    <div
-                                        key={`${section.title}-${index}`}
-                                        className="flex items-center justify-between border-b border-border/40 py-2.5"
-                                    >
-                                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
-                                            {row.label}
+                                {section.rows.map((row, index) => {
+                                    const isLastRow = index === section.rows.length - 1;
+                                    return (
+                                        <div
+                                            key={`${section.title}-${index}`}
+                                            className={cn(
+                                                'flex items-center justify-between py-2.5',
+                                                !isLastRow && 'border-b border-border/40'
+                                            )}
+                                        >
+                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+                                                {row.label}
+                                            </div>
+                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-slate-900')}>
+                                                {row.value || '-'}
+                                            </div>
                                         </div>
-                                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-slate-900')}>
-                                            {row.value || '-'}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </section>
                     ))}
                 </div>
 
                 {note ? (
-                    <section className="space-y-2 rounded-lg border border-border bg-background p-4">
+                    <section className="space-y-2 rounded-lg border border-border/60 bg-card p-5 shadow-xs">
                         <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'text-foreground')}>
                             Access Notes
                         </div>
                         <Textarea
                             readOnly
                             value={note}
-                            className="min-h-24 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+                            className="min-h-24 w-full resize-none bg-muted/20 text-slate-900 focus-visible:ring-0"
                         />
                     </section>
                 ) : null}
