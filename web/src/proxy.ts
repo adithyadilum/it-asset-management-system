@@ -49,17 +49,13 @@ function getTopLevelSegment(pathname: string) {
  * - GlobalAdmin: all routes
  * - ITOperator: all except /settings/* and /financials/*
  * - FinanceAuditor: all except /settings/* and /operations/*
- * - Employee: /dashboard, /my-assets, /service-requests
+ * - Employee: /dashboard only
  */
 function canAccessRoute(role: TokenRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
-    pathname === '/dashboard/' ||
-    pathname === '/my-assets' ||
-    pathname === '/my-assets/' ||
-    pathname === '/service-requests' ||
-    pathname === '/service-requests/'
+    pathname === '/dashboard/' 
   ) {
     return true;
   }

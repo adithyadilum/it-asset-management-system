@@ -13,8 +13,7 @@ import {
     LifeBuoy,
     Settings,
     Sofa,
-    MonitorSmartphone,
-    BellRing,
+
 } from "lucide-react"
 
 import { BrandHeader } from "@/components/shared/brand-header"
@@ -38,21 +37,6 @@ type NavItem = {
 }
 
 const privilegedRoles: UserRole[] = ["GlobalAdmin", "ITOperator", "FinanceAuditor"]
-
-const employeeItems: NavItem[] = [
-    {
-        label: "My Assets",
-        icon: MonitorSmartphone,
-        href: "/my-assets",
-        allowedRoles: ["Employee"],
-    },
-    {
-        label: "Service Requests",
-        icon: BellRing,
-        href: "/service-requests",
-        allowedRoles: ["Employee"],
-    },
-]
 
 const assetsItems: NavItem[] = [
     {
@@ -291,12 +275,6 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
         (item) => !item.allowedRoles || item.allowedRoles.includes(userRole)
     )
 
-    const visibleEmployee = employeeItems.filter(
-        (item) => !item.allowedRoles || item.allowedRoles.includes(userRole)
-    )
-
-    const dashboardLabel = userRole === "Employee" ? "My Dashboard" : "Dashboard"
-
     return (
         <Sidebar
             collapsible="icon"
@@ -319,21 +297,16 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
                     >
                         <LayoutDashboard className="size-4" />
                         {!collapsed ? (
-                            <span className="truncate font-text-sm-regular text-sm leading-5">{dashboardLabel}</span>
+                            <span className="truncate font-text-sm-regular text-sm leading-5">Dashboard</span>
                         ) : null}
                     </button>
 
-                    {userRole === "Employee" ? (
-                        <NavGroup items={visibleEmployee} collapsed={collapsed} userRole={userRole} pathname={pathname} />
-                    ) : (
-                        <>
+
                             {!collapsed && visibleAssets.length > 0 ? <SectionLabel title="ASSETS" /> : null}
                             <NavGroup items={visibleAssets} collapsed={collapsed} userRole={userRole} pathname={pathname} />
-                        </>
-                    )}
                 </div>
 
-                {userRole !== "Employee" && visibleManagement.length > 0 && (
+                {visibleManagement.length > 0 && (
                     <div className="px-2 pt-1 pb-2">
                         {!collapsed ? <SectionLabel title="MANAGEMENT" /> : null}
                         <NavGroup items={visibleManagement} collapsed={collapsed} userRole={userRole} pathname={pathname} />
