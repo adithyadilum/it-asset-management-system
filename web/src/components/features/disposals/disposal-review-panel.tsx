@@ -38,7 +38,7 @@ export interface DisposalReviewPanelProps {
 function InlineDetailItem({
   label,
   value,
-  valueClassName = 'text-slate-500',
+  valueClassName = 'text-muted-foreground',
 }: {
   label: string;
   value: React.ReactNode;
@@ -46,7 +46,7 @@ function InlineDetailItem({
 }) {
   return (
     <div className="flex items-start text-[13px] leading-6">
-      <span className="w-32 font-semibold text-slate-800">{label}:</span>
+      <span className="w-32 font-semibold text-foreground">{label}:</span>
       <span className={valueClassName}>{value || '-'}</span>
     </div>
   );
@@ -69,16 +69,16 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-white">
+    <div className="flex h-full w-full flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-2 text-amber-500">
           <AlertCircle className="h-5 w-5" strokeWidth={2.5} />
           <h2 className="text-lg font-semibold text-amber-500">Disposal Request Review</h2>
         </div>
         <button 
           onClick={handleClose} 
-          className="text-slate-400 hover:text-slate-600 transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
@@ -101,15 +101,15 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
                     className="h-32 w-auto object-contain drop-shadow-sm"
                   />
                 ) : (
-                  <div className="flex h-32 w-48 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
-                    <ImageIcon className="h-8 w-8 text-slate-300" />
+                  <div className="flex h-32 w-48 items-center justify-center rounded-lg border border-border bg-muted/50">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                 <div className="space-y-3">
-                  <InlineDetailItem label="Asset ID" value={props.assetTag} valueClassName="font-medium text-slate-800" />
+                  <InlineDetailItem label="Asset ID" value={props.assetTag} valueClassName="font-medium text-foreground" />
                   <InlineDetailItem label="Model" value={props.model} />
                   <InlineDetailItem label="Serial Number" value={props.serialNumber} />
                 </div>
@@ -121,7 +121,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
               </div>
             </section>
 
-            <section className="rounded-xl border border-slate-200 bg-[#F8FAFC] p-6 shadow-sm">
+            <section className="rounded-xl border border-border bg-muted/30 p-6 shadow-sm">
               <div className="mb-5 space-y-3">
                 <InlineDetailItem label="Requested By" value={props.requestedBy} />
                 <InlineDetailItem label="Date Requested" value={formatDateString(props.dateRequested)} />
@@ -129,8 +129,8 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
               </div>
 
               <div className="flex flex-col gap-1 pt-2">
-                <span className="text-[13px] font-semibold text-slate-800">Technician Notes:</span>
-                <p className="text-[13px] leading-relaxed text-slate-500">
+                <span className="text-[13px] font-semibold text-foreground">Technician Notes:</span>
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
                   {props.justification || 'No additional notes provided.'}
                 </p>
               </div>
@@ -148,7 +148,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
                     label="Warranty Status"
                     value={
                       props.warrantyStatus === 'Expired' ? (
-                        <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">Expired</span>
+                        <span className="inline-flex items-center rounded-full border border-destructive/20 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">Expired</span>
                       ) : props.warrantyStatus ? (
                         <span className="font-medium text-emerald-600">{props.warrantyStatus}</span>
                       ) : (
@@ -163,15 +163,21 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
         )}
       </div>
 
-      
-      <div className="flex justify-end gap-3 border-t border-slate-100 p-6">
-        <Button variant="outline" onClick={props.onReject}
-        className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm"
+      {/* Footer Buttons */}
+      <div className="flex justify-end gap-3 border-t border-border p-6">
+        {/* Variant 'outline' handles the background, text, and hover states automatically */}
+        <Button 
+          variant="outline" 
+          onClick={props.onReject}
+          className="shadow-sm font-medium"
         >
           Reject
         </Button>
-        <Button variant="destructive" onClick={props.onApprove}
-        className="bg-red-500 text-white hover:bg-red-600 shadow-sm transition-colors border border-transparent"
+        {/* Variant 'destructive' pulls the red variable defined in globals.css */}
+        <Button 
+          variant="destructive" 
+          onClick={props.onApprove}
+          className="shadow-sm transition-all active:scale-95 font-semibold"
         >
           Initiate Disposal
         </Button>

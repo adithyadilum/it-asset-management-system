@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { AlertCircle, } from 'lucide-react'; // Added X icon for top-right close
+import { AlertCircle } from 'lucide-react'; 
 
 import { rejectDisposalRequest } from '@/actions/disposals';
 import { Button } from '@/components/ui/button';
@@ -80,20 +80,20 @@ export function RejectDisposalDialog({
       <DialogContent className="sm:max-w-[500px] rounded-xl">
         {/* Header Section */}
         <DialogHeader className="relative pr-8">
-          <div className="flex items-center gap-2 text-slate-800">
-            <AlertCircle className="h-5 w-5 text-slate-500" />
+          <div className="flex items-center gap-2 text-foreground">
+            <AlertCircle className="h-5 w-5 text-muted-foreground" />
             <DialogTitle className="text-xl font-bold">Reject Disposal Request</DialogTitle>
           </div>
-          <p className="mt-2 text-sm text-slate-700 leading-relaxed">
-            You are declining the disposal of <strong className="text-slate-900">{assetName} ({assetTag})</strong>.
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+            You are declining the disposal of <strong className="text-foreground font-semibold">{assetName} ({assetTag})</strong>.
           </p>
         </DialogHeader>
 
         <div className="grid gap-6 py-4">
           {/* Rejection Reason */}
           <div className="grid gap-2">
-            <Label htmlFor="reason" className="text-[13px] font-semibold text-slate-800">
-              Rejection Reason <span className="text-red-500">*</span>
+            <Label htmlFor="reason" className="text-[13px] font-semibold text-foreground">
+              Rejection Reason <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="reason"
@@ -101,26 +101,25 @@ export function RejectDisposalDialog({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g., Device is still under manufacturer warranty. Please initiate an RMA with Lenovo..."
-              className="min-h-[100px] resize-none border-slate-200 bg-white focus-visible:ring-slate-400"
+              className="min-h-[100px] resize-none bg-background border-input focus-visible:ring-ring"
             />
             {reason.length > 0 && reason.length < 10 && (
-              <p className="text-[11px] text-red-500 font-medium">Minimum 10 characters required.</p>
+              <p className="text-[11px] text-destructive font-medium">Minimum 10 characters required.</p>
             )}
           </div>
 
           {/* Fallback Status Dropdown */}
           <div className="grid gap-2">
-            <Label htmlFor="status" className="text-[13px] font-semibold text-slate-800">
-              Update Status To <span className="text-red-500">*</span>
+            <Label htmlFor="status" className="text-[13px] font-semibold text-foreground">
+              Update Status To <span className="text-destructive">*</span>
             </Label>
-            {/* w-full ensures it matches the text area length */}
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-full h-10 border-slate-200 bg-white text-slate-600 focus:ring-slate-400">
+              <SelectTrigger className="w-full h-10 bg-background border-input text-foreground focus:ring-ring">
                 <SelectValue placeholder="Select fallback status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Available">Available</SelectItem>
-                            <SelectItem value="In Repair">Maintenance</SelectItem>
+                <SelectItem value="In Repair">Maintenance</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -128,20 +127,22 @@ export function RejectDisposalDialog({
 
         {/* Footer Buttons */}
         <div className="flex justify-end gap-3 pt-2">
+          {/* Shadcn's outline variant automatically handles the border, bg, and hover states using variables */}
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
-            className="h-10 px-6 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 font-medium"
+            className="h-10 px-6 font-medium"
           >
             Cancel
           </Button>
+          {/* Standard primary button classes tied to global CSS variables */}
           <Button
             type="button"
             disabled={!isValid || isPending}
             onClick={handleSubmit}
-            className="h-10 px-6 bg-[#0B1437] text-white hover:bg-[#1a234a] font-semibold shadow-md transition-all active:scale-95"
+            className="h-10 px-6 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-md transition-all active:scale-95"
           >
             {isPending ? 'Processing...' : 'Confirm Rejection'}
           </Button>
