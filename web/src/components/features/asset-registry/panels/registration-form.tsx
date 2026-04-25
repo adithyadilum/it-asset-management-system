@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { LoaderCircle, Paperclip, Plus } from 'lucide-react';
+import { CalendarDays, LoaderCircle, Paperclip, Plus } from 'lucide-react';
 import Image from 'next/image';
 
 import { registerAsset } from '@/actions/assets';
@@ -12,8 +12,10 @@ import {
 import { tiqriToast } from '@/components/shared/sonner';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useOpenRegistrationPanel } from '@/components/features/asset-registry/panels/use-open-registration-panel';
 import {
@@ -103,6 +106,77 @@ const WARRANTY_MONTH_OPTIONS: RegistrationOption[] = [
 
 function getTodayDateValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatDateForInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseInputDate(inputValue: string) {
+  if (!inputValue) {
+    return undefined;
+  }
+
+  const [year, month, day] = inputValue.split('-').map(Number);
+  if (!year || !month || !day) {
+    return undefined;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function formatPurchaseDateLabel(inputValue: string) {
+  const date = parseInputDate(inputValue);
+  if (!date) {
+    return 'Select purchase date';
+  }
+
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  });
+}
+
+function sanitizeCurrencyInput(rawValue: string) {
+  const normalizedValue = rawValue.replace(/[^\d.]/g, '');
+  const [integerPart = '', ...fractionParts] = normalizedValue.split('.');
+  const fractionPart = fractionParts.join('');
+
+  if (normalizedValue.startsWith('.')) {
+    return `.${fractionPart.slice(0, 2)}`;
+  }
+
+  if (fractionParts.length === 0) {
+    return integerPart;
+  }
+
+  return `${integerPart}.${fractionPart.slice(0, 2)}`;
+}
+
+function parseCurrencyAmount(rawValue: string) {
+  const parsedValue = Number.parseFloat(rawValue);
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
+}
+
+function formatCurrencySymbol(currencyCode: string) {
+  if (currencyCode === 'USD') {
+    return '$';
+  }
+
+  if (currencyCode === 'LKR') {
+    return 'Rs';
+  }
+
+  if (currencyCode === 'NOK') {
+    return 'kr';
+  }
+
+  return currencyCode;
 }
 
 function resolveStartingPillar(
@@ -205,7 +279,7 @@ function RegistrationFormSkeleton() {
         <div className="h-3 w-28 rounded-full bg-muted/60" />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
         {Array.from({ length: 5 }).map((_, index) => (
           <div key={index} className="space-y-1.5">
             <div className="h-4 w-24 rounded bg-muted/60" />
@@ -265,6 +339,9 @@ export function RegistrationForm({
   );
   const [warrantyMonths, setWarrantyMonths] = React.useState('');
   const [purchaseDate, setPurchaseDate] = React.useState(getTodayDateValue);
+  const [basePrice, setBasePrice] = React.useState('');
+  const [shippingCost, setShippingCost] = React.useState('');
+  const [tax, setTax] = React.useState('');
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
   const [customFieldValues, setCustomFieldValues] = React.useState<Record<string, string>>({});
   const lastToastKeyRef = React.useRef<string>('');
@@ -361,6 +438,16 @@ export function RegistrationForm({
   const serialLabel = isSoftware ? 'License Key :' : 'Serial Number :';
   const submitLabel = isSoftware ? 'Add Software' : 'Add Asset';
   const submittingLabel = isSoftware ? 'Adding software...' : 'Adding asset...';
+  const purchaseDateLabel = formatPurchaseDateLabel(purchaseDate);
+  const purchaseDateValue = parseInputDate(purchaseDate);
+  const currencySymbol = formatCurrencySymbol(currencyCode);
+  const totalCost = React.useMemo(
+    () =>
+      parseCurrencyAmount(basePrice) +
+      parseCurrencyAmount(shippingCost) +
+      parseCurrencyAmount(tax),
+    [basePrice, shippingCost, tax]
+  );
 
   React.useEffect(() => {
     const resolvedMessage = state.message || formError;
@@ -605,9 +692,17 @@ export function RegistrationForm({
           error={getError(state, 'ownerId')}
         />
 
-        <InlineFieldRow label="Note :" htmlFor="displayNote">
-          <Input id="displayNote" name="displayNote" />
-        </InlineFieldRow>
+        <div className="col-span-full">
+          <InlineFieldRow label="Note :" htmlFor="displayNote" alignTop>
+            <Textarea
+              id="displayNote"
+              name="displayNote"
+              rows={3}
+              placeholder="Add a note about this asset"
+              className="min-h-20 resize-y"
+            />
+          </InlineFieldRow>
+        </div>
       </div>
 
       <hr className="my-5 border-border" />
@@ -633,59 +728,38 @@ export function RegistrationForm({
         <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
           <InlineFieldRow
             label="Purchase Date :"
-            htmlFor="purchaseDate"
             error={getError(state, 'purchaseDate')}
+            alignTop
           >
-            <Input
-              id="purchaseDate"
-              name="purchaseDate"
-              type="date"
-              value={purchaseDate}
-              onChange={(event) => setPurchaseDate(event.target.value)}
-              aria-invalid={Boolean(getError(state, 'purchaseDate'))}
-            />
-          </InlineFieldRow>
-
-          <InlineFieldRow
-            label="Base Price :"
-            htmlFor="basePrice"
-            error={getError(state, 'basePrice')}
-          >
-            <Input
-              id="basePrice"
-              name="basePrice"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              aria-invalid={Boolean(getError(state, 'basePrice'))}
-            />
-          </InlineFieldRow>
-
-          <InlineFieldRow
-            label="Shipping Cost :"
-            htmlFor="shippingCost"
-            error={getError(state, 'shippingCost')}
-          >
-            <Input
-              id="shippingCost"
-              name="shippingCost"
-              type="number"
-              min="0"
-              step="0.01"
-              aria-invalid={Boolean(getError(state, 'shippingCost'))}
-            />
-          </InlineFieldRow>
-
-          <InlineFieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
-            <Input
-              id="tax"
-              name="tax"
-              type="number"
-              min="0"
-              step="0.01"
-              aria-invalid={Boolean(getError(state, 'tax'))}
-            />
+            <>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(
+                      'h-9 w-full justify-between rounded-lg px-3 text-left font-normal',
+                      !purchaseDate ? 'text-muted-foreground' : 'text-foreground'
+                    )}
+                    aria-invalid={Boolean(getError(state, 'purchaseDate'))}
+                  >
+                    <span>{purchaseDateLabel}</span>
+                    <CalendarDays className="size-4 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={purchaseDateValue}
+                    onSelect={(date) =>
+                      setPurchaseDate(date ? formatDateForInput(date) : '')
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <input type="hidden" id="purchaseDate" name="purchaseDate" value={purchaseDate} />
+            </>
           </InlineFieldRow>
 
           <SearchableFieldRow
@@ -698,6 +772,100 @@ export function RegistrationForm({
             emptyMessage="No vendors found."
             error={getError(state, 'vendorId')}
           />
+
+          <InlineFieldRow
+            label="Base Price :"
+            htmlFor="basePrice"
+            error={getError(state, 'basePrice')}
+          >
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                {currencySymbol}
+              </span>
+              <Input
+                id="basePrice"
+                name="basePrice"
+                value={basePrice}
+                onChange={(event) => setBasePrice(sanitizeCurrencyInput(event.target.value))}
+                onBlur={() => {
+                  if (basePrice.length > 0) {
+                    setBasePrice(parseCurrencyAmount(basePrice).toFixed(2));
+                  }
+                }}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="pl-11"
+                aria-invalid={Boolean(getError(state, 'basePrice'))}
+              />
+            </div>
+          </InlineFieldRow>
+
+          <InlineFieldRow
+            label="Shipping Cost :"
+            htmlFor="shippingCost"
+            error={getError(state, 'shippingCost')}
+          >
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                {currencySymbol}
+              </span>
+              <Input
+                id="shippingCost"
+                name="shippingCost"
+                value={shippingCost}
+                onChange={(event) =>
+                  setShippingCost(sanitizeCurrencyInput(event.target.value))
+                }
+                onBlur={() => {
+                  if (shippingCost.length > 0) {
+                    setShippingCost(parseCurrencyAmount(shippingCost).toFixed(2));
+                  }
+                }}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="pl-11"
+                aria-invalid={Boolean(getError(state, 'shippingCost'))}
+              />
+            </div>
+          </InlineFieldRow>
+
+          <InlineFieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                {currencySymbol}
+              </span>
+              <Input
+                id="tax"
+                name="tax"
+                value={tax}
+                onChange={(event) => setTax(sanitizeCurrencyInput(event.target.value))}
+                onBlur={() => {
+                  if (tax.length > 0) {
+                    setTax(parseCurrencyAmount(tax).toFixed(2));
+                  }
+                }}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="pl-11"
+                aria-invalid={Boolean(getError(state, 'tax'))}
+              />
+            </div>
+          </InlineFieldRow>
+
+          <InlineFieldRow label="Total Cost :" htmlFor="totalCost" alignTop>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                {currencySymbol}
+              </span>
+              <Input
+                id="totalCost"
+                value={totalCost.toFixed(2)}
+                readOnly
+                aria-readonly="true"
+                className="bg-muted/40 pl-11"
+              />
+            </div>
+          </InlineFieldRow>
 
           <InlineFieldRow
             label="Warranty Period :"
@@ -716,53 +884,61 @@ export function RegistrationForm({
             </>
           </InlineFieldRow>
 
-          <InlineFieldRow
-            label="Note :"
-            htmlFor="notes"
-            error={getError(state, 'notes')}
-          >
-            <Input
-              id="notes"
-              name="notes"
-              aria-invalid={Boolean(getError(state, 'notes'))}
-            />
-          </InlineFieldRow>
-
-          <InlineFieldRow
-            label="Invoice PDF :"
-            htmlFor="invoiceFile"
-            error={getError(state, 'invoiceFile')}
-            alignTop
-          >
-            <div className="space-y-2">
-              <input
-                ref={invoiceInputRef}
-                id="invoiceFile"
-                name="invoiceFile"
-                type="file"
-                accept="application/pdf"
-                className="sr-only"
-                onChange={(event) => {
-                  const selectedFile = event.target.files?.[0];
-                  setInvoiceFileName(selectedFile?.name ?? '');
-                }}
+          <div className="col-span-full">
+            <InlineFieldRow
+              label="Note :"
+              htmlFor="notes"
+              error={getError(state, 'notes')}
+              alignTop
+            >
+              <Textarea
+                id="notes"
+                name="notes"
+                rows={3}
+                placeholder="Add purchase related notes"
+                className="min-h-20 resize-y"
+                aria-invalid={Boolean(getError(state, 'notes'))}
               />
+            </InlineFieldRow>
+          </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-center gap-2"
-                onClick={() => invoiceInputRef.current?.click()}
-              >
-                <Paperclip className="h-4 w-4" />
-                Attach Invoice
-              </Button>
+          <div className="col-span-full">
+            <InlineFieldRow
+              label="Invoice PDF :"
+              htmlFor="invoiceFile"
+              error={getError(state, 'invoiceFile')}
+              alignTop
+            >
+              <div className="space-y-2 sm:max-w-72">
+                <input
+                  ref={invoiceInputRef}
+                  id="invoiceFile"
+                  name="invoiceFile"
+                  type="file"
+                  accept="application/pdf"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0];
+                    setInvoiceFileName(selectedFile?.name ?? '');
+                  }}
+                />
 
-              {invoiceFileName ? (
-                <p className="text-xs text-muted-foreground">{invoiceFileName}</p>
-              ) : null}
-            </div>
-          </InlineFieldRow>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-center gap-2"
+                  onClick={() => invoiceInputRef.current?.click()}
+                >
+                  <Paperclip className="h-4 w-4" />
+                  Attach Invoice
+                </Button>
+
+                {invoiceFileName ? (
+                  <p className="text-xs text-muted-foreground">{invoiceFileName}</p>
+                ) : null}
+              </div>
+            </InlineFieldRow>
+          </div>
         </div>
       </section>
 
@@ -777,7 +953,7 @@ export function RegistrationForm({
       description={panelDescription}
       content={panelContent}
       actions={panelActions}
-      contentClassName="pt-1 pb-2 sm:pt-2"
+      contentClassName="pt-0 pb-2 sm:pt-0"
     />
   );
 }

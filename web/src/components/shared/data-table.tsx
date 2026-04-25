@@ -16,6 +16,7 @@ import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Table,
   TableBody,
@@ -44,6 +45,7 @@ type DataTableProps<TData, TValue> = {
   data: TData[]
   pageSizeOptions?: number[]
   initialPageSize?: number
+  defaultSorting?: SortingState
   enableRowScroll?: boolean
   selectionActions?: DataTableSelectionAction<TData>[]
   selectionLabel?: (selectedCount: number) => string
@@ -57,6 +59,7 @@ export function DataTable<TData, TValue>({
   data,
   pageSizeOptions = [16, 24, 32, 48],
   initialPageSize = 16,
+  defaultSorting = [],
   enableRowScroll = true,
   selectionActions = [],
   selectionLabel,
@@ -64,12 +67,7 @@ export function DataTable<TData, TValue>({
   isRowActive,
   className,
 }: DataTableProps<TData, TValue>) {
-  const rootRef = React.useRef<HTMLDivElement>(null)
-  const footerRef = React.useRef<HTMLDivElement>(null)
-
-  const isCompactIdColumn = React.useCallback((columnId: string) => {
-    return columnId === "id"
-  }, [])
+  const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
   const getDisplayText = React.useCallback((value: unknown) => {
     if (
@@ -106,7 +104,6 @@ export function DataTable<TData, TValue>({
     [syncOverflowTitle]
   )
 
-
   const sortedPageSizes = React.useMemo(() => {
     const normalized = Array.from(new Set([...pageSizeOptions, initialPageSize])).filter(
       (value) => value > 0
@@ -116,7 +113,7 @@ export function DataTable<TData, TValue>({
     return normalized
   }, [initialPageSize, pageSizeOptions])
 
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -212,16 +209,72 @@ export function DataTable<TData, TValue>({
   const pageCount = Math.max(table.getPageCount(), 1)
   const currentPage = Math.min(table.getState().pagination.pageIndex + 1, pageCount)
 
+  const rowsBody = (
+    <Table className="table-fixed">
+      <TableBody>
+        {table.getRowModel().rows.length > 0 ? (
+          table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() && "selected"}
+              onClick={(event) => handleRowClick(event, row.original, row.index)}
+              className={cn(
+                "h-13.25 border-border",
+                isRowClickable && "cursor-pointer hover:bg-muted/50",
+                isRowActive?.(row.original, row.index) && "bg-slate-50"
+              )}
+            >
+              {row.getVisibleCells().map((cell) => {
+                const cellValue = cell.getValue()
+                const cellTitle = getDisplayText(cellValue)
+                const compactIdColumn = isCompactIdColumn(cell.column.id)
+
+                return (
+                  <TableCell
+                    key={cell.id}
+                    className={cn(
+                      "h-13.25 overflow-hidden px-4 text-foreground",
+                      "font-normal",
+                      cell.column.id === "select" && "w-13 px-0",
+                      compactIdColumn && "w-28"
+                    )}
+                  >
+                    <div
+                      className="truncate"
+                      data-fulltext={cellTitle ?? undefined}
+                      onMouseEnter={handleOverflowTooltip}
+                      onFocus={handleOverflowTooltip}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  </TableCell>
+                )
+              })}
+            </TableRow>
+          ))
+        ) : (
+          <TableRow className="h-13.25 border-border">
+            <TableCell
+              colSpan={table.getAllLeafColumns().length}
+              className="h-13.25 text-center font-normal text-muted-foreground"
+            >
+              No results found
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  )
+
   return (
     <div
-      ref={rootRef}
       className={cn(
         "flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card font-sans",
         className
       )}
     >
-      <Table className="table-fixed" containerClassName="flex-1 min-h-0 overflow-auto">
-        <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
+      <Table className="table-fixed">
+        <TableHeader className="bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
           {selectedRows > 0 ? (
             <TableRow className="h-13.25 border-border bg-secondary hover:bg-secondary">
               <TableHead
@@ -330,67 +383,15 @@ export function DataTable<TData, TValue>({
             ))
           )}
         </TableHeader>
-
-        <TableBody className={cn(enableRowScroll && "relative")}>
-          {table.getRowModel().rows.length > 0 ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                onClick={(event) => handleRowClick(event, row.original, row.index)}
-                className={cn(
-                  "h-13.25 border-border",
-                  isRowClickable && "cursor-pointer hover:bg-muted/50",
-                  isRowActive?.(row.original, row.index) && "bg-slate-50"
-                )}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  (() => {
-                    const cellValue = cell.getValue()
-                    const cellTitle = getDisplayText(cellValue)
-                    const compactIdColumn = isCompactIdColumn(cell.column.id)
-
-                    return (
-                      <TableCell
-                        key={cell.id}
-                        className={cn(
-                          "h-13.25 overflow-hidden px-4 text-foreground",
-                          "font-normal",
-                          cell.column.id === "select" && "w-13 px-0",
-                          compactIdColumn && "w-28"
-                        )}
-                      >
-                        <div
-                          className="truncate"
-                          data-fulltext={cellTitle ?? undefined}
-                          onMouseEnter={handleOverflowTooltip}
-                          onFocus={handleOverflowTooltip}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </TableCell>
-                    )
-                  })()
-                ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow className="h-13.25 border-border">
-              <TableCell
-                colSpan={table.getAllLeafColumns().length}
-                className="h-13.25 text-center font-normal text-muted-foreground"
-              >
-                No results found
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
       </Table>
 
-      <div
-        ref={footerRef}
-        className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3"
-      >
+      {enableRowScroll ? (
+        <ScrollArea className="flex-1 min-h-0">{rowsBody}</ScrollArea>
+      ) : (
+        <div className="flex-1 min-h-0">{rowsBody}</div>
+      )}
+
+      <div className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3">
         <p className="text-muted-foreground">
           {selectedRows} of {totalRows} row(s) selected
         </p>

@@ -1043,6 +1043,7 @@ export function AssetRegistryClient({
               data={visibleRows}
               pageSizeOptions={config.rowsPerPageOptions}
               initialPageSize={config.defaultPageSize}
+              defaultSorting={[{ id: 'assetTag', desc: true }]}
               selectionActions={selectionActions}
               selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
               isRowActive={(row) => Boolean(activeRecordId && row.assetTag === activeRecordId)}

@@ -39,9 +39,9 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     view: 'hardware',
     pillar: 'IT & Digital',
     title: 'Laptops',
-    showAllCategoryOption: false,
+    showAllCategoryOption: true,
     allCategoryLabel: 'All Hardware',
-    defaultCategoryLabel: 'Laptops',
+    defaultCategoryLabel: 'All Hardware',
     defaultPageSize: 16,
     rowsPerPageOptions: [3, 9, 16, 24],
     filterFieldOptions: [
