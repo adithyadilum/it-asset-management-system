@@ -78,22 +78,7 @@ export function SlidePanel({
     const hasProvidedContent = React.Children.count(content) > 0;
     const resolvedActions = actions ?? [];
     const [shouldRender, setShouldRender] = React.useState(isOpen);
-    const [isVisible, setIsVisible] = React.useState(false);
-    const [prevIsOpen, setPrevIsOpen] = React.useState(isOpen);
-
-    if (isOpen && !prevIsOpen) {
-        setPrevIsOpen(true);
-        setShouldRender(true);
-        if (disableTransition) {
-            setIsVisible(true);
-        }
-    } else if (!isOpen && prevIsOpen) {
-        setPrevIsOpen(false);
-        if (disableTransition) {
-            setIsVisible(false);
-            setShouldRender(false);
-        }
-    }
+    const [isVisible, setIsVisible] = React.useState(isOpen);
 
     const panelStyle = {
         "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
@@ -102,7 +87,10 @@ export function SlidePanel({
 
     React.useEffect(() => {
         if (isOpen) {
+            setShouldRender(true);
+
             if (disableTransition) {
+                setIsVisible(true);
                 return;
             }
 
@@ -110,23 +98,24 @@ export function SlidePanel({
                 setIsVisible(true);
             });
 
-            return () => window.cancelAnimationFrame(frameId);
+            return () => {
+                window.cancelAnimationFrame(frameId);
+            };
         }
 
         if (disableTransition) {
+            setIsVisible(false);
+            setShouldRender(false);
             return;
         }
 
-        const frameId = window.requestAnimationFrame(() => {
-            setIsVisible(false);
-        });
+        setIsVisible(false);
 
         const timeoutId = window.setTimeout(() => {
             setShouldRender(false);
         }, 300);
 
         return () => {
-            window.cancelAnimationFrame(frameId);
             window.clearTimeout(timeoutId);
         };
     }, [disableTransition, isOpen]);
@@ -137,7 +126,7 @@ export function SlidePanel({
                 "relative h-full shrink-0 overflow-hidden",
                 "transition-[width,margin] ease-out",
                 disableTransition ? "duration-0" : "duration-300",
-                isVisible ? "ml-(--slide-panel-gap) w-(--slide-panel-width)" : "ml-0 w-0",
+                isVisible ? "ml-[var(--slide-panel-gap)] w-[var(--slide-panel-width)]" : "ml-0 w-0",
                 !isVisible && "pointer-events-none"
             )}
             style={panelStyle}
@@ -150,7 +139,7 @@ export function SlidePanel({
                     aria-labelledby={titleId}
                     aria-describedby={description ? descriptionId : undefined}
                     className={cn(
-                        "absolute inset-y-0 right-0 w-(--slide-panel-width)",
+                        "absolute inset-y-0 right-0 w-[var(--slide-panel-width)]",
                         "overflow-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg",
                         "transition-transform ease-out",
                         disableTransition ? "duration-0" : "duration-300",

@@ -9,7 +9,7 @@ import { QrCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MaintenanceEvent } from '@/lib/data/asset-details-repo';
 
-export interface AssetAssignmentDetailsPanelProps {
+export interface AssetAssignmentPanelProps {
   isOpen: boolean;
   onClose: () => void;
   isLoading?: boolean;
@@ -34,7 +34,7 @@ export interface AssetAssignmentDetailsPanelProps {
   onAssign?: () => void;
 }
 
-export function AssetAssignmentDetailsPanel(props: AssetAssignmentDetailsPanelProps) {
+export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
   
   const content = useMemo(() => {
     if (props.isLoading) return <AssetLoadingSkeleton />;
