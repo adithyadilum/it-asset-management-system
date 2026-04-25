@@ -1,3 +1,6 @@
-export default function FinancialsPage() {
-  return <div className="p-6 text-sm text-slate-600">Financials page coming soon.</div>
+import { redirect } from "next/navigation";
+
+export default function FinancialsRootPage() {
+  // Automatically bounce users to the first ledger when they click the parent folder
+  redirect("/financials/depreciation");
 }
