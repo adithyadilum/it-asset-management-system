@@ -15,6 +15,7 @@ import {
   departments,
   locations,
   maintenanceRecords,
+  maintenanceTickets,
   models,
   sessions,
   systemAuditLogs,
@@ -890,10 +891,11 @@ async function seed() {
             modelId,
             locationId,
             serialNumber,
-            name: `${assetPlan.modelName} Unit ${index}`,
-            status: statusCycle[(index - 1) % statusCycle.length],
-            condition: conditionCycle[(index - 1) % conditionCycle.length],
-            instanceAttributes,
+          name: `${assetPlan.modelName} Unit ${index}`,
+          status: statusCycle[(index - 1) % statusCycle.length],
+          condition: conditionCycle[(index - 1) % conditionCycle.length],
+          instanceAttributes,
+          usefulLifeMonths: 60, // 5 years expected lifespan for financial depreciation
           })
           .where(eq(assets.id, existing[0].id));
 
@@ -916,6 +918,7 @@ async function seed() {
           status: statusCycle[(index - 1) % statusCycle.length],
           condition: conditionCycle[(index - 1) % conditionCycle.length],
           instanceAttributes,
+          usefulLifeMonths: 60,
         })
         .returning({ id: assets.id, assetTag: assets.assetTag });
 
@@ -948,10 +951,14 @@ async function seed() {
       .where(eq(assetPurchases.assetId, seededAsset.id))
       .limit(1);
 
+    const pastYears = [2021, 2022, 2023, 2024];
+    const purchaseYear = pastYears[index % pastYears.length];
+    const purchaseMonth = String((index % 12) + 1).padStart(2, '0');
+
     const purchaseValues = {
       assetId: seededAsset.id,
       vendorId,
-      purchaseDate: '2025-01-15',
+      purchaseDate: `${purchaseYear}-${purchaseMonth}-15`,
       basePrice: basePrice.toFixed(2),
       tax: tax.toFixed(2),
       shippingCost: shippingCost.toFixed(2),
@@ -1094,6 +1101,163 @@ async function seed() {
   }
 
   // ---------------------------------------------------------------------------
+// 13.1. MAINTENANCE TICKETS
+// ---------------------------------------------------------------------------
+console.log('Seeding Maintenance Tickets...');
+
+const maintenanceTicketSeeds = [
+  // ACTIVE - INTERNAL (Pending Review) - Asset will be set to Defective
+  {
+    assetTag: 'LAP-0001',
+    assetStatus: 'Defective' as const,
+    ticketType: 'INTERNAL' as const,
+    vendorName: null,
+    rmaNumber: null,
+    reportedIssue: 'Battery not charging - may be connector issue',
+    estimatedCost: '45.00',
+    estimatedReturnDate: null,
+    status: 'ACTIVE' as const,
+  },
+  // ACTIVE - VENDOR (Pending Review) - Asset will be set to In Repair
+  {
+    assetTag: 'MON-0001',
+    assetStatus: 'In Repair' as const,
+    ticketType: 'VENDOR' as const,
+    vendorName: 'Tech Source Lanka',
+    rmaNumber: 'RMA-2026-0001',
+    reportedIssue: 'Screen flickering on startup',
+    estimatedCost: '250.00',
+    estimatedReturnDate: '2026-05-02',
+    status: 'ACTIVE' as const,
+  },
+  // ACTIVE - VENDOR (Active Repairs) - Asset will be set to In Repair
+  {
+    assetTag: 'WKE-0001',
+    assetStatus: 'In Repair' as const,
+    ticketType: 'VENDOR' as const,
+    vendorName: 'Enterprise Devices Pvt Ltd',
+    rmaNumber: 'RMA-2026-0002',
+    reportedIssue: 'Keys not responding - possible liquid damage',
+    estimatedCost: '180.00',
+    estimatedReturnDate: '2026-05-05',
+    status: 'ACTIVE' as const,
+  },
+  // COMPLETED - VENDOR (Asset stays as is)
+  {
+    assetTag: 'DES-0001',
+    assetStatus: 'Available' as const,
+    ticketType: 'VENDOR' as const,
+    vendorName: 'Tech Source Lanka',
+    rmaNumber: 'RMA-2026-0003',
+    reportedIssue: 'Display artifacts and color issues',
+    estimatedCost: '320.00',
+    actualCost: '375.50',
+    estimatedReturnDate: '2026-04-28',
+    actualCompletionDate: new Date('2026-04-27T14:30:00Z'),
+    resolutionNotes: 'GPU driver corruption - reflashed and tested. Issue resolved.',
+    status: 'COMPLETED' as const,
+  },
+  // COMPLETED - INTERNAL (Asset stays as is)
+  {
+    assetTag: 'PHN-0001',
+    assetStatus: 'Available' as const,
+    ticketType: 'INTERNAL' as const,
+    vendorName: null,
+    rmaNumber: null,
+    reportedIssue: 'Battery draining quickly',
+    estimatedCost: '8.50',
+    actualCost: '8.50',
+    estimatedReturnDate: null,
+    actualCompletionDate: new Date('2026-04-20T10:15:00Z'),
+    resolutionNotes: 'Battery contacts cleaned. Power management reset. Normal operation restored.',
+    status: 'COMPLETED' as const,
+  },
+  // COMPLETED - VENDOR (Old record - Asset stays as is)
+  {
+    assetTag: 'LAP-0002',
+    assetStatus: 'Available' as const,
+    ticketType: 'VENDOR' as const,
+    vendorName: 'OfficeHub Suppliers',
+    rmaNumber: 'RMA-2026-0004',
+    reportedIssue: 'Hard drive failing - SMART errors',
+    estimatedCost: '450.00',
+    actualCost: '520.00',
+    estimatedReturnDate: '2026-04-18',
+    actualCompletionDate: new Date('2026-04-14T16:45:00Z'),
+    resolutionNotes: 'HDD replaced with 512GB SSD. Windows reinstalled. All data transferred.',
+    status: 'COMPLETED' as const,
+  },
+];
+
+for (const ticketSeed of maintenanceTicketSeeds) {
+  // Find the asset by assetTag
+  const assetRecord = await db
+    .select({ id: assets.id, status: assets.status })
+    .from(assets)
+    .where(eq(assets.assetTag, ticketSeed.assetTag))
+    .limit(1);
+
+  if (assetRecord.length === 0) {
+    console.warn(`⚠️  Asset ${ticketSeed.assetTag} not found, skipping ticket`);
+    continue;
+  }
+
+  const assetId = assetRecord[0].id;
+
+  // Update asset status if needed (for ACTIVE tickets, set to Defective or In Repair)
+  if (ticketSeed.status === 'ACTIVE') {
+    await db
+      .update(assets)
+      .set({ 
+        status: ticketSeed.assetStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(assets.id, assetId));
+    console.log(`  ✓ Updated ${ticketSeed.assetTag} status to ${ticketSeed.assetStatus}`);
+  }
+
+  const existing = await db
+    .select({ id: maintenanceTickets.id })
+    .from(maintenanceTickets)
+    .where(
+      and(
+        eq(maintenanceTickets.assetId, assetId),
+        eq(maintenanceTickets.ticketType, ticketSeed.ticketType),
+        eq(maintenanceTickets.reportedIssue, ticketSeed.reportedIssue)
+      )
+    )
+    .limit(1);
+
+  const ticketValues = {
+    assetId,
+    ticketType: ticketSeed.ticketType,
+    vendorName: ticketSeed.vendorName,
+    rmaNumber: ticketSeed.rmaNumber,
+    reportedIssue: ticketSeed.reportedIssue,
+    estimatedCost: ticketSeed.estimatedCost,
+    actualCost: ticketSeed.actualCost || null,
+    estimatedReturnDate: ticketSeed.estimatedReturnDate || null,
+    actualCompletionDate: ticketSeed.actualCompletionDate || null,
+    resolutionNotes: ticketSeed.resolutionNotes || null,
+    status: ticketSeed.status,
+    dispatchedById: itOperatorUserId,
+  };
+
+  if (existing.length > 0) {
+    await db
+      .update(maintenanceTickets)
+      .set(ticketValues)
+      .where(eq(maintenanceTickets.id, existing[0].id));
+    console.log(`  ✓ Updated ticket for ${ticketSeed.assetTag}`);
+    continue;
+  }
+
+  await db.insert(maintenanceTickets).values(ticketValues);
+  console.log(`  ✓ Created ticket for ${ticketSeed.assetTag}`);
+}
+
+console.log('✅ Maintenance Tickets seeded successfully');
+  // ---------------------------------------------------------------------------
   // 14. ASSET DISPOSALS
   // ---------------------------------------------------------------------------
   console.log('Seeding Asset Disposals...');
@@ -1118,6 +1282,7 @@ async function seed() {
       dataWiped: true,
       tagsRemoved: true,
       actualSalvageValue: '75.00',
+      bookValueAtDisposal: '300.00', // Locked-in depreciated value at time of disposal
       resolvedAt: new Date(),
       notes: 'Seed approved disposal record.',
     };

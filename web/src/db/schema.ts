@@ -58,6 +58,19 @@ export const maintenanceStatusEnum = pgEnum('maintenance_status', [
   'Resolved',
   'Cancelled',
 ]);
+
+export const maintenanceTicketStatusEnum = pgEnum('maintenance_ticket_status', [
+  'ACTIVE',
+  'COMPLETED',
+  'CANCELLED',
+]);
+
+export const maintenanceTicketTypeEnum = pgEnum('maintenance_ticket_type', [
+  'VENDOR',
+  'INTERNAL',
+]);
+
+
 export const disposalStatusEnum = pgEnum('disposal_status', [
   'Pending Approval',
   'Approved',
@@ -284,6 +297,35 @@ export const maintenanceRecords = pgTable('maintenance_records', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(), 
 });
 
+export const maintenanceTickets = pgTable('maintenance_tickets', {
+  id: serial('id').primaryKey(),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id, { onDelete: 'cascade' }),
+  
+  ticketType: maintenanceTicketTypeEnum('ticket_type').notNull(), // VENDOR or INTERNAL
+  vendorName: varchar('vendor_name', { length: 255 }),
+  rmaNumber: varchar('rma_number', { length: 100 }),
+  
+  reportedIssue: text('reported_issue').notNull(),
+  resolutionNotes: text('resolution_notes'),
+  
+  estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
+  actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
+  
+  estimatedReturnDate: date('estimated_return_date'),
+  actualCompletionDate: timestamp('actual_completion_date'),
+  
+  status: maintenanceTicketStatusEnum('status').default('ACTIVE').notNull(),
+  
+  dispatchedById: uuid('dispatched_by_id')
+    .notNull()
+    .references(() => users.id),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const assetDisposals = pgTable('asset_disposals', {
   id: serial('id').primaryKey(),
   assetId: uuid('asset_id')
@@ -303,6 +345,10 @@ export const assetDisposals = pgTable('asset_disposals', {
   actualSalvageValue: decimal('actual_salvage_value', {
     precision: 12,
     scale: 2,
+  }),
+  bookValueAtDisposal: decimal('book_value_at_disposal', { 
+    precision: 12, 
+    scale: 2 
   }),
 
   requestedAt: timestamp('requested_at').defaultNow().notNull(),
