@@ -11,6 +11,7 @@ export const MASTER_DATA_RECORD_ENTITIES = [
   'brands',
   'device-models',
   'vendors',
+  'owners',
   'departments',
 ] as const satisfies ReadonlyArray<MasterDataRecordEntity>;
 

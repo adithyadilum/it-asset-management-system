@@ -61,7 +61,8 @@ export const assetRegistrationSchema = z.object({
   // Location (optional — applies to furniture, electronics, etc.)
   locationId: z.preprocess(
     (value) => {
-      if (value === '' || value === null || value === undefined) return undefined;
+      if (value === '' || value === null || value === undefined)
+        return undefined;
       return value;
     },
     z.coerce
@@ -74,11 +75,15 @@ export const assetRegistrationSchema = z.object({
   // Assignment (optional)
   ownerId: z.preprocess(
     (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
+      if (value === '' || value === null || value === undefined)
+        return undefined;
+      return value;
     },
-    z.string().uuid({ message: 'Owner is invalid.' }).optional()
+    z.coerce
+      .number({ message: 'Owner is invalid.' })
+      .int()
+      .positive()
+      .optional()
   ),
 
   // Condition (optional — applies to furniture, electronics)
