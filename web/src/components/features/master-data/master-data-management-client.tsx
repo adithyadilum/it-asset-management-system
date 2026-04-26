@@ -7,6 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Plus, Search } from "lucide-react";
 
 import { deleteMasterDataRecords } from "@/actions/master-data";
+import { DestructiveConfirmationDialog } from "@/components/shared/destructive-confirmation-dialog";
 import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
@@ -28,6 +29,7 @@ export type MasterDataTabId =
     | "brands"
     | "device-models"
     | "vendors"
+    | "owners"
     | "departments";
 
 type PillarFilter =
@@ -57,6 +59,7 @@ export type CategoryCustomSchema = {
 
 export type MasterDataCategoryRow = {
     id: number;
+    code: string | null;
     name: string;
     prefix: string;
     pillar: string;
@@ -67,6 +70,7 @@ export type MasterDataCategoryRow = {
 
 export type MasterDataLocationRow = {
     id: number;
+    code: string | null;
     name: string;
     type: string | null;
     parentId?: number | null;
@@ -76,6 +80,7 @@ export type MasterDataLocationRow = {
 
 export type MasterDataBrandRow = {
     id: number;
+    code: string | null;
     name: string;
     linkedAssets: number;
     isActive: boolean;
@@ -83,9 +88,11 @@ export type MasterDataBrandRow = {
 
 export type MasterDataDeviceModelRow = {
     id: number;
+    code: string | null;
     name: string;
     brandId: number;
     categoryId: number;
+    imageUrl: string | null;
     brandName: string;
     categoryName: string;
     pillar: string;
@@ -96,6 +103,7 @@ export type MasterDataDeviceModelRow = {
 
 export type MasterDataVendorRow = {
     id: number;
+    code: string | null;
     companyName: string;
     email: string | null;
     phone: string | null;
@@ -107,9 +115,18 @@ export type MasterDataVendorRow = {
 
 export type MasterDataDepartmentRow = {
     id: number;
+    code: string | null;
     name: string;
     shortCode: string;
     costCenterId: string;
+    linkedAssets: number;
+    isActive: boolean;
+};
+
+export type MasterDataOwnerRow = {
+    id: number;
+    code: string | null;
+    companyName: string;
     linkedAssets: number;
     isActive: boolean;
 };
@@ -120,6 +137,7 @@ interface MasterDataManagementClientProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
     initialTab?: MasterDataTabId;
 }
@@ -130,6 +148,7 @@ const TAB_LABELS: Array<{ id: MasterDataTabId; label: string }> = [
     { id: "brands", label: "Brands" },
     { id: "device-models", label: "Models" },
     { id: "vendors", label: "Vendors" },
+    { id: "owners", label: "Owners" },
     { id: "departments", label: "Departments" },
 ];
 
@@ -143,6 +162,7 @@ const EMPTY_SEARCH_STATE: Record<MasterDataTabId, string> = {
     brands: "",
     "device-models": "",
     vendors: "",
+    owners: "",
     departments: "",
 };
 
@@ -159,6 +179,41 @@ const PILLAR_OPTIONS: Array<{ label: string; value: PillarFilter }> = [
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },
 ];
+
+const MASTER_DATA_CODE_PREFIX: Record<MasterDataTabId, string> = {
+    locations: "LOC",
+    "asset-categories": "CAT",
+    brands: "BRD",
+    "device-models": "MDL",
+    vendors: "VND",
+    owners: "OWN",
+    departments: "DEP",
+};
+
+const MASTER_DATA_EMPTY_STATE_META: Record<
+    MasterDataTabId,
+    { singular: string; plural: string }
+> = {
+    "asset-categories": { singular: "category", plural: "categories" },
+    locations: { singular: "location", plural: "locations" },
+    brands: { singular: "brand", plural: "brands" },
+    "device-models": { singular: "model", plural: "models" },
+    vendors: { singular: "vendor", plural: "vendors" },
+    owners: { singular: "owner", plural: "owners" },
+    departments: { singular: "department", plural: "departments" },
+};
+
+function resolveMasterDataCode(
+    entity: MasterDataTabId,
+    code: string | null,
+    numericId: number
+) {
+    if (code && code.trim().length > 0) {
+        return code;
+    }
+
+    return `${MASTER_DATA_CODE_PREFIX[entity]}-${String(numericId).padStart(4, "0")}`;
+}
 
 function containsSearch(fields: Array<string | number | null | undefined>, searchTerm: string) {
     if (!searchTerm.trim()) {
@@ -235,6 +290,7 @@ export function MasterDataManagementClient({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
     initialTab,
 }: MasterDataManagementClientProps) {
@@ -247,41 +303,48 @@ export function MasterDataManagementClient({
         EMPTY_SEARCH_STATE
     );
     const [pillarType, setPillarType] = useState<PillarFilter>("all");
+    const [selectionResetSignal, setSelectionResetSignal] = useState(0);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [pendingDeleteEntity, setPendingDeleteEntity] = useState<MasterDataTabId | null>(null);
+    const [pendingDeleteRows, setPendingDeleteRows] = useState<Array<{ id: number; linkedAssets: number }>>([]);
 
-    const handleBulkDelete = useCallback(
+    const handleDeleteClick = useCallback(
         (entity: MasterDataTabId, selectedRows: Array<{ id: number; linkedAssets: number }>) => {
             if (selectedRows.length === 0) {
                 return;
             }
 
-            const blockedCount = selectedRows.filter((row) => row.linkedAssets > 0).length;
+            setPendingDeleteEntity(entity);
+            setPendingDeleteRows(selectedRows);
+            setDeleteDialogOpen(true);
+        },
+        []
+    );
 
-            if (blockedCount > 0) {
-                tiqriToast.warning(
-                    blockedCount === 1
-                        ? "Delete blocked: 1 selected record still has linked assets."
-                        : `Delete blocked: ${blockedCount} selected records still have linked assets.`
-                );
+    const handleConfirmDelete = useCallback(async () => {
+        if (!pendingDeleteEntity || pendingDeleteRows.length === 0) {
+            return;
+        }
+
+        startTransition(async () => {
+            const result = await deleteMasterDataRecords(
+                pendingDeleteEntity,
+                pendingDeleteRows.map((row) => row.id)
+            );
+
+            if (result.success) {
+                tiqriToast.success(result.message);
+                setDeleteDialogOpen(false);
+                setPendingDeleteEntity(null);
+                setPendingDeleteRows([]);
+                setSelectionResetSignal((prev) => prev + 1);
+                router.refresh();
                 return;
             }
 
-            startTransition(async () => {
-                const result = await deleteMasterDataRecords(
-                    entity,
-                    selectedRows.map((row) => row.id)
-                );
-
-                if (result.success) {
-                    tiqriToast.success(result.message);
-                    router.refresh();
-                    return;
-                }
-
-                tiqriToast.warning(result.message);
-            });
-        },
-        [router, startTransition]
-    );
+            tiqriToast.warning(result.message);
+        });
+    }, [pendingDeleteEntity, pendingDeleteRows, router, startTransition]);
 
     const buildSelectionActions = useCallback(
         (entity: MasterDataTabId) => [
@@ -290,18 +353,138 @@ export function MasterDataManagementClient({
                 label: "Delete Selected",
                 tone: "destructive" as const,
                 onClick: (selectedRows: Array<{ id: number; linkedAssets: number }>) =>
-                    handleBulkDelete(entity, selectedRows),
+                    handleDeleteClick(entity, selectedRows),
             },
         ],
-        [handleBulkDelete]
+        [handleDeleteClick]
     );
+
+    const getDeleteItemsData = useCallback(() => {
+        if (!pendingDeleteEntity || pendingDeleteRows.length === 0) return [];
+
+        const rowIds = new Set(pendingDeleteRows.map((r) => r.id));
+
+        type DataItem = MasterDataCategoryRow | MasterDataLocationRow | MasterDataBrandRow | MasterDataDeviceModelRow | MasterDataVendorRow | MasterDataOwnerRow | MasterDataDepartmentRow;
+
+        const getItemName = (entity: MasterDataTabId, item: DataItem): string => {
+            if (entity === "vendors" || entity === "owners") {
+                return (item as MasterDataVendorRow | MasterDataOwnerRow).companyName || "N/A";
+            }
+            return (item as Exclude<DataItem, MasterDataVendorRow | MasterDataOwnerRow>).name || "N/A";
+        };
+
+        let data: DataItem[] = [];
+
+        switch (pendingDeleteEntity) {
+            case "asset-categories":
+                data = categories.filter((c) => rowIds.has(c.id));
+                break;
+            case "locations":
+                data = locations.filter((l) => rowIds.has(l.id));
+                break;
+            case "brands":
+                data = brands.filter((b) => rowIds.has(b.id));
+                break;
+            case "device-models":
+                data = deviceModels.filter((m) => rowIds.has(m.id));
+                break;
+            case "vendors":
+                data = vendors.filter((v) => rowIds.has(v.id));
+                break;
+            case "owners":
+                data = owners.filter((o) => rowIds.has(o.id));
+                break;
+            case "departments":
+                data = departments.filter((d) => rowIds.has(d.id));
+                break;
+        }
+
+        return data.map((item) => ({
+            id: resolveMasterDataCode(pendingDeleteEntity, item.code, item.id),
+            name: getItemName(pendingDeleteEntity, item),
+        }));
+    }, [pendingDeleteEntity, pendingDeleteRows, categories, locations, brands, deviceModels, vendors, owners, departments]);
+
+    const blockedDeleteCodeIds = useMemo(() => {
+        if (!pendingDeleteEntity || pendingDeleteRows.length === 0) {
+            return [];
+        }
+
+        const blockedRowIds = new Set(
+            pendingDeleteRows
+                .filter((row) => row.linkedAssets > 0)
+                .map((row) => row.id)
+        );
+
+        if (blockedRowIds.size === 0) {
+            return [];
+        }
+
+        const resolveBlockedCodes = <T extends { id: number; code: string | null }>(rows: T[]) =>
+            rows
+                .filter((row) => blockedRowIds.has(row.id))
+                .map((row) => resolveMasterDataCode(pendingDeleteEntity, row.code, row.id));
+
+        switch (pendingDeleteEntity) {
+            case "asset-categories":
+                return resolveBlockedCodes(categories);
+            case "locations":
+                return resolveBlockedCodes(locations);
+            case "brands":
+                return resolveBlockedCodes(brands);
+            case "device-models":
+                return resolveBlockedCodes(deviceModels);
+            case "vendors":
+                return resolveBlockedCodes(vendors);
+            case "owners":
+                return resolveBlockedCodes(owners);
+            case "departments":
+                return resolveBlockedCodes(departments);
+            default:
+                return [];
+        }
+    }, [pendingDeleteEntity, pendingDeleteRows, categories, locations, brands, deviceModels, vendors, owners, departments]);
+
+    const blockedDeleteIds = pendingDeleteRows
+        .filter((row) => row.linkedAssets > 0)
+        .map((row) => String(row.id));
+
+    const canDelete = blockedDeleteIds.length === 0;
+
+    const getDeleteTitle = () => {
+        if (!pendingDeleteEntity) return "Delete";
+        const entityLabel = {
+            "asset-categories": "Category",
+            locations: "Location",
+            brands: "Brand",
+            "device-models": "Device Model",
+            vendors: "Vendor",
+            owners: "Owner",
+            departments: "Department",
+        }[pendingDeleteEntity];
+        return `Delete ${entityLabel}${pendingDeleteRows.length > 1 ? "s" : ""}`;
+    };
+
+    const getDeleteDescription = () => {
+        const count = pendingDeleteRows.length;
+        if (!canDelete) {
+            const blockedCount = blockedDeleteIds.length;
+            return `Cannot delete ${blockedCount} record${blockedCount > 1 ? "s" : ""} because ${blockedCount > 1 ? "they have" : "it has"} linked assets. Please unlink these assets first.`;
+        }
+        return `Are you sure you want to delete ${count} record${count > 1 ? "s" : ""}? This action cannot be undone.`;
+    };
 
     const categoryColumns = useMemo<ColumnDef<MasterDataCategoryRow>[]>(
         () => [
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `CAT-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode(
+                        "asset-categories",
+                        row.original.code,
+                        row.original.id
+                    ),
             },
             {
                 accessorKey: "name",
@@ -341,7 +524,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `LOC-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("locations", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Location Name" },
             {
@@ -368,7 +552,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `BRD-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("brands", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Brand Name" },
             {
@@ -397,7 +582,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `MDL-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("device-models", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Model Name" },
             { accessorKey: "pillar", header: "Type" },
@@ -422,7 +608,8 @@ export function MasterDataManagementClient({
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `VND-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("vendors", row.original.code, row.original.id),
             },
             { accessorKey: "companyName", header: "Vendor" },
             {
@@ -454,12 +641,43 @@ export function MasterDataManagementClient({
         []
     );
 
+    const ownerColumns = useMemo<ColumnDef<MasterDataOwnerRow>[]>(
+        () => [
+            {
+                accessorKey: "id",
+                header: "ID",
+                cell: ({ row }) =>
+                    resolveMasterDataCode("owners", row.original.code, row.original.id),
+            },
+            { accessorKey: "companyName", header: "Owner" },
+            {
+                accessorKey: "linkedAssets",
+                header: "No. of Assets",
+                cell: ({ row }) => (
+                    <StatusBadge variant="linkedAssets" count={row.original.linkedAssets} />
+                ),
+            },
+            {
+                accessorKey: "isActive",
+                header: "Status",
+                cell: ({ row }) => (
+                    <StatusBadge
+                        value={row.original.isActive ? "active" : "inactive"}
+                        showIcon={false}
+                    />
+                ),
+            },
+        ],
+        []
+    );
+
     const departmentColumns = useMemo<ColumnDef<MasterDataDepartmentRow>[]>(
         () => [
             {
                 accessorKey: "id",
                 header: "ID",
-                cell: ({ row }) => `DEP-${String(row.original.id).padStart(4, "0")}`,
+                cell: ({ row }) =>
+                    resolveMasterDataCode("departments", row.original.code, row.original.id),
             },
             { accessorKey: "name", header: "Department Name" },
             { accessorKey: "shortCode", header: "Code" },
@@ -487,7 +705,7 @@ export function MasterDataManagementClient({
             }
 
             return containsSearch(
-                [item.id, item.name, item.prefix, item.pillar, item.linkedAssets],
+                [item.id, item.code, item.name, item.prefix, item.pillar, item.linkedAssets],
                 searchByTab["asset-categories"]
             );
         });
@@ -496,7 +714,7 @@ export function MasterDataManagementClient({
     const filteredLocations = useMemo(
         () =>
             locations.filter((item) =>
-                containsSearch([item.id, item.name, item.type], searchByTab.locations)
+                containsSearch([item.id, item.code, item.name, item.type], searchByTab.locations)
             ),
         [locations, searchByTab.locations]
     );
@@ -504,7 +722,7 @@ export function MasterDataManagementClient({
     const filteredBrands = useMemo(
         () =>
             brands.filter((item) =>
-                containsSearch([item.id, item.name, item.linkedAssets], searchByTab.brands)
+                containsSearch([item.id, item.code, item.name, item.linkedAssets], searchByTab.brands)
             ),
         [brands, searchByTab.brands]
     );
@@ -514,7 +732,7 @@ export function MasterDataManagementClient({
             deviceModels.filter((item) =>
                 matchesPillarFilter([item.pillar], pillarType) &&
                 containsSearch(
-                    [item.id, item.name, item.categoryName, item.brandName, item.pillar],
+                    [item.id, item.code, item.name, item.categoryName, item.brandName, item.pillar],
                     searchByTab["device-models"]
                 )
             ),
@@ -528,7 +746,7 @@ export function MasterDataManagementClient({
                 return (
                     matchesPillarFilter(pillars, pillarType) &&
                     containsSearch(
-                        [item.id, item.companyName, item.email, item.phone, item.website, pillars.join(" ")],
+                        [item.id, item.code, item.companyName, item.email, item.phone, item.website, pillars.join(" ")],
                         searchByTab.vendors
                     )
                 );
@@ -536,11 +754,22 @@ export function MasterDataManagementClient({
         [vendors, pillarType, searchByTab.vendors]
     );
 
+    const filteredOwners = useMemo(
+        () =>
+            owners.filter((item) =>
+                containsSearch(
+                    [item.id, item.code, item.companyName, item.linkedAssets],
+                    searchByTab.owners
+                )
+            ),
+        [owners, searchByTab.owners]
+    );
+
     const filteredDepartments = useMemo(
         () =>
             departments.filter((item) =>
                 containsSearch(
-                    [item.id, item.name, item.shortCode, item.costCenterId],
+                    [item.id, item.code, item.name, item.shortCode, item.costCenterId],
                     searchByTab.departments
                 )
             ),
@@ -549,6 +778,7 @@ export function MasterDataManagementClient({
 
     const activeSearchValue = searchByTab[activeTab];
     const isPanelOpen = Boolean(searchParams.get("panel"));
+    const activeRecordId = searchParams.get("id") ? Number(searchParams.get("id")) : null;
     const showTypeFilter = TYPE_FILTER_TAB_IDS.has(activeTab);
 
     const buildMasterDataUrl = useCallback(
@@ -619,6 +849,35 @@ export function MasterDataManagementClient({
                 mode: undefined,
             }),
         [activeTab, buildMasterDataUrl, isPanelOpen]
+    );
+
+    const buildCreatePanelHref = useCallback(
+        (entity: MasterDataTabId) =>
+            buildMasterDataUrl({
+                tab: entity,
+                panel: "create",
+                animate: isPanelOpen ? "0" : "1",
+                entity,
+                id: undefined,
+                mode: undefined,
+            }),
+        [buildMasterDataUrl, isPanelOpen]
+    );
+
+    const getEmptyState = useCallback(
+        (entity: MasterDataTabId) => {
+            const meta = MASTER_DATA_EMPTY_STATE_META[entity];
+
+            return {
+                title: `No ${meta.plural} found`,
+                description: `Create your first ${meta.singular} to get started.`,
+                action: {
+                    label: `Add ${meta.singular}`,
+                    href: buildCreatePanelHref(entity),
+                },
+            };
+        },
+        [buildCreatePanelHref]
     );
 
     return (
@@ -694,7 +953,9 @@ export function MasterDataManagementClient({
                                                         ? "Search models..."
                                                         : activeTab === "vendors"
                                                             ? "Search vendors..."
-                                                            : "Search departments..."
+                                                            : activeTab === "owners"
+                                                                ? "Search owners..."
+                                                                : "Search departments..."
                                     }
                                 />
                             </div>
@@ -708,73 +969,139 @@ export function MasterDataManagementClient({
                         </Button>
                     </div>
 
-                    <TabsContent value="asset-categories" className="min-h-0">
+                    <TabsContent value="asset-categories" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={categoryColumns}
                             data={filteredCategories}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("asset-categories")}
                             onRowClick={(row) => openRecordPanel("asset-categories", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("asset-categories")}
                         />
                     </TabsContent>
 
-                    <TabsContent value="locations" className="min-h-0">
+                    <TabsContent value="locations" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={locationColumns}
                             data={filteredLocations}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("locations")}
                             onRowClick={(row) => openRecordPanel("locations", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("locations")}
                         />
                     </TabsContent>
 
-                    <TabsContent value="brands" className="min-h-0">
+                    <TabsContent value="brands" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={brandColumns}
                             data={filteredBrands}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("brands")}
                             onRowClick={(row) => openRecordPanel("brands", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("brands")}
                         />
                     </TabsContent>
 
-                    <TabsContent value="device-models" className="min-h-0">
+                    <TabsContent value="device-models" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={deviceModelColumns}
                             data={filteredModels}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("device-models")}
                             onRowClick={(row) => openRecordPanel("device-models", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("device-models")}
                         />
                     </TabsContent>
 
-                    <TabsContent value="vendors" className="min-h-0">
+                    <TabsContent value="vendors" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={vendorColumns}
                             data={filteredVendors}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("vendors")}
                             onRowClick={(row) => openRecordPanel("vendors", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("vendors")}
                         />
                     </TabsContent>
 
-                    <TabsContent value="departments" className="min-h-0">
+                    <TabsContent value="owners" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                        <DataTable
+                            columns={ownerColumns}
+                            data={filteredOwners}
+                            initialPageSize={10}
+                            pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
+                            selectionActions={buildSelectionActions("owners")}
+                            onRowClick={(row) => openRecordPanel("owners", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("owners")}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="departments" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
                         <DataTable
                             columns={departmentColumns}
                             data={filteredDepartments}
                             initialPageSize={10}
                             pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("departments")}
                             onRowClick={(row) => openRecordPanel("departments", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("departments")}
                         />
                     </TabsContent>
                 </div>
             </Tabs>
+
+            <DestructiveConfirmationDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                title={getDeleteTitle()}
+                description={getDeleteDescription()}
+                itemsToDelete={getDeleteItemsData()}
+                columns={[
+                    { key: "id", label: "Code", width: "w-1/3" },
+                    { key: "name", label: "Name", width: "w-2/3" },
+                ]}
+                canDelete={canDelete}
+                errorItemIds={blockedDeleteCodeIds}
+                errorMessage={
+                    !canDelete
+                        ? `${blockedDeleteIds.length} record${blockedDeleteIds.length > 1 ? "s have" : " has"} linked assets and cannot be deleted.`
+                        : undefined
+                }
+                onConfirm={handleConfirmDelete}
+                onCancel={() => {
+                    setDeleteDialogOpen(false);
+                    setPendingDeleteEntity(null);
+                    setPendingDeleteRows([]);
+                }}
+                deleteButtonLabel="Delete"
+                cancelButtonLabel="Cancel"
+            />
         </main>
     );
 }

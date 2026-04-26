@@ -2,13 +2,17 @@
 
 import {
     useCallback,
+    useEffect,
     useMemo,
     useRef,
     useState,
     useTransition,
     type FormEvent,
+    type DragEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { ImagePlus, Pencil, Upload } from "lucide-react";
 
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
@@ -17,6 +21,7 @@ import {
 } from "@/lib/master-data/shared";
 import { LOCATION_TYPE_OPTIONS } from "@/types/master-data";
 import type { MasterDataRecordEntity } from "@/types/master-data";
+import { DestructiveConfirmationDialog } from "@/components/shared/destructive-confirmation-dialog";
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Input } from "@/components/ui/input";
@@ -29,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { tiqriToast } from "@/components/shared/sonner";
+import { isModelImageFile, MODEL_IMAGE_ACCEPT } from "@/lib/file-types";
 
 import type {
     MasterDataBrandRow,
@@ -36,6 +42,7 @@ import type {
     MasterDataDepartmentRow,
     MasterDataDeviceModelRow,
     MasterDataLocationRow,
+    MasterDataOwnerRow,
     MasterDataVendorRow,
 } from "./master-data-management-client";
 
@@ -55,6 +62,7 @@ interface MasterDataRecordPanelProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
 }
 
@@ -64,6 +72,7 @@ const ENTITY_LABELS: Record<MasterDataRecordEntity, string> = {
     brands: "Brand",
     "device-models": "Model",
     vendors: "Vendor",
+    owners: "Owner",
     departments: "Department",
 };
 
@@ -73,6 +82,7 @@ const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
     brands: "BRD",
     "device-models": "MDL",
     vendors: "VND",
+    owners: "OWN",
     departments: "DEP",
 };
 
@@ -132,8 +142,16 @@ function normalizeModelTechnicalDetails(
     return next;
 }
 
-function formatPreviewId(prefix: string, id: number) {
-    return `${prefix}-${String(id).padStart(4, "0")}`;
+function resolveRecordCode(
+    entity: MasterDataRecordEntity,
+    code: string | null | undefined,
+    numericId: number
+) {
+    if (code && code.trim().length > 0) {
+        return code;
+    }
+
+    return `${ENTITY_ID_PREFIX[entity]}-${String(numericId).padStart(4, "0")}`;
 }
 
 function resolveRecordByEntity(
@@ -145,6 +163,7 @@ function resolveRecordByEntity(
         brands: MasterDataBrandRow[];
         deviceModels: MasterDataDeviceModelRow[];
         vendors: MasterDataVendorRow[];
+        owners: MasterDataOwnerRow[];
         departments: MasterDataDepartmentRow[];
     }
 ) {
@@ -159,6 +178,8 @@ function resolveRecordByEntity(
             return sources.deviceModels.find((row) => row.id === numericId) ?? null;
         case "vendors":
             return sources.vendors.find((row) => row.id === numericId) ?? null;
+        case "owners":
+            return sources.owners.find((row) => row.id === numericId) ?? null;
         case "departments":
             return sources.departments.find((row) => row.id === numericId) ?? null;
     }
@@ -231,12 +252,19 @@ export function MasterDataRecordPanel({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
 }: MasterDataRecordPanelProps) {
     const router = useRouter();
     const formRef = useRef<HTMLFormElement>(null);
     const [isPending, startTransition] = useTransition();
     const [state, setState] = useState(INITIAL_UPDATE_MASTER_DATA_STATE);
+    const [modelImageFile, setModelImageFile] = useState<File | null>(null);
+    const [isModelImageDragOver, setIsModelImageDragOver] = useState(false);
+    const [showModelImageUploader, setShowModelImageUploader] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [isDeleteInProgress, setIsDeleteInProgress] = useState(false);
+    const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
     const numericRecordId = Number(recordId);
@@ -252,6 +280,7 @@ export function MasterDataRecordPanel({
             brands,
             deviceModels,
             vendors,
+            owners,
             departments,
         });
     }, [
@@ -262,6 +291,7 @@ export function MasterDataRecordPanel({
         locations,
         normalizedEntity,
         numericRecordId,
+        owners,
         vendors,
     ]);
     const linkedAssetsCount = selectedRecord?.linkedAssets ?? 0;
@@ -301,6 +331,7 @@ export function MasterDataRecordPanel({
                 nextDraft.name = model.name;
                 nextDraft.brandId = String(model.brandId);
                 nextDraft.categoryId = String(model.categoryId);
+                nextDraft.imageUrl = model.imageUrl ?? "";
                 nextDraft.pillar = model.pillar;
                 nextDraft.isActive = model.isActive;
                 break;
@@ -322,6 +353,12 @@ export function MasterDataRecordPanel({
                 nextDraft.isActive = department.isActive;
                 break;
             }
+            case "owners": {
+                const owner = selectedRecord as MasterDataOwnerRow;
+                nextDraft.companyName = owner.companyName;
+                nextDraft.isActive = owner.isActive;
+                break;
+            }
         }
 
         return nextDraft;
@@ -341,6 +378,31 @@ export function MasterDataRecordPanel({
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>(
         initialModelSpecValues
     );
+
+    useEffect(() => {
+        let cancelled = false;
+
+        queueMicrotask(() => {
+            if (cancelled) {
+                return;
+            }
+
+            setState(INITIAL_UPDATE_MASTER_DATA_STATE);
+            setMode(normalizePanelMode(initialMode));
+            setDraft(initialDraft);
+            setModelSpecValues(initialModelSpecValues);
+            setModelImageFile(null);
+            setIsModelImageDragOver(false);
+            setShowModelImageUploader(false);
+            if (modelImageInputRef.current) {
+                modelImageInputRef.current.value = "";
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [initialDraft, initialModelSpecValues, initialMode]);
 
     const fieldError = useCallback(
         (fieldName: string) => state.errors?.[fieldName]?.[0],
@@ -396,6 +458,24 @@ export function MasterDataRecordPanel({
         [selectedModelCategory]
     );
 
+    const selectedModelImageUrl = asString(draft.imageUrl);
+
+    const modelImagePreviewUrl = useMemo(
+        () => (modelImageFile ? URL.createObjectURL(modelImageFile) : null),
+        [modelImageFile]
+    );
+
+    useEffect(() => {
+        return () => {
+            if (modelImagePreviewUrl) {
+                URL.revokeObjectURL(modelImagePreviewUrl);
+            }
+        };
+    }, [modelImagePreviewUrl]);
+
+    const displayModelImageUrl = modelImagePreviewUrl ?? selectedModelImageUrl;
+    const hasSelectedModelImage = displayModelImageUrl.trim().length > 0;
+
     const technicalDetailsPayload = useMemo(() => {
         const payload: Record<string, string> = {};
 
@@ -450,6 +530,12 @@ export function MasterDataRecordPanel({
                 setState(INITIAL_UPDATE_MASTER_DATA_STATE);
                 setDraft(initialDraft);
                 setModelSpecValues(initialModelSpecValues);
+                setModelImageFile(null);
+                setIsModelImageDragOver(false);
+                setShowModelImageUploader(false);
+                if (modelImageInputRef.current) {
+                    modelImageInputRef.current.value = "";
+                }
                 router.push(onCloseUrl, { scroll: false });
             }
         },
@@ -460,6 +546,14 @@ export function MasterDataRecordPanel({
         (event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
+
+            if (normalizedEntity === "device-models") {
+                if (modelImageFile) {
+                    formData.set("modelImage", modelImageFile);
+                } else {
+                    formData.delete("modelImage");
+                }
+            }
 
             startTransition(async () => {
                 const result = await updateMasterDataRecord(
@@ -479,28 +573,64 @@ export function MasterDataRecordPanel({
                 tiqriToast.error(result.message);
             });
         },
-        [router]
+        [modelImageFile, normalizedEntity, router]
     );
 
-    const handleDelete = useCallback(() => {
+    const handleModelImageSelection = useCallback((files: FileList | null) => {
+        const selectedFile = files?.[0] ?? null;
+
+        if (selectedFile && !isModelImageFile(selectedFile)) {
+            tiqriToast.error("Upload a valid image file (PNG, JPG, JPEG, WEBP, GIF, BMP, SVG, or AVIF).");
+            if (modelImageInputRef.current) {
+                modelImageInputRef.current.value = "";
+            }
+            setModelImageFile(null);
+            setIsModelImageDragOver(false);
+            return;
+        }
+
+        setModelImageFile(selectedFile);
+        if (selectedFile) {
+            setShowModelImageUploader(true);
+        }
+        setIsModelImageDragOver(false);
+    }, [modelImageInputRef]);
+
+    const handleModelImageDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setIsModelImageDragOver(false);
+        handleModelImageSelection(event.dataTransfer.files);
+    }, [handleModelImageSelection]);
+
+    const clearSelectedModelImage = useCallback(() => {
+        setModelImageFile(null);
+        setShowModelImageUploader(false);
+        if (modelImageInputRef.current) {
+            modelImageInputRef.current.value = "";
+        }
+    }, []);
+
+    const handleDeleteClick = useCallback(() => {
         if (!normalizedEntity || !selectedRecord) {
             return;
         }
 
-        if (linkedAssetsCount > 0) {
-            tiqriToast.warning(
-                linkedAssetsCount === 1
-                    ? "Delete blocked: this record still has 1 linked asset."
-                    : `Delete blocked: this record still has ${linkedAssetsCount} linked assets.`
-            );
+        setDeleteDialogOpen(true);
+    }, [normalizedEntity, selectedRecord]);
+
+    const handleConfirmDelete = useCallback(async () => {
+        if (!normalizedEntity || !selectedRecord) {
             return;
         }
 
-        startTransition(async () => {
+        setIsDeleteInProgress(true);
+
+        try {
             const result = await deleteMasterDataRecords(normalizedEntity, [selectedRecord.id]);
 
             if (result.success) {
                 tiqriToast.success(result.message);
+                setDeleteDialogOpen(false);
                 setMode("detail");
                 setState(INITIAL_UPDATE_MASTER_DATA_STATE);
                 router.push(onCloseUrl, { scroll: false });
@@ -509,26 +639,30 @@ export function MasterDataRecordPanel({
             }
 
             tiqriToast.warning(result.message);
-        });
-    }, [linkedAssetsCount, normalizedEntity, onCloseUrl, router, selectedRecord]);
+        } finally {
+            setIsDeleteInProgress(false);
+        }
+    }, [normalizedEntity, selectedRecord, onCloseUrl, router]);
 
     const renderRecordIdPreview = () => {
-        if (!normalizedEntity || !Number.isFinite(numericRecordId)) {
+        if (!normalizedEntity || !selectedRecord || !Number.isFinite(numericRecordId)) {
             return null;
         }
 
         return (
-            <div className="space-y-2">
-                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                    {ENTITY_LABELS[normalizedEntity]} ID
-                </label>
-                <Input
-                    value={formatPreviewId(ENTITY_ID_PREFIX[normalizedEntity], numericRecordId)}
-                    readOnly
-                    tabIndex={-1}
-                    onFocus={(event) => event.currentTarget.blur()}
-                    className={READ_ONLY_INPUT_CLASSNAME}
-                />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                        {ENTITY_LABELS[normalizedEntity]} ID
+                    </label>
+                    <Input
+                        value={resolveRecordCode(normalizedEntity, selectedRecord.code, numericRecordId)}
+                        readOnly
+                        tabIndex={-1}
+                        onFocus={(event) => event.currentTarget.blur()}
+                        className={READ_ONLY_INPUT_CLASSNAME}
+                    />
+                </div>
             </div>
         );
     };
@@ -728,9 +862,21 @@ export function MasterDataRecordPanel({
 
                 return (
                     <>
-                        {renderRecordIdPreview()}
-
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            {normalizedEntity && selectedRecord && Number.isFinite(numericRecordId) && (
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        {ENTITY_LABELS[normalizedEntity]} ID
+                                    </label>
+                                    <Input
+                                        value={resolveRecordCode(normalizedEntity, selectedRecord.code, numericRecordId)}
+                                        readOnly
+                                        tabIndex={-1}
+                                        onFocus={(event) => event.currentTarget.blur()}
+                                        className={READ_ONLY_INPUT_CLASSNAME}
+                                    />
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Type
@@ -893,6 +1039,128 @@ export function MasterDataRecordPanel({
                                     </SelectContent>
                                 </Select>
                             )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Model Image
+                            </label>
+                            {isDetailMode ? (
+                                <div className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
+                                    <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                        {hasSelectedModelImage ? (
+                                            <Image
+                                                src={displayModelImageUrl}
+                                                alt={`${asString(draft.name) || "Model"} image`}
+                                                width={112}
+                                                height={80}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <ImagePlus className="h-5 w-5 text-slate-400" />
+                                        )}
+                                    </div>
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                        {hasSelectedModelImage ? "Image uploaded" : "No image available"}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3 rounded-lg border bg-slate-50 px-3 py-2">
+                                    <input type="hidden" name="imageUrl" value={selectedModelImageUrl} />
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                            {hasSelectedModelImage ? (
+                                                <Image
+                                                    src={displayModelImageUrl}
+                                                    alt={`${asString(draft.name) || "Model"} image`}
+                                                    width={112}
+                                                    height={80}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <ImagePlus className="h-5 w-5 text-slate-400" />
+                                            )}
+                                        </div>
+                                        <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-slate-600`}>
+                                                {modelImageFile ? modelImageFile.name : hasSelectedModelImage ? "Current image" : "No image selected"}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                                onClick={() => {
+                                                    setShowModelImageUploader(true);
+                                                    modelImageInputRef.current?.click();
+                                                }}
+                                                aria-label="Change model image"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <Input
+                                        ref={modelImageInputRef}
+                                        name="modelImage"
+                                        type="file"
+                                        accept={MODEL_IMAGE_ACCEPT}
+                                        className="hidden"
+                                        onChange={(event) => handleModelImageSelection(event.target.files)}
+                                    />
+
+                                    {showModelImageUploader ? (
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => modelImageInputRef.current?.click()}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    modelImageInputRef.current?.click();
+                                                }
+                                            }}
+                                            onDragOver={(event) => {
+                                                event.preventDefault();
+                                                setIsModelImageDragOver(true);
+                                            }}
+                                            onDragLeave={() => setIsModelImageDragOver(false)}
+                                            onDrop={handleModelImageDrop}
+                                            className={`cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors ${isModelImageDragOver
+                                                ? "border-primary bg-primary/5"
+                                                : "border-slate-300 bg-white hover:border-slate-400"
+                                                }`}
+                                        >
+                                            <div className="flex flex-col items-center gap-2 text-center">
+                                                <Upload className="h-5 w-5 text-slate-500" />
+                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                    Drag and drop a replacement image, or click to browse
+                                                </p>
+                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                                    PNG, JPG, WEBP or GIF. Maximum file size: 4.5MB.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+
+                                    {modelImageFile ? (
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={clearSelectedModelImage}
+                                                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 hover:text-slate-900`}
+                                            >
+                                                Remove selected file
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            )}
+                            {!isDetailMode && fieldError("imageUrl") ? (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {fieldError("imageUrl")}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1201,6 +1469,36 @@ export function MasterDataRecordPanel({
                     </>
                 );
             }
+
+            case "owners": {
+                const owner = selectedRecord as MasterDataOwnerRow;
+
+                return (
+                    <>
+                        {renderRecordIdPreview()}
+
+                        {renderTextField("companyName", "Owner Name", asString(draft.companyName), {
+                            required: true,
+                            placeholder: "TIQRI LK",
+                        })}
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Linked Assets
+                            </label>
+                            <Input
+                                value={`${owner.linkedAssets} Assets`}
+                                readOnly
+                                tabIndex={-1}
+                                onFocus={(event) => event.currentTarget.blur()}
+                                className={READ_ONLY_INPUT_CLASSNAME}
+                            />
+                        </div>
+
+                        {renderActiveStatus()}
+                    </>
+                );
+            }
         }
     };
 
@@ -1241,8 +1539,8 @@ export function MasterDataRecordPanel({
                 id: "delete",
                 label: "Delete",
                 variant: "destructive",
-                onClick: handleDelete,
-                disabled: isPending || !selectedRecord,
+                onClick: handleDeleteClick,
+                disabled: isPending || isDeleteInProgress || !selectedRecord,
             },
             {
                 id: "edit",
@@ -1277,15 +1575,78 @@ export function MasterDataRecordPanel({
             },
         ];
 
+    const getRecordDisplayName = (): string => {
+        if (!selectedRecord) return "Record";
+        type RecordWithName = typeof selectedRecord & { name?: string; companyName?: string };
+        const record = selectedRecord as RecordWithName;
+        const recordName = record.name || record.companyName || "Record";
+        return recordName;
+    };
+
+    const getEntityLabel = (): string => {
+        if (!normalizedEntity) return "Record";
+        const labels: Record<MasterDataRecordEntity, string> = {
+            "asset-categories": "Category",
+            "device-models": "Device Model",
+            locations: "Location",
+            brands: "Brand",
+            vendors: "Vendor",
+            owners: "Owner",
+            departments: "Department",
+        };
+        return labels[normalizedEntity] || "Record";
+    };
+
     return (
-        <SlidePanel
-            isOpen={isOpen}
-            disableTransition={disableTransition}
-            onClose={handleClose}
-            title={panelTitle}
-            description={panelDescription}
-            content={isDetailMode ? detailContent : formContent}
-            actions={actions}
-        />
+        <>
+            <SlidePanel
+                isOpen={isOpen}
+                disableTransition={disableTransition}
+                onClose={handleClose}
+                title={panelTitle}
+                description={panelDescription}
+                content={isDetailMode ? detailContent : formContent}
+                actions={actions}
+            />
+
+            <DestructiveConfirmationDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                title={`Delete ${getEntityLabel()}`}
+                description={
+                    linkedAssetsCount > 0
+                        ? `Cannot delete this record because it still has ${linkedAssetsCount} linked asset${linkedAssetsCount > 1 ? "s" : ""}. Please unlink these assets first.`
+                        : `Are you sure you want to delete this record? This action cannot be undone.`
+                }
+                itemsToDelete={
+                    selectedRecord && normalizedEntity
+                        ? [{
+                            id: resolveRecordCode(normalizedEntity, selectedRecord.code, selectedRecord.id),
+                            name: getRecordDisplayName(),
+                        }]
+                        : []
+                }
+                columns={[
+                    { key: "id", label: "Code", width: "w-1/3" },
+                    { key: "name", label: "Name", width: "w-2/3" },
+                ]}
+                canDelete={linkedAssetsCount === 0}
+                errorItemIds={
+                    linkedAssetsCount > 0 && normalizedEntity && selectedRecord
+                        ? [resolveRecordCode(normalizedEntity, selectedRecord.code, selectedRecord.id)]
+                        : []
+                }
+                errorMessage={
+                    linkedAssetsCount > 0
+                        ? `This record has ${linkedAssetsCount} linked asset${linkedAssetsCount > 1 ? "s" : ""} and cannot be deleted.`
+                        : undefined
+                }
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setDeleteDialogOpen(false)}
+                isLoading={isDeleteInProgress}
+                deleteButtonLabel="Delete"
+                cancelButtonLabel="Cancel"
+            />
+        </>
     );
 }

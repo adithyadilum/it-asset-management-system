@@ -13,9 +13,9 @@ export interface RegistrationPanelWrapperProps {
 }
 
 interface RegistrationOptions {
-  categories: { value: string; label: string }[];
+  categories: { value: string; label: string; pillar: string; customSchema: { modelSpecs: { fieldName: string; inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean'; required: boolean }[]; assetTracking: { fieldName: string; inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean'; required: boolean }[] } }[];
   brands: { value: string; label: string }[];
-  models: { value: string; label: string; brandId: string; categoryId: string }[];
+  models: { value: string; label: string; brandId: string; categoryId: string; imageUrl: string | null }[];
   vendors: { value: string; label: string }[];
   owners: { value: string; label: string }[];
 }
@@ -39,7 +39,7 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
         .then((res) => {
           if (isMounted) {
             if (res.success && res.data) {
-              setData(res.data);
+              setData(res.data as RegistrationOptions);
             } else {
               tiqriToast.error("Failed to load registration options");
             }
@@ -59,25 +59,16 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
 
   if (!isOpen) return null;
 
-  if (isLoading || !data) {
-    return (
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-200 flex-col bg-white shadow-2xl">
-        <div className="flex flex-1 items-center justify-center text-slate-500">
-          Loading options...
-        </div>
-      </div>
-    );
-  }
-
   const props = {
     isOpen,
     onClose: (open: boolean) => { if (!open) onClose(); },
+    isLoading: isLoading || !data,
     initialPillar: pillar as RegistrationPillarInput,
-    categoryOptions: data.categories,
-    brandOptions: data.brands,
-    modelOptions: data.models,
-    ownerOptions: data.owners,
-    vendorOptions: data.vendors,
+    categoryOptions: data?.categories ?? [],
+    brandOptions: data?.brands ?? [],
+    modelOptions: data?.models ?? [],
+    ownerOptions: data?.owners ?? [],
+    vendorOptions: data?.vendors ?? [],
   };
 
   return <RegistrationForm {...props} />;

@@ -34,6 +34,14 @@ export function HistoryTab({
   onViewAll,
   className = '',
 }: HistoryTabProps) {
+  if (events.length === 0) {
+    return (
+      <div className={cn('flex w-full flex-col gap-6', className)}>
+        <p className="text-sm text-muted-foreground">No history records found.</p>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('flex flex-col gap-6 w-full', className)}>
       <div className="space-y-0">

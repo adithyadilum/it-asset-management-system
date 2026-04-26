@@ -1,23 +1,18 @@
 'use server';
 
-import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-
 import { eq, like, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db';
 import {
-  assetAssignments,
   assetPurchases,
   assets,
   categories,
   brands,
   locations,
   models,
+  owners,
   systemAuditLogs,
-  users,
   vendors,
 } from '@/db/schema';
 import {
@@ -35,6 +30,8 @@ import {
   PILLAR_PREFIX_MAP,
   type RegisterAssetActionState,
 } from '@/lib/validations/asset-registration';
+import { isInvoiceAttachmentFile } from '@/lib/file-types';
+import { uploadFileToStorage } from '@/lib/storage';
 
 // Re-export repo types for consumers
 export type {
@@ -47,14 +44,7 @@ export type {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MAX_INVOICE_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const INVOICE_UPLOAD_URL_PREFIX = '/uploads/invoices';
-const INVOICE_UPLOAD_DIRECTORY = path.join(
-  process.cwd(),
-  'public',
-  'uploads',
-  'invoices'
-);
+const MAX_INVOICE_FILE_SIZE_BYTES = Math.floor(4.5 * 1024 * 1024);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -107,44 +97,24 @@ function validateInvoiceFile(file: File | null) {
   }
 
   if (file.size > MAX_INVOICE_FILE_SIZE_BYTES) {
-    return 'Invoice PDF must be 10MB or smaller.';
+    return 'Invoice attachment must be 4.5MB or smaller.';
   }
 
-  const hasPdfMimeType = file.type === 'application/pdf';
-  const hasPdfExtension = file.name.toLowerCase().endsWith('.pdf');
-
-  if (!hasPdfMimeType && !hasPdfExtension) {
-    return 'Invoice file must be a PDF.';
+  if (!isInvoiceAttachmentFile(file)) {
+    return 'Invoice attachment must be a supported document or image file.';
   }
 
   return null;
 }
 
 async function saveInvoiceFile(file: File) {
-  await mkdir(INVOICE_UPLOAD_DIRECTORY, { recursive: true });
-
-  const fileName = `${randomUUID()}.pdf`;
-  const absolutePath = path.join(INVOICE_UPLOAD_DIRECTORY, fileName);
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-  await writeFile(absolutePath, fileBuffer);
-
-  return `${INVOICE_UPLOAD_URL_PREFIX}/${fileName}`;
+  return uploadFileToStorage(file, 'invoices');
 }
 
 async function removeUploadedInvoice(invoiceUrl: string) {
-  if (!invoiceUrl.startsWith(`${INVOICE_UPLOAD_URL_PREFIX}/`)) {
-    return;
-  }
-
-  const relativeFilePath = invoiceUrl.replace(/^\//, '');
-  const absoluteFilePath = path.join(process.cwd(), 'public', relativeFilePath);
-
-  try {
-    await unlink(absoluteFilePath);
-  } catch {
-    // Best-effort cleanup if a DB transaction fails after upload.
-  }
+  // Blob cleanup is intentionally skipped because uploads are immutable URLs
+  // and rollback failures should not block the action response.
+  void invoiceUrl;
 }
 
 function validationError(
@@ -152,6 +122,33 @@ function validationError(
   errors?: RegisterAssetActionState['errors']
 ): RegisterAssetActionState {
   return { success: false, message, errors };
+}
+
+function resolveDbErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+
+  const maybeError = error as {
+    code?: string;
+    cause?: { code?: string };
+  };
+
+  return maybeError.code ?? maybeError.cause?.code;
+}
+
+function isAssetTagUniqueViolation(error: unknown): boolean {
+  const code = resolveDbErrorCode(error);
+
+  if (code === '23505') {
+    const message = String(error);
+    return (
+      message.includes('asset_tag') ||
+      message.includes('assets_asset_tag_unique')
+    );
+  }
+
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,8 +273,8 @@ export async function registerAsset(
         columns: { id: true, isActive: true },
       }),
       input.ownerId
-        ? db.query.users.findFirst({
-            where: eq(users.id, input.ownerId),
+        ? db.query.owners.findFirst({
+            where: eq(owners.id, input.ownerId),
             columns: { id: true, isActive: true },
           })
         : Promise.resolve(null),
@@ -367,7 +364,11 @@ export async function registerAsset(
       } catch {
         return validationError(
           'Please correct the highlighted fields and try again.',
-          { invoiceFile: ['Unable to upload invoice PDF. Please try again.'] }
+          {
+            invoiceFile: [
+              'Unable to upload invoice attachment. Please upload a supported document or image and try again.',
+            ],
+          }
         );
       }
     }
@@ -385,44 +386,67 @@ export async function registerAsset(
     const pillarPrefix = PILLAR_PREFIX_MAP[input.pillar];
     const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
 
-    const countResult = await db
-      .select({ value: sql<number>`cast(count(*) as integer)` })
-      .from(assets)
-      .where(like(assets.assetTag, `${assetTagPrefix}-%`));
+    // 7. Neon HTTP driver does not support db.transaction(), so use
+    // sequential writes with a compensating rollback for partial failures.
+    let insertedAsset: { id: string; assetTag: string } | null = null;
+    let lastInsertError: unknown = null;
 
-    const nextSequence = (countResult[0]?.value ?? 0) + 1;
-    const generatedAssetTag = buildAssetTag(
-      pillarPrefix,
-      normalizedCategoryPrefix,
-      nextSequence
-    );
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const countResult = await db
+        .select({ value: sql<number>`cast(count(*) as integer)` })
+        .from(assets)
+        .where(like(assets.assetTag, `${assetTagPrefix}-%`));
 
-    // 7. Atomic DB write using transaction
-    const insertedAsset = await db.transaction(async (tx) => {
-      const [newAsset] = await tx
-        .insert(assets)
-        .values({
-          assetTag: generatedAssetTag,
-          serialNumber: input.serialNumber ?? null,
-          name: input.name,
-          modelId: input.modelId,
-          locationId: input.locationId ?? null,
-          condition: input.condition ?? null,
-          instanceAttributes:
-            input.instanceAttributes && Object.keys(input.instanceAttributes).length > 0
-              ? input.instanceAttributes
-              : input.notes
-                ? { notes: input.notes }
-                : null,
-        })
-        .returning({ id: assets.id, assetTag: assets.assetTag });
+      const nextSequence = (countResult[0]?.value ?? 0) + 1;
+      const generatedAssetTag = buildAssetTag(
+        pillarPrefix,
+        normalizedCategoryPrefix,
+        nextSequence
+      );
 
-      if (!newAsset) {
-        throw new Error('Unable to create asset.');
+      try {
+        const [newAsset] = await db
+          .insert(assets)
+          .values({
+            assetTag: generatedAssetTag,
+            serialNumber: input.serialNumber ?? null,
+            name: input.name,
+            modelId: input.modelId,
+            locationId: input.locationId ?? null,
+            ownerId: input.ownerId ?? null,
+            condition: input.condition ?? null,
+            instanceAttributes:
+              input.instanceAttributes &&
+              Object.keys(input.instanceAttributes).length > 0
+                ? input.instanceAttributes
+                : input.notes
+                  ? { notes: input.notes }
+                  : null,
+          })
+          .returning({ id: assets.id, assetTag: assets.assetTag });
+
+        if (!newAsset) {
+          throw new Error('Unable to create asset.');
+        }
+
+        insertedAsset = newAsset;
+        break;
+      } catch (error) {
+        lastInsertError = error;
+
+        if (!isAssetTagUniqueViolation(error) || attempt === 2) {
+          throw error;
+        }
       }
+    }
 
-      await tx.insert(assetPurchases).values({
-        assetId: newAsset.id,
+    if (!insertedAsset) {
+      throw lastInsertError ?? new Error('Unable to create asset.');
+    }
+
+    try {
+      await db.insert(assetPurchases).values({
+        assetId: insertedAsset.id,
         vendorId: input.vendorId,
         purchaseDate: toDateString(input.purchaseDate),
         basePrice: input.basePrice.toFixed(2),
@@ -433,17 +457,15 @@ export async function registerAsset(
         warrantyExpiry,
         invoiceUrl: uploadedInvoiceUrl,
       });
-
-      if (input.ownerId) {
-        await tx.insert(assetAssignments).values({
-          assetId: newAsset.id,
-          assignedToUserId: input.ownerId,
-          assignedById: currentUser.id,
-        });
+    } catch (purchaseError) {
+      try {
+        await db.delete(assets).where(eq(assets.id, insertedAsset.id));
+      } catch {
+        // Best effort: preserve original purchase error for observability.
       }
 
-      return newAsset;
-    });
+      throw purchaseError;
+    }
 
     revalidatePath('/assets');
 

@@ -94,6 +94,11 @@ export const vendorSchema = z.object({
   isActive: z.boolean(),
 });
 
+export const ownerSchema = z.object({
+  companyName: z.string().trim().min(2, 'Owner name is required'),
+  isActive: z.boolean(),
+});
+
 export const departmentSchema = z.object({
   name: z.string().trim().min(2, 'Department name is required'),
   shortCode: z
@@ -110,6 +115,12 @@ export const deviceModelSchema = z.object({
   name: z.string().trim().min(2, 'Model name is required'),
   brandId: z.coerce.number().int().positive('Brand is required'),
   categoryId: z.coerce.number().int().positive('Category is required'),
+  imageUrl: z
+    .string()
+    .trim()
+    .url('Image URL must be a valid URL')
+    .optional()
+    .or(z.literal('')),
   technicalDetails: technicalDetailsSchema,
   isActive: z.boolean(),
 });
