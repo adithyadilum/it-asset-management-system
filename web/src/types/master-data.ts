@@ -26,6 +26,7 @@ export type MasterDataRecordEntity =
   | 'brands'
   | 'device-models'
   | 'vendors'
+  | 'owners'
   | 'departments';
 
 export type BrandFormState = {
