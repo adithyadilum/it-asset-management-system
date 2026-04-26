@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
-type DataTableSelectionActionTone = "secondary" | "destructive"
+type DataTableSelectionActionTone = "secondary" | "destructive" | "primary"
 
 const INTERACTIVE_SELECTOR =
   "button,a,input,textarea,select,[role='checkbox'],[data-row-panel-ignore='true']"
@@ -175,10 +175,10 @@ export function DataTable<TData, TValue>({
       <Table>
         <TableHeader className="bg-muted [&_tr]:border-b [&_tr]:border-border">
           {selectedRows > 0 ? (
-            <TableRow className="h-13.25 border-border bg-secondary hover:bg-secondary">
+            <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500">
               <TableHead
                 colSpan={table.getAllLeafColumns().length}
-                className="h-13.25 bg-secondary px-6 py-0 font-medium text-secondary-foreground [&:has([role=checkbox])]:pr-6"
+                className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6"
               >
                 <div className="flex h-13.25 w-full items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3" data-row-panel-ignore="true">
@@ -189,9 +189,9 @@ export function DataTable<TData, TValue>({
                         (table.getIsSomeRowsSelected() ? "indeterminate" : false)
                       }
                       onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
-                      className="border-secondary-foreground/60 data-[state=checked]:border-secondary-foreground data-[state=checked]:bg-secondary-foreground data-[state=checked]:text-secondary data-[state=indeterminate]:border-secondary-foreground data-[state=indeterminate]:bg-secondary-foreground data-[state=indeterminate]:text-secondary"
+                      className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
                     />
-                    <p className="truncate text-sm font-medium text-secondary-foreground">
+                    <p className="truncate text-sm font-medium text-white">
                       {actionHeaderLabel}
                     </p>
                   </div>
@@ -208,13 +208,21 @@ export function DataTable<TData, TValue>({
                           key={action.id}
                           type="button"
                           size="sm"
-                          variant={action.tone === "destructive" ? "destructive" : "outline"}
+                          variant={
+                            action.tone === "destructive"
+                              ? "destructive"
+                              : action.tone === "primary"
+                                ? "default"
+                                : "outline"
+                          }
                           disabled={isDisabled}
                           onClick={() => action.onClick?.(selectedRowData)}
                           className={cn(
                             "h-9 rounded-md px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]",
                             action.tone === "destructive"
                               ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              : action.tone === "primary"
+                                ? "border-[#00145a] bg-[#00145a] text-white hover:bg-[#000d3d]"
                               : "border-border bg-muted text-foreground hover:bg-muted/80"
                           )}
                         >

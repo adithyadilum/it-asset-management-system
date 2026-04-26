@@ -1,16 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AssignmentsPanels } from "./assignments-panels";
+import {
+  MultiAssetAssignmentModal,
+  type MultiAssetAssignmentItem,
+} from "./multi-asset-assignment-modal";
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   DataTable, 
+  type DataTableSelectionAction,
 } from "@/components/shared/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { AssignmentsDashboardData, AssignmentsDashboardRow } from "@/lib/data/operations-assignments-repo";
@@ -51,6 +56,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isMultiAssignModalOpen, setIsMultiAssignModalOpen] = useState(false);
+  const [multiAssignAssets, setMultiAssignAssets] = useState<MultiAssetAssignmentItem[]>([]);
 
   // 1. Panel State from URL (following the Registry Pattern)
   const activeAssetId = searchParams.get("id") || "";
@@ -87,6 +94,26 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const selectedAsset = useMemo(
     () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
     [assetRows, activeAssetId]
+  );
+
+  const selectionActions = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
+    () => [
+      {
+        id: "assign-assets",
+        label: "Assign Assets",
+        tone: "primary",
+        onClick: (selectedRows) => {
+          setMultiAssignAssets(
+            selectedRows.map((row) => ({
+              assetId: row.assetId,
+              assetName: row.assetName,
+            }))
+          );
+          setIsMultiAssignModalOpen(true);
+        },
+      },
+    ],
+    []
   );
 
   // 3. Column Definitions for the Hardware Registry View
@@ -134,6 +161,14 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const handleMultiAssignModalOpenChange = (open: boolean) => {
+    setIsMultiAssignModalOpen(open);
+
+    if (!open) {
+      setMultiAssignAssets([]);
+    }
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-50">
       <div className="min-h-0 flex-1 overflow-auto p-3 md:p-4">
@@ -167,7 +202,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
                   onRowClick={handleRowClick}
                   initialPageSize={10}
                   className="rounded-lg border-slate-200"
-                  selectionLabel={(count) => `${count} row(s) selected`}
+                  selectionActions={selectionActions}
+                  selectionLabel={(count) => `${count} Assets Selected`}
                 />
               </div>
             </ModuleNavigationTabs>
@@ -179,6 +215,12 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         isOpen={isPanelOpen}
         selectedAsset={selectedAsset}
         onClose={handleClosePanel}
+      />
+
+      <MultiAssetAssignmentModal
+        isOpen={isMultiAssignModalOpen}
+        assets={multiAssignAssets}
+        onOpenChange={handleMultiAssignModalOpenChange}
       />
     </div>
   );
