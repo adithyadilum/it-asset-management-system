@@ -136,13 +136,13 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-50">
-      <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
-        <div className="w-full space-y-4">
-          <h1 className="text-[32px] font-semibold leading-10 text-slate-900">
+      <div className="min-h-0 flex-1 overflow-auto p-3 md:p-4">
+        <div className="flex h-full min-h-0 w-full flex-col rounded-xl border border-slate-200 bg-white p-3">
+          <h1 className="mb-4 shrink-0 text-[32px] font-semibold leading-10 text-slate-900">
             Asset Assignments and Returns
           </h1>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="min-h-0 flex-1 overflow-hidden">
             <ModuleNavigationTabs tabs={tabs} defaultTab="available-assets">
               <div className="space-y-4">
                 {/* Search and Filters */}
