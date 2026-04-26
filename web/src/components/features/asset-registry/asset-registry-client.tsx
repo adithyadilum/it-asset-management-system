@@ -1,8 +1,14 @@
 'use client';
 
 import type { ColumnDef } from '@tanstack/react-table';
-import { CalendarDays, ChevronDown, Plus, Search, X } from 'lucide-react';
-import { useMemo, useRef, useState, useEffect, useTransition } from 'react';
+import {
+  CalendarDays,
+  ChevronDown,
+  Plus,
+  Search,
+  X,
+} from 'lucide-react';
+import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { bulkUpdateAssets, getAssetsByPillar } from '@/actions/asset-registry';
@@ -183,6 +189,8 @@ export function AssetRegistryClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isPanelOpen = Boolean(currentPanel);
+  const activeRecordId =
+    currentPanel === 'record' ? searchParams.get('id') : null;
 
   const [rows, setRows] = useState<AssetRegistryRow[]>(initialResult.data);
   const [searchValue, setSearchValue] = useState('');
@@ -651,6 +659,10 @@ export function AssetRegistryClient({
     if (config.view === 'software') {
       return [
         {
+          accessorKey: 'assetTag',
+          header: 'Asset ID',
+        },
+        {
           accessorKey: 'name',
           header: 'Software Name',
           cell: ({ row }) => toCellText(row.original.name),
@@ -659,26 +671,31 @@ export function AssetRegistryClient({
           accessorKey: 'serialNumber',
           header: 'License Key',
           cell: ({ row }) => {
-            const serialNumber = row.original.serialNumber;
-            return serialNumber ? `${serialNumber.slice(0, 4)}-${serialNumber.slice(-4)}` : 'XXXX-XXXX';
+            const serialNumber =
+              row.original.serialNumber ??
+              String(row.original.instanceAttributes?.['license_key'] ?? row.original.instanceAttributes?.['License Key'] ?? '');
+
+            return serialNumber
+              ? `${serialNumber.slice(0, 4)}-${serialNumber.slice(-4)}`
+              : 'XXXX-XXXX';
           },
+        },
+        {
+          id: 'licenseType',
+          header: 'License Type',
+          cell: ({ row }) => String(row.original.instanceAttributes?.['license_type'] ?? row.original.instanceAttributes?.['License Type'] ?? '-'),
+          enableSorting: false,
         },
         {
           id: 'totalSeats',
           header: 'Total Seats',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['Total Seats'] ?? '-'),
-          enableSorting: false,
-        },
-        {
-          id: 'availableSeats',
-          header: 'Available Seats',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['Available Seats'] ?? '-'),
+          cell: ({ row }) => String(row.original.instanceAttributes?.['max_seats'] ?? row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'expirationDate',
           header: 'Expiration Date',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
+          cell: ({ row }) => String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['expiration_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
           enableSorting: false,
         },
       ];
@@ -767,6 +784,13 @@ export function AssetRegistryClient({
       : config.view === 'office-electronics'
       ? ['w-[16%]', 'w-[20%]', 'w-[14%]', 'w-[16%]', 'w-[18%]', 'w-[16%]']
       : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
+
+  const openRegistrationPanel = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('panel', 'registration');
+    params.set('animate', isPanelOpen ? '0' : '1');
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [isPanelOpen, pathname, router, searchParams]);
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
@@ -925,12 +949,7 @@ export function AssetRegistryClient({
             <Button
               type="button"
               size="sm"
-              onClick={() => {
-                const params = new URLSearchParams(searchParams.toString());
-                params.set('panel', 'registration');
-                params.set('animate', isPanelOpen ? '0' : '1');
-                router.push(`${pathname}?${params.toString()}`, { scroll: false });
-              }}
+              onClick={openRegistrationPanel}
             >
               <Plus className="h-4 w-4" />
               {config.addAssetLabel}
@@ -984,7 +1003,7 @@ export function AssetRegistryClient({
           </div>
         ) : null}
 
-        <div className="min-h-0">
+        <div className="min-h-0 flex-1">
           {isPending ? (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
               <TableSkeleton rowCount={8} columnWidths={tableSkeletonColumnWidths} />
@@ -995,12 +1014,22 @@ export function AssetRegistryClient({
               data={visibleRows}
               pageSizeOptions={config.rowsPerPageOptions}
               initialPageSize={config.defaultPageSize}
+              defaultSorting={[{ id: 'assetTag', desc: true }]}
               selectionActions={selectionActions}
               selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
+              emptyState={{
+                title: 'No assets found',
+                description: 'Add your first asset to start managing this registry.',
+                action: {
+                  label: config.addAssetLabel,
+                  onClick: openRegistrationPanel,
+                },
+              }}
+              isRowActive={(row) => Boolean(activeRecordId && row.assetTag === activeRecordId)}
               onRowClick={(row) => {
                 const params = new URLSearchParams(searchParams.toString());
                 params.set('panel', 'record');
-                params.set('id', row.id);
+                params.set('id', row.assetTag);
                 params.set('animate', isPanelOpen ? '0' : '1');
                 router.push(`${pathname}?${params.toString()}`, { scroll: false });
               }}

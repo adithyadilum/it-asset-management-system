@@ -372,7 +372,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
         align="center"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}
-        className="w-[720px] max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-0 shadow-box-shadow-shadow-xl"
+        className="w-180 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-0 shadow-box-shadow-shadow-xl"
       >
         <Command shouldFilter={false} className="rounded-xl! bg-white p-0">
           <CommandList className="max-h-93 px-3 py-2">
@@ -405,27 +405,29 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
 
                   {!isSearching
                     ? assetsResults.map((asset) => (
-                        <CommandItem
-                          key={asset.id}
-                          value={`${asset.assetTag} ${asset.name ?? ''} ${asset.serialNumber ?? ''} ${asset.category}`}
-                          onSelect={() => handleSelectHref(`/assets/${asset.id}`)}
-                          className={resultItemClass}
-                        >
-                          <Monitor className="size-4 text-slate-500" />
+                      <CommandItem
+                        key={asset.id}
+                        value={`${asset.assetTag} ${asset.name ?? ''} ${asset.serialNumber ?? ''} ${asset.category}`}
+                        onSelect={() =>
+                          handleSelectHref(`/assets/${encodeURIComponent(asset.assetTag)}`)
+                        }
+                        className={resultItemClass}
+                      >
+                        <Monitor className="size-4 text-slate-500" />
 
-                          <div className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate text-sm text-slate-900">
-                              {asset.name ?? asset.assetTag}
-                            </span>
-                            <span className="truncate text-xs text-slate-500">
-                              {asset.assetTag}
-                              {asset.serialNumber
-                                ? ` • ${asset.serialNumber}`
-                                : ''}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm text-slate-900">
+                            {asset.name ?? asset.assetTag}
+                          </span>
+                          <span className="truncate text-xs text-slate-500">
+                            {asset.assetTag}
+                            {asset.serialNumber
+                              ? ` • ${asset.serialNumber}`
+                              : ''}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))
                     : null}
 
                   {shouldShowAssetsEmptyState ? (
@@ -460,24 +462,24 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
 
                   {!isSearching
                     ? usersResults.map((user) => (
-                        <CommandItem
-                          key={user.id}
-                          value={`${user.name} ${user.email} ${user.department}`}
-                          onSelect={() => handleSelectHref('/settings/roles')}
-                          className={resultItemClass}
-                        >
-                          <UserRound className="size-4 text-slate-500" />
+                      <CommandItem
+                        key={user.id}
+                        value={`${user.name} ${user.email} ${user.department}`}
+                        onSelect={() => handleSelectHref('/settings/roles')}
+                        className={resultItemClass}
+                      >
+                        <UserRound className="size-4 text-slate-500" />
 
-                          <div className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate text-sm text-slate-900">
-                              {user.name}
-                            </span>
-                            <span className="truncate text-xs text-slate-500">
-                              {user.email} • {user.department}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm text-slate-900">
+                            {user.name}
+                          </span>
+                          <span className="truncate text-xs text-slate-500">
+                            {user.email} • {user.department}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))
                     : null}
 
                   {shouldShowUsersEmptyState ? (
