@@ -45,12 +45,12 @@ export function AssetCard({
                     <div className="mt-3 flex flex-col space-y-1 font-['Noto_Sans']">
                         {/* Asset ID Line */}
                         <div className="text-sm font-medium leading-5 text-muted-foreground">
-                            Asset ID: <span className="text-slate-700">{assetId}</span>
+                            Asset ID: <span>{assetId}</span>
                         </div>
                         
                         {/* Assigned Date Line */}
                         <div className="text-sm font-medium leading-5 text-muted-foreground">
-                            Assigned: <span className="text-slate-700">{assignedDate}</span>
+                            Assigned: <span>{assignedDate}</span>
                         </div>
                     </div>
                 );
