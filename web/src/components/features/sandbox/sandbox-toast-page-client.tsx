@@ -209,13 +209,13 @@ export function SandboxToastPageClient() {
                 </div>
             </section>
 
-            <section className="rounded-lg border border-dashed border-chart-2 bg-background p-4 md:p-6">
+            <section className="flex min-h-0 flex-1 flex-col rounded-lg border border-dashed border-chart-2 bg-background p-4 md:p-6">
                 <h2 className="text-lg font-semibold text-foreground">DataTable Sandbox</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                     Typed reusable DataTable demo using <code>ColumnDef&lt;SandboxAssetRow&gt;</code>.
                 </p>
 
-                <div className="mt-4">
+                <div className="mt-4 flex min-h-0 flex-1 flex-col">
                     <DataTable<SandboxAssetRow, unknown>
                         columns={sandboxColumns}
                         data={sandboxData}
