@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { CalendarDays } from "lucide-react";
+import { useRouter } from "next/navigation";
 
+import { tiqriToast } from "@/components/shared/sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,16 +36,69 @@ interface MultiAssetAssignmentModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+type AssigneeOption = {
+  id: string;
+  label: string;
+};
+
 export function MultiAssetAssignmentModal({
   isOpen,
   assets,
   onOpenChange,
 }: MultiAssetAssignmentModalProps) {
+  const router = useRouter();
   const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">("user");
   const [assignee, setAssignee] = React.useState("");
   const [duration, setDuration] = React.useState("");
   const [expectedReturn, setExpectedReturn] = React.useState("");
   const [notes, setNotes] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [userOptions, setUserOptions] = React.useState<AssigneeOption[]>([]);
+  const [locationOptions, setLocationOptions] = React.useState<AssigneeOption[]>([]);
+
+  const activeOptions = assignmentMode === "user" ? userOptions : locationOptions;
+
+  const loadOptions = React.useCallback(async () => {
+    try {
+      const [usersResponse, locationsResponse] = await Promise.all([
+        fetch("/api/v1/users", { method: "GET" }),
+        fetch("/api/v1/locations", { method: "GET" }),
+      ]);
+
+      if (!usersResponse.ok || !locationsResponse.ok) {
+        throw new Error("Failed to load assignment options.");
+      }
+
+      const [usersPayload, locationsPayload] = await Promise.all([
+        usersResponse.json() as Promise<{ data?: Array<{ id: string; name: string; email: string }> }> ,
+        locationsResponse.json() as Promise<{ data?: Array<{ id: number; name: string }> }> ,
+      ]);
+
+      setUserOptions(
+        (usersPayload.data ?? []).map((user) => ({
+          id: user.id,
+          label: user.name,
+        }))
+      );
+
+      setLocationOptions(
+        (locationsPayload.data ?? []).map((location) => ({
+          id: String(location.id),
+          label: location.name,
+        }))
+      );
+    } catch {
+      tiqriToast.error("Failed to load assignment options.");
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    loadOptions();
+  }, [isOpen, loadOptions]);
 
   const resetState = React.useCallback(() => {
     setAssignmentMode("user");
@@ -65,7 +120,60 @@ export function MultiAssetAssignmentModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    handleOpenChange(false);
+
+    if (assets.length === 0) {
+      tiqriToast.warning("Select at least one asset.");
+      return;
+    }
+
+    if (!assignee) {
+      tiqriToast.warning(
+        assignmentMode === "user"
+          ? "Please select a user."
+          : "Please select a location."
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const expectedDate = assignmentMode === "user" ? expectedReturn || undefined : undefined;
+    const payload = {
+      assetIds: assets.map((asset) => asset.assetId),
+      assignmentType: assignmentMode,
+      targetId: assignmentMode === "location" ? Number(assignee) : assignee,
+      expectedReturnDate: expectedDate,
+      notes: notes || undefined,
+    };
+
+    fetch("/api/v1/assets/bulk-assign", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async (response) => {
+        const responsePayload = (await response.json().catch(() => ({}))) as {
+          message?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(responsePayload.message || "Bulk assignment failed.");
+        }
+
+        tiqriToast.success(responsePayload.message || "Assets assigned successfully.");
+        handleOpenChange(false);
+        router.refresh();
+      })
+      .catch((error: unknown) => {
+        tiqriToast.error(
+          error instanceof Error ? error.message : "Bulk assignment failed."
+        );
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   };
 
   const assetCount = assets.length;
@@ -135,18 +243,16 @@ export function MultiAssetAssignmentModal({
                 />
               </SelectTrigger>
               <SelectContent>
-                {assignmentMode === "user" ? (
-                  <>
-                    <SelectItem value="mark-kim">Mark Kim</SelectItem>
-                    <SelectItem value="jane-doe">Jane Doe</SelectItem>
-                    <SelectItem value="john-smith">John Smith</SelectItem>
-                  </>
+                {activeOptions.length > 0 ? (
+                  activeOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.label}
+                    </SelectItem>
+                  ))
                 ) : (
-                  <>
-                    <SelectItem value="hq-admin">HQ Admin</SelectItem>
-                    <SelectItem value="finance-floor">Finance Floor</SelectItem>
-                    <SelectItem value="it-lab">IT Lab</SelectItem>
-                  </>
+                  <SelectItem value="__empty" disabled>
+                    No options available
+                  </SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -191,10 +297,15 @@ export function MultiAssetAssignmentModal({
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit" className="bg-[#00145a] hover:bg-[#000d3d]">
+            <Button type="submit" className="bg-[#00145a] hover:bg-[#000d3d]" disabled={isSubmitting}>
               Assign Asset
             </Button>
           </div>

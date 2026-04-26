@@ -17,6 +17,7 @@ import {
   DataTable, 
   type DataTableSelectionAction,
 } from "@/components/shared/data-table";
+import { TabsContent } from "@/components/ui/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { AssignmentsDashboardData, AssignmentsDashboardRow } from "@/lib/data/operations-assignments-repo";
 
@@ -65,31 +66,43 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const isPanelOpen = currentPanel === "record" && activeAssetId !== "";
 
   // 2. Data Mapping
-  const assetRows = useMemo<AssetAssignmentRow[]>(() => {
-    const mapRow = (asset: AssignmentsDashboardRow) => ({
-      assetId: asset.id,
-      assetName: asset.name ?? asset.assetTag,
-      serialNumber: asset.serialNumber ?? "-",
-      category: asset.category,
-      status: asset.status,
-      model: "-",
-      brand: "-",
-      owner: "-",
-      group: asset.pillar,
-      assignedTo: asset.assignedTo ?? "-",
-      dateCreated: asset.returnedDate ? asset.returnedDate.toLocaleDateString("en-GB") : "-",
-      updatedAt: asset.returnedDate ? asset.returnedDate.toLocaleDateString("en-GB") : "-",
-      warranty: "-",
-      note: asset.location ?? "-",
-      assetTag: asset.assetTag,
-    });
+  const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
+    assetId: asset.id,
+    assetName: asset.name ?? asset.assetTag,
+    serialNumber: asset.serialNumber ?? "-",
+    category: asset.category,
+    status: asset.status,
+    model: "-",
+    brand: "-",
+    owner: "-",
+    group: asset.pillar,
+    assignedTo: asset.assignedTo ?? "-",
+    dateCreated: asset.returnedDate ? asset.returnedDate.toLocaleDateString("en-GB") : "-",
+    updatedAt: asset.returnedDate ? asset.returnedDate.toLocaleDateString("en-GB") : "-",
+    warranty: "-",
+    note: asset.location ?? "-",
+    assetTag: asset.assetTag,
+  });
 
-    return [
-      ...data.available.map(mapRow),
-      ...data.assigned.map(mapRow),
-      ...data.returned.map(mapRow),
-    ];
-  }, [data]);
+  const availableRows = useMemo<AssetAssignmentRow[]>(
+    () => data.available.map(mapRow),
+    [data.available]
+  );
+
+  const assignedRows = useMemo<AssetAssignmentRow[]>(
+    () => data.assigned.map(mapRow),
+    [data.assigned]
+  );
+
+  const returnedRows = useMemo<AssetAssignmentRow[]>(
+    () => data.returned.map(mapRow),
+    [data.returned]
+  );
+
+  const assetRows = useMemo(
+    () => [...availableRows, ...assignedRows, ...returnedRows],
+    [availableRows, assignedRows, returnedRows]
+  );
   
   const selectedAsset = useMemo(
     () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
@@ -169,6 +182,37 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     }
   };
 
+  const renderTable = (
+    rows: AssetAssignmentRow[],
+    actions?: DataTableSelectionAction<AssetAssignmentRow>[]
+  ) => (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full max-w-[320px]">
+          <Input
+            type="search"
+            placeholder="Search assets..."
+            className="h-8 rounded-lg border-slate-200 bg-white pl-8 text-sm focus-visible:ring-[#00145a]"
+          />
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        </div>
+        <Button variant="outline" size="sm" className="h-8 border-slate-200 text-slate-700 hover:bg-slate-50">
+          Filters <ChevronDown className="ml-1 size-4" />
+        </Button>
+      </div>
+
+      <DataTable<AssetAssignmentRow, unknown>
+        columns={columns}
+        data={rows}
+        onRowClick={handleRowClick}
+        initialPageSize={10}
+        className="rounded-lg border-slate-200"
+        selectionActions={actions}
+        selectionLabel={(count) => `${count} Assets Selected`}
+      />
+    </div>
+  );
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-50">
       <div className="min-h-0 flex-1 overflow-auto p-3 md:p-4">
@@ -179,33 +223,17 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
           <div className="min-h-0 flex-1 overflow-hidden">
             <ModuleNavigationTabs tabs={tabs} defaultTab="available-assets">
-              <div className="space-y-4">
-                {/* Search and Filters */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="relative w-full max-w-[320px]">
-                    <Input
-                      type="search"
-                      placeholder="Search assets..."
-                      className="h-8 rounded-lg border-slate-200 bg-white pl-8 text-sm focus-visible:ring-[#00145a]"
-                    />
-                    <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  </div>
-                  <Button variant="outline" size="sm" className="h-8 border-slate-200 text-slate-700 hover:bg-slate-50">
-                    Filters <ChevronDown className="ml-1 size-4" />
-                  </Button>
-                </div>
+              <TabsContent value="available-assets" className="mt-0 focus-visible:outline-none">
+                {renderTable(availableRows, selectionActions)}
+              </TabsContent>
 
-                {/* Main Data Table */}
-                <DataTable<AssetAssignmentRow, unknown>
-                  columns={columns}
-                  data={assetRows}
-                  onRowClick={handleRowClick}
-                  initialPageSize={10}
-                  className="rounded-lg border-slate-200"
-                  selectionActions={selectionActions}
-                  selectionLabel={(count) => `${count} Assets Selected`}
-                />
-              </div>
+              <TabsContent value="assigned-assets" className="mt-0 focus-visible:outline-none">
+                {renderTable(assignedRows)}
+              </TabsContent>
+
+              <TabsContent value="returned-assets" className="mt-0 focus-visible:outline-none">
+                {renderTable(returnedRows)}
+              </TabsContent>
             </ModuleNavigationTabs>
           </div>
         </div>

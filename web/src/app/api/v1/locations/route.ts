@@ -1,0 +1,44 @@
+import { and, asc, eq, ilike } from 'drizzle-orm';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+
+import { db } from '@/db';
+import { locations } from '@/db/schema';
+import {
+  canManageAssets,
+  getAuthenticatedUser,
+} from '@/lib/auth/get-authenticated-user';
+
+const MAX_RESULTS = 20;
+
+export async function GET(request: NextRequest) {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!canManageAssets(currentUser.role)) {
+    return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  }
+
+  const query = request.nextUrl.searchParams.get('search')?.trim() ?? '';
+
+  const filters = [eq(locations.isActive, true)];
+
+  if (query) {
+    filters.push(ilike(locations.name, `%${query}%`));
+  }
+
+  const result = await db
+    .select({
+      id: locations.id,
+      name: locations.name,
+    })
+    .from(locations)
+    .where(and(...filters))
+    .orderBy(asc(locations.name))
+    .limit(MAX_RESULTS);
+
+  return NextResponse.json({ data: result }, { status: 200 });
+}

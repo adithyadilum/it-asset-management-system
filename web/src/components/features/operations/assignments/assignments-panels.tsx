@@ -75,6 +75,7 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 
 			<AssetAssignmentModal
 				isOpen={isOpen && isAssignmentModalOpen}
+				assetId={selectedAsset?.assetId ?? ""}
 				assetLabel={assetLabel}
 				onOpenChange={setIsAssignmentModalOpen}
 			/>
