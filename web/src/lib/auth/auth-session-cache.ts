@@ -11,7 +11,6 @@ export type CachedAuthUser = {
 const TTL_MS = 5_000
 
 declare global {
-  // eslint-disable-next-line no-var
   var __authSessionCache: TtlCache<CachedAuthUser> | undefined
 }
 

@@ -2,13 +2,16 @@
 
 import {
     useCallback,
+    useEffect,
     useMemo,
+    useRef,
     useState,
     useTransition,
     type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Info, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { ImagePlus, Info, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
 import { createMasterDataRecord } from "@/actions/master-data";
 import {
@@ -33,6 +36,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Switch } from "@/components/ui/switch";
 import {
     Tooltip,
@@ -41,6 +45,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { tiqriToast } from "@/components/shared/sonner";
+import { isModelImageFile, MODEL_IMAGE_ACCEPT } from "@/lib/file-types";
 
 import type {
     CategoryCustomSchemaField,
@@ -49,6 +54,7 @@ import type {
     MasterDataDepartmentRow,
     MasterDataDeviceModelRow,
     MasterDataLocationRow,
+    MasterDataOwnerRow,
     MasterDataVendorRow,
 } from "./master-data-management-client";
 
@@ -76,6 +82,7 @@ interface MasterDataCreatePanelProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
     disableTransition?: boolean;
 }
@@ -123,6 +130,12 @@ const PANEL_META: Record<MasterDataRecordEntity, {
         submitLabel: "Save Vendor",
         submittingLabel: "Saving Vendor...",
     },
+    owners: {
+        title: "Add New Owner",
+        description: "Register a legal company owner for assets (for example, TIQRI LK).",
+        submitLabel: "Save Owner",
+        submittingLabel: "Saving Owner...",
+    },
     departments: {
         title: "Add New Department",
         description: "Register a department for user assignment and ownership mapping.",
@@ -143,6 +156,7 @@ const NEXT_ID_LABELS: Record<MasterDataRecordEntity, string> = {
     brands: "Brand ID (Preview)",
     "device-models": "Model ID (Preview)",
     vendors: "Vendor ID (Preview)",
+    owners: "Owner ID (Preview)",
     departments: "Department ID (Preview)",
 };
 
@@ -185,6 +199,7 @@ export function MasterDataCreatePanel({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
     disableTransition = false,
 }: MasterDataCreatePanelProps) {
@@ -202,6 +217,9 @@ export function MasterDataCreatePanel({
     );
     const [selectedBrandId, setSelectedBrandId] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
+    const [modelImageFile, setModelImageFile] = useState<File | null>(null);
+    const [isModelImageDragOver, setIsModelImageDragOver] = useState(false);
+    const [showModelImageUploader, setShowModelImageUploader] = useState(false);
     const [categoryPrefixInput, setCategoryPrefixInput] = useState("");
     const [modelSpecAttributes, setModelSpecAttributes] = useState<CustomAttribute[]>([
         createCustomAttribute(),
@@ -210,6 +228,7 @@ export function MasterDataCreatePanel({
         createCustomAttribute(),
     ]);
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
+    const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
 
@@ -266,6 +285,11 @@ export function MasterDataCreatePanel({
         [vendors]
     );
 
+    const nextOwnerRecordId = useMemo(
+        () => owners.reduce((max, owner) => Math.max(max, owner.id), 0) + 1,
+        [owners]
+    );
+
     const nextDepartmentRecordId = useMemo(
         () =>
             departments.reduce((max, department) => Math.max(max, department.id), 0) + 1,
@@ -279,6 +303,7 @@ export function MasterDataCreatePanel({
             brands: formatPreviewId("BRD", nextBrandRecordId),
             "device-models": formatPreviewId("MDL", nextDeviceModelRecordId),
             vendors: formatPreviewId("VND", nextVendorRecordId),
+            owners: formatPreviewId("OWN", nextOwnerRecordId),
             departments: formatPreviewId("DEP", nextDepartmentRecordId),
         }),
         [
@@ -287,6 +312,7 @@ export function MasterDataCreatePanel({
             nextDepartmentRecordId,
             nextDeviceModelRecordId,
             nextLocationRecordId,
+            nextOwnerRecordId,
             nextVendorRecordId,
         ]
     );
@@ -316,6 +342,19 @@ export function MasterDataCreatePanel({
         () => selectedCategoryForModel?.customSchema.modelSpecs ?? [],
         [selectedCategoryForModel]
     );
+
+    const modelImagePreviewUrl = useMemo(
+        () => (modelImageFile ? URL.createObjectURL(modelImageFile) : null),
+        [modelImageFile]
+    );
+
+    useEffect(() => {
+        return () => {
+            if (modelImagePreviewUrl) {
+                URL.revokeObjectURL(modelImagePreviewUrl);
+            }
+        };
+    }, [modelImagePreviewUrl]);
 
     const technicalDetailsPayload = useMemo(() => {
         const payload: Record<string, string> = {};
@@ -371,6 +410,9 @@ export function MasterDataCreatePanel({
         setSelectedParentLocationId(TOP_LEVEL_PARENT_LOCATION_VALUE);
         setSelectedBrandId("");
         setSelectedCategoryId("");
+        setModelImageFile(null);
+        setIsModelImageDragOver(false);
+        setShowModelImageUploader(false);
         setCategoryPrefixInput("");
         setModelSpecAttributes([createCustomAttribute()]);
         setAssetTrackingAttributes([createCustomAttribute()]);
@@ -402,6 +444,14 @@ export function MasterDataCreatePanel({
 
             const formData = new FormData(event.currentTarget);
 
+            if (normalizedEntity === "device-models") {
+                if (modelImageFile) {
+                    formData.set("modelImage", modelImageFile);
+                } else {
+                    formData.delete("modelImage");
+                }
+            }
+
             startTransition(async () => {
                 const result = await createMasterDataRecord(
                     INITIAL_CREATE_MASTER_DATA_STATE,
@@ -420,8 +470,45 @@ export function MasterDataCreatePanel({
                 tiqriToast.error(result.message);
             });
         },
-        [handleClose, normalizedEntity, router]
+        [handleClose, modelImageFile, normalizedEntity, router]
     );
+
+    const handleModelImageSelection = useCallback((files: FileList | null) => {
+        const selectedFile = files?.[0] ?? null;
+
+        if (selectedFile && !isModelImageFile(selectedFile)) {
+            tiqriToast.error("Upload a valid image file (PNG, JPG, JPEG, WEBP, GIF, BMP, SVG, or AVIF).");
+            if (modelImageInputRef.current) {
+                modelImageInputRef.current.value = "";
+            }
+            setModelImageFile(null);
+            setIsModelImageDragOver(false);
+            return;
+        }
+
+        setModelImageFile(selectedFile);
+        if (selectedFile) {
+            setShowModelImageUploader(true);
+        }
+        setIsModelImageDragOver(false);
+    }, [modelImageInputRef]);
+
+    const handleModelImageDrop = useCallback(
+        (event: React.DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
+            setIsModelImageDragOver(false);
+            handleModelImageSelection(event.dataTransfer.files);
+        },
+        [handleModelImageSelection]
+    );
+
+    const clearSelectedModelImage = useCallback(() => {
+        setModelImageFile(null);
+        setShowModelImageUploader(false);
+        if (modelImageInputRef.current) {
+            modelImageInputRef.current.value = "";
+        }
+    }, []);
 
     const addModelSpecAttribute = useCallback(() => {
         setModelSpecAttributes((previous) => [...previous, createCustomAttribute()]);
@@ -480,6 +567,26 @@ export function MasterDataCreatePanel({
         },
         []
     );
+
+    const handleCategoryPillarChange = useCallback((value: string) => {
+        const pillar = value as Pillar;
+        setCategoryPillar(pillar);
+
+        if (pillar === "Software") {
+            setAssetTrackingAttributes([
+                { id: crypto.randomUUID(), fieldName: "License Key", inputType: "Text", required: true },
+                { id: crypto.randomUUID(), fieldName: "Total Seats", inputType: "Number", required: true },
+                { id: crypto.randomUUID(), fieldName: "Available Seats", inputType: "Number", required: true },
+                { id: crypto.randomUUID(), fieldName: "Expiration Date", inputType: "Date", required: true },
+            ]);
+        } else if (pillar === "Office Electronics") {
+            setAssetTrackingAttributes([
+                { id: crypto.randomUUID(), fieldName: "IP/MAC Address", inputType: "Text", required: false },
+            ]);
+        } else {
+            setAssetTrackingAttributes([createCustomAttribute()]);
+        }
+    }, []);
 
     const handleModelPillarChange = useCallback((value: string) => {
         setModelPillar(value as Pillar);
@@ -806,23 +913,14 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Type <span className="text-red-500">*</span>
                                 </label>
-                                <Select
-                                    value={selectedLocationType}
-                                    onValueChange={(value) =>
+                                <SearchableDropdown
+                                    options={LOCATION_TYPE_OPTIONS}
+                                    placeholder="Select a location type"
+                                    defaultValue={selectedLocationType}
+                                    onSelect={(value) =>
                                         setSelectedLocationType(value as LocationType)
                                     }
-                                >
-                                    <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Select a location type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {LOCATION_TYPE_OPTIONS.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                />
                                 {getFieldError("type") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("type")}
@@ -835,24 +933,18 @@ export function MasterDataCreatePanel({
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                 Parent Location
                             </label>
-                            <Select
-                                value={selectedParentLocationId}
-                                onValueChange={setSelectedParentLocationId}
-                            >
-                                <SelectTrigger className="h-9">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={TOP_LEVEL_PARENT_LOCATION_VALUE}>
-                                        None (Building)
-                                    </SelectItem>
-                                    {selectableParentLocations.map((location) => (
-                                        <SelectItem key={location.id} value={String(location.id)}>
-                                            {location.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <SearchableDropdown
+                                options={[
+                                    { value: TOP_LEVEL_PARENT_LOCATION_VALUE, label: "None (Building)" },
+                                    ...selectableParentLocations.map((location) => ({
+                                        value: String(location.id),
+                                        label: location.name,
+                                    })),
+                                ]}
+                                placeholder="Select a location"
+                                defaultValue={selectedParentLocationId}
+                                onSelect={setSelectedParentLocationId}
+                            />
                             <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
                                 Select None to create a Building.
                             </p>
@@ -883,21 +975,12 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Type
                                 </label>
-                                <Select
-                                    value={categoryPillar}
-                                    onValueChange={(value) => setCategoryPillar(value as Pillar)}
-                                >
-                                    <SelectTrigger className="h-9 w-full">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {PILLAR_OPTIONS.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableDropdown
+                                    options={PILLAR_OPTIONS}
+                                    placeholder="Select a type"
+                                    defaultValue={categoryPillar}
+                                    onSelect={handleCategoryPillarChange}
+                                />
                                 {getFieldError("pillar") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("pillar")}
@@ -1004,21 +1087,12 @@ export function MasterDataCreatePanel({
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                 Type
                             </label>
-                            <Select
-                                value={modelPillar}
-                                onValueChange={handleModelPillarChange}
-                            >
-                                <SelectTrigger className="h-9 w-full md:w-56">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {PILLAR_OPTIONS.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <SearchableDropdown
+                                options={PILLAR_OPTIONS}
+                                placeholder="Select a type"
+                                defaultValue={modelPillar}
+                                onSelect={handleModelPillarChange}
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -1026,18 +1100,15 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Brand <span className="text-red-500">*</span>
                                 </label>
-                                <Select value={selectedBrandId} onValueChange={setSelectedBrandId}>
-                                    <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Select a brand" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {brands.map((brand) => (
-                                            <SelectItem key={brand.id} value={String(brand.id)}>
-                                                {brand.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableDropdown
+                                    options={brands.map((brand) => ({
+                                        value: String(brand.id),
+                                        label: brand.name,
+                                    }))}
+                                    placeholder="Select a brand"
+                                    defaultValue={selectedBrandId}
+                                    onSelect={setSelectedBrandId}
+                                />
                                 {getFieldError("brandId") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("brandId")}
@@ -1049,21 +1120,15 @@ export function MasterDataCreatePanel({
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                                     Category <span className="text-red-500">*</span>
                                 </label>
-                                <Select
-                                    value={normalizedSelectedCategoryId}
-                                    onValueChange={handleModelCategoryChange}
-                                >
-                                    <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {activeCategoriesForModel.map((category) => (
-                                            <SelectItem key={category.id} value={String(category.id)}>
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchableDropdown
+                                    options={activeCategoriesForModel.map((category) => ({
+                                        value: String(category.id),
+                                        label: category.name,
+                                    }))}
+                                    placeholder="Select a category"
+                                    defaultValue={normalizedSelectedCategoryId}
+                                    onSelect={handleModelCategoryChange}
+                                />
                                 {getFieldError("categoryId") && (
                                     <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                         {getFieldError("categoryId")}
@@ -1080,6 +1145,103 @@ export function MasterDataCreatePanel({
                             {getFieldError("name") && (
                                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
                                     {getFieldError("name")}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Model Image
+                            </label>
+                            <Input
+                                ref={modelImageInputRef}
+                                name="modelImage"
+                                type="file"
+                                accept={MODEL_IMAGE_ACCEPT}
+                                className="hidden"
+                                onChange={(event) => handleModelImageSelection(event.target.files)}
+                            />
+                            <div className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
+                                <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                    {modelImagePreviewUrl ? (
+                                        <Image
+                                            src={modelImagePreviewUrl}
+                                            alt="Selected model preview"
+                                            width={112}
+                                            height={80}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <ImagePlus className="h-5 w-5 text-slate-400" />
+                                    )}
+                                </div>
+                                <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-slate-600`}>
+                                        {modelImageFile ? modelImageFile.name : "No image selected"}
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => {
+                                            setShowModelImageUploader(true);
+                                            modelImageInputRef.current?.click();
+                                        }}
+                                        aria-label="Change model image"
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                            {showModelImageUploader ? (
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => modelImageInputRef.current?.click()}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            modelImageInputRef.current?.click();
+                                        }
+                                    }}
+                                    onDragOver={(event) => {
+                                        event.preventDefault();
+                                        setIsModelImageDragOver(true);
+                                    }}
+                                    onDragLeave={() => setIsModelImageDragOver(false)}
+                                    onDrop={handleModelImageDrop}
+                                    className={`cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors ${isModelImageDragOver
+                                        ? "border-primary bg-primary/5"
+                                        : "border-slate-300 bg-slate-50/70 hover:border-slate-400"
+                                        }`}
+                                >
+                                    <div className="flex flex-col items-center gap-2 text-center">
+                                        <Upload className="h-5 w-5 text-slate-500" />
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                            Drag and drop an image, or click to browse
+                                        </p>
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                            PNG, JPG, WEBP or GIF. Maximum file size: 4.5MB.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : null}
+                            {modelImageFile && (
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearSelectedModelImage}
+                                    >
+                                        Remove image
+                                    </Button>
+                                </div>
+                            )}
+                            {getFieldError("imageUrl") && (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {getFieldError("imageUrl")}
                                 </p>
                             )}
                         </div>
@@ -1277,6 +1439,31 @@ export function MasterDataCreatePanel({
                                 onFocus={(event) => event.currentTarget.blur()}
                                 className={READ_ONLY_PREVIEW_INPUT_CLASSNAME}
                             />
+                        </div>
+
+                        {renderActiveSwitch}
+                    </>
+                );
+
+            case "owners":
+                return (
+                    <>
+                        {nextIdPreviewField}
+
+                        <div className="space-y-2">
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                Owner Name <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                                name="companyName"
+                                placeholder="TIQRI LK"
+                                required
+                            />
+                            {getFieldError("companyName") && (
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                    {getFieldError("companyName")}
+                                </p>
+                            )}
                         </div>
 
                         {renderActiveSwitch}

@@ -5,10 +5,14 @@ import { jwtVerify } from 'jose';
 import {
   DEFAULT_POST_LOGIN_REDIRECT,
   sanitizeRedirectPath,
-} from '@/lib/auth-redirect';
-import { getJwtSecretKey } from '@/lib/jwt';
+} from '@/lib/auth/auth-redirect';
+import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import { normalizeTokenRole, SESSION_COOKIE_NAME, type TokenRole } from '@/lib/session';
+import {
+  normalizeTokenRole,
+  SESSION_COOKIE_NAME,
+  type TokenRole,
+} from '@/lib/auth/session';
 
 async function verifyTokenAndRole(token: string) {
   const authTimer = startLatencyTimer();
@@ -48,7 +52,11 @@ function getTopLevelSegment(pathname: string) {
  * - Employee: /dashboard only
  */
 function canAccessRoute(role: TokenRole, pathname: string) {
-  if (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/') {
+  if (
+    pathname === '/' ||
+    pathname === '/dashboard' ||
+    pathname === '/dashboard/'
+  ) {
     return true;
   }
 
@@ -119,7 +127,11 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(redirectTo, request.url));
     }
 
-    if (payload && isProtectedRoute && !canAccessRoute(payload.role, pathname)) {
+    if (
+      payload &&
+      isProtectedRoute &&
+      !canAccessRoute(payload.role, pathname)
+    ) {
       return NextResponse.redirect(new URL('/403', request.url));
     }
 

@@ -1,9 +1,7 @@
 'use server';
 
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { jwtVerify } from 'jose';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
 
 import { db } from '@/db';
 import {
@@ -16,13 +14,13 @@ import {
   locations,
   maintenanceRecords,
   models,
-  sessions,
+  owners,
   users,
   vendors,
 } from '@/db/schema';
-import { getJwtSecretKey } from '@/lib/jwt';
+import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
-import { isValidUuid } from '@/lib/uuid';
+import { uploadFileToStorage } from '@/lib/storage';
 import type {
   BrandFormState,
   CategoryFormState,
@@ -36,13 +34,10 @@ import {
   departmentSchema,
   deviceModelSchema,
   locationSchema,
+  ownerSchema,
   vendorSchema,
 } from '@/lib/validations/master-data';
 import { type LocationType } from '@/types/master-data';
-
-const SESSION_COOKIE_NAME = 'session_token';
-
-type UserRole = typeof users.$inferSelect.role;
 
 const CATEGORY_PILLARS = new Set([
   'IT & Digital',
@@ -51,69 +46,18 @@ const CATEGORY_PILLARS = new Set([
   'Office Electronics',
 ]);
 
-function normalizeTokenRole(role: unknown): UserRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
-  }
+const MASTER_DATA_CODE_PREFIX: Record<MasterDataRecordEntity, string> = {
+  locations: 'LOC',
+  'asset-categories': 'CAT',
+  brands: 'BRD',
+  'device-models': 'MDL',
+  vendors: 'VND',
+  owners: 'OWN',
+  departments: 'DEP',
+};
 
-  return null;
-}
-
-async function getAuthenticatedUser(): Promise<{
-  id: string;
-  role: UserRole;
-} | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-
-    if (!isValidUuid(payload.sub)) {
-      return null;
-    }
-
-    if (!payload.sid || typeof payload.sid !== 'string') {
-      return null;
-    }
-
-    const role = normalizeTokenRole(payload.role);
-    if (!role) {
-      return null;
-    }
-
-    const activeSession = await db
-      .select({ id: sessions.id })
-      .from(sessions)
-      .where(
-        and(
-          eq(sessions.tokenId, payload.sid),
-          isNull(sessions.revokedAt),
-          sql`${sessions.expiresAt} > NOW()`
-        )
-      )
-      .limit(1);
-
-    if (activeSession.length === 0) {
-      return null;
-    }
-
-    return {
-      id: payload.sub,
-      role,
-    };
-  } catch {
-    return null;
-  }
+function formatMasterDataCode(prefix: string, numericId: number) {
+  return `${prefix}-${String(numericId).padStart(4, '0')}`;
 }
 
 function unauthorizedMasterDataResult(): UpdateMasterDataState {
@@ -151,7 +95,7 @@ function parseRequiredText(
 async function countLinkedAssetsForEntity(
   entity: MasterDataRecordEntity,
   recordIds: number[]
-) {
+): Promise<number> {
   switch (entity) {
     case 'locations': {
       const linked = await db
@@ -210,12 +154,25 @@ async function countLinkedAssetsForEntity(
       return linked[0]?.count ?? 0;
     }
 
+    case 'owners': {
+      const linked = await db
+        .select({
+          count: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+        })
+        .from(assets)
+        .where(inArray(assets.ownerId, recordIds));
+
+      return linked[0]?.count ?? 0;
+    }
+
     case 'departments':
       return 0;
   }
 }
 
-async function countLinkedUsersForDepartments(recordIds: number[]) {
+async function countLinkedUsersForDepartments(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${users.id}), 0)::int`,
@@ -226,7 +183,7 @@ async function countLinkedUsersForDepartments(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countChildLocations(recordIds: number[]) {
+async function countChildLocations(recordIds: number[]): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${locations.id}), 0)::int`,
@@ -237,7 +194,7 @@ async function countChildLocations(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countLocationAssignments(recordIds: number[]) {
+async function countLocationAssignments(recordIds: number[]): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${assetAssignments.id}), 0)::int`,
@@ -248,7 +205,9 @@ async function countLocationAssignments(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countLinkedModelsForCategories(recordIds: number[]) {
+async function countLinkedModelsForCategories(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${models.id}), 0)::int`,
@@ -259,7 +218,9 @@ async function countLinkedModelsForCategories(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countLinkedModelsForBrands(recordIds: number[]) {
+async function countLinkedModelsForBrands(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${models.id}), 0)::int`,
@@ -270,7 +231,9 @@ async function countLinkedModelsForBrands(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countVendorPurchaseReferences(recordIds: number[]) {
+async function countVendorPurchaseReferences(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${assetPurchases.id}), 0)::int`,
@@ -281,7 +244,9 @@ async function countVendorPurchaseReferences(recordIds: number[]) {
   return linked[0]?.count ?? 0;
 }
 
-async function countVendorMaintenanceReferences(recordIds: number[]) {
+async function countVendorMaintenanceReferences(
+  recordIds: number[]
+): Promise<number> {
   const linked = await db
     .select({
       count: sql<number>`coalesce(count(${maintenanceRecords.id}), 0)::int`,
@@ -471,6 +436,14 @@ export async function deleteMasterDataRecords(
         deletedCount = deleted.length;
         break;
       }
+      case 'owners': {
+        const deleted = await db
+          .delete(owners)
+          .where(inArray(owners.id, recordIds))
+          .returning({ id: owners.id });
+        deletedCount = deleted.length;
+        break;
+      }
       case 'departments': {
         const deleted = await db
           .delete(departments)
@@ -628,6 +601,13 @@ export async function createMasterDataRecord(
   try {
     switch (entity) {
       case 'locations': {
+        const nextLocationIdResult = await db
+          .select({
+            nextId: sql<number>`coalesce(max(${locations.id}), 0)::int + 1`,
+          })
+          .from(locations);
+        const nextLocationId = nextLocationIdResult[0]?.nextId ?? 1;
+
         const parsed = locationSchema.safeParse({
           name: formData.get('name'),
           type: formData.get('type'),
@@ -646,6 +626,10 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(locations)
           .values({
+            locationCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['locations'],
+              nextLocationId
+            ),
             name: parsed.data.name,
             type: parsed.data.type,
             parentId: parsed.data.parentId ?? null,
@@ -664,6 +648,13 @@ export async function createMasterDataRecord(
       }
 
       case 'asset-categories': {
+        const nextCategoryIdResult = await db
+          .select({
+            nextId: sql<number>`coalesce(max(${categories.id}), 0)::int + 1`,
+          })
+          .from(categories);
+        const nextCategoryId = nextCategoryIdResult[0]?.nextId ?? 1;
+
         const parsed = categorySchema.safeParse({
           pillar: formData.get('pillar'),
           name: formData.get('name'),
@@ -685,6 +676,10 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(categories)
           .values({
+            categoryCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['asset-categories'],
+              nextCategoryId
+            ),
             pillar: parsed.data.pillar,
             name: parsed.data.name,
             prefix: parsed.data.prefix,
@@ -705,6 +700,13 @@ export async function createMasterDataRecord(
       }
 
       case 'brands': {
+        const nextBrandIdResult = await db
+          .select({
+            nextId: sql<number>`coalesce(max(${brands.id}), 0)::int + 1`,
+          })
+          .from(brands);
+        const nextBrandId = nextBrandIdResult[0]?.nextId ?? 1;
+
         const parsed = brandSchema.safeParse({
           name: formData.get('name'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
@@ -721,6 +723,10 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(brands)
           .values({
+            brandCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['brands'],
+              nextBrandId
+            ),
             name: parsed.data.name,
             isActive: parsed.data.isActive,
           })
@@ -737,10 +743,28 @@ export async function createMasterDataRecord(
       }
 
       case 'device-models': {
+        const nextModelIdResult = await db
+          .select({
+            nextId: sql<number>`coalesce(max(${models.id}), 0)::int + 1`,
+          })
+          .from(models);
+        const nextModelId = nextModelIdResult[0]?.nextId ?? 1;
+
+        const modelImageEntry = formData.get('modelImage');
+        let uploadedImageUrl = '';
+
+        if (modelImageEntry instanceof File && modelImageEntry.size > 0) {
+          uploadedImageUrl = await uploadFileToStorage(
+            modelImageEntry,
+            'models'
+          );
+        }
+
         const parsed = deviceModelSchema.safeParse({
           name: formData.get('name'),
           brandId: formData.get('brandId'),
           categoryId: formData.get('categoryId'),
+          imageUrl: uploadedImageUrl,
           technicalDetails: String(formData.get('technicalDetails') ?? '{}'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
@@ -756,9 +780,18 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(models)
           .values({
+            modelCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['device-models'],
+              nextModelId
+            ),
             name: parsed.data.name,
             brandId: parsed.data.brandId,
             categoryId: parsed.data.categoryId,
+            imageUrl:
+              typeof parsed.data.imageUrl === 'string' &&
+              parsed.data.imageUrl.trim().length > 0
+                ? parsed.data.imageUrl.trim()
+                : null,
             technicalDetails: parsed.data.technicalDetails,
             isActive: parsed.data.isActive,
           })
@@ -775,6 +808,13 @@ export async function createMasterDataRecord(
       }
 
       case 'vendors': {
+        const nextVendorIdResult = await db
+          .select({
+            nextId: sql<number>`coalesce(max(${vendors.id}), 0)::int + 1`,
+          })
+          .from(vendors);
+        const nextVendorId = nextVendorIdResult[0]?.nextId ?? 1;
+
         const parsed = vendorSchema.safeParse({
           companyName: formData.get('companyName'),
           email: String(formData.get('email') ?? ''),
@@ -794,6 +834,10 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(vendors)
           .values({
+            vendorCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['vendors'],
+              nextVendorId
+            ),
             companyName: parsed.data.companyName,
             email:
               parsed.data.email && parsed.data.email.length > 0
@@ -849,6 +893,10 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(departments)
           .values({
+            departmentCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['departments'],
+              nextDepartmentId
+            ),
             name: parsed.data.name,
             shortCode: parsed.data.shortCode,
             costCenterId: parsed.data.costCenterId,
@@ -865,6 +913,49 @@ export async function createMasterDataRecord(
 
         break;
       }
+
+      case 'owners': {
+        const nextOwnerIdResult = await db
+          .select({
+            nextId: sql<number>`coalesce(max(${owners.id}), 0)::int + 1`,
+          })
+          .from(owners);
+        const nextOwnerId = nextOwnerIdResult[0]?.nextId ?? 1;
+
+        const parsed = ownerSchema.safeParse({
+          companyName: formData.get('companyName'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate owner data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(owners)
+          .values({
+            ownerCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['owners'],
+              nextOwnerId
+            ),
+            companyName: parsed.data.companyName,
+            isActive: parsed.data.isActive,
+          })
+          .returning({ id: owners.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create owner.',
+          };
+        }
+
+        break;
+      }
     }
 
     revalidatePath('/settings/master-data');
@@ -873,7 +964,14 @@ export async function createMasterDataRecord(
       success: true,
       message: 'Record created successfully.',
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.length > 0) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+
     return {
       success: false,
       message: 'Database error: failed to create record.',
@@ -1030,10 +1128,21 @@ export async function updateMasterDataRecord(
       }
 
       case 'device-models': {
+        const modelImageEntry = formData.get('modelImage');
+        let uploadedImageUrl = '';
+
+        if (modelImageEntry instanceof File && modelImageEntry.size > 0) {
+          uploadedImageUrl = await uploadFileToStorage(
+            modelImageEntry,
+            'models'
+          );
+        }
+
         const parsed = deviceModelSchema.safeParse({
           name: formData.get('name'),
           brandId: formData.get('brandId'),
           categoryId: formData.get('categoryId'),
+          imageUrl: formData.get('imageUrl'),
           technicalDetails: String(formData.get('technicalDetails') ?? '{}'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
@@ -1052,6 +1161,12 @@ export async function updateMasterDataRecord(
             name: parsed.data.name,
             brandId: parsed.data.brandId,
             categoryId: parsed.data.categoryId,
+            imageUrl:
+              uploadedImageUrl ||
+              (typeof parsed.data.imageUrl === 'string' &&
+              parsed.data.imageUrl.trim().length > 0
+                ? parsed.data.imageUrl.trim()
+                : null),
             technicalDetails: parsed.data.technicalDetails,
             isActive: parsed.data.isActive,
           })
@@ -1104,6 +1219,35 @@ export async function updateMasterDataRecord(
 
         if (updated.length === 0) {
           return { success: false, message: 'Vendor not found.' };
+        }
+        break;
+      }
+
+      case 'owners': {
+        const parsed = ownerSchema.safeParse({
+          companyName: formData.get('companyName'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Validation failed.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const updated = await db
+          .update(owners)
+          .set({
+            companyName: parsed.data.companyName,
+            isActive: parsed.data.isActive,
+          })
+          .where(eq(owners.id, idRaw))
+          .returning({ id: owners.id });
+
+        if (updated.length === 0) {
+          return { success: false, message: 'Owner not found.' };
         }
         break;
       }

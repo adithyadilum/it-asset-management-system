@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { Info, X } from "lucide-react"
 
 import { removeUserFromManagedRole } from "@/actions/roles"
@@ -60,13 +60,14 @@ export function RemoveUserModal({
       .toUpperCase()
   }, [user])
 
-  useEffect(() => {
-    if (!isOpen) {
-      // Clear transient modal state between openings.
-      setIsSubmitting(false)
-      setError(null)
-    }
-  }, [isOpen])
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false)
+    setIsSubmitting(false)
+    setError(null)
+  } else if (isOpen && !prevIsOpen) {
+    setPrevIsOpen(true)
+  }
 
   const handleRemove = async () => {
     if (!user) {

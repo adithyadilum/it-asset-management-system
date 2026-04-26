@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -45,6 +45,12 @@ export function SearchableDropdown({
 }: SearchableDropdownProps) {
   const [open, setOpen] = React.useState(false)
   const [value, setValue] = React.useState(defaultValue)
+  const [prevDefaultValue, setPrevDefaultValue] = React.useState(defaultValue)
+
+  if (defaultValue !== prevDefaultValue) {
+    setPrevDefaultValue(defaultValue)
+    setValue(defaultValue)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -53,12 +59,15 @@ export function SearchableDropdown({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between border-slate-200 text-slate-500 hover:bg-slate-50 font-normal"
+          className={cn(
+            "w-full justify-between font-normal",
+            value ? "text-foreground" : "text-muted-foreground"
+          )}
         >
           {value
             ? options.find((option) => option.value === value)?.label
             : placeholder}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
@@ -71,7 +80,7 @@ export function SearchableDropdown({
                 <CommandItem
                   key={option.value}
                   value={option.value}
-                  onSelect={(currentValue) => {
+                  onSelect={(currentValue: string) => {    //add explicit type annotation to searchable dropdown(String)
                     setValue(currentValue === value ? "" : currentValue)
                     onSelect(currentValue)
                     setOpen(false)

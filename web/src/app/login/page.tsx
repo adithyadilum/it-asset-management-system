@@ -1,5 +1,5 @@
 import { MockLoginFlow } from "@/components/shared/auth/mock-login-flow"
-import { DEFAULT_POST_LOGIN_REDIRECT, sanitizeRedirectPath } from "@/lib/auth-redirect"
+import { DEFAULT_POST_LOGIN_REDIRECT, sanitizeRedirectPath } from "@/lib/auth/auth-redirect"
 
 type LoginPageProps = {
   searchParams: Promise<{

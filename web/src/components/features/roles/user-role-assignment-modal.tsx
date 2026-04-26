@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { CirclePlus, Info, Search, Trash2, X } from "lucide-react"
 
 import { assignUserRole, assignUsersRoleBulk, searchUsers } from "@/actions/roles"
@@ -140,15 +140,49 @@ export function UserRoleAssignmentModal({
     )
   }
 
-  // Reset add-mode UI state whenever the modal session starts or ends.
-  const resetAddModeState = useCallback(() => {
-    setSearchQuery("")
-    setSearchResults([])
-    setIsSearching(false)
-    setSearchError(null)
-    setHideUsersAlreadyInRole(false)
-    setMappedSelection([])
-  }, [])
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  const [prevMode, setPrevMode] = useState(mode)
+  const [prevUser, setPrevUser] = useState(user)
+
+  if (isOpen && !prevIsOpen) {
+    setPrevIsOpen(true)
+    setError(null)
+    setIsSubmitting(false)
+    if (mode === "add") {
+      setSelectedRole(defaultRole)
+      setSearchQuery("")
+      setSearchResults([])
+      setIsSearching(false)
+      setSearchError(null)
+      setHideUsersAlreadyInRole(false)
+      setMappedSelection([])
+    } else if (user) {
+      setSelectedRole(user.role)
+    }
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false)
+    setIsSubmitting(false)
+    setError(null)
+    setSelectedRole(mode === "add" ? defaultRole : (user?.role ?? "Employee"))
+    if (mode === "add") {
+      setSearchQuery("")
+      setSearchResults([])
+      setIsSearching(false)
+      setSearchError(null)
+      setHideUsersAlreadyInRole(false)
+      setMappedSelection([])
+    }
+  }
+
+  if (mode !== prevMode || user !== prevUser) {
+    setPrevMode(mode)
+    setPrevUser(user)
+    if (mode === "edit" && user) {
+      setSelectedRole(user.role)
+    } else if (mode === "add") {
+      setSelectedRole(defaultRole)
+    }
+  }
 
   useEffect(() => {
     if (!isOpen || mode !== "add") {
@@ -156,12 +190,6 @@ export function UserRoleAssignmentModal({
     }
 
     if (!normalizedQuery) {
-      // FIX: Strict if statement to satisfy ESLint no-unused-expressions
-      if (searchResults.length > 0) {
-        setSearchResults([])
-      }
-      setIsSearching(false)
-      setSearchError(null)
       return
     }
 
@@ -199,32 +227,7 @@ export function UserRoleAssignmentModal({
       isCancelled = true
       clearTimeout(searchDebounce)
     }
-  }, [isOpen, mode, normalizedQuery, searchResults.length])
-
-  useEffect(() => {
-    if (isOpen) {
-      if (mode === "add") {
-        setSelectedRole(defaultRole)
-        resetAddModeState()
-      } else if (user) {
-        setSelectedRole(user.role)
-      }
-
-      setError(null)
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!isOpen) {
-      setIsSubmitting(false)
-      setError(null)
-      setSelectedRole(mode === "add" ? defaultRole : (user?.role ?? "Employee"))
-
-      if (mode === "add") {
-        resetAddModeState()
-      }
-    }
-  }, [defaultRole, isOpen, mode, resetAddModeState, user])
+  }, [isOpen, mode, normalizedQuery])
 
   // Handles two submit flows: bulk mapping in add mode and single-user update in edit mode.
   const handleSubmit = async () => {
