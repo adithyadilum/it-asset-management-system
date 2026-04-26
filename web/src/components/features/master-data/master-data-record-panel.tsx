@@ -1619,19 +1619,23 @@ export function MasterDataRecordPanel({
                         : `Are you sure you want to delete this record? This action cannot be undone.`
                 }
                 itemsToDelete={
-                    selectedRecord
+                    selectedRecord && normalizedEntity
                         ? [{
-                            id: String(selectedRecord.id),
+                            id: resolveRecordCode(normalizedEntity, selectedRecord.code, selectedRecord.id),
                             name: getRecordDisplayName(),
                         }]
                         : []
                 }
                 columns={[
-                    { key: "id", label: "ID", width: "w-1/3" },
+                    { key: "id", label: "Code", width: "w-1/3" },
                     { key: "name", label: "Name", width: "w-2/3" },
                 ]}
                 canDelete={linkedAssetsCount === 0}
-                errorItemIds={linkedAssetsCount > 0 ? [String(selectedRecord?.id || "")] : []}
+                errorItemIds={
+                    linkedAssetsCount > 0 && normalizedEntity && selectedRecord
+                        ? [resolveRecordCode(normalizedEntity, selectedRecord.code, selectedRecord.id)]
+                        : []
+                }
                 errorMessage={
                     linkedAssetsCount > 0
                         ? `This record has ${linkedAssetsCount} linked asset${linkedAssetsCount > 1 ? "s" : ""} and cannot be deleted.`

@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-table"
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 
+import { TableEmptyState, type TableEmptyStateAction } from "@/components/shared/table-empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -49,8 +50,14 @@ type DataTableProps<TData, TValue> = {
   enableRowScroll?: boolean
   selectionActions?: DataTableSelectionAction<TData>[]
   selectionLabel?: (selectedCount: number) => string
+  emptyState?: {
+    title?: string
+    description?: string
+    action?: TableEmptyStateAction
+  }
   onRowClick?: (row: TData, rowIndex: number) => void
   isRowActive?: (row: TData, rowIndex: number) => boolean
+  selectionResetSignal?: number | string
   className?: string
 }
 
@@ -63,8 +70,10 @@ export function DataTable<TData, TValue>({
   enableRowScroll = true,
   selectionActions = [],
   selectionLabel,
+  emptyState,
   onRowClick,
   isRowActive,
+  selectionResetSignal,
   className,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
@@ -119,6 +128,10 @@ export function DataTable<TData, TValue>({
     pageIndex: 0,
     pageSize: initialPageSize,
   })
+
+  React.useEffect(() => {
+    setRowSelection({})
+  }, [selectionResetSignal])
 
   const selectionColumn = React.useMemo<ColumnDef<TData, unknown>>(
     () => ({
@@ -253,12 +266,16 @@ export function DataTable<TData, TValue>({
             </TableRow>
           ))
         ) : (
-          <TableRow className="h-13.25 border-border">
+          <TableRow className="border-border">
             <TableCell
               colSpan={table.getAllLeafColumns().length}
-              className="h-13.25 text-center font-normal text-muted-foreground"
+              className="py-8"
             >
-              No results found
+              <TableEmptyState
+                title={emptyState?.title}
+                description={emptyState?.description}
+                action={emptyState?.action}
+              />
             </TableCell>
           </TableRow>
         )}

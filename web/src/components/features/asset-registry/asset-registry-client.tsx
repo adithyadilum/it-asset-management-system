@@ -8,7 +8,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { useMemo, useRef, useState, useEffect, useTransition } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import {
@@ -812,6 +812,13 @@ export function AssetRegistryClient({
           ? ['w-[16%]', 'w-[20%]', 'w-[14%]', 'w-[16%]', 'w-[18%]', 'w-[16%]']
           : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
 
+  const openRegistrationPanel = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('panel', 'registration');
+    params.set('animate', isPanelOpen ? '0' : '1');
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [isPanelOpen, pathname, router, searchParams]);
+
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
       <div className="mb-4">
@@ -970,12 +977,7 @@ export function AssetRegistryClient({
             <Button
               type="button"
               size="sm"
-              onClick={() => {
-                const params = new URLSearchParams(searchParams.toString());
-                params.set('panel', 'registration');
-                params.set('animate', isPanelOpen ? '0' : '1');
-                router.push(`${pathname}?${params.toString()}`, { scroll: false });
-              }}
+              onClick={openRegistrationPanel}
             >
               <Plus className="h-4 w-4" />
               {config.addAssetLabel}
@@ -1046,6 +1048,14 @@ export function AssetRegistryClient({
               defaultSorting={[{ id: 'assetTag', desc: true }]}
               selectionActions={selectionActions}
               selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
+              emptyState={{
+                title: 'No assets found',
+                description: 'Add your first asset to start managing this registry.',
+                action: {
+                  label: config.addAssetLabel,
+                  onClick: openRegistrationPanel,
+                },
+              }}
               isRowActive={(row) => Boolean(activeRecordId && row.assetTag === activeRecordId)}
               onRowClick={(row) => {
                 const params = new URLSearchParams(searchParams.toString());
