@@ -7,6 +7,7 @@ import {
     type DeleteItem,
 } from "@/components/shared/destructive-confirmation-dialog"
 import { AssetCard } from "@/components/shared/asset-card"
+import { AssetAlert } from "@/components/shared/asset-alert"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs"
 import { StatusToggle } from "@/components/shared/status-toggle"
@@ -120,6 +121,57 @@ export function SandboxSharedIntegrationSuiteClient({
                         <h3 className="text-sm font-semibold text-foreground">Table Skeleton</h3>
                         <div className="mt-3">
                             <TableSkeleton columnWidths={["w-[25%]", "w-[40%]", "w-[20%]"]} rowCount={3} />
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg bg-card p-4 lg:col-span-2">
+                        <h3 className="text-sm font-semibold text-foreground">Asset Alerts</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Reusable alert banner for reminder, return-overdue, and notice workflows.
+                        </p>
+
+                        <div className="mt-4 space-y-3">
+                            <AssetAlert
+                                variant="return-overdue"
+                                title="Return Overdue"
+                                message='MacBook Pro 14" (AST-0142) was due on Oct 12, 2025.'
+                                actionLabel="Contact IT"
+                                actionHref="/service-requests"
+                            />
+
+                            <AssetAlert
+                                variant="reminder"
+                                title="Reminder"
+                                message="iPhone 17 Pro is due for return on Feb 28, 2026."
+                            />
+
+                            <AssetAlert
+                                variant="notice"
+                                title="Notice"
+                                message='Samsung 32" UHD (AST-0142) has been requested for return. Please return the asset to IT immediately.'
+                                actionLabel="Contact IT"
+                                actionHref="/service-requests"
+                            />
+
+                            <AssetAlert
+                                variant="service-update"
+                                title="Service Update"
+                                message='Samsung 32" UHD (AST-0142) has been sent for repair.'
+                            />
+
+                            <AssetAlert
+                                variant="repair-completed"
+                                title="Repair Completed"
+                                message='Samsung 32" UHD (AST-0142) is ready for collection.'
+                            />
+
+                            <AssetAlert
+                                variant="action-required"
+                                title="Action Required"
+                                message="IT has assigned a new Dell Ultrasharp Monitor (AST-0992) to you."
+                                actionLabel="Review & Accept"
+                                actionHref="/my-assets"
+                            />
                         </div>
                     </div>
 
