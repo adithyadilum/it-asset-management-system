@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import { sessions, users } from '@/db/schema';
 import { getJwtSecretKey } from '@/lib/auth/jwt';
+import { logAuditAction } from '@/lib/audit';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/auth/uuid';
 import type { LoginActionResult, LoginRequest, UserRole } from '@/types/auth';
@@ -80,17 +81,34 @@ export async function mockLogin(
     const role = normalizeRole(user.role);
 
     const createSessionTimer = startLatencyTimer();
-    await db.insert(sessions).values({
-      userId: user.id,
-      tokenId,
-      expiresAt,
-    });
+    const createdSessions = await db
+      .insert(sessions)
+      .values({
+        userId: user.id,
+        tokenId,
+        expiresAt,
+      })
+      .returning({
+        tokenId: sessions.tokenId,
+        userId: sessions.userId,
+        expiresAt: sessions.expiresAt,
+      });
     logLatency({
       scope: 'DB ACTION',
       label: 'auth.mockLogin.create_session',
       startTime: createSessionTimer,
       metadata: { userId: user.id },
     });
+
+    if (createdSessions[0]) {
+      await logAuditAction({
+        entityType: 'sessions',
+        entityId: createdSessions[0].tokenId,
+        actionType: 'CREATE',
+        performedById: user.id,
+        newData: createdSessions[0],
+      });
+    }
 
     const token = await new SignJWT({
       sid: tokenId,
@@ -152,23 +170,52 @@ export async function logout() {
         }
 
         if (typeof sessionId === 'string') {
+          const previousSession = await db.query.sessions.findFirst({
+            where: eq(sessions.tokenId, sessionId),
+            columns: {
+              tokenId: true,
+              userId: true,
+              expiresAt: true,
+              revokedAt: true,
+            },
+          });
+
           const revokeSessionTimer = startLatencyTimer();
-          const result = await db
+          const revokedSessions = await db
             .update(sessions)
             .set({ revokedAt: new Date() })
             .where(
               and(eq(sessions.tokenId, sessionId), isNull(sessions.revokedAt))
-            );
+            )
+            .returning({
+              tokenId: sessions.tokenId,
+              userId: sessions.userId,
+              expiresAt: sessions.expiresAt,
+              revokedAt: sessions.revokedAt,
+            });
 
           logLatency({
             scope: 'DB ACTION',
             label: 'auth.logout.revoke_session',
             startTime: revokeSessionTimer,
             metadata: {
-              updated: (result as unknown as { rowCount?: number } | undefined)
-                ?.rowCount,
+              updated: revokedSessions.length,
             },
           });
+
+          if (previousSession && revokedSessions[0]) {
+            await logAuditAction({
+              entityType: 'sessions',
+              entityId: revokedSessions[0].tokenId,
+              actionType: 'UPDATE',
+              performedById:
+                typeof sub === 'string' && isValidUuid(sub)
+                  ? sub
+                  : revokedSessions[0].userId,
+              oldData: previousSession,
+              newData: revokedSessions[0],
+            });
+          }
         }
       } catch {
         // Ignore invalid token; cookie is removed below regardless.

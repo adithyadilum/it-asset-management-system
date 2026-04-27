@@ -6,6 +6,7 @@ import { eq, ilike, or, and, isNull, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import { logAuditAction } from '@/lib/audit';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { getAuthenticatedUser } from '@/actions/auth';
 
@@ -135,12 +136,20 @@ export async function assignUsersRoleBulk(
   }
 
   try {
+    const previousUsers = await db.query.users.findMany({
+      where: inArray(users.id, normalizedTargetUserIds),
+      columns: {
+        id: true,
+        role: true,
+      },
+    });
+
     const updateUsersTimer = startLatencyTimer();
     const updatedUsers = await db
       .update(users)
       .set({ role: normalizedNewRole })
       .where(inArray(users.id, normalizedTargetUserIds))
-      .returning({ updatedId: users.id });
+      .returning({ updatedId: users.id, updatedRole: users.role });
 
     logLatency({
       scope: 'DB ACTION',
@@ -151,6 +160,25 @@ export async function assignUsersRoleBulk(
         updatedCount: updatedUsers.length,
       },
     });
+
+    const previousUserById = new Map(
+      previousUsers.map((previousUser) => [previousUser.id, previousUser])
+    );
+
+    await Promise.all(
+      updatedUsers.map((updatedUser) => {
+        const previousUser = previousUserById.get(updatedUser.updatedId);
+
+        return logAuditAction({
+          entityType: 'users',
+          entityId: updatedUser.updatedId,
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: previousUser ? { role: previousUser.role } : { role: null },
+          newData: { role: updatedUser.updatedRole },
+        });
+      })
+    );
 
     const updatedUserIds = updatedUsers.map(
       (updatedUser) => updatedUser.updatedId
@@ -237,13 +265,21 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   }
 
   try {
+    const previousUser = await db.query.users.findFirst({
+      where: eq(users.id, targetUserId),
+      columns: {
+        id: true,
+        role: true,
+      },
+    });
+
     // Use .returning() to verify a row was actually affected.
     const updateUserTimer = startLatencyTimer();
     const updatedUsers = await db
       .update(users)
       .set({ role: normalizedNewRole })
       .where(eq(users.id, targetUserId))
-      .returning({ updatedId: users.id });
+      .returning({ updatedId: users.id, updatedRole: users.role });
     logLatency({
       scope: 'DB ACTION',
       label: 'roles.assignUserRole.update_user_role',
@@ -256,6 +292,15 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
     if (updatedUsers.length === 0) {
       return { success: false, error: 'User not found or no changes made.' };
     }
+
+    await logAuditAction({
+      entityType: 'users',
+      entityId: targetUserId,
+      actionType: 'UPDATE',
+      performedById: currentUser.id,
+      oldData: previousUser ? { role: previousUser.role } : { role: null },
+      newData: { role: updatedUsers[0].updatedRole },
+    });
 
     // Revoke active sessions so role changes take effect immediately.
     const revokeSessionTimer = startLatencyTimer();
