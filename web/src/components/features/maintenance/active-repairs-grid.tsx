@@ -89,17 +89,31 @@ export function ActiveRepairsGrid({
     },
   ];
 
-  if (isLoading) {
-    return <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[20%]', 'w-[25%]', 'w-[20%]']} />;
-  }
-
+ if (isLoading) {
   return (
-    <DataTable
-      columns={activeRepairsColumns}
-      data={tickets}
-      pageSizeOptions={[10, 20, 30, 50]}
-      initialPageSize={10}
-      onRowClick={(row) => onRowClick(row)}
+    <TableSkeleton
+      rowCount={5}
+      columnWidths={['w-[15%]', 'w-[20%]', 'w-[20%]', 'w-[25%]', 'w-[20%]']}
     />
   );
+}
+
+if (tickets.length === 0) {
+  return (
+    <div className="flex h-32 items-center justify-center bg-slate-50">
+      <span className="text-sm text-slate-500">No active repairs found</span>
+    </div>
+  );
+}
+
+return (
+  <DataTable
+    columns={activeRepairsColumns}
+    data={tickets}
+    pageSizeOptions={[10, 20, 30, 50]}
+    initialPageSize={10}
+    onRowClick={(row) => onRowClick(row)}
+    enableSelection={false}
+  />
+); 
 }

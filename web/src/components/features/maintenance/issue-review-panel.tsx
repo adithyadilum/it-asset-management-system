@@ -146,7 +146,7 @@ export function IssueReviewPanel({
 
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-8 text-[14px] space-y-4 shrink-0">
             <div className="grid grid-cols-[110px_1fr] gap-2 min-w-0">
-              <span className="font-medium text-slate-900">Reported By:</span>
+              <span className="font-medium text-slate-900">Dispatched By:</span>
               <span className="font-light text-slate-700 truncate">{ticket.reportedBy?.name || 'Unknown'}</span>
             </div>
             <div className="flex flex-col gap-2">

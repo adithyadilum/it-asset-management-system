@@ -1,4 +1,5 @@
-'use client';
+
+// web/src/components/features/maintenance/maintenance-tabs.tsx'use client';
 
 import { useState } from 'react';
 import { TabsContent } from '@/components/ui/tabs'; // We only need TabsContent now!
@@ -51,8 +52,10 @@ export function MaintenanceTabs({
     },
     {
       accessorKey: 'reportedBy.name',
-      header: 'Reported By',
-      cell: ({ row }) => <span className="text-slate-600">{row.original.reportedBy?.name || 'Unknown'}</span>,
+      header: 'Dispatched By',
+      cell: ({ row }) => (
+        <span className="text-slate-600">{row.original.reportedBy?.name || 'Unknown'}</span>
+      ),
     },
     {
       accessorKey: 'reportedIssue',

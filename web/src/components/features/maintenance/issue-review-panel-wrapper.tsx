@@ -88,10 +88,11 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
     setIsInitiating(true);
     try {
       await initiateVendorRepair(
-        data.ticket.asset.id, 
-        formData.vendorId, 
-        formData.rmaNumber, 
-        formData.estimatedCost, 
+        data.ticket.id,          // ✅ ticketId (triage)
+        data.ticket.asset.id,    // ✅ assetId
+        formData.vendorId,
+        formData.rmaNumber,
+        formData.estimatedCost,
         formData.expectedReturnDate
       );
       toast.success("Repair initiated successfully");

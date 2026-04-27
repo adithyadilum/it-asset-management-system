@@ -1,4 +1,5 @@
-'use client';
+
+// web/src/components/features/maintenance/repair-internally-dialog.tsx'use client';
 
 import { useState } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';

@@ -69,12 +69,12 @@ export function RepairHistoryGrid({
   }
 
   if (tickets.length === 0) {
-    return (
-      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50">
-        <span className="text-sm text-slate-500">No repair history found</span>
-      </div>
-    );
-  }
+  return (
+    <div className="flex h-32 items-center justify-center bg-slate-50">
+      <span className="text-sm text-slate-500">No repair history found</span>
+    </div>
+  );
+}
 
   return (
     <DataTable

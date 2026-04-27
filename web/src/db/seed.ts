@@ -27,7 +27,7 @@ import {
   vendors,
 } from './schema';
 import { type LocationType } from '../types/master-data';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 dotenv.config({ path: '.env.local' });
 
