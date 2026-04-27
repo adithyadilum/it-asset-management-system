@@ -7,10 +7,12 @@ import { AssetDetailsTab } from './asset-details-tab';
 import { TechnicalDetailsTab } from './technical-details-tab';
 import { PurchaseDetailsTab } from './purchase-details-tab';
 import { HistoryTab } from './history-tab';
+import { AllocationsTab, type AllocationUser } from './allocations-tab';
 import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-repo';
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
+import { StatusBadge } from '@/components/shared/status-badge';
 
-// New Imports for Maintenance Integration
+// Epic 15: Imports for Maintenance Integration
 import { getAssetMaintenanceHistory } from '@/actions/maintenance';
 import type { AssetMaintenanceRecord } from '@/types/maintenance';
 import { Badge } from '@/components/ui/badge';
@@ -19,15 +21,17 @@ export interface AssetDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   isLoading?: boolean;
-  
+
   // Base Asset
   assetId: string;
   assetTag: string;
+  assetName?: string;
   assetCategory: 'IT & Digital' | 'Software' | 'Office Furniture' | 'Office Electronics' | string;
   model: string;
   brand: string;
   serialNumber?: string;
   owner?: string;
+  assignedTo?: string;
   group?: string;
   location?: string;
   condition?: string;
@@ -38,12 +42,13 @@ export interface AssetDetailsPanelProps {
   note?: string;
   status: string;
   imageUrl?: string;
-  
+
   specs?: Record<string, string | number | undefined>;
   techNote?: string;
-  
+
   // Purchase
   currency?: string;
+  sourceCurrency?: string;
   purchaseDate?: string;
   basePrice?: string;
   shippingCost?: string;
@@ -53,11 +58,15 @@ export interface AssetDetailsPanelProps {
   totalRepairCost?: string;
   invoiceUrl?: string;
   vendorInfo?: { vendorId: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
-  
+
   // Event Data
   historyEvents?: HistoryEvent[];
-  maintenanceEvents?: MaintenanceEvent[]; // Keeping for backwards compatibility
-  
+  maintenanceEvents?: MaintenanceEvent[];
+
+  // Allocations (Software only)
+  allocations?: AllocationUser[];
+  totalSeats?: number;
+
   // Actions
   onEdit?: () => void;
   onActionButtonClick?: () => void;
@@ -65,10 +74,11 @@ export interface AssetDetailsPanelProps {
   onViewAllMaintenance?: () => void;
   onQRCodeClick?: () => void;
   onCurrencyChange?: (currency: string) => void;
+  onRevokeAllocation?: (userId: string) => void;
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
-  // ============ DYNAMIC MAINTENANCE FETCHING ============
+  // ============ EPIC 15: DYNAMIC MAINTENANCE FETCHING ============
   const [maintenanceHistory, setMaintenanceHistory] = useState<AssetMaintenanceRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
@@ -103,10 +113,20 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     const tabsList: TabbedPanelTab[] = [];
     const isSoftware = props.assetCategory === 'Software';
     const isFurniture = props.assetCategory === 'Office Furniture';
+    
+    // SAM Data mapping from dev branch
+    const softwareLicenseKey = props.serialNumber || props.specs?.license_key?.toString() || '-';
+    const softwareLicenseType = props.specs?.license_type?.toString() || 'Subscription';
+    const softwareVersion = props.specs?.version?.toString() || '-';
+    const softwareExpirationDate = props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || '-';
+    const softwareTotalSeats = props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-';
+    const softwareAvailableSeats = props.specs?.available_seats?.toString() || '-';
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
-    detailsFields.push({ label: 'Asset ID', value: props.assetId });
+    
+    // Dev branch resolution: Using assetTag
+    detailsFields.push({ label: 'Asset ID', value: props.assetTag });
     
     if (isFurniture) {
       detailsFields.push(
@@ -118,10 +138,14 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       );
     } else if (isSoftware) {
       detailsFields.push(
+        { label: 'Product', value: props.model || props.assetName || '-' },
+        { label: 'License Key', value: props.serialNumber || props.specs?.license_key?.toString() || '-' },
         { label: 'License Type', value: props.specs?.license_type?.toString() || 'Subscription' },
         { label: 'Version', value: props.specs?.version?.toString() || '-' },
+        { label: 'Total Seats', value: props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-' },
+        { label: 'Expiration Date', value: props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || '-' },
         { label: 'Publisher', value: props.brand },
-        { label: 'Assigned to', value: props.owner || '-' },
+        { label: 'Assigned to', value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     } else {
@@ -131,7 +155,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Brand', value: props.brand },
         { label: 'Serial Number', value: props.serialNumber || '-' },
         { label: 'Owner', value: props.owner || '-' },
-        { label: 'Assigned to', value: props.owner || '-' },
+        { label: 'Assigned to', value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     }
@@ -151,18 +175,50 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         <AssetLoadingSkeleton />
       ) : (
         <div className="flex flex-col pb-6">
-          {/* Old Tab Layout - Notice hideMaintenance is forcefully set to true now */}
+          {/* SAM Upgrade from dev branch, with maintenance hidden so we can use our custom Epic 15 UI */}
           <AssetDetailsTab
-            assetTag={props.assetTag}
             imageUrl={props.imageUrl}
-            status={props.status}
             note={props.note}
+            assetTag={props.assetTag}
             fields={detailsFields}
-            hideMaintenance={true} 
+            mode={isSoftware ? 'software' : 'default'}
+            softwareSections={isSoftware ? [
+              {
+                title: 'License Details',
+                rows: [
+                  { label: 'Product', value: props.model || props.assetName || '-' },
+                  { label: 'Publisher', value: props.brand || '-' },
+                  { label: 'License Key', value: softwareLicenseKey },
+                  { label: 'License Type', value: softwareLicenseType },
+                  { label: 'Version', value: softwareVersion },
+                  { label: 'Expiration Date', value: softwareExpirationDate },
+                ],
+              },
+              {
+                title: 'Allocation & Ownership',
+                rows: [
+                  { label: 'Total Seats', value: softwareTotalSeats },
+                  { label: 'Available Seats', value: softwareAvailableSeats },
+                  { label: 'Assigned To', value: props.assignedTo || '-' },
+                  { label: 'Group', value: props.group || '-' },
+                  { label: 'Owner', value: props.owner || '-' },
+                ],
+              },
+              {
+                title: 'Record Metadata',
+                rows: [
+                  { label: 'Asset ID', value: props.assetTag || '-' },
+                  { label: 'Purchase Date', value: props.purchaseDate || '-' },
+                  { label: 'Registered On', value: props.dateCreated || '-' },
+                  { label: 'Last Updated', value: props.updatedAt || '-' },
+                ],
+              },
+            ] : undefined}
+            hideMaintenance={true} // Force hide so our dynamic UI takes over
             onQRCodeClick={props.onQRCodeClick}
           />
 
-          {/* ============ NEW DYNAMIC MAINTENANCE UI ============ */}
+          {/* ============ EPIC 15: NEW DYNAMIC MAINTENANCE UI ============ */}
           {!isSoftware && (
             <div className="mt-8 shrink-0 px-2">
               <div className="flex items-center justify-between mb-4">
@@ -251,6 +307,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         ) : (
           <PurchaseDetailsTab
             currency={props.currency || 'USD'}
+            sourceCurrency={props.sourceCurrency || props.currency || 'USD'}
             purchaseDate={props.purchaseDate || '-'}
             basePrice={props.basePrice || '-'}
             shippingCost={props.shippingCost || '-'}
@@ -266,27 +323,59 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       });
     }
 
-    if (!isSoftware && props.historyEvents && props.historyEvents.length > 0) {
+    if (isSoftware) {
+      const allocatedCount = props.allocations?.length ?? 0;
+      const totalSeats = props.totalSeats ?? 0;
+
+      tabsList.push({
+        id: 'allocations',
+        label: 'Allocations',
+        content: props.isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
+          <AllocationsTab
+            totalSeats={totalSeats}
+            allocatedCount={allocatedCount}
+            allocations={props.allocations ?? []}
+            onRevoke={props.onRevokeAllocation}
+            isReadOnly={true}
+          />
+        ),
+      });
+    }
+
+    if (!isSoftware) {
       tabsList.push({
         id: 'history',
         label: 'History',
-        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab events={props.historyEvents} onViewAll={props.onViewAllHistory} />,
+        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab events={props.historyEvents ?? []} onViewAll={props.onViewAllHistory} />,
       });
     }
 
     return tabsList;
-  }, [props, maintenanceHistory, isLoadingHistory]); // <--- Added missing dependencies here!
+  }, [props, maintenanceHistory, isLoadingHistory]);
 
   const actions: SlidePanelAction[] = [
     { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
     { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
   ];
 
+  const resolvedPanelTitle = (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{props.assetName || props.model || 'Asset'}</span>
+      <StatusBadge
+        variant="metadata"
+        label={`ID: ${props.assetTag || '-'}`}
+      />
+      <StatusBadge value={props.status} showIcon />
+    </div>
+  );
+
   return (
     <TabbedPanel
       isOpen={props.isOpen}
       onClose={props.onClose}
-      title={`${props.model} - ${props.assetTag}`}
+      title={resolvedPanelTitle}
       tabs={tabs}
       defaultTabId="asset-details"
       actions={actions}

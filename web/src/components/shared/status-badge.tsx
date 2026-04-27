@@ -17,7 +17,7 @@ import {
 
 // 1. Define the distinct domains we are badging
 export type BadgeType = "assetStatus" | "hardwareCondition" | "userRole";
-export type StatusBadgeVariant = "default" | "linkedAssets";
+export type StatusBadgeVariant = "default" | "linkedAssets" | "metadata";
 
 // 2. The Configuration Dictionary (The Single Source of Truth)
 const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon: LucideIcon }> = {
@@ -86,6 +86,7 @@ interface StatusBadgeProps {
     value?: string;
     variant?: StatusBadgeVariant;
     count?: number;
+    label?: string;
     showIcon?: boolean;
     className?: string;
 }
@@ -94,6 +95,7 @@ export function StatusBadge({
     value,
     variant = "default",
     count,
+    label,
     showIcon = true,
     className,
 }: StatusBadgeProps) {
@@ -107,6 +109,19 @@ export function StatusBadge({
                 className={cn("font-medium whitespace-nowrap bg-slate-100 text-slate-700 border-slate-200", className)}
             >
                 {linkedAssetLabel}
+            </Badge>
+        );
+    }
+
+    if (variant === "metadata") {
+        const metadataLabel = label ?? value ?? "-";
+
+        return (
+            <Badge
+                variant="outline"
+                className={cn("font-medium whitespace-nowrap bg-slate-100 text-slate-700 border-slate-200", className)}
+            >
+                {metadataLabel}
             </Badge>
         );
     }

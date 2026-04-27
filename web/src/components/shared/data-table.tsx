@@ -1,4 +1,3 @@
-// web/src/components/shared/data-table.tsx
 "use client"
 
 import * as React from "react"
@@ -15,8 +14,10 @@ import {
 } from "@tanstack/react-table"
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 
+import { TableEmptyState, type TableEmptyStateAction } from "@/components/shared/table-empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Table,
   TableBody,
@@ -45,10 +46,20 @@ type DataTableProps<TData, TValue> = {
   data: TData[]
   pageSizeOptions?: number[]
   initialPageSize?: number
+  defaultSorting?: SortingState
+  enableRowScroll?: boolean
   selectionActions?: DataTableSelectionAction<TData>[]
   selectionLabel?: (selectedCount: number) => string
+  emptyState?: {
+    title?: string
+    description?: string
+    action?: TableEmptyStateAction
+  }
   onRowClick?: (row: TData, rowIndex: number) => void
+  isRowActive?: (row: TData, rowIndex: number) => boolean
+  selectionResetSignal?: number | string
   className?: string
+  // Epic 15 & 22 Additions:
   enableSelection?: boolean
   activeRowCondition?: (row: TData) => boolean
 }
@@ -58,13 +69,55 @@ export function DataTable<TData, TValue>({
   data,
   pageSizeOptions = [16, 24, 32, 48],
   initialPageSize = 16,
+  defaultSorting = [],
+  enableRowScroll = true,
   selectionActions = [],
   selectionLabel,
+  emptyState,
   onRowClick,
+  isRowActive,
+  selectionResetSignal,
   className,
-  enableSelection = true,
-  activeRowCondition, // <-- DEFAULT TO TRUE
+  enableSelection = true, // Default to true to not break other team members' code
+  activeRowCondition,
 }: DataTableProps<TData, TValue>) {
+  const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
+
+  const getDisplayText = React.useCallback((value: unknown) => {
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      return String(value)
+    }
+
+    return null
+  }, [])
+
+  const syncOverflowTitle = React.useCallback((element: HTMLElement) => {
+    const fullText = element.dataset.fulltext
+
+    if (!fullText) {
+      element.removeAttribute("title")
+      return
+    }
+
+    if (element.scrollWidth > element.clientWidth) {
+      element.title = fullText
+      return
+    }
+
+    element.removeAttribute("title")
+  }, [])
+
+  const handleOverflowTooltip = React.useCallback(
+    (event: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>) => {
+      syncOverflowTitle(event.currentTarget)
+    },
+    [syncOverflowTitle]
+  )
+
   const sortedPageSizes = React.useMemo(() => {
     const normalized = Array.from(new Set([...pageSizeOptions, initialPageSize])).filter(
       (value) => value > 0
@@ -74,12 +127,16 @@ export function DataTable<TData, TValue>({
     return normalized
   }, [initialPageSize, pageSizeOptions])
 
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: initialPageSize,
   })
+
+  React.useEffect(() => {
+    setRowSelection({})
+  }, [selectionResetSignal])
 
   const selectionColumn = React.useMemo<ColumnDef<TData, unknown>>(
     () => ({
@@ -120,6 +177,7 @@ export function DataTable<TData, TValue>({
     []
   )
 
+  // Epic 22: Conditionally include the selection column
   const tableColumns = React.useMemo(
     () => enableSelection ? [selectionColumn, ...(columns as ColumnDef<TData, unknown>[])] : (columns as ColumnDef<TData, unknown>[]),
     [columns, selectionColumn, enableSelection]
@@ -137,7 +195,7 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
-    enableRowSelection: enableSelection, // Pass the toggle here
+    enableRowSelection: enableSelection, // Epic 22 Toggle
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -170,15 +228,81 @@ export function DataTable<TData, TValue>({
   const pageCount = Math.max(table.getPageCount(), 1)
   const currentPage = Math.min(table.getState().pagination.pageIndex + 1, pageCount)
 
+  const rowsBody = (
+    <Table className="table-fixed">
+      <TableBody>
+        {table.getRowModel().rows.length > 0 ? (
+          table.getRowModel().rows.map((row) => {
+            // Epic 15 active row condition integration
+            const isActive = activeRowCondition ? activeRowCondition(row.original) : false;
+
+            return (
+              <TableRow
+                key={row.id}
+                data-state={(row.getIsSelected() || isActive) ? "selected" : undefined}
+                onClick={(event) => handleRowClick(event, row.original, row.index)}
+                className={cn(
+                  "h-13.25 border-border",
+                  isRowClickable && "cursor-pointer hover:bg-muted/50",
+                  isRowActive?.(row.original, row.index) && "bg-slate-50"
+                )}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const cellValue = cell.getValue()
+                  const cellTitle = getDisplayText(cellValue)
+                  const compactIdColumn = isCompactIdColumn(cell.column.id)
+
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        "h-13.25 overflow-hidden px-4 text-foreground",
+                        "font-normal",
+                        cell.column.id === "select" && "w-13 px-0",
+                        compactIdColumn && "w-28"
+                      )}
+                    >
+                      <div
+                        className="truncate"
+                        data-fulltext={cellTitle ?? undefined}
+                        onMouseEnter={handleOverflowTooltip}
+                        onFocus={handleOverflowTooltip}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    </TableCell>
+                  )
+                })}
+              </TableRow>
+            )
+          })
+        ) : (
+          <TableRow className="border-border">
+            <TableCell
+              colSpan={table.getAllLeafColumns().length}
+              className="py-8"
+            >
+              <TableEmptyState
+                title={emptyState?.title}
+                description={emptyState?.description}
+                action={emptyState?.action}
+              />
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  )
+
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-md border border-border bg-card font-sans",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card font-sans",
         className
       )}
     >
-      <Table>
-        <TableHeader className="bg-muted [&_tr]:border-b [&_tr]:border-border">
+      <Table className="table-fixed">
+        <TableHeader className="bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
           {selectedRows > 0 ? (
             <TableRow className="h-13.25 border-border bg-secondary hover:bg-secondary">
               <TableHead
@@ -250,22 +374,35 @@ export function DataTable<TData, TValue>({
                       className={cn(
                         "h-13.25 bg-muted px-4 text-foreground",
                         "font-medium",
-                        header.column.id === "select" && "w-13 px-0"
+                        header.column.id === "select" && "w-13 px-0",
+                        isCompactIdColumn(header.column.id) && "w-28"
                       )}
                     >
                       {header.isPlaceholder ? null : canSort ? (
                         <button
                           type="button"
                           onClick={header.column.getToggleSortingHandler()}
-                          className="inline-flex items-center gap-2 text-left"
+                          className="inline-flex min-w-0 max-w-full items-center gap-2 text-left"
                         >
-                          <span>
+                          <span
+                            className="truncate"
+                            data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
+                            onMouseEnter={handleOverflowTooltip}
+                            onFocus={handleOverflowTooltip}
+                          >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                           </span>
                           <SortIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
                         </button>
                       ) : (
-                        flexRender(header.column.columnDef.header, header.getContext())
+                        <span
+                          className="block truncate"
+                          data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
+                          onMouseEnter={handleOverflowTooltip}
+                          onFocus={handleOverflowTooltip}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </span>
                       )}
                     </TableHead>
                   )
@@ -274,52 +411,16 @@ export function DataTable<TData, TValue>({
             ))
           )}
         </TableHeader>
-
-        <TableBody>
-          {table.getRowModel().rows.length > 0 ? (
-            table.getRowModel().rows.map((row) => {
-              const isActive = activeRowCondition ? activeRowCondition(row.original) : false;
-
-              return (
-                <TableRow
-                  key={row.id}
-                  data-state={(row.getIsSelected() || isActive) ? "selected" : undefined}
-                  onClick={(event) => handleRowClick(event, row.original, row.index)}
-                  className={cn(
-                    "h-13.25 border-border",
-                    isRowClickable && "cursor-pointer hover:bg-muted/50"
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cn(
-                        "h-13.25 px-4 text-foreground",
-                        "font-normal",
-                        cell.column.id === "select" && "w-13 px-0"
-                      )}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              );
-            })
-          ) : (
-            <TableRow className="h-13.25 border-border">
-              <TableCell
-                colSpan={table.getAllLeafColumns().length}
-                className="h-13.25 text-center font-normal text-muted-foreground"
-              >
-                No results found
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
       </Table>
 
+      {enableRowScroll ? (
+        <ScrollArea className="flex-1 min-h-0">{rowsBody}</ScrollArea>
+      ) : (
+        <div className="flex-1 min-h-0">{rowsBody}</div>
+      )}
+
       <div className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3">
-        {/* Adjusted Footer Text to be smart about selections */}
+        {/* Epic 22: Smart Footer Text */}
         <p className="text-muted-foreground">
           {enableSelection ? `${selectedRows} of ${totalRows} row(s) selected` : `${totalRows} row(s) total`}
         </p>
