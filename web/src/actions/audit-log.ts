@@ -565,7 +565,7 @@ export async function getAuditLogs(
       ipAddress: record.ipAddress,
       entityLabel:
         targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
-        humanizeEntityType(record.entityType),
+        (record.entityType === 'URL' ? record.entityId : humanizeEntityType(record.entityType)),
     }));
 
     logLatency({ scope: 'audit-log', label: 'getAuditLogs', startTime: timer });

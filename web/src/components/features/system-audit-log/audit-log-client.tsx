@@ -71,6 +71,7 @@ const ACTION_BADGE_STYLES: Record<string, string> = {
     EXPORTED: "border-amber-300 bg-amber-50 text-amber-700",
     LOGIN: "border-violet-300 bg-violet-50 text-violet-700",
     LOGOUT: "border-slate-300 bg-slate-50 text-slate-700",
+    ACCESS_DENIED: "border-red-300 bg-red-50 text-red-700",
 };
 
 function getInitials(name: string) {
@@ -203,6 +204,14 @@ function buildEventDetails(row: AuditLogRow) {
     const oldValue = row.oldValue;
     const newValue = row.newValue;
 
+    if (action === "LOGIN") {
+        return "User logged in";
+    }
+
+    if (action === "LOGOUT") {
+        return "User logged out";
+    }
+
     if (!oldValue || !newValue) {
         if (action === "CREATE") {
             return `Created ${humanizeFieldName(row.entityType).toLowerCase()}`;
@@ -210,6 +219,11 @@ function buildEventDetails(row: AuditLogRow) {
 
         if (action === "DELETE") {
             return `Deleted ${humanizeFieldName(row.entityType).toLowerCase()}`;
+        }
+
+        if (action === "ACCESS_DENIED") {
+            const role = row.newValue?.role ? String(row.newValue.role) : "Unknown";
+            return `Access denied for role [${humanizeFieldName(role)}]`;
         }
 
         return "Updated record";
@@ -719,6 +733,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                         paginationState={pagination}
                         onPaginationChange={setPagination}
                         enableRowSelection={false}
+                        footerText={`Showing ${rows.length} of ${meta.total} secure audit event(s)`}
                         emptyState={{
                             title: "No audit events found",
                             description:

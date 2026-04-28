@@ -65,6 +65,7 @@ type DataTableProps<TData, TValue> = {
   pageCount?: number
   paginationState?: PaginationState
   onPaginationChange?: OnChangeFn<PaginationState>
+  footerText?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -86,6 +87,7 @@ export function DataTable<TData, TValue>({
   pageCount,
   paginationState,
   onPaginationChange,
+  footerText,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -441,9 +443,15 @@ export function DataTable<TData, TValue>({
       )}
 
       <div className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3">
-        <p className="text-muted-foreground">
-          {selectedRows} of {totalRows} row(s) selected
-        </p>
+        <div className="text-muted-foreground">
+          {footerText !== undefined ? (
+            footerText
+          ) : enableRowSelection ? (
+            `${selectedRows} of ${totalRows} row(s) selected`
+          ) : (
+            `Showing ${totalRows} row(s)`
+          )}
+        </div>
 
         <div className="flex items-center justify-start gap-2 sm:justify-center">
           <label htmlFor="rows-per-page" className="text-muted-foreground">

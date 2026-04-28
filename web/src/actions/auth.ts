@@ -104,7 +104,7 @@ export async function mockLogin(
       await logAuditAction({
         entityType: 'sessions',
         entityId: createdSessions[0].tokenId,
-        actionType: 'CREATE',
+        actionType: 'LOGIN',
         performedById: user.id,
         newData: createdSessions[0],
       });
@@ -207,7 +207,7 @@ export async function logout() {
             await logAuditAction({
               entityType: 'sessions',
               entityId: revokedSessions[0].tokenId,
-              actionType: 'UPDATE',
+              actionType: 'LOGOUT',
               performedById:
                 typeof sub === 'string' && isValidUuid(sub)
                   ? sub
