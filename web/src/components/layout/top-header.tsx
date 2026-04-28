@@ -3,6 +3,7 @@
 import {
     Ban,
     Bell,
+    Menu,
     PanelLeftClose,
     PanelLeftOpen,
 } from 'lucide-react';
@@ -10,6 +11,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { logout } from '@/actions/auth';
+import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -104,8 +106,19 @@ export function TopHeader({ user }: TopHeaderProps) {
     const roleLabel = roleLabelMap[user.role];
 
     return (
-        <header className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 rounded-lg bg-muted px-2">
-            <div className="flex min-w-0 items-center gap-2 px-2">
+        <header className="grid h-14 w-full grid-cols-3 items-center gap-4 rounded-none border-b border-slate-100 bg-white md:rounded-lg md:border-none md:bg-muted md:px-2">            {/* Left Column: Mobile Menu / Desktop Breadcrumb */}
+            <div className="flex md:hidden">
+                <button
+                    type="button"
+                    aria-label="Toggle menu"
+                    onClick={toggleSidebar}
+                    className="flex h-7 w-7 items-center justify-center"
+                >
+                    <Menu className="h-5 w-5 text-slate-900" />
+                </button>
+            </div>
+
+            <div className="hidden min-w-0 items-center gap-2 px-2 md:flex">
                 <button
                     type="button"
                     aria-label={state === 'collapsed' ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -166,12 +179,19 @@ export function TopHeader({ user }: TopHeaderProps) {
                 </Breadcrumb>
             </div>
 
-            <div className="justify-self-center">
+            {/* Center Column: Mobile Logo / Desktop Search */}
+            <div className="flex justify-center md:hidden">
+                <BrandHeader collapsed={false} />
+            </div>
+
+            <div className="hidden justify-self-center md:flex">
                 <OmniSearchTrigger userRole={user.role} />
             </div>
 
-            <div className="flex items-center gap-4 p-2 justify-self-end">
-                <div className="flex w-13 items-center justify-between">
+            {/* Right Column: Avatar & User Info */}
+            <div className="flex justify-end md:gap-4 md:p-2">
+                {/* Desktop: Bell Icon & Separator */}
+                <div className="hidden w-13 items-center justify-between md:flex">
                     <button
                         type="button"
                         aria-label="Notifications"
@@ -191,17 +211,17 @@ export function TopHeader({ user }: TopHeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <button
                             type="button"
-                            className="flex items-center gap-4 rounded-lg p-2"
+                            className="md:flex md:items-center md:gap-4 md:rounded-lg md:p-2"
                             aria-label="Open user menu"
                         >
-                            <Avatar className="h-8 w-8 rounded-lg">
+                            <Avatar className="h-8 w-8 rounded-full md:rounded-lg">
                                 <AvatarImage src="" alt={user.name} className="object-cover" />
-                                <AvatarFallback className="rounded-lg bg-slate-300 text-xs font-semibold text-slate-700">
+                                <AvatarFallback className="rounded-full bg-slate-300 text-xs font-semibold text-slate-700 md:rounded-lg md:bg-slate-300">
                                     {initials}
                                 </AvatarFallback>
                             </Avatar>
 
-                            <div className="flex flex-col items-start">
+                            <div className="hidden flex-col items-start md:flex">
                                 <span className="whitespace-nowrap font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
                                     {user.name}
                                 </span>
