@@ -6,14 +6,50 @@ import {
     DestructiveConfirmationDialog,
     type DeleteItem,
 } from "@/components/shared/destructive-confirmation-dialog"
+import { AssetCard } from "@/components/shared/asset-card"
+import { AssetAlert } from "@/components/shared/asset-alert"
+import { AcceptAssignmentDialog } from "@/components/features/dashboard/accept-assignment-dialog"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs"
 import { StatusToggle } from "@/components/shared/status-toggle"
 import { TableSkeleton } from "@/components/shared/table-skeleton"
 import { BrandHeader } from "@/components/shared/brand-header"
+import { HardDrive, Laptop, Monitor, Smartphone } from "lucide-react"
 
-export function SandboxSharedIntegrationSuiteClient() {
+type SandboxAssetCard = {
+    assetType: string
+    name: string
+    status: string
+    iconKey: "laptop" | "phone" | "monitor" | "generic"
+    details: Array<{ label: string; value: string }>
+}
+
+interface SandboxSharedIntegrationSuiteClientProps {
+    employeeName: string
+    employeeEmail: string | null
+    assetCards: SandboxAssetCard[]
+}
+
+function renderAssetIcon(iconKey: SandboxAssetCard["iconKey"]) {
+    switch (iconKey) {
+        case "laptop":
+            return <Laptop className="h-8 w-8" />
+        case "phone":
+            return <Smartphone className="h-8 w-8" />
+        case "monitor":
+            return <Monitor className="h-8 w-8" />
+        default:
+            return <HardDrive className="h-8 w-8" />
+    }
+}
+
+export function SandboxSharedIntegrationSuiteClient({
+    employeeName,
+    employeeEmail,
+    assetCards,
+}: SandboxSharedIntegrationSuiteClientProps) {
     const [isActive, setIsActive] = useState(true)
+    const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false)
     const [items, setItems] = useState<DeleteItem[]>([
         { id: "loc-01", name: "Colombo HQ", category: "Office" },
         { id: "loc-02", name: "Kandy Branch", category: "Warehouse" },
@@ -87,6 +123,95 @@ export function SandboxSharedIntegrationSuiteClient() {
                         <h3 className="text-sm font-semibold text-foreground">Table Skeleton</h3>
                         <div className="mt-3">
                             <TableSkeleton columnWidths={["w-[25%]", "w-[40%]", "w-[20%]"]} rowCount={3} />
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg bg-card p-4 lg:col-span-2">
+                        <h3 className="text-sm font-semibold text-foreground">Asset Alerts</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Reusable alert banner for reminder, return-overdue, and notice workflows.
+                        </p>
+
+                        <div className="mt-4 space-y-3">
+                            <AssetAlert
+                                variant="return-overdue"
+                                title="Return Overdue"
+                                message='MacBook Pro 14" (AST-0142) was due on Oct 12, 2025.'
+                                actionLabel="Contact IT"
+                                actionHref="/service-requests"
+                            />
+
+                            <AssetAlert
+                                variant="reminder"
+                                title="Reminder"
+                                message="iPhone 17 Pro is due for return on Feb 28, 2026."
+                            />
+
+                            <AssetAlert
+                                variant="notice"
+                                title="Notice"
+                                message='Samsung 32" UHD (AST-0142) has been requested for return. Please return the asset to IT immediately.'
+                                actionLabel="Contact IT"
+                                actionHref="/service-requests"
+                            />
+
+                            <AssetAlert
+                                variant="service-update"
+                                title="Service Update"
+                                message='Samsung 32" UHD (AST-0142) has been sent for repair.'
+                            />
+
+                            <AssetAlert
+                                variant="repair-completed"
+                                title="Repair Completed"
+                                message='Samsung 32" UHD (AST-0142) is ready for collection.'
+                            />
+
+                            <AssetAlert
+                                variant="action-required"
+                                title="Action Required"
+                                message="IT has assigned a new Dell Ultrasharp Monitor (AST-0992) to you."
+                                actionNode={
+                                    <AcceptAssignmentDialog
+                                        assetName='MacBook Pro 14" (M3)'
+                                        assetTag="AST-0992"
+                                        condition="New"
+                                        assignedBy="Admin (IT Dept)"
+                                        date="Feb 20, 2026"
+                                        isOpen={isAssignmentDialogOpen}
+                                        onOpenChange={setIsAssignmentDialogOpen}
+                                        onConfirm={() => setIsAssignmentDialogOpen(false)}
+                                        onReportIssue={() => setIsAssignmentDialogOpen(false)}
+                                    />
+                                }
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg bg-card p-4 lg:col-span-2">
+                        <h3 className="text-sm font-semibold text-foreground">Asset Card</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Live employee assets loaded from the database for {employeeName}
+                            {employeeEmail ? ` (${employeeEmail})` : ""}.
+                        </p>
+
+                        <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                            {assetCards.length > 0 ? (
+                                assetCards.map((asset) => (
+                                    <AssetCard
+                                        key={`${asset.assetType}-${asset.name}-${asset.details[0]?.value ?? "asset"}`}
+                                        assetType={asset.assetType}
+                                        name={asset.name}
+                                        status={asset.status}
+                                        icon={renderAssetIcon(asset.iconKey)}
+                                        details={asset.details}
+                                    />
+                                ))
+                            ) : (
+                                <div className="rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground xl:col-span-3">
+                                    No active assignments were found for this employee in the database.
+                                </div>
+                            )}
                         </div>
                     </div>
 
