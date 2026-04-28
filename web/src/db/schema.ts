@@ -13,6 +13,7 @@ import {
   date,
   uuid,
   foreignKey,
+  index,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -41,6 +42,7 @@ export const assetStatusEnum = pgEnum('asset_status', [
   'Defective',
   'Lost',
   'Retired',
+  'Pending Disposal',
   'Disposed',
 ]);
 export const conditionEnum = pgEnum('asset_condition', [
@@ -69,6 +71,8 @@ export const disposalStatusEnum = pgEnum('disposal_status', [
 // -----------------------------------------------------------------------------
 export const departments = pgTable('departments', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  departmentCode: varchar('department_code', { length: 50 }).unique(),
   name: varchar('name', { length: 255 }).notNull().unique(),
   shortCode: varchar('short_code', { length: 50 }).notNull().unique(),
   costCenterId: varchar('cost_center_id', { length: 100 }).notNull().unique(),
@@ -76,10 +80,10 @@ export const departments = pgTable('departments', {
 });
 
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(), // Switched to UUID to match ER diagram preference
+  id: uuid('id').defaultRandom().primaryKey(), 
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: text('name').notNull(),
-  password: text('password').notNull(), // Assuming local auth for mock; remove if strict SSO
+  password: text('password').notNull(), 
   departmentId: integer('department_id').references(() => departments.id),
   role: roleEnum('role').default('Employee').notNull(),
   isActive: boolean('is_active').notNull().default(true),
@@ -108,6 +112,8 @@ export const locations = pgTable(
   'locations',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    locationCode: varchar('location_code', { length: 50 }).unique(),
     name: varchar('name', { length: 255 }).notNull(),
     type: locationTypeEnum('type').notNull(),
     parentId: integer('parent_id'),
@@ -124,6 +130,8 @@ export const locations = pgTable(
 
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  vendorCode: varchar('vendor_code', { length: 50 }).unique(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
@@ -131,16 +139,26 @@ export const vendors = pgTable('vendors', {
   isActive: boolean('is_active').default(true).notNull(),
 });
 
+export const owners = pgTable('owners', {
+  id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  ownerCode: varchar('owner_code', { length: 50 }).unique(),
+  companyName: varchar('company_name', { length: 255 }).notNull().unique(),
+  isActive: boolean('is_active').default(true).notNull(),
+});
+
 export const categories = pgTable(
   'categories',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    categoryCode: varchar('category_code', { length: 50 }).unique(),
     name: varchar('name', { length: 255 }).notNull(),
     pillar: pillarEnum('pillar').notNull(),
     prefix: varchar('prefix', { length: 10 }).notNull().unique(),
     requiresSerial: boolean('requires_serial').default(true).notNull(),
     isConsumable: boolean('is_consumable').default(false).notNull(),
-    customSchema: jsonb('custom_schema'), // REPLACES CATEGORY_CUSTOM_FIELDS
+    customSchema: jsonb('custom_schema'), 
     isActive: boolean('is_active').default(true).notNull(),
   },
   (table) => ({
@@ -150,6 +168,8 @@ export const categories = pgTable(
 
 export const brands = pgTable('brands', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  brandCode: varchar('brand_code', { length: 50 }).unique(),
   name: varchar('name', { length: 255 }).notNull().unique(),
   isActive: boolean('is_active').default(true).notNull(),
 });
@@ -158,6 +178,8 @@ export const models = pgTable(
   'models',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    modelCode: varchar('model_code', { length: 50 }).unique(),
     brandId: integer('brand_id')
       .notNull()
       .references(() => brands.id, { onDelete: 'restrict' }),
@@ -165,41 +187,53 @@ export const models = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: 'restrict' }),
     name: varchar('name', { length: 255 }).notNull(),
+    imageUrl: varchar('image_url', { length: 500 }),
     technicalDetails: jsonb('technical_details'),
     isActive: boolean('is_active').default(true).notNull(),
   },
   (table) => ({
     brandModelUnique: unique('brand_model_idx').on(table.brandId, table.name),
+    brandIdIdx: index('models_brand_id_idx').on(table.brandId),
+    categoryIdIdx: index('models_category_id_idx').on(table.categoryId),
   })
 );
 
 // -----------------------------------------------------------------------------
 // 4. CORE ASSET REGISTRY
 // -----------------------------------------------------------------------------
-export const assets = pgTable('assets', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  assetTag: varchar('asset_tag', { length: 100 }).notNull().unique(),
-  serialNumber: varchar('serial_number', { length: 255 }),
-  name: varchar('name', { length: 255 }), // e.g., "Main Conference TV"
+export const assets = pgTable(
+  'assets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    assetTag: varchar('asset_tag', { length: 100 }).notNull().unique(),
+    serialNumber: varchar('serial_number', { length: 255 }),
+    name: varchar('name', { length: 255 }), // e.g., "Main Conference TV"
 
-  // Relations
-  modelId: integer('model_id')
-    .notNull()
-    .references(() => models.id, { onDelete: 'restrict' }),
-  locationId: integer('location_id').references(() => locations.id),
+    // Relations
+    modelId: integer('model_id')
+      .notNull()
+      .references(() => models.id, { onDelete: 'restrict' }),
+    locationId: integer('location_id').references(() => locations.id),
+    ownerId: integer('owner_id').references(() => owners.id),
 
-  // Current State
-  status: assetStatusEnum('status').default('Available').notNull(),
-  condition: conditionEnum('condition'),
-  instanceAttributes: jsonb('instance_attributes'), // REPLACES ASSET_CUSTOM_VALUES
+    // Current State
+    status: assetStatusEnum('status').default('Available').notNull(),
+    condition: conditionEnum('condition'),
+    instanceAttributes: jsonb('instance_attributes'), // REPLACES ASSET_CUSTOM_VALUES
 
-  // Lifespan
-  usefulLifeMonths: integer('useful_life_months'),
-  salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
+    // Lifespan
+    usefulLifeMonths: integer('useful_life_months'),
+    salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
 
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    modelIdIdx: index('assets_model_id_idx').on(table.modelId),
+    locationIdIdx: index('assets_location_id_idx').on(table.locationId),
+    ownerIdIdx: index('assets_owner_id_idx').on(table.ownerId),
+  })
+);
 
 export const assetPurchases = pgTable('asset_purchases', {
   id: serial('id').primaryKey(),
@@ -215,6 +249,8 @@ export const assetPurchases = pgTable('asset_purchases', {
   currencyCode: varchar('currency_code', { length: 3 }).default('USD'),
   warrantyExpiry: date('warranty_expiry'),
   invoiceUrl: varchar('invoice_url', { length: 500 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const assetDocuments = pgTable('asset_documents', {
@@ -222,7 +258,7 @@ export const assetDocuments = pgTable('asset_documents', {
   assetId: uuid('asset_id')
     .notNull()
     .references(() => assets.id, { onDelete: 'cascade' }),
-  documentType: varchar('document_type', { length: 100 }), // e.g., 'Manual', 'License'
+  documentType: varchar('document_type', { length: 100 }), 
   fileUrl: varchar('file_url', { length: 500 }).notNull(),
   uploadedById: uuid('uploaded_by_id')
     .notNull()
@@ -272,8 +308,11 @@ export const maintenanceRecords = pgTable('maintenance_records', {
   actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
   serviceDate: date('service_date'),
   closedAt: timestamp('closed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// 👇 UPDATED ONLY THIS TABLE WITH INDEXES 👇
 export const assetDisposals = pgTable('asset_disposals', {
   id: serial('id').primaryKey(),
   assetId: uuid('asset_id')
@@ -285,8 +324,9 @@ export const assetDisposals = pgTable('asset_disposals', {
   approvedById: uuid('approved_by_id').references(() => users.id),
 
   status: disposalStatusEnum('status').default('Pending Approval').notNull(),
-  reason: varchar('reason', { length: 255 }).notNull(), // e.g., 'End of Life', 'Damaged Beyond Repair'
+  reason: varchar('reason', { length: 255 }).notNull(), 
   justification: text('justification'),
+  rejectionReason: text('rejection_reason'),
 
   dataWiped: boolean('data_wiped').default(false),
   tagsRemoved: boolean('tags_removed').default(false),
@@ -298,16 +338,22 @@ export const assetDisposals = pgTable('asset_disposals', {
   requestedAt: timestamp('requested_at').defaultNow().notNull(),
   resolvedAt: timestamp('resolved_at'),
   notes: text('notes'),
-});
+}, (table) => ({
+  // ✨ ADDED THESE 3 INDEXES TO FIX QUERY SLOWNESS ✨
+  statusIdx: index('asset_disposals_status_idx').on(table.status),
+  assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
+  requestedByIdIdx: index('asset_disposals_requested_by_idx').on(table.requestedById),
+}));
+// 👆 ------------------------------------------ 👆
 
 // -----------------------------------------------------------------------------
 // 6. SYSTEM AUDIT LOG
 // -----------------------------------------------------------------------------
 export const systemAuditLogs = pgTable('system_audit_logs', {
   id: serial('id').primaryKey(),
-  entityType: varchar('entity_type', { length: 100 }).notNull(), // e.g., 'Asset', 'User'
+  entityType: varchar('entity_type', { length: 100 }).notNull(), 
   entityId: varchar('entity_id', { length: 255 }).notNull(),
-  actionType: varchar('action_type', { length: 100 }).notNull(), // e.g., 'UPDATE', 'DELETE'
+  actionType: varchar('action_type', { length: 100 }).notNull(), 
   performedById: uuid('performed_by_id')
     .notNull()
     .references(() => users.id),
@@ -319,19 +365,76 @@ export const systemAuditLogs = pgTable('system_audit_logs', {
 });
 
 // -----------------------------------------------------------------------------
+// SOFTWARE ASSET MANAGEMENT (SAM)
+// -----------------------------------------------------------------------------
+export const licenseTypeEnum = pgEnum('license_type', [
+  'Perpetual',
+  'Subscription',
+  'Open Source / Free',
+]);
+
+export const softwareLicenses = pgTable('software_licenses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  modelId: integer('model_id')
+    .notNull()
+    .references(() => models.id, { onDelete: 'restrict' }),
+
+  licenseKey: varchar('license_key', { length: 255 }),
+  licenseType: licenseTypeEnum('license_type').notNull(),
+
+  // The crucial "Seats" logic
+  totalSeats: integer('total_seats').notNull().default(1),
+
+  // Software specific lifecycles
+  startDate: date('start_date'),
+  expiryDate: date('expiry_date'), // Crucial for IT alerts
+
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+// Software needs its own assignment table to handle "Seats"
+export const softwareAllocations = pgTable('software_allocations', {
+  id: serial('id').primaryKey(),
+  licenseId: uuid('license_id')
+    .notNull()
+    .references(() => softwareLicenses.id, { onDelete: 'cascade' }),
+  assignedToUserId: uuid('assigned_to_user_id')
+    .notNull()
+    .references(() => users.id),
+
+  allocatedAt: timestamp('allocated_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'),
+});
+
+// -----------------------------------------------------------------------------
 // 7. RELATIONS (For Drizzle Query Builder)
 // -----------------------------------------------------------------------------
-export const assetsRelations = relations(assets, ({ one, many }) => ({
+
+export const assetRelations = relations(assets, ({ one, many }) => ({
   model: one(models, { fields: [assets.modelId], references: [models.id] }),
   location: one(locations, {
     fields: [assets.locationId],
     references: [locations.id],
+  }),
+  owner: one(owners, {
+    fields: [assets.ownerId],
+    references: [owners.id],
   }),
   purchases: many(assetPurchases),
   assignments: many(assetAssignments),
   maintenance: many(maintenanceRecords),
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
+}));
+
+export const ownersRelations = relations(owners, ({ many }) => ({
+  assets: many(assets),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -342,4 +445,69 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   assignments: many(assetAssignments),
 }));
 
+export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
+  asset: one(assets, {
+    fields: [assetPurchases.assetId],
+    references: [assets.id],
+  }),
+  vendor: one(vendors, {
+    fields: [assetPurchases.vendorId],
+    references: [vendors.id],
+  }),
+}));
+
+export const maintenanceRecordsRelations = relations(
+  maintenanceRecords,
+  ({ one }) => ({
+    asset: one(assets, {
+      fields: [maintenanceRecords.assetId],
+      references: [assets.id],
+    }),
+    vendor: one(vendors, {
+      fields: [maintenanceRecords.vendorId],
+      references: [vendors.id],
+    }),
+    reporter: one(users, {
+      fields: [maintenanceRecords.reportedById],
+      references: [users.id],
+    }),
+  })
+);
+
+export const modelRelations = relations(models, ({ one, many }) => ({
+  brand: one(brands, { fields: [models.brandId], references: [brands.id] }),
+  category: one(categories, {
+    fields: [models.categoryId],
+    references: [categories.id],
+  }),
+  assets: many(assets),
+}));
+
+export const assetAssignmentsRelations = relations(
+  assetAssignments,
+  ({ one }) => ({
+    asset: one(assets, {
+      fields: [assetAssignments.assetId],
+      references: [assets.id],
+    }),
+    assignedToUser: one(users, {
+      fields: [assetAssignments.assignedToUserId],
+      references: [users.id],
+    }),
+    assignedBy: one(users, {
+      fields: [assetAssignments.assignedById],
+      references: [users.id],
+    }),
+  })
+);
+
+export const systemAuditLogsRelations = relations(
+  systemAuditLogs,
+  ({ one }) => ({
+    performedBy: one(users, {
+      fields: [systemAuditLogs.performedById],
+      references: [users.id],
+    }),
+  })
+);
 // Add other standard relation definitions here as needed for your specific nested queries.
