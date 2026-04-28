@@ -1,8 +1,20 @@
 'use server';
 
 import { db } from '@/db';
-import { systemAuditLogs, users } from '@/db/schema';
-import { eq, ilike, or, and, desc, ne, sql, not } from 'drizzle-orm';
+import {
+  assets,
+  brands,
+  categories,
+  departments,
+  locations,
+  models,
+  owners,
+  sessions,
+  systemAuditLogs,
+  users,
+  vendors,
+} from '@/db/schema';
+import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 
@@ -46,6 +58,272 @@ export interface PaginatedAuditLogsResult {
     pageSize: number;
     totalPages: number;
   };
+}
+
+function humanizeEntityType(entityType: string) {
+  return entityType
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function formatEntityLabel(
+  code: string | null | undefined,
+  name: string | null | undefined
+) {
+  const trimmedCode = code?.trim();
+  const trimmedName = name?.trim();
+
+  if (trimmedCode && trimmedName) {
+    return `${trimmedCode} · ${trimmedName}`;
+  }
+
+  return trimmedName || trimmedCode || '';
+}
+
+async function resolveTargetEntityLabels(
+  records: Array<Pick<AuditLogRow, 'entityType' | 'entityId'>>
+) {
+  const labels = new Map<string, string>();
+  const addLabel = (entityType: string, entityId: string, label: string) => {
+    if (label.trim().length > 0) {
+      labels.set(`${entityType}::${entityId}`, label);
+    }
+  };
+
+  const assetIds = records
+    .filter((record) => record.entityType === 'Asset')
+    .map((record) => record.entityId)
+    .filter((entityId) => entityId.trim().length > 0);
+
+  const userIds = records
+    .filter((record) => record.entityType === 'users')
+    .map((record) => record.entityId)
+    .filter((entityId) => entityId.trim().length > 0);
+
+  const sessionTokenIds = records
+    .filter((record) => record.entityType === 'sessions')
+    .map((record) => record.entityId)
+    .filter((entityId) => entityId.trim().length > 0);
+
+  const numericEntityIds = {
+    locations: records
+      .filter((record) => record.entityType === 'locations')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
+    'asset-categories': records
+      .filter((record) => record.entityType === 'asset-categories')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
+    brands: records
+      .filter((record) => record.entityType === 'brands')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
+    'device-models': records
+      .filter((record) => record.entityType === 'device-models')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
+    vendors: records
+      .filter((record) => record.entityType === 'vendors')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
+    owners: records
+      .filter((record) => record.entityType === 'owners')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
+    departments: records
+      .filter((record) => record.entityType === 'departments')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
+  } as const;
+
+  const [
+    assetRows,
+    userRows,
+    sessionRows,
+    locationRows,
+    categoryRows,
+    brandRows,
+    modelRows,
+    vendorRows,
+    ownerRows,
+    departmentRows,
+  ] = await Promise.all([
+    assetIds.length > 0
+      ? db
+          .select({
+            id: assets.id,
+            assetTag: assets.assetTag,
+            name: assets.name,
+          })
+          .from(assets)
+          .where(inArray(assets.id, assetIds))
+      : Promise.resolve([]),
+    userIds.length > 0
+      ? db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+          })
+          .from(users)
+          .where(inArray(users.id, userIds))
+      : Promise.resolve([]),
+    sessionTokenIds.length > 0
+      ? db
+          .select({
+            tokenId: sessions.tokenId,
+            userName: users.name,
+            userEmail: users.email,
+          })
+          .from(sessions)
+          .leftJoin(users, eq(sessions.userId, users.id))
+          .where(inArray(sessions.tokenId, sessionTokenIds))
+      : Promise.resolve([]),
+    numericEntityIds.locations.length > 0
+      ? db
+          .select({
+            id: locations.id,
+            code: locations.locationCode,
+            name: locations.name,
+          })
+          .from(locations)
+          .where(inArray(locations.id, numericEntityIds.locations))
+      : Promise.resolve([]),
+    numericEntityIds['asset-categories'].length > 0
+      ? db
+          .select({
+            id: categories.id,
+            code: categories.categoryCode,
+            name: categories.name,
+          })
+          .from(categories)
+          .where(inArray(categories.id, numericEntityIds['asset-categories']))
+      : Promise.resolve([]),
+    numericEntityIds.brands.length > 0
+      ? db
+          .select({
+            id: brands.id,
+            code: brands.brandCode,
+            name: brands.name,
+          })
+          .from(brands)
+          .where(inArray(brands.id, numericEntityIds.brands))
+      : Promise.resolve([]),
+    numericEntityIds['device-models'].length > 0
+      ? db
+          .select({
+            id: models.id,
+            code: models.modelCode,
+            name: models.name,
+          })
+          .from(models)
+          .where(inArray(models.id, numericEntityIds['device-models']))
+      : Promise.resolve([]),
+    numericEntityIds.vendors.length > 0
+      ? db
+          .select({
+            id: vendors.id,
+            code: vendors.vendorCode,
+            name: vendors.companyName,
+          })
+          .from(vendors)
+          .where(inArray(vendors.id, numericEntityIds.vendors))
+      : Promise.resolve([]),
+    numericEntityIds.owners.length > 0
+      ? db
+          .select({
+            id: owners.id,
+            code: owners.ownerCode,
+            name: owners.companyName,
+          })
+          .from(owners)
+          .where(inArray(owners.id, numericEntityIds.owners))
+      : Promise.resolve([]),
+    numericEntityIds.departments.length > 0
+      ? db
+          .select({
+            id: departments.id,
+            code: departments.departmentCode,
+            name: departments.name,
+          })
+          .from(departments)
+          .where(inArray(departments.id, numericEntityIds.departments))
+      : Promise.resolve([]),
+  ]);
+
+  for (const row of assetRows) {
+    addLabel('Asset', row.id, formatEntityLabel(row.assetTag, row.name));
+  }
+
+  for (const row of userRows) {
+    addLabel(
+      'users',
+      row.id,
+      row.name && row.email
+        ? `${row.name} <${row.email}>`
+        : (row.name ?? row.email ?? '')
+    );
+  }
+
+  for (const row of sessionRows) {
+    addLabel(
+      'sessions',
+      row.tokenId,
+      row.userName && row.userEmail
+        ? `Session for ${row.userName} <${row.userEmail}>`
+        : (row.userName ??
+            row.userEmail ??
+            `Session ${row.tokenId.slice(0, 8)}`)
+    );
+  }
+
+  for (const row of locationRows) {
+    addLabel(
+      'locations',
+      String(row.id),
+      formatEntityLabel(row.code, row.name)
+    );
+  }
+
+  for (const row of categoryRows) {
+    addLabel(
+      'asset-categories',
+      String(row.id),
+      formatEntityLabel(row.code, row.name)
+    );
+  }
+
+  for (const row of brandRows) {
+    addLabel('brands', String(row.id), formatEntityLabel(row.code, row.name));
+  }
+
+  for (const row of modelRows) {
+    addLabel(
+      'device-models',
+      String(row.id),
+      formatEntityLabel(row.code, row.name)
+    );
+  }
+
+  for (const row of vendorRows) {
+    addLabel('vendors', String(row.id), formatEntityLabel(row.code, row.name));
+  }
+
+  for (const row of ownerRows) {
+    addLabel('owners', String(row.id), formatEntityLabel(row.code, row.name));
+  }
+
+  for (const row of departmentRows) {
+    addLabel(
+      'departments',
+      String(row.id),
+      formatEntityLabel(row.code, row.name)
+    );
+  }
+
+  return labels;
 }
 
 export async function getAuditLogs(
@@ -157,12 +435,13 @@ export async function getAuditLogs(
       .limit(pageSize)
       .offset(offset);
 
+    const targetEntityLabels = await resolveTargetEntityLabels(records);
+
     const data: AuditLogRow[] = records.map((record) => ({
       id: record.id,
       performedAt: record.performedAt,
       entityType: record.entityType,
       entityId: record.entityId,
-      entityLabel: null,
       actionType: record.actionType,
       performedBy: record.performedById
         ? {
@@ -175,6 +454,9 @@ export async function getAuditLogs(
       oldValue: record.oldValue as Record<string, unknown> | null,
       newValue: record.newValue as Record<string, unknown> | null,
       ipAddress: record.ipAddress,
+      entityLabel:
+        targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+        humanizeEntityType(record.entityType),
     }));
 
     logLatency({ scope: 'audit-log', label: 'getAuditLogs', startTime: timer });

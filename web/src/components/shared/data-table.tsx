@@ -270,6 +270,10 @@ export function DataTable<TData, TValue>({
                       cell.column.id === "select" && "w-13 px-0",
                       compactIdColumn && "w-28"
                     )}
+                    style={{
+                      width: cell.column.getSize(),
+                      maxWidth: cell.column.getSize(),
+                    }}
                   >
                     <div
                       className={cn(
@@ -390,6 +394,10 @@ export function DataTable<TData, TValue>({
                         header.column.id === "select" && "w-13 px-0",
                         isCompactIdColumn(header.column.id) && "w-28"
                       )}
+                      style={{
+                        width: header.column.getSize(),
+                        maxWidth: header.column.getSize(),
+                      }}
                     >
                       {header.isPlaceholder ? null : canSort ? (
                         <button

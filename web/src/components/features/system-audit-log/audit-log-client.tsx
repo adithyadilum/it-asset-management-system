@@ -368,11 +368,17 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
         {
             accessorKey: "performedAt",
             header: "Timestamp",
+            size: 180,
+            minSize: 180,
+            maxSize: 220,
             cell: ({ row }) => formatAuditTimestamp(row.original.performedAt),
         },
         {
             id: "performedBy",
             header: "User",
+            size: 260,
+            minSize: 220,
+            maxSize: 320,
             meta: { noTruncate: true },
             cell: ({ row }) => {
                 const performedBy = row.original.performedBy;
@@ -401,6 +407,9 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
         {
             accessorKey: "actionType",
             header: "Action Taken",
+            size: 150,
+            minSize: 140,
+            maxSize: 180,
             cell: ({ row }) => {
                 const action = row.original.actionType.trim().toUpperCase();
                 const actionClassName =
@@ -422,16 +431,27 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
         {
             id: "targetEntity",
             header: "Target Entity",
+            size: 300,
+            minSize: 240,
+            maxSize: 360,
+            meta: { noTruncate: true },
             cell: ({ row }) => buildTargetEntity(row.original),
         },
         {
             id: "eventDetails",
             header: "Event Details",
+            size: 420,
+            minSize: 320,
+            maxSize: 560,
+            meta: { noTruncate: true },
             cell: ({ row }) => buildEventDetails(row.original),
         },
         {
             accessorKey: "ipAddress",
             header: "IP Address",
+            size: 150,
+            minSize: 140,
+            maxSize: 180,
             cell: ({ row }) => row.original.ipAddress ?? "-",
         },
     ], []);
@@ -457,7 +477,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                             value={searchValue}
                             onChange={(event) => setSearchValue(event.target.value)}
                             placeholder="Search..."
-                            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal shadow-sm placeholder:text-slate-400"
+                            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal placeholder:text-slate-400"
                         />
                     </div>
 
@@ -468,7 +488,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
+                                    className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
                                 >
                                     Filters
                                     <ChevronDown className="size-4" />
@@ -479,7 +499,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                 align="end"
                                 side="bottom"
                                 sideOffset={10}
-                                className="w-80 rounded-lg border border-slate-200 p-0 shadow-xl"
+                                className="w-80 rounded-lg border border-slate-200 p-0"
                             >
                                 <div className="border-b border-slate-200 px-3 py-2">
                                     <div className="flex items-center justify-between gap-3">
@@ -498,7 +518,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-medium text-slate-500">Field</label>
                                         <Select value={draftField} onValueChange={(value) => setDraftField(value as AuditFilterField)}>
-                                            <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800 shadow-sm">
+                                            <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
                                                 <SelectValue placeholder="Select field" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -514,7 +534,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-medium text-slate-500">Operator</label>
                                         <Select value={draftOperator} onValueChange={(value) => setDraftOperator(value as FilterOperator)}>
-                                            <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800 shadow-sm">
+                                            <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
                                                 <SelectValue placeholder="Select operator" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -528,7 +548,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                         <label className="text-xs font-medium text-slate-500">Value</label>
                                         {draftField === "Action Taken" ? (
                                             <Select value={draftValue} onValueChange={setDraftValue}>
-                                                <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800 shadow-sm">
+                                                <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
                                                     <SelectValue placeholder="Select action" />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -544,7 +564,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                                 value={draftValue}
                                                 onChange={(e) => setDraftValue(e.target.value)}
                                                 placeholder={`Enter ${draftField.toLowerCase()}`}
-                                                className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800 shadow-sm"
+                                                className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800"
                                             />
                                         )}
                                     </div>
@@ -564,7 +584,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                         <Button
                                             type="button"
                                             size="sm"
-                                            className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground shadow-sm hover:bg-primary/90"
+                                            className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
                                             onClick={() =>
                                                 draftValue.length > 0
                                                     ? setOrReplaceFilter({
@@ -586,7 +606,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                         <Button
                             type="button"
                             size="sm"
-                            className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
+                            className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                             onClick={() => downloadCsv(rows)}
                         >
                             <Download className="size-4" />
@@ -643,7 +663,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                                 ? "No audit events match the current search and filters."
                                 : "Audit events will appear here once users start performing actions.",
                     }}
-                    className={cn("shadow-sm", isPending && "opacity-50 pointer-events-none transition-opacity")}
+                    className={cn(isPending && "opacity-50 pointer-events-none transition-opacity")}
                 />
             </div>
         </main>
