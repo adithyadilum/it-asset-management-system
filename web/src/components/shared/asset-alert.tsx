@@ -48,6 +48,7 @@ interface AssetAlertProps {
     title: string
     message: string
     icon?: ReactNode
+    actionNode?: ReactNode
     actionLabel?: string
     actionHref?: string
     className?: string
@@ -58,6 +59,7 @@ export function AssetAlert({
     title,
     message,
     icon,
+    actionNode,
     actionLabel,
     actionHref,
     className,
@@ -80,7 +82,9 @@ export function AssetAlert({
                 </p>
             </div>
 
-            {actionLabel ? (
+            {actionNode ? (
+                <div className="shrink-0">{actionNode}</div>
+            ) : actionLabel ? (
                 actionHref ? (
                     <Button asChild size="sm" className={cn("shrink-0 rounded-lg px-4", styles.button)}>
                         <Link href={actionHref}>{actionLabel}</Link>

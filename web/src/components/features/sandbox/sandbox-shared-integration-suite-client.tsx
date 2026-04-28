@@ -8,6 +8,7 @@ import {
 } from "@/components/shared/destructive-confirmation-dialog"
 import { AssetCard } from "@/components/shared/asset-card"
 import { AssetAlert } from "@/components/shared/asset-alert"
+import { AcceptAssignmentDialog } from "@/components/features/dashboard/accept-assignment-dialog"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs"
 import { StatusToggle } from "@/components/shared/status-toggle"
@@ -48,6 +49,7 @@ export function SandboxSharedIntegrationSuiteClient({
     assetCards,
 }: SandboxSharedIntegrationSuiteClientProps) {
     const [isActive, setIsActive] = useState(true)
+    const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false)
     const [items, setItems] = useState<DeleteItem[]>([
         { id: "loc-01", name: "Colombo HQ", category: "Office" },
         { id: "loc-02", name: "Kandy Branch", category: "Warehouse" },
@@ -169,8 +171,19 @@ export function SandboxSharedIntegrationSuiteClient({
                                 variant="action-required"
                                 title="Action Required"
                                 message="IT has assigned a new Dell Ultrasharp Monitor (AST-0992) to you."
-                                actionLabel="Review & Accept"
-                                actionHref="/my-assets"
+                                actionNode={
+                                    <AcceptAssignmentDialog
+                                        assetName='MacBook Pro 14" (M3)'
+                                        assetTag="AST-0992"
+                                        condition="New"
+                                        assignedBy="Admin (IT Dept)"
+                                        date="Feb 20, 2026"
+                                        isOpen={isAssignmentDialogOpen}
+                                        onOpenChange={setIsAssignmentDialogOpen}
+                                        onConfirm={() => setIsAssignmentDialogOpen(false)}
+                                        onReportIssue={() => setIsAssignmentDialogOpen(false)}
+                                    />
+                                }
                             />
                         </div>
                     </div>
