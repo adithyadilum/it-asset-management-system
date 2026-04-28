@@ -1,3 +1,12 @@
-﻿export default function AuditLogPage() {
-  return <div className="p-6 text-sm text-slate-600">Audit Log page coming soon.</div>
+﻿import AuditLogClient from "@/components/features/system-audit-log/audit-log-client";
+import { getAuditLogs } from "@/actions/audit-log";
+
+export default async function AuditLogPage() {
+  const initialResult = await getAuditLogs({ page: 1, pageSize: 16 });
+
+  return (
+    <div className="flex h-full w-full overflow-hidden bg-slate-50">
+      <AuditLogClient initialResult={initialResult} />
+    </div>
+  );
 }
