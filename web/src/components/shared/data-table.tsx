@@ -6,6 +6,7 @@ import {
   type PaginationState,
   type RowSelectionState,
   type SortingState,
+  type OnChangeFn,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
@@ -48,6 +49,7 @@ type DataTableProps<TData, TValue> = {
   initialPageSize?: number
   defaultSorting?: SortingState
   enableRowScroll?: boolean
+  enableRowSelection?: boolean
   selectionActions?: DataTableSelectionAction<TData>[]
   selectionLabel?: (selectedCount: number) => string
   emptyState?: {
@@ -59,6 +61,10 @@ type DataTableProps<TData, TValue> = {
   isRowActive?: (row: TData, rowIndex: number) => boolean
   selectionResetSignal?: number | string
   className?: string
+  manualPagination?: boolean
+  pageCount?: number
+  paginationState?: PaginationState
+  onPaginationChange?: OnChangeFn<PaginationState>
 }
 
 export function DataTable<TData, TValue>({
@@ -68,6 +74,7 @@ export function DataTable<TData, TValue>({
   initialPageSize = 16,
   defaultSorting = [],
   enableRowScroll = true,
+  enableRowSelection = true,
   selectionActions = [],
   selectionLabel,
   emptyState,
@@ -75,6 +82,10 @@ export function DataTable<TData, TValue>({
   isRowActive,
   selectionResetSignal,
   className,
+  manualPagination,
+  pageCount,
+  paginationState,
+  onPaginationChange,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -124,10 +135,13 @@ export function DataTable<TData, TValue>({
 
   const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
-  const [pagination, setPagination] = React.useState<PaginationState>({
+  const [internalPagination, setInternalPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: initialPageSize,
   })
+
+  const pagination = paginationState ?? internalPagination
+  const setPagination = onPaginationChange ?? setInternalPagination
 
   React.useEffect(() => {
     setRowSelection({})
@@ -173,8 +187,11 @@ export function DataTable<TData, TValue>({
   )
 
   const tableColumns = React.useMemo(
-    () => [selectionColumn, ...(columns as ColumnDef<TData, unknown>[])],
-    [columns, selectionColumn]
+    () =>
+      enableRowSelection
+        ? [selectionColumn, ...(columns as ColumnDef<TData, unknown>[])]
+        : (columns as ColumnDef<TData, unknown>[]),
+    [columns, enableRowSelection, selectionColumn]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -186,10 +203,12 @@ export function DataTable<TData, TValue>({
       rowSelection,
       pagination,
     },
+    manualPagination,
+    pageCount,
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
-    enableRowSelection: true,
+    enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -219,8 +238,8 @@ export function DataTable<TData, TValue>({
   const actionHeaderLabel = selectionLabel
     ? selectionLabel(selectedRows)
     : `${selectedRows} row(s) selected`
-  const pageCount = Math.max(table.getPageCount(), 1)
-  const currentPage = Math.min(table.getState().pagination.pageIndex + 1, pageCount)
+  const computedPageCount = Math.max(table.getPageCount(), 1)
+  const currentPage = Math.min(table.getState().pagination.pageIndex + 1, computedPageCount)
 
   const rowsBody = (
     <Table className="table-fixed">
@@ -253,7 +272,12 @@ export function DataTable<TData, TValue>({
                     )}
                   >
                     <div
-                      className="truncate"
+                      className={cn(
+                        (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
+                          ?.noTruncate
+                          ? "min-w-0"
+                          : "truncate"
+                      )}
                       data-fulltext={cellTitle ?? undefined}
                       onMouseEnter={handleOverflowTooltip}
                       onFocus={handleOverflowTooltip}
@@ -433,7 +457,7 @@ export function DataTable<TData, TValue>({
 
         <div className="flex items-center justify-start gap-2 sm:justify-end">
           <p className="mr-1 text-muted-foreground">
-            Page {currentPage} of {pageCount}
+            Page {currentPage} of {computedPageCount}
           </p>
           <Button
             type="button"
@@ -473,7 +497,7 @@ export function DataTable<TData, TValue>({
             variant="outline"
             size="sm"
             className="h-8 min-w-8 px-2"
-            onClick={() => table.setPageIndex(pageCount - 1)}
+            onClick={() => table.setPageIndex(computedPageCount - 1)}
             disabled={!table.getCanNextPage()}
             aria-label="Go to last page"
           >
