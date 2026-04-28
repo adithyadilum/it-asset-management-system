@@ -136,6 +136,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       assetName={data?.asset.name ?? ""}
       assetCategory={data?.model.category.pillar ?? ""}
       model={data?.model.name ?? ""}
+      imageUrl={data?.model.imageUrl ?? ""}
       brand={data?.model.brand.name ?? ""}
       serialNumber={data?.asset.serialNumber ?? ""}
       owner={data?.owner?.companyName ?? ""}
@@ -158,7 +159,12 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       totalCost={String(data?.purchase?.totalCost ?? "")}
       warranty={formatDisplayDate(data?.purchase?.warrantyExpiry)}
       vendorInfo={{
-        vendorId: data?.vendor?.id != null ? String(data.vendor.id) : "",
+        vendorId:
+          data?.vendor?.id != null
+            ? String(data.vendor.id)
+            : data?.purchase?.vendorId != null
+              ? String(data.purchase.vendorId)
+              : "",
         vendorName: data?.vendor?.companyName ?? "",
         contactNumber: data?.vendor?.contactInfo ?? ""
       }}

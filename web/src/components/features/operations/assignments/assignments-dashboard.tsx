@@ -4,11 +4,11 @@ import { useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { AssignmentsPanels } from "./assignments-panels.js";
+import { AssignmentsPanels } from "./assignments-panels";
 import {
   MultiAssetAssignmentModal,
   type MultiAssetAssignmentItem,
-} from "./multi-asset-assignment-modal.js";
+} from "./multi-asset-assignment-modal";
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

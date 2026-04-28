@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AssetAssignmentDetailsPanel } from "@/components/features/asset-registry/panels/asset-assignment-panel";
-import { AssetAssignmentModal } from "./asset-assignment-modal.js";
+import { AssetAssignmentModal } from "./asset-assignment-modal";
 
 type AssignmentPanelAsset = {
 	assetId: string;

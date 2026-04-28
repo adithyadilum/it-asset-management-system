@@ -77,8 +77,8 @@ export function SlidePanel({
     const descriptionId = React.useId();
     const hasProvidedContent = React.Children.count(content) > 0;
     const resolvedActions = actions ?? [];
-    const [shouldRender, setShouldRender] = React.useState(isOpen);
     const [isVisible, setIsVisible] = React.useState(isOpen);
+    const [shouldRender, setShouldRender] = React.useState(isOpen);
 
     const panelStyle = {
         "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
@@ -87,10 +87,15 @@ export function SlidePanel({
 
     React.useEffect(() => {
         if (isOpen) {
-            setShouldRender(true);
+            // Use queueMicrotask to avoid synchronous setState in effect body
+            queueMicrotask(() => {
+                setShouldRender(true);
+            });
 
             if (disableTransition) {
-                setIsVisible(true);
+                queueMicrotask(() => {
+                    setIsVisible(true);
+                });
                 return;
             }
 
@@ -104,12 +109,16 @@ export function SlidePanel({
         }
 
         if (disableTransition) {
-            setIsVisible(false);
-            setShouldRender(false);
+            queueMicrotask(() => {
+                setIsVisible(false);
+                setShouldRender(false);
+            });
             return;
         }
 
-        setIsVisible(false);
+        queueMicrotask(() => {
+            setIsVisible(false);
+        });
 
         const timeoutId = window.setTimeout(() => {
             setShouldRender(false);

@@ -58,47 +58,55 @@ export function MultiAssetAssignmentModal({
 
   const activeOptions = assignmentMode === "user" ? userOptions : locationOptions;
 
-  const loadOptions = React.useCallback(async () => {
-    try {
-      const [usersResponse, locationsResponse] = await Promise.all([
-        fetch("/api/v1/users", { method: "GET" }),
-        fetch("/api/v1/locations", { method: "GET" }),
-      ]);
-
-      if (!usersResponse.ok || !locationsResponse.ok) {
-        throw new Error("Failed to load assignment options.");
-      }
-
-      const [usersPayload, locationsPayload] = await Promise.all([
-        usersResponse.json() as Promise<{ data?: Array<{ id: string; name: string; email: string }> }> ,
-        locationsResponse.json() as Promise<{ data?: Array<{ id: number; name: string }> }> ,
-      ]);
-
-      setUserOptions(
-        (usersPayload.data ?? []).map((user) => ({
-          id: user.id,
-          label: user.name,
-        }))
-      );
-
-      setLocationOptions(
-        (locationsPayload.data ?? []).map((location) => ({
-          id: String(location.id),
-          label: location.name,
-        }))
-      );
-    } catch {
-      tiqriToast.error("Failed to load assignment options.");
-    }
-  }, []);
-
   React.useEffect(() => {
     if (!isOpen) {
       return;
     }
 
-    loadOptions();
-  }, [isOpen, loadOptions]);
+    const controller = new AbortController();
+
+    const fetchOptions = async () => {
+      try {
+        const [usersResponse, locationsResponse] = await Promise.all([
+          fetch("/api/v1/users", { method: "GET", signal: controller.signal }),
+          fetch("/api/v1/locations", { method: "GET", signal: controller.signal }),
+        ]);
+
+        if (!usersResponse.ok || !locationsResponse.ok) {
+          throw new Error("Failed to load assignment options.");
+        }
+
+        const [usersPayload, locationsPayload] = await Promise.all([
+          usersResponse.json() as Promise<{ data?: Array<{ id: string; name: string; email: string }> }> ,
+          locationsResponse.json() as Promise<{ data?: Array<{ id: number; name: string }> }> ,
+        ]);
+
+        setUserOptions(
+          (usersPayload.data ?? []).map((user) => ({
+            id: user.id,
+            label: user.name,
+          }))
+        );
+
+        setLocationOptions(
+          (locationsPayload.data ?? []).map((location) => ({
+            id: String(location.id),
+            label: location.name,
+          }))
+        );
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          tiqriToast.error("Failed to load assignment options.");
+        }
+      }
+    };
+
+    fetchOptions();
+
+    return () => {
+      controller.abort();
+    };
+  }, [isOpen]);
 
   const resetState = React.useCallback(() => {
     setAssignmentMode("user");
