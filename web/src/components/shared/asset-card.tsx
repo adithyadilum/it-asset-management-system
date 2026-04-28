@@ -42,7 +42,7 @@ export function AssetCard({
                 const assignedDate = details.find(d => d.label === 'Assigned')?.value || '-';
 
             return (
-                    <div className="mt-3 flex flex-col space-y-1 font-['Noto_Sans']">
+                    <div className="mt-3 flex flex-col space-y-1">
                         {/* Asset ID Line */}
                         <div className="text-sm font-medium leading-5 text-muted-foreground">
                             Asset ID: <span>{assetId}</span>

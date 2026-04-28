@@ -60,7 +60,7 @@ export function AcceptAssignmentDialog({
             <DialogContent className="w-[92vw] gap-4 rounded-lg border border-border bg-background p-6 shadow-xl shadow-black/10 sm:max-w-[460px]">
                 <DialogHeader className="space-y-0">
                     <div className="flex items-center justify-between gap-4">
-                        <DialogTitle className="text-lg font-semibold leading-7 text-foreground font-['Noto_Sans']">
+                        <DialogTitle className="font-text-lg-semi-bold leading-7 text-foreground">
                             Accept Equipment Assignment
                         </DialogTitle>
                     </div>

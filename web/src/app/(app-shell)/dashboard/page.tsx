@@ -40,11 +40,10 @@ export default async function DashboardPage() {
         const employeeAssets = await getCurrentEmployeeAssets()
 
         return (
-            <section className="px-4 pb-4 md:px-6 md:pb-6 p-6">
+            <section className="px-4 pb-4 pt-6 md:px-6 md:pb-6">
 
-                    <h1 className="text-foreground text-2xl font-semibold font-['Noto_Sans'] leading-8">Welcome back, {user.name}</h1>
-                    <p className="text-muted-foreground text-base font-normal font-['Noto_Sans'] leading-6">Here is the equipment currently assigned to you.</p>
-
+                    <h1 className="text-foreground text-2xl font-semibold leading-8">Welcome back, {user.name}</h1>
+                    <p className="text-muted-foreground text-base font-normal leading-6">Here is the equipment currently assigned to you.</p>
                     <div className="mt-6 grid gap-4 xl:grid-cols-3">
                         {employeeAssets.length > 0 ? (
                             employeeAssets.map((asset) => {

@@ -24,33 +24,50 @@ export async function getCurrentEmployeeAssets(): Promise<
 > {
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || currentUser.role !== 'Employee') {
-    return [];
+  if (!currentUser) {
+    throw new Error('Unauthorized');
+  }
+  if (currentUser.role !== 'Employee') {
+    throw new Error('Forbidden');
   }
 
-  const rows = await db
-    .select({
-      assignmentId: assetAssignments.id,
-      assetId: assets.id,
-      assetTag: assets.assetTag,
-      serialNumber: assets.serialNumber,
-      modelName: models.name,
-      status: assets.status,
-      assignedDate: assetAssignments.assignedDate,
-    })
-    .from(assetAssignments)
-    .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .where(
-      and(
-        eq(assetAssignments.assignedToUserId, currentUser.id),
-        isNull(assetAssignments.returnedDate)
+ const startTime = Date.now();
+  try {
+    const rows = await db
+      .select({
+        assignmentId: assetAssignments.id,
+        assetId: assets.id,
+        assetTag: assets.assetTag,
+        serialNumber: assets.serialNumber,
+        modelName: models.name,
+        status: assets.status,
+        assignedDate: assetAssignments.assignedDate,
+      })
+      .from(assetAssignments)
+      .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .where(
+        and(
+          eq(assetAssignments.assignedToUserId, currentUser.id),
+          isNull(assetAssignments.returnedDate)
+        )
       )
-    )
-    .orderBy(desc(assetAssignments.assignedDate));
-
-  return rows.map((row) => ({
-    ...row,
-    assignedDate: row.assignedDate.toISOString(),
-  }));
+      .orderBy(desc(assetAssignments.assignedDate));
+    console.info('getCurrentEmployeeAssets succeeded', {
+      userId: currentUser.id,
+      durationMs: Date.now() - startTime,
+      rowCount: rows.length,
+    });
+    return rows.map((row) => ({
+      ...row,
+      assignedDate: row.assignedDate.toISOString(),
+    }));
+  } catch (error) {
+    console.error('getCurrentEmployeeAssets failed', {
+      userId: currentUser.id,
+      durationMs: Date.now() - startTime,
+      error,
+    });
+    throw error;
+  }
 }

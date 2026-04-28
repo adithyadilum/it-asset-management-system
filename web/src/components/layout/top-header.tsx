@@ -106,8 +106,7 @@ export function TopHeader({ user }: TopHeaderProps) {
     const roleLabel = roleLabelMap[user.role];
 
     return (
-        <header className="grid h-14 grid-cols-3 items-center gap-4 bg-white md:rounded-lg md:bg-muted md:px-2">
-            {/* Left Column: Mobile Menu / Desktop Breadcrumb */}
+        <header className="grid h-14 w-full grid-cols-3 items-center gap-4 rounded-none border-b border-slate-100 bg-white md:rounded-lg md:border-none md:bg-muted md:px-2">            {/* Left Column: Mobile Menu / Desktop Breadcrumb */}
             <div className="flex md:hidden">
                 <button
                     type="button"
