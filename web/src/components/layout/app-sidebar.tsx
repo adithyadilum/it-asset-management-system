@@ -13,6 +13,7 @@ import {
     LifeBuoy,
     Settings,
     Sofa,
+
 } from "lucide-react"
 
 import { BrandHeader } from "@/components/shared/brand-header"
@@ -300,8 +301,9 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
                         ) : null}
                     </button>
 
-                    {!collapsed && visibleAssets.length > 0 ? <SectionLabel title="ASSETS" /> : null}
-                    <NavGroup items={visibleAssets} collapsed={collapsed} userRole={userRole} pathname={pathname} />
+
+                            {!collapsed && visibleAssets.length > 0 ? <SectionLabel title="ASSETS" /> : null}
+                            <NavGroup items={visibleAssets} collapsed={collapsed} userRole={userRole} pathname={pathname} />
                 </div>
 
                 {visibleManagement.length > 0 && (

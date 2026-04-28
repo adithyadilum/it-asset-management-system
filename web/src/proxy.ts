@@ -55,7 +55,7 @@ function canAccessRoute(role: TokenRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
-    pathname === '/dashboard/'
+    pathname === '/dashboard/' 
   ) {
     return true;
   }
