@@ -24,17 +24,16 @@ export async function GET(request: NextRequest) {
 
   const query = request.nextUrl.searchParams.get('search')?.trim() ?? '';
 
-  const baseFilter = eq(users.isActive, true);
-  const whereCondition = query
-    ? and(
-        baseFilter,
-        or(
-          ilike(users.name, `%${query}%`),
-          ilike(users.email, `%${query}%`)
-        )
-      )
-    : baseFilter;
+  const filters = [eq(users.isActive, true)];
 
+  if (query) {
+    filters.push(
+      or(
+        ilike(users.name, `%${query}%`),
+        ilike(users.email, `%${query}%`)
+      )
+    );
+  }
 
   const result = await db
     .select({
@@ -43,7 +42,7 @@ export async function GET(request: NextRequest) {
       email: users.email,
     })
     .from(users)
-    .where(whereCondition)
+    .where(and(...filters))
     .orderBy(asc(users.name))
     .limit(MAX_RESULTS);
 

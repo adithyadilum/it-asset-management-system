@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
 
   const query = request.nextUrl.searchParams.get('search')?.trim() ?? '';
 
-  const baseFilter = eq(locations.isActive, true);
-  const whereCondition = query
-    ? and(baseFilter, ilike(locations.name, `%${query}%`))
-    : baseFilter;
+  const filters = [eq(locations.isActive, true)];
 
+  if (query) {
+    filters.push(ilike(locations.name, `%${query}%`));
+  }
 
   const result = await db
     .select({
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       name: locations.name,
     })
     .from(locations)
-    .where(whereCondition)
+    .where(and(...filters))
     .orderBy(asc(locations.name))
     .limit(MAX_RESULTS);
 
