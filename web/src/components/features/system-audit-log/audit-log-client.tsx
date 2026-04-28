@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
+import { useEffect, useMemo, useState, useTransition, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { ChevronDown, Download, Search, X } from "lucide-react";
 
@@ -18,6 +18,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
     Select,
     SelectContent,
@@ -252,6 +258,58 @@ function buildSearchBlob(row: AuditLogRow) {
         .toLowerCase();
 }
 
+function TruncatedTextWithTooltip({ text }: { text: string }) {
+    const ref = useRef<HTMLSpanElement>(null);
+    const [isTruncated, setIsTruncated] = useState(false);
+
+    useEffect(() => {
+        if (!ref.current) return;
+
+        const checkTruncation = () => {
+            const element = ref.current;
+            if (element) {
+                setIsTruncated(element.scrollWidth > element.clientWidth);
+            }
+        };
+
+        const timeoutId = window.setTimeout(checkTruncation, 0);
+        const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(checkTruncation) : null;
+
+        checkTruncation();
+        resizeObserver?.observe(ref.current);
+        window.addEventListener("resize", checkTruncation);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            resizeObserver?.disconnect();
+            window.removeEventListener("resize", checkTruncation);
+        };
+    }, [text]);
+
+    const textNode = (
+        <span
+            ref={ref}
+            className="block w-full min-w-0 truncate text-sm"
+            style={{ cursor: isTruncated ? "help" : "default" }}
+        >
+            {text}
+        </span>
+    );
+
+    if (!isTruncated) {
+        return textNode;
+    }
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>{textNode}</TooltipTrigger>
+            <TooltipContent side="right" className="max-w-96 wrap-break-word">
+                {text}
+            </TooltipContent>
+        </Tooltip>
+    );
+}
+
 function escapeCsvValue(value: string) {
     return `"${value.replaceAll('"', '""')}"`;
 }
@@ -434,8 +492,10 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             size: 300,
             minSize: 240,
             maxSize: 360,
-            meta: { noTruncate: true },
-            cell: ({ row }) => buildTargetEntity(row.original),
+            cell: ({ row }) => {
+                const text = buildTargetEntity(row.original);
+                return <TruncatedTextWithTooltip text={text} />;
+            },
         },
         {
             id: "eventDetails",
@@ -443,8 +503,10 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             size: 420,
             minSize: 320,
             maxSize: 560,
-            meta: { noTruncate: true },
-            cell: ({ row }) => buildEventDetails(row.original),
+            cell: ({ row }) => {
+                const text = buildEventDetails(row.original);
+                return <TruncatedTextWithTooltip text={text} />;
+            },
         },
         {
             accessorKey: "ipAddress",
@@ -462,210 +524,211 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             : "Audit events will appear here once users start performing actions.";
 
     return (
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6 text-slate-900">
-            <div className="mb-4">
-                <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
-                    System Audit Log
-                </h1>
-            </div>
+        <TooltipProvider delayDuration={200}>
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6 text-slate-900">
+                <div className="mb-4">
+                    <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+                        System Audit Log
+                    </h1>
+                </div>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="relative w-full max-w-136 flex-1">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                        <Input
-                            value={searchValue}
-                            onChange={(event) => setSearchValue(event.target.value)}
-                            placeholder="Search..."
-                            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal placeholder:text-slate-400"
-                        />
-                    </div>
+                <div className="flex min-h-0 flex-1 flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="relative w-full max-w-136 flex-1">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                value={searchValue}
+                                onChange={(event) => setSearchValue(event.target.value)}
+                                placeholder="Search..."
+                                className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal placeholder:text-slate-400"
+                            />
+                        </div>
 
-                    <div className="flex items-center gap-2">
-                        <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
+                        <div className="flex items-center gap-2">
+                            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
+                                    >
+                                        Filters
+                                        <ChevronDown className="size-4" />
+                                    </Button>
+                                </PopoverTrigger>
+
+                                <PopoverContent
+                                    align="end"
+                                    side="bottom"
+                                    sideOffset={10}
+                                    className="w-80 rounded-lg border border-slate-200 p-0"
                                 >
-                                    Filters
-                                    <ChevronDown className="size-4" />
-                                </Button>
-                            </PopoverTrigger>
-
-                            <PopoverContent
-                                align="end"
-                                side="bottom"
-                                sideOffset={10}
-                                className="w-80 rounded-lg border border-slate-200 p-0"
-                            >
-                                <div className="border-b border-slate-200 px-3 py-2">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
-                                        <button
-                                            type="button"
-                                            className="text-slate-400 transition-colors hover:text-slate-600"
-                                            onClick={() => setIsFilterPopoverOpen(false)}
-                                        >
-                                            <X className="size-4" />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3 px-3 py-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-medium text-slate-500">Field</label>
-                                        <Select value={draftField} onValueChange={(value) => setDraftField(value as AuditFilterField)}>
-                                            <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
-                                                <SelectValue placeholder="Select field" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {FILTER_FIELDS.map((field) => (
-                                                    <SelectItem key={field} value={field}>
-                                                        {field}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                    <div className="border-b border-slate-200 px-3 py-2">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
+                                            <button
+                                                type="button"
+                                                className="text-slate-400 transition-colors hover:text-slate-600"
+                                                onClick={() => setIsFilterPopoverOpen(false)}
+                                            >
+                                                <X className="size-4" />
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-medium text-slate-500">Operator</label>
-                                        <Select value={draftOperator} onValueChange={(value) => setDraftOperator(value as FilterOperator)}>
-                                            <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
-                                                <SelectValue placeholder="Select operator" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="is">is</SelectItem>
-                                                <SelectItem value="is not">is not</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-medium text-slate-500">Value</label>
-                                        {draftField === "Action Taken" ? (
-                                            <Select value={draftValue} onValueChange={setDraftValue}>
+                                    <div className="space-y-3 px-3 py-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-slate-500">Field</label>
+                                            <Select value={draftField} onValueChange={(value) => setDraftField(value as AuditFilterField)}>
                                                 <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
-                                                    <SelectValue placeholder="Select action" />
+                                                    <SelectValue placeholder="Select field" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {Object.keys(ACTION_BADGE_STYLES).map((action) => (
-                                                        <SelectItem key={action} value={action}>
-                                                            {action}
+                                                    {FILTER_FIELDS.map((field) => (
+                                                        <SelectItem key={field} value={field}>
+                                                            {field}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                        ) : (
-                                            <Input
-                                                value={draftValue}
-                                                onChange={(e) => setDraftValue(e.target.value)}
-                                                placeholder={`Enter ${draftField.toLowerCase()}`}
-                                                className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800"
-                                            />
-                                        )}
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-slate-500">Operator</label>
+                                            <Select value={draftOperator} onValueChange={(value) => setDraftOperator(value as FilterOperator)}>
+                                                <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
+                                                    <SelectValue placeholder="Select operator" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="is">is</SelectItem>
+                                                    <SelectItem value="is not">is not</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-slate-500">Value</label>
+                                            {draftField === "Action Taken" ? (
+                                                <Select value={draftValue} onValueChange={setDraftValue}>
+                                                    <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
+                                                        <SelectValue placeholder="Select action" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Object.keys(ACTION_BADGE_STYLES).map((action) => (
+                                                            <SelectItem key={action} value={action}>
+                                                                {action}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <Input
+                                                    value={draftValue}
+                                                    onChange={(e) => setDraftValue(e.target.value)}
+                                                    placeholder={`Enter ${draftField.toLowerCase()}`}
+                                                    className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800"
+                                                />
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-2 pt-1">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-3 text-sm text-slate-600 hover:bg-slate-100"
+                                                onClick={clearAllFilters}
+                                                disabled={appliedFilters.length === 0}
+                                            >
+                                                Clear all
+                                            </Button>
+
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
+                                                onClick={() =>
+                                                    draftValue.length > 0
+                                                        ? setOrReplaceFilter({
+                                                            field: draftField,
+                                                            operator: draftOperator,
+                                                            value: draftValue,
+                                                        })
+                                                        : undefined
+                                                }
+                                                disabled={draftValue.length === 0}
+                                            >
+                                                Apply filter
+                                            </Button>
+                                        </div>
                                     </div>
+                                </PopoverContent>
+                            </Popover>
 
-                                    <div className="flex items-center justify-between gap-2 pt-1">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 px-3 text-sm text-slate-600 hover:bg-slate-100"
-                                            onClick={clearAllFilters}
-                                            disabled={appliedFilters.length === 0}
-                                        >
-                                            Clear all
-                                        </Button>
-
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
-                                            onClick={() =>
-                                                draftValue.length > 0
-                                                    ? setOrReplaceFilter({
-                                                        field: draftField,
-                                                        operator: draftOperator,
-                                                        value: draftValue,
-                                                    })
-                                                    : undefined
-                                            }
-                                            disabled={draftValue.length === 0}
-                                        >
-                                            Apply filter
-                                        </Button>
-                                    </div>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-
-                        <Button
-                            type="button"
-                            size="sm"
-                            className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                            onClick={() => downloadCsv(rows)}
-                        >
-                            <Download className="size-4" />
-                            Export Log (CSV)
-                        </Button>
-                    </div>
-                </div>
-                {appliedFilters.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                        {appliedFilters.map((filter) => (
-                            <Badge
-                                key={`${filter.field}-${filter.operator}-${filter.value}`}
-                                variant="outline"
-                                className="h-7 gap-2 rounded-full border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700"
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                                onClick={() => downloadCsv(rows)}
                             >
-                                <span>
-                                    {filter.field} {filter.operator} {filter.value}
-                                </span>
-                                <button
-                                    type="button"
-                                    className="text-slate-400 transition-colors hover:text-slate-600"
-                                    onClick={() => clearFilter(filter.field)}
-                                    aria-label={`Clear ${filter.field} filter`}
-                                >
-                                    <X className="size-3.5" />
-                                </button>
-                            </Badge>
-                        ))}
-
-                        <button
-                            type="button"
-                            className="text-xs font-medium text-slate-500 transition-colors hover:text-slate-700"
-                            onClick={clearAllFilters}
-                        >
-                            Clear filters
-                        </button>
+                                <Download className="size-4" />
+                                Export Log (CSV)
+                            </Button>
+                        </div>
                     </div>
-                ) : null}
+                    {appliedFilters.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            {appliedFilters.map((filter) => (
+                                <Badge
+                                    key={`${filter.field}-${filter.operator}-${filter.value}`}
+                                    variant="outline"
+                                    className="h-7 gap-2 rounded-full border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700"
+                                >
+                                    <span>
+                                        {filter.field} {filter.operator} {filter.value}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="text-slate-400 transition-colors hover:text-slate-600"
+                                        onClick={() => clearFilter(filter.field)}
+                                        aria-label={`Clear ${filter.field} filter`}
+                                    >
+                                        <X className="size-3.5" />
+                                    </button>
+                                </Badge>
+                            ))}
 
-                <DataTable<AuditLogRow, unknown>
-                    columns={tableColumns}
-                    data={rows}
-                    initialPageSize={meta.pageSize}
-                    pageSizeOptions={[16, 24, 32, 48]}
-                    manualPagination={true}
-                    pageCount={meta.totalPages}
-                    paginationState={pagination}
-                    onPaginationChange={setPagination}
-                    enableRowSelection={false}
-                    emptyState={{
-                        title: "No audit events found",
-                        description:
-                            debouncedQuery.length > 0 || appliedFilters.length > 0
-                                ? "No audit events match the current search and filters."
-                                : "Audit events will appear here once users start performing actions.",
-                    }}
-                    className={cn(isPending && "opacity-50 pointer-events-none transition-opacity")}
-                />
-            </div>
-        </main>
+                            <button
+                                type="button"
+                                className="text-xs font-medium text-slate-500 transition-colors hover:text-slate-700"
+                                onClick={clearAllFilters}
+                            >
+                                Clear filters
+                            </button>
+                        </div>
+                    ) : null}
+                    <DataTable<AuditLogRow, unknown>
+                        columns={tableColumns}
+                        data={rows}
+                        initialPageSize={meta.pageSize}
+                        pageSizeOptions={[16, 24, 32, 48]}
+                        manualPagination={true}
+                        pageCount={meta.totalPages}
+                        paginationState={pagination}
+                        onPaginationChange={setPagination}
+                        enableRowSelection={false}
+                        emptyState={{
+                            title: "No audit events found",
+                            description:
+                                debouncedQuery.length > 0 || appliedFilters.length > 0
+                                    ? "No audit events match the current search and filters."
+                                    : "Audit events will appear here once users start performing actions.",
+                        }}
+                        className={cn(isPending && "opacity-50 pointer-events-none transition-opacity")}
+                    />
+                </div>
+            </main>
+        </TooltipProvider>
     );
 }
