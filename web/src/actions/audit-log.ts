@@ -82,6 +82,113 @@ function formatEntityLabel(
   return trimmedName || trimmedCode || '';
 }
 
+function buildTargetEntitySearchCondition(searchValue: string) {
+  return or(
+    sql<boolean>`exists (
+      select 1
+      from ${assets}
+      where ${systemAuditLogs.entityType} = 'Asset'
+        and ${assets.id} = ${sql`${systemAuditLogs.entityId}::uuid`}
+        and (
+          ${assets.assetTag} ilike ${searchValue}
+          or ${assets.name} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${users}
+      where ${systemAuditLogs.entityType} = 'users'
+        and ${users.id} = ${sql`${systemAuditLogs.entityId}::uuid`}
+        and (
+          ${users.name} ilike ${searchValue}
+          or ${users.email} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${sessions}
+      left join ${users} on ${sessions.userId} = ${users.id}
+      where ${systemAuditLogs.entityType} = 'sessions'
+        and ${sessions.tokenId} = ${systemAuditLogs.entityId}
+        and (
+          ${sessions.tokenId} ilike ${searchValue}
+          or ${users.name} ilike ${searchValue}
+          or ${users.email} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${locations}
+      where ${systemAuditLogs.entityType} = 'locations'
+        and ${locations.id} = ${sql`${systemAuditLogs.entityId}::integer`}
+        and (
+          ${locations.locationCode} ilike ${searchValue}
+          or ${locations.name} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${categories}
+      where ${systemAuditLogs.entityType} = 'asset-categories'
+        and ${categories.id} = ${sql`${systemAuditLogs.entityId}::integer`}
+        and (
+          ${categories.categoryCode} ilike ${searchValue}
+          or ${categories.name} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${brands}
+      where ${systemAuditLogs.entityType} = 'brands'
+        and ${brands.id} = ${sql`${systemAuditLogs.entityId}::integer`}
+        and (
+          ${brands.brandCode} ilike ${searchValue}
+          or ${brands.name} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${models}
+      where ${systemAuditLogs.entityType} = 'device-models'
+        and ${models.id} = ${sql`${systemAuditLogs.entityId}::integer`}
+        and (
+          ${models.modelCode} ilike ${searchValue}
+          or ${models.name} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${vendors}
+      where ${systemAuditLogs.entityType} = 'vendors'
+        and ${vendors.id} = ${sql`${systemAuditLogs.entityId}::integer`}
+        and (
+          ${vendors.vendorCode} ilike ${searchValue}
+          or ${vendors.companyName} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${owners}
+      where ${systemAuditLogs.entityType} = 'owners'
+        and ${owners.id} = ${sql`${systemAuditLogs.entityId}::integer`}
+        and (
+          ${owners.ownerCode} ilike ${searchValue}
+          or ${owners.companyName} ilike ${searchValue}
+        )
+    )`,
+    sql<boolean>`exists (
+      select 1
+      from ${departments}
+      where ${systemAuditLogs.entityType} = 'departments'
+        and ${departments.id} = ${sql`${systemAuditLogs.entityId}::integer`}
+        and (
+          ${departments.departmentCode} ilike ${searchValue}
+          or ${departments.name} ilike ${searchValue}
+        )
+    )`
+  );
+}
+
 async function resolveTargetEntityLabels(
   records: Array<Pick<AuditLogRow, 'entityType' | 'entityId'>>
 ) {
@@ -356,6 +463,7 @@ export async function getAuditLogs(
           ilike(systemAuditLogs.entityType, q),
           ilike(systemAuditLogs.entityId, q),
           ilike(systemAuditLogs.ipAddress, q),
+          buildTargetEntitySearchCondition(q),
           sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
           sql`${systemAuditLogs.newValue}::text ILIKE ${q}`,
           ilike(users.name, q),
@@ -383,7 +491,8 @@ export async function getAuditLogs(
         } else if (field === 'Target Entity') {
           const entityCondition = or(
             ilike(systemAuditLogs.entityType, q),
-            ilike(systemAuditLogs.entityId, q)
+            ilike(systemAuditLogs.entityId, q),
+            buildTargetEntitySearchCondition(q)
           );
           if (entityCondition)
             baseWhere.push(isNot ? not(entityCondition) : entityCondition);

@@ -66,6 +66,7 @@ const ACTION_BADGE_STYLES: Record<string, string> = {
     CREATE: "border-emerald-300 bg-emerald-50 text-emerald-700",
     UPDATE: "border-sky-300 bg-sky-50 text-sky-700",
     DELETE: "border-rose-300 bg-rose-50 text-rose-700",
+    DISPOSE: "border-orange-300 bg-orange-50 text-orange-700",
     DISPOSED: "border-orange-300 bg-orange-50 text-orange-700",
     EXPORTED: "border-amber-300 bg-amber-50 text-amber-700",
     LOGIN: "border-violet-300 bg-violet-50 text-violet-700",
