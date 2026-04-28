@@ -12,13 +12,13 @@ import {
   locations,
   models,
   owners,
-  systemAuditLogs,
   vendors,
 } from '@/db/schema';
 import {
   getAuthenticatedUser,
   canManageAssets,
 } from '@/lib/auth/get-authenticated-user';
+import { logAuditAction } from '@/lib/audit';
 import {
   getAssetDetailsById,
   getAssetHistoryById,
@@ -467,6 +467,17 @@ export async function registerAsset(
       throw purchaseError;
     }
 
+    await logAuditAction({
+      entityType: 'Asset',
+      entityId: insertedAsset.id,
+      actionType: 'CREATE',
+      performedById: currentUser.id,
+      newData: {
+        assetTag: insertedAsset.assetTag,
+        modelId: input.modelId,
+      },
+    });
+
     revalidatePath('/assets');
 
     return {
@@ -575,13 +586,13 @@ export async function updateAsset(
     .returning();
 
   if (updatedAsset) {
-    await db.insert(systemAuditLogs).values({
+    await logAuditAction({
       entityType: 'Asset',
       entityId: assetId,
       actionType: 'UPDATE',
       performedById: currentUser.id,
-      oldValue: currentAsset as unknown as Record<string, unknown>,
-      newValue: updatedAsset as unknown as Record<string, unknown>,
+      oldData: currentAsset as unknown as Record<string, unknown>,
+      newData: updatedAsset as unknown as Record<string, unknown>,
     });
   }
 
