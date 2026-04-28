@@ -42,6 +42,7 @@ export const assetStatusEnum = pgEnum('asset_status', [
   'Defective',
   'Lost',
   'Retired',
+  'Pending Disposal',
   'Disposed',
 ]);
 export const conditionEnum = pgEnum('asset_condition', [
@@ -99,10 +100,10 @@ export const departments = pgTable('departments', {
 });
 
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(), 
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: text('name').notNull(),
-  password: text('password').notNull(),
+  password: text('password').notNull(), 
   departmentId: integer('department_id').references(() => departments.id),
   role: roleEnum('role').default('Employee').notNull(),
   isActive: boolean('is_active').notNull().default(true),
@@ -177,7 +178,7 @@ export const categories = pgTable(
     prefix: varchar('prefix', { length: 10 }).notNull().unique(),
     requiresSerial: boolean('requires_serial').default(true).notNull(),
     isConsumable: boolean('is_consumable').default(false).notNull(),
-    customSchema: jsonb('custom_schema'),
+    customSchema: jsonb('custom_schema'), 
     isActive: boolean('is_active').default(true).notNull(),
   },
   (table) => ({
@@ -277,7 +278,7 @@ export const assetDocuments = pgTable('asset_documents', {
   assetId: uuid('asset_id')
     .notNull()
     .references(() => assets.id, { onDelete: 'cascade' }),
-  documentType: varchar('document_type', { length: 100 }),
+  documentType: varchar('document_type', { length: 100 }), 
   fileUrl: varchar('file_url', { length: 500 }).notNull(),
   uploadedById: uuid('uploaded_by_id')
     .notNull()
@@ -361,6 +362,7 @@ export const maintenanceTickets = pgTable('maintenance_tickets', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// 👇 UPDATED ONLY THIS TABLE WITH INDEXES 👇
 export const assetDisposals = pgTable('asset_disposals', {
   id: serial('id').primaryKey(),
   assetId: uuid('asset_id')
@@ -372,8 +374,9 @@ export const assetDisposals = pgTable('asset_disposals', {
   approvedById: uuid('approved_by_id').references(() => users.id),
 
   status: disposalStatusEnum('status').default('Pending Approval').notNull(),
-  reason: varchar('reason', { length: 255 }).notNull(),
+  reason: varchar('reason', { length: 255 }).notNull(), 
   justification: text('justification'),
+  rejectionReason: text('rejection_reason'),
 
   dataWiped: boolean('data_wiped').default(false),
   tagsRemoved: boolean('tags_removed').default(false),
@@ -383,16 +386,22 @@ export const assetDisposals = pgTable('asset_disposals', {
   requestedAt: timestamp('requested_at').defaultNow().notNull(),
   resolvedAt: timestamp('resolved_at'),
   notes: text('notes'),
-});
+}, (table) => ({
+  // ✨ ADDED THESE 3 INDEXES TO FIX QUERY SLOWNESS ✨
+  statusIdx: index('asset_disposals_status_idx').on(table.status),
+  assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
+  requestedByIdIdx: index('asset_disposals_requested_by_idx').on(table.requestedById),
+}));
+// 👆 ------------------------------------------ 👆
 
 // -----------------------------------------------------------------------------
 // 6. SYSTEM AUDIT LOG
 // -----------------------------------------------------------------------------
 export const systemAuditLogs = pgTable('system_audit_logs', {
   id: serial('id').primaryKey(),
-  entityType: varchar('entity_type', { length: 100 }).notNull(),
+  entityType: varchar('entity_type', { length: 100 }).notNull(), 
   entityId: varchar('entity_id', { length: 255 }).notNull(),
-  actionType: varchar('action_type', { length: 100 }).notNull(),
+  actionType: varchar('action_type', { length: 100 }).notNull(), 
   performedById: uuid('performed_by_id')
     .notNull()
     .references(() => users.id),
