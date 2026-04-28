@@ -343,8 +343,13 @@ export async function assignSingleAsset(
 
   await validateAssetsForAssignment([normalizedAssetId]);
 
-  const assignedAssetIds = await db.transaction(async (tx) => {
-    const [updatedAsset] = await tx
+  // Sequential writes with best-effort rollback (Neon HTTP has no transaction support)
+  let updatedAsset: { id: string; assetTag: string; previousStatus: string } | null = null;
+  let insertedAssignmentId: number | null = null;
+
+  try {
+    // Step 1: Update asset status
+    const [asset] = await db
       .update(assets)
       .set({
         status: 'Assigned',
@@ -353,7 +358,7 @@ export async function assignSingleAsset(
       .where(and(eq(assets.id, normalizedAssetId), eq(assets.status, 'Available')))
       .returning({ id: assets.id, assetTag: assets.assetTag, previousStatus: assets.status });
 
-    if (!updatedAsset) {
+    if (!asset) {
       throw new AssignmentServiceError(
         'Asset is no longer available.',
         409,
@@ -361,7 +366,10 @@ export async function assignSingleAsset(
       );
     }
 
-    const insertedAssignments = await tx
+    updatedAsset = asset;
+
+    // Step 2: Create assignment record
+    const [assignment] = await db
       .insert(assetAssignments)
       .values({
         assetId: normalizedAssetId,
@@ -373,7 +381,7 @@ export async function assignSingleAsset(
       })
       .returning({ id: assetAssignments.id, assetId: assetAssignments.assetId });
 
-    if (insertedAssignments.length === 0) {
+    if (!assignment) {
       throw new AssignmentServiceError(
         'Failed to create assignment record.',
         500,
@@ -381,7 +389,10 @@ export async function assignSingleAsset(
       );
     }
 
-    await tx.insert(systemAuditLogs).values({
+    insertedAssignmentId = assignment.id;
+
+    // Step 3: Create audit log
+    await db.insert(systemAuditLogs).values({
       entityType: 'Asset',
       entityId: normalizedAssetId,
       actionType: 'ASSIGN',
@@ -398,13 +409,40 @@ export async function assignSingleAsset(
       },
     });
 
-    return [updatedAsset.id];
-  });
+    return {
+      assignedAssetIds: [updatedAsset.id],
+      assignedCount: 1,
+    };
+  } catch (error) {
+    // Rollback: Delete assignment if it was created
+    if (insertedAssignmentId !== null) {
+      try {
+        await db
+          .delete(assetAssignments)
+          .where(eq(assetAssignments.id, insertedAssignmentId));
+      } catch {
+        // Best-effort cleanup, ignore errors
+      }
+    }
 
-  return {
-    assignedAssetIds,
-    assignedCount: assignedAssetIds.length,
-  };
+    // Rollback: Revert asset status if it was updated
+    if (updatedAsset) {
+      try {
+        await db
+          .update(assets)
+          .set({
+            status: 'Available',
+            updatedAt: new Date(),
+          })
+          .where(eq(assets.id, normalizedAssetId));
+      } catch {
+        // Best-effort cleanup, ignore errors
+      }
+    }
+
+    // Re-throw the original error
+    throw error;
+  }
 }
 
 export async function assignMultipleAssets(
@@ -427,8 +465,13 @@ export async function assignMultipleAssets(
 
   await validateAssetsForAssignment(normalizedAssetIds);
 
-  const assignedAssetIds = await db.transaction(async (tx) => {
-    const updatedAssets = await tx
+  // Sequential writes with best-effort rollback (Neon HTTP has no transaction support)
+  let updatedAssets: Array<{ id: string }> = [];
+  let insertedAssignmentIds: number[] = [];
+
+  try {
+    // Step 1: Update asset statuses
+    const updated = await db
       .update(assets)
       .set({
         status: 'Assigned',
@@ -442,7 +485,7 @@ export async function assignMultipleAssets(
       )
       .returning({ id: assets.id });
 
-    if (updatedAssets.length !== normalizedAssetIds.length) {
+    if (updated.length !== normalizedAssetIds.length) {
       throw new AssignmentServiceError(
         'One or more assets are no longer available.',
         409,
@@ -450,7 +493,10 @@ export async function assignMultipleAssets(
       );
     }
 
-    const insertedAssignments = await tx
+    updatedAssets = updated;
+
+    // Step 2: Create assignment records
+    const insertedAssignments = await db
       .insert(assetAssignments)
       .values(
         normalizedAssetIds.map((assetId) => ({
@@ -472,7 +518,10 @@ export async function assignMultipleAssets(
       );
     }
 
-    await tx.insert(systemAuditLogs).values(
+    insertedAssignmentIds = insertedAssignments.map((a) => a.id);
+
+    // Step 3: Create audit logs
+    await db.insert(systemAuditLogs).values(
       normalizedAssetIds.map((assetId) => ({
         entityType: 'Asset',
         entityId: assetId,
@@ -491,13 +540,40 @@ export async function assignMultipleAssets(
       }))
     );
 
-    return updatedAssets.map((asset) => asset.id);
-  });
+    return {
+      assignedAssetIds: updatedAssets.map((a) => a.id),
+      assignedCount: updatedAssets.length,
+    };
+  } catch (error) {
+    // Rollback: Delete assignments if they were created
+    if (insertedAssignmentIds.length > 0) {
+      try {
+        await db
+          .delete(assetAssignments)
+          .where(inArray(assetAssignments.id, insertedAssignmentIds));
+      } catch {
+        // Best-effort cleanup, ignore errors
+      }
+    }
 
-  return {
-    assignedAssetIds,
-    assignedCount: assignedAssetIds.length,
-  };
+    // Rollback: Revert asset statuses if they were updated
+    if (updatedAssets.length > 0) {
+      try {
+        await db
+          .update(assets)
+          .set({
+            status: 'Available',
+            updatedAt: new Date(),
+          })
+          .where(inArray(assets.id, updatedAssets.map((a) => a.id)));
+      } catch {
+        // Best-effort cleanup, ignore errors
+      }
+    }
+
+    // Re-throw the original error
+    throw error;
+  }
 }
 
 export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {

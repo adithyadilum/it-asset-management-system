@@ -4,6 +4,9 @@ import * as React from "react";
 import { CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { assignAssetAction } from "@/actions/assignments";
+import { searchUsers } from "@/actions/users";
+import { searchLocations } from "@/actions/locations";
 import { tiqriToast } from "@/components/shared/sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,29 +59,24 @@ export function AssetAssignmentModal({
 
   const loadOptions = React.useCallback(async () => {
     try {
-      const [usersResponse, locationsResponse] = await Promise.all([
-        fetch("/api/v1/users", { method: "GET" }),
-        fetch("/api/v1/locations", { method: "GET" }),
+      const [usersResult, locationsResult] = await Promise.all([
+        searchUsers(),
+        searchLocations(),
       ]);
 
-      if (!usersResponse.ok || !locationsResponse.ok) {
+      if (!usersResult.success || !locationsResult.success) {
         throw new Error("Failed to load assignment options.");
       }
 
-      const [usersPayload, locationsPayload] = await Promise.all([
-        usersResponse.json() as Promise<{ data?: Array<{ id: string; name: string; email: string }> }> ,
-        locationsResponse.json() as Promise<{ data?: Array<{ id: number; name: string }> }> ,
-      ]);
-
       setUserOptions(
-        (usersPayload.data ?? []).map((user) => ({
+        (usersResult.data ?? []).map((user) => ({
           id: user.id,
           label: user.name,
         }))
       );
 
       setLocationOptions(
-        (locationsPayload.data ?? []).map((location) => ({
+        (locationsResult.data ?? []).map((location) => ({
           id: String(location.id),
           label: location.name,
         }))
@@ -134,30 +132,21 @@ export function AssetAssignmentModal({
     setIsSubmitting(true);
 
     const expectedDate = assignmentMode === "user" ? expectedReturn || undefined : undefined;
-    const payload = {
+    const assignInput = {
+      assetId,
       assignmentType: assignmentMode,
       targetId: assignmentMode === "location" ? Number(assignee) : assignee,
       expectedReturnDate: expectedDate,
       notes: notes || undefined,
     };
 
-    fetch(`/api/v1/assets/${assetId}/assign`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-      .then(async (response) => {
-        const responsePayload = (await response.json().catch(() => ({}))) as {
-          message?: string;
-        };
-
-        if (!response.ok) {
-          throw new Error(responsePayload.message || "Assignment failed.");
+    assignAssetAction(assignInput)
+      .then((result) => {
+        if (!result.success) {
+          throw new Error(result.error || "Assignment failed.");
         }
 
-        tiqriToast.success(responsePayload.message || "Asset assigned successfully.");
+        tiqriToast.success("Asset assigned successfully.");
         handleOpenChange(false);
         router.refresh();
       })
