@@ -52,7 +52,7 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
 
     const detailsRows = [
       {
-        left: { label: 'Asset ID :', value: props.assetId || '-' },
+        left: { label: 'Asset ID :', value: props.assetTag || '-' },
         right: { label: 'Category :', value: props.category || '-' },
       },
       {

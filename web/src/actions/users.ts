@@ -1,6 +1,6 @@
 'use server';
 
-import { and, asc, eq, ilike, or } from 'drizzle-orm';
+import { and, asc, eq, ilike, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { users } from '@/db/schema';
@@ -58,10 +58,7 @@ export async function searchUsers(
 
     if (trimmedQuery) {
       filters.push(
-        or(
-          ilike(users.name, `%${trimmedQuery}%`),
-          ilike(users.email, `%${trimmedQuery}%`)
-        )
+        sql<boolean>`(${ilike(users.name, `%${trimmedQuery}%`)}) OR (${ilike(users.email, `%${trimmedQuery}%`)})`
       );
     }
 

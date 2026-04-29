@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { bulkAssignAssetsAction } from "@/actions/assignments";
@@ -30,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export type MultiAssetAssignmentItem = {
   assetId: string;
+  assetTag: string;
   assetName: string;
 };
 
@@ -43,6 +43,48 @@ type AssigneeOption = {
   id: string;
   label: string;
 };
+
+const DURATION_OPTIONS = [7, 14, 30] as const;
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+const isPresetDuration = (value: string) =>
+  DURATION_OPTIONS.some((option) => String(option) === value);
+
+function toDateValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLocalStartOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function calculateExpectedReturnDate(durationDays: number) {
+  const today = getLocalStartOfDay(new Date());
+  today.setDate(today.getDate() + durationDays);
+  return toDateValue(today);
+}
+
+function calculateDurationFromDate(dateValue: string) {
+  const [year, month, day] = dateValue.split("-").map((part) => Number(part));
+
+  if (!year || !month || !day) {
+    return "";
+  }
+
+  const selectedDate = new Date(year, month - 1, day);
+
+  if (Number.isNaN(selectedDate.getTime())) {
+    return "";
+  }
+
+  const today = getLocalStartOfDay(new Date());
+  const diffDays = Math.round((selectedDate.getTime() - today.getTime()) / DAY_IN_MS);
+  return diffDays > 0 ? String(diffDays) : "";
+}
 
 export function MultiAssetAssignmentModal({
   isOpen,
@@ -164,6 +206,31 @@ export function MultiAssetAssignmentModal({
       });
   };
 
+  const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
+    setAssignmentMode(mode);
+    setDuration("");
+    setExpectedReturn("");
+  }, []);
+
+  const handleDurationChange = React.useCallback((value: string) => {
+    setDuration(`${value}`);
+
+    const durationDays = Number(value);
+    if (Number.isFinite(durationDays) && durationDays > 0) {
+      setExpectedReturn(calculateExpectedReturnDate(durationDays));
+      return;
+    }
+
+    setExpectedReturn("");
+  }, []);
+
+  const handleExpectedReturnChange = React.useCallback((value: string) => {
+    setExpectedReturn(value);
+
+    const calculatedDuration = calculateDurationFromDate(value);
+    setDuration(`${calculatedDuration}`);
+  }, []);
+
   const assetCount = assets.length;
 
   return (
@@ -187,7 +254,7 @@ export function MultiAssetAssignmentModal({
                     key={asset.assetId}
                     className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 text-xs"
                   >
-                    <p className="font-medium text-slate-700">{asset.assetId}</p>
+                    <p className="font-medium text-slate-700">{asset.assetTag}</p>
                     <p className="truncate text-slate-700">{asset.assetName}</p>
                   </div>
                 ))}
@@ -201,7 +268,7 @@ export function MultiAssetAssignmentModal({
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === "user"}
-                onChange={() => setAssignmentMode("user")}
+                onChange={() => handleAssignmentModeChange("user")}
                 className="size-4 border-slate-300 accent-[#00145a]"
               />
               Assign to User
@@ -211,7 +278,7 @@ export function MultiAssetAssignmentModal({
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === "location"}
-                onChange={() => setAssignmentMode("location")}
+                onChange={() => handleAssignmentModeChange("location")}
                 className="size-4 border-slate-300 accent-[#00145a]"
               />
               Assign to Location
@@ -250,14 +317,21 @@ export function MultiAssetAssignmentModal({
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-700">Expected Return Date</Label>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[160px_minmax(0,1fr)]">
-                <Select value={duration} onValueChange={setDuration}>
+                <Select key={duration || "preset-duration"} value={`${duration}`} onValueChange={handleDurationChange}>
                   <SelectTrigger className="h-9 w-full bg-white">
-                    <SelectValue placeholder="Select the duration" />
+                    <SelectValue placeholder="Select the duration">
+                      {duration ? `${duration} days` : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="7">7 days</SelectItem>
-                    <SelectItem value="14">14 days</SelectItem>
-                    <SelectItem value="30">30 days</SelectItem>
+                    {DURATION_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={`${option}`}>
+                        {option} days
+                      </SelectItem>
+                    ))}
+                    {duration !== "" && !isPresetDuration(duration) ? (
+                      <SelectItem value={`${duration}`}>{duration} days</SelectItem>
+                    ) : null}
                   </SelectContent>
                 </Select>
 
@@ -265,10 +339,9 @@ export function MultiAssetAssignmentModal({
                   <Input
                     type="date"
                     value={expectedReturn}
-                    onChange={(event) => setExpectedReturn(event.target.value)}
-                    className="h-9 w-full pr-8"
+                    onChange={(event) => handleExpectedReturnChange(event.target.value)}
+                    className="h-9 w-full"
                   />
-                  <CalendarDays className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-slate-400" />
                 </div>
               </div>
             </div>

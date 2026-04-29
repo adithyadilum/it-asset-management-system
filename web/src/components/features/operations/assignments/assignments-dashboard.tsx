@@ -119,6 +119,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
           setMultiAssignAssets(
             selectedRows.map((row) => ({
               assetId: row.assetId,
+              assetTag: row.assetTag,
               assetName: row.assetName,
             }))
           );
@@ -134,7 +135,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     {
       accessorKey: "assetId",
       header: "Asset ID",
-      cell: ({ row }) => <span className="font-medium text-slate-700">{row.original.assetId}</span>,
+      cell: ({ row }) => <span className="font-medium text-slate-700">{row.original.assetTag}</span>,
     },
     {
       accessorKey: "assetName",
