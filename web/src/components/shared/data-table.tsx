@@ -250,9 +250,9 @@ export function DataTable<TData, TValue>({
       <TableBody>
         {table.getRowModel().rows.length > 0 ? (
           table.getRowModel().rows.map((row) => {
-            const isActive = 
-  (activeRowCondition ? activeRowCondition(row.original) : false) || 
-  (isRowActive ? isRowActive(row.original, row.index) : false);
+            const isActive =
+              (activeRowCondition ? activeRowCondition(row.original) : false) ||
+              (isRowActive ? isRowActive(row.original, row.index) : false);
 
             return (
               <TableRow
@@ -265,44 +265,44 @@ export function DataTable<TData, TValue>({
                   isActive && "bg-slate-50"
                 )}
               >
-                {row.getVisibleCells().map((cell) => {
-                  const cellValue = cell.getValue()
-                  const cellTitle = getDisplayText(cellValue)
-                  const compactIdColumn = isCompactIdColumn(cell.column.id)
+              {row.getVisibleCells().map((cell) => {
+                const cellValue = cell.getValue()
+                const cellTitle = getDisplayText(cellValue)
+                const compactIdColumn = isCompactIdColumn(cell.column.id)
 
-                  return (
-                    <TableCell
-                      key={cell.id}
+                return (
+                  <TableCell
+                    key={cell.id}
+                    className={cn(
+                      "h-13.25 overflow-hidden px-4 text-foreground",
+                      "font-normal",
+                      cell.column.id === "select" && "w-13 px-0",
+                      compactIdColumn && "w-28"
+                    )}
+                    style={{
+                      width: cell.column.getSize(),
+                      maxWidth: cell.column.getSize(),
+                    }}
+                  >
+                    <div
                       className={cn(
-                        "h-13.25 overflow-hidden px-4 text-foreground",
-                        "font-normal",
-                        cell.column.id === "select" && "w-13 px-0",
-                        compactIdColumn && "w-28"
+                        (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
+                          ?.noTruncate
+                          ? "min-w-0"
+                          : "truncate"
                       )}
-                      style={{
-                        width: cell.column.getSize(),
-                        maxWidth: cell.column.getSize(),
-                      }}
+                      data-fulltext={cellTitle ?? undefined}
+                      onMouseEnter={handleOverflowTooltip}
+                      onFocus={handleOverflowTooltip}
                     >
-                      <div
-                        className={cn(
-                          (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
-                            ?.noTruncate
-                            ? "min-w-0"
-                            : "truncate"
-                        )}
-                        data-fulltext={cellTitle ?? undefined}
-                        onMouseEnter={handleOverflowTooltip}
-                        onFocus={handleOverflowTooltip}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </div>
-                    </TableCell>
-                  )
-                })}
-              </TableRow>
-            )
-          })
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  </TableCell>
+                )
+              })}
+            </TableRow>
+          )
+        })
         ) : (
           <TableRow className="border-border">
             <TableCell
