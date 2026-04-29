@@ -1,10 +1,8 @@
-// web/src/components/features/maintenance/issue-review-panel-wrapper.tsx
 'use client';
 
 import { useEffect, useState } from "react";
 import { IssueReviewPanel } from "./issue-review-panel";
 import { getTicketForIssueReview, getVendors, resolveIssueInternally, initiateVendorRepair } from "@/actions/maintenance";
-// Assuming you have a toast component like your other panel uses
 import { toast } from "sonner"; 
 import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from "@/types/maintenance";
 
@@ -88,8 +86,8 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
     setIsInitiating(true);
     try {
       await initiateVendorRepair(
-        data.ticket.id,          // ✅ ticketId (triage)
-        data.ticket.asset.id,    // ✅ assetId
+        data.ticket.id,          
+        data.ticket.asset.id,    
         formData.vendorId,
         formData.rmaNumber,
         formData.estimatedCost,

@@ -1,4 +1,3 @@
-// web/src/components/features/maintenance/issue-review-panel.tsx
 'use client';
 
 import { useState } from 'react';

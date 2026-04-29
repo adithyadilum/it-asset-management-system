@@ -1,4 +1,3 @@
-// web/src/components/features/maintenance/log-complete-repair-dialog.tsx
 'use client';
 
 import { useState } from 'react';

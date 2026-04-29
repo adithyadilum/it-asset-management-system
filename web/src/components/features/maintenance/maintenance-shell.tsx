@@ -1,4 +1,3 @@
-// web/src/components/features/maintenance/maintenance-shell.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';

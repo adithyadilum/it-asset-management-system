@@ -1,4 +1,3 @@
-// web/src/types/maintenance.ts
 export type MaintenanceTicketType = 'VENDOR' | 'INTERNAL';
 export type MaintenanceTicketStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type AssetStatus = 'Available' | 'Assigned' | 'In Repair' | 'Defective' | 'Lost' | 'Retired' | 'Disposed';

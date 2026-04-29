@@ -1,4 +1,3 @@
-// web/src/components/features/maintenance/active-repairs-grid.tsx
 'use client';
 
 import { DataTable } from '@/components/shared/data-table';
