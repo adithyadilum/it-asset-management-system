@@ -1,3 +1,20 @@
-﻿export default function AuditLogPage() {
-  return <div className="p-6 text-sm text-slate-600">Audit Log page coming soon.</div>
+﻿import AuditLogClient from "@/components/features/system-audit-log/audit-log-client";
+import { getAuditLogs } from "@/actions/audit-log";
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { redirect } from "next/navigation";
+
+export default async function AuditLogPage() {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || (currentUser.role !== "GlobalAdmin" && currentUser.role !== "FinanceAuditor")) {
+    redirect("/403");
+  }
+
+  const initialResult = await getAuditLogs({ page: 1, pageSize: 16 });
+
+  return (
+    <div className="flex h-full w-full overflow-hidden bg-slate-50">
+      <AuditLogClient initialResult={initialResult} />
+    </div>
+  );
 }
