@@ -10,13 +10,11 @@ import { format } from 'date-fns';
 interface RepairHistoryGridProps {
   tickets: RepairHistoryTicket[];
   isLoading: boolean;
-  onRowClick?: (ticket: RepairHistoryTicket) => void;
 }
 
 export function RepairHistoryGrid({
   tickets,
   isLoading,
-  onRowClick,
 }: RepairHistoryGridProps) {
   const repairHistoryColumns: ColumnDef<RepairHistoryTicket>[] = [
     {
@@ -77,13 +75,14 @@ export function RepairHistoryGrid({
 }
 
   return (
-    <DataTable
-      columns={repairHistoryColumns}
-      data={tickets}
-      pageSizeOptions={[10, 20, 30, 50]}
-      initialPageSize={10}
-      onRowClick={onRowClick}
-      enableSelection={false} // <-- BOOM! Checkboxes gone!
-    />
-  );
+  <DataTable
+    columns={repairHistoryColumns}
+    data={tickets}
+    pageSizeOptions={[10, 20, 30, 50]}
+    initialPageSize={10}
+    enableRowSelection={false} 
+    enableRowScroll={true} 
+    className="border-0 h-full flex-1" 
+  />
+);
 }

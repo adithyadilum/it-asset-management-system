@@ -58,6 +58,7 @@ type DataTableProps<TData, TValue> = {
     action?: TableEmptyStateAction
   }
   onRowClick?: (row: TData, rowIndex: number) => void
+  isRowActive?: (row: TData, rowIndex: number) => boolean
   activeRowCondition?: (row: TData) => boolean
   selectionResetSignal?: number | string
   className?: string
@@ -81,6 +82,7 @@ export function DataTable<TData, TValue>({
   emptyState,
   onRowClick,
   activeRowCondition,
+  isRowActive,
   selectionResetSignal,
   className,
   manualPagination,
@@ -248,7 +250,9 @@ export function DataTable<TData, TValue>({
       <TableBody>
         {table.getRowModel().rows.length > 0 ? (
           table.getRowModel().rows.map((row) => {
-            const isActive = activeRowCondition ? activeRowCondition(row.original) : false
+            const isActive = 
+  (activeRowCondition ? activeRowCondition(row.original) : false) || 
+  (isRowActive ? isRowActive(row.original, row.index) : false);
 
             return (
               <TableRow
