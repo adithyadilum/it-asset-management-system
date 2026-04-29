@@ -5,7 +5,13 @@ import { headers } from 'next/headers';
 type AuditPayload = {
   entityType: string;
   entityId: string;
-  actionType: 'CREATE' | 'UPDATE' | 'DELETE';
+  actionType:
+    | 'CREATE'
+    | 'UPDATE'
+    | 'DELETE'
+    | 'ACCESS_DENIED'
+    | 'LOGIN'
+    | 'LOGOUT';
   performedById: string;
   oldData?: Record<string, unknown> | null;
   newData?: Record<string, unknown> | null;
