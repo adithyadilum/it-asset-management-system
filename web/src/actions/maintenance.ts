@@ -119,7 +119,7 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
       originalCost,
     } as unknown as IssueReviewPanelData;
   } catch (error) {
-    console.error('[getTicketForIssueReview]', error);
+    console.error('[getTicketForIssueReview] Error:', error);
     throw error;
   }
 }
@@ -131,52 +131,83 @@ export async function resolveIssueInternally(ticketId: number, resolutionNote: s
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
     if (!resolutionNote.trim()) throw new Error('Resolution note is required');
 
-    const result = await db.transaction(async (tx) => {
-      const ticketResult = await tx.select().from(maintenanceTickets).where(eq(maintenanceTickets.id, ticketId)).limit(1);
-      if (ticketResult.length === 0) throw new Error('Ticket not found');
-      
-      const ticket = ticketResult[0];
-      const assetId = ticket.assetId;
+    console.log('[resolveIssueInternally] Starting with ticketId:', ticketId);
 
-      const currentAssetResult = await tx.select().from(assets).where(eq(assets.id, assetId)).limit(1);
-      if (currentAssetResult.length === 0) throw new Error('Asset not found');
-      
-      const currentAsset = currentAssetResult[0];
-      const now = new Date();
+    // 1. Get the ticket
+    const ticketResult = await db
+      .select()
+      .from(maintenanceTickets)
+      .where(eq(maintenanceTickets.id, ticketId))
+      .limit(1);
 
-      const updatedAssets = await tx
-        .update(assets)
-        .set({ status: 'Available', updatedAt: now })
-        .where(eq(assets.id, assetId))
-        .returning({ id: assets.id });
-        
-      if (updatedAssets.length === 0) throw new Error('Failed to update asset status');
+    if (ticketResult.length === 0) {
+      throw new Error(`Ticket with ID ${ticketId} not found`);
+    }
 
-      const updatedTickets = await tx
-        .update(maintenanceTickets)
-        .set({ status: 'COMPLETED', resolutionNotes: resolutionNote, actualCompletionDate: now, updatedAt: now })
-        .where(eq(maintenanceTickets.id, ticketId))
-        .returning({ id: maintenanceTickets.id });
-        
-      if (updatedTickets.length === 0) throw new Error('Failed to update maintenance ticket');
+    const ticket = ticketResult[0];
+    const assetId = ticket.assetId;
+    console.log('[resolveIssueInternally] Found ticket, assetId:', assetId);
 
-      await tx.insert(systemAuditLogs).values({
-        entityType: 'Asset',
-        entityId: assetId,
-        actionType: 'MAINTENANCE_RESOLVED_INTERNALLY',
-        performedById: user.id,
-        oldValue: { status: currentAsset.status },
-        newValue: { status: 'Available', resolutionNote: resolutionNote },
-        performedAt: now,
-      });
+    // 2. Get the current asset
+    const currentAssetResult = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, assetId))
+      .limit(1);
 
-      return { success: true, message: 'Issue resolved successfully', assetId };
+    if (currentAssetResult.length === 0) {
+      throw new Error(`Asset with ID ${assetId} not found`);
+    }
+
+    const currentAsset = currentAssetResult[0];
+    const now = new Date();
+
+    // 3. Update asset status to Available
+    console.log('[resolveIssueInternally] Updating asset status to Available');
+    const updatedAssets = await db
+      .update(assets)
+      .set({ status: 'Available', updatedAt: now })
+      .where(eq(assets.id, assetId))
+      .returning({ id: assets.id });
+
+    if (updatedAssets.length === 0) {
+      throw new Error('Failed to update asset status');
+    }
+
+    // 4. Update ticket status to COMPLETED
+    console.log('[resolveIssueInternally] Updating ticket status to COMPLETED');
+    const updatedTickets = await db
+      .update(maintenanceTickets)
+      .set({
+        status: 'COMPLETED',
+        resolutionNotes: resolutionNote.trim(),
+        actualCompletionDate: now,
+        updatedAt: now,
+      })
+      .where(eq(maintenanceTickets.id, ticketId))
+      .returning({ id: maintenanceTickets.id });
+
+    if (updatedTickets.length === 0) {
+      throw new Error('Failed to update maintenance ticket');
+    }
+
+    // 5. Create audit log
+    console.log('[resolveIssueInternally] Creating audit log entry');
+    await db.insert(systemAuditLogs).values({
+      entityType: 'Asset',
+      entityId: assetId,
+      actionType: 'MAINTENANCE_RESOLVED_INTERNALLY',
+      performedById: user.id,
+      oldValue: { status: currentAsset.status },
+      newValue: { status: 'Available', resolutionNote: resolutionNote.trim() },
+      performedAt: now,
     });
 
-    return result;
+    console.log('[resolveIssueInternally] Success!');
+    return { success: true, message: 'Issue resolved successfully', assetId };
   } catch (error) {
     console.error('[resolveIssueInternally] Error:', error);
-    throw error;
+    throw new Error(`Failed to resolve issue internally: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -186,95 +217,119 @@ export async function getVendors() {
     if (!user) throw new Error('Unauthorized');
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
 
-    return await db.select({
-      id: vendors.id,
-      companyName: vendors.companyName,
-      email: vendors.email,
-      phone: vendors.phone,
-      website: vendors.website,
-      isActive: vendors.isActive,
-    }).from(vendors).where(eq(vendors.isActive, true)).orderBy(vendors.companyName);
+    return await db
+      .select({
+        id: vendors.id,
+        companyName: vendors.companyName,
+        email: vendors.email,
+        phone: vendors.phone,
+        website: vendors.website,
+        isActive: vendors.isActive,
+      })
+      .from(vendors)
+      .where(eq(vendors.isActive, true))
+      .orderBy(vendors.companyName);
   } catch (error) {
     console.error('[getVendors] Error:', error);
     throw error;
   }
 }
 
-export async function initiateVendorRepair(ticketId: number, assetId: string, vendorId: string, rmaNumber: string, estimatedCost?: string, expectedReturnDate?: string) {
+export async function initiateVendorRepair(
+  ticketId: number,
+  assetId: string,
+  vendorId: string,
+  rmaNumber: string,
+  estimatedCost?: string,
+  expectedReturnDate?: string
+) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
 
+    console.log('[initiateVendorRepair] Starting with ticketId:', ticketId, 'assetId:', assetId);
+
+    // Get the current asset
     const currentAssetResult = await db.select().from(assets).where(eq(assets.id, assetId)).limit(1);
-    if (currentAssetResult.length === 0) throw new Error('Asset not found');
+    if (currentAssetResult.length === 0) throw new Error(`Asset ${assetId} not found`);
     const currentAsset = currentAssetResult[0];
 
+    // Get the vendor
     const vendorResult = await db.select().from(vendors).where(eq(vendors.id, parseInt(vendorId))).limit(1);
-    if (vendorResult.length === 0) throw new Error('Vendor not found');
+    if (vendorResult.length === 0) throw new Error(`Vendor ${vendorId} not found`);
     const vendor = vendorResult[0];
 
     const now = new Date();
 
-    const result = await db.transaction(async (tx) => {
-      // 1) Close the triage ticket (the one from Pending Review)
-      await tx
-        .update(maintenanceTickets)
-        .set({
-          status: 'COMPLETED',
-          resolutionNotes: 'Dispatched to vendor repair',
-          actualCompletionDate: now,
-          updatedAt: now,
-        })
-        .where(eq(maintenanceTickets.id, ticketId));
+    // 1. Close the triage ticket (INTERNAL ticket from Pending Review)
+    console.log('[initiateVendorRepair] Closing triage ticket:', ticketId);
+    await db
+      .update(maintenanceTickets)
+      .set({
+        status: 'COMPLETED',
+        resolutionNotes: 'Dispatched to vendor repair',
+        actualCompletionDate: now,
+        updatedAt: now,
+      })
+      .where(eq(maintenanceTickets.id, ticketId));
 
-      // 2) Update asset to In Repair
-      await tx
-        .update(assets)
-        .set({ status: 'In Repair', updatedAt: now })
-        .where(eq(assets.id, assetId));
+    // 2. Update asset to In Repair
+    console.log('[initiateVendorRepair] Updating asset status to In Repair');
+    await db
+      .update(assets)
+      .set({ status: 'In Repair', updatedAt: now })
+      .where(eq(assets.id, assetId));
 
-      // 3) Create the vendor repair ticket (ACTIVE)
-      const newTicket = await tx
-        .insert(maintenanceTickets)
-        .values({
-          assetId,
-          ticketType: 'VENDOR',
-          vendorName: vendor.companyName,
-          rmaNumber: rmaNumber.trim(),
-          reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-          estimatedCost: estimatedCost ? parseFloat(estimatedCost).toString() : null,
-          estimatedReturnDate: expectedReturnDate || null,
-          status: 'ACTIVE',
-          dispatchedById: user.id,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
+    // 3. Create the vendor repair ticket (ACTIVE, VENDOR type)
+    console.log('[initiateVendorRepair] Creating vendor repair ticket');
+    const newTicketValues = {
+      assetId: assetId,
+      ticketType: 'VENDOR' as const,
+      vendorName: vendor.companyName,
+      rmaNumber: rmaNumber.trim(),
+      reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
+      estimatedCost: estimatedCost ? parseFloat(estimatedCost).toString() : null,
+      estimatedReturnDate: expectedReturnDate ? expectedReturnDate : null,
+      status: 'ACTIVE' as const,
+      dispatchedById: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-      // 4) Audit
-      await tx.insert(systemAuditLogs).values({
-        entityType: 'Asset',
-        entityId: assetId,
-        actionType: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
-        performedById: user.id,
-        oldValue: { status: currentAsset.status },
-        newValue: {
-          status: 'In Repair',
-          vendor: vendor.companyName,
-          rmaNumber: rmaNumber.trim(),
-          estimatedReturnDate: expectedReturnDate || null,
-        },
-        performedAt: now,
-      });
+    console.log('[initiateVendorRepair] New ticket values:', newTicketValues);
 
-      return newTicket[0];
+    const newTickets = await db
+      .insert(maintenanceTickets)
+      .values(newTicketValues as typeof maintenanceTickets.$inferInsert)
+      .returning();
+
+    if (!newTickets[0]) {
+      throw new Error('Failed to create vendor repair ticket');
+    }
+
+    // 4. Create audit log
+    console.log('[initiateVendorRepair] Creating audit log entry');
+    await db.insert(systemAuditLogs).values({
+      entityType: 'Asset',
+      entityId: assetId,
+      actionType: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
+      performedById: user.id,
+      oldValue: { status: currentAsset.status },
+      newValue: {
+        status: 'In Repair',
+        vendor: vendor.companyName,
+        rmaNumber: rmaNumber.trim(),
+        estimatedReturnDate: expectedReturnDate || null,
+      },
+      performedAt: now,
     });
 
-    return { success: true, message: 'Asset dispatched successfully', ticketId: result.id, assetId };
+    console.log('[initiateVendorRepair] Success!');
+    return { success: true, message: 'Asset dispatched successfully', ticketId: newTickets[0].id, assetId };
   } catch (error) {
     console.error('[initiateVendorRepair] Error:', error);
-    throw error;
+    throw new Error(`Failed to initiate vendor repair: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -285,9 +340,9 @@ export async function getActiveRepairTickets() {
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
 
     const result = await db
-      .select({ 
-        ticket: maintenanceTickets, 
-        asset: assets 
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
       })
       .from(maintenanceTickets)
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
@@ -311,7 +366,12 @@ export async function getActiveRepairTickets() {
   }
 }
 
-export async function completeRepairTicket(ticketId: number, actualCost: string, resolutionNotes: string, updateStatusTo: 'Available' | 'Disposed') {
+export async function completeRepairTicket(
+  ticketId: number,
+  actualCost: string,
+  resolutionNotes: string,
+  updateStatusTo: 'Available' | 'Disposed'
+) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
@@ -331,71 +391,83 @@ export async function completeRepairTicket(ticketId: number, actualCost: string,
       throw new Error('Actual cost must be a finite number greater than or equal to 0');
     }
 
+    console.log('[completeRepairTicket] Starting with ticketId:', ticketId);
+
     const now = new Date();
 
-    const result = await db.transaction(async (tx) => {
-      const ticketResult = await tx
-        .select()
-        .from(maintenanceTickets)
-        .where(eq(maintenanceTickets.id, ticketId))
-        .limit(1);
-      
-      if (ticketResult.length === 0) throw new Error('Ticket not found');
-      const ticket = ticketResult[0];
-      const assetId = ticket.assetId;
+    // 1. Get the ticket
+    const ticketResult = await db
+      .select()
+      .from(maintenanceTickets)
+      .where(eq(maintenanceTickets.id, ticketId))
+      .limit(1);
 
-      const currentAssetResult = await tx
-        .select()
-        .from(assets)
-        .where(eq(assets.id, assetId))
-        .limit(1);
-        
-      if (currentAssetResult.length === 0) throw new Error('Asset not found');
-      const currentAsset = currentAssetResult[0];
+    if (ticketResult.length === 0) throw new Error(`Ticket ${ticketId} not found`);
+    const ticket = ticketResult[0];
+    const assetId = ticket.assetId;
 
-      const updatedTickets = await tx
-        .update(maintenanceTickets)
-        .set({
-          status: 'COMPLETED',
-          actualCost: actualCostNum.toString(),
-          actualCompletionDate: now,
-          resolutionNotes: trimmedResolutionNotes,
-          updatedAt: now,
-        })
-        .where(eq(maintenanceTickets.id, ticketId))
-        .returning({ id: maintenanceTickets.id });
+    // 2. Get current asset
+    const currentAssetResult = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, assetId))
+      .limit(1);
 
-      if (updatedTickets.length === 0) {
-        throw new Error('Failed to update maintenance ticket');
-      }
+    if (currentAssetResult.length === 0) throw new Error(`Asset ${assetId} not found`);
+    const currentAsset = currentAssetResult[0];
 
-      const updatedAssets = await tx
-        .update(assets)
-        .set({ status: updateStatusTo, updatedAt: now })
-        .where(eq(assets.id, assetId))
-        .returning({ id: assets.id });
+    // 3. Update ticket status to COMPLETED
+    console.log('[completeRepairTicket] Updating ticket to COMPLETED');
+    const updatedTickets = await db
+      .update(maintenanceTickets)
+      .set({
+        status: 'COMPLETED',
+        actualCost: actualCostNum.toString(),
+        actualCompletionDate: now,
+        resolutionNotes: trimmedResolutionNotes,
+        updatedAt: now,
+      })
+      .where(eq(maintenanceTickets.id, ticketId))
+      .returning({ id: maintenanceTickets.id });
 
-      if (updatedAssets.length === 0) {
-        throw new Error('Failed to update asset');
-      }
+    if (updatedTickets.length === 0) {
+      throw new Error('Failed to update maintenance ticket');
+    }
 
-      await tx.insert(systemAuditLogs).values({
-        entityType: 'Asset',
-        entityId: assetId,
-        actionType: 'MAINTENANCE_REPAIR_COMPLETED',
-        performedById: user.id,
-        oldValue: { status: currentAsset.status, ticketStatus: 'ACTIVE' },
-        newValue: { status: updateStatusTo, ticketStatus: 'COMPLETED', actualCost: actualCostNum, resolutionNotes: trimmedResolutionNotes },
-        performedAt: now,
-      });
+    // 4. Update asset status
+    console.log('[completeRepairTicket] Updating asset status to:', updateStatusTo);
+    const updatedAssets = await db
+      .update(assets)
+      .set({ status: updateStatusTo, updatedAt: now })
+      .where(eq(assets.id, assetId))
+      .returning({ id: assets.id });
 
-      return { assetId };
+    if (updatedAssets.length === 0) {
+      throw new Error('Failed to update asset');
+    }
+
+    // 5. Create audit log
+    console.log('[completeRepairTicket] Creating audit log entry');
+    await db.insert(systemAuditLogs).values({
+      entityType: 'Asset',
+      entityId: assetId,
+      actionType: 'MAINTENANCE_REPAIR_COMPLETED',
+      performedById: user.id,
+      oldValue: { status: currentAsset.status, ticketStatus: 'ACTIVE' },
+      newValue: {
+        status: updateStatusTo,
+        ticketStatus: 'COMPLETED',
+        actualCost: actualCostNum,
+        resolutionNotes: trimmedResolutionNotes,
+      },
+      performedAt: now,
     });
 
-    return { success: true, message: 'Repair completed successfully', ticketId, assetId: result.assetId };
+    console.log('[completeRepairTicket] Success!');
+    return { success: true, message: 'Repair completed successfully', ticketId, assetId };
   } catch (error) {
     console.error('[completeRepairTicket] Error:', error);
-    throw error;
+    throw new Error(`Failed to complete repair: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -407,7 +479,7 @@ export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '')
 
     const offset = (page - 1) * pageSize;
     const baseCondition = eq(maintenanceTickets.status, 'COMPLETED');
-    
+
     const searchCondition = searchTerm.trim()
       ? or(
           ilike(assets.assetTag, `%${searchTerm}%`),
@@ -419,8 +491,7 @@ export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '')
       .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(maintenanceTickets)
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-      .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition)
-      .limit(1);
+      .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition);
 
     const total = countResult[0]?.count || 0;
 
@@ -466,7 +537,12 @@ export async function getAssetMaintenanceHistory(assetId: string, limit = 3) {
     if (!user) throw new Error('Unauthorized');
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
 
-    const assetRecord = await db.select({ id: assets.id }).from(assets).where(eq(assets.assetTag, assetId)).limit(1);
+    const assetRecord = await db
+      .select({ id: assets.id })
+      .from(assets)
+      .where(eq(assets.assetTag, assetId))
+      .limit(1);
+
     if (assetRecord.length === 0) throw new Error('Asset not found');
 
     const numericAssetId = assetRecord[0].id;
