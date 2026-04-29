@@ -31,6 +31,7 @@ export type MultiAssetAssignmentItem = {
   assetId: string;
   assetTag: string;
   assetName: string;
+  assetGroup: string;
 };
 
 interface MultiAssetAssignmentModalProps {
@@ -92,6 +93,9 @@ export function MultiAssetAssignmentModal({
   onOpenChange,
 }: MultiAssetAssignmentModalProps) {
   const router = useRouter();
+  const disableUserAssignment = assets.some(
+    (asset) => asset.assetGroup === "Office Furniture" || asset.assetGroup === "Office Electronics"
+  );
   const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">("user");
   const [assignee, setAssignee] = React.useState("");
   const [duration, setDuration] = React.useState("");
@@ -140,13 +144,19 @@ export function MultiAssetAssignmentModal({
     loadOptions();
   }, [isOpen, loadOptions]);
 
+  React.useEffect(() => {
+    if (disableUserAssignment && assignmentMode === "user") {
+      setAssignmentMode("location");
+    }
+  }, [assignmentMode, disableUserAssignment]);
+
   const resetState = React.useCallback(() => {
-    setAssignmentMode("user");
+    setAssignmentMode(disableUserAssignment ? "location" : "user");
     setAssignee("");
     setDuration("");
     setExpectedReturn("");
     setNotes("");
-  }, []);
+  }, [disableUserAssignment]);
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
@@ -160,6 +170,7 @@ export function MultiAssetAssignmentModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
 
     if (assets.length === 0) {
       tiqriToast.warning("Select at least one asset.");
@@ -168,7 +179,7 @@ export function MultiAssetAssignmentModal({
 
     if (!assignee) {
       tiqriToast.warning(
-        assignmentMode === "user"
+        resolvedAssignmentMode === "user"
           ? "Please select a user."
           : "Please select a location."
       );
@@ -177,11 +188,11 @@ export function MultiAssetAssignmentModal({
 
     setIsSubmitting(true);
 
-    const expectedDate = assignmentMode === "user" ? expectedReturn || undefined : undefined;
+    const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;
     const bulkAssignInput = {
       assetIds: assets.map((asset) => asset.assetId),
-      assignmentType: assignmentMode,
-      targetId: assignmentMode === "location" ? Number(assignee) : assignee,
+      assignmentType: resolvedAssignmentMode,
+      targetId: resolvedAssignmentMode === "location" ? Number(assignee) : assignee,
       expectedReturnDate: expectedDate,
       notes: notes || undefined,
     };
@@ -263,11 +274,12 @@ export function MultiAssetAssignmentModal({
           </div>
 
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className={`flex items-center gap-2 text-sm ${disableUserAssignment ? "cursor-not-allowed text-slate-400" : "text-slate-700"}`}>
               <input
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === "user"}
+                disabled={disableUserAssignment}
                 onChange={() => handleAssignmentModeChange("user")}
                 className="size-4 border-slate-300 accent-[#00145a]"
               />
@@ -287,13 +299,15 @@ export function MultiAssetAssignmentModal({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-slate-700">
-              {assignmentMode === "user" ? "Select a user" : "Select a location"}
+              {disableUserAssignment || assignmentMode === "location" ? "Select a location" : "Select a user"}
             </Label>
             <Select value={assignee} onValueChange={setAssignee}>
               <SelectTrigger className="h-9 bg-white">
                 <SelectValue
                   placeholder={
-                    assignmentMode === "user" ? "Select a user" : "Select a location"
+                    disableUserAssignment || assignmentMode === "location"
+                      ? "Select a location"
+                      : "Select a user"
                   }
                 />
               </SelectTrigger>
@@ -313,7 +327,7 @@ export function MultiAssetAssignmentModal({
             </Select>
           </div>
 
-          {assignmentMode === "user" ? (
+          {disableUserAssignment || assignmentMode === "location" ? null : (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-700">Expected Return Date</Label>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[160px_minmax(0,1fr)]">
@@ -345,7 +359,7 @@ export function MultiAssetAssignmentModal({
                 </div>
               </div>
             </div>
-          ) : null}
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-slate-700">Notes</Label>

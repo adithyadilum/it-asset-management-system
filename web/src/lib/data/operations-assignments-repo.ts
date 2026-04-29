@@ -34,7 +34,11 @@ export interface AssignmentsDashboardData {
   returned: AssignmentsDashboardRow[];
 }
 
-const DASHBOARD_PILLAR = 'IT & Digital';
+const DASHBOARD_PILLARS: Array<'IT & Digital' | 'Office Furniture' | 'Office Electronics'> = [
+  'IT & Digital',
+  'Office Furniture',
+  'Office Electronics',
+];
 const BULK_PAGE_SIZE = 100;
 
 export type AssignmentTargetType = 'user' | 'location';
@@ -239,24 +243,28 @@ function toDashboardRow(row: AssetRegistryRow): AssignmentsDashboardRow {
 }
 
 async function loadAssetsByStatus(status: AssetStatus): Promise<AssignmentsDashboardRow[]> {
-  const firstPage = await getAssetsByPillar({
-    pillar: DASHBOARD_PILLAR,
-    status,
-    page: 1,
-    pageSize: BULK_PAGE_SIZE,
-  });
+  const rows: AssignmentsDashboardRow[] = [];
 
-  let rows = firstPage.data.map(toDashboardRow);
-
-  for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
-    const nextPage = await getAssetsByPillar({
-      pillar: DASHBOARD_PILLAR,
+  for (const pillar of DASHBOARD_PILLARS) {
+    const firstPage = await getAssetsByPillar({
+      pillar,
       status,
-      page,
+      page: 1,
       pageSize: BULK_PAGE_SIZE,
     });
 
-    rows = rows.concat(nextPage.data.map(toDashboardRow));
+    rows.push(...firstPage.data.map(toDashboardRow));
+
+    for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
+      const nextPage = await getAssetsByPillar({
+        pillar,
+        status,
+        page,
+        pageSize: BULK_PAGE_SIZE,
+      });
+
+      rows.push(...nextPage.data.map(toDashboardRow));
+    }
   }
 
   return rows;

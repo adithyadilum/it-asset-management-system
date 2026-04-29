@@ -30,6 +30,7 @@ interface AssetAssignmentModalProps {
   isOpen: boolean;
   assetId: string;
   assetLabel: string;
+  assetGroup: string;
   onOpenChange: (open: boolean) => void;
 }
 
@@ -83,9 +84,12 @@ export function AssetAssignmentModal({
   isOpen,
   assetId,
   assetLabel,
+  assetGroup,
   onOpenChange,
 }: AssetAssignmentModalProps) {
   const router = useRouter();
+  const disableUserAssignment =
+    assetGroup === "Office Furniture" || assetGroup === "Office Electronics";
   const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">("user");
   const [assignee, setAssignee] = React.useState("");
   const [duration, setDuration] = React.useState("");
@@ -134,13 +138,19 @@ export function AssetAssignmentModal({
     loadOptions();
   }, [isOpen, loadOptions]);
 
+  React.useEffect(() => {
+    if (disableUserAssignment && assignmentMode === "user") {
+      setAssignmentMode("location");
+    }
+  }, [assignmentMode, disableUserAssignment]);
+
   const resetState = React.useCallback(() => {
-    setAssignmentMode("user");
+    setAssignmentMode(disableUserAssignment ? "location" : "user");
     setAssignee("");
     setDuration("");
     setExpectedReturn("");
     setNotes("");
-  }, []);
+  }, [disableUserAssignment]);
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
@@ -154,6 +164,7 @@ export function AssetAssignmentModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
 
     if (!assetId) {
       tiqriToast.error("Invalid asset id.");
@@ -162,7 +173,7 @@ export function AssetAssignmentModal({
 
     if (!assignee) {
       tiqriToast.warning(
-        assignmentMode === "user"
+        resolvedAssignmentMode === "user"
           ? "Please select a user."
           : "Please select a location."
       );
@@ -171,11 +182,11 @@ export function AssetAssignmentModal({
 
     setIsSubmitting(true);
 
-    const expectedDate = assignmentMode === "user" ? expectedReturn || undefined : undefined;
+    const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;
     const assignInput = {
       assetId,
-      assignmentType: assignmentMode,
-      targetId: assignmentMode === "location" ? Number(assignee) : assignee,
+      assignmentType: resolvedAssignmentMode,
+      targetId: resolvedAssignmentMode === "location" ? Number(assignee) : assignee,
       expectedReturnDate: expectedDate,
       notes: notes || undefined,
     };
@@ -239,11 +250,12 @@ export function AssetAssignmentModal({
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 pt-4 pb-5">
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className={`flex items-center gap-2 text-sm ${disableUserAssignment ? "cursor-not-allowed text-slate-400" : "text-slate-700"}`}>
               <input
                 type="radio"
                 name="assignment-mode"
                 checked={assignmentMode === "user"}
+                disabled={disableUserAssignment}
                 onChange={() => handleAssignmentModeChange("user")}
                 className="size-4 border-slate-300 accent-[#00145a]"
               />
@@ -263,13 +275,15 @@ export function AssetAssignmentModal({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-slate-700">
-              {assignmentMode === "user" ? "Select a user" : "Select a location"}
+              {disableUserAssignment || assignmentMode === "location" ? "Select a location" : "Select a user"}
             </Label>
             <Select value={assignee} onValueChange={setAssignee}>
               <SelectTrigger className="h-9 bg-white">
                 <SelectValue
                   placeholder={
-                    assignmentMode === "user" ? "Select a user" : "Select a location"
+                    disableUserAssignment || assignmentMode === "location"
+                      ? "Select a location"
+                      : "Select a user"
                   }
                 />
               </SelectTrigger>
@@ -289,7 +303,7 @@ export function AssetAssignmentModal({
             </Select>
           </div>
 
-          {assignmentMode === "user" ? (
+          {disableUserAssignment || assignmentMode === "location" ? null : (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-700">Expected Return Date</Label>
               <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
@@ -321,7 +335,7 @@ export function AssetAssignmentModal({
                 </div>
               </div>
             </div>
-          ) : null}
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-slate-700">Notes</Label>
