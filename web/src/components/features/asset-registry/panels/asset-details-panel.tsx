@@ -348,7 +348,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       tabsList.push({
         id: 'history',
         label: 'History',
-        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab events={props.historyEvents ?? []} onViewAll={props.onViewAllHistory} />,
+        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab assetId={props.assetId} />,
       });
     }
 
