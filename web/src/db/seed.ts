@@ -16,6 +16,7 @@ import {
   departments,
   locations,
   maintenanceRecords,
+  maintenanceTickets, // Epic 15 Import
   models,
   owners,
   sessions,
@@ -26,6 +27,7 @@ import {
   vendors,
 } from './schema';
 import { type LocationType } from '../types/master-data';
+import { eq } from 'drizzle-orm';
 
 dotenv.config({ path: '.env.local' });
 
@@ -62,6 +64,7 @@ async function seed() {
     await db.delete(softwareLicenses);
     await db.delete(systemAuditLogs);
     await db.delete(assetDisposals);
+    await db.delete(maintenanceTickets); // Epic 15 addition
     await db.delete(maintenanceRecords);
     await db.delete(assetAssignments);
     await db.delete(assetDocuments);
@@ -89,7 +92,6 @@ async function seed() {
       isActive: true,
     }));
 
-    // Insert departments in batches
     const insertedDepartments: Array<{ id: number }> = [];
     for (let i = 0; i < departmentData.length; i += 5) {
       const batch = departmentData.slice(i, i + 5);
@@ -101,7 +103,7 @@ async function seed() {
     }
 
     // -------------------------------------------------------------------------
-    // 2. USERS (50 records - keeping baseline credentials)
+    // 2. USERS (50 records)
     // -------------------------------------------------------------------------
     console.log('Seeding Users...');
     const roles: UserRole[] = [
@@ -111,32 +113,11 @@ async function seed() {
       'Employee',
     ];
 
-    // Baseline credentials - kept exactly as before
     const baselineUsers = [
-      {
-        email: 'admin@tiqri.com',
-        name: 'Admin User',
-        password: 'Admin@1234',
-        role: 'GlobalAdmin' as UserRole,
-      },
-      {
-        email: 'it@tiqri.com',
-        name: 'IT Support',
-        password: 'IT@1234',
-        role: 'ITOperator' as UserRole,
-      },
-      {
-        email: 'finance@tiqri.com',
-        name: 'Finance Auditor',
-        password: 'Finance@1234',
-        role: 'FinanceAuditor' as UserRole,
-      },
-      {
-        email: 'employee@tiqri.com',
-        name: 'Standard Employee',
-        password: 'Employee@1234',
-        role: 'Employee' as UserRole,
-      },
+      { email: 'admin@tiqri.com', name: 'Admin User', password: 'Admin@1234', role: 'GlobalAdmin' as UserRole },
+      { email: 'it@tiqri.com', name: 'IT Support', password: 'IT@1234', role: 'ITOperator' as UserRole },
+      { email: 'finance@tiqri.com', name: 'Finance Auditor', password: 'Finance@1234', role: 'FinanceAuditor' as UserRole },
+      { email: 'employee@tiqri.com', name: 'Standard Employee', password: 'Employee@1234', role: 'Employee' as UserRole },
     ];
 
     const fakerUsers = Array.from({ length: 46 }).map((_, i) => ({
@@ -160,9 +141,7 @@ async function seed() {
       }))
     );
 
-    // Insert users in batches to avoid Neon HTTP parameter limits
-    const insertedUsers: Array<{ id: string; email: string; role: UserRole }> =
-      [];
+    const insertedUsers: Array<{ id: string; email: string; role: UserRole }> = [];
     for (let i = 0; i < userData.length; i += 5) {
       const batch = userData.slice(i, i + 5);
       const result = await db
@@ -174,20 +153,18 @@ async function seed() {
 
     const adminUser = insertedUsers.find((u) => u.email === 'admin@tiqri.com');
     const itUser = insertedUsers.find((u) => u.email === 'it@tiqri.com');
-    const financeUser = insertedUsers.find(
-      (u) => u.email === 'finance@tiqri.com'
-    );
+    const financeUser = insertedUsers.find((u) => u.email === 'finance@tiqri.com');
 
     if (!adminUser || !itUser || !financeUser) {
       throw new Error('Seed users missing required baseline accounts.');
     }
 
     // -------------------------------------------------------------------------
-    // 3. SESSIONS (50 records)
+    // 3. SESSIONS
     // -------------------------------------------------------------------------
     console.log('Seeding Sessions...');
     const sessionData = insertedUsers.slice(0, 50).map((user) => ({
-      userId: user.id, // UUID string
+      userId: user.id,
       tokenId: `tok_${faker.string.alphanumeric(16).toUpperCase()}`,
       expiresAt: faker.date.future(),
       createdAt: faker.date.recent(),
@@ -196,7 +173,7 @@ async function seed() {
     await db.insert(sessions).values(sessionData);
 
     // -------------------------------------------------------------------------
-    // 4. LOCATIONS (50 records)
+    // 4. LOCATIONS
     // -------------------------------------------------------------------------
     console.log('Seeding Locations...');
     const locationData = Array.from({ length: 50 }).map((_, i) => ({
@@ -207,19 +184,15 @@ async function seed() {
       isActive: true,
     }));
 
-    // Insert locations in batches
     const insertedLocations: Array<{ id: number }> = [];
     for (let i = 0; i < locationData.length; i += 5) {
       const batch = locationData.slice(i, i + 5);
-      const result = await db
-        .insert(locations)
-        .values(batch)
-        .returning({ id: locations.id });
+      const result = await db.insert(locations).values(batch).returning({ id: locations.id });
       insertedLocations.push(...result);
     }
 
     // -------------------------------------------------------------------------
-    // 5. VENDORS (50 records)
+    // 5. VENDORS
     // -------------------------------------------------------------------------
     console.log('Seeding Vendors...');
     const vendorData = Array.from({ length: 50 }).map((_, i) => ({
@@ -231,19 +204,15 @@ async function seed() {
       isActive: true,
     }));
 
-    // Insert vendors in batches
-    const insertedVendors: Array<{ id: number }> = [];
+    const insertedVendors: Array<{ id: number; companyName: string }> = [];
     for (let i = 0; i < vendorData.length; i += 5) {
       const batch = vendorData.slice(i, i + 5);
-      const result = await db
-        .insert(vendors)
-        .values(batch)
-        .returning({ id: vendors.id });
+      const result = await db.insert(vendors).values(batch).returning({ id: vendors.id, companyName: vendors.companyName });
       insertedVendors.push(...result);
     }
 
     // -------------------------------------------------------------------------
-    // 6. OWNERS (50 records)
+    // 6. OWNERS
     // -------------------------------------------------------------------------
     console.log('Seeding Owners...');
     const ownerData = Array.from({ length: 50 }).map((_, i) => ({
@@ -252,27 +221,18 @@ async function seed() {
       isActive: true,
     }));
 
-    // Insert owners in batches
     const insertedOwners: Array<{ id: number }> = [];
     for (let i = 0; i < ownerData.length; i += 5) {
       const batch = ownerData.slice(i, i + 5);
-      const result = await db
-        .insert(owners)
-        .values(batch)
-        .returning({ id: owners.id });
+      const result = await db.insert(owners).values(batch).returning({ id: owners.id });
       insertedOwners.push(...result);
     }
 
     // -------------------------------------------------------------------------
-    // 7. CATEGORIES (50 records)
+    // 7. CATEGORIES
     // -------------------------------------------------------------------------
     console.log('Seeding Categories...');
-    const pillars: Pillar[] = [
-      'IT & Digital',
-      'Software',
-      'Office Furniture',
-      'Office Electronics',
-    ];
+    const pillars: Pillar[] = ['IT & Digital', 'Software', 'Office Furniture', 'Office Electronics'];
 
     const categoryData = Array.from({ length: 50 }).map((_, i) => ({
       categoryCode: `CAT-${String(i + 1).padStart(4, '0')}`,
@@ -282,24 +242,13 @@ async function seed() {
       requiresSerial: faker.datatype.boolean(),
       isConsumable: faker.datatype.boolean(),
       customSchema: {
-        modelSpecs: [
-          { fieldName: 'Version', inputType: 'Text', required: false },
-          { fieldName: 'Capacity', inputType: 'Number', required: false },
-        ],
-        assetTracking: [
-          { fieldName: 'Reference', inputType: 'Text', required: false },
-          { fieldName: 'Commission Date', inputType: 'Date', required: false },
-        ],
+        modelSpecs: [{ fieldName: 'Version', inputType: 'Text', required: false }],
+        assetTracking: [{ fieldName: 'Reference', inputType: 'Text', required: false }],
       },
       isActive: true,
     }));
 
-    // Insert categories in batches
-    const insertedCategories: Array<{
-      id: number;
-      prefix: string;
-      pillar: Pillar;
-    }> = [];
+    const insertedCategories: Array<{ id: number; prefix: string; pillar: Pillar }> = [];
     for (let i = 0; i < categoryData.length; i += 5) {
       const batch = categoryData.slice(i, i + 5);
       const result = await db.insert(categories).values(batch).returning({
@@ -311,77 +260,47 @@ async function seed() {
     }
 
     // -------------------------------------------------------------------------
-    // 8. BRANDS (50 records)
+    // 8. BRANDS & 9. MODELS
     // -------------------------------------------------------------------------
-    console.log('Seeding Brands...');
+    console.log('Seeding Brands & Models...');
     const brandData = Array.from({ length: 50 }).map((_, i) => ({
       brandCode: `BRD-${String(i + 1).padStart(4, '0')}`,
       name: faker.company.name(),
       isActive: true,
     }));
 
-    // Insert brands in batches
     const insertedBrands: Array<{ id: number }> = [];
     for (let i = 0; i < brandData.length; i += 5) {
       const batch = brandData.slice(i, i + 5);
-      const result = await db
-        .insert(brands)
-        .values(batch)
-        .returning({ id: brands.id });
+      const result = await db.insert(brands).values(batch).returning({ id: brands.id });
       insertedBrands.push(...result);
     }
 
-    // -------------------------------------------------------------------------
-    // 9. MODELS (50 records)
-    // -------------------------------------------------------------------------
-    console.log('Seeding Models...');
     const modelData = Array.from({ length: 50 }).map((_, i) => ({
       modelCode: `MDL-${String(i + 1).padStart(4, '0')}`,
       brandId: faker.helpers.arrayElement(insertedBrands).id,
       categoryId: faker.helpers.arrayElement(insertedCategories).id,
       name: faker.commerce.productName(),
       imageUrl: `https://cdn.example.com/models/${String(i + 1).padStart(2, '0')}.png`,
-      technicalDetails: {
-        sku: `SKU-${faker.string.numeric(6)}`,
-        generation: `Gen-${faker.number.int({ min: 1, max: 5 })}`,
-      },
+      technicalDetails: { sku: `SKU-${faker.string.numeric(6)}` },
       isActive: true,
     }));
 
-    // Insert models in batches
     const insertedModels: Array<{ id: number }> = [];
     for (let i = 0; i < modelData.length; i += 5) {
       const batch = modelData.slice(i, i + 5);
-      const result = await db
-        .insert(models)
-        .values(batch)
-        .returning({ id: models.id });
+      const result = await db.insert(models).values(batch).returning({ id: models.id });
       insertedModels.push(...result);
     }
 
     // -------------------------------------------------------------------------
-    // 10. ASSETS (100 records)
+    // 10. ASSETS
     // -------------------------------------------------------------------------
     console.log('Seeding Assets...');
-    const assetStatuses: Array<
-      | 'Available'
-      | 'Assigned'
-      | 'In Repair'
-      | 'Defective'
-      | 'Lost'
-      | 'Retired'
-      | 'Disposed'
-    > = [
-      'Available',
-      'Assigned',
-      'In Repair',
-      'Defective',
-      'Lost',
-      'Retired',
-      'Disposed',
+    const assetStatuses: Array<'Available' | 'Assigned' | 'In Repair' | 'Defective' | 'Lost' | 'Retired' | 'Disposed'> = [
+      'Available', 'Assigned', 'In Repair', 'Defective', 'Lost', 'Retired', 'Disposed',
     ];
-    const conditions: Array<'New' | 'Excellent' | 'Fair' | 'Poor' | 'Damaged'> =
-      ['New', 'Excellent', 'Fair', 'Poor', 'Damaged'];
+    const conditions: Array<'New' | 'Excellent' | 'Fair' | 'Poor' | 'Damaged'> = ['New', 'Excellent', 'Fair', 'Poor', 'Damaged'];
 
     const assetData = Array.from({ length: 100 }).map((_, i) => {
       const category = faker.helpers.arrayElement(insertedCategories);
@@ -394,130 +313,94 @@ async function seed() {
         ownerId: faker.helpers.arrayElement(insertedOwners).id,
         status: faker.helpers.arrayElement(assetStatuses),
         condition: faker.helpers.arrayElement(conditions),
-        instanceAttributes: {
-          deploymentSite: faker.company.name(),
-          inventoryBatch: `BATCH-${faker.string.numeric(4)}`,
-        },
-        usefulLifeMonths: faker.number.int({ min: 12, max: 60 }),
-        salvageValue: faker.finance
-          .amount({ min: 50, max: 500, dec: 2 })
-          .toString(),
+        instanceAttributes: { deploymentSite: faker.company.name() },
+        usefulLifeMonths: faker.number.int({ min: 36, max: 84 }), // Epic 22 Requirement
+        salvageValue: faker.finance.amount({ min: 50, max: 500, dec: 2 }).toString(),
         createdAt: faker.date.past({ years: 2 }),
         updatedAt: faker.date.recent(),
       };
     });
 
-    // Insert assets in batches
     const insertedAssets: Array<{ id: string }> = [];
     for (let i = 0; i < assetData.length; i += 5) {
       const batch = assetData.slice(i, i + 5);
-      const result = await db
-        .insert(assets)
-        .values(batch)
-        .returning({ id: assets.id });
+      const result = await db.insert(assets).values(batch).returning({ id: assets.id });
       insertedAssets.push(...result);
     }
 
     // -------------------------------------------------------------------------
-    // 11. ASSET PURCHASES (50 records)
+    // 11. ASSET PURCHASES
     // -------------------------------------------------------------------------
     console.log('Seeding Asset Purchases...');
-    const purchaseData = Array.from({ length: 50 }).map(() => {
-      const basePrice = faker.number.float({
-        min: 200,
-        max: 3000,
-        fractionDigits: 2,
-      });
+    const purchaseData = insertedAssets.map((asset) => {
+      const basePrice = faker.number.float({ min: 200, max: 3000, fractionDigits: 2 });
       const tax = Number((basePrice * 0.12).toFixed(2));
-      const shippingCost = Number(
-        faker.number.float({ min: 10, max: 50, fractionDigits: 2 }).toFixed(2)
-      );
+      const shippingCost = Number(faker.number.float({ min: 10, max: 50, fractionDigits: 2 }).toFixed(2));
       return {
-        assetId: faker.helpers.arrayElement(insertedAssets).id,
+        assetId: asset.id,
         vendorId: faker.helpers.arrayElement(insertedVendors).id,
-        purchaseDate: faker.date.past({ years: 2 }).toISOString().split('T')[0],
+        purchaseDate: faker.date.past({ years: 5 }).toISOString().split('T')[0], // Epic 22 Staggered past dates
         basePrice: basePrice.toFixed(2),
         tax: tax.toFixed(2),
         shippingCost: shippingCost.toFixed(2),
         totalCost: (basePrice + tax + shippingCost).toFixed(2),
         currencyCode: faker.helpers.arrayElement(['USD', 'LKR', 'NOK']),
-        warrantyExpiry: faker.date
-          .future({ years: 2 })
-          .toISOString()
-          .split('T')[0],
+        warrantyExpiry: faker.date.future({ years: 2 }).toISOString().split('T')[0],
         invoiceUrl: faker.internet.url(),
         createdAt: faker.date.past({ years: 2 }),
         updatedAt: faker.date.recent(),
       };
     });
 
-    // Insert purchases in batches
     for (let i = 0; i < purchaseData.length; i += 5) {
       const batch = purchaseData.slice(i, i + 5);
       await db.insert(assetPurchases).values(batch);
     }
 
     // -------------------------------------------------------------------------
-    // 12. ASSET DOCUMENTS (50 records)
+    // 12. ASSET DOCUMENTS & 13. ASSIGNMENTS
     // -------------------------------------------------------------------------
-    console.log('Seeding Asset Documents...');
+    console.log('Seeding Documents & Assignments...');
     const documentData = Array.from({ length: 50 }).map(() => ({
       assetId: faker.helpers.arrayElement(insertedAssets).id,
-      documentType: faker.helpers.arrayElement([
-        'Manual',
-        'Warranty',
-        'Certificate',
-      ]),
+      documentType: faker.helpers.arrayElement(['Manual', 'Warranty', 'Certificate']),
       fileUrl: faker.internet.url(),
       uploadedById: faker.helpers.arrayElement(insertedUsers).id,
       uploadedAt: faker.date.past({ years: 1 }),
     }));
 
-    // Insert documents in batches
     for (let i = 0; i < documentData.length; i += 5) {
-      const batch = documentData.slice(i, i + 5);
-      await db.insert(assetDocuments).values(batch);
+      await db.insert(assetDocuments).values(documentData.slice(i, i + 5));
     }
 
-    // -------------------------------------------------------------------------
-    // 13. ASSET ASSIGNMENTS (50 records)
-    // -------------------------------------------------------------------------
-    console.log('Seeding Asset Assignments...');
     const assignmentData = Array.from({ length: 50 }).map(() => {
-      const assignedDate = faker.date.past({ years: 1 });
       const returned = Math.random() > 0.6;
       return {
         assetId: faker.helpers.arrayElement(insertedAssets).id,
         assignedToUserId: faker.helpers.arrayElement(insertedUsers).id,
         assignedToLocationId: faker.helpers.arrayElement(insertedLocations).id,
         assignedById: adminUser.id,
-        assignedDate,
+        assignedDate: faker.date.past({ years: 1 }),
         expectedReturnDate: faker.date.future().toISOString().split('T')[0],
         returnedDate: returned ? faker.date.recent() : null,
-        returnCondition: returned
-          ? faker.helpers.arrayElement(conditions)
-          : null,
+        returnCondition: returned ? faker.helpers.arrayElement(conditions) : null,
         notes: faker.lorem.sentence(),
       };
     });
 
-    // Insert assignments in batches
     for (let i = 0; i < assignmentData.length; i += 5) {
-      const batch = assignmentData.slice(i, i + 5);
-      await db.insert(assetAssignments).values(batch);
+      await db.insert(assetAssignments).values(assignmentData.slice(i, i + 5));
     }
 
     // -------------------------------------------------------------------------
-    // 14. MAINTENANCE RECORDS (50 records)
+    // 14. MAINTENANCE RECORDS (Legacy) & TICKETS (Epic 15)
     // -------------------------------------------------------------------------
-    console.log('Seeding Maintenance Records...');
-    const maintenanceStatuses: Array<
-      'Open' | 'In Progress' | 'Pending Parts' | 'Resolved' | 'Cancelled'
-    > = ['Open', 'In Progress', 'Pending Parts', 'Resolved', 'Cancelled'];
+    console.log('Seeding Maintenance Records & Tickets...');
+    const maintenanceStatuses: Array<'Open' | 'In Progress' | 'Pending Parts' | 'Resolved' | 'Cancelled'> = 
+      ['Open', 'In Progress', 'Pending Parts', 'Resolved', 'Cancelled'];
 
     const maintenanceData = Array.from({ length: 50 }).map(() => {
-      const closed =
-        faker.helpers.arrayElement(maintenanceStatuses) === 'Resolved';
+      const closed = faker.helpers.arrayElement(maintenanceStatuses) === 'Resolved';
       return {
         assetId: faker.helpers.arrayElement(insertedAssets).id,
         vendorId: faker.helpers.arrayElement(insertedVendors).id,
@@ -525,12 +408,8 @@ async function seed() {
         status: faker.helpers.arrayElement(maintenanceStatuses),
         description: faker.lorem.paragraph(),
         rmaTicketNumber: `RMA-${faker.string.numeric(6)}`,
-        estimatedCost: faker.finance
-          .amount({ min: 50, max: 500, dec: 2 })
-          .toString(),
-        actualCost: closed
-          ? faker.finance.amount({ min: 40, max: 450, dec: 2 }).toString()
-          : null,
+        estimatedCost: faker.finance.amount({ min: 50, max: 500, dec: 2 }).toString(),
+        actualCost: closed ? faker.finance.amount({ min: 40, max: 450, dec: 2 }).toString() : null,
         serviceDate: faker.date.past({ years: 1 }).toISOString().split('T')[0],
         closedAt: closed ? faker.date.recent() : null,
         createdAt: faker.date.past({ years: 1 }),
@@ -538,61 +417,77 @@ async function seed() {
       };
     });
 
-    // Insert maintenance in batches
     for (let i = 0; i < maintenanceData.length; i += 5) {
-      const batch = maintenanceData.slice(i, i + 5);
-      await db.insert(maintenanceRecords).values(batch);
+      await db.insert(maintenanceRecords).values(maintenanceData.slice(i, i + 5));
+    }
+
+    // Epic 15: Generate Maintenance Tickets using Faker
+    const ticketStatuses: Array<'ACTIVE' | 'COMPLETED' | 'CANCELLED'> = ['ACTIVE', 'COMPLETED', 'CANCELLED'];
+    const ticketTypes: Array<'VENDOR' | 'INTERNAL'> = ['VENDOR', 'INTERNAL'];
+
+    for (let i = 0; i < 40; i++) {
+      const type = faker.helpers.arrayElement(ticketTypes);
+      const status = faker.helpers.arrayElement(ticketStatuses);
+      const isCompleted = status === 'COMPLETED';
+      const targetAsset = faker.helpers.arrayElement(insertedAssets);
+
+      // Epic 15 Requirement: Update Asset Status for Active Tickets
+      if (status === 'ACTIVE') {
+        await db.update(assets).set({ status: 'In Repair' }).where(eq(assets.id, targetAsset.id));
+      }
+
+      await db.insert(maintenanceTickets).values({
+        assetId: targetAsset.id,
+        ticketType: type,
+        vendorName: type === 'VENDOR' ? faker.helpers.arrayElement(insertedVendors).companyName : null,
+        rmaNumber: type === 'VENDOR' ? `RMA-${faker.string.numeric(6)}` : null,
+        reportedIssue: faker.lorem.sentence(),
+        resolutionNotes: isCompleted ? faker.lorem.paragraph() : null,
+        estimatedCost: faker.finance.amount({ min: 50, max: 300, dec: 2 }).toString(),
+        actualCost: isCompleted ? faker.finance.amount({ min: 50, max: 350, dec: 2 }).toString() : null,
+        estimatedReturnDate: !isCompleted ? faker.date.future({ years: 1 }).toISOString().split('T')[0] : null,
+        actualCompletionDate: isCompleted ? faker.date.recent() : null,
+        status,
+        dispatchedById: itUser.id,
+      });
     }
 
     // -------------------------------------------------------------------------
-    // 15. ASSET DISPOSALS (50 records)
+    // 15. ASSET DISPOSALS
     // -------------------------------------------------------------------------
     console.log('Seeding Asset Disposals...');
-    const disposalStatuses: Array<
-      'Pending Approval' | 'Approved' | 'Rejected' | 'Completed'
-    > = ['Pending Approval', 'Approved', 'Rejected', 'Completed'];
+    const disposalStatuses: Array<'Pending Approval' | 'Approved' | 'Rejected' | 'Completed'> = 
+      ['Pending Approval', 'Approved', 'Rejected', 'Completed'];
 
     const disposalData = Array.from({ length: 50 }).map(() => ({
       assetId: faker.helpers.arrayElement(insertedAssets).id,
       requestedById: adminUser.id,
       approvedById: financeUser.id,
       status: faker.helpers.arrayElement(disposalStatuses),
-      reason: faker.helpers.arrayElement([
-        'End of Life',
-        'Damaged Beyond Repair',
-        'Upgrade Program',
-        'Compliance Disposal',
-      ]),
+      reason: faker.helpers.arrayElement(['End of Life', 'Damaged Beyond Repair', 'Upgrade Program']),
       justification: faker.lorem.sentence(),
       dataWiped: faker.datatype.boolean(),
       tagsRemoved: faker.datatype.boolean(),
-      actualSalvageValue: faker.finance
-        .amount({ min: 20, max: 200, dec: 2 })
-        .toString(),
+      actualSalvageValue: faker.finance.amount({ min: 20, max: 200, dec: 2 }).toString(),
+      bookValueAtDisposal: faker.finance.amount({ min: 10, max: 150, dec: 2 }).toString(), // Epic 22 Requirement
       requestedAt: faker.date.past({ years: 1 }),
       resolvedAt: faker.date.recent(),
       notes: faker.lorem.sentence(),
     }));
 
-    // Insert disposals in batches
     for (let i = 0; i < disposalData.length; i += 5) {
-      const batch = disposalData.slice(i, i + 5);
-      await db.insert(assetDisposals).values(batch);
+      await db.insert(assetDisposals).values(disposalData.slice(i, i + 5));
     }
 
     // -------------------------------------------------------------------------
-    // 16. SOFTWARE LICENSES (50 records)
+    // 16. SOFTWARE & 17. AUDIT LOGS
     // -------------------------------------------------------------------------
-    console.log('Seeding Software Licenses...');
-    const licenseTypes: Array<
-      'Perpetual' | 'Subscription' | 'Open Source / Free'
-    > = ['Perpetual', 'Subscription', 'Open Source / Free'];
-
+    console.log('Seeding Software & Audit Logs...');
     const licenseData = Array.from({ length: 50 }).map(() => ({
       id: randomUUID(),
       modelId: faker.helpers.arrayElement(insertedModels).id,
       licenseKey: `LIC-${faker.string.alphanumeric(8).toUpperCase()}`,
-      licenseType: faker.helpers.arrayElement(licenseTypes),
+      licenseType: faker.helpers.arrayElement(['Perpetual', 'Subscription', 'Open Source / Free']),
       totalSeats: faker.number.int({ min: 5, max: 100 }),
       startDate: faker.date.past({ years: 1 }).toISOString().split('T')[0],
       expiryDate: faker.date.future({ years: 2 }).toISOString().split('T')[0],
@@ -601,21 +496,13 @@ async function seed() {
       updatedAt: faker.date.recent(),
     }));
 
-    // Insert licenses in batches
     const insertedLicenses: Array<{ id: string }> = [];
     for (let i = 0; i < licenseData.length; i += 5) {
       const batch = licenseData.slice(i, i + 5);
-      const result = await db
-        .insert(softwareLicenses)
-        .values(batch)
-        .returning({ id: softwareLicenses.id });
+      const result = await db.insert(softwareLicenses).values(batch).returning({ id: softwareLicenses.id });
       insertedLicenses.push(...result);
     }
 
-    // -------------------------------------------------------------------------
-    // 17. SOFTWARE ALLOCATIONS (50 records)
-    // -------------------------------------------------------------------------
-    console.log('Seeding Software Allocations...');
     const allocationData = Array.from({ length: 50 }).map(() => ({
       licenseId: faker.helpers.arrayElement(insertedLicenses).id,
       assignedToUserId: faker.helpers.arrayElement(insertedUsers).id,
@@ -623,34 +510,14 @@ async function seed() {
       revokedAt: Math.random() > 0.8 ? faker.date.recent() : null,
     }));
 
-    // Insert allocations in batches
     for (let i = 0; i < allocationData.length; i += 5) {
-      const batch = allocationData.slice(i, i + 5);
-      await db.insert(softwareAllocations).values(batch);
+      await db.insert(softwareAllocations).values(allocationData.slice(i, i + 5));
     }
 
-    // -------------------------------------------------------------------------
-    // 18. SYSTEM AUDIT LOGS (50 records)
-    // -------------------------------------------------------------------------
-    console.log('Seeding System Audit Logs...');
     const auditData = Array.from({ length: 50 }).map(() => ({
-      entityType: faker.helpers.arrayElement([
-        'Asset',
-        'Location',
-        'Category',
-        'Model',
-        'Vendor',
-        'Owner',
-        'License',
-      ]),
+      entityType: faker.helpers.arrayElement(['Asset', 'Location', 'Category', 'Model', 'Vendor', 'Owner']),
       entityId: faker.string.uuid(),
-      actionType: faker.helpers.arrayElement([
-        'CREATE',
-        'UPDATE',
-        'ASSIGN',
-        'MAINTENANCE',
-        'DISPOSAL_APPROVAL',
-      ]),
+      actionType: faker.helpers.arrayElement(['CREATE', 'UPDATE', 'ASSIGN', 'MAINTENANCE']),
       performedById: faker.helpers.arrayElement(insertedUsers).id,
       oldValue: { status: 'Available', timestamp: new Date() },
       newValue: { status: 'Assigned', timestamp: new Date() },
@@ -658,10 +525,8 @@ async function seed() {
       performedAt: faker.date.past({ years: 1 }),
     }));
 
-    // Insert audit logs in batches
     for (let i = 0; i < auditData.length; i += 5) {
-      const batch = auditData.slice(i, i + 5);
-      await db.insert(systemAuditLogs).values(batch);
+      await db.insert(systemAuditLogs).values(auditData.slice(i, i + 5));
     }
 
     console.log('✅ Database seeding completed successfully!');
@@ -671,15 +536,7 @@ async function seed() {
     console.log('  - finance@tiqri.com / Finance@1234 (FinanceAuditor)');
     console.log('  - employee@tiqri.com / Employee@1234 (Employee)');
     console.log('\n📊 Seeded Data Summary:');
-    console.log(
-      '  - 50 Departments, 50 Users (including 4 baseline), 50 Sessions'
-    );
-    console.log('  - 50 Locations, 50 Vendors, 50 Owners');
-    console.log('  - 50 Categories, 50 Brands, 50 Models');
-    console.log('  - 100 Assets, 50 Purchases, 50 Documents');
-    console.log('  - 50 Assignments, 50 Maintenance, 50 Disposals');
-    console.log('  - 50 Software Licenses, 50 Allocations');
-    console.log('  - 50 System Audit Logs');
+    console.log('  - Faker data combined seamlessly with Epic 15 & 22 configurations!');
 
     process.exit(0);
   } catch (error) {

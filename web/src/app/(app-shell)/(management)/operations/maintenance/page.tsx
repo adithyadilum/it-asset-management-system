@@ -1,3 +1,5 @@
-﻿export default function MaintenancePage() {
-  return <div className="p-6 text-sm text-slate-600">Maintenance page coming soon.</div>
+﻿import { MaintenanceShell } from '@/components/features/maintenance/maintenance-shell';
+
+export default function MaintenanceAndRepairsPage() {
+  return <MaintenanceShell />;
 }
