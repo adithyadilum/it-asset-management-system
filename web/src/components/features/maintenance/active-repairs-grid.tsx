@@ -100,7 +100,7 @@ export function ActiveRepairsGrid({
 
 if (tickets.length === 0) {
   return (
-    <div className="flex h-32 items-center justify-center bg-slate-50">
+     <div className="flex h-32 items-center justify-center bg-slate-50">
       <span className="text-sm text-slate-500">No active repairs found</span>
     </div>
   );
@@ -113,7 +113,9 @@ return (
     pageSizeOptions={[10, 20, 30, 50]}
     initialPageSize={10}
     onRowClick={(row) => onRowClick(row)}
-    enableSelection={false}
+    enableRowSelection={false} 
+    enableRowScroll={true} 
+    className="border-0 h-full flex-1" 
   />
-); 
+);
 }
