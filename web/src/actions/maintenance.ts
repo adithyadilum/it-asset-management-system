@@ -5,6 +5,7 @@ import { maintenanceTickets, assets, users, assetPurchases, models, brands, cate
 import { eq, and, ilike, or, desc, sql } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import type { PendingReviewTicket, IssueReviewPanelData, ActiveRepairTicket, RepairHistoryTicket, AssetMaintenanceRecord } from '@/types/maintenance';
+
 export async function getPendingMaintenanceTickets() {
   try {
     const user = await getAuthenticatedUser();
@@ -25,7 +26,7 @@ export async function getPendingMaintenanceTickets() {
       .where(
         and(
           eq(maintenanceTickets.status, 'ACTIVE'),
-          eq(assets.status, 'Defective')
+          eq(maintenanceTickets.ticketType, 'INTERNAL')
         )
       )
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
@@ -75,8 +76,7 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
       .where(
         and(
           eq(maintenanceTickets.id, ticketId),
-          eq(maintenanceTickets.status, 'ACTIVE'),
-          eq(assets.status, 'Defective')
+          eq(maintenanceTickets.status, 'ACTIVE')
         )
       )
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
@@ -128,7 +128,8 @@ export async function resolveIssueInternally(ticketId: number, resolutionNote: s
   try {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');    if (!resolutionNote.trim()) throw new Error('Resolution note is required');
+    if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+    if (!resolutionNote.trim()) throw new Error('Resolution note is required');
 
     const result = await db.transaction(async (tx) => {
       const ticketResult = await tx.select().from(maintenanceTickets).where(eq(maintenanceTickets.id, ticketId)).limit(1);
@@ -215,62 +216,62 @@ export async function initiateVendorRepair(ticketId: number, assetId: string, ve
 
     const now = new Date();
 
-const result = await db.transaction(async (tx) => {
-  // 1) Close the triage ticket (the one from Pending Review)
-  await tx
-    .update(maintenanceTickets)
-    .set({
-      status: 'COMPLETED',
-      resolutionNotes: 'Dispatched to vendor repair',
-      actualCompletionDate: now,
-      updatedAt: now,
-    })
-    .where(eq(maintenanceTickets.id, ticketId));
+    const result = await db.transaction(async (tx) => {
+      // 1) Close the triage ticket (the one from Pending Review)
+      await tx
+        .update(maintenanceTickets)
+        .set({
+          status: 'COMPLETED',
+          resolutionNotes: 'Dispatched to vendor repair',
+          actualCompletionDate: now,
+          updatedAt: now,
+        })
+        .where(eq(maintenanceTickets.id, ticketId));
 
-  // 2) Update asset to In Repair
-  await tx
-    .update(assets)
-    .set({ status: 'In Repair', updatedAt: now })
-    .where(eq(assets.id, assetId));
+      // 2) Update asset to In Repair
+      await tx
+        .update(assets)
+        .set({ status: 'In Repair', updatedAt: now })
+        .where(eq(assets.id, assetId));
 
-  // 3) Create the vendor repair ticket (ACTIVE)
-  const newTicket = await tx
-    .insert(maintenanceTickets)
-    .values({
-      assetId,
-      ticketType: 'VENDOR',
-      vendorName: vendor.companyName,
-      rmaNumber: rmaNumber.trim(),
-      reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-      estimatedCost: estimatedCost ? parseFloat(estimatedCost).toString() : null,
-      estimatedReturnDate: expectedReturnDate || null,
-      status: 'ACTIVE',
-      dispatchedById: user.id,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
+      // 3) Create the vendor repair ticket (ACTIVE)
+      const newTicket = await tx
+        .insert(maintenanceTickets)
+        .values({
+          assetId,
+          ticketType: 'VENDOR',
+          vendorName: vendor.companyName,
+          rmaNumber: rmaNumber.trim(),
+          reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
+          estimatedCost: estimatedCost ? parseFloat(estimatedCost).toString() : null,
+          estimatedReturnDate: expectedReturnDate || null,
+          status: 'ACTIVE',
+          dispatchedById: user.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
 
-  // 4) Audit
-  await tx.insert(systemAuditLogs).values({
-    entityType: 'Asset',
-    entityId: assetId,
-    actionType: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
-    performedById: user.id,
-    oldValue: { status: currentAsset.status },
-    newValue: {
-      status: 'In Repair',
-      vendor: vendor.companyName,
-      rmaNumber: rmaNumber.trim(),
-      estimatedReturnDate: expectedReturnDate || null,
-    },
-    performedAt: now,
-  });
+      // 4) Audit
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: assetId,
+        actionType: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status },
+        newValue: {
+          status: 'In Repair',
+          vendor: vendor.companyName,
+          rmaNumber: rmaNumber.trim(),
+          estimatedReturnDate: expectedReturnDate || null,
+        },
+        performedAt: now,
+      });
 
-  return newTicket[0];
-});
+      return newTicket[0];
+    });
 
-return { success: true, message: 'Asset dispatched successfully', ticketId: result.id, assetId };
+    return { success: true, message: 'Asset dispatched successfully', ticketId: result.id, assetId };
   } catch (error) {
     console.error('[initiateVendorRepair] Error:', error);
     throw error;
@@ -284,13 +285,16 @@ export async function getActiveRepairTickets() {
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
 
     const result = await db
-      .select({ ticket: maintenanceTickets, asset: assets })
+      .select({ 
+        ticket: maintenanceTickets, 
+        asset: assets 
+      })
       .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
       .where(
         and(
           eq(maintenanceTickets.status, 'ACTIVE'),
-          eq(maintenanceTickets.ticketType, 'VENDOR'),
-          eq(assets.status, 'In Repair')
+          eq(maintenanceTickets.ticketType, 'VENDOR')
         )
       )
       .limit(100);
@@ -395,9 +399,6 @@ export async function completeRepairTicket(ticketId: number, actualCost: string,
   }
 }
 
-/**
- * Fetch completed repair tickets for the Repair History tab
- */
 export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '') {
   try {
     const user = await getAuthenticatedUser();
@@ -405,10 +406,8 @@ export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '')
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
 
     const offset = (page - 1) * pageSize;
-    // Define base condition
     const baseCondition = eq(maintenanceTickets.status, 'COMPLETED');
     
-    // Define search condition (returns undefined if no search term)
     const searchCondition = searchTerm.trim()
       ? or(
           ilike(assets.assetTag, `%${searchTerm}%`),
@@ -441,7 +440,7 @@ export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '')
       })
       .from(maintenanceTickets)
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-      .where(and(baseCondition, searchCondition))
+      .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition)
       .orderBy(desc(maintenanceTickets.actualCompletionDate))
       .limit(pageSize)
       .offset(offset);
@@ -461,9 +460,6 @@ export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '')
   }
 }
 
-/**
- * Fetch maintenance history for a specific asset (Epic 8)
- */
 export async function getAssetMaintenanceHistory(assetId: string, limit = 3) {
   try {
     const user = await getAuthenticatedUser();

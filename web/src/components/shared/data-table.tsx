@@ -58,7 +58,7 @@ type DataTableProps<TData, TValue> = {
     action?: TableEmptyStateAction
   }
   onRowClick?: (row: TData, rowIndex: number) => void
-  isRowActive?: (row: TData, rowIndex: number) => boolean
+  activeRowCondition?: (row: TData) => boolean
   selectionResetSignal?: number | string
   className?: string
   manualPagination?: boolean
@@ -80,7 +80,7 @@ export function DataTable<TData, TValue>({
   selectionLabel,
   emptyState,
   onRowClick,
-  isRowActive,
+  activeRowCondition,
   selectionResetSignal,
   className,
   manualPagination,
@@ -188,7 +188,6 @@ export function DataTable<TData, TValue>({
     []
   )
 
-  // Epic 22: Conditionally include the selection column
   const tableColumns = React.useMemo(
     () =>
       enableRowSelection
@@ -249,8 +248,7 @@ export function DataTable<TData, TValue>({
       <TableBody>
         {table.getRowModel().rows.length > 0 ? (
           table.getRowModel().rows.map((row) => {
-            // Epic 15 active row condition integration
-            const isActive = activeRowCondition ? activeRowCondition(row.original) : false;
+            const isActive = activeRowCondition ? activeRowCondition(row.original) : false
 
             return (
               <TableRow
@@ -260,7 +258,7 @@ export function DataTable<TData, TValue>({
                 className={cn(
                   "h-13.25 border-border",
                   isRowClickable && "cursor-pointer hover:bg-muted/50",
-                  isRowActive?.(row.original, row.index) && "bg-slate-50"
+                  isActive && "bg-slate-50"
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
@@ -268,38 +266,39 @@ export function DataTable<TData, TValue>({
                   const cellTitle = getDisplayText(cellValue)
                   const compactIdColumn = isCompactIdColumn(cell.column.id)
 
-                return (
-                  <TableCell
-                    key={cell.id}
-                    className={cn(
-                      "h-13.25 overflow-hidden px-4 text-foreground",
-                      "font-normal",
-                      cell.column.id === "select" && "w-13 px-0",
-                      compactIdColumn && "w-28"
-                    )}
-                    style={{
-                      width: cell.column.getSize(),
-                      maxWidth: cell.column.getSize(),
-                    }}
-                  >
-                    <div
+                  return (
+                    <TableCell
+                      key={cell.id}
                       className={cn(
-                        (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
-                          ?.noTruncate
-                          ? "min-w-0"
-                          : "truncate"
+                        "h-13.25 overflow-hidden px-4 text-foreground",
+                        "font-normal",
+                        cell.column.id === "select" && "w-13 px-0",
+                        compactIdColumn && "w-28"
                       )}
-                      data-fulltext={cellTitle ?? undefined}
-                      onMouseEnter={handleOverflowTooltip}
-                      onFocus={handleOverflowTooltip}
+                      style={{
+                        width: cell.column.getSize(),
+                        maxWidth: cell.column.getSize(),
+                      }}
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                  </TableCell>
-                )
-              })}
-            </TableRow>
-          ))
+                      <div
+                        className={cn(
+                          (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
+                            ?.noTruncate
+                            ? "min-w-0"
+                            : "truncate"
+                        )}
+                        data-fulltext={cellTitle ?? undefined}
+                        onMouseEnter={handleOverflowTooltip}
+                        onFocus={handleOverflowTooltip}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    </TableCell>
+                  )
+                })}
+              </TableRow>
+            )
+          })
         ) : (
           <TableRow className="border-border">
             <TableCell
