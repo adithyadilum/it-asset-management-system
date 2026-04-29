@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { TabbedPanel, type TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 import { type SlidePanelAction } from '@/components/shared/slide-panel';
 import { AssetDetailsTab } from './asset-details-tab';
@@ -12,6 +12,10 @@ import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-re
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 import { StatusBadge } from '@/components/shared/status-badge';
 
+// Epic 15: Imports for Maintenance Integration
+import { getAssetMaintenanceHistory } from '@/actions/maintenance';
+import type { AssetMaintenanceRecord } from '@/types/maintenance';
+import { Badge } from '@/components/ui/badge';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
@@ -74,6 +78,31 @@ export interface AssetDetailsPanelProps {
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
+  // ============ EPIC 15: DYNAMIC MAINTENANCE FETCHING ============
+  const [maintenanceHistory, setMaintenanceHistory] = useState<AssetMaintenanceRecord[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    async function fetchHistory() {
+      if (!props.assetTag) return; 
+      
+      try {
+        setIsLoadingHistory(true);
+        const history = await getAssetMaintenanceHistory(props.assetTag, 3);
+        setMaintenanceHistory(history);
+      } catch (error) {
+        console.error('Failed to fetch maintenance history:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    }
+
+    if (props.isOpen) {
+      fetchHistory();
+    }
+  }, [props.assetTag, props.isOpen]);
+  // ======================================================
+
   const getActionButtonLabel = () => {
     if (props.assetCategory === 'Office Furniture') return 'Transfer';
     if (props.assetCategory === 'Software') return 'Return';
@@ -84,6 +113,8 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     const tabsList: TabbedPanelTab[] = [];
     const isSoftware = props.assetCategory === 'Software';
     const isFurniture = props.assetCategory === 'Office Furniture';
+    
+    // SAM Data mapping from dev branch
     const softwareLicenseKey = props.serialNumber || props.specs?.license_key?.toString() || '-';
     const softwareLicenseType = props.specs?.license_type?.toString() || 'Subscription';
     const softwareVersion = props.specs?.version?.toString() || '-';
@@ -93,7 +124,10 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
+    
+    // Dev branch resolution: Using assetTag
     detailsFields.push({ label: 'Asset ID', value: props.assetTag });
+    
     if (isFurniture) {
       detailsFields.push(
         { label: 'Category', value: props.assetCategory },
@@ -140,49 +174,119 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       content: props.isLoading ? (
         <AssetLoadingSkeleton />
       ) : (
-        <AssetDetailsTab
-          imageUrl={props.imageUrl}
-          note={props.note}
-          assetTag={props.assetTag}
-          fields={detailsFields}
-          mode={isSoftware ? 'software' : 'default'}
-          softwareSections={isSoftware ? [
-            {
-              title: 'License Details',
-              rows: [
-                { label: 'Product', value: props.model || props.assetName || '-' },
-                { label: 'Publisher', value: props.brand || '-' },
-                { label: 'License Key', value: softwareLicenseKey },
-                { label: 'License Type', value: softwareLicenseType },
-                { label: 'Version', value: softwareVersion },
-                { label: 'Expiration Date', value: softwareExpirationDate },
-              ],
-            },
-            {
-              title: 'Allocation & Ownership',
-              rows: [
-                { label: 'Total Seats', value: softwareTotalSeats },
-                { label: 'Available Seats', value: softwareAvailableSeats },
-                { label: 'Assigned To', value: props.assignedTo || '-' },
-                { label: 'Group', value: props.group || '-' },
-                { label: 'Owner', value: props.owner || '-' },
-              ],
-            },
-            {
-              title: 'Record Metadata',
-              rows: [
-                { label: 'Asset ID', value: props.assetTag || '-' },
-                { label: 'Purchase Date', value: props.purchaseDate || '-' },
-                { label: 'Registered On', value: props.dateCreated || '-' },
-                { label: 'Last Updated', value: props.updatedAt || '-' },
-              ],
-            },
-          ] : undefined}
-          hideMaintenance={isSoftware}
-          maintenanceRecords={props.maintenanceEvents}
-          onQRCodeClick={props.onQRCodeClick}
-          onViewAllMaintenance={props.onViewAllMaintenance}
-        />
+        <div className="flex flex-col pb-6">
+          {/* SAM Upgrade from dev branch, with maintenance hidden so we can use our custom Epic 15 UI */}
+          <AssetDetailsTab
+            imageUrl={props.imageUrl}
+            note={props.note}
+            assetTag={props.assetTag}
+            fields={detailsFields}
+            mode={isSoftware ? 'software' : 'default'}
+            softwareSections={isSoftware ? [
+              {
+                title: 'License Details',
+                rows: [
+                  { label: 'Product', value: props.model || props.assetName || '-' },
+                  { label: 'Publisher', value: props.brand || '-' },
+                  { label: 'License Key', value: softwareLicenseKey },
+                  { label: 'License Type', value: softwareLicenseType },
+                  { label: 'Version', value: softwareVersion },
+                  { label: 'Expiration Date', value: softwareExpirationDate },
+                ],
+              },
+              {
+                title: 'Allocation & Ownership',
+                rows: [
+                  { label: 'Total Seats', value: softwareTotalSeats },
+                  { label: 'Available Seats', value: softwareAvailableSeats },
+                  { label: 'Assigned To', value: props.assignedTo || '-' },
+                  { label: 'Group', value: props.group || '-' },
+                  { label: 'Owner', value: props.owner || '-' },
+                ],
+              },
+              {
+                title: 'Record Metadata',
+                rows: [
+                  { label: 'Asset ID', value: props.assetTag || '-' },
+                  { label: 'Purchase Date', value: props.purchaseDate || '-' },
+                  { label: 'Registered On', value: props.dateCreated || '-' },
+                  { label: 'Last Updated', value: props.updatedAt || '-' },
+                ],
+              },
+            ] : undefined}
+            hideMaintenance={true} // Force hide so our dynamic UI takes over
+            onQRCodeClick={props.onQRCodeClick}
+          />
+
+          {/* ============ EPIC 15: NEW DYNAMIC MAINTENANCE UI ============ */}
+          {!isSoftware && (
+            <div className="mt-8 shrink-0 px-2">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[14px] font-semibold text-slate-900 flex items-center gap-2">
+                  Recent Maintenance
+                </h3>
+                {maintenanceHistory.length > 0 && props.onViewAllMaintenance && (
+                  <button onClick={props.onViewAllMaintenance} className="text-[13px] text-[#040d5a] hover:underline font-medium">
+                    View All
+                  </button>
+                )}
+              </div>
+              
+              {isLoadingHistory ? (
+                  <div className="space-y-3">
+                    <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
+                    <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
+                  </div>
+              ) : maintenanceHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {maintenanceHistory.map((record) => (
+                      <div key={record.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-[14px] text-slate-900">
+                            {record.ticketType === 'VENDOR' ? record.vendorName : 'Internal Repair'}
+                          </span>
+                          <Badge 
+                            variant="outline" 
+                            className={
+                              record.status === 'COMPLETED' 
+                              ? 'bg-green-50 text-green-700 border-green-200 font-normal shadow-sm' 
+                              : record.status === 'ACTIVE'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200 font-normal shadow-sm'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 font-normal shadow-sm'
+                            }
+                          >
+                            {record.status}
+                          </Badge>
+                        </div>
+                        
+                        <p className="text-[13px] text-slate-600 mb-3 line-clamp-2">
+                          {record.reportedIssue}
+                        </p>
+                        
+                        <div className="flex justify-between items-center text-[12px] text-slate-500 font-medium pt-3 border-t border-slate-200/60">
+                          <span>
+                            {record.actualCompletionDate 
+                              ? new Date(record.actualCompletionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+                              : 'In Progress'}
+                          </span>
+                          {record.actualCost && (
+                            <span className="text-slate-700">
+                              ${parseFloat(record.actualCost).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+              ) : (
+                <div className="flex items-center justify-center p-6 border border-dashed border-slate-200 rounded-xl bg-slate-50">
+                  <p className="text-sm text-slate-500">No maintenance records found.</p>
+                </div>
+              )}
+            </div>
+          )}
+          {/* ==================================================== */}
+        </div>
       ),
     });
 
@@ -249,7 +353,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     }
 
     return tabsList;
-  }, [props]);
+  }, [props, maintenanceHistory, isLoadingHistory]);
 
   const actions: SlidePanelAction[] = [
     { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },

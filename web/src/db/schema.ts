@@ -59,11 +59,31 @@ export const maintenanceStatusEnum = pgEnum('maintenance_status', [
   'Resolved',
   'Cancelled',
 ]);
+
+// Epic 15: Maintenance Tickets Enums
+export const maintenanceTicketStatusEnum = pgEnum('maintenance_ticket_status', [
+  'ACTIVE',
+  'COMPLETED',
+  'CANCELLED',
+]);
+
+export const maintenanceTicketTypeEnum = pgEnum('maintenance_ticket_type', [
+  'VENDOR',
+  'INTERNAL',
+]);
+
 export const disposalStatusEnum = pgEnum('disposal_status', [
   'Pending Approval',
   'Approved',
   'Rejected',
   'Completed',
+]);
+
+// SAM Additions
+export const licenseTypeEnum = pgEnum('license_type', [
+  'Perpetual',
+  'Subscription',
+  'Open Source / Free',
 ]);
 
 // -----------------------------------------------------------------------------
@@ -207,21 +227,21 @@ export const assets = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     assetTag: varchar('asset_tag', { length: 100 }).notNull().unique(),
     serialNumber: varchar('serial_number', { length: 255 }),
-    name: varchar('name', { length: 255 }), // e.g., "Main Conference TV"
+    name: varchar('name', { length: 255 }),
 
     // Relations
     modelId: integer('model_id')
       .notNull()
       .references(() => models.id, { onDelete: 'restrict' }),
     locationId: integer('location_id').references(() => locations.id),
-    ownerId: integer('owner_id').references(() => owners.id),
+    ownerId: integer('owner_id').references(() => owners.id), // From incoming
 
     // Current State
     status: assetStatusEnum('status').default('Available').notNull(),
     condition: conditionEnum('condition'),
-    instanceAttributes: jsonb('instance_attributes'), // REPLACES ASSET_CUSTOM_VALUES
+    instanceAttributes: jsonb('instance_attributes'),
 
-    // Lifespan
+    // Epic 22 Lifespan Fields
     usefulLifeMonths: integer('useful_life_months'),
     salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
 
@@ -312,6 +332,36 @@ export const maintenanceRecords = pgTable('maintenance_records', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Epic 15: New Maintenance Tickets System
+export const maintenanceTickets = pgTable('maintenance_tickets', {
+  id: serial('id').primaryKey(),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id, { onDelete: 'cascade' }),
+  
+  ticketType: maintenanceTicketTypeEnum('ticket_type').notNull(), // VENDOR or INTERNAL
+  vendorName: varchar('vendor_name', { length: 255 }),
+  rmaNumber: varchar('rma_number', { length: 100 }),
+  
+  reportedIssue: text('reported_issue').notNull(),
+  resolutionNotes: text('resolution_notes'),
+  
+  estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
+  actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
+  
+  estimatedReturnDate: date('estimated_return_date'),
+  actualCompletionDate: timestamp('actual_completion_date'),
+  
+  status: maintenanceTicketStatusEnum('status').default('ACTIVE').notNull(),
+  
+  dispatchedById: uuid('dispatched_by_id')
+    .notNull()
+    .references(() => users.id),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // 👇 UPDATED ONLY THIS TABLE WITH INDEXES 👇
 export const assetDisposals = pgTable('asset_disposals', {
   id: serial('id').primaryKey(),
@@ -330,10 +380,8 @@ export const assetDisposals = pgTable('asset_disposals', {
 
   dataWiped: boolean('data_wiped').default(false),
   tagsRemoved: boolean('tags_removed').default(false),
-  actualSalvageValue: decimal('actual_salvage_value', {
-    precision: 12,
-    scale: 2,
-  }),
+  actualSalvageValue: decimal('actual_salvage_value', { precision: 12, scale: 2 }),
+  bookValueAtDisposal: decimal('book_value_at_disposal', { precision: 12, scale: 2 }), // Epic 22 Addition
 
   requestedAt: timestamp('requested_at').defaultNow().notNull(),
   resolvedAt: timestamp('resolved_at'),
@@ -367,12 +415,6 @@ export const systemAuditLogs = pgTable('system_audit_logs', {
 // -----------------------------------------------------------------------------
 // SOFTWARE ASSET MANAGEMENT (SAM)
 // -----------------------------------------------------------------------------
-export const licenseTypeEnum = pgEnum('license_type', [
-  'Perpetual',
-  'Subscription',
-  'Open Source / Free',
-]);
-
 export const softwareLicenses = pgTable('software_licenses', {
   id: uuid('id').defaultRandom().primaryKey(),
 
@@ -383,12 +425,10 @@ export const softwareLicenses = pgTable('software_licenses', {
   licenseKey: varchar('license_key', { length: 255 }),
   licenseType: licenseTypeEnum('license_type').notNull(),
 
-  // The crucial "Seats" logic
   totalSeats: integer('total_seats').notNull().default(1),
 
-  // Software specific lifecycles
   startDate: date('start_date'),
-  expiryDate: date('expiry_date'), // Crucial for IT alerts
+  expiryDate: date('expiry_date'),
 
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -398,7 +438,6 @@ export const softwareLicenses = pgTable('software_licenses', {
     .notNull(),
 });
 
-// Software needs its own assignment table to handle "Seats"
 export const softwareAllocations = pgTable('software_allocations', {
   id: serial('id').primaryKey(),
   licenseId: uuid('license_id')
@@ -415,7 +454,6 @@ export const softwareAllocations = pgTable('software_allocations', {
 // -----------------------------------------------------------------------------
 // 7. RELATIONS (For Drizzle Query Builder)
 // -----------------------------------------------------------------------------
-
 export const assetRelations = relations(assets, ({ one, many }) => ({
   model: one(models, { fields: [assets.modelId], references: [models.id] }),
   location: one(locations, {
@@ -429,6 +467,7 @@ export const assetRelations = relations(assets, ({ one, many }) => ({
   purchases: many(assetPurchases),
   assignments: many(assetAssignments),
   maintenance: many(maintenanceRecords),
+  maintenanceTickets: many(maintenanceTickets), // Added Epic 15 relation
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
 }));
@@ -474,6 +513,20 @@ export const maintenanceRecordsRelations = relations(
   })
 );
 
+export const maintenanceTicketsRelations = relations(
+  maintenanceTickets,
+  ({ one }) => ({
+    asset: one(assets, {
+      fields: [maintenanceTickets.assetId],
+      references: [assets.id],
+    }),
+    dispatcher: one(users, {
+      fields: [maintenanceTickets.dispatchedById],
+      references: [users.id],
+    }),
+  })
+);
+
 export const modelRelations = relations(models, ({ one, many }) => ({
   brand: one(brands, { fields: [models.brandId], references: [brands.id] }),
   category: one(categories, {
@@ -510,4 +563,3 @@ export const systemAuditLogsRelations = relations(
     }),
   })
 );
-// Add other standard relation definitions here as needed for your specific nested queries.

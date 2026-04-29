@@ -13,6 +13,7 @@ export type SlidePanelAction = {
     label: React.ReactNode;
     variant?: React.ComponentProps<typeof Button>["variant"];
     onClick?: () => void;
+    className?: string;
     disabled?: boolean;
 };
 
@@ -214,6 +215,7 @@ export function SlidePanel({
                                             key={action.id ?? `${String(action.label)}-${index}`}
                                             type="button"
                                             variant={action.variant ?? (index === resolvedActions.length - 1 ? "default" : "outline")}
+                                            className={action.className} // <--- This line fixes the issue
                                             onClick={() => {
                                                 if (action.onClick) {
                                                     action.onClick();

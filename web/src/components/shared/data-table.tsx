@@ -59,6 +59,7 @@ type DataTableProps<TData, TValue> = {
   }
   onRowClick?: (row: TData, rowIndex: number) => void
   isRowActive?: (row: TData, rowIndex: number) => boolean
+  activeRowCondition?: (row: TData) => boolean
   selectionResetSignal?: number | string
   className?: string
   manualPagination?: boolean
@@ -80,6 +81,7 @@ export function DataTable<TData, TValue>({
   selectionLabel,
   emptyState,
   onRowClick,
+  activeRowCondition,
   isRowActive,
   selectionResetSignal,
   className,
@@ -247,17 +249,22 @@ export function DataTable<TData, TValue>({
     <Table className="table-fixed">
       <TableBody>
         {table.getRowModel().rows.length > 0 ? (
-          table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              data-state={row.getIsSelected() && "selected"}
-              onClick={(event) => handleRowClick(event, row.original, row.index)}
-              className={cn(
-                "h-13.25 border-border",
-                isRowClickable && "cursor-pointer hover:bg-muted/50",
-                isRowActive?.(row.original, row.index) && "bg-slate-50"
-              )}
-            >
+          table.getRowModel().rows.map((row) => {
+            const isActive =
+              (activeRowCondition ? activeRowCondition(row.original) : false) ||
+              (isRowActive ? isRowActive(row.original, row.index) : false);
+
+            return (
+              <TableRow
+                key={row.id}
+                data-state={(row.getIsSelected() || isActive) ? "selected" : undefined}
+                onClick={(event) => handleRowClick(event, row.original, row.index)}
+                className={cn(
+                  "h-13.25 border-border",
+                  isRowClickable && "cursor-pointer hover:bg-muted/50",
+                  isActive && "bg-slate-50"
+                )}
+              >
               {row.getVisibleCells().map((cell) => {
                 const cellValue = cell.getValue()
                 const cellTitle = getDisplayText(cellValue)
@@ -294,7 +301,8 @@ export function DataTable<TData, TValue>({
                 )
               })}
             </TableRow>
-          ))
+          )
+        })
         ) : (
           <TableRow className="border-border">
             <TableCell
