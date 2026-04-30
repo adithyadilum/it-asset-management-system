@@ -6,6 +6,21 @@ import { eq, and, ilike, or, desc, sql } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import type { PendingReviewTicket, IssueReviewPanelData, ActiveRepairTicket, RepairHistoryTicket, AssetMaintenanceRecord } from '@/types/maintenance';
 
+// ============================================================================
+// SECURITY UTILITIES
+// ============================================================================
+/**
+ * Strips HTML tags and enforces a maximum length to prevent XSS and buffer overflow.
+ */
+function sanitizeText(input: string | null | undefined, maxLength: number): string {
+  if (!input) return '';
+  // Strip out anything that looks like an HTML tag (e.g., <script>, <img>)
+  const stripped = input.replace(/<[^>]*>?/gm, '');
+  // Trim whitespace and enforce the database limit
+  return stripped.trim().substring(0, maxLength);
+}
+// ============================================================================
+
 export async function getPendingMaintenanceTickets() {
   try {
     const user = await getAuthenticatedUser();
@@ -129,7 +144,10 @@ export async function resolveIssueInternally(ticketId: number, resolutionNote: s
     const user = await getAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
-    if (!resolutionNote.trim()) throw new Error('Resolution note is required');
+    
+    // SANITIZE INPUT
+    const safeResolutionNote = sanitizeText(resolutionNote, 1000);
+    if (!safeResolutionNote) throw new Error('Resolution note is required');
 
     console.log('[resolveIssueInternally] Starting with ticketId:', ticketId);
 
@@ -180,7 +198,7 @@ export async function resolveIssueInternally(ticketId: number, resolutionNote: s
       .update(maintenanceTickets)
       .set({
         status: 'COMPLETED',
-        resolutionNotes: resolutionNote.trim(),
+        resolutionNotes: safeResolutionNote, // USING SANITIZED INPUT
         actualCompletionDate: now,
         updatedAt: now,
       })
@@ -199,7 +217,7 @@ export async function resolveIssueInternally(ticketId: number, resolutionNote: s
       actionType: 'MAINTENANCE_RESOLVED_INTERNALLY',
       performedById: user.id,
       oldValue: { status: currentAsset.status },
-      newValue: { status: 'Available', resolutionNote: resolutionNote.trim() },
+      newValue: { status: 'Available', resolutionNote: safeResolutionNote }, // USING SANITIZED INPUT
       performedAt: now,
     });
 
@@ -248,6 +266,9 @@ export async function initiateVendorRepair(
     if (!user) throw new Error('Unauthorized');
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
 
+    // SANITIZE INPUT
+    const safeRmaNumber = sanitizeText(rmaNumber, 100);
+
     console.log('[initiateVendorRepair] Starting with ticketId:', ticketId, 'assetId:', assetId);
 
     // Get the current asset
@@ -287,7 +308,7 @@ export async function initiateVendorRepair(
       assetId: assetId,
       ticketType: 'VENDOR' as const,
       vendorName: vendor.companyName,
-      rmaNumber: rmaNumber.trim(),
+      rmaNumber: safeRmaNumber, // USING SANITIZED INPUT
       reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
       estimatedCost: estimatedCost ? parseFloat(estimatedCost).toString() : null,
       estimatedReturnDate: expectedReturnDate ? expectedReturnDate : null,
@@ -319,7 +340,7 @@ export async function initiateVendorRepair(
       newValue: {
         status: 'In Repair',
         vendor: vendor.companyName,
-        rmaNumber: rmaNumber.trim(),
+        rmaNumber: safeRmaNumber, // USING SANITIZED INPUT
         estimatedReturnDate: expectedReturnDate || null,
       },
       performedAt: now,
@@ -381,8 +402,9 @@ export async function completeRepairTicket(
       throw new Error('Invalid ticket ID');
     }
 
-    const trimmedResolutionNotes = resolutionNotes.trim();
-    if (trimmedResolutionNotes.length === 0) {
+    // SANITIZE INPUT
+    const safeResolutionNotes = sanitizeText(resolutionNotes, 1000);
+    if (safeResolutionNotes.length === 0) {
       throw new Error('Resolution notes are required');
     }
 
@@ -424,7 +446,7 @@ export async function completeRepairTicket(
         status: 'COMPLETED',
         actualCost: actualCostNum.toString(),
         actualCompletionDate: now,
-        resolutionNotes: trimmedResolutionNotes,
+        resolutionNotes: safeResolutionNotes, // USING SANITIZED INPUT
         updatedAt: now,
       })
       .where(eq(maintenanceTickets.id, ticketId))
@@ -458,7 +480,7 @@ export async function completeRepairTicket(
         status: updateStatusTo,
         ticketStatus: 'COMPLETED',
         actualCost: actualCostNum,
-        resolutionNotes: trimmedResolutionNotes,
+        resolutionNotes: safeResolutionNotes, // USING SANITIZED INPUT
       },
       performedAt: now,
     });
