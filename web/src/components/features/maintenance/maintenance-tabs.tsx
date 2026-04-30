@@ -74,25 +74,6 @@ export function MaintenanceTabs({
     },
   ];
 
-  const filteredPendingTickets = pendingTickets.filter(
-    (ticket) =>
-      ticket.asset.assetTag.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.asset.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.reportedIssue.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredActiveTickets = activeRepairTickets.filter(
-    (ticket) =>
-      ticket.rmaNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredHistoryTickets = repairHistoryTickets.filter(
-    (ticket) =>
-      ticket.assetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const tabConfig = [
     {
       id: 'pending',
@@ -139,25 +120,22 @@ export function MaintenanceTabs({
           </div>
 
           {/* Scrollable table area - takes remaining space */}
-          {/* FIX: Added 'flex flex-col' so the height passes down to TabsContent */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 rounded-md border border-slate-200 bg-white">
             
-            {/* FIX: Added 'flex-1 flex-col data-[state=active]:flex' so it passes height down to DataTable */}
             <TabsContent value="pending" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
               {isLoading ? (
                 <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[15%]', 'w-[30%]', 'w-[20%]']} />
-              ) : filteredPendingTickets.length === 0 ? (
+              ) : pendingTickets.length === 0 ? (
                 <div className="flex h-full flex-1 items-center justify-center bg-slate-50">
                   <span className="text-sm text-slate-500">No pending maintenance tickets found</span>
                 </div>
               ) : (
                 <DataTable
                   columns={pendingReviewColumns}
-                  data={filteredPendingTickets}
+                  data={pendingTickets}
                   pageSizeOptions={[10, 20, 30, 50]}
                   initialPageSize={10}
                   onRowClick={(row) => onRowClick(row)}
-                  // FIX: Added 'flex-1'
                   className="border-0 h-full flex-1"
                   enableRowScroll={true}
                   activeRowCondition={(row: PendingReviewTicket) => row.id === selectedTicketId}
@@ -167,11 +145,11 @@ export function MaintenanceTabs({
             </TabsContent>
 
             <TabsContent value="active" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
-              <ActiveRepairsGrid tickets={filteredActiveTickets} isLoading={isLoading} onRowClick={onActiveRepairRowClick} />
+              <ActiveRepairsGrid tickets={activeRepairTickets} isLoading={isLoading} onRowClick={onActiveRepairRowClick} />
             </TabsContent>
 
             <TabsContent value="history" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
-              <RepairHistoryGrid tickets={filteredHistoryTickets} isLoading={isLoading} />
+              <RepairHistoryGrid tickets={repairHistoryTickets} isLoading={isLoading} />
             </TabsContent>
 
           </div>

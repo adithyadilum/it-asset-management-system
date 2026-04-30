@@ -21,11 +21,24 @@ function sanitizeText(input: string | null | undefined, maxLength: number): stri
 }
 // ============================================================================
 
-export async function getPendingMaintenanceTickets() {
+export async function getPendingMaintenanceTickets(searchTerm = '') {
   try {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+
+    const baseCondition = and(
+      eq(maintenanceTickets.status, 'ACTIVE'),
+      eq(maintenanceTickets.ticketType, 'INTERNAL')
+    );
+
+    const searchCondition = searchTerm.trim()
+      ? or(
+          ilike(assets.assetTag, `%${searchTerm}%`),
+          ilike(assets.name, `%${searchTerm}%`),
+          ilike(maintenanceTickets.reportedIssue, `%${searchTerm}%`)
+        )
+      : undefined;
 
     const result = await db
       .select({
@@ -38,12 +51,7 @@ export async function getPendingMaintenanceTickets() {
         reportedBy: users,
       })
       .from(maintenanceTickets)
-      .where(
-        and(
-          eq(maintenanceTickets.status, 'ACTIVE'),
-          eq(maintenanceTickets.ticketType, 'INTERNAL')
-        )
-      )
+      .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition) // <-- Added Search
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(brands, eq(models.brandId, brands.id))
@@ -354,11 +362,23 @@ export async function initiateVendorRepair(
   }
 }
 
-export async function getActiveRepairTickets() {
+export async function getActiveRepairTickets(searchTerm = '') {
   try {
     const user = await getAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
     if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+
+    const baseCondition = and(
+      eq(maintenanceTickets.status, 'ACTIVE'),
+      eq(maintenanceTickets.ticketType, 'VENDOR')
+    );
+
+    const searchCondition = searchTerm.trim()
+      ? or(
+          ilike(maintenanceTickets.rmaNumber, `%${searchTerm}%`),
+          ilike(maintenanceTickets.vendorName, `%${searchTerm}%`)
+        )
+      : undefined;
 
     const result = await db
       .select({
@@ -367,12 +387,7 @@ export async function getActiveRepairTickets() {
       })
       .from(maintenanceTickets)
       .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-      .where(
-        and(
-          eq(maintenanceTickets.status, 'ACTIVE'),
-          eq(maintenanceTickets.ticketType, 'VENDOR')
-        )
-      )
+      .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition) // <-- Added Search
       .limit(100);
 
     const tickets = result.map((row) => ({

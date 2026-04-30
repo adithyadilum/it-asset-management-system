@@ -26,15 +26,23 @@ export function MaintenanceShell() {
   const [isCompletingRepair, setIsCompletingRepair] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const { setOpen } = useSidebar();
 
-  const loadData = useCallback(async () => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300); // Waits 300ms after the user stops typing
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const loadData = useCallback(async (query: string) => {
     try {
       setIsLoading(true);
       const [ticketsResult, activeResult, historyResult] = await Promise.all([
-        getPendingMaintenanceTickets(),
-        getActiveRepairTickets(),
-        getRepairHistory(1, 100, '')
+        getPendingMaintenanceTickets(query),
+        getActiveRepairTickets(query),
+        getRepairHistory(1, 100, query)
       ]);
       setPendingTickets(ticketsResult.tickets);
       setActiveRepairTickets(activeResult.tickets);
@@ -48,19 +56,16 @@ export function MaintenanceShell() {
 
   useEffect(() => {
     let isMounted = true;
-    
     const initLoad = async () => {
       if (isMounted) {
-        await loadData();
+        await loadData(debouncedSearch);
       }
     };
-    
     initLoad();
-    
     return () => {
       isMounted = false;
     };
-  }, [loadData]);
+  }, [loadData, debouncedSearch]);
 
   const handlePendingRowClick = (row: PendingReviewTicket) => {
     setSelectedTicketId(row.id);
@@ -93,7 +98,7 @@ export function MaintenanceShell() {
       toast.success('Repair logged successfully!');
       setShowCompleteDialog(false);
       setActiveRepairDetails(null);
-      await loadData();
+      await loadData(debouncedSearch);
     } catch (err) {
       console.error('Failed to complete repair:', err);
       // Extract the specific error message from the server action
@@ -143,7 +148,7 @@ export function MaintenanceShell() {
             isOpen={isPanelOpen}
             onClose={handlePanelClose}
             ticketId={selectedTicketId}
-            onSuccess={loadData}
+            onSuccess={() => loadData(debouncedSearch)} 
           />
         </div>
       </div>
