@@ -4,7 +4,8 @@ import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { RepairHistoryTicket } from '@/types/maintenance';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/date';
+import { formatMoneyByCurrency } from '@/lib/currency'; 
 
 interface RepairHistoryGridProps {
   tickets: RepairHistoryTicket[];
@@ -33,9 +34,7 @@ export function RepairHistoryGrid({
       header: 'Resolution Date',
       cell: ({ row }) => (
         <span className="text-slate-600">
-          {row.original.actualCompletionDate
-            ? format(new Date(row.original.actualCompletionDate), 'MM/dd/yyyy')
-            : 'N/A'}
+          {formatDate(row.original.actualCompletionDate)}
         </span>
       ),
     },
@@ -44,9 +43,7 @@ export function RepairHistoryGrid({
       header: 'Final Cost',
       cell: ({ row }) => (
         <span className="text-slate-600">
-          {row.original.actualCost
-            ? `$${parseFloat(row.original.actualCost).toFixed(0)}`
-            : 'N/A'}
+          {formatMoneyByCurrency(row.original.actualCost, 'USD')}
         </span>
       ),
     },

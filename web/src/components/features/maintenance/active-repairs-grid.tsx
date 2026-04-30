@@ -4,7 +4,8 @@ import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { ActiveRepairTicket } from '@/types/maintenance';
-import { format } from 'date-fns';
+import { formatDate, } from '@/lib/date';
+import { formatMoneyByCurrency } from '@/lib/currency';
 import { ArrowUpDown } from 'lucide-react';
 
 interface ActiveRepairsGridProps {
@@ -67,9 +68,7 @@ export function ActiveRepairsGrid({
       },
       cell: ({ row }) => (
         <span className="text-slate-600">
-          {row.original.estimatedReturnDate
-            ? format(new Date(row.original.estimatedReturnDate), 'MM/dd/yyyy')
-            : 'N/A'}
+          {formatDate(row.original.estimatedReturnDate)}
         </span>
       ),
     },
@@ -101,9 +100,7 @@ export function ActiveRepairsGrid({
       },
       cell: ({ row }) => (
         <span className="text-slate-600">
-          {row.original.estimatedCost
-            ? `$${parseFloat(row.original.estimatedCost).toFixed(0)}`
-            : 'N/A'}
+          {formatMoneyByCurrency(row.original.estimatedCost, 'USD')}
         </span>
       ),
     },
