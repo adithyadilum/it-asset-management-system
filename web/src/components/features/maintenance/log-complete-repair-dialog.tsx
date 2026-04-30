@@ -73,7 +73,7 @@ export function LogCompleteRepairDialog({
               Actual Final Cost: <span className="text-red-500">*</span>
             </Label>
             <div className="flex">
-              <Select defaultValue="USD">
+              <Select defaultValue="USD" disabled={isLoading}> {/* <-- ADDED disabled={isLoading} */}
                 <SelectTrigger className="w-[70px] rounded-r-none border-r-0 focus:ring-0 focus:border-slate-200 bg-white">
                   <SelectValue />
                 </SelectTrigger>
@@ -116,6 +116,7 @@ export function LogCompleteRepairDialog({
             <Select 
               value={formData.updateStatusTo}
               onValueChange={(value) => setFormData({ ...formData, updateStatusTo: value as 'Available' | 'Disposed' })}
+              disabled={isLoading} // <-- ADDED disabled={isLoading}
             >
               <SelectTrigger className="w-full focus:ring-1 focus:ring-blue-500 bg-white">
                 <SelectValue placeholder="Select status" />
