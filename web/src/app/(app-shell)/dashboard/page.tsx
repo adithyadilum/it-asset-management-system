@@ -62,28 +62,24 @@ export default async function DashboardPage() {
                                         name={asset.modelName}
                                         status={asset.status}
                                         icon={presentation.icon}
-                                        details={[
-                                            { label: "Asset ID", value: asset.assetTag },
-                                            { label: "Serial", value: asset.serialNumber ?? "Not available" },
-                                            {
-                                                label: "Assigned",
-                                                value: new Intl.DateTimeFormat("en-US", {
-                                                    month: "short",
-                                                    day: "numeric",
-                                                    year: "numeric",
-                                                }).format(new Date(asset.assignedDate)),
-                                            },
-                                        ]}
+                                        assetId={asset.assetTag}
+                                        assignedDate={new Intl.DateTimeFormat("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                        }).format(new Date(asset.assignedDate))}
                                     />
                                 )
                             })
                         ) : (
                             <div className="xl:col-span-3">
                                 <Empty className="min-h-52 rounded-md border-0 p-4">
-                                    <EmptyHeader>
+                                    <EmptyHeader className="max-w-md">
                                         <EmptyTitle>No active assets assigned</EmptyTitle>
-                                        <EmptyDescription className="max-w-md line-clamp-2">
-                                            We couldn’t find any hardware linked to your profile. If you're expecting a new device, please check back later or contact the IT Helpdesk.
+                                        <EmptyDescription className="max-w-md text-balance">
+                                            We couldn&apos;t find any hardware linked to your profile.
+                                            <br />
+                                            If you&apos;re expecting a new device, please check back later or contact the IT Helpdesk.
                                         </EmptyDescription>
                                     </EmptyHeader>
                                 </Empty>
