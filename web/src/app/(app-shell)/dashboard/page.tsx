@@ -1,6 +1,12 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { AssetCard } from "@/components/shared/asset-card"
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+} from "@/components/ui/empty"
 import { HardDrive, Laptop, Monitor, Smartphone } from "lucide-react"
 
 function getAssetPresentation(modelName: string) {
@@ -72,8 +78,15 @@ export default async function DashboardPage() {
                                 )
                             })
                         ) : (
-                            <div className="rounded-lg border border-dashed border-border bg-muted p-4 text-sm text-muted-foreground xl:col-span-3">
-                                No active assets are currently assigned to your account.
+                            <div className="xl:col-span-3">
+                                <Empty className="min-h-52 rounded-md border-0 p-4">
+                                    <EmptyHeader>
+                                        <EmptyTitle>No active assets assigned</EmptyTitle>
+                                        <EmptyDescription className="max-w-md line-clamp-2">
+                                            We couldn’t find any hardware linked to your profile. If you're expecting a new device, please check back later or contact the IT Helpdesk.
+                                        </EmptyDescription>
+                                    </EmptyHeader>
+                                </Empty>
                             </div>
                         )}
                     </div>
