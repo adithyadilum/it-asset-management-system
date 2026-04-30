@@ -90,7 +90,9 @@ export function AssetAssignmentModal({
   const router = useRouter();
   const disableUserAssignment =
     assetGroup === "Office Furniture" || assetGroup === "Office Electronics";
-  const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">("user");
+  const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">(() =>
+    disableUserAssignment ? "location" : "user"
+  );
   const [assignee, setAssignee] = React.useState("");
   const [duration, setDuration] = React.useState("");
   const [expectedReturn, setExpectedReturn] = React.useState("");
@@ -135,14 +137,19 @@ export function AssetAssignmentModal({
       return;
     }
 
-    loadOptions();
+    let mounted = true;
+
+    (async () => {
+      if (!mounted) return;
+      await loadOptions();
+    })();
+
+    return () => {
+      mounted = false;
+    };
   }, [isOpen, loadOptions]);
 
-  React.useEffect(() => {
-    if (disableUserAssignment && assignmentMode === "user") {
-      setAssignmentMode("location");
-    }
-  }, [assignmentMode, disableUserAssignment]);
+  
 
   const resetState = React.useCallback(() => {
     setAssignmentMode(disableUserAssignment ? "location" : "user");

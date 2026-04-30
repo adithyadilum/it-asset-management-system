@@ -87,15 +87,32 @@ export function SlidePanel({
 
     React.useEffect(() => {
         if (isOpen) {
-            setShouldRender(true);
-
-            if (disableTransition) {
-                setIsVisible(true);
-                return;
-            }
-
+            let innerFrameId: number | null = null;
             const frameId = window.requestAnimationFrame(() => {
-                setIsVisible(true);
+                setShouldRender(true);
+
+                if (disableTransition) {
+                    setIsVisible(true);
+                    return;
+                }
+
+                innerFrameId = window.requestAnimationFrame(() => {
+                    setIsVisible(true);
+                });
+            });
+
+            return () => {
+                window.cancelAnimationFrame(frameId);
+                if (innerFrameId !== null) {
+                    window.cancelAnimationFrame(innerFrameId);
+                }
+            };
+        }
+
+        if (disableTransition) {
+            const frameId = window.requestAnimationFrame(() => {
+                setIsVisible(false);
+                setShouldRender(false);
             });
 
             return () => {
@@ -103,19 +120,20 @@ export function SlidePanel({
             };
         }
 
-        if (disableTransition) {
-            setIsVisible(false);
-            setShouldRender(false);
-            return;
-        }
-
-        setIsVisible(false);
+        let frameId: number | null = null;
 
         const timeoutId = window.setTimeout(() => {
             setShouldRender(false);
         }, 300);
 
+        frameId = window.requestAnimationFrame(() => {
+            setIsVisible(false);
+        });
+
         return () => {
+            if (frameId !== null) {
+                window.cancelAnimationFrame(frameId);
+            }
             window.clearTimeout(timeoutId);
         };
     }, [disableTransition, isOpen]);

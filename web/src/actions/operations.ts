@@ -4,6 +4,7 @@ import {
   getAssignmentsDashboardData,
   type AssignmentsDashboardData,
   type AssignmentsDashboardTab,
+  type AssignmentsDashboardRow,
 } from '@/lib/data/operations-assignments-repo';
 import {
   canManageAssets,
@@ -13,7 +14,9 @@ import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 export interface OperationsAssignmentResult {
   success: boolean;
-  data?: AssignmentsDashboardData | { tab: AssignmentsDashboardTab; data: any };
+  data?:
+    | AssignmentsDashboardData
+    | { tab: AssignmentsDashboardTab; data: AssignmentsDashboardRow[] };
   error?: string;
 }
 
