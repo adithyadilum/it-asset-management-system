@@ -672,3 +672,74 @@ export async function getAssetAuditHistory(
     throw new Error('Failed to fetch asset history.');
   }
 }
+
+export async function getAllAssetAuditHistory(assetId: string): Promise<AuditLogRow[]> {
+  const timer = startLatencyTimer();
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      throw new Error('Unauthorized access.');
+    }
+
+    const whereCondition = and(
+      eq(systemAuditLogs.entityType, 'Asset'),
+      eq(systemAuditLogs.entityId, assetId)
+    );
+
+    const records = await db
+      .select({
+        id: systemAuditLogs.id,
+        performedAt: systemAuditLogs.performedAt,
+        entityType: systemAuditLogs.entityType,
+        entityId: systemAuditLogs.entityId,
+        actionType: systemAuditLogs.actionType,
+        oldValue: systemAuditLogs.oldValue,
+        newValue: systemAuditLogs.newValue,
+        ipAddress: systemAuditLogs.ipAddress,
+        performedById: users.id,
+        performedByName: users.name,
+        performedByEmail: users.email,
+        performedByRole: users.role,
+      })
+      .from(systemAuditLogs)
+      .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+      .where(whereCondition)
+      .orderBy(desc(systemAuditLogs.performedAt), desc(systemAuditLogs.id));
+
+    const targetEntityLabels = await resolveTargetEntityLabels(records);
+
+    const data: AuditLogRow[] = records.map((record) => ({
+      id: record.id,
+      performedAt: record.performedAt,
+      entityType: record.entityType,
+      entityId: record.entityId,
+      actionType: record.actionType,
+      performedBy: record.performedById
+        ? {
+            id: record.performedById,
+            name: record.performedByName ?? 'Unknown',
+            email: record.performedByEmail ?? 'unknown@example.com',
+            role: record.performedByRole,
+          }
+        : null,
+      oldValue: record.oldValue as Record<string, unknown> | null,
+      newValue: record.newValue as Record<string, unknown> | null,
+      ipAddress: record.ipAddress,
+      entityLabel:
+        targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+        humanizeEntityType(record.entityType),
+    }));
+
+    logLatency({ scope: 'audit-log', label: 'getAllAssetAuditHistory', startTime: timer });
+
+    return data;
+  } catch (error) {
+    logError({
+      scope: 'audit-log',
+      label: 'Database query failed in getAllAssetAuditHistory',
+      error,
+    });
+    throw new Error('Failed to fetch all asset history.');
+  }
+}

@@ -16,6 +16,9 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { getAssetMaintenanceHistory } from '@/actions/maintenance';
 import type { AssetMaintenanceRecord } from '@/types/maintenance';
 import { Badge } from '@/components/ui/badge';
+import { Download } from 'lucide-react';
+import { getAllAssetAuditHistory } from '@/actions/audit-log';
+import { format } from 'date-fns';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
@@ -78,6 +81,9 @@ export interface AssetDetailsPanelProps {
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
+  const [activeTabId, setActiveTabId] = useState('asset-details');
+  const [isExporting, setIsExporting] = useState(false);
+
   // ============ EPIC 15: DYNAMIC MAINTENANCE FETCHING ============
   const [maintenanceHistory, setMaintenanceHistory] = useState<AssetMaintenanceRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -355,10 +361,76 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     return tabsList;
   }, [props, maintenanceHistory, isLoadingHistory]);
 
-  const actions: SlidePanelAction[] = [
-    { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
-    { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
-  ];
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      const rows = await getAllAssetAuditHistory(props.assetId);
+
+      const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
+      
+      const header = [
+        "Timestamp",
+        "User",
+        "Action Taken",
+        "Target Entity",
+        "IP Address",
+      ];
+
+      const csvRows = rows.map((row) => {
+        const user = row.performedBy
+            ? `${row.performedBy.name} <${row.performedBy.email}>`
+            : "Unknown";
+
+        const target = row.entityLabel && row.entityLabel.trim().length > 0
+            ? row.entityLabel
+            : `${row.entityType}: ${row.entityId}`;
+
+        const timestamp = row.performedAt instanceof Date 
+            ? row.performedAt 
+            : new Date(row.performedAt);
+
+        return [
+            Number.isNaN(timestamp.getTime()) ? String(row.performedAt) : format(timestamp, "yyyy-MM-dd HH:mm:ss"),
+            user,
+            row.actionType,
+            target,
+            row.ipAddress ?? "-",
+        ].map(escapeCsvValue);
+      });
+
+      const csv = [header.map(escapeCsvValue).join(","), ...csvRows.map((row) => row.join(","))].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `asset-${props.assetTag}-history-${format(new Date(), "yyyyMMdd-HHmmss")}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const actions: SlidePanelAction[] = useMemo(() => {
+    if (activeTabId === 'history') {
+      return [
+        { 
+          id: 'export-csv', 
+          label: isExporting ? 'Exporting...' : 'Export to CSV', 
+          variant: 'default', 
+          onClick: handleExportCSV,
+          disabled: isExporting
+        }
+      ];
+    }
+    
+    return [
+      { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
+      { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
+    ];
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, props.assetCategory]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
@@ -379,6 +451,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       tabs={tabs}
       defaultTabId="asset-details"
       actions={actions}
+      onTabChange={setActiveTabId}
     />
   );
 }
