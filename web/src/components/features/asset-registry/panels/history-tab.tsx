@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AssetHistoryTimeline } from '@/components/shared/timeline';
 import { getAssetAuditHistory } from '@/actions/audit-log';
 import type { AuditLogRow } from '@/actions/audit-log';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+
+const PAGE_SIZE = 15;
 
 export interface HistoryTabProps {
   assetId: string;
@@ -22,17 +24,21 @@ export function HistoryTab({
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchLogs = useCallback(async (pageNum: number, isLoadMore: boolean = false) => {
     try {
+      setError(null);
+
+      // Keep the spinner scoped to the initial load or the pagination request.
       if (isLoadMore) {
         setIsLoadingMore(true);
       } else {
         setIsLoading(true);
       }
 
-      const { data, hasMore: more } = await getAssetAuditHistory(assetId, pageNum, 15);
-      
+      const { data, hasMore: more } = await getAssetAuditHistory(assetId, pageNum, PAGE_SIZE);
+
       if (isLoadMore) {
         setLogs((prev) => {
           const newLogs = data.filter((d) => !prev.some((p) => p.id === d.id));
@@ -44,6 +50,7 @@ export function HistoryTab({
       setHasMore(more);
     } catch (error) {
       console.error('Failed to fetch asset history:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load asset history.');
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -52,7 +59,11 @@ export function HistoryTab({
 
   useEffect(() => {
     if (assetId) {
+      // Reset the tab whenever the asset changes.
       setPage(1);
+      setLogs([]);
+      setHasMore(false);
+      setError(null);
       fetchLogs(1);
     }
   }, [assetId, fetchLogs]);
@@ -65,10 +76,32 @@ export function HistoryTab({
     }
   };
 
+  const handleRetry = () => {
+    setPage(1);
+    setLogs([]);
+    setHasMore(false);
+    fetchLogs(1);
+  };
+
   if (isLoading) {
     return (
       <div className={cn('flex w-full items-center justify-center py-12', className)}>
         <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (error && logs.length === 0) {
+    return (
+      <div className={cn('flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-12', className)}>
+        <AlertCircle className="h-6 w-6 text-rose-500" />
+        <div className="text-center">
+          <p className="text-sm font-medium text-rose-900">Unable to load asset history</p>
+          <p className="mt-1 text-sm text-rose-700">{error}</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-white text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -83,12 +116,24 @@ export function HistoryTab({
 
   return (
     <div className={cn('flex flex-col w-full', className)}>
+      {error ? (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-white text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
+
       <div className="relative">
-        <AssetHistoryTimeline historyLogs={logs} />
-        
+        <AssetHistoryTimeline historyLogs={logs} showEntityLabel={false} />
+
         {/* Fade-out effect at the bottom if there's more to load */}
         {hasMore && (
-          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 h-32 w-full bg-linear-to-t from-white to-transparent pointer-events-none" />
         )}
       </div>
 

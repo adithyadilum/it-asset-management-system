@@ -204,6 +204,7 @@ function buildEventDetails(row: AuditLogRow) {
     const oldValue = row.oldValue;
     const newValue = row.newValue;
 
+    // Login/logout rows are simple audit events with no diff payload.
     if (action === "LOGIN") {
         return "User logged in";
     }
@@ -229,6 +230,7 @@ function buildEventDetails(row: AuditLogRow) {
         return "Updated record";
     }
 
+    // Show the first changed field so the table stays compact.
     const keys = new Set([...Object.keys(oldValue), ...Object.keys(newValue)]);
     for (const key of keys) {
         if (!areValuesEqual(oldValue[key], newValue[key])) {
@@ -280,6 +282,7 @@ function TruncatedTextWithTooltip({ text }: { text: string }) {
     useEffect(() => {
         if (!ref.current) return;
 
+        // Only wrap the cell when the content actually overflows.
         const checkTruncation = () => {
             const element = ref.current;
             if (element) {
@@ -383,6 +386,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
 
     const [isPending, startTransition] = useTransition();
 
+    // Debounce search so we only query the server after the user pauses typing.
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
             setDebouncedQuery(searchValue.trim().toLowerCase());
@@ -407,6 +411,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
         }
     }, [pagination.pageIndex, pagination.pageSize, debouncedQuery, appliedFilters]);
 
+    // Reload whenever paging, search, or filters change.
     useEffect(() => {
         startTransition(() => {
             loadRows();

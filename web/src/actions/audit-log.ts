@@ -16,7 +16,10 @@ import {
 } from '@/db/schema';
 import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import {
+  canManageAssets,
+  getAuthenticatedUser,
+} from '@/lib/auth/get-authenticated-user';
 
 export interface AuditLogFilter {
   field: string;
@@ -83,6 +86,7 @@ function formatEntityLabel(
 }
 
 function buildTargetEntitySearchCondition(searchValue: string) {
+  // Match audit rows against the resolved entity record, not just raw IDs.
   return or(
     sql<boolean>`exists (
       select 1
@@ -199,6 +203,7 @@ async function resolveTargetEntityLabels(
     }
   };
 
+  // Group IDs by entity table so we can resolve labels in bulk.
   const assetIds = records
     .filter((record) => record.entityType === 'Asset')
     .map((record) => record.entityId)
@@ -245,6 +250,7 @@ async function resolveTargetEntityLabels(
       .filter((value) => Number.isFinite(value)),
   } as const;
 
+  // Pull the human-readable labels once, then stitch them back onto the rows.
   const [
     assetRows,
     userRows,
@@ -513,6 +519,7 @@ export async function getAuditLogs(
 
     const whereCondition = baseWhere.length > 0 ? and(...baseWhere) : undefined;
 
+    // Count first so the table can paginate before fetching the page slice.
     const totalRowsCount = await db
       .select({ total: sql<number>`cast(count(*) as integer)` })
       .from(systemAuditLogs)
@@ -544,6 +551,7 @@ export async function getAuditLogs(
       .limit(pageSize)
       .offset(offset);
 
+    // Resolve display labels after the page query so the list stays readable.
     const targetEntityLabels = await resolveTargetEntityLabels(records);
 
     const data: AuditLogRow[] = records.map((record) => ({
@@ -565,7 +573,9 @@ export async function getAuditLogs(
       ipAddress: record.ipAddress,
       entityLabel:
         targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
-        (record.entityType === 'URL' ? record.entityId : humanizeEntityType(record.entityType)),
+        (record.entityType === 'URL'
+          ? record.entityId
+          : humanizeEntityType(record.entityType)),
     }));
 
     logLatency({ scope: 'audit-log', label: 'getAuditLogs', startTime: timer });
@@ -598,13 +608,16 @@ export async function getAssetAuditHistory(
 
   try {
     const currentUser = await getAuthenticatedUser();
-    if (!currentUser) {
-      throw new Error('Unauthorized access.');
+    if (!currentUser || !canManageAssets(currentUser.role)) {
+      throw new Error('Unauthorized access to asset history.');
     }
 
-    const offset = (Math.max(1, page) - 1) * pageSize;
+    // Keep paging bounded so history requests stay predictable.
+    const validatedPage = Math.max(1, page);
+    const validatedPageSize = Math.min(100, Math.max(1, pageSize));
+    const offset = (validatedPage - 1) * validatedPageSize;
     // Fetch one extra record to determine if there is a next page
-    const limit = pageSize + 1;
+    const limit = validatedPageSize + 1;
 
     const whereCondition = and(
       eq(systemAuditLogs.entityType, 'Asset'),
@@ -633,9 +646,10 @@ export async function getAssetAuditHistory(
       .limit(limit)
       .offset(offset);
 
-    const hasMore = records.length > pageSize;
-    const pageRecords = hasMore ? records.slice(0, pageSize) : records;
+    const hasMore = records.length > validatedPageSize;
+    const pageRecords = hasMore ? records.slice(0, validatedPageSize) : records;
 
+    // Reuse the same label resolver as the system audit log.
     const targetEntityLabels = await resolveTargetEntityLabels(pageRecords);
 
     const data: AuditLogRow[] = pageRecords.map((record) => ({
@@ -660,7 +674,11 @@ export async function getAssetAuditHistory(
         humanizeEntityType(record.entityType),
     }));
 
-    logLatency({ scope: 'audit-log', label: 'getAssetAuditHistory', startTime: timer });
+    logLatency({
+      scope: 'audit-log',
+      label: 'getAssetAuditHistory',
+      startTime: timer,
+    });
 
     return { data, hasMore };
   } catch (error) {
@@ -673,13 +691,15 @@ export async function getAssetAuditHistory(
   }
 }
 
-export async function getAllAssetAuditHistory(assetId: string): Promise<AuditLogRow[]> {
+export async function getAllAssetAuditHistory(
+  assetId: string
+): Promise<AuditLogRow[]> {
   const timer = startLatencyTimer();
 
   try {
     const currentUser = await getAuthenticatedUser();
-    if (!currentUser) {
-      throw new Error('Unauthorized access.');
+    if (!currentUser || !canManageAssets(currentUser.role)) {
+      throw new Error('Unauthorized access to asset history.');
     }
 
     const whereCondition = and(
@@ -731,7 +751,11 @@ export async function getAllAssetAuditHistory(assetId: string): Promise<AuditLog
         humanizeEntityType(record.entityType),
     }));
 
-    logLatency({ scope: 'audit-log', label: 'getAllAssetAuditHistory', startTime: timer });
+    logLatency({
+      scope: 'audit-log',
+      label: 'getAllAssetAuditHistory',
+      startTime: timer,
+    });
 
     return data;
   } catch (error) {
