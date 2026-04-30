@@ -50,7 +50,6 @@ export function ActiveRepairsGrid({
           <div
             role="button"
             tabIndex={0}
-            aria-sort={ariaSort}
             aria-label={`Sort by Estimated Return Date. Current sort: ${ariaSort}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -82,7 +81,6 @@ export function ActiveRepairsGrid({
           <div
             role="button"
             tabIndex={0}
-            aria-sort={ariaSort}
             aria-label={`Sort by Estimated Cost. Current sort: ${ariaSort}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

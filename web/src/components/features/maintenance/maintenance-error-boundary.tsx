@@ -43,7 +43,7 @@ export class MaintenanceErrorBoundary extends Component<Props, State> {
                 Something went wrong
               </h2>
               <p className="text-sm text-slate-500">
-                The maintenance module encountered an unexpected error. Don't worry, your data is safe.
+                The maintenance module encountered an unexpected error. Don&apos;t worry, your data is safe.
               </p>
             </div>
 
