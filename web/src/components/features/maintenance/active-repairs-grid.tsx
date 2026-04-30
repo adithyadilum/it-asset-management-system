@@ -41,23 +41,30 @@ export function ActiveRepairsGrid({
     },
     {
       accessorKey: 'estimatedReturnDate',
-      header: ({ column }) => (
-        <div
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              column.toggleSorting(column.getIsSorted() === 'asc');
-            }
-          }}
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="flex items-center gap-2 hover:text-slate-900 cursor-pointer select-none"
-        >
-          Est. Return Date
-          <ArrowUpDown className="h-4 w-4" />
-        </div>
-      ),
+      header: ({ column }) => {
+        const sortState = column.getIsSorted();
+        const ariaSort = sortState === 'asc' ? 'ascending' : sortState === 'desc' ? 'descending' : 'none';
+        
+        return (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-sort={ariaSort}
+            aria-label={`Sort by Estimated Return Date. Current sort: ${ariaSort}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                column.toggleSorting(column.getIsSorted() === 'asc');
+              }
+            }}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-2 hover:text-slate-900 cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm px-1 -ml-1"
+          >
+            Est. Return Date
+            <ArrowUpDown className="h-4 w-4 text-slate-400" />
+          </div>
+        );
+      },
       cell: ({ row }) => (
         <span className="text-slate-600">
           {row.original.estimatedReturnDate
@@ -68,16 +75,30 @@ export function ActiveRepairsGrid({
     },
     {
       accessorKey: 'estimatedCost',
-      header: ({ column }) => (
-        // Changed from <button> to <div role="button"> to fix hydration error!
-        <div
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="flex items-center gap-2 hover:text-slate-900 cursor-pointer select-none"
-        >
-          Est. Cost.
-          <ArrowUpDown className="h-4 w-4" />
-        </div>
-      ),
+      header: ({ column }) => {
+        const sortState = column.getIsSorted();
+        const ariaSort = sortState === 'asc' ? 'ascending' : sortState === 'desc' ? 'descending' : 'none';
+
+        return (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-sort={ariaSort}
+            aria-label={`Sort by Estimated Cost. Current sort: ${ariaSort}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                column.toggleSorting(column.getIsSorted() === 'asc');
+              }
+            }}
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="flex items-center gap-2 hover:text-slate-900 cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm px-1 -ml-1"
+          >
+            Est. Cost.
+            <ArrowUpDown className="h-4 w-4 text-slate-400" />
+          </div>
+        );
+      },
       cell: ({ row }) => (
         <span className="text-slate-600">
           {row.original.estimatedCost
