@@ -21,6 +21,7 @@ interface TabbedPanelProps {
     tabs: TabbedPanelTab[];
     defaultTabId?: string;
     actions?: SlidePanelAction[];
+    onTabChange?: (tabId: string) => void;
 }
 
 function getInitialTabId(tabs: TabbedPanelTab[], preferredTabId?: string) {
@@ -40,6 +41,7 @@ export function TabbedPanel({
     tabs,
     defaultTabId,
     actions,
+    onTabChange,
 }: TabbedPanelProps) {
     const [activeTabId, setActiveTabId] = React.useState(() =>
         getInitialTabId(tabs, defaultTabId)
@@ -67,6 +69,7 @@ export function TabbedPanel({
 
         const previousScrollTop = viewport?.scrollTop ?? 0;
         setActiveTabId(nextTabId);
+        onTabChange?.(nextTabId);
 
         if (viewport) {
             requestAnimationFrame(() => {
