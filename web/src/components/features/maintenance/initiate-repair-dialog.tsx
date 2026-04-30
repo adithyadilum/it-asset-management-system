@@ -151,6 +151,7 @@ export function InitiateRepairDialog({
               Vendor <span className="text-[#ef4444]">*</span>
             </Label>
             <Select 
+              disabled={isLoading}
               value={formData.vendorId} 
               onValueChange={(value) => {
                 setFormData({ ...formData, vendorId: value });
@@ -200,7 +201,7 @@ export function InitiateRepairDialog({
                 Estimated Cost
               </Label>
               <div className="flex items-center shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg border border-[#e2e8f0] bg-white w-full h-[36px] overflow-hidden">
-                <Select defaultValue="USD">
+                <Select defaultValue="USD" disabled={isLoading}>
                   <SelectTrigger className="w-[60px] h-full text-[14px] font-medium border-0 border-r border-[#e2e8f0] rounded-none bg-transparent focus:ring-0 focus:ring-offset-0">
                     <SelectValue />
                   </SelectTrigger>
