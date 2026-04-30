@@ -261,20 +261,6 @@ function buildTargetEntity(row: AuditLogRow) {
     return `${humanizeFieldName(row.entityType)}: ${row.entityId}`;
 }
 
-function buildSearchBlob(row: AuditLogRow) {
-    return [
-        formatAuditTimestamp(row.performedAt),
-        row.performedBy?.name ?? "",
-        row.performedBy?.email ?? "",
-        row.actionType,
-        buildTargetEntity(row),
-        buildEventDetails(row),
-        row.ipAddress ?? "",
-    ]
-        .join(" ")
-        .toLowerCase();
-}
-
 function TruncatedTextWithTooltip({ text }: { text: string }) {
     const ref = useRef<HTMLSpanElement>(null);
     const [isTruncated, setIsTruncated] = useState(false);
@@ -537,11 +523,6 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             cell: ({ row }) => row.original.ipAddress ?? "-",
         },
     ], []);
-
-    const emptyDescription =
-        debouncedQuery.length > 0 || appliedFilters.length > 0
-            ? "No audit events match the current search and filters."
-            : "Audit events will appear here once users start performing actions.";
 
     return (
         <TooltipProvider delayDuration={200}>

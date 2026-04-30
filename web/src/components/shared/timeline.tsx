@@ -233,10 +233,12 @@ function buildChangeList(
     }
 
     // Keep every changed field so the history card tells the full story.
-    const allKeys = new Set([...Object.keys(oldValue), ...Object.keys(newValue)]);
+    const safeOldValue = oldValue ?? {};
+    const safeNewValue = newValue ?? {};
+    const allKeys = new Set([...Object.keys(safeOldValue), ...Object.keys(safeNewValue)]);
     for (const key of allKeys) {
-        const old = oldValue[key];
-        const neu = newValue[key];
+        const old = safeOldValue[key];
+        const neu = safeNewValue[key];
 
         if (!areValuesEqual(old, neu)) {
             changes.push({

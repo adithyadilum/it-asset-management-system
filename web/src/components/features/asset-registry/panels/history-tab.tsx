@@ -59,12 +59,13 @@ export function HistoryTab({
 
   useEffect(() => {
     if (assetId) {
-      // Reset the tab whenever the asset changes.
-      setPage(1);
-      setLogs([]);
-      setHasMore(false);
-      setError(null);
-      fetchLogs(1);
+      const timeoutId = window.setTimeout(() => {
+        void fetchLogs(1);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
     }
   }, [assetId, fetchLogs]);
 
