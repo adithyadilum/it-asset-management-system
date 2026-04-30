@@ -45,6 +45,8 @@ export function InitiateRepairDialog({
     expectedReturnDate: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof InitiateRepairFormData, string>>>({});
+  
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -70,6 +72,7 @@ export function InitiateRepairDialog({
   };
 
   const handleConfirm = async () => {
+    setSubmitError(null); // Clear previous errors
     if (!validateForm()) return;
     try {
       await onConfirm(formData);
@@ -78,7 +81,7 @@ export function InitiateRepairDialog({
       onClose();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initiate repair';
-      setErrors({ vendorId: errorMessage });
+      setSubmitError(errorMessage);
     }
   };
 
@@ -86,6 +89,7 @@ export function InitiateRepairDialog({
     if (!isLoading) {
       setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', expectedReturnDate: '' });
       setErrors({});
+      setSubmitError(null);
       onClose();
     }
   };
@@ -94,7 +98,6 @@ export function InitiateRepairDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      {/* Dialog strictly set to 600px width with 24px (p-6) padding */}
       <DialogContent className="sm:max-w-[600px] w-full p-6 bg-white rounded-xl shadow-lg border border-slate-200 [&>button]:hidden flex flex-col gap-6">
         
         {/* ============ HEADER SECTION ============ */}
@@ -108,15 +111,12 @@ export function InitiateRepairDialog({
             disabled={isLoading}
             className="text-[#0f172a] opacity-70 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
           >
-            {/* Swapped Ban for X */}
             <X className="h-[20px] w-[20px]" strokeWidth={2} />
           </button>
         </div>
 
         {/* ============ ASSET DETAILS CARD ============ */}
         <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-lg py-6 flex flex-col items-center gap-6 shadow-[0px_1px_3px_rgba(0,0,0,0.1)] w-full">
-          
-          {/* Icon & Name */}
           <div className="flex items-center justify-center gap-[10px] w-full px-6">
             <Laptop className="h-[48px] w-[48px] text-[#0f172a] shrink-0" strokeWidth={1} />
             <span className="font-semibold text-[18px] leading-[28px] text-[#0f172a] truncate">
@@ -124,7 +124,6 @@ export function InitiateRepairDialog({
             </span>
           </div>
 
-          {/* Precise 2-Column Grid matching Figma CSS */}
           <div className="w-full flex justify-center px-6">
             <div className="grid grid-cols-[120px_1fr] gap-x-8 gap-y-[10px] text-[14px] text-[#0f172a] w-fit min-w-[280px]">
               <div className="font-medium">Asset ID:</div>
@@ -147,7 +146,6 @@ export function InitiateRepairDialog({
         {/* ============ FORM SECTION ============ */}
         <div className="flex flex-col gap-6 w-full">
           
-          {/* Vendor */}
           <div className="flex flex-col gap-3">
             <Label htmlFor="vendor" className="text-[14px] font-medium text-[#0f172a] flex items-baseline gap-1">
               Vendor <span className="text-[#ef4444]">*</span>
@@ -159,7 +157,6 @@ export function InitiateRepairDialog({
                 setErrors({ ...errors, vendorId: undefined });
               }}
             >
-              {/* 36px height to match Figma input styling */}
               <SelectTrigger id="vendor" className={`h-[36px] text-[14px] px-3 border-[#e2e8f0] bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg ${errors.vendorId ? 'border-red-500' : ''}`}>
                 <SelectValue placeholder="Select a vendor" />
               </SelectTrigger>
@@ -178,7 +175,6 @@ export function InitiateRepairDialog({
             {errors.vendorId && <p className="text-sm text-red-500 mt-[-4px]">{errors.vendorId}</p>}
           </div>
 
-          {/* RMA Number */}
           <div className="flex flex-col gap-3">
             <Label htmlFor="rma-number" className="text-[14px] font-medium text-[#0f172a] flex items-baseline gap-1">
               RMA / Ticket Number: <span className="text-[#ef4444]">*</span>
@@ -198,10 +194,7 @@ export function InitiateRepairDialog({
             {errors.rmaNumber && <p className="text-sm text-red-500 mt-[-4px]">{errors.rmaNumber}</p>}
           </div>
 
-          {/* Estimated Cost & Return Date */}
           <div className="flex items-start gap-5 w-full">
-            
-            {/* Estimated Cost */}
             <div className="flex flex-col gap-3 flex-1">
               <Label htmlFor="estimated-cost" className="text-[14px] font-medium text-[#0f172a]">
                 Estimated Cost
@@ -233,7 +226,6 @@ export function InitiateRepairDialog({
               {errors.estimatedCost && <p className="text-sm text-red-500 mt-[-4px]">{errors.estimatedCost}</p>}
             </div>
 
-            {/* Expected Return Date */}
             <div className="flex flex-col gap-3 flex-1">
               <Label htmlFor="return-date" className="text-[14px] font-medium text-[#0f172a]">
                 Expected Return Date
@@ -259,6 +251,12 @@ export function InitiateRepairDialog({
             </div>
           </div>
         </div>
+
+        {submitError && (
+          <div className="rounded-md bg-red-50 p-3 w-full">
+            <p className="text-sm text-red-700">{submitError}</p>
+          </div>
+        )}
 
         {/* ============ FOOTER SECTION ============ */}
         <DialogFooter className="flex items-center gap-2 sm:justify-end w-full">

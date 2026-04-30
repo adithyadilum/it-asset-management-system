@@ -96,7 +96,9 @@ export function MaintenanceShell() {
       await loadData();
     } catch (err) {
       console.error('Failed to complete repair:', err);
-      toast.error('Failed to log completed repair.');
+      // Extract the specific error message from the server action
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      toast.error(`Failed: ${errorMessage}`);
     } finally {
       setIsCompletingRepair(false);
     }

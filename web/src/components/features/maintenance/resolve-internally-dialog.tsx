@@ -13,7 +13,6 @@ interface ResolveInternallyDialogProps {
 /**
  * Resolve Internally Confirmation Dialog
  * Displays a dialog with mandatory resolution note text area
- * US-15.2 Implementation
  */
 export function ResolveInternallyDialog({
   isOpen,
