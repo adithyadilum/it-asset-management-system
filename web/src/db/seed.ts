@@ -20,6 +20,7 @@ import {
   maintenanceTickets, // Epic 15 Import
   models,
   owners,
+  customStatuses,
   sessions,
   softwareAllocations,
   softwareLicenses,
@@ -88,6 +89,7 @@ async function seed() {
     await db.delete(softwareLicenses);
     await db.delete(systemAuditLogs);
     await db.delete(assetDisposals);
+    await db.delete(customStatuses);
     await db.delete(maintenanceTickets); // Epic 15 addition
     await db.delete(maintenanceRecords);
     await db.delete(assetAssignments);
@@ -218,6 +220,51 @@ async function seed() {
       revokedAt: Math.random() > 0.9 ? faker.date.past() : null,
     }));
     await db.insert(sessions).values(sessionData);
+
+    // -------------------------------------------------------------------------
+    // 2.x CUSTOM STATUSES (user-configurable)
+    // -------------------------------------------------------------------------
+    try {
+      console.log('Seeding Custom Statuses...');
+      const customStatusData = [
+        {
+          name: 'Quality Check',
+          color: '#f59e0b',
+          createdById: adminUser.id,
+          isActive: true,
+          createdAt: faker.date.recent(),
+        },
+        {
+          name: 'Quarantine',
+          color: '#ef4444',
+          createdById: adminUser.id,
+          isActive: true,
+          createdAt: faker.date.recent(),
+        },
+        {
+          name: 'Pending Review',
+          color: '#0ea5e9',
+          createdById: adminUser.id,
+          isActive: true,
+          createdAt: faker.date.recent(),
+        },
+        {
+          name: 'Ready for Deployment',
+          color: '#10b981',
+          createdById: adminUser.id,
+          isActive: true,
+          createdAt: faker.date.recent(),
+        },
+      ];
+
+      for (let i = 0; i < customStatusData.length; i += 5) {
+        const batch = customStatusData.slice(i, i + 5);
+        await db.insert(customStatuses).values(batch);
+      }
+    } catch (err) {
+      // Non-fatal: continue seeding other data
+      console.warn('Warning: failed to seed custom_statuses', err);
+    }
 
     // -------------------------------------------------------------------------
     // 4. LOCATIONS

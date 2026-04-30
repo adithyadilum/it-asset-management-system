@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { tiqriToast } from "@/components/shared/sonner";
+import { getCustomStatuses, createCustomStatus, deleteCustomStatus } from '@/actions/statuses';
 
 export type MasterDataTabId =
     | "locations"
@@ -30,7 +31,8 @@ export type MasterDataTabId =
     | "device-models"
     | "vendors"
     | "owners"
-    | "departments";
+    | "departments"
+    | "statuses";
 
 type PillarFilter =
     | "all"
@@ -150,6 +152,7 @@ const TAB_LABELS: Array<{ id: MasterDataTabId; label: string }> = [
     { id: "vendors", label: "Vendors" },
     { id: "owners", label: "Owners" },
     { id: "departments", label: "Departments" },
+    { id: "statuses", label: "Statuses" },
 ];
 
 const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>(
@@ -164,6 +167,7 @@ const EMPTY_SEARCH_STATE: Record<MasterDataTabId, string> = {
     vendors: "",
     owners: "",
     departments: "",
+    statuses: "",
 };
 
 const TYPE_FILTER_TAB_IDS = new Set<MasterDataTabId>([
@@ -201,6 +205,7 @@ const MASTER_DATA_EMPTY_STATE_META: Record<
     vendors: { singular: "vendor", plural: "vendors" },
     owners: { singular: "owner", plural: "owners" },
     departments: { singular: "department", plural: "departments" },
+    statuses: { singular: "status", plural: "statuses" },
 };
 
 function resolveMasterDataCode(
@@ -1073,6 +1078,12 @@ export function MasterDataManagementClient({
                             emptyState={getEmptyState("departments")}
                         />
                     </TabsContent>
+
+                    <TabsContent value="statuses" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                        <div className="flex flex-col gap-4">
+                            <StatusesManager />
+                        </div>
+                    </TabsContent>
                 </div>
             </Tabs>
 
@@ -1103,5 +1114,83 @@ export function MasterDataManagementClient({
                 cancelButtonLabel="Cancel"
             />
         </main>
+    );
+}
+
+function StatusesManager() {
+    const [statuses, setStatuses] = useState<Array<{ id: number; name: string; color: string; isActive: boolean; createdAt: string }>>([]);
+    const [name, setName] = useState("");
+    const [color, setColor] = useState("#6b7280");
+    const [, startTransition] = useTransition();
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const rows = await getCustomStatuses();
+                if (!mounted) return;
+                setStatuses(rows.map((r) => ({ ...r, createdAt: String(r.createdAt) })));
+            } catch (err) {
+                console.error(err);
+                tiqriToast.error('Failed to load statuses');
+            }
+        })();
+
+        return () => { mounted = false; };
+    }, []);
+
+    const handleCreate = useCallback(() => {
+        if (!name.trim()) {
+            tiqriToast.warning('Name is required');
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                const created = await createCustomStatus(name.trim(), color || '#6b7280');
+                setStatuses((prev) => [created as any, ...prev]);
+                setName('');
+                tiqriToast.success('Status created');
+            } catch (err: any) {
+                tiqriToast.error(err?.message ?? 'Failed to create status');
+            }
+        });
+    }, [name, color, startTransition]);
+
+    const handleDelete = useCallback((id: number) => {
+        startTransition(async () => {
+            try {
+                await deleteCustomStatus(id);
+                setStatuses((prev) => prev.filter((s) => s.id !== id));
+                tiqriToast.success('Deleted');
+            } catch (err) {
+                tiqriToast.error('Delete failed');
+            }
+        });
+    }, [startTransition]);
+
+    return (
+        <div className="flex flex-col gap-4">
+            <div className="flex gap-2 items-center">
+                <Input placeholder="Status name" value={name} onChange={(e) => setName(e.target.value)} className="w-64" />
+                <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-12 h-9 p-0" />
+                <Button onClick={handleCreate}>Create</Button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                {statuses.length === 0 && <div className="text-sm text-slate-500">No statuses found.</div>}
+                {statuses.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between gap-4 rounded-md bg-slate-50 p-2">
+                        <div className="flex items-center gap-3">
+                            <div style={{ background: s.color }} className="w-4 h-4 rounded" />
+                            <div className="text-sm text-slate-700">{s.name}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button variant="destructive" onClick={() => handleDelete(s.id)}>Delete</Button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 }
