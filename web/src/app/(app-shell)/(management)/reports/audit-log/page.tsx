@@ -1,6 +1,6 @@
 ﻿import AuditLogClient from "@/components/features/system-audit-log/audit-log-client";
 import { getAuditLogs } from "@/actions/audit-log";
-import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { getAuthenticatedUser } from "@/actions/auth";
 import { redirect } from "next/navigation";
 
 export default async function AuditLogPage() {

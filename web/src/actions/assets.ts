@@ -17,7 +17,7 @@ import {
 import {
   getAuthenticatedUser,
   canManageAssets,
-} from '@/lib/auth/get-authenticated-user';
+} from '@/actions/auth';
 import { logAuditAction } from '@/lib/audit';
 import {
   getAssetDetailsById,

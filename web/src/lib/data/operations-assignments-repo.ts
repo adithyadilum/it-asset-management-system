@@ -351,13 +351,9 @@ export async function assignSingleAsset(
 
   await validateAssetsForAssignment([normalizedAssetId]);
 
-  // Sequential writes with best-effort rollback (Neon HTTP has no transaction support)
-  let updatedAsset: { id: string; assetTag: string; previousStatus: string } | null = null;
-  let insertedAssignmentId: number | null = null;
-
-  try {
+  return await db.transaction(async (tx) => {
     // Step 1: Update asset status
-    const [asset] = await db
+    const [asset] = await tx
       .update(assets)
       .set({
         status: 'Assigned',
@@ -374,10 +370,8 @@ export async function assignSingleAsset(
       );
     }
 
-    updatedAsset = asset;
-
     // Step 2: Create assignment record
-    const [assignment] = await db
+    const [assignment] = await tx
       .insert(assetAssignments)
       .values({
         assetId: normalizedAssetId,
@@ -397,10 +391,8 @@ export async function assignSingleAsset(
       );
     }
 
-    insertedAssignmentId = assignment.id;
-
     // Step 3: Create audit log
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       entityType: 'Asset',
       entityId: normalizedAssetId,
       actionType: 'ASSIGN',
@@ -418,39 +410,10 @@ export async function assignSingleAsset(
     });
 
     return {
-      assignedAssetIds: [updatedAsset.id],
+      assignedAssetIds: [asset.id],
       assignedCount: 1,
     };
-  } catch (error) {
-    // Rollback: Delete assignment if it was created
-    if (insertedAssignmentId !== null) {
-      try {
-        await db
-          .delete(assetAssignments)
-          .where(eq(assetAssignments.id, insertedAssignmentId));
-      } catch {
-        // Best-effort cleanup, ignore errors
-      }
-    }
-
-    // Rollback: Revert asset status if it was updated
-    if (updatedAsset) {
-      try {
-        await db
-          .update(assets)
-          .set({
-            status: 'Available',
-            updatedAt: new Date(),
-          })
-          .where(eq(assets.id, normalizedAssetId));
-      } catch {
-        // Best-effort cleanup, ignore errors
-      }
-    }
-
-    // Re-throw the original error
-    throw error;
-  }
+  });
 }
 
 export async function assignMultipleAssets(
@@ -473,13 +436,9 @@ export async function assignMultipleAssets(
 
   await validateAssetsForAssignment(normalizedAssetIds);
 
-  // Sequential writes with best-effort rollback (Neon HTTP has no transaction support)
-  let updatedAssets: Array<{ id: string }> = [];
-  let insertedAssignmentIds: number[] = [];
-
-  try {
+  return await db.transaction(async (tx) => {
     // Step 1: Update asset statuses
-    const updated = await db
+    const updatedAssets = await tx
       .update(assets)
       .set({
         status: 'Assigned',
@@ -493,7 +452,7 @@ export async function assignMultipleAssets(
       )
       .returning({ id: assets.id });
 
-    if (updated.length !== normalizedAssetIds.length) {
+    if (updatedAssets.length !== normalizedAssetIds.length) {
       throw new AssignmentServiceError(
         'One or more assets are no longer available.',
         409,
@@ -501,10 +460,8 @@ export async function assignMultipleAssets(
       );
     }
 
-    updatedAssets = updated;
-
     // Step 2: Create assignment records
-    const insertedAssignments = await db
+    const insertedAssignments = await tx
       .insert(assetAssignments)
       .values(
         normalizedAssetIds.map((assetId) => ({
@@ -526,10 +483,8 @@ export async function assignMultipleAssets(
       );
     }
 
-    insertedAssignmentIds = insertedAssignments.map((a) => a.id);
-
     // Step 3: Create audit logs
-    await db.insert(systemAuditLogs).values(
+    await tx.insert(systemAuditLogs).values(
       normalizedAssetIds.map((assetId) => ({
         entityType: 'Asset',
         entityId: assetId,
@@ -552,36 +507,7 @@ export async function assignMultipleAssets(
       assignedAssetIds: updatedAssets.map((a) => a.id),
       assignedCount: updatedAssets.length,
     };
-  } catch (error) {
-    // Rollback: Delete assignments if they were created
-    if (insertedAssignmentIds.length > 0) {
-      try {
-        await db
-          .delete(assetAssignments)
-          .where(inArray(assetAssignments.id, insertedAssignmentIds));
-      } catch {
-        // Best-effort cleanup, ignore errors
-      }
-    }
-
-    // Rollback: Revert asset statuses if they were updated
-    if (updatedAssets.length > 0) {
-      try {
-        await db
-          .update(assets)
-          .set({
-            status: 'Available',
-            updatedAt: new Date(),
-          })
-          .where(inArray(assets.id, updatedAssets.map((a) => a.id)));
-      } catch {
-        // Best-effort cleanup, ignore errors
-      }
-    }
-
-    // Re-throw the original error
-    throw error;
-  }
+  });
 }
 
 export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {

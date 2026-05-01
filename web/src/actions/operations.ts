@@ -9,7 +9,7 @@ import {
 import {
   canManageAssets,
   getAuthenticatedUser,
-} from '@/lib/auth/get-authenticated-user';
+} from '@/actions/auth';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 export interface OperationsAssignmentResult {

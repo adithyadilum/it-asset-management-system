@@ -7,7 +7,7 @@ import { locations } from '@/db/schema';
 import {
   canManageAssets,
   getAuthenticatedUser,
-} from '@/lib/auth/get-authenticated-user';
+} from '@/actions/auth';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 const MAX_RESULTS = 20;

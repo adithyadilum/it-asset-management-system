@@ -19,7 +19,7 @@ import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import {
   canManageAssets,
   getAuthenticatedUser,
-} from '@/lib/auth/get-authenticated-user';
+} from '@/actions/auth';
 
 export interface AuditLogFilter {
   field: string;

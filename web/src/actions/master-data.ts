@@ -18,7 +18,7 @@ import {
   users,
   vendors,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
 import { uploadFileToStorage } from '@/lib/storage';
 import { logAuditAction } from '@/lib/audit';

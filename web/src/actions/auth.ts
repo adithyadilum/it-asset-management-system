@@ -233,12 +233,18 @@ export async function logout() {
   }
 }
 
-export async function getAuthenticatedUser(): Promise<{
+export type AuthenticatedUser = {
   id: string;
   email: string;
   name: string;
   role: UserRole;
-} | null> {
+};
+
+export function canManageAssets(role: UserRole): boolean {
+  return role === 'GlobalAdmin' || role === 'ITOperator';
+}
+
+export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   const actionTimer = startLatencyTimer();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
