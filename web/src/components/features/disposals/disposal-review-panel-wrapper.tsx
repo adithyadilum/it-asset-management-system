@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 import { getDisposalReviewDetails, type DisposalReviewDetails } from '@/actions/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
@@ -10,21 +9,18 @@ import type { PendingDisposalRow } from './pending-disposals-grid';
 
 export interface DisposalReviewPanelWrapperProps {
   isOpen: boolean;
-  onCloseUrl: string; 
+  onClose: (open: boolean) => void;
   row: PendingDisposalRow | null;
 }
 
 export function DisposalReviewPanelWrapper({
   isOpen,
-  onCloseUrl,
+  onClose,
   row,
 }: DisposalReviewPanelWrapperProps) {
-  const router = useRouter();
   const [extendedData, setExtendedData] = useState<DisposalReviewDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // New state to control the Reject Modal
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +38,7 @@ export function DisposalReviewPanelWrapper({
         const data = await getDisposalReviewDetails(row.id);
         if (cancelled) return;
         setExtendedData(data);
-      } catch  {
+      } catch {
         if (cancelled) return;
         setExtendedData(null);
       } finally {
@@ -58,53 +54,45 @@ export function DisposalReviewPanelWrapper({
     };
   }, [isOpen, row]);
 
+  const handleRejectSuccess = () => {
+    setIsRejectDialogOpen(false);
+    onClose(false);
+  };
+
   return (
     <>
       <DisposalReviewPanel
         isOpen={isOpen}
-        onCloseUrl={onCloseUrl}
+        onClose={onClose}
         isLoading={isLoading}
-        
-        // Known Row Data
         assetTag={row?.assetTag ?? ''}
         model={row?.assetName ?? ''}
+        serialNumber={extendedData?.assetTag ?? '-'}
+        category={extendedData?.category ?? '-'}
+        brand={extendedData?.brand ?? '-'}
+        dateCreated={extendedData?.requestedAt ?? ''}
+        imageUrl={undefined}
         requestedBy={row?.flaggedBy ?? ''}
         dateRequested={row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''}
         reason={row?.reason ?? ''}
-
-        // Fetched Extended Data
-        serialNumber={extendedData?.assetTag ?? 'N/A'} 
-        // 👇 THESE TWO LINES CHANGED 👇
-        category={extendedData?.category ?? '-'} 
-        brand={extendedData?.brand ?? '-'} 
-        // 👆 ---------------------- 👆
-        dateCreated={extendedData?.requestedAt ?? ''} 
         justification={extendedData?.justification ?? ''}
         purchaseDate={extendedData?.purchaseDate ?? ''}
         originalCost={extendedData?.originalCost ?? undefined}
         currentBookValue={undefined}
         warrantyStatus={extendedData?.warrantyStatus === 'Expired' ? 'Expired' : extendedData?.warrantyStatus === 'Valid' ? 'Valid' : ''}
-
-        // Trigger the modal when Reject is clicked
-        onReject={() => setIsRejectModalOpen(true)}
-        
+        onReject={() => setIsRejectDialogOpen(true)}
         onApprove={() => console.log('Initiate disposal clicked')}
       />
 
-      {/* Render the modal overlay */}
       {row && (
         <RejectDisposalDialog
-          isOpen={isRejectModalOpen}
-          onOpenChange={setIsRejectModalOpen}
+          isOpen={isRejectDialogOpen}
+          onOpenChange={setIsRejectDialogOpen}
           disposalId={row.id}
           assetId={row.assetId}
           assetName={row.assetName ?? 'Unknown Device'}
           assetTag={row.assetTag}
-          onSuccess={() => {
-            setIsRejectModalOpen(false);
-            // Close the side panel and return to the main table after successful rejection
-            router.push(onCloseUrl, { scroll: false }); 
-          }}
+          onSuccess={handleRejectSuccess}
         />
       )}
     </>
