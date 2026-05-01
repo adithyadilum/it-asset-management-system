@@ -4,7 +4,9 @@ import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { RepairHistoryTicket } from '@/types/maintenance';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/date';
+import { formatMoneyByCurrency } from '@/lib/currency'; 
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface RepairHistoryGridProps {
   tickets: RepairHistoryTicket[];
@@ -20,22 +22,20 @@ export function RepairHistoryGrid({
       accessorKey: 'assetId',
       header: 'Asset ID',
       cell: ({ row }) => (
-        <span className="font-medium text-slate-900">{row.original.assetId}</span>
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{row.original.assetId}</span>
       ),
     },
     {
       accessorKey: 'vendorName',
       header: 'Vendor',
-      cell: ({ row }) => <span className="text-slate-600">{row.original.vendorName || 'Internal'}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.vendorName || 'Internal'}</span>,
     },
     {
       accessorKey: 'actualCompletionDate',
       header: 'Resolution Date',
       cell: ({ row }) => (
-        <span className="text-slate-600">
-          {row.original.actualCompletionDate
-            ? format(new Date(row.original.actualCompletionDate), 'MM/dd/yyyy')
-            : 'N/A'}
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+          {formatDate(row.original.actualCompletionDate)}
         </span>
       ),
     },
@@ -43,10 +43,8 @@ export function RepairHistoryGrid({
       accessorKey: 'actualCost',
       header: 'Final Cost',
       cell: ({ row }) => (
-        <span className="text-slate-600">
-          {row.original.actualCost
-            ? `$${parseFloat(row.original.actualCost).toFixed(0)}`
-            : 'N/A'}
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+          {formatMoneyByCurrency(row.original.actualCost, 'USD')}
         </span>
       ),
     },
@@ -54,7 +52,7 @@ export function RepairHistoryGrid({
       accessorKey: 'resolutionNotes',
       header: 'Notes',
       cell: ({ row }) => (
-        <span className="truncate max-w-xs text-slate-600">
+        <span className={`truncate max-w-xs ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
           {row.original.resolutionNotes || 'N/A'}
         </span>
       ),
@@ -67,8 +65,8 @@ export function RepairHistoryGrid({
 
   if (tickets.length === 0) {
   return (
-    <div className="flex h-32 items-center justify-center bg-slate-50">
-      <span className="text-sm text-slate-500">No repair history found</span>
+    <div className="flex h-32 items-center justify-center bg-muted/30">
+      <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>No repair history found</span>
     </div>
   );
 }

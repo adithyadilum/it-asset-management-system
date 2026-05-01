@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useReducer } from 'react';
 import { MaintenanceTabs } from '@/components/features/maintenance/maintenance-tabs';
 import { IssueReviewPanelWrapper } from '@/components/features/maintenance/issue-review-panel-wrapper';
 import { LogCompleteRepairDialog } from '@/components/features/maintenance/log-complete-repair-dialog';
@@ -9,6 +9,52 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket, CompleteRepairFormData } from '@/types/maintenance';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+
+// ... [Reducer Logic remains unchanged]
+interface UIState {
+  isPanelOpen: boolean;
+  selectedTicketId: number | null;
+  showCompleteDialog: boolean;
+  activeRepairDetails: ActiveRepairTicket | null;
+  isCompletingRepair: boolean;
+}
+
+type UIAction =
+  | { type: 'OPEN_PANEL'; payload: number }
+  | { type: 'CLOSE_PANEL' }
+  | { type: 'CLEAR_SELECTED_TICKET' }
+  | { type: 'OPEN_COMPLETE_DIALOG'; payload: ActiveRepairTicket }
+  | { type: 'CLOSE_COMPLETE_DIALOG' }
+  | { type: 'SET_COMPLETING'; payload: boolean };
+
+const initialUIState: UIState = {
+  isPanelOpen: false,
+  selectedTicketId: null,
+  showCompleteDialog: false,
+  activeRepairDetails: null,
+  isCompletingRepair: false,
+};
+
+function uiReducer(state: UIState, action: UIAction): UIState {
+  switch (action.type) {
+    case 'OPEN_PANEL':
+      return { ...state, isPanelOpen: true, selectedTicketId: action.payload };
+    case 'CLOSE_PANEL':
+      return { ...state, isPanelOpen: false };
+    case 'CLEAR_SELECTED_TICKET':
+      return { ...state, selectedTicketId: null };
+    case 'OPEN_COMPLETE_DIALOG':
+      return { ...state, showCompleteDialog: true, activeRepairDetails: action.payload };
+    case 'CLOSE_COMPLETE_DIALOG':
+      return { ...state, showCompleteDialog: false, activeRepairDetails: null };
+    case 'SET_COMPLETING':
+      return { ...state, isCompletingRepair: action.payload };
+    default:
+      return state;
+  }
+}
+// ============================================================================
 
 export function MaintenanceShell() {
   const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>([]);
@@ -16,25 +62,26 @@ export function MaintenanceShell() {
   const [repairHistoryTickets, setRepairHistoryTickets] = useState<RepairHistoryTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Pending Review (Side Card) State
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
-  
-  // Active Repairs (Modal) State
-  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
-  const [activeRepairDetails, setActiveRepairDetails] = useState<ActiveRepairTicket | null>(null);
-  const [isCompletingRepair, setIsCompletingRepair] = useState(false);
-
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const { setOpen } = useSidebar();
 
-  const loadData = useCallback(async () => {
+  const [uiState, dispatch] = useReducer(uiReducer, initialUIState);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const loadData = useCallback(async (query: string) => {
     try {
       setIsLoading(true);
       const [ticketsResult, activeResult, historyResult] = await Promise.all([
-        getPendingMaintenanceTickets(),
-        getActiveRepairTickets(),
-        getRepairHistory(1, 100, '')
+        getPendingMaintenanceTickets(query),
+        getActiveRepairTickets(query),
+        getRepairHistory(1, 100, query)
       ]);
       setPendingTickets(ticketsResult.tickets);
       setActiveRepairTickets(activeResult.tickets);
@@ -48,68 +95,63 @@ export function MaintenanceShell() {
 
   useEffect(() => {
     let isMounted = true;
-    
     const initLoad = async () => {
       if (isMounted) {
-        await loadData();
+        await loadData(debouncedSearch);
       }
     };
-    
     initLoad();
-    
     return () => {
       isMounted = false;
     };
-  }, [loadData]);
+  }, [loadData, debouncedSearch]);
 
   const handlePendingRowClick = (row: PendingReviewTicket) => {
-    setSelectedTicketId(row.id);
-    setIsPanelOpen(true);
+    dispatch({ type: 'OPEN_PANEL', payload: row.id });
     setOpen(false); 
   };
 
   const handlePanelClose = () => {
-    setIsPanelOpen(false);
-    setTimeout(() => setSelectedTicketId(null), 300); 
+    dispatch({ type: 'CLOSE_PANEL' });
+    setTimeout(() => dispatch({ type: 'CLEAR_SELECTED_TICKET' }), 300); 
     setOpen(true); 
   };
 
   const handleActiveRepairRowClick = (ticket: ActiveRepairTicket) => {
-    setActiveRepairDetails(ticket);
-    setShowCompleteDialog(true);
+    dispatch({ type: 'OPEN_COMPLETE_DIALOG', payload: ticket });
   };
 
   const handleCompleteRepair = async (formData: CompleteRepairFormData) => {
-    if (!activeRepairDetails) return;
+    if (!uiState.activeRepairDetails) return;
     try {
-      setIsCompletingRepair(true);
+      dispatch({ type: 'SET_COMPLETING', payload: true });
       await completeRepairTicket(
-        activeRepairDetails.id,
+        uiState.activeRepairDetails.id,
         formData.actualCost,
         formData.resolutionNotes,
         formData.updateStatusTo
       );
       
       toast.success('Repair logged successfully!');
-      setShowCompleteDialog(false);
-      setActiveRepairDetails(null);
-      await loadData();
+      dispatch({ type: 'CLOSE_COMPLETE_DIALOG' });
+      await loadData(debouncedSearch);
     } catch (err) {
       console.error('Failed to complete repair:', err);
-      toast.error('Failed to log completed repair.');
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      toast.error(`Failed: ${errorMessage}`);
     } finally {
-      setIsCompletingRepair(false);
+      dispatch({ type: 'SET_COMPLETING', payload: false });
     }
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full bg-slate-50 p-5 overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] w-full bg-muted/20 p-5 overflow-hidden">
       
       {/* LEFT CARD */}
-      <div className="flex flex-1 flex-col bg-white rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden min-w-0 transition-all duration-300">
+      <div className="flex flex-1 flex-col bg-card rounded-xl shadow-sm border border-border overflow-hidden min-w-0 transition-all duration-300">
         <div className="px-6 pt-6 pb-2 shrink-0">
-          <h1 className="text-2xl font-semibold text-slate-900">Maintenance & Repairs</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
+          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground mt-1`}>
             Manage asset maintenance requests, repairs, and service history
           </p>
         </div>
@@ -123,34 +165,34 @@ export function MaintenanceShell() {
           onActiveRepairRowClick={handleActiveRepairRowClick}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          selectedTicketId={selectedTicketId}
+          selectedTicketId={uiState.selectedTicketId}
         />
       </div>
 
       {/* RIGHT CARD */}
       <div 
         className={cn(
-          "shrink-0 bg-white rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.1)] overflow-hidden transition-all duration-300 ease-in-out transform",
-          isPanelOpen 
-            ? "w-[550px] xl:w-[600px] ml-5 border border-slate-200 opacity-100 translate-x-0" 
+          "shrink-0 bg-card rounded-xl shadow-sm overflow-hidden transition-all duration-300 ease-in-out transform",
+          uiState.isPanelOpen 
+            ? "w-[550px] xl:w-[600px] ml-5 border border-border opacity-100 translate-x-0" 
             : "w-0 ml-0 border-0 opacity-0 translate-x-8" 
         )}
       >
         <div className="w-[550px] xl:w-[600px] h-full flex flex-col">
           <IssueReviewPanelWrapper
-            isOpen={isPanelOpen}
+            isOpen={uiState.isPanelOpen}
             onClose={handlePanelClose}
-            ticketId={selectedTicketId}
-            onSuccess={loadData}
+            ticketId={uiState.selectedTicketId}
+            onSuccess={() => loadData(debouncedSearch)}
           />
         </div>
       </div>
 
       <LogCompleteRepairDialog
-        isOpen={showCompleteDialog}
-        onClose={() => setShowCompleteDialog(false)}
+        isOpen={uiState.showCompleteDialog}
+        onClose={() => dispatch({ type: 'CLOSE_COMPLETE_DIALOG' })}
         onConfirm={handleCompleteRepair}
-        isLoading={isCompletingRepair}
+        isLoading={uiState.isCompletingRepair}
       />
     </div>
   );
