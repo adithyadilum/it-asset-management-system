@@ -1,6 +1,12 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { AssetCard } from "@/components/shared/asset-card"
+import {
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+} from "@/components/ui/empty"
 import { HardDrive, Laptop, Monitor, Smartphone } from "lucide-react"
 
 function getAssetPresentation(modelName: string) {
@@ -56,24 +62,27 @@ export default async function DashboardPage() {
                                         name={asset.modelName}
                                         status={asset.status}
                                         icon={presentation.icon}
-                                        details={[
-                                            { label: "Asset ID", value: asset.assetTag },
-                                            { label: "Serial", value: asset.serialNumber ?? "Not available" },
-                                            {
-                                                label: "Assigned",
-                                                value: new Intl.DateTimeFormat("en-US", {
-                                                    month: "short",
-                                                    day: "numeric",
-                                                    year: "numeric",
-                                                }).format(new Date(asset.assignedDate)),
-                                            },
-                                        ]}
+                                        assetId={asset.assetTag}
+                                        assignedDate={new Intl.DateTimeFormat("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                        }).format(new Date(asset.assignedDate))}
                                     />
                                 )
                             })
                         ) : (
-                            <div className="rounded-lg border border-dashed border-border bg-muted p-4 text-sm text-muted-foreground xl:col-span-3">
-                                No active assets are currently assigned to your account.
+                            <div className="xl:col-span-3">
+                                <Empty className="min-h-52 rounded-md border-0 p-4">
+                                    <EmptyHeader className="max-w-md">
+                                        <EmptyTitle>No active assets assigned</EmptyTitle>
+                                        <EmptyDescription className="max-w-md text-balance">
+                                            We couldn&apos;t find any hardware linked to your profile.
+                                            <br />
+                                            If you&apos;re expecting a new device, please check back later or contact the IT Helpdesk.
+                                        </EmptyDescription>
+                                    </EmptyHeader>
+                                </Empty>
                             </div>
                         )}
                     </div>

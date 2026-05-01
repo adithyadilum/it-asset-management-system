@@ -197,16 +197,22 @@ export function SandboxSharedIntegrationSuiteClient({
 
                         <div className="mt-4 grid gap-4 xl:grid-cols-3">
                             {assetCards.length > 0 ? (
-                                assetCards.map((asset) => (
-                                    <AssetCard
-                                        key={`${asset.assetType}-${asset.name}-${asset.details[0]?.value ?? "asset"}`}
-                                        assetType={asset.assetType}
-                                        name={asset.name}
-                                        status={asset.status}
-                                        icon={renderAssetIcon(asset.iconKey)}
-                                        details={asset.details}
-                                    />
-                                ))
+                                assetCards.map((asset) => {
+                                    const assetId = asset.details.find(d => d.label === 'Asset ID')?.value ?? '-'
+                                    const assignedDate = asset.details.find(d => d.label === 'Assigned')?.value ?? '-'
+                                    
+                                    return (
+                                        <AssetCard
+                                            key={`${asset.assetType}-${asset.name}-${assetId}`}
+                                            assetType={asset.assetType}
+                                            name={asset.name}
+                                            status={asset.status}
+                                            icon={renderAssetIcon(asset.iconKey)}
+                                            assetId={assetId}
+                                            assignedDate={assignedDate}
+                                        />
+                                    )
+                                })
                             ) : (
                                 <div className="rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground xl:col-span-3">
                                     No active assignments were found for this employee in the database.
