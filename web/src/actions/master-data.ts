@@ -12,13 +12,13 @@ import {
   categories,
   departments,
   locations,
-  maintenanceRecords,
+  maintenanceTickets,
   models,
   owners,
   users,
   vendors,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
 import { uploadFileToStorage } from '@/lib/storage';
 import { logAuditAction } from '@/lib/audit';
@@ -248,12 +248,21 @@ async function countVendorPurchaseReferences(
 async function countVendorMaintenanceReferences(
   recordIds: number[]
 ): Promise<number> {
+  const vendorsList = await db
+    .select({ companyName: vendors.companyName })
+    .from(vendors)
+    .where(inArray(vendors.id, recordIds));
+
+  const companyNames = vendorsList.map(v => v.companyName).filter(Boolean);
+
+  if (companyNames.length === 0) return 0;
+
   const linked = await db
     .select({
-      count: sql<number>`coalesce(count(${maintenanceRecords.id}), 0)::int`,
+      count: sql<number>`coalesce(count(${maintenanceTickets.id}), 0)::int`,
     })
-    .from(maintenanceRecords)
-    .where(inArray(maintenanceRecords.vendorId, recordIds));
+    .from(maintenanceTickets)
+    .where(inArray(maintenanceTickets.vendorName, companyNames));
 
   return linked[0]?.count ?? 0;
 }

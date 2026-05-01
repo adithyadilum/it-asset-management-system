@@ -52,13 +52,7 @@ export const conditionEnum = pgEnum('asset_condition', [
   'Poor',
   'Damaged',
 ]);
-export const maintenanceStatusEnum = pgEnum('maintenance_status', [
-  'Open',
-  'In Progress',
-  'Pending Parts',
-  'Resolved',
-  'Cancelled',
-]);
+
 
 // Epic 15: Maintenance Tickets Enums
 export const maintenanceTicketStatusEnum = pgEnum('maintenance_ticket_status', [
@@ -320,29 +314,13 @@ export const assetAssignments = pgTable('asset_assignments', {
 
   returnCondition: conditionEnum('return_condition'),
   notes: text('notes'),
+
+  acceptanceStatus: varchar('acceptance_status', { length: 50 }),
+  acceptedAt: timestamp('accepted_at'),
+  returnRequestedAt: timestamp('return_requested_at'),
 });
 
-export const maintenanceRecords = pgTable('maintenance_records', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),
-  vendorId: integer('vendor_id').references(() => vendors.id),
-  reportedById: uuid('reported_by_id')
-    .notNull()
-    .references(() => users.id),
 
-  status: maintenanceStatusEnum('status').default('Open').notNull(),
-  description: text('description').notNull(),
-  rmaTicketNumber: varchar('rma_ticket_number', { length: 100 }),
-
-  estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
-  actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
-  serviceDate: date('service_date'),
-  closedAt: timestamp('closed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
 
 // Epic 15: New Maintenance Tickets System
 export const maintenanceTickets = pgTable('maintenance_tickets', {
@@ -490,7 +468,6 @@ export const assetRelations = relations(assets, ({ one, many }) => ({
   }),
   purchases: many(assetPurchases),
   assignments: many(assetAssignments),
-  maintenance: many(maintenanceRecords),
   maintenanceTickets: many(maintenanceTickets), // Added Epic 15 relation
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
@@ -519,23 +496,7 @@ export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
   }),
 }));
 
-export const maintenanceRecordsRelations = relations(
-  maintenanceRecords,
-  ({ one }) => ({
-    asset: one(assets, {
-      fields: [maintenanceRecords.assetId],
-      references: [assets.id],
-    }),
-    vendor: one(vendors, {
-      fields: [maintenanceRecords.vendorId],
-      references: [vendors.id],
-    }),
-    reporter: one(users, {
-      fields: [maintenanceRecords.reportedById],
-      references: [users.id],
-    }),
-  })
-);
+
 
 export const maintenanceTicketsRelations = relations(
   maintenanceTickets,

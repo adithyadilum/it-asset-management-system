@@ -92,7 +92,6 @@ function getLoginRedirectResponse(request: NextRequest) {
   loginUrl.searchParams.set('redirectTo', requestedPath);
   return NextResponse.redirect(loginUrl);
 }
-
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
