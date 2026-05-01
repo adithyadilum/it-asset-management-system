@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 
+// Import our new unified dialogs
+import { ExecuteDisposalDialog } from './execute-disposal-dialog';
+import { RejectDisposalDialog } from './reject-disposal-dialog';
 
 export interface PendingDisposalRow {
   id: number;
@@ -55,6 +58,11 @@ export function PendingDisposalsGrid({
   onRowClick,
 }: PendingDisposalsGridProps) {
   const [searchValue, setSearchValue] = useState('');
+  
+  // New states for bulk actions and selection
+  const [rowSelection, setRowSelection] = useState({});
+  const [isBulkExecuteModalOpen, setIsBulkExecuteModalOpen] = useState(false);
+  const [isBulkRejectModalOpen, setIsBulkRejectModalOpen] = useState(false);
 
   const filteredData = useMemo(() => {
     if (!searchValue.trim()) return initialData;
@@ -68,6 +76,11 @@ export function PendingDisposalsGrid({
         row.reason.toLowerCase().includes(lowerQuery)
     );
   }, [initialData, searchValue]);
+
+  // Derive the actual selected row objects based on the rowSelection state
+  const selectedRows = useMemo(() => {
+    return filteredData.filter((_, index) => (rowSelection as Record<number, boolean>)[index]);
+  }, [rowSelection, filteredData]);
 
   const columns = useMemo<ColumnDef<PendingDisposalRow>[]>(
     () => [
@@ -113,7 +126,7 @@ export function PendingDisposalsGrid({
           return (
             <StatusBadge
               value={status} 
-              label={`${days} ${days === 1 ? 'Day' : 'Days'}`} //Overrides the text to show the actual days
+              label={`${days} ${days === 1 ? 'Day' : 'Days'}`} 
             />
           );
         },
@@ -124,15 +137,17 @@ export function PendingDisposalsGrid({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-4">
-      {/* Search Input */}
-      <div className="relative w-full max-w-xs">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <Input
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          placeholder="Search assets..."
-          className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm text-slate-900 placeholder:text-slate-500"
-        />
+      {/* Toolbar (Search Only) */}
+      <div className="flex items-center justify-between w-full">
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="Search assets..."
+            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm text-slate-900 placeholder:text-slate-500"
+          />
+        </div>
       </div>
 
       {/* Data Table Container */}
@@ -142,6 +157,33 @@ export function PendingDisposalsGrid({
           data={filteredData}
           initialPageSize={10}
           pageSizeOptions={[10, 20, 50]}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          
+          selectionLabel={(count) => `${count} Assets Selected`}
+          
+          selectionActions={[
+            
+            {
+              id: 'cancel',
+              label: 'Cancel',
+              tone: 'secondary',
+              onClick: () => setRowSelection({}), // Immediately clears all checkboxes!
+            },
+            {
+              id: 'reject',
+              label: 'Reject Selected',
+              tone: 'secondary', 
+              onClick: () => setIsBulkRejectModalOpen(true),
+            },
+            {
+              id: 'dispose',
+              label: 'Dispose Selected',
+              tone: 'destructive', 
+              onClick: () => setIsBulkExecuteModalOpen(true),
+            },
+          ]}
+
           onRowClick={(
             row: { original?: PendingDisposalRow } | PendingDisposalRow
           ) => {
@@ -157,6 +199,27 @@ export function PendingDisposalsGrid({
           }}
         />
       </div>
+
+      {/* Render our new Unified Dialogs */}
+      <RejectDisposalDialog
+        isOpen={isBulkRejectModalOpen}
+        onOpenChange={setIsBulkRejectModalOpen}
+        selectedAssets={selectedRows}
+        onSuccess={() => {
+          setIsBulkRejectModalOpen(false);
+          setRowSelection({}); // Clear checkboxes after success
+        }}
+      />
+
+      <ExecuteDisposalDialog
+        isOpen={isBulkExecuteModalOpen}
+        onOpenChange={setIsBulkExecuteModalOpen}
+        selectedAssets={selectedRows}
+        onSuccess={() => {
+          setIsBulkExecuteModalOpen(false);
+          setRowSelection({}); // Clear checkboxes after success
+        }}
+      />
     </div>
   );
 }

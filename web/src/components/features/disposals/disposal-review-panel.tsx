@@ -157,6 +157,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
           <DetailRow label="Brand" value={props.brand} />
           <DetailRow label="Serial Number" value={props.serialNumber} />
           <DetailRow label="Date Created" value={formatDateString(props.dateCreated)} />
+          
         </div>
       </div>
 

@@ -67,6 +67,10 @@ type DataTableProps<TData, TValue> = {
   paginationState?: PaginationState
   onPaginationChange?: OnChangeFn<PaginationState>
   footerText?: React.ReactNode
+  
+  // 1. ADDED THESE TWO OPTIONAL PROPS
+  rowSelection?: RowSelectionState
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>
 }
 
 export function DataTable<TData, TValue>({
@@ -90,6 +94,10 @@ export function DataTable<TData, TValue>({
   paginationState,
   onPaginationChange,
   footerText,
+  
+  // 2. DESTRUCTURED THEM HERE
+  rowSelection: externalRowSelection,
+  onRowSelectionChange: externalOnRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -138,7 +146,12 @@ export function DataTable<TData, TValue>({
   }, [initialPageSize, pageSizeOptions])
 
   const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+  
+  // 3. UPDATED THIS TO USE EXTERNAL STATE IF PROVIDED (matches pagination logic)
+  const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>({})
+  const rowSelection = externalRowSelection ?? internalRowSelection
+  const setRowSelection = externalOnRowSelectionChange ?? setInternalRowSelection
+
   const [internalPagination, setInternalPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: initialPageSize,
@@ -149,7 +162,7 @@ export function DataTable<TData, TValue>({
 
   React.useEffect(() => {
     setRowSelection({})
-  }, [selectionResetSignal])
+  }, [selectionResetSignal, setRowSelection])
 
   const selectionColumn = React.useMemo<ColumnDef<TData, unknown>>(
     () => ({

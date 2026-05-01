@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-import { getDisposalReviewDetails, type DisposalReviewDetails } from '@/actions/disposals';
+import {
+  getDisposalReviewDetails,
+  type DisposalReviewDetails,
+} from '@/actions/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
-// 1. Import the new Execute dialog
-import { ExecuteDisposalDialog } from './execute-disposal-dialog'; 
+import { ExecuteDisposalDialog } from './execute-disposal-dialog';
 import type { PendingDisposalRow } from './pending-disposals-grid';
 
 export interface DisposalReviewPanelWrapperProps {
@@ -20,12 +22,13 @@ export function DisposalReviewPanelWrapper({
   onClose,
   row,
 }: DisposalReviewPanelWrapperProps) {
-  const [extendedData, setExtendedData] = useState<DisposalReviewDetails | null>(null);
+  const [extendedData, setExtendedData] =
+    useState<DisposalReviewDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // State for both dialogs
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [isExecuteDialogOpen, setIsExecuteDialogOpen] = useState(false); // 2. Add Execute state
+  const [isExecuteDialogOpen, setIsExecuteDialogOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +67,6 @@ export function DisposalReviewPanelWrapper({
     onClose(false);
   };
 
-  // 3. Add success handler for execution
   const handleExecuteSuccess = () => {
     setIsExecuteDialogOpen(false);
     onClose(false);
@@ -73,6 +75,7 @@ export function DisposalReviewPanelWrapper({
   return (
     <>
       <DisposalReviewPanel
+        key={row ? row.id : 'empty-panel'}
         isOpen={isOpen}
         onClose={onClose}
         isLoading={isLoading}
@@ -81,41 +84,44 @@ export function DisposalReviewPanelWrapper({
         serialNumber={extendedData?.assetTag ?? '-'}
         category={extendedData?.category ?? '-'}
         brand={extendedData?.brand ?? '-'}
-        dateCreated={extendedData?.requestedAt ?? ''}
         imageUrl={undefined}
         requestedBy={row?.flaggedBy ?? ''}
-        dateRequested={row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''}
+        dateRequested={
+          row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''
+        }
         reason={row?.reason ?? ''}
         justification={extendedData?.justification ?? ''}
         purchaseDate={extendedData?.purchaseDate ?? ''}
         originalCost={extendedData?.originalCost ?? undefined}
         currentBookValue={undefined}
-        warrantyStatus={extendedData?.warrantyStatus === 'Expired' ? 'Expired' : extendedData?.warrantyStatus === 'Valid' ? 'Valid' : ''}
-        
+        warrantyStatus={
+          extendedData?.warrantyStatus === 'Expired'
+            ? 'Expired'
+            : extendedData?.warrantyStatus === 'Valid'
+              ? 'Valid'
+              : ''
+        }
+        dateCreated={extendedData?.dateCreated ?? ''}
         onReject={() => setIsRejectDialogOpen(true)}
-        onApprove={() => setIsExecuteDialogOpen(true)} // 4. Wire the approve action to open the dialog
+        onApprove={() => setIsExecuteDialogOpen(true)}
       />
 
       {row && (
         <>
+          {/* Unified Reject Dialog - Passed as an array of 1 */}
           <RejectDisposalDialog
             isOpen={isRejectDialogOpen}
             onOpenChange={setIsRejectDialogOpen}
-            disposalId={row.id}
-            assetId={row.assetId}
-            assetName={row.assetName ?? 'Unknown Device'}
-            assetTag={row.assetTag}
+            selectedAssets={[row]}
             onSuccess={handleRejectSuccess}
           />
 
-          {/* 5. Render the Execute Dialog */}
+          {/* Unified Execute Dialog - Passed as an array of 1 */}
           <ExecuteDisposalDialog
             isOpen={isExecuteDialogOpen}
             onOpenChange={setIsExecuteDialogOpen}
-            disposalId={row.id}
-            assetId={row.assetId}
-            assetName={row.assetName ?? 'Unknown Device'}
-            assetTag={row.assetTag}
+            selectedAssets={[row]}
+            singleCategory={extendedData?.category ?? ''}
             onSuccess={handleExecuteSuccess}
           />
         </>
