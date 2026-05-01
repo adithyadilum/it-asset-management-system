@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AssignmentsPanels } from "./assignments-panels";
@@ -13,10 +13,11 @@ import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  DataTable, 
+import {
+  DataTable,
   type DataTableSelectionAction,
 } from "@/components/shared/data-table";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import {
   Popover,
   PopoverAnchor,
@@ -75,6 +76,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const [appliedCategoryFilter, setAppliedCategoryFilter] = useState<CategoryFilter | null>(null);
   const [draftOperator, setDraftOperator] = useState<CategoryFilterOperator>("is");
   const [draftCategory, setDraftCategory] = useState("");
+  const [searchValue, setSearchValue] = useState("");
 
   // 1. Panel State from URL (following the Registry Pattern)
   const activeAssetId = searchParams.get("id") || "";
@@ -132,16 +134,37 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     return [...categories].sort((left, right) => left.localeCompare(right));
   }, [assetRows]);
 
-  const filteredAssetRows = useMemo(() => {
-    if (!appliedCategoryFilter) {
+  const searchedAssetRows = useMemo(() => {
+    const query = searchValue.trim().toLowerCase();
+
+    if (!query) {
       return assetRows;
     }
 
     return assetRows.filter((row) => {
+      return [
+        row.assetTag,
+        row.assetName,
+        row.serialNumber,
+        row.category,
+        row.status,
+        row.group,
+        row.assignedTo,
+        row.note,
+      ].some((field) => field.toLowerCase().includes(query));
+    });
+  }, [assetRows, searchValue]);
+
+  const filteredAssetRows = useMemo(() => {
+    if (!appliedCategoryFilter) {
+      return searchedAssetRows;
+    }
+
+    return searchedAssetRows.filter((row) => {
       const matches = row.category === appliedCategoryFilter.value;
       return appliedCategoryFilter.operator === "is" ? matches : !matches;
     });
-  }, [assetRows, appliedCategoryFilter]);
+  }, [searchedAssetRows, appliedCategoryFilter]);
 
   const filteredAvailableRows = useMemo(
     () => filteredAssetRows.filter((row) => availableRows.some((availableRow) => availableRow.assetId === row.assetId)),
@@ -167,7 +190,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     setDraftOperator("is");
     setDraftCategory("");
   };
-  
+
   const selectedAsset = useMemo(
     () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
     [assetRows, activeAssetId]
@@ -253,41 +276,16 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     actions?: DataTableSelectionAction<AssetAssignmentRow>[]
   ) => (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-[320px]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-full max-w-136.25">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             type="search"
             placeholder="Search assets..."
-            className="h-8 rounded-lg border-slate-200 bg-white pl-8 text-sm focus-visible:ring-[#00145a]"
+            value={searchValue}
+            onChange={(event) => setSearchValue(event.target.value)}
+            className="h-9 pl-9"
           />
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-
-      {appliedCategoryFilter ? (
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700">
-              {categoryFilterLabel}
-              <button
-                type="button"
-                className="text-slate-500 hover:text-slate-700"
-                onClick={clearCategoryFilter}
-              >
-                ×
-              </button>
-            </span>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
-            onClick={clearCategoryFilter}
-          >
-            Clear Filters
-          </Button>
-        </div>
-      ) : null}
         </div>
         <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
           <PopoverAnchor asChild>
@@ -295,10 +293,11 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 border-slate-200 text-slate-700 hover:bg-slate-50"
+              className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
               onClick={() => setIsFilterPopoverOpen((currentOpen) => !currentOpen)}
             >
-              Filters <ChevronDown className="ml-1 size-4" />
+              Filters
+              <ChevronDown className="size-4" />
             </Button>
           </PopoverAnchor>
           <PopoverContent
@@ -315,7 +314,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
                   className="text-slate-400 hover:text-slate-600"
                   onClick={() => setIsFilterPopoverOpen(false)}
                 >
-                  ×
+                  <X className="size-4" />
                 </button>
               </div>
             </div>
@@ -388,6 +387,33 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         </Popover>
       </div>
 
+      {appliedCategoryFilter ? (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700">
+              {categoryFilterLabel}
+              <button
+                type="button"
+                className="text-slate-500 hover:text-slate-700"
+                onClick={clearCategoryFilter}
+              >
+                <X className="size-4" />
+              </button>
+            </span>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
+            onClick={clearCategoryFilter}
+          >
+            Clear Filters
+          </Button>
+        </div>
+      ) : null}
+
       <DataTable<AssetAssignmentRow, unknown>
         columns={columns}
         data={rows}
@@ -401,30 +427,30 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   );
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-slate-50">
-      <div className="min-h-0 flex-1 overflow-auto p-3 md:p-4">
-        <div className="flex h-full min-h-0 w-full flex-col rounded-xl border border-slate-200 bg-white p-3">
-          <h1 className="mb-4 shrink-0 text-[32px] font-semibold leading-10 text-slate-900">
-            Asset Assignments and Returns
+    <div className="flex h-full w-full overflow-hidden">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+        <div className="mb-4 shrink-0">
+          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+            Assignments and Returns
           </h1>
-
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <ModuleNavigationTabs tabs={tabs} defaultTab="available-assets">
-              <TabsContent value="available-assets" className="mt-0 focus-visible:outline-none">
-                {renderTable(filteredAvailableRows, selectionActions)}
-              </TabsContent>
-
-              <TabsContent value="assigned-assets" className="mt-0 focus-visible:outline-none">
-                {renderTable(filteredAssignedRows)}
-              </TabsContent>
-
-              <TabsContent value="returned-assets" className="mt-0 focus-visible:outline-none">
-                {renderTable(filteredReturnedRows)}
-              </TabsContent>
-            </ModuleNavigationTabs>
-          </div>
         </div>
-      </div>
+
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ModuleNavigationTabs tabs={tabs} defaultTab="available-assets">
+            <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredAvailableRows, selectionActions)}
+            </TabsContent>
+
+            <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredAssignedRows)}
+            </TabsContent>
+
+            <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredReturnedRows)}
+            </TabsContent>
+          </ModuleNavigationTabs>
+        </div>
+      </main>
 
       <AssignmentsPanels
         isOpen={isPanelOpen}

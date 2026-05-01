@@ -12,10 +12,8 @@ import {
   type BulkAssetUpdatePayload,
   type RegistryPillar,
 } from '@/lib/data/asset-registry-repo';
-import {
-  getAuthenticatedUser,
-  canManageAssets,
-} from '@/actions/auth';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/auth/uuid';
 

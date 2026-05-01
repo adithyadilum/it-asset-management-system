@@ -16,7 +16,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'cdn.example.com',
+        hostname: 'example.com',
         port: '',
         pathname: '/**', // This allows all folders (like /models, /invoices)
       },

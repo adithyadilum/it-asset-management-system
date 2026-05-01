@@ -240,10 +240,6 @@ export type AuthenticatedUser = {
   role: UserRole;
 };
 
-export function canManageAssets(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'ITOperator';
-}
-
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   const actionTimer = startLatencyTimer();
   const cookieStore = await cookies();

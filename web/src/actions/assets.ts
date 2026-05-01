@@ -14,10 +14,8 @@ import {
   owners,
   vendors,
 } from '@/db/schema';
-import {
-  getAuthenticatedUser,
-  canManageAssets,
-} from '@/actions/auth';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { canManageAssets } from '@/lib/auth/roles';
 import { logAuditAction } from '@/lib/audit';
 import {
   getAssetDetailsById,

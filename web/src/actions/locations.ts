@@ -4,10 +4,8 @@ import { and, asc, eq, ilike } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { locations } from '@/db/schema';
-import {
-  canManageAssets,
-  getAuthenticatedUser,
-} from '@/actions/auth';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 const MAX_RESULTS = 20;
