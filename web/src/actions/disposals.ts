@@ -6,8 +6,11 @@ import { revalidatePath } from 'next/cache';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 // 1. Updated imports to include models, categories, and brands
-import { assetDisposals, assetPurchases, assets, users, models, categories, brands } from '@/db/schema';
+import { assetDisposals, assetPurchases, assets, users, models, categories, brands, systemAuditLogs } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
+
+// Import your Zod validations
+import { executeDisposalSchema, rejectDisposalSchema } from '@/lib/validations/disposals';
 
 function assertAllowed(role: string, allowed: string[]) {
   if (!allowed.includes(role)) {
@@ -141,15 +144,6 @@ export async function getDisposalReviewDetails(disposalId: number) {
   }
 }
 
-/**
- * Called from Asset Registry bulk "Dispose" action.
- * Creates Pending Approval disposal requests and marks assets as Pending Disposal.
- * requestedById is always derived from the authenticated user (no manual input).
- *
- * NOTE: Neon HTTP driver doesn't support transactions, so this is a 2-step operation:
- * 1) Insert disposal requests (for assets without an existing pending request)
- * 2) Update the corresponding assets' statuses to "Pending Disposal"
- */
 export async function createBulkDisposalRequests(input: {
   assetIds: string[];
   reason: string;
@@ -171,7 +165,7 @@ export async function createBulkDisposalRequests(input: {
   if (!reason) throw new Error('Reason is required.');
 
   try {
-    // STEP 1: Check for existing Pending Approval requests (dedupe)
+    //Check for existing Pending Approval requests (dedupe)
     const checkTimer = startLatencyTimer();
 
     const existing = await db
@@ -198,7 +192,7 @@ export async function createBulkDisposalRequests(input: {
       throw new Error('All selected assets already have a pending disposal request.');
     }
 
-    // STEP 2: Insert disposal request rows
+    // Insert disposal request rows
     const insertTimer = startLatencyTimer();
 
     await db.insert(assetDisposals).values(
@@ -217,7 +211,7 @@ export async function createBulkDisposalRequests(input: {
       metadata: { inserted: toInsert.length },
     });
 
-    // STEP 3: Verify
+    // Verify
     const verifyTimer = startLatencyTimer();
 
     const insertedOrExistingPending = await db
@@ -244,7 +238,7 @@ export async function createBulkDisposalRequests(input: {
       },
     });
 
-    // STEP 4: Update assets.status -> Pending Disposal
+    // Update assets.status -> Pending Disposal
     if (assetIdsToMarkPendingDisposal.length > 0) {
       const updateTimer = startLatencyTimer();
 
@@ -292,21 +286,33 @@ export async function rejectDisposalRequest(
   fallbackStatus: string
 ) {
   const actionTimer = startLatencyTimer();
+  
+  // Validate input data against Zod schema
+  const validatedFields = rejectDisposalSchema.safeParse({
+    disposalId,
+    assetId,
+    rejectionReason,
+    fallbackStatus,
+  });
+
+  if (!validatedFields.success) {
+    throw new Error(validatedFields.error.issues[0].message);
+  }
+
+  const { 
+    rejectionReason: normalizedReason, 
+    fallbackStatus: validStatus 
+  } = validatedFields.data;
+
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
   assertAllowed(user.role, ['GlobalAdmin']);
 
-  const normalizedReason = rejectionReason?.trim() || '';
-
-  if (normalizedReason.length < 10) {
-    throw new Error('Rejection reason must be at least 10 characters long.');
-  }
-
   try {
     const dbTimer = startLatencyTimer();
     
-    // 1. Update the disposal request to Rejected, attach reason and resolver
+    // Update the disposal request to Rejected, attach reason and resolver
     await db
       .update(assetDisposals)
       .set({
@@ -317,11 +323,11 @@ export async function rejectDisposalRequest(
       } ) 
       .where(eq(assetDisposals.id, disposalId));
 
-    // 2. Revert the Asset's status to the selected fallback status (e.g., 'Available', 'In Use')
+    // Revert the Asset's status to the selected fallback status
     await db
       .update(assets)
       .set({
-        status: fallbackStatus as "Available" | "In Repair" , 
+        status: validStatus, 
       })
       .where(eq(assets.id, assetId));
 
@@ -342,5 +348,123 @@ export async function rejectDisposalRequest(
     return { success: true as const };
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.reject', startTime: actionTimer });
+  }
+}
+
+export async function uploadDisposalReceipt(formData: FormData) {
+  const actionTimer = startLatencyTimer();
+  const user = await getAuthenticatedUser();
+
+  if (!user) throw new Error('UNAUTHENTICATED');
+  assertAllowed(user.role, ['GlobalAdmin']); // Execution is strictly Global Admin
+
+  try {
+    const file = formData.get('file') as File | null;
+    if (!file) throw new Error('No file provided in the payload.');
+
+    // Validate file types according to US-18.2
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error('Invalid file type. Only .pdf, .jpg, and .png are allowed.');
+    }
+
+    // Enforce a 5MB size limit
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('File exceeds the 5MB upload limit.');
+    }
+
+    const storageTimer = startLatencyTimer();
+
+    // Mock URL for current development (Replace with S3/Blob storage logic later)
+    const mockFileUrl = `https://storage.tiqri.local/disposals/${Date.now()}-${file.name}`;
+
+    logLatency({ scope: 'STORAGE', label: 'disposals.uploadReceipt', startTime: storageTimer });
+
+    return { success: true, fileUrl: mockFileUrl };
+  } finally {
+    logLatency({ scope: 'ACTION', label: 'disposals.uploadReceipt', startTime: actionTimer });
+  }
+}
+
+export async function executeAssetDisposal(payload: {
+  disposalId: number;
+  assetId: string;
+  disposalMethod: 'Sold' | 'Stolen' | 'E-waste' | 'Donated';
+  dataWiped: boolean;
+  tagsRemoved: boolean;
+  receiptUrl: string;
+}) {
+  const actionTimer = startLatencyTimer();
+  
+  // Validate input payload against Zod schema
+  const validatedFields = executeDisposalSchema.safeParse(payload);
+
+  if (!validatedFields.success) {
+    throw new Error(validatedFields.error.issues[0].message);
+  }
+
+  const validData = validatedFields.data;
+  const user = await getAuthenticatedUser();
+
+  if (!user) throw new Error('UNAUTHENTICATED');
+  assertAllowed(user.role, ['GlobalAdmin']);
+
+  try {
+    const dbTimer = startLatencyTimer();
+    
+    // 1. Update the Disposal Record with compliance details
+    await db
+      .update(assetDisposals)
+      .set({
+        status: 'Completed',
+        approvedById: user.id,
+        resolvedAt: new Date(),
+        disposalMethod: validData.disposalMethod,
+        dataWiped: validData.dataWiped,
+        tagsRemoved: validData.tagsRemoved,
+        disposalReceiptUrl: validData.receiptUrl,
+      })
+      .where(eq(assetDisposals.id, validData.disposalId));
+
+    // 2. Move the actual Asset to its terminal state
+    await db
+      .update(assets)
+      .set({ status: 'Disposed' })
+      .where(eq(assets.id, validData.assetId));
+
+    // 3. Write to System Audit Log (Immutable ledger)
+    await db.insert(systemAuditLogs).values({
+      entityType: 'Asset',
+      entityId: validData.assetId,
+      actionType: 'Asset Disposed',
+      performedById: user.id,
+      newValue: { 
+        method: validData.disposalMethod, 
+        receipt: validData.receiptUrl,
+        wiped: validData.dataWiped,
+        untagged: validData.tagsRemoved
+      },
+    });
+
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'disposals.executeAssetDisposal',
+      startTime: dbTimer,
+    });
+
+    // 4. Revalidate cache to update UI instantly
+    revalidatePath('/operations/disposals');
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/assets/software');
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Execution failed:', error);
+    throw new Error('Failed to execute disposal in the database.');
+  } finally {
+    logLatency({ scope: 'ACTION', label: 'disposals.executeAssetDisposal', startTime: actionTimer });
   }
 }
