@@ -1,6 +1,6 @@
 {
-  "id": "07d3c588-b82a-4c85-8bfd-6392c432ebef",
-  "prevId": "f73d2e2e-ca0b-459f-8a25-ab87414aae45",
+  "id": "e7687a94-a740-4e3e-a481-3e2c751f0cb0",
+  "prevId": "07d3c588-b82a-4c85-8bfd-6392c432ebef",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -415,20 +415,6 @@
           "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {},
@@ -507,12 +493,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status": {
           "name": "status",
           "type": "asset_status",
@@ -561,53 +541,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "assets_model_id_idx": {
-          "name": "assets_model_id_idx",
-          "columns": [
-            {
-              "expression": "model_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assets_location_id_idx": {
-          "name": "assets_location_id_idx",
-          "columns": [
-            {
-              "expression": "location_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assets_owner_id_idx": {
-          "name": "assets_owner_id_idx",
-          "columns": [
-            {
-              "expression": "owner_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "assets_model_id_models_id_fk": {
           "name": "assets_model_id_models_id_fk",
@@ -628,19 +562,6 @@
           "tableTo": "locations",
           "columnsFrom": [
             "location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "assets_owner_id_owners_id_fk": {
-          "name": "assets_owner_id_owners_id_fk",
-          "tableFrom": "assets",
-          "tableTo": "owners",
-          "columnsFrom": [
-            "owner_id"
           ],
           "columnsTo": [
             "id"
@@ -673,19 +594,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "brand_code": {
-          "name": "brand_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "name": {
           "name": "name",
           "type": "varchar(255)",
@@ -704,20 +612,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "brands_uuid_unique": {
-          "name": "brands_uuid_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "uuid"
-          ]
-        },
-        "brands_brand_code_unique": {
-          "name": "brands_brand_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "brand_code"
-          ]
-        },
         "brands_name_unique": {
           "name": "brands_name_unique",
           "nullsNotDistinct": false,
@@ -739,19 +633,6 @@
           "type": "serial",
           "primaryKey": true,
           "notNull": true
-        },
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "category_code": {
-          "name": "category_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
         },
         "name": {
           "name": "name",
@@ -804,20 +685,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "categories_uuid_unique": {
-          "name": "categories_uuid_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "uuid"
-          ]
-        },
-        "categories_category_code_unique": {
-          "name": "categories_category_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "category_code"
-          ]
-        },
         "categories_prefix_unique": {
           "name": "categories_prefix_unique",
           "nullsNotDistinct": false,
@@ -847,19 +714,6 @@
           "type": "serial",
           "primaryKey": true,
           "notNull": true
-        },
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "department_code": {
-          "name": "department_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
         },
         "name": {
           "name": "name",
@@ -891,20 +745,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "departments_uuid_unique": {
-          "name": "departments_uuid_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "uuid"
-          ]
-        },
-        "departments_department_code_unique": {
-          "name": "departments_department_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "department_code"
-          ]
-        },
         "departments_name_unique": {
           "name": "departments_name_unique",
           "nullsNotDistinct": false,
@@ -940,19 +780,6 @@
           "type": "serial",
           "primaryKey": true,
           "notNull": true
-        },
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "location_code": {
-          "name": "location_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
         },
         "name": {
           "name": "name",
@@ -998,22 +825,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "locations_uuid_unique": {
-          "name": "locations_uuid_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "uuid"
-          ]
-        },
-        "locations_location_code_unique": {
-          "name": "locations_location_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "location_code"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1089,20 +901,6 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {},
@@ -1163,19 +961,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "model_code": {
-          "name": "model_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "brand_id": {
           "name": "brand_id",
           "type": "integer",
@@ -1194,12 +979,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "image_url": {
-          "name": "image_url",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "technical_details": {
           "name": "technical_details",
           "type": "jsonb",
@@ -1214,38 +993,7 @@
           "default": true
         }
       },
-      "indexes": {
-        "models_brand_id_idx": {
-          "name": "models_brand_id_idx",
-          "columns": [
-            {
-              "expression": "brand_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "models_category_id_idx": {
-          "name": "models_category_id_idx",
-          "columns": [
-            {
-              "expression": "category_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "models_brand_id_brands_id_fk": {
           "name": "models_brand_id_brands_id_fk",
@@ -1276,93 +1024,12 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "models_uuid_unique": {
-          "name": "models_uuid_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "uuid"
-          ]
-        },
-        "models_model_code_unique": {
-          "name": "models_model_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "model_code"
-          ]
-        },
         "brand_model_idx": {
           "name": "brand_model_idx",
           "nullsNotDistinct": false,
           "columns": [
             "brand_id",
             "name"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.owners": {
-      "name": "owners",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "owner_code": {
-          "name": "owner_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "company_name": {
-          "name": "company_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "owners_uuid_unique": {
-          "name": "owners_uuid_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "uuid"
-          ]
-        },
-        "owners_owner_code_unique": {
-          "name": "owners_owner_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "owner_code"
-          ]
-        },
-        "owners_company_name_unique": {
-          "name": "owners_company_name_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "company_name"
           ]
         }
       },
@@ -1438,170 +1105,6 @@
           ]
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.software_allocations": {
-      "name": "software_allocations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "license_id": {
-          "name": "license_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "assigned_to_user_id": {
-          "name": "assigned_to_user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "allocated_at": {
-          "name": "allocated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "revoked_at": {
-          "name": "revoked_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "software_allocations_license_id_software_licenses_id_fk": {
-          "name": "software_allocations_license_id_software_licenses_id_fk",
-          "tableFrom": "software_allocations",
-          "tableTo": "software_licenses",
-          "columnsFrom": [
-            "license_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "software_allocations_assigned_to_user_id_users_id_fk": {
-          "name": "software_allocations_assigned_to_user_id_users_id_fk",
-          "tableFrom": "software_allocations",
-          "tableTo": "users",
-          "columnsFrom": [
-            "assigned_to_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.software_licenses": {
-      "name": "software_licenses",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "model_id": {
-          "name": "model_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "license_key": {
-          "name": "license_key",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "license_type": {
-          "name": "license_type",
-          "type": "license_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "total_seats": {
-          "name": "total_seats",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expiry_date": {
-          "name": "expiry_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "software_licenses_model_id_models_id_fk": {
-          "name": "software_licenses_model_id_models_id_fk",
-          "tableFrom": "software_licenses",
-          "tableTo": "models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1786,19 +1289,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "uuid": {
-          "name": "uuid",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "vendor_code": {
-          "name": "vendor_code",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "company_name": {
           "name": "company_name",
           "type": "varchar(255)",
@@ -1835,20 +1325,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "vendors_uuid_unique": {
-          "name": "vendors_uuid_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "uuid"
-          ]
-        },
-        "vendors_vendor_code_unique": {
-          "name": "vendors_vendor_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "vendor_code"
-          ]
-        },
         "vendors_company_name_unique": {
           "name": "vendors_company_name_unique",
           "nullsNotDistinct": false,
@@ -1895,15 +1371,6 @@
         "Approved",
         "Rejected",
         "Completed"
-      ]
-    },
-    "public.license_type": {
-      "name": "license_type",
-      "schema": "public",
-      "values": [
-        "Perpetual",
-        "Subscription",
-        "Open Source / Free"
       ]
     },
     "public.location_type": {
