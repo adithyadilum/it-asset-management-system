@@ -72,6 +72,11 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
     pristine: { label: "Pristine", className: "bg-blue-50 text-blue-700 border-blue-200", icon: CheckCircle2 },
     damaged: { label: "Damaged", className: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle },
     broken: { label: "Broken", className: "bg-rose-50 text-rose-700 border-rose-200", icon: XCircle },
+    
+    // Pending Alert States
+    critical: { label: "Critical", className: "bg-red-50 text-red-700 border-red-400", icon: AlertTriangle },
+    warning: { label: "Warning", className: "bg-amber-50 text-amber-700 border-amber-400", icon: AlertCircle },
+    neutral: { label: "Neutral", className: "bg-slate-50 text-slate-600 border-slate-300", icon: MinusCircle },
 
     // User Roles (From Epic 2!)
     GlobalAdmin: { label: "Global Admin", className: "bg-purple-50 text-purple-700 border-purple-200", icon: CheckCircle2 },
@@ -139,7 +144,9 @@ export function StatusBadge({
             className={cn("font-medium gap-1.5 whitespace-nowrap", config.className, className)}
         >
             {showIcon && <Icon className="h-3.5 w-3.5" />}
-            {config.label}
+            {/* CHANGED THIS LINE: */}
+            {label ?? config.label} 
         </Badge>
     );
+
 }
