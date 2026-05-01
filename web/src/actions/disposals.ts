@@ -5,11 +5,11 @@ import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-// 1. Updated imports to include models, categories, and brands
+
 import { assetDisposals, assetPurchases, assets, users, models, categories, brands, systemAuditLogs } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 
-// Import your Zod validations
+// Import Zod validations
 import { executeDisposalSchema, rejectDisposalSchema } from '@/lib/validations/disposals';
 
 function assertAllowed(role: string, allowed: string[]) {
@@ -24,7 +24,7 @@ export type DisposalReviewDetails = {
   assetTag: string;
   assetName: string | null;
   
-  // 2. Added category and brand to the type definition
+  // type definition
   category: string;
   brand: string;
 
@@ -32,24 +32,22 @@ export type DisposalReviewDetails = {
   requestedAt: string; // ISO
   reason: string;
   justification: string | null;
+  dateCreated: string | null;
 
   // Financial-ish fields (optional)
   purchaseDate: string | null; // ISO date string if present
   originalCost: number | null;
   warrantyStatus: 'Valid' | 'Expired' | 'Unknown';
+  
 };
 
-/**
- * Fetch extended details for the Disposal Review side panel.
- * Client wrapper calls this when a row is clicked.
- */
 export async function getDisposalReviewDetails(disposalId: number) {
   const actionTimer = startLatencyTimer();
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
   // Review panel is for admins/finance typically; allow IT too if you want them to view.
-  assertAllowed(user.role, ['ITOperator', 'GlobalAdmin', 'FinanceAuditor']);
+  assertAllowed(user.role, [ 'GlobalAdmin' ]);
 
   if (!Number.isFinite(disposalId)) {
     throw new Error('Invalid disposal id.');
@@ -64,8 +62,9 @@ export async function getDisposalReviewDetails(disposalId: number) {
         assetId: assets.id,
         assetTag: assets.assetTag,
         assetName: assets.name,
+        createdAt: assets.createdAt,
         
-        // 3. Select the actual names from the joined tables
+        // Select the actual names from the joined tables
         categoryName: categories.name,
         brandName: brands.name,
 
@@ -84,7 +83,7 @@ export async function getDisposalReviewDetails(disposalId: number) {
       .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
       .innerJoin(users, eq(assetDisposals.requestedById, users.id))
       .leftJoin(assetPurchases, eq(assetPurchases.assetId, assets.id))
-      // 4. Join the models, categories, and brands tables
+      // Join the models, categories, and brands tables
       .leftJoin(models, eq(assets.modelId, models.id))
       .leftJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(brands, eq(models.brandId, brands.id))
@@ -120,7 +119,7 @@ export async function getDisposalReviewDetails(disposalId: number) {
       assetTag: row.assetTag,
       assetName: row.assetName,
       
-      // 5. Map the joined names to the return object
+      // Map the joined names to the return object
       category: row.categoryName ?? 'Unknown',
       brand: row.brandName ?? 'Unknown',
 
@@ -128,6 +127,7 @@ export async function getDisposalReviewDetails(disposalId: number) {
       requestedAt: row.requestedAt.toISOString(),
       reason: row.reason,
       justification: row.justification ?? null,
+      dateCreated: row.createdAt ? new Date(row.createdAt).toISOString() : null,
 
       purchaseDate: row.purchaseDate ? new Date(row.purchaseDate).toISOString() : null,
       originalCost,
@@ -279,27 +279,23 @@ export async function createBulkDisposalRequests(input: {
 /**
  * Rejects a pending disposal request and reverts the asset to a fallback status.
  */
-export async function rejectDisposalRequest(
-  disposalId: number,
-  assetId: string,
-  rejectionReason: string,
-  fallbackStatus: string
-) {
+export async function rejectDisposalRequest(payload: {
+  disposalIds: number[];
+  assetIds: string[];
+  rejectionReason: string;
+  fallbackStatus: string;
+}) {
   const actionTimer = startLatencyTimer();
   
-  // Validate input data against Zod schema
-  const validatedFields = rejectDisposalSchema.safeParse({
-    disposalId,
-    assetId,
-    rejectionReason,
-    fallbackStatus,
-  });
+  const validatedFields = rejectDisposalSchema.safeParse(payload);
 
   if (!validatedFields.success) {
     throw new Error(validatedFields.error.issues[0].message);
   }
 
   const { 
+    disposalIds,
+    assetIds,
     rejectionReason: normalizedReason, 
     fallbackStatus: validStatus 
   } = validatedFields.data;
@@ -312,7 +308,7 @@ export async function rejectDisposalRequest(
   try {
     const dbTimer = startLatencyTimer();
     
-    // Update the disposal request to Rejected, attach reason and resolver
+    // Update multiple disposal requests
     await db
       .update(assetDisposals)
       .set({
@@ -320,24 +316,19 @@ export async function rejectDisposalRequest(
         approvedById: user.id, 
         resolvedAt: new Date(),
         rejectionReason: normalizedReason,
-      } ) 
-      .where(eq(assetDisposals.id, disposalId));
+      }) 
+      .where(inArray(assetDisposals.id, disposalIds));
 
-    // Revert the Asset's status to the selected fallback status
+    // Revert multiple Assets
     await db
       .update(assets)
       .set({
-        status: validStatus, 
+        status: validStatus as "Available" | "In Repair", 
       })
-      .where(eq(assets.id, assetId));
+      .where(inArray(assets.id, assetIds));
 
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'disposals.reject',
-      startTime: dbTimer,
-    });
+    logLatency({ scope: 'DB ACTION', label: 'disposals.reject', startTime: dbTimer });
 
-    // Revalidate relevant pages so the UI updates instantly
     revalidatePath('/operations/disposals');
     revalidatePath('/assets');
     revalidatePath('/assets/hardware');
@@ -346,6 +337,9 @@ export async function rejectDisposalRequest(
     revalidatePath('/assets/software');
 
     return { success: true as const };
+  } catch (error) {
+    console.error('Rejection failed:', error);
+    throw new Error('Failed to reject requests in the database.');
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.reject', startTime: actionTimer });
   }
@@ -356,13 +350,13 @@ export async function uploadDisposalReceipt(formData: FormData) {
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAllowed(user.role, ['GlobalAdmin']); // Execution is strictly Global Admin
+  assertAllowed(user.role, ['GlobalAdmin']);
 
   try {
     const file = formData.get('file') as File | null;
     if (!file) throw new Error('No file provided in the payload.');
 
-    // Validate file types according to US-18.2
+    // Validate file types 
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
       throw new Error('Invalid file type. Only .pdf, .jpg, and .png are allowed.');
@@ -387,8 +381,10 @@ export async function uploadDisposalReceipt(formData: FormData) {
 }
 
 export async function executeAssetDisposal(payload: {
-  disposalId: number;
-  assetId: string;
+  disposalIds: number[];
+  assetIds: string[];
+  reason: string;
+  disposalDate?: string;
   disposalMethod: 'Sold' | 'Stolen' | 'E-waste' | 'Donated';
   dataWiped: boolean;
   tagsRemoved: boolean;
@@ -396,7 +392,6 @@ export async function executeAssetDisposal(payload: {
 }) {
   const actionTimer = startLatencyTimer();
   
-  // Validate input payload against Zod schema
   const validatedFields = executeDisposalSchema.safeParse(payload);
 
   if (!validatedFields.success) {
@@ -412,47 +407,46 @@ export async function executeAssetDisposal(payload: {
   try {
     const dbTimer = startLatencyTimer();
     
-    // 1. Update the Disposal Record with compliance details
     await db
       .update(assetDisposals)
       .set({
         status: 'Completed',
         approvedById: user.id,
-        resolvedAt: new Date(),
+        resolvedAt: validData.disposalDate ? new Date(validData.disposalDate) : new Date(),
+        reason: validData.reason, 
         disposalMethod: validData.disposalMethod,
         dataWiped: validData.dataWiped,
         tagsRemoved: validData.tagsRemoved,
         disposalReceiptUrl: validData.receiptUrl,
       })
-      .where(eq(assetDisposals.id, validData.disposalId));
+      .where(inArray(assetDisposals.id, validData.disposalIds)); 
 
-    // 2. Move the actual Asset to its terminal state
     await db
       .update(assets)
       .set({ status: 'Disposed' })
-      .where(eq(assets.id, validData.assetId));
+      .where(inArray(assets.id, validData.assetIds));
 
-    // 3. Write to System Audit Log (Immutable ledger)
-    await db.insert(systemAuditLogs).values({
-      entityType: 'Asset',
-      entityId: validData.assetId,
+    // Audit Logs
+    const auditLogsToInsert = validData.assetIds.map((assetId) => ({
+      entityType: 'Asset' as const,
+      entityId: assetId,
       actionType: 'Asset Disposed',
       performedById: user.id,
       newValue: { 
         method: validData.disposalMethod, 
         receipt: validData.receiptUrl,
         wiped: validData.dataWiped,
-        untagged: validData.tagsRemoved
+        untagged: validData.tagsRemoved,
+        reason: validData.reason
       },
-    });
+    }));
 
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'disposals.executeAssetDisposal',
-      startTime: dbTimer,
-    });
+    if (auditLogsToInsert.length > 0) {
+      await db.insert(systemAuditLogs).values(auditLogsToInsert);
+    }
 
-    // 4. Revalidate cache to update UI instantly
+    logLatency({ scope: 'DB ACTION', label: 'disposals.executeAssetDisposal', startTime: dbTimer });
+
     revalidatePath('/operations/disposals');
     revalidatePath('/assets');
     revalidatePath('/assets/hardware');

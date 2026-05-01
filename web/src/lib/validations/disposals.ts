@@ -3,8 +3,10 @@ import { z } from 'zod';
 
 // Schema for the Execute Disposal Action
 export const executeDisposalSchema = z.object({
-  disposalId: z.coerce.number().int().positive(),
-  assetId: z.string().min(1, 'Asset ID is required'),
+  disposalIds: z.array(z.coerce.number().int().positive()).min(1, 'No disposals selected.'),
+  assetIds: z.array(z.string()).min(1, 'No assets selected.'),
+  reason: z.string().min(1, 'Reason is required.'), 
+  disposalDate: z.string().optional(),              
   disposalMethod: z.enum(['Sold', 'Stolen', 'E-waste', 'Donated'], {
     message: 'Invalid disposal method selected.',
   }),
@@ -19,8 +21,8 @@ export const executeDisposalSchema = z.object({
 
 // Schema for the Reject Disposal Action
 export const rejectDisposalSchema = z.object({
-  disposalId: z.coerce.number().int().positive(),
-  assetId: z.string().min(1, 'Asset ID is required'),
+  disposalIds: z.array(z.coerce.number().int().positive()).min(1, 'No disposals selected.'),
+  assetIds: z.array(z.string()).min(1, 'No assets selected.'),
   rejectionReason: z
     .string()
     .trim()
