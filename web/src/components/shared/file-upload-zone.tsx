@@ -12,7 +12,7 @@ export interface FileUploadZoneProps {
   /** Callback fired on validation or upload failure */
   onUploadError: (error: string) => void;
   /** The server action or API call to handle the actual upload */
-  uploadAction: (formData: FormData) => Promise<{ success: boolean; fileUrl?: string }>;
+  uploadAction: (formData: FormData) => Promise<{ success: boolean; fileUrl?: string; url?: string }>;
   /** Accepted file types (react-dropzone format) */
   accept?: Record<string, string[]>;
   /** Maximum file size in bytes */
@@ -32,11 +32,12 @@ export function FileUploadZone({
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/png': ['.png'],
   },
-  maxSize = 5 * 1024 * 1024, // Default 5MB
-  label = "Drag & drop your file here, or click to browse",
-  subLabel = "Supports .PDF, .JPG, .PNG up to 5MB"
+  maxSize = 4.5 * 1024 * 1024, // Updated Default 4.5MB to match your backend
+  label = "Drag & drop your files here, or click to browse",
+  subLabel = "Supports .PDF, .JPG, .PNG up to 4.5MB"
 }: FileUploadZoneProps) {
-  const [file, setFile] = useState<File | null>(null);
+  // CHANGED: Now tracks an array of files instead of a single file
+  const [files, setFiles] = useState<File[]>([]);
   const [isUploading, startUpload] = useTransition();
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
@@ -47,113 +48,132 @@ export function FileUploadZone({
       return;
     }
 
-    // Handle valid file selection
+    // Handle valid file selection (Append to existing files)
     if (acceptedFiles.length > 0) {
-      setFile(acceptedFiles[0]);
+      setFiles((prev) => [...prev, ...acceptedFiles]);
       onUploadError(''); // Clear any previous errors
     }
   }, [onUploadError]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    maxFiles: 1,
+    // CHANGED: Removed maxFiles: 1 so it accepts multiple files by default
     maxSize,
     accept,
   });
 
   const handleUpload = () => {
-    if (!file) return;
+    if (files.length === 0) return;
 
     startUpload(async () => {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        // Call the injected server action
-        const response = await uploadAction(formData);
-        
-        if (response.success && response.fileUrl) {
-          onUploadSuccess(response.fileUrl);
-        } else {
-          onUploadError('Upload failed to return a valid file URL.');
+      // Loop through all selected files and upload them
+      for (const file of files) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const response = await uploadAction(formData);
+          
+          // Check for either url or fileUrl based on our backend fix
+          const uploadedUrl = response.url || response.fileUrl;
+          
+          if (response.success && uploadedUrl) {
+            onUploadSuccess(uploadedUrl);
+          } else {
+            onUploadError(`Upload failed for ${file.name}`);
+          }
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error);
+          onUploadError(`Error uploading ${file.name}: ${msg}`);
         }
-      } catch (error) {
-        onUploadError(error instanceof Error ? error.message : 'Upload failed due to an unknown error.');
       }
+      // Clear the staging area once all uploads are complete
+      setFiles([]);
     });
   };
 
-  const removeFile = () => {
-    setFile(null);
-    onUploadError(''); // Clear errors if the user cancels the bad upload
+  // CHANGED: Requires an index to know which file to remove
+  const removeFile = (indexToRemove: number) => {
+    setFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    onUploadError(''); 
   };
 
   return (
     <div className="flex flex-col gap-3 w-full">
-      {!file ? (
-        <div
-          {...getRootProps()}
-          className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${
-            isDragActive 
-              ? 'border-primary bg-primary/5 shadow-sm' 
-              : 'border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/30'
-          }`}
-        >
-          <input {...getInputProps()} />
-          <UploadCloud className={`mb-3 h-8 w-8 transition-colors ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
-          <p className="text-sm font-medium text-foreground text-center">
-            {label}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground text-center">
-            {subLabel}
-          </p>
-        </div>
-      ) : (
-        <div className="flex w-full items-center justify-between rounded-md border border-border bg-background p-3 shadow-sm animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center gap-3 overflow-hidden pr-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-              <FileIcon className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="truncate text-sm font-medium text-foreground">
-                {file.name}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-              </span>
-            </div>
-          </div>
+      {/* ALWAYS show the dropzone so users can keep adding more files */}
+      <div
+        {...getRootProps()}
+        className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${
+          isDragActive 
+            ? 'border-primary bg-primary/5 shadow-sm' 
+            : 'border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/30'
+        }`}
+      >
+        <input {...getInputProps()} />
+        <UploadCloud className={`mb-3 h-8 w-8 transition-colors ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+        <p className="text-sm font-medium text-foreground text-center">
+          {label}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground text-center">
+          {subLabel}
+        </p>
+      </div>
+
+      {/* Render the list of currently selected files waiting to be uploaded */}
+      {files.length > 0 && (
+        <div className="flex flex-col gap-2 mt-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+            Ready to Upload ({files.length})
+          </span>
           
-          <div className="flex shrink-0 items-center gap-2">
-            {!isUploading && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={removeFile} 
-                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                title="Remove file"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+          {files.map((file, idx) => (
+            <div key={`${file.name}-${idx}`} className="flex w-full items-start justify-between rounded-md border border-border bg-background p-3 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-start gap-3 overflow-hidden pr-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <FileIcon className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex flex-col overflow-hidden pt-0.5">
+                  {/* CHANGED: Replaced truncate with break-all so long names wrap correctly */}
+                  <span className="break-all text-sm font-medium text-foreground leading-tight">
+                    {file.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex shrink-0 items-center gap-2">
+                {!isUploading && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => removeFile(idx)} 
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    title="Remove file"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <Button 
+            type="button"
+            onClick={handleUpload} 
+            disabled={isUploading}
+            className="w-full mt-2"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading Files...
+              </>
+            ) : (
+              `Upload ${files.length} File${files.length > 1 ? 's' : ''}`
             )}
-            
-            <Button 
-              type="button"
-              onClick={handleUpload} 
-              disabled={isUploading}
-              size="sm"
-              className="min-w-[80px]"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading
-                </>
-              ) : (
-                'Upload'
-              )}
-            </Button>
-          </div>
+          </Button>
         </div>
       )}
     </div>

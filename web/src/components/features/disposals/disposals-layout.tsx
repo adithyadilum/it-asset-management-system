@@ -53,11 +53,11 @@ export function DisposalsLayout({ pendingData }: DisposalsLayoutProps) {
   };
 
   return (
-    <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-slate-50 p-6">
+    <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-slate-50 p-0">
       {/* Main Workspace Shell */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-lg bg-white">
         {/* Header */}
-        <div className=" px-6 py-4">
+        <div className=" px-6 py-6 pb-0">
           <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
             Disposals
           </h1>

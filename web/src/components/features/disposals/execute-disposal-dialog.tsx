@@ -10,6 +10,8 @@ import {
   Keyboard,
   Package,
   AlertTriangle,
+  CheckCircle2,
+  X,
 } from 'lucide-react';
 
 import { executeAssetDisposal, uploadDisposalReceipt } from '@/actions/disposals';
@@ -66,7 +68,9 @@ export function ExecuteDisposalDialog({
   const [method, setMethod] = useState<'Sold' | 'Stolen' | 'E-waste' | 'Donated' | ''>('');
   const [dataWiped, setDataWiped] = useState(false);
   const [tagsRemoved, setTagsRemoved] = useState(false);
-  const [receiptUrl, setReceiptUrl] = useState('');
+  
+  const [receiptUrls, setReceiptUrls] = useState<string[]>([]);
+  
   const [confirmText, setConfirmText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -85,8 +89,12 @@ export function ExecuteDisposalDialog({
     method !== '' &&
     dataWiped &&
     tagsRemoved &&
-    receiptUrl !== '' &&
+    receiptUrls.length > 0 &&
     confirmText.trim().toLowerCase() === expectedConfirmText.trim().toLowerCase();
+
+  const handleRemoveReceipt = (indexToRemove: number) => {
+    setReceiptUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
 
   const handleExecute = () => {
     if (!isFormValid) return;
@@ -94,23 +102,28 @@ export function ExecuteDisposalDialog({
 
     startTransition(async () => {
       try {
-        // One unified call using arrays for both single and bulk!
-        await executeAssetDisposal({
-          disposalIds: selectedAssets.map((a) => a.id),
-          assetIds: selectedAssets.map((a) => a.assetId),
-          reason,
-          disposalMethod: method as 'Sold' | 'Stolen' | 'E-waste' | 'Donated',
-          dataWiped,
-          tagsRemoved,
-          receiptUrl,
-        });
+        const formData = new FormData();
+        formData.set('disposalIds', JSON.stringify(selectedAssets.map((a) => a.id)));
+        formData.set('assetIds', JSON.stringify(selectedAssets.map((a) => a.assetId)));
+        formData.set('reason', reason);
+        formData.set('disposalMethod', method);
+        formData.set('dataWiped', String(dataWiped));
+        formData.set('tagsRemoved', String(tagsRemoved));
+        formData.set('receiptUrls', receiptUrls.join(','));
 
-        tiqriToast.success(
-          isBulk 
-            ? `Successfully disposed ${selectedAssets.length} assets.` 
-            : 'Asset successfully disposed.'
-        );
-        onSuccess();
+        const result = await executeAssetDisposal({ success: false, message: '' }, formData);
+
+        if (result.success) {
+          tiqriToast.success(
+            isBulk 
+              ? `Successfully disposed ${selectedAssets.length} assets.` 
+              : 'Asset successfully disposed.'
+          );
+          onSuccess();
+          handleOpenChange(false);
+        } else {
+          setError(result.message);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to execute disposal.');
       }
@@ -123,7 +136,7 @@ export function ExecuteDisposalDialog({
       setMethod('');
       setDataWiped(false);
       setTagsRemoved(false);
-      setReceiptUrl('');
+      setReceiptUrls([]);
       setConfirmText('');
       setError(null);
     }
@@ -135,6 +148,7 @@ export function ExecuteDisposalDialog({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0 sm:max-w-lg overflow-hidden bg-background">
+        
         <div className="p-6 pb-4">
           <DialogHeader>
             <div className="flex items-center gap-2 text-destructive">
@@ -150,9 +164,9 @@ export function ExecuteDisposalDialog({
             </DialogDescription>
           </DialogHeader>
         </div>
-
+        
         <ScrollArea className="flex-1 overflow-y-auto px-6">
-          <div className="flex flex-col gap-6 pb-6">
+          <div className="flex flex-col gap-6 pb-6 pt-2">
             
             {isBulk ? (
               <div className="flex flex-col rounded-lg border border-border/50 bg-muted/40 p-4 shadow-sm">
@@ -254,13 +268,53 @@ export function ExecuteDisposalDialog({
               </div>
             </div>
 
-            <FileUploadZone
-              onUploadSuccess={(url: string) => setReceiptUrl(url)}
-              onUploadError={(msg: string) => setError(msg)}
-              uploadAction={uploadDisposalReceipt}
-              label={isBulk ? "Upload Bulk Certificate or Receipt" : "Upload E-Waste Certificate or Receipt"}
-              subLabel="Supports .PDF, .JPG, .PNG up to 5MB"
-            />
+            <div className="flex flex-col gap-3">
+              <Label className="text-sm font-medium text-foreground">
+                {isBulk ? "Upload Certificates or Receipts" : "Upload E-Waste Certificate or Receipt"} <span className="text-destructive">*</span>
+              </Label>
+              
+              <FileUploadZone
+                key={`upload-zone-${receiptUrls.length}`} 
+                onUploadSuccess={(url: string) => setReceiptUrls((prev) => [...prev, url])}
+                onUploadError={(msg: string) => setError(msg)}
+                uploadAction={uploadDisposalReceipt}
+                label="Click or drag to upload files"
+                subLabel="Supports .PDF, .JPG, .PNG up to 4.5MB. You can upload multiple."
+              />
+              
+              {receiptUrls.length > 0 && (
+  <div className="rounded-md bg-muted/40 p-3">
+    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+      Attached Files ({receiptUrls.length})
+    </span>
+    <div className="flex flex-col gap-2">
+      {receiptUrls.map((url, idx) => {
+        const fileName = url.split('/').pop() || `File ${idx + 1}`;
+        return (
+          <div key={idx} className="flex items-start justify-between gap-2 text-sm text-foreground bg-background border border-border/50 p-2 rounded-md">
+            {/* CHANGED: items-center to items-start, removed overflow-hidden */}
+            <div className="flex items-start gap-2">
+              {/* CHANGED: Added mt-0.5 so the icon aligns with the first line of text */}
+              <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+              {/* CHANGED: Replaced 'truncate' with 'break-all' */}
+              <span className="break-all">{fileName}</span>
+            </div>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+              onClick={() => handleRemoveReceipt(idx)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
+            </div>
 
             <div className="mt-2 flex flex-col gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
               <label className="text-sm font-medium leading-relaxed text-foreground">
@@ -283,6 +337,7 @@ export function ExecuteDisposalDialog({
                 {error}
               </div>
             )}
+            
           </div>
         </ScrollArea>
 

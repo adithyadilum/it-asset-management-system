@@ -58,20 +58,28 @@ export function RejectDisposalDialog({
 
     startTransition(async () => {
       try {
-        await rejectDisposalRequest({
-          disposalIds: selectedAssets.map(a => a.id),
-          assetIds: selectedAssets.map(a => a.assetId),
-          rejectionReason: reason,
-          fallbackStatus: status
-        });
+        // Build the FormData object
+        const formData = new FormData();
+        formData.set('disposalIds', JSON.stringify(selectedAssets.map(a => a.id)));
+        formData.set('assetIds', JSON.stringify(selectedAssets.map(a => a.assetId)));
+        formData.set('rejectionReason', reason);
+        formData.set('fallbackStatus', status);
 
-        tiqriToast.success(
-          isBulk 
-            ? `Successfully rejected ${selectedAssets.length} disposal requests.` 
-            : 'Disposal request successfully rejected.'
-        );
-        handleReset();
-        onSuccess();
+        // Call the action with the dummy initial state and the formData
+        const result = await rejectDisposalRequest({ success: false, message: '' }, formData);
+
+        if (result.success) {
+          tiqriToast.success(
+            isBulk 
+              ? `Successfully rejected ${selectedAssets.length} disposal requests.` 
+              : 'Disposal request successfully rejected.'
+          );
+          handleReset();
+          onSuccess();
+          onOpenChange(false); // Close the dialog on success
+        } else {
+          tiqriToast.error(result.message || 'Failed to reject request.');
+        }
       } catch (error) {
         tiqriToast.error(error instanceof Error ? error.message : 'Failed to reject request.');
       }

@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
-import {
-  getDisposalReviewDetails,
-  type DisposalReviewDetails,
-} from '@/actions/disposals';
+import { getDisposalReviewDetails } from '@/actions/disposals';
+import type { DisposalReviewDetails } from '@/types/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';

@@ -5,12 +5,25 @@ import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-
-import { assetDisposals, assetPurchases, assets, users, models, categories, brands, systemAuditLogs } from '@/db/schema';
+import { 
+  assetDisposals, 
+  assetPurchases, 
+  assets, 
+  users, 
+  models, 
+  categories, 
+  brands, 
+  systemAuditLogs 
+} from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
+import { uploadFileToStorage } from '@/lib/storage'; 
 
 // Import Zod validations
 import { executeDisposalSchema, rejectDisposalSchema } from '@/lib/validations/disposals';
+
+// Import Types
+import type { DisposalReviewDetails, DisposalFormState } from '@/types/disposals';
+
 
 function assertAllowed(role: string, allowed: string[]) {
   if (!allowed.includes(role)) {
@@ -18,36 +31,12 @@ function assertAllowed(role: string, allowed: string[]) {
   }
 }
 
-export type DisposalReviewDetails = {
-  disposalId: number;
-  assetId: string;
-  assetTag: string;
-  assetName: string | null;
-  
-  // type definition
-  category: string;
-  brand: string;
-
-  requestedBy: string;
-  requestedAt: string; // ISO
-  reason: string;
-  justification: string | null;
-  dateCreated: string | null;
-
-  // Financial-ish fields (optional)
-  purchaseDate: string | null; // ISO date string if present
-  originalCost: number | null;
-  warrantyStatus: 'Valid' | 'Expired' | 'Unknown';
-  
-};
-
-export async function getDisposalReviewDetails(disposalId: number) {
+export async function getDisposalReviewDetails(disposalId: number): Promise<DisposalReviewDetails> {
   const actionTimer = startLatencyTimer();
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  // Review panel is for admins/finance typically; allow IT too if you want them to view.
-  assertAllowed(user.role, [ 'GlobalAdmin' ]);
+  assertAllowed(user.role, ['GlobalAdmin']);
 
   if (!Number.isFinite(disposalId)) {
     throw new Error('Invalid disposal id.');
@@ -63,18 +52,13 @@ export async function getDisposalReviewDetails(disposalId: number) {
         assetTag: assets.assetTag,
         assetName: assets.name,
         createdAt: assets.createdAt,
-        
-        // Select the actual names from the joined tables
         categoryName: categories.name,
         brandName: brands.name,
-
         requestedBy: users.name,
         requestedAt: assetDisposals.requestedAt,
         reason: assetDisposals.reason,
         justification: assetDisposals.justification,
-
         purchaseDate: assetPurchases.purchaseDate,
-        // Prefer totalCost if present; fallback to basePrice if not.
         totalCost: assetPurchases.totalCost,
         basePrice: assetPurchases.basePrice,
         warrantyExpiry: assetPurchases.warrantyExpiry,
@@ -83,12 +67,11 @@ export async function getDisposalReviewDetails(disposalId: number) {
       .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
       .innerJoin(users, eq(assetDisposals.requestedById, users.id))
       .leftJoin(assetPurchases, eq(assetPurchases.assetId, assets.id))
-      // Join the models, categories, and brands tables
       .leftJoin(models, eq(assets.modelId, models.id))
       .leftJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(brands, eq(models.brandId, brands.id))
       .where(eq(assetDisposals.id, disposalId))
-      .orderBy(desc(assetPurchases.createdAt)) // pick latest purchase record if multiple exist
+      .orderBy(desc(assetPurchases.createdAt))
       .limit(1);
 
     logLatency({
@@ -104,8 +87,7 @@ export async function getDisposalReviewDetails(disposalId: number) {
     }
 
     const originalCostRaw = row.totalCost ?? row.basePrice ?? null;
-    const originalCost =
-      originalCostRaw === null ? null : Number(originalCostRaw);
+    const originalCost = originalCostRaw === null ? null : Number(originalCostRaw);
 
     let warrantyStatus: DisposalReviewDetails['warrantyStatus'] = 'Unknown';
     if (row.warrantyExpiry) {
@@ -118,17 +100,13 @@ export async function getDisposalReviewDetails(disposalId: number) {
       assetId: row.assetId,
       assetTag: row.assetTag,
       assetName: row.assetName,
-      
-      // Map the joined names to the return object
       category: row.categoryName ?? 'Unknown',
       brand: row.brandName ?? 'Unknown',
-
       requestedBy: row.requestedBy,
       requestedAt: row.requestedAt.toISOString(),
       reason: row.reason,
       justification: row.justification ?? null,
       dateCreated: row.createdAt ? new Date(row.createdAt).toISOString() : null,
-
       purchaseDate: row.purchaseDate ? new Date(row.purchaseDate).toISOString() : null,
       originalCost,
       warrantyStatus,
@@ -165,7 +143,6 @@ export async function createBulkDisposalRequests(input: {
   if (!reason) throw new Error('Reason is required.');
 
   try {
-    //Check for existing Pending Approval requests (dedupe)
     const checkTimer = startLatencyTimer();
 
     const existing = await db
@@ -192,7 +169,6 @@ export async function createBulkDisposalRequests(input: {
       throw new Error('All selected assets already have a pending disposal request.');
     }
 
-    // Insert disposal request rows
     const insertTimer = startLatencyTimer();
 
     await db.insert(assetDisposals).values(
@@ -211,7 +187,6 @@ export async function createBulkDisposalRequests(input: {
       metadata: { inserted: toInsert.length },
     });
 
-    // Verify
     const verifyTimer = startLatencyTimer();
 
     const insertedOrExistingPending = await db
@@ -238,7 +213,6 @@ export async function createBulkDisposalRequests(input: {
       },
     });
 
-    // Update assets.status -> Pending Disposal
     if (assetIdsToMarkPendingDisposal.length > 0) {
       const updateTimer = startLatencyTimer();
 
@@ -276,21 +250,26 @@ export async function createBulkDisposalRequests(input: {
   }
 }
 
-/**
- * Rejects a pending disposal request and reverts the asset to a fallback status.
- */
-export async function rejectDisposalRequest(payload: {
-  disposalIds: number[];
-  assetIds: string[];
-  rejectionReason: string;
-  fallbackStatus: string;
-}) {
+export async function rejectDisposalRequest(
+  _prevState: DisposalFormState,
+  formData: FormData
+): Promise<DisposalFormState> {
   const actionTimer = startLatencyTimer();
   
-  const validatedFields = rejectDisposalSchema.safeParse(payload);
+  // Safely parse JSON strings from FormData arrays
+  const parsed = rejectDisposalSchema.safeParse({
+    disposalIds: JSON.parse(String(formData.get('disposalIds') || '[]')),
+    assetIds: JSON.parse(String(formData.get('assetIds') || '[]')),
+    rejectionReason: formData.get('rejectionReason'),
+    fallbackStatus: formData.get('fallbackStatus'),
+  });
 
-  if (!validatedFields.success) {
-    throw new Error(validatedFields.error.issues[0].message);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: 'Validation failed.',
+      errors: parsed.error.flatten().fieldErrors,
+    };
   }
 
   const { 
@@ -298,17 +277,17 @@ export async function rejectDisposalRequest(payload: {
     assetIds,
     rejectionReason: normalizedReason, 
     fallbackStatus: validStatus 
-  } = validatedFields.data;
+  } = parsed.data;
 
   const user = await getAuthenticatedUser();
 
-  if (!user) throw new Error('UNAUTHENTICATED');
-  assertAllowed(user.role, ['GlobalAdmin']);
+  if (!user || user.role !== 'GlobalAdmin') {
+    return { success: false, message: 'FORBIDDEN: Only admins can reject disposals.' };
+  }
 
   try {
     const dbTimer = startLatencyTimer();
     
-    // Update multiple disposal requests
     await db
       .update(assetDisposals)
       .set({
@@ -319,7 +298,6 @@ export async function rejectDisposalRequest(payload: {
       }) 
       .where(inArray(assetDisposals.id, disposalIds));
 
-    // Revert multiple Assets
     await db
       .update(assets)
       .set({
@@ -336,77 +314,89 @@ export async function rejectDisposalRequest(payload: {
     revalidatePath('/assets/office-electronics');
     revalidatePath('/assets/software');
 
-    return { success: true as const };
+    return { success: true, message: 'Disposal request rejected successfully.' };
   } catch (error) {
     console.error('Rejection failed:', error);
-    throw new Error('Failed to reject requests in the database.');
+    return { success: false, message: 'Failed to reject requests in the database.' };
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.reject', startTime: actionTimer });
   }
 }
 
+// Action exclusively for FileUploadZone to upload files one by one
+
 export async function uploadDisposalReceipt(formData: FormData) {
   const actionTimer = startLatencyTimer();
   const user = await getAuthenticatedUser();
 
-  if (!user) throw new Error('UNAUTHENTICATED');
-  assertAllowed(user.role, ['GlobalAdmin']);
+  if (!user || user.role !== 'GlobalAdmin') {
+    return { success: false, message: 'FORBIDDEN: Only admins can upload disposal receipts.' };
+  }
 
   try {
     const file = formData.get('file') as File | null;
     if (!file) throw new Error('No file provided in the payload.');
 
-    // Validate file types 
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('Invalid file type. Only .pdf, .jpg, and .png are allowed.');
-    }
-
-    // Enforce a 5MB size limit
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error('File exceeds the 5MB upload limit.');
-    }
-
     const storageTimer = startLatencyTimer();
-
-    // Mock URL for current development (Replace with S3/Blob storage logic later)
-    const mockFileUrl = `https://storage.tiqri.local/disposals/${Date.now()}-${file.name}`;
-
+    
+    
+    // storage utility will throw errors if it's over 4.5MB or the wrong type.
+    const uploadedUrl = await uploadFileToStorage(file, 'disposals');
+    
     logLatency({ scope: 'STORAGE', label: 'disposals.uploadReceipt', startTime: storageTimer });
 
-    return { success: true, fileUrl: mockFileUrl };
+    // Return both 'url' and 'fileUrl' to ensure FileUploadZone catches it
+    return { 
+      success: true, 
+      url: uploadedUrl,     
+      fileUrl: uploadedUrl  
+    };
+    
+  } catch (error) {
+    // This will catch the 'File exceeds the 4.5MB limit' and type errors from your utility
+    return { success: false, message: error instanceof Error ? error.message : 'Upload failed.' };
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.uploadReceipt', startTime: actionTimer });
   }
 }
 
-export async function executeAssetDisposal(payload: {
-  disposalIds: number[];
-  assetIds: string[];
-  reason: string;
-  disposalDate?: string;
-  disposalMethod: 'Sold' | 'Stolen' | 'E-waste' | 'Donated';
-  dataWiped: boolean;
-  tagsRemoved: boolean;
-  receiptUrl: string;
-}) {
+// Action to execute the final disposal using the URLs returned from FileUploadZone
+export async function executeAssetDisposal(
+  _prevState: DisposalFormState,
+  formData: FormData
+): Promise<DisposalFormState> {
   const actionTimer = startLatencyTimer();
-  
-  const validatedFields = executeDisposalSchema.safeParse(payload);
-
-  if (!validatedFields.success) {
-    throw new Error(validatedFields.error.issues[0].message);
-  }
-
-  const validData = validatedFields.data;
   const user = await getAuthenticatedUser();
 
-  if (!user) throw new Error('UNAUTHENTICATED');
-  assertAllowed(user.role, ['GlobalAdmin']);
+  if (!user || user.role !== 'GlobalAdmin') {
+    return { success: false, message: 'FORBIDDEN: Only admins can execute disposals.' };
+  }
 
   try {
+    // 1. Safely parse form values, reading the comma-separated URLs string
+    const parsed = executeDisposalSchema.safeParse({
+      disposalIds: JSON.parse(String(formData.get('disposalIds') || '[]')),
+      assetIds: JSON.parse(String(formData.get('assetIds') || '[]')),
+      reason: formData.get('reason'),
+      disposalDate: formData.get('disposalDate') || undefined,
+      disposalMethod: formData.get('disposalMethod'),
+      dataWiped: formData.get('dataWiped') === 'true',
+      tagsRemoved: formData.get('tagsRemoved') === 'true',
+      receiptUrl: formData.get('receiptUrls'), // Grabbing the joined array of URLs
+    });
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Validation failed.',
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const validData = parsed.data;
     const dbTimer = startLatencyTimer();
     
+    // 2. Update Tables
     await db
       .update(assetDisposals)
       .set({
@@ -417,7 +407,7 @@ export async function executeAssetDisposal(payload: {
         disposalMethod: validData.disposalMethod,
         dataWiped: validData.dataWiped,
         tagsRemoved: validData.tagsRemoved,
-        disposalReceiptUrl: validData.receiptUrl,
+        disposalReceiptUrl: validData.receiptUrl, // Saving the comma-separated string to DB
       })
       .where(inArray(assetDisposals.id, validData.disposalIds)); 
 
@@ -426,7 +416,7 @@ export async function executeAssetDisposal(payload: {
       .set({ status: 'Disposed' })
       .where(inArray(assets.id, validData.assetIds));
 
-    // Audit Logs
+    // 3. Create Audit Logs
     const auditLogsToInsert = validData.assetIds.map((assetId) => ({
       entityType: 'Asset' as const,
       entityId: assetId,
@@ -454,10 +444,10 @@ export async function executeAssetDisposal(payload: {
     revalidatePath('/assets/office-electronics');
     revalidatePath('/assets/software');
     
-    return { success: true };
+    return { success: true, message: 'Disposal executed successfully.' };
   } catch (error) {
     console.error('Execution failed:', error);
-    throw new Error('Failed to execute disposal in the database.');
+    return { success: false, message: 'Database error: Failed to execute disposal.' };
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.executeAssetDisposal', startTime: actionTimer });
   }
