@@ -4,9 +4,10 @@ import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { ActiveRepairTicket } from '@/types/maintenance';
-import { formatDate, } from '@/lib/date';
+import { formatDate } from '@/lib/date';
 import { formatMoneyByCurrency } from '@/lib/currency';
 import { ArrowUpDown } from 'lucide-react';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface ActiveRepairsGridProps {
   tickets: ActiveRepairTicket[];
@@ -25,19 +26,19 @@ export function ActiveRepairsGrid({
       accessorKey: 'asset.assetTag',
       header: 'Asset ID',
       cell: ({ row }) => (
-        <span className="font-medium text-slate-900">{row.original.asset.assetTag}</span>
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{row.original.asset.assetTag}</span>
       ),
     },
     {
       accessorKey: 'vendorName',
       header: 'Vendor',
-      cell: ({ row }) => <span className="text-slate-600">{row.original.vendorName || 'N/A'}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.vendorName || 'N/A'}</span>,
     },
     {
       accessorKey: 'rmaNumber',
       header: 'RMA Ticket #',
       cell: ({ row }) => (
-        <span className="text-slate-600">{row.original.rmaNumber || 'N/A'}</span>
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.rmaNumber || 'N/A'}</span>
       ),
     },
     {
@@ -58,15 +59,15 @@ export function ActiveRepairsGrid({
               }
             }}
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="flex items-center gap-2 hover:text-slate-900 cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm px-1 -ml-1"
+            className={`flex items-center gap-2 hover:text-foreground cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1 -ml-1 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
           >
             Est. Return Date
-            <ArrowUpDown className="h-4 w-4 text-slate-400" />
+            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
           </div>
         );
       },
       cell: ({ row }) => (
-        <span className="text-slate-600">
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
           {formatDate(row.original.estimatedReturnDate)}
         </span>
       ),
@@ -89,15 +90,15 @@ export function ActiveRepairsGrid({
               }
             }}
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="flex items-center gap-2 hover:text-slate-900 cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-sm px-1 -ml-1"
+            className={`flex items-center gap-2 hover:text-foreground cursor-pointer select-none outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1 -ml-1 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
           >
             Est. Cost.
-            <ArrowUpDown className="h-4 w-4 text-slate-400" />
+            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
           </div>
         );
       },
       cell: ({ row }) => (
-        <span className="text-slate-600">
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
           {formatMoneyByCurrency(row.original.estimatedCost, 'USD')}
         </span>
       ),
@@ -115,8 +116,8 @@ export function ActiveRepairsGrid({
 
 if (tickets.length === 0) {
   return (
-     <div className="flex h-32 items-center justify-center bg-slate-50">
-      <span className="text-sm text-slate-500">No active repairs found</span>
+     <div className="flex h-32 items-center justify-center bg-muted/30">
+      <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>No active repairs found</span>
     </div>
   );
 }

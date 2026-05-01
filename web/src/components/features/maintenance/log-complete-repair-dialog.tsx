@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { CheckSquare, X } from 'lucide-react';
 import type { CompleteRepairFormData } from '@/types/maintenance';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface LogCompleteRepairDialogProps {
   isOpen: boolean;
@@ -49,32 +50,29 @@ export function LogCompleteRepairDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      {/* [&>button]:hidden hides the default Shadcn close button so we can use our custom one */}
-      <DialogContent className="max-w-[500px] p-6 bg-white rounded-xl shadow-lg border-0 [&>button]:hidden">
+      <DialogContent className="max-w-[500px] p-6 bg-background rounded-xl shadow-lg border border-border [&>button]:hidden">
         
-        {/* Custom Close Button */}
         <div className="absolute right-4 top-4">
-          <button onClick={handleClose} disabled={isLoading} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={handleClose} disabled={isLoading} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <DialogHeader className="pb-4">
-          <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-slate-900">
-            <CheckSquare className="h-6 w-6 text-slate-700" strokeWidth={1.5} />
+          <DialogTitle className={`flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+            <CheckSquare className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
             Log Completed Repair
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* Actual Final Cost Input Group */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-900">
-              Actual Final Cost: <span className="text-red-500">*</span>
+            <Label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              Actual Final Cost: <span className="text-destructive">*</span>
             </Label>
             <div className="flex">
-              <Select defaultValue="USD" disabled={isLoading}> {/* <-- ADDED disabled={isLoading} */}
-                <SelectTrigger className="w-[70px] rounded-r-none border-r-0 focus:ring-0 focus:border-slate-200 bg-white">
+              <Select defaultValue="USD" disabled={isLoading}>
+                <SelectTrigger className="w-[70px] rounded-r-none border-r-0 focus:ring-0 focus:border-border bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -89,39 +87,37 @@ export function LogCompleteRepairDialog({
                 value={formData.actualCost}
                 onChange={(e) => setFormData({ ...formData, actualCost: e.target.value })}
                 disabled={isLoading}
-                className="flex-1 rounded-l-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500"
+                className={`flex-1 rounded-l-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               />
             </div>
           </div>
 
-          {/* Resolution Notes */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-900">
-              Resolution Notes <span className="text-red-500">*</span>
+            <Label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              Resolution Notes <span className="text-destructive">*</span>
             </Label>
             <Textarea
               placeholder='e.g., "Replaced display cable"'
               value={formData.resolutionNotes}
               onChange={(e) => setFormData({ ...formData, resolutionNotes: e.target.value })}
               disabled={isLoading}
-              className="min-h-[100px] resize-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500"
+              className={`min-h-[100px] resize-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
             />
           </div>
 
-          {/* Update Status Dropdown */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-900">
-              Update Status To <span className="text-red-500">*</span>
+            <Label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              Update Status To <span className="text-destructive">*</span>
             </Label>
             <Select 
               value={formData.updateStatusTo}
               onValueChange={(value) => setFormData({ ...formData, updateStatusTo: value as 'Available' | 'Disposed' })}
-              disabled={isLoading} // <-- ADDED disabled={isLoading}
+              disabled={isLoading}
             >
-              <SelectTrigger className="w-full focus:ring-1 focus:ring-blue-500 bg-white">
+              <SelectTrigger className={`w-full focus:ring-1 focus:ring-ring bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
                 <SelectItem value="Available">Available</SelectItem>
                 <SelectItem value="Disposed">Disposed</SelectItem>
               </SelectContent>
@@ -130,10 +126,10 @@ export function LogCompleteRepairDialog({
         </div>
 
         <DialogFooter className="pt-6 sm:justify-end gap-3">
-          <Button variant="outline" onClick={handleClose} disabled={isLoading} className="border-slate-200 text-slate-700 hover:bg-slate-50 min-w-[100px]">
+          <Button variant="outline" onClick={handleClose} disabled={isLoading} className="border-border text-foreground hover:bg-muted/50 min-w-[100px]">
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={isLoading || !isFormValid} className="bg-[#040d5a] hover:bg-[#040d5a]/90 text-white min-w-[100px]">
+          <Button onClick={handleConfirm} disabled={isLoading || !isFormValid} className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[100px]">
             {isLoading ? 'Saving...' : 'Confirm'}
           </Button>
         </DialogFooter>

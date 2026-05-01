@@ -1,7 +1,9 @@
+'use client';
 import { useState } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface ResolveInternallyDialogProps {
   isOpen: boolean;
@@ -10,10 +12,6 @@ interface ResolveInternallyDialogProps {
   isLoading?: boolean;
 }
 
-/**
- * Resolve Internally Confirmation Dialog
- * Displays a dialog with mandatory resolution note text area
- */
 export function ResolveInternallyDialog({
   isOpen,
   onClose,
@@ -24,7 +22,6 @@ export function ResolveInternallyDialog({
   const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
-    // Validate that resolution note is not empty
     if (!resolutionNote.trim()) {
       setError('Resolution note is required');
       return;
@@ -48,18 +45,18 @@ export function ResolveInternallyDialog({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleClose}>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent className="max-w-md bg-background border-border">
         <AlertDialogHeader>
-          <AlertDialogTitle>Resolve Issue Internally</AlertDialogTitle>
-          <AlertDialogDescription>
+          <AlertDialogTitle className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>Resolve Issue Internally</AlertDialogTitle>
+          <AlertDialogDescription className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
             Resolving this issue will update the asset status to &quot;Available&quot;, update the maintenance ticket, and add an audit log entry.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="resolution-note" className="text-sm font-medium">
-              Resolution Note <span className="text-red-500">*</span>
+            <Label htmlFor="resolution-note" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              Resolution Note <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="resolution-note"
@@ -67,31 +64,31 @@ export function ResolveInternallyDialog({
               value={resolutionNote}
               onChange={(e) => {
                 setResolutionNote(e.target.value);
-                setError(null); // Clear error when user starts typing
+                setError(null);
               }}
-              className="min-h-24 resize-none"
+              className={`min-h-24 resize-none border-input focus-visible:ring-ring ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               disabled={isLoading}
             />
-            <p className="text-xs text-slate-500">
+            <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>
               {resolutionNote.length}/500 characters
             </p>
           </div>
 
           {error && (
-            <div className="rounded-md bg-red-50 p-3">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20">
+              <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-destructive`}>{error}</p>
             </div>
           )}
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>
+          <AlertDialogCancel disabled={isLoading} className="border-border text-foreground hover:bg-muted/50">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isLoading || !resolutionNote.trim()}
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-success text-success-foreground hover:bg-success/90"
           >
             {isLoading ? 'Resolving...' : 'Resolve Internally'}
           </AlertDialogAction>

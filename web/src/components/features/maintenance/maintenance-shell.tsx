@@ -9,10 +9,9 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket, CompleteRepairFormData } from '@/types/maintenance';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
-// ============================================================================
-// UI STATE REDUCER
-// ============================================================================
+// ... [Reducer Logic remains unchanged]
 interface UIState {
   isPanelOpen: boolean;
   selectedTicketId: number | null;
@@ -58,7 +57,6 @@ function uiReducer(state: UIState, action: UIAction): UIState {
 // ============================================================================
 
 export function MaintenanceShell() {
-  // --- Data & Search State (Kept as useState) ---
   const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>([]);
   const [activeRepairTickets, setActiveRepairTickets] = useState<ActiveRepairTicket[]>([]);
   const [repairHistoryTickets, setRepairHistoryTickets] = useState<RepairHistoryTicket[]>([]);
@@ -68,10 +66,8 @@ export function MaintenanceShell() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const { setOpen } = useSidebar();
 
-  // --- UI Interaction State (Now using useReducer) ---
   const [uiState, dispatch] = useReducer(uiReducer, initialUIState);
 
-  // Search Debounce Effect
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -110,7 +106,6 @@ export function MaintenanceShell() {
     };
   }, [loadData, debouncedSearch]);
 
-  // --- Handlers using dispatch ---
   const handlePendingRowClick = (row: PendingReviewTicket) => {
     dispatch({ type: 'OPEN_PANEL', payload: row.id });
     setOpen(false); 
@@ -150,13 +145,13 @@ export function MaintenanceShell() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full bg-slate-50 p-5 overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] w-full bg-muted/20 p-5 overflow-hidden">
       
       {/* LEFT CARD */}
-      <div className="flex flex-1 flex-col bg-white rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden min-w-0 transition-all duration-300">
+      <div className="flex flex-1 flex-col bg-card rounded-xl shadow-sm border border-border overflow-hidden min-w-0 transition-all duration-300">
         <div className="px-6 pt-6 pb-2 shrink-0">
-          <h1 className="text-2xl font-semibold text-slate-900">Maintenance & Repairs</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
+          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground mt-1`}>
             Manage asset maintenance requests, repairs, and service history
           </p>
         </div>
@@ -177,9 +172,9 @@ export function MaintenanceShell() {
       {/* RIGHT CARD */}
       <div 
         className={cn(
-          "shrink-0 bg-white rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.1)] overflow-hidden transition-all duration-300 ease-in-out transform",
+          "shrink-0 bg-card rounded-xl shadow-sm overflow-hidden transition-all duration-300 ease-in-out transform",
           uiState.isPanelOpen 
-            ? "w-[550px] xl:w-[600px] ml-5 border border-slate-200 opacity-100 translate-x-0" 
+            ? "w-[550px] xl:w-[600px] ml-5 border border-border opacity-100 translate-x-0" 
             : "w-0 ml-0 border-0 opacity-0 translate-x-8" 
         )}
       >
