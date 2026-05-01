@@ -302,6 +302,10 @@ export const assetAssignments = pgTable('asset_assignments', {
 
   returnCondition: conditionEnum('return_condition'),
   notes: text('notes'),
+
+  acceptanceStatus: varchar('acceptance_status', { length: 50 }),
+  acceptedAt: timestamp('accepted_at'),
+  returnRequestedAt: timestamp('return_requested_at'),
 });
 
 
