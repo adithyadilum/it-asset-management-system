@@ -48,10 +48,12 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
             setVendors(vendorsRes);
           }
         })
-        .catch((error) => {
+        .catch((err) => {
           if (isMounted) {
-            console.error(error);
-            toast.error("Failed to load issue review data");
+            console.error(err);
+            // FIX: Extract specific error for initial load
+            const errorMessage = err instanceof Error ? err.message : "Failed to load issue review data";
+            toast.error(`Failed: ${errorMessage}`);
           }
         })
         .finally(() => {
@@ -74,8 +76,10 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
       toast.success("Issue resolved successfully");
       onSuccess?.(); // Refresh the table
       onClose();
-    } catch {
-      toast.error("Failed to resolve issue");
+    } catch (err) {
+      // FIX: Extract specific error for resolving internally
+      const errorMessage = err instanceof Error ? err.message : "Failed to resolve issue";
+      toast.error(`Failed: ${errorMessage}`);
     } finally {
       setIsResolving(false);
     }
@@ -96,8 +100,10 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
       toast.success("Repair initiated successfully");
       onSuccess?.(); // Refresh the table
       onClose();
-    } catch {
-      toast.error("Failed to initiate repair");
+    } catch (err) {
+      // FIX: Extract specific error for initiating repair
+      const errorMessage = err instanceof Error ? err.message : "Failed to initiate repair";
+      toast.error(`Failed: ${errorMessage}`);
     } finally {
       setIsInitiating(false);
     }
