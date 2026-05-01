@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { getDisposalReviewDetails, type DisposalReviewDetails } from '@/actions/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
+// 1. Import the new Execute dialog
+import { ExecuteDisposalDialog } from './execute-disposal-dialog'; 
 import type { PendingDisposalRow } from './pending-disposals-grid';
 
 export interface DisposalReviewPanelWrapperProps {
@@ -20,7 +22,10 @@ export function DisposalReviewPanelWrapper({
 }: DisposalReviewPanelWrapperProps) {
   const [extendedData, setExtendedData] = useState<DisposalReviewDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // State for both dialogs
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isExecuteDialogOpen, setIsExecuteDialogOpen] = useState(false); // 2. Add Execute state
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +64,12 @@ export function DisposalReviewPanelWrapper({
     onClose(false);
   };
 
+  // 3. Add success handler for execution
+  const handleExecuteSuccess = () => {
+    setIsExecuteDialogOpen(false);
+    onClose(false);
+  };
+
   return (
     <>
       <DisposalReviewPanel
@@ -80,20 +91,34 @@ export function DisposalReviewPanelWrapper({
         originalCost={extendedData?.originalCost ?? undefined}
         currentBookValue={undefined}
         warrantyStatus={extendedData?.warrantyStatus === 'Expired' ? 'Expired' : extendedData?.warrantyStatus === 'Valid' ? 'Valid' : ''}
+        
         onReject={() => setIsRejectDialogOpen(true)}
-        onApprove={() => console.log('Initiate disposal clicked')}
+        onApprove={() => setIsExecuteDialogOpen(true)} // 4. Wire the approve action to open the dialog
       />
 
       {row && (
-        <RejectDisposalDialog
-          isOpen={isRejectDialogOpen}
-          onOpenChange={setIsRejectDialogOpen}
-          disposalId={row.id}
-          assetId={row.assetId}
-          assetName={row.assetName ?? 'Unknown Device'}
-          assetTag={row.assetTag}
-          onSuccess={handleRejectSuccess}
-        />
+        <>
+          <RejectDisposalDialog
+            isOpen={isRejectDialogOpen}
+            onOpenChange={setIsRejectDialogOpen}
+            disposalId={row.id}
+            assetId={row.assetId}
+            assetName={row.assetName ?? 'Unknown Device'}
+            assetTag={row.assetTag}
+            onSuccess={handleRejectSuccess}
+          />
+
+          {/* 5. Render the Execute Dialog */}
+          <ExecuteDisposalDialog
+            isOpen={isExecuteDialogOpen}
+            onOpenChange={setIsExecuteDialogOpen}
+            disposalId={row.id}
+            assetId={row.assetId}
+            assetName={row.assetName ?? 'Unknown Device'}
+            assetTag={row.assetTag}
+            onSuccess={handleExecuteSuccess}
+          />
+        </>
       )}
     </>
   );
