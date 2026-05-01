@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { TabbedPanel, type TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 import { type SlidePanelAction } from '@/components/shared/slide-panel';
 import { AssetDetailsTab } from './asset-details-tab';
@@ -16,6 +16,8 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { getAssetMaintenanceHistory } from '@/actions/maintenance';
 import type { AssetMaintenanceRecord } from '@/types/maintenance';
 import { Badge } from '@/components/ui/badge';
+import { getAllAssetAuditHistory } from '@/actions/audit-log';
+import { format } from 'date-fns';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
@@ -78,14 +80,17 @@ export interface AssetDetailsPanelProps {
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
+  const [activeTabId, setActiveTabId] = useState('asset-details');
+  const [isExporting, setIsExporting] = useState(false);
+
   // ============ EPIC 15: DYNAMIC MAINTENANCE FETCHING ============
   const [maintenanceHistory, setMaintenanceHistory] = useState<AssetMaintenanceRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
     async function fetchHistory() {
-      if (!props.assetTag) return; 
-      
+      if (!props.assetTag) return;
+
       try {
         setIsLoadingHistory(true);
         const history = await getAssetMaintenanceHistory(props.assetTag, 3);
@@ -103,17 +108,17 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   }, [props.assetTag, props.isOpen]);
   // ======================================================
 
-  const getActionButtonLabel = () => {
+  const getActionButtonLabel = useCallback(() => {
     if (props.assetCategory === 'Office Furniture') return 'Transfer';
     if (props.assetCategory === 'Software') return 'Return';
     return 'Request Return';
-  };
+  }, [props.assetCategory]);
 
   const tabs: TabbedPanelTab[] = useMemo(() => {
     const tabsList: TabbedPanelTab[] = [];
     const isSoftware = props.assetCategory === 'Software';
     const isFurniture = props.assetCategory === 'Office Furniture';
-    
+
     // SAM Data mapping from dev branch
     const softwareLicenseKey = props.serialNumber || props.specs?.license_key?.toString() || '-';
     const softwareLicenseType = props.specs?.license_type?.toString() || 'Subscription';
@@ -124,10 +129,10 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
-    
+
     // Dev branch resolution: Using assetTag
     detailsFields.push({ label: 'Asset ID', value: props.assetTag });
-    
+
     if (isFurniture) {
       detailsFields.push(
         { label: 'Category', value: props.assetCategory },
@@ -231,53 +236,53 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
                   </button>
                 )}
               </div>
-              
+
               {isLoadingHistory ? (
-                  <div className="space-y-3">
-                    <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
-                    <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
-                  </div>
+                <div className="space-y-3">
+                  <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
+                  <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
+                </div>
               ) : maintenanceHistory.length > 0 ? (
-                  <div className="space-y-3">
-                    {maintenanceHistory.map((record) => (
-                      <div key={record.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-medium text-[14px] text-slate-900">
-                            {record.ticketType === 'VENDOR' ? record.vendorName : 'Internal Repair'}
-                          </span>
-                          <Badge 
-                            variant="outline" 
-                            className={
-                              record.status === 'COMPLETED' 
-                              ? 'bg-green-50 text-green-700 border-green-200 font-normal shadow-sm' 
+                <div className="space-y-3">
+                  {maintenanceHistory.map((record) => (
+                    <div key={record.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium text-[14px] text-slate-900">
+                          {record.ticketType === 'VENDOR' ? record.vendorName : 'Internal Repair'}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            record.status === 'COMPLETED'
+                              ? 'bg-green-50 text-green-700 border-green-200 font-normal shadow-sm'
                               : record.status === 'ACTIVE'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200 font-normal shadow-sm'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 font-normal shadow-sm'
-                            }
-                          >
-                            {record.status}
-                          </Badge>
-                        </div>
-                        
-                        <p className="text-[13px] text-slate-600 mb-3 line-clamp-2">
-                          {record.reportedIssue}
-                        </p>
-                        
-                        <div className="flex justify-between items-center text-[12px] text-slate-500 font-medium pt-3 border-t border-slate-200/60">
-                          <span>
-                            {record.actualCompletionDate 
-                              ? new Date(record.actualCompletionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
-                              : 'In Progress'}
-                          </span>
-                          {record.actualCost && (
-                            <span className="text-slate-700">
-                              ${parseFloat(record.actualCost).toFixed(2)}
-                            </span>
-                          )}
-                        </div>
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 font-normal shadow-sm'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 font-normal shadow-sm'
+                          }
+                        >
+                          {record.status}
+                        </Badge>
                       </div>
-                    ))}
-                  </div>
+
+                      <p className="text-[13px] text-slate-600 mb-3 line-clamp-2">
+                        {record.reportedIssue}
+                      </p>
+
+                      <div className="flex justify-between items-center text-[12px] text-slate-500 font-medium pt-3 border-t border-slate-200/60">
+                        <span>
+                          {record.actualCompletionDate
+                            ? new Date(record.actualCompletionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                            : 'In Progress'}
+                        </span>
+                        {record.actualCost && (
+                          <span className="text-slate-700">
+                            ${parseFloat(record.actualCost).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="flex items-center justify-center p-6 border border-dashed border-slate-200 rounded-xl bg-slate-50">
                   <p className="text-sm text-slate-500">No maintenance records found.</p>
@@ -348,17 +353,83 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       tabsList.push({
         id: 'history',
         label: 'History',
-        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab events={props.historyEvents ?? []} onViewAll={props.onViewAllHistory} />,
+        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab key={props.assetId} assetId={props.assetId} />,
       });
     }
 
     return tabsList;
   }, [props, maintenanceHistory, isLoadingHistory]);
 
-  const actions: SlidePanelAction[] = [
-    { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
-    { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
-  ];
+  const handleExportCSV = useCallback(async () => {
+    try {
+      setIsExporting(true);
+      const rows = await getAllAssetAuditHistory(props.assetId);
+
+      const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
+
+      const header = [
+        "Timestamp",
+        "User",
+        "Action Taken",
+        "Target Entity",
+        "IP Address",
+      ];
+
+      const csvRows = rows.map((row) => {
+        const user = row.performedBy
+          ? `${row.performedBy.name} <${row.performedBy.email}>`
+          : "Unknown";
+
+        const target = row.entityLabel && row.entityLabel.trim().length > 0
+          ? row.entityLabel
+          : `${row.entityType}: ${row.entityId}`;
+
+        const timestamp = row.performedAt instanceof Date
+          ? row.performedAt
+          : new Date(row.performedAt);
+
+        return [
+          Number.isNaN(timestamp.getTime()) ? String(row.performedAt) : format(timestamp, "yyyy-MM-dd HH:mm:ss"),
+          user,
+          row.actionType,
+          target,
+          row.ipAddress ?? "-",
+        ].map(escapeCsvValue);
+      });
+
+      const csv = [header.map(escapeCsvValue).join(","), ...csvRows.map((row) => row.join(","))].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `asset-${props.assetTag}-history-${format(new Date(), "yyyyMMdd-HHmmss")}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [props.assetId, props.assetTag]);
+
+  const actions: SlidePanelAction[] = useMemo(() => {
+    if (activeTabId === 'history') {
+      return [
+        {
+          id: 'export-csv',
+          label: isExporting ? 'Exporting...' : 'Export to CSV',
+          variant: 'default',
+          onClick: handleExportCSV,
+          disabled: isExporting
+        }
+      ];
+    }
+
+    return [
+      { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
+      { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
+    ];
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
@@ -379,6 +450,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       tabs={tabs}
       defaultTabId="asset-details"
       actions={actions}
+      onTabChange={setActiveTabId}
     />
   );
 }

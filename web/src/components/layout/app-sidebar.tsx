@@ -91,10 +91,10 @@ const managementItems: NavItem[] = [
     {
         label: "Reports & Audits",
         icon: FileBarChart,
-        href: "/reports",
+        href: "/reports/standard-reports",
         allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"],
         children: [
-            { label: "Standard Reports", href: "/reports" },
+            { label: "Standard Reports", href: "/reports/standard-reports" },
             { label: "System Audit Log", href: "/reports/audit-log" },
         ],
     },
@@ -302,8 +302,8 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
                     </button>
 
 
-                            {!collapsed && visibleAssets.length > 0 ? <SectionLabel title="ASSETS" /> : null}
-                            <NavGroup items={visibleAssets} collapsed={collapsed} userRole={userRole} pathname={pathname} />
+                    {!collapsed && visibleAssets.length > 0 ? <SectionLabel title="ASSETS" /> : null}
+                    <NavGroup items={visibleAssets} collapsed={collapsed} userRole={userRole} pathname={pathname} />
                 </div>
 
                 {visibleManagement.length > 0 && (

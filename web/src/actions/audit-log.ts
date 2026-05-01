@@ -16,7 +16,10 @@ import {
 } from '@/db/schema';
 import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import {
+  canManageAssets,
+  getAuthenticatedUser,
+} from '@/lib/auth/get-authenticated-user';
 
 export interface AuditLogFilter {
   field: string;
@@ -83,6 +86,7 @@ function formatEntityLabel(
 }
 
 function buildTargetEntitySearchCondition(searchValue: string) {
+  // Match audit rows against the resolved entity record, not just raw IDs.
   return or(
     sql<boolean>`exists (
       select 1
@@ -199,6 +203,7 @@ async function resolveTargetEntityLabels(
     }
   };
 
+  // Group IDs by entity table so we can resolve labels in bulk.
   const assetIds = records
     .filter((record) => record.entityType === 'Asset')
     .map((record) => record.entityId)
@@ -245,6 +250,7 @@ async function resolveTargetEntityLabels(
       .filter((value) => Number.isFinite(value)),
   } as const;
 
+  // Pull the human-readable labels once, then stitch them back onto the rows.
   const [
     assetRows,
     userRows,
@@ -513,6 +519,7 @@ export async function getAuditLogs(
 
     const whereCondition = baseWhere.length > 0 ? and(...baseWhere) : undefined;
 
+    // Count first so the table can paginate before fetching the page slice.
     const totalRowsCount = await db
       .select({ total: sql<number>`cast(count(*) as integer)` })
       .from(systemAuditLogs)
@@ -544,6 +551,7 @@ export async function getAuditLogs(
       .limit(pageSize)
       .offset(offset);
 
+    // Resolve display labels after the page query so the list stays readable.
     const targetEntityLabels = await resolveTargetEntityLabels(records);
 
     const data: AuditLogRow[] = records.map((record) => ({
@@ -565,7 +573,9 @@ export async function getAuditLogs(
       ipAddress: record.ipAddress,
       entityLabel:
         targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
-        (record.entityType === 'URL' ? record.entityId : humanizeEntityType(record.entityType)),
+        (record.entityType === 'URL'
+          ? record.entityId
+          : humanizeEntityType(record.entityType)),
     }));
 
     logLatency({ scope: 'audit-log', label: 'getAuditLogs', startTime: timer });
@@ -586,5 +596,174 @@ export async function getAuditLogs(
       error,
     });
     throw new Error('Failed to fetch audit logs.');
+  }
+}
+
+export async function getAssetAuditHistory(
+  assetId: string,
+  page: number = 1,
+  pageSize: number = 15
+): Promise<{ data: AuditLogRow[]; hasMore: boolean }> {
+  const timer = startLatencyTimer();
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser || !canManageAssets(currentUser.role)) {
+      throw new Error('Unauthorized access to asset history.');
+    }
+
+    // Keep paging bounded so history requests stay predictable.
+    const validatedPage = Math.max(1, page);
+    const validatedPageSize = Math.min(100, Math.max(1, pageSize));
+    const offset = (validatedPage - 1) * validatedPageSize;
+    // Fetch one extra record to determine if there is a next page
+    const limit = validatedPageSize + 1;
+
+    const whereCondition = and(
+      eq(systemAuditLogs.entityType, 'Asset'),
+      eq(systemAuditLogs.entityId, assetId)
+    );
+
+    const records = await db
+      .select({
+        id: systemAuditLogs.id,
+        performedAt: systemAuditLogs.performedAt,
+        entityType: systemAuditLogs.entityType,
+        entityId: systemAuditLogs.entityId,
+        actionType: systemAuditLogs.actionType,
+        oldValue: systemAuditLogs.oldValue,
+        newValue: systemAuditLogs.newValue,
+        ipAddress: systemAuditLogs.ipAddress,
+        performedById: users.id,
+        performedByName: users.name,
+        performedByEmail: users.email,
+        performedByRole: users.role,
+      })
+      .from(systemAuditLogs)
+      .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+      .where(whereCondition)
+      .orderBy(desc(systemAuditLogs.performedAt), desc(systemAuditLogs.id))
+      .limit(limit)
+      .offset(offset);
+
+    const hasMore = records.length > validatedPageSize;
+    const pageRecords = hasMore ? records.slice(0, validatedPageSize) : records;
+
+    // Reuse the same label resolver as the system audit log.
+    const targetEntityLabels = await resolveTargetEntityLabels(pageRecords);
+
+    const data: AuditLogRow[] = pageRecords.map((record) => ({
+      id: record.id,
+      performedAt: record.performedAt,
+      entityType: record.entityType,
+      entityId: record.entityId,
+      actionType: record.actionType,
+      performedBy: record.performedById
+        ? {
+            id: record.performedById,
+            name: record.performedByName ?? 'Unknown',
+            email: record.performedByEmail ?? 'unknown@example.com',
+            role: record.performedByRole,
+          }
+        : null,
+      oldValue: record.oldValue as Record<string, unknown> | null,
+      newValue: record.newValue as Record<string, unknown> | null,
+      ipAddress: record.ipAddress,
+      entityLabel:
+        targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+        humanizeEntityType(record.entityType),
+    }));
+
+    logLatency({
+      scope: 'audit-log',
+      label: 'getAssetAuditHistory',
+      startTime: timer,
+    });
+
+    return { data, hasMore };
+  } catch (error) {
+    logError({
+      scope: 'audit-log',
+      label: 'Database query failed in getAssetAuditHistory',
+      error,
+    });
+    throw new Error('Failed to fetch asset history.');
+  }
+}
+
+export async function getAllAssetAuditHistory(
+  assetId: string
+): Promise<AuditLogRow[]> {
+  const timer = startLatencyTimer();
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser || !canManageAssets(currentUser.role)) {
+      throw new Error('Unauthorized access to asset history.');
+    }
+
+    const whereCondition = and(
+      eq(systemAuditLogs.entityType, 'Asset'),
+      eq(systemAuditLogs.entityId, assetId)
+    );
+
+    const records = await db
+      .select({
+        id: systemAuditLogs.id,
+        performedAt: systemAuditLogs.performedAt,
+        entityType: systemAuditLogs.entityType,
+        entityId: systemAuditLogs.entityId,
+        actionType: systemAuditLogs.actionType,
+        oldValue: systemAuditLogs.oldValue,
+        newValue: systemAuditLogs.newValue,
+        ipAddress: systemAuditLogs.ipAddress,
+        performedById: users.id,
+        performedByName: users.name,
+        performedByEmail: users.email,
+        performedByRole: users.role,
+      })
+      .from(systemAuditLogs)
+      .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+      .where(whereCondition)
+      .orderBy(desc(systemAuditLogs.performedAt), desc(systemAuditLogs.id));
+
+    const targetEntityLabels = await resolveTargetEntityLabels(records);
+
+    const data: AuditLogRow[] = records.map((record) => ({
+      id: record.id,
+      performedAt: record.performedAt,
+      entityType: record.entityType,
+      entityId: record.entityId,
+      actionType: record.actionType,
+      performedBy: record.performedById
+        ? {
+            id: record.performedById,
+            name: record.performedByName ?? 'Unknown',
+            email: record.performedByEmail ?? 'unknown@example.com',
+            role: record.performedByRole,
+          }
+        : null,
+      oldValue: record.oldValue as Record<string, unknown> | null,
+      newValue: record.newValue as Record<string, unknown> | null,
+      ipAddress: record.ipAddress,
+      entityLabel:
+        targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+        humanizeEntityType(record.entityType),
+    }));
+
+    logLatency({
+      scope: 'audit-log',
+      label: 'getAllAssetAuditHistory',
+      startTime: timer,
+    });
+
+    return data;
+  } catch (error) {
+    logError({
+      scope: 'audit-log',
+      label: 'Database query failed in getAllAssetAuditHistory',
+      error,
+    });
+    throw new Error('Failed to fetch all asset history.');
   }
 }
