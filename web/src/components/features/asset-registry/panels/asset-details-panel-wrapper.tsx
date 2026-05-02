@@ -22,6 +22,7 @@ export interface AssetDetailsPanelWrapperProps {
   onClose: () => void;
   recordId: string;
   manualStatuses?: Array<{ value: string; label: string; color?: string }>;
+  onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
 
 function formatDisplayDate(value?: string | null) {
@@ -66,6 +67,7 @@ export function AssetDetailsPanelWrapper({
   onClose,
   recordId,
   manualStatuses = [],
+  onStatusUpdateRef,
 }: AssetDetailsPanelWrapperProps) {
   const [data, setData] = useState<AssetDetailsData | null>(null);
   const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
@@ -197,6 +199,10 @@ export function AssetDetailsPanelWrapper({
           };
         });
         setRefreshNonce((n) => n + 1);
+        // Immediately update the table row via the ref callback
+        if (onStatusUpdateRef?.current && data?.asset.id) {
+          onStatusUpdateRef.current(data.asset.id, nextStatus);
+        }
       }}
     />
   );

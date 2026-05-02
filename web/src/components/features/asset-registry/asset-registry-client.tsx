@@ -26,7 +26,6 @@ import {
 } from '@/components/shared/data-table';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { InteractiveStatusBadge } from '@/components/shared/interactive-status-badge';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -178,6 +177,7 @@ interface AssetRegistryClientProps {
   initialResult: AssetRegistryResult;
   currentPanel?: string;
   manualStatuses?: Array<{ value: string; label: string; color?: string }>;
+  onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
 
 export function AssetRegistryClient({
@@ -186,6 +186,7 @@ export function AssetRegistryClient({
   initialResult,
   currentPanel,
   manualStatuses = [],
+  onStatusUpdateRef,
 }: AssetRegistryClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -207,6 +208,13 @@ export function AssetRegistryClient({
     );
     setRefreshNonce((n) => n + 1);
   }, []);
+
+  // Expose the status update handler via ref so detail panel can call it
+  useEffect(() => {
+    if (onStatusUpdateRef) {
+      onStatusUpdateRef.current = handleStatusUpdate;
+    }
+  }, [handleStatusUpdate, onStatusUpdateRef]);
   const isPanelOpen = Boolean(currentPanel);
   const activeRecordId =
     currentPanel === 'record' ? searchParams.get('id') : null;
@@ -758,16 +766,11 @@ export function AssetRegistryClient({
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => (
-          <InteractiveStatusBadge
-            assetId={row.original.id}
-            currentStatus={row.original.status}
-            availableStatuses={manualStatuses}
-            onStatusChanged={(nextStatus) => handleStatusUpdate(row.original.id, nextStatus)}
-          />
+          <StatusBadge value={row.original.status} showIcon />
         ),
       },
     ];
-  }, [config.view, manualStatuses, handleStatusUpdate]);
+  }, [config.view, manualStatuses]);
 
   const selectionActions: DataTableSelectionAction<AssetRegistryRow>[] = [
     { id: 'print-qr', label: 'Print QR code', disabled: isMutating },

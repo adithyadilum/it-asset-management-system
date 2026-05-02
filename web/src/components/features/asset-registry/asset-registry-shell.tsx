@@ -8,8 +8,7 @@ import {
   REGISTRY_VIEW_CONFIGS,
   type RegistryView,
 } from '@/components/features/asset-registry/registry-config';
-import { AssetRegistryPanels } from './asset-registry-panels';
-import { AssetRegistryClient } from './asset-registry-client';
+import { AssetRegistryContent } from './asset-registry-content';
 import { getManualOverrideStatuses } from '@/actions/statuses';
 
 const getCachedCategoriesByPillar = cache(
@@ -44,21 +43,15 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
   ]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-slate-50">
-      <AssetRegistryClient
-        config={config}
-        initialCategories={categories}
-        initialResult={initialResult}
-        currentPanel={currentPanel}
-        manualStatuses={manualStatuses}
-      />
-      <AssetRegistryPanels
-        currentPanel={currentPanel}
-        recordId={recordId}
-        closePanelUrl={closePanelUrl}
-        pillar={config.pillar}
-        manualStatuses={manualStatuses}
-      />
-    </div>
+    <AssetRegistryContent
+      config={config}
+      initialCategories={categories}
+      initialResult={initialResult}
+      currentPanel={currentPanel}
+      recordId={recordId}
+      closePanelUrl={closePanelUrl}
+      pillar={config.pillar}
+      manualStatuses={manualStatuses}
+    />
   );
 }
