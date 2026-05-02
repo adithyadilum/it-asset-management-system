@@ -44,6 +44,7 @@ import type {
     MasterDataLocationRow,
     MasterDataOwnerRow,
     MasterDataVendorRow,
+    MasterDataCustomStatusRow,
 } from "./master-data-management-client";
 
 type PanelMode = "detail" | "edit";
@@ -64,6 +65,7 @@ interface MasterDataRecordPanelProps {
     vendors: MasterDataVendorRow[];
     owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
+    customStatuses: MasterDataCustomStatusRow[];
 }
 
 const ENTITY_LABELS: Record<MasterDataRecordEntity, string> = {
@@ -74,6 +76,7 @@ const ENTITY_LABELS: Record<MasterDataRecordEntity, string> = {
     vendors: "Vendor",
     owners: "Owner",
     departments: "Department",
+    statuses: "Status",
 };
 
 const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
@@ -84,6 +87,7 @@ const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
     vendors: "VND",
     owners: "OWN",
     departments: "DEP",
+    statuses: "STS",
 };
 
 const PILLAR_OPTIONS = [
@@ -165,6 +169,7 @@ function resolveRecordByEntity(
         vendors: MasterDataVendorRow[];
         owners: MasterDataOwnerRow[];
         departments: MasterDataDepartmentRow[];
+        customStatuses: MasterDataCustomStatusRow[];
     }
 ) {
     switch (entity) {
@@ -182,6 +187,8 @@ function resolveRecordByEntity(
             return sources.owners.find((row) => row.id === numericId) ?? null;
         case "departments":
             return sources.departments.find((row) => row.id === numericId) ?? null;
+        case "statuses":
+            return sources.customStatuses.find((row) => row.id === numericId) ?? null;
     }
 }
 
@@ -254,6 +261,7 @@ export function MasterDataRecordPanel({
     vendors,
     owners,
     departments,
+    customStatuses,
 }: MasterDataRecordPanelProps) {
     const router = useRouter();
     const formRef = useRef<HTMLFormElement>(null);
@@ -282,6 +290,7 @@ export function MasterDataRecordPanel({
             vendors,
             owners,
             departments,
+            customStatuses,
         });
     }, [
         brands,
@@ -293,6 +302,7 @@ export function MasterDataRecordPanel({
         numericRecordId,
         owners,
         vendors,
+        customStatuses,
     ]);
     const linkedAssetsCount = selectedRecord?.linkedAssets ?? 0;
 
@@ -357,6 +367,13 @@ export function MasterDataRecordPanel({
                 const owner = selectedRecord as MasterDataOwnerRow;
                 nextDraft.companyName = owner.companyName;
                 nextDraft.isActive = owner.isActive;
+                break;
+            }
+            case "statuses": {
+                const status = selectedRecord as MasterDataCustomStatusRow;
+                nextDraft.name = status.name;
+                nextDraft.color = status.color;
+                nextDraft.isActive = status.isActive;
                 break;
             }
         }
@@ -1499,6 +1516,63 @@ export function MasterDataRecordPanel({
                     </>
                 );
             }
+
+            case "statuses":
+                return (
+                    <>
+                        {renderRecordIdPreview()}
+
+                        <div className="space-y-4">
+                            {renderTextField("name", "Status Name", asString(draft.name), {
+                                required: true,
+                                placeholder: "e.g., In Transit",
+                            })}
+
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Status Color
+                                    {!isDetailMode && <span className="text-red-500"> *</span>}
+                                </label>
+                                {isDetailMode ? (
+                                    <div className="flex items-center gap-3 h-9">
+                                        <div
+                                            className="h-6 w-6 rounded border border-slate-200"
+                                            style={{ backgroundColor: asString(draft.color) }}
+                                        />
+                                        <code className="rounded bg-slate-100 px-2 py-0.5 text-sm font-mono text-slate-700">
+                                            {asString(draft.color)}
+                                        </code>
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-3">
+                                        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-md border border-slate-200">
+                                            <input
+                                                type="color"
+                                                name="color"
+                                                value={asString(draft.color)}
+                                                onChange={(e) => setDraftField("color", e.target.value)}
+                                                className="absolute -inset-2 h-14 w-14 cursor-pointer border-none bg-transparent p-0"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={asString(draft.color)}
+                                            onChange={(e) => setDraftField("color", e.target.value)}
+                                            className="font-mono h-9"
+                                            placeholder="#000000"
+                                        />
+                                    </div>
+                                )}
+                                {!isDetailMode && fieldError("color") ? (
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                        {fieldError("color")}
+                                    </p>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        {renderActiveStatus()}
+                    </>
+                );
         }
     };
 
@@ -1593,6 +1667,7 @@ export function MasterDataRecordPanel({
             vendors: "Vendor",
             owners: "Owner",
             departments: "Department",
+            statuses: "Status",
         };
         return labels[normalizedEntity] || "Record";
     };

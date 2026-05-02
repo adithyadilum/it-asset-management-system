@@ -121,9 +121,6 @@ export function MaintenanceTabs({
     });
   }, [appliedFilters, pendingTickets, searchTerm]);
 
-  const pendingFilterLabel = appliedFilters[0]
-    ? `${appliedFilters[0].field} ${appliedFilters[0].operator} ${appliedFilters[0].value}`
-    : 'Filter';
 
   const clearFilters = () => {
     setAppliedFilters([]);

@@ -73,6 +73,18 @@ export const disposalStatusEnum = pgEnum('disposal_status', [
   'Completed',
 ]);
 
+// -----------------------------------------------------------------------------
+// Custom Statuses (user-configurable)
+// -----------------------------------------------------------------------------
+export const customStatuses = pgTable('custom_statuses', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  color: varchar('color', { length: 32 }).notNull(),
+  createdById: uuid('created_by_id').references(() => users.id),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // SAM Additions
 export const licenseTypeEnum = pgEnum('license_type', [
   'Perpetual',
@@ -340,42 +352,49 @@ export const maintenanceTickets = pgTable('maintenance_tickets', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// 👇 UPDATED ONLY THIS TABLE WITH INDEXES 👇
+export const assetDisposals = pgTable(
+  'asset_disposals',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'restrict' }),
+    requestedById: uuid('requested_by_id')
+      .notNull()
+      .references(() => users.id),
+    approvedById: uuid('approved_by_id').references(() => users.id),
 
+    status: disposalStatusEnum('status').default('Pending Approval').notNull(),
+    reason: varchar('reason', { length: 255 }).notNull(),
+    justification: text('justification'),
+    rejectionReason: text('rejection_reason'),
 
-export const assetDisposals = pgTable('asset_disposals', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'restrict' }),
-  requestedById: uuid('requested_by_id')
-    .notNull()
-    .references(() => users.id),
-  approvedById: uuid('approved_by_id').references(() => users.id),
+    dataWiped: boolean('data_wiped').default(false),
+    tagsRemoved: boolean('tags_removed').default(false),
+    actualSalvageValue: decimal('actual_salvage_value', {
+      precision: 12,
+      scale: 2,
+    }),
+    bookValueAtDisposal: decimal('book_value_at_disposal', {
+      precision: 12,
+      scale: 2,
+    }), // Epic 22 Addition
 
-  status: disposalStatusEnum('status').default('Pending Approval').notNull(),
-  reason: varchar('reason', { length: 255 }).notNull(), 
-  justification: text('justification'),
-  rejectionReason: text('rejection_reason'),
-
-  
-  disposalMethod: varchar('disposal_method', { length: 50 }), 
-  disposalReceiptUrl: varchar('disposal_receipt_url', { length: 500 }),
- 
-  
-  dataWiped: boolean('data_wiped').default(false),
-  tagsRemoved: boolean('tags_removed').default(false),
-  actualSalvageValue: decimal('actual_salvage_value', { precision: 12, scale: 2 }),
-  bookValueAtDisposal: decimal('book_value_at_disposal', { precision: 12, scale: 2 }),
-
-  requestedAt: timestamp('requested_at').defaultNow().notNull(),
-  resolvedAt: timestamp('resolved_at'),
-  notes: text('notes'),
-}, (table) => ({
-  statusIdx: index('asset_disposals_status_idx').on(table.status),
-  assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
-  requestedByIdIdx: index('asset_disposals_requested_by_idx').on(table.requestedById),
-}));
-
+    requestedAt: timestamp('requested_at').defaultNow().notNull(),
+    resolvedAt: timestamp('resolved_at'),
+    notes: text('notes'),
+  },
+  (table) => ({
+    // ✨ ADDED THESE 3 INDEXES TO FIX QUERY SLOWNESS ✨
+    statusIdx: index('asset_disposals_status_idx').on(table.status),
+    assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
+    requestedByIdIdx: index('asset_disposals_requested_by_idx').on(
+      table.requestedById
+    ),
+  })
+);
+// 👆 ------------------------------------------ 👆
 
 // -----------------------------------------------------------------------------
 // 6. SYSTEM AUDIT LOG
