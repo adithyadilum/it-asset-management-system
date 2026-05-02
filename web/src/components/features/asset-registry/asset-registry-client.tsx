@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
+import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { bulkUpdateAssets, getAssetsByPillar } from '@/actions/asset-registry';
@@ -91,7 +92,7 @@ type CategoryOption = {
   isAll?: boolean;
 };
 
-const STATUS_OPTIONS = [
+const DEFAULT_STATUS_OPTIONS = [
   'Available',
   'Assigned',
   'In Repair',
@@ -207,6 +208,23 @@ export function AssetRegistryClient({
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [customStatuses, setCustomStatuses] = useState<string[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const rows = await getCustomStatuses();
+        if (!mounted) return;
+        setCustomStatuses(rows.map((r: CustomStatusRow) => r.name));
+      } catch {
+        // ignore non-fatal
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, []);
+
   // disposal request dialog states
   const [isDisposalDialogOpen, setIsDisposalDialogOpen] = useState(false);
   const [disposalSelectionRows, setDisposalSelectionRows] = useState<AssetRegistryRow[]>([]);
@@ -286,10 +304,10 @@ export function AssetRegistryClient({
 
   const backendStatusFilter =
     statusFilter?.operator === 'is' ? statusFilter.value : undefined;
-//hide pending disposal from registry by default, unless user explicitly filters for it.
+  //hide pending disposal from registry by default, unless user explicitly filters for it.
   const shouldHidePendingDisposalByDefault = backendStatusFilter !== 'Pending Disposal';
 
-  
+
 
   useEffect(() => {
     const requestSequence = ++requestSequenceRef.current;
@@ -451,7 +469,7 @@ export function AssetRegistryClient({
   const filterValueOptions = useMemo(() => {
     switch (draftField) {
       case 'Status': {
-        const statuses = new Set<string>(STATUS_OPTIONS);
+        const statuses = new Set<string>([...DEFAULT_STATUS_OPTIONS, ...customStatuses]);
         for (const row of rows) {
           statuses.add(row.status);
         }
@@ -488,7 +506,7 @@ export function AssetRegistryClient({
       default:
         return [];
     }
-  }, [draftField, rows]);
+  }, [draftField, rows, customStatuses]);
 
   useEffect(() => {
     if (filterValueOptions.length === 0) {
@@ -730,39 +748,39 @@ export function AssetRegistryClient({
     { id: 'print-qr', label: 'Print QR code', disabled: isMutating },
     ...(config.view === 'hardware'
       ? [
-          {
-            id: 'assign-or-return',
-            label: 'Assign / Return',
-            disabled: isMutating,
-            onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
-              const allSelectedAssigned =
-                selectedRowsForAction.length > 0 &&
-                selectedRowsForAction.every((selectedRow) => selectedRow.status === 'Assigned');
+        {
+          id: 'assign-or-return',
+          label: 'Assign / Return',
+          disabled: isMutating,
+          onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+            const allSelectedAssigned =
+              selectedRowsForAction.length > 0 &&
+              selectedRowsForAction.every((selectedRow) => selectedRow.status === 'Assigned');
 
-              const nextStatus = allSelectedAssigned ? 'Available' : 'Assigned';
+            const nextStatus = allSelectedAssigned ? 'Available' : 'Assigned';
 
-              void performBulkStatusChange(
-                nextStatus,
-                selectedRowsForAction.map((selectedRow) => selectedRow.id)
-              );
-            },
-          } as DataTableSelectionAction<AssetRegistryRow>,
-        ]
+            void performBulkStatusChange(
+              nextStatus,
+              selectedRowsForAction.map((selectedRow) => selectedRow.id)
+            );
+          },
+        } as DataTableSelectionAction<AssetRegistryRow>,
+      ]
       : []),
     ...(config.view !== 'software'
       ? [
-          {
-            id: 'bulk-transfer',
-            label: 'Bulk Transfer',
-            disabled: isMutating,
-            onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
-              setTransferSelectionRows(selectedRowsForAction);
-              setDestinationLocationId(null);
-              setTransferDate('');
-              setIsTransferDialogOpen(true);
-            },
-          } as DataTableSelectionAction<AssetRegistryRow>,
-        ]
+        {
+          id: 'bulk-transfer',
+          label: 'Bulk Transfer',
+          disabled: isMutating,
+          onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+            setTransferSelectionRows(selectedRowsForAction);
+            setDestinationLocationId(null);
+            setTransferDate('');
+            setIsTransferDialogOpen(true);
+          },
+        } as DataTableSelectionAction<AssetRegistryRow>,
+      ]
       : []),
     {
       id: 'dispose',
@@ -780,10 +798,10 @@ export function AssetRegistryClient({
     config.view === 'software'
       ? ['w-[26%]', 'w-[22%]', 'w-[17%]', 'w-[17%]', 'w-[18%]']
       : config.view === 'furniture'
-      ? ['w-[18%]', 'w-[26%]', 'w-[16%]', 'w-[20%]', 'w-[20%]']
-      : config.view === 'office-electronics'
-      ? ['w-[16%]', 'w-[20%]', 'w-[14%]', 'w-[16%]', 'w-[18%]', 'w-[16%]']
-      : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
+        ? ['w-[18%]', 'w-[26%]', 'w-[16%]', 'w-[20%]', 'w-[20%]']
+        : config.view === 'office-electronics'
+          ? ['w-[16%]', 'w-[20%]', 'w-[14%]', 'w-[16%]', 'w-[18%]', 'w-[16%]']
+          : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
 
   const openRegistrationPanel = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -1112,8 +1130,8 @@ export function AssetRegistryClient({
                     uniqueSelectedLocations.length === 0
                       ? '-'
                       : uniqueSelectedLocations.length === 1
-                      ? uniqueSelectedLocations[0]
-                      : 'Multiple locations'
+                        ? uniqueSelectedLocations[0]
+                        : 'Multiple locations'
                   }
                   disabled
                   className="h-9 rounded-lg border-slate-200 bg-slate-50"

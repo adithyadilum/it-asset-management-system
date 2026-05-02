@@ -56,6 +56,7 @@ import type {
     MasterDataLocationRow,
     MasterDataOwnerRow,
     MasterDataVendorRow,
+    MasterDataCustomStatusRow,
 } from "./master-data-management-client";
 
 type Pillar =
@@ -84,6 +85,7 @@ interface MasterDataCreatePanelProps {
     vendors: MasterDataVendorRow[];
     owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
+    customStatuses: MasterDataCustomStatusRow[];
     disableTransition?: boolean;
 }
 
@@ -142,6 +144,12 @@ const PANEL_META: Record<MasterDataRecordEntity, {
         submitLabel: "Save Department",
         submittingLabel: "Saving Department...",
     },
+    statuses: {
+        title: "Add New Status",
+        description: "Create a custom status for assets (e.g., In Transit).",
+        submitLabel: "Save Status",
+        submittingLabel: "Saving Status...",
+    },
 };
 
 const SCHEMA_CHECKBOX_CLASSNAME =
@@ -158,6 +166,7 @@ const NEXT_ID_LABELS: Record<MasterDataRecordEntity, string> = {
     vendors: "Vendor ID (Preview)",
     owners: "Owner ID (Preview)",
     departments: "Department ID (Preview)",
+    statuses: "Status ID (Preview)",
 };
 
 function formatPreviewId(prefix: string, nextId: number) {
@@ -201,6 +210,7 @@ export function MasterDataCreatePanel({
     vendors,
     owners,
     departments,
+    customStatuses,
     disableTransition = false,
 }: MasterDataCreatePanelProps) {
     const router = useRouter();
@@ -228,6 +238,7 @@ export function MasterDataCreatePanel({
         createCustomAttribute(),
     ]);
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
+    const [statusColorInput, setStatusColorInput] = useState("#64748b");
     const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
@@ -296,6 +307,12 @@ export function MasterDataCreatePanel({
         [departments]
     );
 
+    const nextStatusRecordId = useMemo(
+        () =>
+            customStatuses.reduce((max, status) => Math.max(max, status.id), 0) + 1,
+        [customStatuses]
+    );
+
     const nextIdPreviewByEntity = useMemo<Record<MasterDataRecordEntity, string>>(
         () => ({
             locations: formatPreviewId("LOC", nextLocationRecordId),
@@ -305,6 +322,7 @@ export function MasterDataCreatePanel({
             vendors: formatPreviewId("VND", nextVendorRecordId),
             owners: formatPreviewId("OWN", nextOwnerRecordId),
             departments: formatPreviewId("DEP", nextDepartmentRecordId),
+            statuses: formatPreviewId("STS", nextStatusRecordId),
         }),
         [
             nextBrandRecordId,
@@ -313,6 +331,7 @@ export function MasterDataCreatePanel({
             nextDeviceModelRecordId,
             nextLocationRecordId,
             nextOwnerRecordId,
+            nextStatusRecordId,
             nextVendorRecordId,
         ]
     );
@@ -417,6 +436,7 @@ export function MasterDataCreatePanel({
         setModelSpecAttributes([createCustomAttribute()]);
         setAssetTrackingAttributes([createCustomAttribute()]);
         setModelSpecValues({});
+        setStatusColorInput("#64748b");
     }, []);
 
     const handleClose = useCallback(
@@ -1464,6 +1484,62 @@ export function MasterDataCreatePanel({
                                     {getFieldError("companyName")}
                                 </p>
                             )}
+                        </div>
+
+                        {renderActiveSwitch}
+                    </>
+                );
+
+            case "statuses":
+                return (
+                    <>
+                        {nextIdPreviewField}
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Status Name <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    name="name"
+                                    placeholder="e.g., In Transit"
+                                    required
+                                    className={getFieldError("name") ? "border-red-500" : ""}
+                                />
+                                {getFieldError("name") && (
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                        {getFieldError("name")}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Status Color <span className="text-red-500">*</span>
+                                </label>
+                                <div className="flex gap-3">
+                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200">
+                                        <input
+                                            type="color"
+                                            name="color"
+                                            value={statusColorInput}
+                                            onChange={(e) => setStatusColorInput(e.target.value)}
+                                            className="absolute -inset-2 h-14 w-14 cursor-pointer border-none bg-transparent p-0"
+                                        />
+                                    </div>
+                                    <Input
+                                        value={statusColorInput}
+                                        onChange={(e) => setStatusColorInput(e.target.value)}
+                                        className="font-mono"
+                                        placeholder="#000000"
+                                    />
+                                </div>
+                                {getFieldError("color") && (
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                        {getFieldError("color")}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
                         {renderActiveSwitch}
