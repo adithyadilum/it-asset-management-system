@@ -242,8 +242,8 @@ export const assets = pgTable(
     locationId: integer('location_id').references(() => locations.id),
     ownerId: integer('owner_id').references(() => owners.id), // From incoming
 
-    // Current State
-    status: assetStatusEnum('status').default('Available').notNull(),
+    // Current State — varchar allows both built-in and custom statuses
+    status: varchar('status', { length: 100 }).default('Available').notNull(),
     condition: conditionEnum('condition'),
     instanceAttributes: jsonb('instance_attributes'),
 

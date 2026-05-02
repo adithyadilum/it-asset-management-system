@@ -683,8 +683,7 @@ export async function manualStatusOverrideAction(
       // Step A: Update asset status
       await tx
         .update(assets)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .set({ status: newStatus as any, updatedAt: new Date() })
+        .set({ status: newStatus, updatedAt: new Date() })
         .where(eq(assets.id, assetId));
 
       // Step B: Close active assignments if required

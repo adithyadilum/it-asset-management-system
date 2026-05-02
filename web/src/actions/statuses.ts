@@ -95,6 +95,7 @@ export async function deleteCustomStatus(id: number) {
 export async function getManualOverrideStatuses() {
   const timer = startLatencyTimer();
   try {
+    // Fetch active custom statuses from master data
     const customRows = await db
       .select({ name: customStatuses.name, color: customStatuses.color })
       .from(customStatuses)

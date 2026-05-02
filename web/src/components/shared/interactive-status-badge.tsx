@@ -113,13 +113,7 @@ export function InteractiveStatusBadge({
                 onClick={() => handleStatusSelect(status.value)}
                 className="flex items-center gap-2 cursor-pointer"
               >
-                {status.color && (
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: status.color }}
-                  />
-                )}
-                <span>{status.label}</span>
+                <StatusBadge value={status.value} showIcon />
               </DropdownMenuItem>
             ))
           ) : (

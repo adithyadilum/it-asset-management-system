@@ -77,6 +77,12 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
     GlobalAdmin: { label: "Global Admin", className: "bg-purple-50 text-purple-700 border-purple-200", icon: CheckCircle2 },
     ITOperator: { label: "IT Operator", className: "bg-indigo-50 text-indigo-700 border-indigo-200", icon: CheckCircle2 },
     Employee: { label: "Employee", className: "bg-slate-50 text-slate-700 border-slate-200", icon: CheckCircle2 },
+
+    // Additional Asset Statuses (must match the asset_status enum)
+    retired: { label: "Retired", className: "bg-stone-50 text-stone-600 border-stone-300", icon: Archive },
+    pending_disposal: { label: "Pending Disposal", className: "bg-orange-50 text-orange-700 border-orange-300", icon: AlertTriangle },
+    disposed: { label: "Disposed", className: "bg-rose-50 text-rose-700 border-rose-300", icon: XCircle },
+    returned: { label: "Returned", className: "bg-teal-50 text-teal-700 border-teal-300", icon: CheckCircle2 },
 };
 
 // Fallback for unknown strings
@@ -130,16 +136,20 @@ export function StatusBadge({
     const config =
         BADGE_DICTIONARY[normalizedValue] ??
         BADGE_DICTIONARY[normalizedValue.trim().toLowerCase().replace(/\s+/g, "_")] ??
-        FALLBACK;
-    const Icon = config.icon;
+        null;
+
+    // For custom statuses not in the dictionary, show the actual name with a neutral style
+    const resolvedConfig = config ?? FALLBACK;
+    const displayLabel = config ? resolvedConfig.label : (normalizedValue || FALLBACK.label);
+    const Icon = resolvedConfig.icon;
 
     return (
         <Badge
             variant="outline"
-            className={cn("font-medium gap-1.5 whitespace-nowrap", config.className, className)}
+            className={cn("font-medium gap-1.5 whitespace-nowrap", resolvedConfig.className, className)}
         >
             {showIcon && <Icon className="h-3.5 w-3.5" />}
-            {config.label}
+            {displayLabel}
         </Badge>
     );
 }
