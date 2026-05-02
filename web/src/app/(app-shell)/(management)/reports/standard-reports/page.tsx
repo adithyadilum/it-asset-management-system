@@ -64,37 +64,20 @@ const STATUS_OPTIONS = ['All statuses', 'Active', 'Pending', 'Flagged', 'Archive
 export default function Page() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/reports">Reports & Audits</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Standard Reports</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <Badge variant="outline" className="gap-1.5 px-2.5 py-1">
-          <Search className="size-3.5" />
-          Quick templates
-        </Badge>
-      </div>
 
       <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
-        <div className="flex min-h-0 flex-col gap-0">
-          <div className="space-y-1.5 px-0 py-0">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Standard Reports
-            </h2>
-            <p className="text-base leading-6 text-muted-foreground">
-              Generate, preview, and export compliance and financial intelligence.
-            </p>
-          </div>
+        <Card className="flex min-h-0 flex-col gap-0 border-border/70 shadow-sm">
+          <CardContent className="flex min-h-0 flex-col gap-0 px-6 py-6">
+            <div className="space-y-1.5 px-0 py-0">
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                Standard Reports
+              </h2>
+              <p className="text-base leading-6 text-muted-foreground">
+                Generate, preview, and export compliance and financial intelligence.
+              </p>
+            </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="mb-4 flex-1">
             <div className="mt-4 space-y-4 pr-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 {REPORT_TEMPLATES.map((template) => (
@@ -120,8 +103,11 @@ export default function Page() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          </ScrollArea>
 
-              <Card className="gap-0 border-border/70 shadow-sm">
+          <div className="space-y-4">
+            <Card className="gap-0 border-border/70 shadow-sm">
                 <CardContent className="space-y-6 px-6 py-6">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] md:items-center">
                     <div className="text-sm font-medium text-foreground">Primary Data Source</div>
@@ -218,10 +204,11 @@ export default function Page() {
                 </CardContent>
               </Card>
             </div>
-          </ScrollArea>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="flex min-h-0 flex-col gap-4">
+        <Card className="flex min-h-0 flex-col gap-4 border-border/70 shadow-sm">
+          <CardContent className="flex min-h-0 flex-col gap-4 px-6 py-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
               <h3 className="text-base font-semibold text-foreground">
@@ -255,7 +242,8 @@ export default function Page() {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
