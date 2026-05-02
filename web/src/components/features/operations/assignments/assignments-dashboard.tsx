@@ -64,6 +64,19 @@ const tabs = [
   { id: "returned-assets", label: "Returned Assets" },
 ];
 
+// --- Helpers ---
+
+function formatDate(date: Date | string | null | undefined) {
+  if (!date) return "-";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 // --- Component ---
 
 export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
@@ -95,8 +108,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     owner: "-",
     group: asset.pillar,
     assignedTo: asset.assignedTo ?? "-",
-    dateCreated: asset.returnedDate ? asset.returnedDate.toLocaleDateString("en-GB") : "-",
-    updatedAt: asset.returnedDate ? asset.returnedDate.toLocaleDateString("en-GB") : "-",
+    dateCreated: formatDate(asset.returnedDate),
+    updatedAt: formatDate(asset.returnedDate),
     warranty: "-",
     note: asset.location ?? "-",
     assetTag: asset.assetTag,
