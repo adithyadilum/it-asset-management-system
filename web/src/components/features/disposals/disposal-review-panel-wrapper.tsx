@@ -79,7 +79,7 @@ export function DisposalReviewPanelWrapper({
         isLoading={isLoading}
         assetTag={row?.assetTag ?? ''}
         model={row?.assetName ?? ''}
-        serialNumber={extendedData?.assetTag ?? '-'}
+        serialNumber={extendedData?.serialNumber ?? '-'}
         category={extendedData?.category ?? '-'}
         brand={extendedData?.brand ?? '-'}
         imageUrl={undefined}

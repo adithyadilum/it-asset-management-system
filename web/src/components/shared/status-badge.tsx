@@ -144,7 +144,7 @@ export function StatusBadge({
             className={cn("font-medium gap-1.5 whitespace-nowrap", config.className, className)}
         >
             {showIcon && <Icon className="h-3.5 w-3.5" />}
-            {/* CHANGED THIS LINE: */}
+            
             {label ?? config.label} 
         </Badge>
     );

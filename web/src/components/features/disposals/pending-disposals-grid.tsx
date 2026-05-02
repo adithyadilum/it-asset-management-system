@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef,RowSelectionState } from '@tanstack/react-table';
 import { Search } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -59,8 +59,8 @@ export function PendingDisposalsGrid({
 }: PendingDisposalsGridProps) {
   const [searchValue, setSearchValue] = useState('');
   
-  // New states for bulk actions and selection
-  const [rowSelection, setRowSelection] = useState({});
+  
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkExecuteModalOpen, setIsBulkExecuteModalOpen] = useState(false);
   const [isBulkRejectModalOpen, setIsBulkRejectModalOpen] = useState(false);
 
@@ -79,7 +79,13 @@ export function PendingDisposalsGrid({
 
   // Derive the actual selected row objects based on the rowSelection state
   const selectedRows = useMemo(() => {
-    return filteredData.filter((_, index) => (rowSelection as Record<number, boolean>)[index]);
+    // Extract the selected keys (TanStack stores selection state as {"0": true, "2": true})
+    const selectedKeys = Object.keys(rowSelection).filter((key) => rowSelection[key]);
+    
+    //Map those stringified keys back to the original filteredData array
+    return selectedKeys
+      .map((key) => filteredData[parseInt(key, 10)])
+      .filter((row) => row !== undefined); // Safety filter to ensure no undefined rows are passed
   }, [rowSelection, filteredData]);
 
   const columns = useMemo<ColumnDef<PendingDisposalRow>[]>(

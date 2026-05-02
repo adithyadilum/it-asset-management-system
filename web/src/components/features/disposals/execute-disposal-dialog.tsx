@@ -90,7 +90,7 @@ export function ExecuteDisposalDialog({
     dataWiped &&
     tagsRemoved &&
     receiptUrls.length > 0 &&
-    confirmText.trim().toLowerCase() === expectedConfirmText.trim().toLowerCase();
+    confirmText.trim() === expectedConfirmText.trim();
 
   const handleRemoveReceipt = (indexToRemove: number) => {
     setReceiptUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
@@ -109,7 +109,7 @@ export function ExecuteDisposalDialog({
         formData.set('disposalMethod', method);
         formData.set('dataWiped', String(dataWiped));
         formData.set('tagsRemoved', String(tagsRemoved));
-        formData.set('receiptUrls', receiptUrls.join(','));
+        formData.set('receiptUrls', JSON.stringify(receiptUrls));
 
         const result = await executeAssetDisposal({ success: false, message: '' }, formData);
 
