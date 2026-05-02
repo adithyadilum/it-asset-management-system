@@ -5,6 +5,7 @@ import { customStatuses } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
+import { MANUAL_OVERRIDE_STATUSES } from '@/lib/constants';
 
 export interface CustomStatusRow {
   id: number;
@@ -86,6 +87,34 @@ export async function deleteCustomStatus(id: number) {
     logLatency({
       scope: 'ACTION',
       label: 'statuses.deleteCustomStatus',
+      startTime: timer,
+    });
+  }
+}
+
+export async function getManualOverrideStatuses() {
+  const timer = startLatencyTimer();
+  try {
+    const customRows = await db
+      .select({ name: customStatuses.name, color: customStatuses.color })
+      .from(customStatuses)
+      .where(eq(customStatuses.isActive, true));
+
+    const builtInOptions = MANUAL_OVERRIDE_STATUSES.map((s) => ({
+      value: s,
+      label: s,
+    }));
+    const customOptions = customRows.map((r) => ({
+      value: r.name,
+      label: r.name,
+      color: r.color,
+    }));
+
+    return [...builtInOptions, ...customOptions];
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'statuses.getManualOverrideStatuses',
       startTime: timer,
     });
   }

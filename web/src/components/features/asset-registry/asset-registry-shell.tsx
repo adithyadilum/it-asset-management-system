@@ -10,6 +10,7 @@ import {
 } from '@/components/features/asset-registry/registry-config';
 import { AssetRegistryPanels } from './asset-registry-panels';
 import { AssetRegistryClient } from './asset-registry-client';
+import { getManualOverrideStatuses } from '@/actions/statuses';
 
 const getCachedCategoriesByPillar = cache(
   (pillar: string) => getCategoriesByPillar(pillar)
@@ -32,13 +33,14 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
   const recordId = Array.isArray(params.id) ? params.id[0] : params.id;
   const closePanelUrl = `/assets/${view}`;
 
-  const [categories, initialResult] = await Promise.all([
+  const [categories, initialResult, manualStatuses] = await Promise.all([
     getCachedCategoriesByPillar(config.pillar),
     getAssetsByPillar({
       pillar: config.pillar,
       page: 1,
       pageSize: config.defaultPageSize,
     }),
+    getManualOverrideStatuses(),
   ]);
 
   return (
@@ -48,12 +50,14 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
         initialCategories={categories}
         initialResult={initialResult}
         currentPanel={currentPanel}
+        manualStatuses={manualStatuses}
       />
       <AssetRegistryPanels
         currentPanel={currentPanel}
         recordId={recordId}
         closePanelUrl={closePanelUrl}
         pillar={config.pillar}
+        manualStatuses={manualStatuses}
       />
     </div>
   );

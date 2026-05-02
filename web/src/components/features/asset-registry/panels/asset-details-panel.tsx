@@ -11,6 +11,7 @@ import { AllocationsTab, type AllocationUser } from './allocations-tab';
 import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-repo';
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { InteractiveStatusBadge } from '@/components/shared/interactive-status-badge';
 
 // Epic 15: Imports for Maintenance Integration
 import { getAssetMaintenanceHistory } from '@/actions/maintenance';
@@ -77,6 +78,7 @@ export interface AssetDetailsPanelProps {
   onQRCodeClick?: () => void;
   onCurrencyChange?: (currency: string) => void;
   onRevokeAllocation?: (userId: string) => void;
+  manualStatuses?: Array<{ value: string; label: string; color?: string }>;
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
@@ -438,7 +440,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         variant="metadata"
         label={`ID: ${props.assetTag || '-'}`}
       />
-      <StatusBadge value={props.status} showIcon />
+      <InteractiveStatusBadge
+        assetId={props.assetId}
+        currentStatus={props.status}
+        availableStatuses={props.manualStatuses ?? []}
+      />
     </div>
   );
 

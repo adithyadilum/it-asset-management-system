@@ -23,6 +23,7 @@ import {
 } from '@/components/shared/data-table';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { InteractiveStatusBadge } from '@/components/shared/interactive-status-badge';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -122,11 +123,6 @@ function normalizeCategoryLabel(value: string) {
     .replace(/s$/, '');
 }
 
-function toHardwareDisplayStatus(row: AssetRegistryRow) {
-  // Status column must always represent the persisted asset status from DB.
-  return row.status;
-}
-
 function toElectronicsDisplayCondition(row: AssetRegistryRow) {
   if (row.condition) {
     return row.condition;
@@ -178,6 +174,7 @@ interface AssetRegistryClientProps {
   initialCategories: AssetRegistryCategory[];
   initialResult: AssetRegistryResult;
   currentPanel?: string;
+  manualStatuses?: Array<{ value: string; label: string; color?: string }>;
 }
 
 export function AssetRegistryClient({
@@ -185,6 +182,7 @@ export function AssetRegistryClient({
   initialCategories,
   initialResult,
   currentPanel,
+  manualStatuses = [],
 }: AssetRegistryClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -739,10 +737,17 @@ export function AssetRegistryClient({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <StatusBadge value={toHardwareDisplayStatus(row.original)} showIcon />,
+        cell: ({ row }) => (
+          <InteractiveStatusBadge
+            assetId={row.original.id}
+            currentStatus={row.original.status}
+            availableStatuses={manualStatuses}
+            onStatusChanged={() => setRefreshNonce((n) => n + 1)}
+          />
+        ),
       },
     ];
-  }, [config.view]);
+  }, [config.view, manualStatuses]);
 
   const selectionActions: DataTableSelectionAction<AssetRegistryRow>[] = [
     { id: 'print-qr', label: 'Print QR code', disabled: isMutating },

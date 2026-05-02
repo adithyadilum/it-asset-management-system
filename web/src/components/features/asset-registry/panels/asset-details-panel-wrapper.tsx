@@ -20,6 +20,7 @@ export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
   onClose: () => void;
   recordId: string;
+  manualStatuses?: Array<{ value: string; label: string; color?: string }>;
 }
 
 function formatDisplayDate(value?: string | null) {
@@ -59,7 +60,12 @@ function formatDisplayDateTime(value?: string | null) {
   });
 }
 
-export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDetailsPanelWrapperProps) {
+export function AssetDetailsPanelWrapper({
+  isOpen,
+  onClose,
+  recordId,
+  manualStatuses = [],
+}: AssetDetailsPanelWrapperProps) {
   const [data, setData] = useState<AssetDetailsData | null>(null);
   const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
@@ -174,6 +180,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       allocations={allocations}
       totalSeats={parseInt(String(data?.model.technicalDetails?.max_seats ?? data?.model.technicalDetails?.total_seats ?? 0), 10)}
       onCurrencyChange={setDisplayCurrencyOverride}
+      manualStatuses={manualStatuses}
     />
   );
 }

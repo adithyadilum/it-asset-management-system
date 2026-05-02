@@ -9,6 +9,7 @@ interface AssetRegistryPanelsProps {
     recordId?: string;
     closePanelUrl: string;
     pillar: string;
+    manualStatuses?: Array<{ value: string; label: string; color?: string }>;
 }
 
 export function AssetRegistryPanels({
@@ -16,6 +17,7 @@ export function AssetRegistryPanels({
     recordId,
     closePanelUrl,
     pillar,
+    manualStatuses = [],
 }: AssetRegistryPanelsProps) {
     const router = useRouter();
 
@@ -36,6 +38,7 @@ export function AssetRegistryPanels({
                     isOpen={currentPanel === "record"}
                     onClose={handleClose}
                     recordId={recordId}
+                    manualStatuses={manualStatuses}
                 />
             ) : null}
         </>

@@ -89,6 +89,12 @@ const ACTION_ICON_MAP: Record<
         ringClass: 'ring-red-200',
         badgeClass: 'border-red-300 bg-red-50 text-red-700',
     },
+    STATUS_CHANGE: {
+        Icon: AlertCircle,
+        color: 'text-amber-600',
+        ringClass: 'ring-amber-200',
+        badgeClass: 'border-amber-300 bg-amber-50 text-amber-700',
+    },
 };
 
 function getInitials(name: string): string {
@@ -343,11 +349,19 @@ export function AssetHistoryTimeline({
                                 {changes.length > 0 && (
                                     <div className="mt-1 space-y-2 rounded-md border border-gray-100 bg-gray-50 p-3 text-xs">
                                         {changes.map((change) => (
-                                            <div key={`${log.id}-${change.field}`} className="flex flex-wrap items-start gap-1 text-gray-700">
-                                                <span className="font-medium text-gray-800">{change.field}:</span>
-                                                <span className="line-through text-gray-400">{change.oldValue}</span>
-                                                <span className="text-gray-400">→</span>
-                                                <span className="font-medium text-gray-900">{change.newValue}</span>
+                                            <div key={`${log.id}-${change.field}`} className="space-y-1">
+                                                {change.field === 'reason' ? (
+                                                    <div className="mt-1 text-xs italic text-slate-600 border-l-2 border-slate-300 pl-2">
+                                                        &quot;{change.newValue}&quot;
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-wrap items-start gap-1 text-gray-700">
+                                                        <span className="font-medium text-gray-800">{change.field}:</span>
+                                                        <span className="line-through text-gray-400">{change.oldValue}</span>
+                                                        <span className="text-gray-400">→</span>
+                                                        <span className="font-medium text-gray-900">{change.newValue}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
