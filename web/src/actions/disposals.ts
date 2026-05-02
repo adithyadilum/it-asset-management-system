@@ -17,19 +17,36 @@ import {
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { uploadFileToStorage } from '@/lib/storage'; 
+import { isValidUuid } from '@/lib/auth/uuid';
 
-// Import Zod validations
 import { executeDisposalSchema, rejectDisposalSchema } from '@/lib/validations/disposals';
-
-// Import Types
 import type { DisposalReviewDetails, DisposalFormState } from '@/types/disposals';
 
+// ============================================================================
+// AUTHORIZATION & VALIDATION HELPERS
+// ============================================================================
 
 function assertAllowed(role: string, allowed: string[]) {
   if (!allowed.includes(role)) {
     throw new Error('FORBIDDEN');
   }
 }
+
+function normalizeDisposalIds(ids: number[]): number[] {
+  return [...new Set(
+    ids.filter((id) => Number.isInteger(id) && id > 0)
+  )];
+}
+
+function normalizeAssetIds(ids: string[]): string[] {
+  return [...new Set(
+    ids.filter((id) => isValidUuid(id))
+  )];
+}
+
+// ============================================================================
+// READ OPERATIONS
+// ============================================================================
 
 export async function getDisposalReviewDetails(disposalId: number): Promise<DisposalReviewDetails> {
   const actionTimer = startLatencyTimer();
@@ -38,7 +55,7 @@ export async function getDisposalReviewDetails(disposalId: number): Promise<Disp
   if (!user) throw new Error('UNAUTHENTICATED');
   assertAllowed(user.role, ['GlobalAdmin']);
 
-  if (!Number.isFinite(disposalId)) {
+  if (!Number.isFinite(disposalId) || disposalId <= 0) {
     throw new Error('Invalid disposal id.');
   }
 
@@ -51,7 +68,6 @@ export async function getDisposalReviewDetails(disposalId: number): Promise<Disp
         assetId: assets.id,
         assetTag: assets.assetTag,
         assetName: assets.name,
-        // Added serialNumber to support the UI review panel requirement
         serialNumber: assets.serialNumber, 
         createdAt: assets.createdAt,
         categoryName: categories.name,
@@ -102,7 +118,7 @@ export async function getDisposalReviewDetails(disposalId: number): Promise<Disp
       assetId: row.assetId,
       assetTag: row.assetTag,
       assetName: row.assetName,
-      serialNumber: row.serialNumber, // Mapped here
+      serialNumber: row.serialNumber,
       category: row.categoryName ?? 'Unknown',
       brand: row.brandName ?? 'Unknown',
       requestedBy: row.requestedBy,
@@ -125,6 +141,10 @@ export async function getDisposalReviewDetails(disposalId: number): Promise<Disp
   }
 }
 
+// ============================================================================
+// BULK DISPOSAL REQUESTS
+// ============================================================================
+
 export async function createBulkDisposalRequests(input: {
   assetIds: string[];
   reason: string;
@@ -136,13 +156,11 @@ export async function createBulkDisposalRequests(input: {
   if (!user) throw new Error('UNAUTHENTICATED');
   assertAllowed(user.role, ['ITOperator', 'GlobalAdmin']);
 
-  const assetIds = Array.from(
-    new Set(input.assetIds.map((id) => id.trim()).filter(Boolean))
-  );
+  const normalizedAssetIds = normalizeAssetIds(input.assetIds);
   const reason = input.reason?.trim();
   const justification = input.justification?.trim() || null;
 
-  if (assetIds.length === 0) throw new Error('Select at least one asset.');
+  if (normalizedAssetIds.length === 0) throw new Error('Select at least one asset.');
   if (!reason) throw new Error('Reason is required.');
 
   try {
@@ -154,7 +172,7 @@ export async function createBulkDisposalRequests(input: {
       .where(
         and(
           eq(assetDisposals.status, 'Pending Approval'),
-          inArray(assetDisposals.assetId, assetIds)
+          inArray(assetDisposals.assetId, normalizedAssetIds)
         )
       );
 
@@ -162,75 +180,87 @@ export async function createBulkDisposalRequests(input: {
       scope: 'DB ACTION',
       label: 'disposals.bulk_request.check_existing',
       startTime: checkTimer,
-      metadata: { selected: assetIds.length, existing: existing.length },
+      metadata: { selected: normalizedAssetIds.length, existing: existing.length },
     });
 
     const existingSet = new Set(existing.map((r) => r.assetId));
-    const toInsert = assetIds.filter((id) => !existingSet.has(id));
+    const toInsert = normalizedAssetIds.filter((id) => !existingSet.has(id));
 
     if (toInsert.length === 0) {
       throw new Error('All selected assets already have a pending disposal request.');
     }
 
-    const insertTimer = startLatencyTimer();
+    // Transactional bulk insert + asset status update + audit logging
+    const result = await db.transaction(async (tx) => {
+      const insertTimer = startLatencyTimer();
 
-    await db.insert(assetDisposals).values(
-      toInsert.map((assetId) => ({
-        assetId,
-        requestedById: user.id,
-        reason,
-        justification,
-      }))
-    );
+      const insertedDisposals = await tx.insert(assetDisposals).values(
+        toInsert.map((assetId) => ({
+          assetId,
+          requestedById: user.id,
+          reason,
+          justification,
+          status: 'Pending Approval' as const,
+          requestedAt: new Date(),
+        }))
+      ).returning({ id: assetDisposals.id, assetId: assetDisposals.assetId });
 
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'disposals.bulk_request.insert',
-      startTime: insertTimer,
-      metadata: { inserted: toInsert.length },
-    });
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'disposals.bulk_request.insert',
+        startTime: insertTimer,
+        metadata: { inserted: insertedDisposals.length },
+      });
 
-    const verifyTimer = startLatencyTimer();
+      if (insertedDisposals.length !== toInsert.length) {
+        throw new Error('Failed to insert all disposal requests.');
+      }
 
-    const insertedOrExistingPending = await db
-      .select({ assetId: assetDisposals.assetId })
-      .from(assetDisposals)
-      .where(
-        and(
-          eq(assetDisposals.status, 'Pending Approval'),
-          inArray(assetDisposals.assetId, toInsert)
-        )
-      );
-
-    const assetIdsToMarkPendingDisposal = insertedOrExistingPending.map(
-      (r) => r.assetId
-    );
-
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'disposals.bulk_request.verify_pending',
-      startTime: verifyTimer,
-      metadata: {
-        requested: toInsert.length,
-        verified: assetIdsToMarkPendingDisposal.length,
-      },
-    });
-
-    if (assetIdsToMarkPendingDisposal.length > 0) {
+      // Update asset status in same transaction
       const updateTimer = startLatencyTimer();
-
-      await db
+      const updatedAssets = await tx
         .update(assets)
-        .set({ status: 'Pending Disposal' })
-        .where(inArray(assets.id, assetIdsToMarkPendingDisposal));
+        .set({ status: 'Pending Disposal', updatedAt: new Date() })
+        .where(inArray(assets.id, toInsert))
+        .returning({ id: assets.id });
 
       logLatency({
         scope: 'DB ACTION',
         label: 'disposals.bulk_request.update_assets_status',
         startTime: updateTimer,
-        metadata: { updated: assetIdsToMarkPendingDisposal.length },
+        metadata: { updated: updatedAssets.length },
       });
-    }
+
+      if (updatedAssets.length !== toInsert.length) {
+        throw new Error('Failed to update asset statuses.');
+      }
+
+      // Log audit entries for each asset
+      const auditTimer = startLatencyTimer();
+      const auditEntries = toInsert.map((assetId) => ({
+        entityType: 'Asset' as const,
+        entityId: assetId,
+        actionType: 'DISPOSAL_REQUESTED', 
+        performedById: user.id,
+        newValue: {                       
+          status: 'Pending Disposal',
+          disposalReason: reason,
+          disposalJustification: justification,
+        },
+        performedAt: new Date(),
+      }));
+
+      await tx.insert(systemAuditLogs).values(auditEntries);
+
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'disposals.bulk_request.audit_log',
+        startTime: auditTimer,
+        metadata: { entries: auditEntries.length },
+      });
+
+      return { inserted: toInsert.length };
+    });
 
     revalidatePath('/operations/disposals');
     revalidatePath('/assets');
@@ -241,8 +271,8 @@ export async function createBulkDisposalRequests(input: {
 
     return {
       success: true as const,
-      inserted: toInsert.length,
-      skipped: assetIds.length - toInsert.length,
+      inserted: result.inserted,
+      skipped: input.assetIds.length - result.inserted,
     };
   } finally {
     logLatency({
@@ -253,6 +283,10 @@ export async function createBulkDisposalRequests(input: {
   }
 }
 
+// ============================================================================
+// REJECT DISPOSAL REQUESTS
+// ============================================================================
+
 export async function rejectDisposalRequest(
   _prevState: DisposalFormState,
   formData: FormData
@@ -262,7 +296,7 @@ export async function rejectDisposalRequest(
   let parsedDisposalIds: number[];
   let parsedAssetIds: string[];
 
-  // Fix: Safe JSON parsing outside Zod to prevent unhandled runtime errors
+  // Safe JSON parsing
   try {
     parsedDisposalIds = JSON.parse(String(formData.get('disposalIds') || '[]'));
     parsedAssetIds = JSON.parse(String(formData.get('assetIds') || '[]'));
@@ -270,6 +304,7 @@ export async function rejectDisposalRequest(
     return { success: false, message: 'Invalid payload format for IDs.' };
   }
 
+  // Validate schema
   const parsed = rejectDisposalSchema.safeParse({
     disposalIds: parsedDisposalIds,
     assetIds: parsedAssetIds,
@@ -286,8 +321,8 @@ export async function rejectDisposalRequest(
   }
 
   const { 
-    disposalIds,
-    assetIds,
+    disposalIds: validDisposalIds,
+    assetIds: validAssetIds,
     rejectionReason: normalizedReason, 
     fallbackStatus: validStatus 
   } = parsed.data;
@@ -298,11 +333,66 @@ export async function rejectDisposalRequest(
     return { success: false, message: 'FORBIDDEN: Only admins can reject disposals.' };
   }
 
+  // Normalize and deduplicate
+  const normalizedDisposalIds = normalizeDisposalIds(validDisposalIds);
+  const normalizedAssetIds = normalizeAssetIds(validAssetIds);
+
+  if (normalizedDisposalIds.length === 0 || normalizedAssetIds.length === 0) {
+    return { success: false, message: 'No valid disposal or asset IDs provided.' };
+  }
+
+  if (normalizedDisposalIds.length !== normalizedAssetIds.length) {
+    return { success: false, message: 'Disposal and asset ID counts do not match.' };
+  }
+
   try {
     const dbTimer = startLatencyTimer();
     
-    // Fix: Wrap in a transaction with .returning() and strict status verification
-    await db.transaction(async (tx) => {
+    // Atomic transaction: verify, reject, revert asset status, audit
+    const result = await db.transaction(async (tx) => {
+      // 1. Verify all disposal records exist and are in correct state
+      const existingDisposals = await tx
+        .select({
+          id: assetDisposals.id,
+          assetId: assetDisposals.assetId,
+          status: assetDisposals.status,
+        })
+        .from(assetDisposals)
+        .where(inArray(assetDisposals.id, normalizedDisposalIds));
+
+      if (existingDisposals.length !== normalizedDisposalIds.length) {
+        throw new Error('One or more disposal requests could not be found.');
+      }
+
+      // Verify all are in 'Pending Approval' state
+      const allPending = existingDisposals.every((d) => d.status === 'Pending Approval');
+      if (!allPending) {
+        throw new Error('One or more requested disposals are not eligible for rejection.');
+      }
+
+      // 2. Verify asset IDs match disposal records (prevent tampering)
+      const disposalAssetIds = existingDisposals.map((d) => d.assetId);
+      const requestedAssetIdSet = new Set(normalizedAssetIds);
+
+      if (
+        disposalAssetIds.length !== normalizedAssetIds.length ||
+        !disposalAssetIds.every((id) => requestedAssetIdSet.has(id))
+      ) {
+        throw new Error('Submitted assets do not match the selected disposal requests.');
+      }
+
+      // 3. Fetch current asset data for audit trail
+      const currentAssets = await tx
+        .select({
+          id: assets.id,
+          status: assets.status,
+        })
+        .from(assets)
+        .where(inArray(assets.id, normalizedAssetIds));
+
+      const assetStatusMap = new Map(currentAssets.map((a) => [a.id, a.status]));
+
+      // 4. Update disposal records
       const updatedDisposals = await tx
         .update(assetDisposals)
         .set({
@@ -311,29 +401,48 @@ export async function rejectDisposalRequest(
           resolvedAt: new Date(),
           rejectionReason: normalizedReason,
         }) 
-        .where(
-          and(
-            inArray(assetDisposals.id, disposalIds),
-            eq(assetDisposals.status, 'Pending Approval') 
-          )
-        )
+        .where(inArray(assetDisposals.id, normalizedDisposalIds))
         .returning({ id: assetDisposals.id });
 
-      if (updatedDisposals.length !== disposalIds.length) {
-        throw new Error('One or more requested disposals are not eligible for rejection.');
+      if (updatedDisposals.length !== normalizedDisposalIds.length) {
+        throw new Error('Failed to reject all disposal requests.');
       }
 
+      // 5. Revert asset statuses
+      const validFallbackStatus = validStatus as 'Available' | 'In Repair';
       const updatedAssets = await tx
         .update(assets)
         .set({
-          status: validStatus as "Available" | "In Repair", 
+          status: validFallbackStatus,
+          updatedAt: new Date(),
         })
-        .where(inArray(assets.id, assetIds))
+        .where(inArray(assets.id, normalizedAssetIds))
         .returning({ id: assets.id });
         
-      if (updatedAssets.length !== assetIds.length) {
-        throw new Error('One or more requested assets could not be marked as rejected.');
+      if (updatedAssets.length !== normalizedAssetIds.length) {
+        throw new Error('Failed to revert asset statuses.');
       }
+
+      // 6. Log audit trail
+      const auditEntries = normalizedAssetIds.map((assetId) => ({
+        entityType: 'Asset' as const,
+        entityId: assetId,
+        actionType: 'DISPOSAL_REJECTED', // Updated
+        performedById: user.id,
+        oldValue: {                      // Fixed to match schema
+          status: assetStatusMap.get(assetId) || 'Pending Disposal',
+        },
+        newValue: {                      // Fixed to match schema
+          status: validFallbackStatus,
+          disposalRejected: true,
+          rejectionReason: normalizedReason,
+        },
+        performedAt: new Date(),
+      }));
+
+      await tx.insert(systemAuditLogs).values(auditEntries);
+
+      return { updatedCount: updatedDisposals.length };
     });
 
     logLatency({ scope: 'DB ACTION', label: 'disposals.reject', startTime: dbTimer });
@@ -345,14 +454,23 @@ export async function rejectDisposalRequest(
     revalidatePath('/assets/office-electronics');
     revalidatePath('/assets/software');
 
-    return { success: true, message: 'Disposal request rejected successfully.' };
+    return { 
+      success: true, 
+      message: `${result.updatedCount} disposal request(s) rejected successfully.` 
+    };
   } catch (error) {
-    console.error('Rejection failed:', error);
-    return { success: false, message: error instanceof Error ? error.message : 'Failed to reject requests in the database.' };
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Failed to reject disposal requests.' 
+    };
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.reject', startTime: actionTimer });
   }
 }
+
+// ============================================================================
+// UPLOAD DISPOSAL RECEIPT
+// ============================================================================
 
 export async function uploadDisposalReceipt(formData: FormData) {
   const actionTimer = startLatencyTimer();
@@ -367,10 +485,6 @@ export async function uploadDisposalReceipt(formData: FormData) {
     if (!file) throw new Error('No file provided in the payload.');
 
     const storageTimer = startLatencyTimer();
-    
-    // NOTE: For future security hardening, consider updating uploadFileToStorage 
-    // to store sensitive compliance documents (like receipts) with private ACLs 
-    // and fetch them via authenticated signed URLs.
     const uploadedUrl = await uploadFileToStorage(file, 'disposals');
     
     logLatency({ scope: 'STORAGE', label: 'disposals.uploadReceipt', startTime: storageTimer });
@@ -382,11 +496,18 @@ export async function uploadDisposalReceipt(formData: FormData) {
     };
     
   } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : 'Upload failed.' };
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Upload failed.' 
+    };
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.uploadReceipt', startTime: actionTimer });
   }
 }
+
+// ============================================================================
+// EXECUTE ASSET DISPOSAL
+// ============================================================================
 
 export async function executeAssetDisposal(
   _prevState: DisposalFormState,
@@ -400,11 +521,11 @@ export async function executeAssetDisposal(
   }
 
   try {
+    // Parse and validate JSON payloads
     let parsedDisposalIds: number[];
     let parsedAssetIds: string[];
     let parsedReceiptUrls: string[];
 
-    // Fix: Safe JSON parsing
     try {
       parsedDisposalIds = JSON.parse(String(formData.get('disposalIds') || '[]'));
       parsedAssetIds = JSON.parse(String(formData.get('assetIds') || '[]'));
@@ -413,6 +534,7 @@ export async function executeAssetDisposal(
       return { success: false, message: 'Invalid payload format.' };
     }
 
+    // Validate schema
     const parsed = executeDisposalSchema.safeParse({
       disposalIds: parsedDisposalIds,
       assetIds: parsedAssetIds,
@@ -421,7 +543,7 @@ export async function executeAssetDisposal(
       disposalMethod: formData.get('disposalMethod'),
       dataWiped: formData.get('dataWiped') === 'true',
       tagsRemoved: formData.get('tagsRemoved') === 'true',
-      receiptUrls: parsedReceiptUrls, // Passing the structured array, not a joined string
+      receiptUrls: parsedReceiptUrls,
     });
 
     if (!parsed.success) {
@@ -433,48 +555,74 @@ export async function executeAssetDisposal(
     }
 
     const validData = parsed.data;
-    const dbTimer = startLatencyTimer();
-    
-    // Fix: Validate Disposals mapping to Assets to prevent payload tampering
-    const requestedDisposalIds = [...new Set(validData.disposalIds)];
-    const requestedAssetIds = [...new Set(validData.assetIds)];
-    const allowedExecutionStatuses = ['Pending Approval', 'Approved'] as const;
 
-    if (
-      requestedDisposalIds.length !== validData.disposalIds.length ||
-      requestedAssetIds.length !== validData.assetIds.length
-    ) {
+    // Normalize and deduplicate
+    const normalizedDisposalIds = normalizeDisposalIds(validData.disposalIds);
+    const normalizedAssetIds = normalizeAssetIds(validData.assetIds);
+
+    if (normalizedDisposalIds.length === 0 || normalizedAssetIds.length === 0) {
+      return { success: false, message: 'No valid disposal or asset IDs provided.' };
+    }
+
+    if (normalizedDisposalIds.length !== normalizedAssetIds.length) {
       return {
         success: false,
-        message: 'Validation failed: Duplicate disposal or asset identifiers are not allowed.',
+        message: 'Disposal and asset ID counts do not match.',
       };
     }
 
-    const disposalRecords = await db
-      .select({
-        disposalId: assetDisposals.id,
-        assetId: assetDisposals.assetId,
-      })
-      .from(assetDisposals)
-      .where(inArray(assetDisposals.id, requestedDisposalIds));
-
-    if (disposalRecords.length !== requestedDisposalIds.length) {
-      return { success: false, message: 'One or more disposal requests could not be found.' };
-    }
-
-    const disposalAssetIds = disposalRecords.map((record) => record.assetId);
-    const disposalAssetIdSet = new Set(disposalAssetIds);
-
-    const hasMismatchedAssets =
-      disposalAssetIds.length !== requestedAssetIds.length ||
-      requestedAssetIds.some((assetId) => !disposalAssetIdSet.has(assetId));
-
-    if (hasMismatchedAssets) {
-      return { success: false, message: 'Submitted assets do not match the selected disposal requests.' };
-    }
+    const dbTimer = startLatencyTimer();
     
-    // Fix: Implement transaction with .returning() guarantees
-    await db.transaction(async (tx) => {
+    // Atomic transaction: verify, execute, audit
+    const result = await db.transaction(async (tx) => {
+      const allowedExecutionStatuses: readonly string[] = ['Pending Approval', 'Approved'];
+
+      // 1. Fetch and verify all disposal records
+      const disposalRecords = await tx
+        .select({
+          disposalId: assetDisposals.id,
+          assetId: assetDisposals.assetId,
+          status: assetDisposals.status,
+        })
+        .from(assetDisposals)
+        .where(inArray(assetDisposals.id, normalizedDisposalIds));
+
+      if (disposalRecords.length !== normalizedDisposalIds.length) {
+        throw new Error('One or more disposal requests could not be found.');
+      }
+
+      // 2. Verify disposal status and asset ID mapping
+      const allEligible = disposalRecords.every((d) =>
+        allowedExecutionStatuses.includes(d.status)
+      );
+
+      if (!allEligible) {
+        throw new Error('One or more disposal requests are not in an eligible status.');
+      }
+
+      // Asset ID mapping verification
+      const disposalAssetIds = disposalRecords.map((d) => d.assetId);
+      const requestedAssetIdSet = new Set(normalizedAssetIds);
+
+      if (
+        disposalAssetIds.length !== normalizedAssetIds.length ||
+        !disposalAssetIds.every((id) => requestedAssetIdSet.has(id))
+      ) {
+        throw new Error('Submitted assets do not match the selected disposal requests.');
+      }
+
+      // 3. Fetch current asset data for audit
+      const currentAssets = await tx
+        .select({
+          id: assets.id,
+          status: assets.status,
+        })
+        .from(assets)
+        .where(inArray(assets.id, disposalAssetIds));
+
+      const assetStatusMap = new Map(currentAssets.map((a) => [a.id, a.status]));
+
+      // 4. Execute disposal: update disposal records
       const updatedDisposals = await tx
         .update(assetDisposals)
         .set({
@@ -485,47 +633,50 @@ export async function executeAssetDisposal(
           disposalMethod: validData.disposalMethod,
           dataWiped: validData.dataWiped,
           tagsRemoved: validData.tagsRemoved,
-          disposalReceiptUrl: validData.receiptUrl, // The schema normalizes this for DB storage
+          disposalReceiptUrl: validData.receiptUrl,
         })
-        .where(
-          and(
-            inArray(assetDisposals.id, requestedDisposalIds),
-            inArray(assetDisposals.status, [...allowedExecutionStatuses])
-          )
-        )
+        .where(inArray(assetDisposals.id, normalizedDisposalIds))
         .returning({ disposalId: assetDisposals.id });
 
-      if (updatedDisposals.length !== requestedDisposalIds.length) {
-        throw new Error('Failed to update all disposal requests. Ensure they are in an eligible status.');
+      if (updatedDisposals.length !== normalizedDisposalIds.length) {
+        throw new Error('Failed to update all disposal requests.');
       }
 
+      // 5. Execute disposal: update asset statuses
       const updatedAssets = await tx
         .update(assets)
-        .set({ status: 'Disposed' })
-        .where(inArray(assets.id, disposalAssetIds))
+        .set({ status: 'Disposed', updatedAt: new Date() })
+        .where(inArray(assets.id, normalizedAssetIds))
         .returning({ assetId: assets.id });
 
-      if (updatedAssets.length !== disposalAssetIds.length) {
-        throw new Error('Failed to update all assets for disposal.');
+      if (updatedAssets.length !== normalizedAssetIds.length) {
+        throw new Error('Failed to update all assets.');
       }
 
-      const auditLogsToInsert = disposalAssetIds.map((assetId) => ({
+      // 6. Log comprehensive audit trail
+      const auditEntries = normalizedAssetIds.map((assetId) => ({
         entityType: 'Asset' as const,
         entityId: assetId,
-        actionType: 'Asset Disposed',
+        actionType: 'ASSET_DISPOSED', // Updated
         performedById: user.id,
-        newValue: { 
-          method: validData.disposalMethod, 
-          receipt: validData.receiptUrl,
-          wiped: validData.dataWiped,
-          untagged: validData.tagsRemoved,
-          reason: validData.reason
+        oldValue: {                   // Fixed to match schema
+          status: assetStatusMap.get(assetId) || 'Unknown',
         },
+        newValue: {                   // Fixed to match schema
+          status: 'Disposed',
+          disposalMethod: validData.disposalMethod,
+          disposalDate: validData.disposalDate || new Date().toISOString(),
+          dataWiped: validData.dataWiped,
+          tagsRemoved: validData.tagsRemoved,
+          receiptUrl: validData.receiptUrl,
+          reason: validData.reason,
+        },
+        performedAt: new Date(),
       }));
 
-      if (auditLogsToInsert.length > 0) {
-        await tx.insert(systemAuditLogs).values(auditLogsToInsert);
-      }
+      await tx.insert(systemAuditLogs).values(auditEntries);
+
+      return { disposedCount: updatedAssets.length };
     });
 
     logLatency({ scope: 'DB ACTION', label: 'disposals.executeAssetDisposal', startTime: dbTimer });
@@ -537,10 +688,15 @@ export async function executeAssetDisposal(
     revalidatePath('/assets/office-electronics');
     revalidatePath('/assets/software');
     
-    return { success: true, message: 'Disposal executed successfully.' };
+    return { 
+      success: true, 
+      message: `${result.disposedCount} asset(s) disposed successfully.` 
+    };
   } catch (error) {
-    console.error('Execution failed:', error);
-    return { success: false, message: error instanceof Error ? error.message : 'Database error: Failed to execute disposal.' };
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Database error: Failed to execute disposal.' 
+    };
   } finally {
     logLatency({ scope: 'ACTION', label: 'disposals.executeAssetDisposal', startTime: actionTimer });
   }

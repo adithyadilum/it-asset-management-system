@@ -66,11 +66,11 @@ export function DisposalsLayout({ pendingData }: DisposalsLayoutProps) {
         {/* Tabs Container */}
         <Tabs defaultValue="pending" className="flex flex-1 flex-col min-h-0">
           {/* Tab List */}
-          <div className=" px-6 pt-4">
-            <TabsList className="h-10 w-fit justify-start gap-2 rounded-lg bg-slate-100 p-1">
+          <div className=" px-4 pt-4">
+            <TabsList className="h-8 w-fit justify-start gap-2 rounded-lg bg-slate-100 p-1">
               <TabsTrigger
                 value="pending"
-                className={`rounded-md px-4 py-1.5 ${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm`}
+                className={`rounded-md px-4 py-1 ${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm`}
               >
                 Pending Disposal
               </TabsTrigger>
