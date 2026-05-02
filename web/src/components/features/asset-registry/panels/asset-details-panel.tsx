@@ -450,6 +450,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         assetId={props.assetId}
         currentStatus={props.status}
         availableStatuses={props.manualStatuses ?? []}
+        hasActiveAssignment={Boolean(props.assignedTo && props.assignedTo !== '-')}
         onStatusChanged={props.onStatusChanged}
       />
     </div>

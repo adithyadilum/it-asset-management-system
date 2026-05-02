@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle, ChevronDown, Loader2, ArrowRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -31,6 +34,7 @@ interface InteractiveStatusBadgeProps {
     colorTheme?: string;
     iconName?: string;
   }>;
+  hasActiveAssignment?: boolean;
   onStatusChanged?: (nextStatus: string) => void;
   className?: string;
 }
@@ -39,6 +43,7 @@ export function InteractiveStatusBadge({
   assetId,
   currentStatus,
   availableStatuses,
+  hasActiveAssignment,
   onStatusChanged,
   className,
 }: InteractiveStatusBadgeProps) {
@@ -115,19 +120,20 @@ export function InteractiveStatusBadge({
             <ChevronDown className="h-3 w-3 ml-1 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuContent align="start" className="w-48 p-1">
           {filteredStatuses.length > 0 ? (
             filteredStatuses.map((status) => (
               <DropdownMenuItem
                 key={status.value}
                 onClick={() => handleStatusSelect(status.value)}
-                className="flex items-center gap-2 cursor-pointer"
+                className="flex items-center gap-2 cursor-pointer p-1 rounded-md"
               >
                 <StatusBadge 
                   value={status.value} 
                   showIcon 
                   colorTheme={status.colorTheme}
                   iconName={status.iconName}
+                  className="w-full justify-start border-none bg-transparent"
                 />
               </DropdownMenuItem>
             ))
@@ -143,57 +149,59 @@ export function InteractiveStatusBadge({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Update Asset Status</DialogTitle>
+            <DialogDescription>
+              Manually overriding the status will bypass the standard workflow and be recorded in the audit logs.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center justify-between px-1 text-sm">
-              <div className="flex flex-col gap-1">
-                <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
-                  Current
-                </span>
-                <StatusBadge 
-                  value={localStatus} 
-                  colorTheme={currentStatusConfig?.colorTheme}
-                  iconName={currentStatusConfig?.iconName}
-                />
-              </div>
-              <div className="text-slate-300">→</div>
-              <div className="flex flex-col gap-1 items-end">
-                <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
-                  New
-                </span>
-                <StatusBadge 
-                  value={selectedStatus ?? ''} 
-                  colorTheme={selectedStatusConfig?.colorTheme}
-                  iconName={selectedStatusConfig?.iconName}
-                />
-              </div>
+          
+          <div className="grid gap-6 py-4">
+            <div className="flex items-center justify-center gap-4 py-2">
+              <StatusBadge 
+                value={localStatus} 
+                showIcon
+                colorTheme={currentStatusConfig?.colorTheme}
+                iconName={currentStatusConfig?.iconName}
+              />
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              <StatusBadge 
+                value={selectedStatus ?? ''} 
+                showIcon
+                colorTheme={selectedStatusConfig?.colorTheme}
+                iconName={selectedStatusConfig?.iconName}
+              />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">
-                Justification <span className="text-rose-500">*</span>
-              </label>
+            {hasActiveAssignment && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Warning</AlertTitle>
+                <AlertDescription>
+                  This asset is currently assigned. Overriding the status will automatically terminate the active assignment.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="reason">Justification</Label>
+                <span className={cn(
+                  "text-[11px] font-medium",
+                  reasonNote.trim().length < 10 ? "text-destructive" : "text-emerald-600"
+                )}>
+                  {reasonNote.trim().length} / 10 characters
+                </span>
+              </div>
               <Textarea
-                placeholder="Reason for manual status change (e.g., Asset reported lost by employee)"
+                id="reason"
+                placeholder="Briefly explain the reason for this manual change..."
                 value={reasonNote}
                 onChange={(e) => setReasonNote(e.target.value)}
-                className="min-h-24 resize-none"
+                className="min-h-[100px] resize-none"
               />
-              <div className="flex justify-between items-center text-[11px]">
-                <span
-                  className={cn(
-                    reasonNote.trim().length < 10
-                      ? 'text-rose-500'
-                      : 'text-emerald-600'
-                  )}
-                >
-                  {reasonNote.trim().length} / 10 characters minimum
-                </span>
-                <span className="text-slate-400">Required for audit trail</span>
-              </div>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+
+          <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setIsModalOpen(false)}
@@ -206,7 +214,7 @@ export function InteractiveStatusBadge({
               disabled={isPending || reasonNote.trim().length < 10}
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Change
+              Confirm Override
             </Button>
           </DialogFooter>
         </DialogContent>

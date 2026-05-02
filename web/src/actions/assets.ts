@@ -21,7 +21,6 @@ import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import { isValidUuid } from '@/lib/auth/uuid';
 import {
   WORKFLOW_GATED_STATUSES,
-  STATUSES_REQUIRING_ASSIGNMENT_CLOSURE,
 } from '@/lib/constants';
 import { getManualOverrideStatuses } from '@/actions/statuses';
 import {
@@ -686,18 +685,17 @@ export async function manualStatusOverrideAction(
         .set({ status: newStatus, updatedAt: new Date() })
         .where(eq(assets.id, assetId));
 
-      // Step B: Close active assignments if required
-      if (STATUSES_REQUIRING_ASSIGNMENT_CLOSURE.has(newStatus)) {
-        await tx
-          .update(assetAssignments)
-          .set({ returnedDate: new Date() })
-          .where(
-            and(
-              eq(assetAssignments.assetId, assetId),
-              isNull(assetAssignments.returnedDate)
-            )
-          );
-      }
+      // Step B: Close active assignments
+      // Manual overrides always imply that the current assignment state is being bypassed/ended
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: new Date() })
+        .where(
+          and(
+            eq(assetAssignments.assetId, assetId),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
 
       // Step C: Audit log
       await logAuditActionTx(tx, {

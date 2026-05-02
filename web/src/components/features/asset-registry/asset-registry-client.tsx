@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
 import {
-  STATUSES_REQUIRING_ASSIGNMENT_CLOSURE,
 } from '@/lib/constants';
 import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -201,11 +200,10 @@ export function AssetRegistryClient({
     setRows((prev) =>
       prev.map((row) => {
         if (row.id === assetId) {
-          const needsClosure = STATUSES_REQUIRING_ASSIGNMENT_CLOSURE.has(nextStatus);
           return {
             ...row,
             status: nextStatus,
-            assignedTo: needsClosure ? null : row.assignedTo,
+            assignedTo: null, // Manual override always clears current assignment
           };
         }
         return row;

@@ -15,7 +15,6 @@ import {
   type MaintenanceEvent,
   type AllocationData,
 } from "@/lib/data/asset-details-repo";
-import { STATUSES_REQUIRING_ASSIGNMENT_CLOSURE } from "@/lib/constants";
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
@@ -143,6 +142,7 @@ export function AssetDetailsPanelWrapper({
 
   return (
     <AssetDetailsPanel
+      key={`${recordId}-${refreshNonce}`}
       isOpen={isOpen}
       onClose={onClose}
       isLoading={isLoading}
@@ -193,16 +193,18 @@ export function AssetDetailsPanelWrapper({
       onStatusChanged={(nextStatus) => {
         setData((prev) => {
           if (!prev) return null;
-          const needsClosure = STATUSES_REQUIRING_ASSIGNMENT_CLOSURE.has(nextStatus);
+          // ANY manual override clears assignments as per latest requirement
           return {
             ...prev,
             asset: {
               ...prev.asset,
               status: nextStatus,
+              updatedAt: new Date().toISOString(),
             },
-            assignment: needsClosure ? null : prev.assignment,
+            assignment: null, // Clear assignment in UI immediately
           };
         });
+        setAllocations([]); // Also clear allocations list immediately
         setRefreshNonce((n) => n + 1);
         // Immediately update the table row via the ref callback
         if (onStatusUpdateRef?.current && data?.asset.id) {
