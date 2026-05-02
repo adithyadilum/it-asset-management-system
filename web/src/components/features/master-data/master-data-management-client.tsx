@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition, useEffect } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -462,7 +462,7 @@ export function MasterDataManagementClient({
             default:
                 return [];
         }
-    }, [pendingDeleteEntity, pendingDeleteRows, categories, locations, brands, deviceModels, vendors, owners, departments]);
+    }, [pendingDeleteEntity, pendingDeleteRows, categories, locations, brands, deviceModels, vendors, owners, departments, customStatuses]);
 
     const blockedDeleteIds = pendingDeleteRows
         .filter((row) => row.linkedAssets > 0)

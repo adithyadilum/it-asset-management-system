@@ -9,7 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
-import { getCustomStatuses } from '@/actions/statuses';
+import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { bulkUpdateAssets, getAssetsByPillar } from '@/actions/asset-registry';
@@ -216,8 +216,8 @@ export function AssetRegistryClient({
       try {
         const rows = await getCustomStatuses();
         if (!mounted) return;
-        setCustomStatuses(rows.map((r: any) => r.name));
-      } catch (err) {
+        setCustomStatuses(rows.map((r: CustomStatusRow) => r.name));
+      } catch {
         // ignore non-fatal
       }
     })();
@@ -506,7 +506,7 @@ export function AssetRegistryClient({
       default:
         return [];
     }
-  }, [draftField, rows]);
+  }, [draftField, rows, customStatuses]);
 
   useEffect(() => {
     if (filterValueOptions.length === 0) {
