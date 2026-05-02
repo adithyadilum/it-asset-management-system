@@ -52,13 +52,7 @@ export const conditionEnum = pgEnum('asset_condition', [
   'Poor',
   'Damaged',
 ]);
-export const maintenanceStatusEnum = pgEnum('maintenance_status', [
-  'Open',
-  'In Progress',
-  'Pending Parts',
-  'Resolved',
-  'Cancelled',
-]);
+
 
 // Epic 15: Maintenance Tickets Enums
 export const maintenanceTicketStatusEnum = pgEnum('maintenance_ticket_status', [
@@ -78,6 +72,18 @@ export const disposalStatusEnum = pgEnum('disposal_status', [
   'Rejected',
   'Completed',
 ]);
+
+// -----------------------------------------------------------------------------
+// Custom Statuses (user-configurable)
+// -----------------------------------------------------------------------------
+export const customStatuses = pgTable('custom_statuses', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  color: varchar('color', { length: 32 }).notNull(),
+  createdById: uuid('created_by_id').references(() => users.id),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
 // SAM Additions
 export const licenseTypeEnum = pgEnum('license_type', [
@@ -100,10 +106,10 @@ export const departments = pgTable('departments', {
 });
 
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(), 
+  id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: text('name').notNull(),
-  password: text('password').notNull(), 
+  password: text('password').notNull(),
   departmentId: integer('department_id').references(() => departments.id),
   role: roleEnum('role').default('Employee').notNull(),
   isActive: boolean('is_active').notNull().default(true),
@@ -178,7 +184,7 @@ export const categories = pgTable(
     prefix: varchar('prefix', { length: 10 }).notNull().unique(),
     requiresSerial: boolean('requires_serial').default(true).notNull(),
     isConsumable: boolean('is_consumable').default(false).notNull(),
-    customSchema: jsonb('custom_schema'), 
+    customSchema: jsonb('custom_schema'),
     isActive: boolean('is_active').default(true).notNull(),
   },
   (table) => ({
@@ -278,7 +284,7 @@ export const assetDocuments = pgTable('asset_documents', {
   assetId: uuid('asset_id')
     .notNull()
     .references(() => assets.id, { onDelete: 'cascade' }),
-  documentType: varchar('document_type', { length: 100 }), 
+  documentType: varchar('document_type', { length: 100 }),
   fileUrl: varchar('file_url', { length: 500 }).notNull(),
   uploadedById: uuid('uploaded_by_id')
     .notNull()
@@ -308,29 +314,13 @@ export const assetAssignments = pgTable('asset_assignments', {
 
   returnCondition: conditionEnum('return_condition'),
   notes: text('notes'),
+
+  acceptanceStatus: varchar('acceptance_status', { length: 50 }),
+  acceptedAt: timestamp('accepted_at'),
+  returnRequestedAt: timestamp('return_requested_at'),
 });
 
-export const maintenanceRecords = pgTable('maintenance_records', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),
-  vendorId: integer('vendor_id').references(() => vendors.id),
-  reportedById: uuid('reported_by_id')
-    .notNull()
-    .references(() => users.id),
 
-  status: maintenanceStatusEnum('status').default('Open').notNull(),
-  description: text('description').notNull(),
-  rmaTicketNumber: varchar('rma_ticket_number', { length: 100 }),
-
-  estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
-  actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
-  serviceDate: date('service_date'),
-  closedAt: timestamp('closed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
 
 // Epic 15: New Maintenance Tickets System
 export const maintenanceTickets = pgTable('maintenance_tickets', {
@@ -338,60 +328,72 @@ export const maintenanceTickets = pgTable('maintenance_tickets', {
   assetId: uuid('asset_id')
     .notNull()
     .references(() => assets.id, { onDelete: 'cascade' }),
-  
+
   ticketType: maintenanceTicketTypeEnum('ticket_type').notNull(), // VENDOR or INTERNAL
   vendorName: varchar('vendor_name', { length: 255 }),
   rmaNumber: varchar('rma_number', { length: 100 }),
-  
+
   reportedIssue: text('reported_issue').notNull(),
   resolutionNotes: text('resolution_notes'),
-  
+
   estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
   actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
-  
+
   estimatedReturnDate: date('estimated_return_date'),
   actualCompletionDate: timestamp('actual_completion_date'),
-  
+
   status: maintenanceTicketStatusEnum('status').default('ACTIVE').notNull(),
-  
+
   dispatchedById: uuid('dispatched_by_id')
     .notNull()
     .references(() => users.id),
-  
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // 👇 UPDATED ONLY THIS TABLE WITH INDEXES 👇
-export const assetDisposals = pgTable('asset_disposals', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'restrict' }),
-  requestedById: uuid('requested_by_id')
-    .notNull()
-    .references(() => users.id),
-  approvedById: uuid('approved_by_id').references(() => users.id),
+export const assetDisposals = pgTable(
+  'asset_disposals',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'restrict' }),
+    requestedById: uuid('requested_by_id')
+      .notNull()
+      .references(() => users.id),
+    approvedById: uuid('approved_by_id').references(() => users.id),
 
-  status: disposalStatusEnum('status').default('Pending Approval').notNull(),
-  reason: varchar('reason', { length: 255 }).notNull(), 
-  justification: text('justification'),
-  rejectionReason: text('rejection_reason'),
+    status: disposalStatusEnum('status').default('Pending Approval').notNull(),
+    reason: varchar('reason', { length: 255 }).notNull(),
+    justification: text('justification'),
+    rejectionReason: text('rejection_reason'),
 
-  dataWiped: boolean('data_wiped').default(false),
-  tagsRemoved: boolean('tags_removed').default(false),
-  actualSalvageValue: decimal('actual_salvage_value', { precision: 12, scale: 2 }),
-  bookValueAtDisposal: decimal('book_value_at_disposal', { precision: 12, scale: 2 }), // Epic 22 Addition
+    dataWiped: boolean('data_wiped').default(false),
+    tagsRemoved: boolean('tags_removed').default(false),
+    actualSalvageValue: decimal('actual_salvage_value', {
+      precision: 12,
+      scale: 2,
+    }),
+    bookValueAtDisposal: decimal('book_value_at_disposal', {
+      precision: 12,
+      scale: 2,
+    }), // Epic 22 Addition
 
-  requestedAt: timestamp('requested_at').defaultNow().notNull(),
-  resolvedAt: timestamp('resolved_at'),
-  notes: text('notes'),
-}, (table) => ({
-  // ✨ ADDED THESE 3 INDEXES TO FIX QUERY SLOWNESS ✨
-  statusIdx: index('asset_disposals_status_idx').on(table.status),
-  assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
-  requestedByIdIdx: index('asset_disposals_requested_by_idx').on(table.requestedById),
-}));
+    requestedAt: timestamp('requested_at').defaultNow().notNull(),
+    resolvedAt: timestamp('resolved_at'),
+    notes: text('notes'),
+  },
+  (table) => ({
+    // ✨ ADDED THESE 3 INDEXES TO FIX QUERY SLOWNESS ✨
+    statusIdx: index('asset_disposals_status_idx').on(table.status),
+    assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
+    requestedByIdIdx: index('asset_disposals_requested_by_idx').on(
+      table.requestedById
+    ),
+  })
+);
 // 👆 ------------------------------------------ 👆
 
 // -----------------------------------------------------------------------------
@@ -399,9 +401,9 @@ export const assetDisposals = pgTable('asset_disposals', {
 // -----------------------------------------------------------------------------
 export const systemAuditLogs = pgTable('system_audit_logs', {
   id: serial('id').primaryKey(),
-  entityType: varchar('entity_type', { length: 100 }).notNull(), 
+  entityType: varchar('entity_type', { length: 100 }).notNull(),
   entityId: varchar('entity_id', { length: 255 }).notNull(),
-  actionType: varchar('action_type', { length: 100 }).notNull(), 
+  actionType: varchar('action_type', { length: 100 }).notNull(),
   performedById: uuid('performed_by_id')
     .notNull()
     .references(() => users.id),
@@ -466,7 +468,6 @@ export const assetRelations = relations(assets, ({ one, many }) => ({
   }),
   purchases: many(assetPurchases),
   assignments: many(assetAssignments),
-  maintenance: many(maintenanceRecords),
   maintenanceTickets: many(maintenanceTickets), // Added Epic 15 relation
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
@@ -495,23 +496,7 @@ export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
   }),
 }));
 
-export const maintenanceRecordsRelations = relations(
-  maintenanceRecords,
-  ({ one }) => ({
-    asset: one(assets, {
-      fields: [maintenanceRecords.assetId],
-      references: [assets.id],
-    }),
-    vendor: one(vendors, {
-      fields: [maintenanceRecords.vendorId],
-      references: [vendors.id],
-    }),
-    reporter: one(users, {
-      fields: [maintenanceRecords.reportedById],
-      references: [users.id],
-    }),
-  })
-);
+
 
 export const maintenanceTicketsRelations = relations(
   maintenanceTickets,

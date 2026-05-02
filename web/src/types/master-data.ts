@@ -27,7 +27,8 @@ export type MasterDataRecordEntity =
   | 'device-models'
   | 'vendors'
   | 'owners'
-  | 'departments';
+  | 'departments'
+  | 'statuses';
 
 export type BrandFormState = {
   success: boolean;

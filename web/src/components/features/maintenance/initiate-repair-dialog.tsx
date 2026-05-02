@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, X, Laptop, CalendarDays } from 'lucide-react';
 import type { Vendor, InitiateRepairFormData } from '@/types/maintenance';
 import { format } from 'date-fns';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface InitiateRepairDialogProps {
   isOpen: boolean;
@@ -45,8 +46,11 @@ export function InitiateRepairDialog({
     expectedReturnDate: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof InitiateRepairFormData, string>>>({});
+  
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validateForm = () => {
+    // ... [Logic remains unchanged]
     const newErrors: typeof errors = {};
     if (!formData.vendorId.trim()) newErrors.vendorId = 'Vendor is required';
     if (!formData.rmaNumber.trim()) {
@@ -70,6 +74,7 @@ export function InitiateRepairDialog({
   };
 
   const handleConfirm = async () => {
+    setSubmitError(null);
     if (!validateForm()) return;
     try {
       await onConfirm(formData);
@@ -78,7 +83,7 @@ export function InitiateRepairDialog({
       onClose();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initiate repair';
-      setErrors({ vendorId: errorMessage });
+      setSubmitError(errorMessage);
     }
   };
 
@@ -86,6 +91,7 @@ export function InitiateRepairDialog({
     if (!isLoading) {
       setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', expectedReturnDate: '' });
       setErrors({});
+      setSubmitError(null);
       onClose();
     }
   };
@@ -94,78 +100,69 @@ export function InitiateRepairDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      {/* Dialog strictly set to 600px width with 24px (p-6) padding */}
-      <DialogContent className="sm:max-w-[600px] w-full p-6 bg-white rounded-xl shadow-lg border border-slate-200 [&>button]:hidden flex flex-col gap-6">
+      <DialogContent className="sm:max-w-[600px] w-full p-6 bg-background rounded-xl shadow-lg border border-border [&>button]:hidden flex flex-col gap-6">
         
-        {/* ============ HEADER SECTION ============ */}
         <div className="flex items-center justify-between">
-          <DialogTitle className="flex items-center gap-2 text-[20px] font-semibold text-[#0f172a] leading-7">
-            <AlertCircle className="h-[28px] w-[28px] opacity-70" strokeWidth={1.5} />
+          <DialogTitle className={`flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+            <AlertCircle className="h-6 w-6 opacity-70" strokeWidth={1.5} />
             Send Asset for Repair
           </DialogTitle>
           <button
             onClick={handleClose}
             disabled={isLoading}
-            className="text-[#0f172a] opacity-70 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+            className="text-foreground opacity-70 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
           >
-            {/* Swapped Ban for X */}
-            <X className="h-[20px] w-[20px]" strokeWidth={2} />
+            <X className="h-5 w-5" strokeWidth={2} />
           </button>
         </div>
 
-        {/* ============ ASSET DETAILS CARD ============ */}
-        <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-lg py-6 flex flex-col items-center gap-6 shadow-[0px_1px_3px_rgba(0,0,0,0.1)] w-full">
-          
-          {/* Icon & Name */}
-          <div className="flex items-center justify-center gap-[10px] w-full px-6">
-            <Laptop className="h-[48px] w-[48px] text-[#0f172a] shrink-0" strokeWidth={1} />
-            <span className="font-semibold text-[18px] leading-[28px] text-[#0f172a] truncate">
+        <div className="bg-muted/30 border border-border rounded-lg py-6 flex flex-col items-center gap-6 shadow-sm w-full">
+          <div className="flex items-center justify-center gap-3 w-full px-6">
+            <Laptop className="h-10 w-10 text-foreground shrink-0" strokeWidth={1} />
+            <span className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground truncate`}>
               {assetName || 'Unknown Asset'}
             </span>
           </div>
 
-          {/* Precise 2-Column Grid matching Figma CSS */}
           <div className="w-full flex justify-center px-6">
-            <div className="grid grid-cols-[120px_1fr] gap-x-8 gap-y-[10px] text-[14px] text-[#0f172a] w-fit min-w-[280px]">
-              <div className="font-medium">Asset ID:</div>
-              <div className="font-medium truncate">{assetId || 'N/A'}</div>
+            <div className={`grid grid-cols-[120px_1fr] gap-x-8 gap-y-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground w-fit min-w-[280px]`}>
+              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Asset ID:</div>
+              <div className="truncate">{assetId || 'N/A'}</div>
               
-              <div className="font-medium">Serial</div>
-              <div className="font-medium truncate">{assetSerial || 'N/A'}</div>
+              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Serial:</div>
+              <div className="truncate">{assetSerial || 'N/A'}</div>
               
-              <div className="font-medium">Reported By:</div>
-              <div className="font-medium truncate">{reportedBy || 'N/A'}</div>
+              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Reported By:</div>
+              <div className="truncate">{reportedBy || 'N/A'}</div>
               
-              <div className="font-medium">Date:</div>
-              <div className="font-medium truncate">
+              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Date:</div>
+              <div className="truncate">
                 {reportedDate ? format(new Date(reportedDate), 'MMM dd, yyyy') : 'N/A'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ============ FORM SECTION ============ */}
         <div className="flex flex-col gap-6 w-full">
           
-          {/* Vendor */}
           <div className="flex flex-col gap-3">
-            <Label htmlFor="vendor" className="text-[14px] font-medium text-[#0f172a] flex items-baseline gap-1">
-              Vendor <span className="text-[#ef4444]">*</span>
+            <Label htmlFor="vendor" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground flex items-baseline gap-1`}>
+              Vendor <span className="text-destructive">*</span>
             </Label>
             <Select 
+              disabled={isLoading}
               value={formData.vendorId} 
               onValueChange={(value) => {
                 setFormData({ ...formData, vendorId: value });
                 setErrors({ ...errors, vendorId: undefined });
               }}
             >
-              {/* 36px height to match Figma input styling */}
-              <SelectTrigger id="vendor" className={`h-[36px] text-[14px] px-3 border-[#e2e8f0] bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg ${errors.vendorId ? 'border-red-500' : ''}`}>
+              <SelectTrigger id="vendor" className={`h-9 px-3 border-input bg-background shadow-sm rounded-lg ${errors.vendorId ? 'border-destructive' : ''} ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
                 <SelectValue placeholder="Select a vendor" />
               </SelectTrigger>
-              <SelectContent className="text-[14px]">
+              <SelectContent className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
                 {vendors.length === 0 ? (
-                  <div className="p-2 text-sm text-slate-500">No vendors available</div>
+                  <div className="p-2 text-muted-foreground">No vendors available</div>
                 ) : (
                   vendors.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id.toString()}>
@@ -175,13 +172,12 @@ export function InitiateRepairDialog({
                 )}
               </SelectContent>
             </Select>
-            {errors.vendorId && <p className="text-sm text-red-500 mt-[-4px]">{errors.vendorId}</p>}
+            {errors.vendorId && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.vendorId}</p>}
           </div>
 
-          {/* RMA Number */}
           <div className="flex flex-col gap-3">
-            <Label htmlFor="rma-number" className="text-[14px] font-medium text-[#0f172a] flex items-baseline gap-1">
-              RMA / Ticket Number: <span className="text-[#ef4444]">*</span>
+            <Label htmlFor="rma-number" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground flex items-baseline gap-1`}>
+              RMA / Ticket Number: <span className="text-destructive">*</span>
             </Label>
             <Input
               id="rma-number"
@@ -192,23 +188,20 @@ export function InitiateRepairDialog({
                 setErrors({ ...errors, rmaNumber: undefined });
               }}
               disabled={isLoading}
-              className={`h-[36px] text-[14px] px-3 border-[#e2e8f0] bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg ${errors.rmaNumber ? 'border-red-500' : ''}`}
+              className={`h-9 px-3 border-input bg-background shadow-sm rounded-lg ${errors.rmaNumber ? 'border-destructive' : ''} ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               maxLength={50}
             />
-            {errors.rmaNumber && <p className="text-sm text-red-500 mt-[-4px]">{errors.rmaNumber}</p>}
+            {errors.rmaNumber && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.rmaNumber}</p>}
           </div>
 
-          {/* Estimated Cost & Return Date */}
           <div className="flex items-start gap-5 w-full">
-            
-            {/* Estimated Cost */}
             <div className="flex flex-col gap-3 flex-1">
-              <Label htmlFor="estimated-cost" className="text-[14px] font-medium text-[#0f172a]">
+              <Label htmlFor="estimated-cost" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                 Estimated Cost
               </Label>
-              <div className="flex items-center shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg border border-[#e2e8f0] bg-white w-full h-[36px] overflow-hidden">
-                <Select defaultValue="USD">
-                  <SelectTrigger className="w-[60px] h-full text-[14px] font-medium border-0 border-r border-[#e2e8f0] rounded-none bg-transparent focus:ring-0 focus:ring-offset-0">
+              <div className="flex items-center shadow-sm rounded-lg border border-input bg-background w-full h-9 overflow-hidden">
+                <Select defaultValue="USD" disabled={isLoading}>
+                  <SelectTrigger className={`w-[60px] h-full ${TYPOGRAPHY_CLASSNAMES.textSmMedium} border-0 border-r border-input rounded-none bg-transparent focus:ring-0 focus:ring-offset-0`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -227,18 +220,17 @@ export function InitiateRepairDialog({
                     setErrors({ ...errors, estimatedCost: undefined });
                   }}
                   disabled={isLoading}
-                  className={`flex-1 h-full text-[14px] font-medium text-slate-500 border-0 bg-transparent rounded-none focus-visible:ring-0 px-3 ${errors.estimatedCost ? 'bg-red-50' : ''}`}
+                  className={`flex-1 h-full ${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground border-0 bg-transparent rounded-none focus-visible:ring-0 px-3 ${errors.estimatedCost ? 'bg-destructive/10' : ''}`}
                 />
               </div>
-              {errors.estimatedCost && <p className="text-sm text-red-500 mt-[-4px]">{errors.estimatedCost}</p>}
+              {errors.estimatedCost && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.estimatedCost}</p>}
             </div>
 
-            {/* Expected Return Date */}
             <div className="flex flex-col gap-3 flex-1">
-              <Label htmlFor="return-date" className="text-[14px] font-medium text-[#0f172a]">
+              <Label htmlFor="return-date" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                 Expected Return Date
               </Label>
-              <div className="relative w-full shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg h-[36px]">
+              <div className="relative w-full shadow-sm rounded-lg h-9">
                 <Input
                   id="return-date"
                   type="date"
@@ -248,32 +240,37 @@ export function InitiateRepairDialog({
                     setErrors({ ...errors, expectedReturnDate: undefined });
                   }}
                   disabled={isLoading}
-                  className={`w-full h-full text-[14px] pl-3 pr-10 border-[#e2e8f0] bg-white rounded-lg focus:border-slate-300 focus:ring-1 focus:ring-slate-300 ${errors.expectedReturnDate ? 'border-red-500' : ''}`}
+                  className={`w-full h-full ${TYPOGRAPHY_CLASSNAMES.textSmRegular} pl-3 pr-10 border-input bg-background rounded-lg focus:border-ring focus:ring-1 focus:ring-ring ${errors.expectedReturnDate ? 'border-destructive' : ''}`}
                   min={new Date().toISOString().split('T')[0]}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">
-                  <CalendarDays className="h-[16px] w-[16px]" />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-muted-foreground">
+                  <CalendarDays className="h-4 w-4" />
                 </div>
               </div>
-              {errors.expectedReturnDate && <p className="text-sm text-red-500 mt-[-4px]">{errors.expectedReturnDate}</p>}
+              {errors.expectedReturnDate && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.expectedReturnDate}</p>}
             </div>
           </div>
         </div>
 
-        {/* ============ FOOTER SECTION ============ */}
-        <DialogFooter className="flex items-center gap-2 sm:justify-end w-full">
+        {submitError && (
+          <div className="rounded-md bg-destructive/10 p-3 w-full">
+            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-destructive`}>{submitError}</p>
+          </div>
+        )}
+
+        <DialogFooter className="flex items-center gap-2 sm:justify-end w-full mt-2">
           <Button
             variant="outline"
             onClick={handleClose}
             disabled={isLoading}
-            className="h-[36px] px-4 bg-[#f1f5f9] border border-[#e2e8f0] text-[#0f172a] hover:bg-slate-200 shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg"
+            className="h-9 px-4 bg-secondary border border-border text-secondary-foreground hover:bg-secondary/80 shadow-sm rounded-lg"
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isLoading || !isFormValid}
-            className="h-[36px] px-4 bg-[#040d5a] text-white hover:bg-[#040d5a]/90 shadow-[0px_1px_2px_rgba(0,0,0,0.1)] rounded-lg disabled:opacity-50"
+            className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-lg disabled:opacity-50"
           >
             {isLoading ? 'Dispatching...' : 'Confirm & Dispatch'}
           </Button>

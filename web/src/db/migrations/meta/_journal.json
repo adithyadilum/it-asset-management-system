@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777234858920,
-      "tag": "0000_add_audit_trigger",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1777235202175,
-      "tag": "0001_freezing_ezekiel",
+      "when": 1777701048138,
+      "tag": "0000_abandoned_the_executioner",
       "breakpoints": true
     }
   ]

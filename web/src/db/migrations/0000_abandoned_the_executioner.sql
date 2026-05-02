@@ -1,9 +1,10 @@
-CREATE TYPE "public"."asset_status" AS ENUM('Available', 'Assigned', 'In Repair', 'Defective', 'Lost', 'Retired', 'Disposed');--> statement-breakpoint
+CREATE TYPE "public"."asset_status" AS ENUM('Available', 'Assigned', 'In Repair', 'Defective', 'Lost', 'Retired', 'Pending Disposal', 'Disposed');--> statement-breakpoint
 CREATE TYPE "public"."asset_condition" AS ENUM('New', 'Excellent', 'Fair', 'Poor', 'Damaged');--> statement-breakpoint
 CREATE TYPE "public"."disposal_status" AS ENUM('Pending Approval', 'Approved', 'Rejected', 'Completed');--> statement-breakpoint
 CREATE TYPE "public"."license_type" AS ENUM('Perpetual', 'Subscription', 'Open Source / Free');--> statement-breakpoint
 CREATE TYPE "public"."location_type" AS ENUM('HQ', 'Branch', 'Floor', 'Room', 'Remote');--> statement-breakpoint
-CREATE TYPE "public"."maintenance_status" AS ENUM('Open', 'In Progress', 'Pending Parts', 'Resolved', 'Cancelled');--> statement-breakpoint
+CREATE TYPE "public"."maintenance_ticket_status" AS ENUM('ACTIVE', 'COMPLETED', 'CANCELLED');--> statement-breakpoint
+CREATE TYPE "public"."maintenance_ticket_type" AS ENUM('VENDOR', 'INTERNAL');--> statement-breakpoint
 CREATE TYPE "public"."pillar" AS ENUM('IT & Digital', 'Software', 'Office Furniture', 'Office Electronics');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee');--> statement-breakpoint
 CREATE TABLE "asset_assignments" (
@@ -16,7 +17,10 @@ CREATE TABLE "asset_assignments" (
 	"expected_return_date" date,
 	"returned_date" timestamp,
 	"return_condition" "asset_condition",
-	"notes" text
+	"notes" text,
+	"acceptance_status" varchar(50),
+	"accepted_at" timestamp,
+	"return_requested_at" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE "asset_disposals" (
@@ -27,9 +31,11 @@ CREATE TABLE "asset_disposals" (
 	"status" "disposal_status" DEFAULT 'Pending Approval' NOT NULL,
 	"reason" varchar(255) NOT NULL,
 	"justification" text,
+	"rejection_reason" text,
 	"data_wiped" boolean DEFAULT false,
 	"tags_removed" boolean DEFAULT false,
 	"actual_salvage_value" numeric(12, 2),
+	"book_value_at_disposal" numeric(12, 2),
 	"requested_at" timestamp DEFAULT now() NOT NULL,
 	"resolved_at" timestamp,
 	"notes" text
@@ -106,6 +112,15 @@ CREATE TABLE "categories" (
 	CONSTRAINT "pillar_name_idx" UNIQUE("pillar","name")
 );
 --> statement-breakpoint
+CREATE TABLE "custom_statuses" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"color" varchar(32) NOT NULL,
+	"created_by_id" uuid,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "departments" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"uuid" uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -133,18 +148,20 @@ CREATE TABLE "locations" (
 	CONSTRAINT "locations_location_code_unique" UNIQUE("location_code")
 );
 --> statement-breakpoint
-CREATE TABLE "maintenance_records" (
+CREATE TABLE "maintenance_tickets" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"asset_id" uuid NOT NULL,
-	"vendor_id" integer,
-	"reported_by_id" uuid NOT NULL,
-	"status" "maintenance_status" DEFAULT 'Open' NOT NULL,
-	"description" text NOT NULL,
-	"rma_ticket_number" varchar(100),
+	"ticket_type" "maintenance_ticket_type" NOT NULL,
+	"vendor_name" varchar(255),
+	"rma_number" varchar(100),
+	"reported_issue" text NOT NULL,
+	"resolution_notes" text,
 	"estimated_cost" numeric(12, 2),
 	"actual_cost" numeric(12, 2),
-	"service_date" date,
-	"closed_at" timestamp,
+	"estimated_return_date" date,
+	"actual_completion_date" timestamp,
+	"status" "maintenance_ticket_status" DEFAULT 'ACTIVE' NOT NULL,
+	"dispatched_by_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -258,10 +275,10 @@ ALTER TABLE "asset_purchases" ADD CONSTRAINT "asset_purchases_vendor_id_vendors_
 ALTER TABLE "assets" ADD CONSTRAINT "assets_model_id_models_id_fk" FOREIGN KEY ("model_id") REFERENCES "public"."models"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "assets" ADD CONSTRAINT "assets_location_id_locations_id_fk" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "assets" ADD CONSTRAINT "assets_owner_id_owners_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."owners"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "custom_statuses" ADD CONSTRAINT "custom_statuses_created_by_id_users_id_fk" FOREIGN KEY ("created_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "locations" ADD CONSTRAINT "locations_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "maintenance_records" ADD CONSTRAINT "maintenance_records_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "maintenance_records" ADD CONSTRAINT "maintenance_records_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "maintenance_records" ADD CONSTRAINT "maintenance_records_reported_by_id_users_id_fk" FOREIGN KEY ("reported_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "maintenance_tickets" ADD CONSTRAINT "maintenance_tickets_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "maintenance_tickets" ADD CONSTRAINT "maintenance_tickets_dispatched_by_id_users_id_fk" FOREIGN KEY ("dispatched_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "models" ADD CONSTRAINT "models_brand_id_brands_id_fk" FOREIGN KEY ("brand_id") REFERENCES "public"."brands"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "models" ADD CONSTRAINT "models_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -270,6 +287,9 @@ ALTER TABLE "software_allocations" ADD CONSTRAINT "software_allocations_assigned
 ALTER TABLE "software_licenses" ADD CONSTRAINT "software_licenses_model_id_models_id_fk" FOREIGN KEY ("model_id") REFERENCES "public"."models"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "system_audit_logs" ADD CONSTRAINT "system_audit_logs_performed_by_id_users_id_fk" FOREIGN KEY ("performed_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_department_id_departments_id_fk" FOREIGN KEY ("department_id") REFERENCES "public"."departments"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "asset_disposals_status_idx" ON "asset_disposals" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "asset_disposals_asset_id_idx" ON "asset_disposals" USING btree ("asset_id");--> statement-breakpoint
+CREATE INDEX "asset_disposals_requested_by_idx" ON "asset_disposals" USING btree ("requested_by_id");--> statement-breakpoint
 CREATE INDEX "assets_model_id_idx" ON "assets" USING btree ("model_id");--> statement-breakpoint
 CREATE INDEX "assets_location_id_idx" ON "assets" USING btree ("location_id");--> statement-breakpoint
 CREATE INDEX "assets_owner_id_idx" ON "assets" USING btree ("owner_id");--> statement-breakpoint

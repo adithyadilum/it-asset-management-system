@@ -148,3 +148,12 @@ export const categorySchema = z.object({
     })
     .pipe(categoryCustomSchemaShape),
 });
+
+export const customStatusSchema = z.object({
+  name: z.string().trim().min(2, 'Status name is required'),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Invalid hex color'),
+  isActive: z.boolean(),
+});

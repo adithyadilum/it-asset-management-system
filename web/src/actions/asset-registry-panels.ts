@@ -10,7 +10,7 @@ import {
   pillarEnum,
   vendors,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
 
 export async function getAssetDetailsByIdAction(id: string) {
   const user = await getAuthenticatedUser();

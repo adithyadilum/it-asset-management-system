@@ -12,13 +12,14 @@ import {
   categories,
   departments,
   locations,
-  maintenanceRecords,
+  maintenanceTickets,
   models,
   owners,
+  customStatuses,
   users,
   vendors,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
 import { uploadFileToStorage } from '@/lib/storage';
 import { logAuditAction } from '@/lib/audit';
@@ -37,6 +38,7 @@ import {
   locationSchema,
   ownerSchema,
   vendorSchema,
+  customStatusSchema,
 } from '@/lib/validations/master-data';
 import { type LocationType } from '@/types/master-data';
 
@@ -55,6 +57,7 @@ const MASTER_DATA_CODE_PREFIX: Record<MasterDataRecordEntity, string> = {
   vendors: 'VND',
   owners: 'OWN',
   departments: 'DEP',
+  statuses: 'STS',
 };
 
 function formatMasterDataCode(prefix: string, numericId: number) {
@@ -167,6 +170,7 @@ async function countLinkedAssetsForEntity(
     }
 
     case 'departments':
+    case 'statuses':
       return 0;
   }
 }
@@ -248,12 +252,21 @@ async function countVendorPurchaseReferences(
 async function countVendorMaintenanceReferences(
   recordIds: number[]
 ): Promise<number> {
+  const vendorsList = await db
+    .select({ companyName: vendors.companyName })
+    .from(vendors)
+    .where(inArray(vendors.id, recordIds));
+
+  const companyNames = vendorsList.map(v => v.companyName).filter(Boolean);
+
+  if (companyNames.length === 0) return 0;
+
   const linked = await db
     .select({
-      count: sql<number>`coalesce(count(${maintenanceRecords.id}), 0)::int`,
+      count: sql<number>`coalesce(count(${maintenanceTickets.id}), 0)::int`,
     })
-    .from(maintenanceRecords)
-    .where(inArray(maintenanceRecords.vendorId, recordIds));
+    .from(maintenanceTickets)
+    .where(inArray(maintenanceTickets.vendorName, companyNames));
 
   return linked[0]?.count ?? 0;
 }
@@ -457,6 +470,15 @@ export async function deleteMasterDataRecords(
           .delete(departments)
           .where(inArray(departments.id, recordIds))
           .returning({ id: departments.id });
+        deletedRecords = deleted;
+        deletedCount = deleted.length;
+        break;
+      }
+      case 'statuses': {
+        const deleted = await db
+          .delete(customStatuses)
+          .where(inArray(customStatuses.id, recordIds))
+          .returning({ id: customStatuses.id });
         deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
@@ -1029,6 +1051,41 @@ export async function createMasterDataRecord(
         insertedId = inserted[0].id;
         break;
       }
+
+      case 'statuses': {
+        const parsed = customStatusSchema.safeParse({
+          name: formData.get('name'),
+          color: formData.get('color'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate status data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(customStatuses)
+          .values({
+            name: parsed.data.name,
+            color: parsed.data.color,
+            isActive: parsed.data.isActive,
+          })
+          .returning({ id: customStatuses.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create status.',
+          };
+        }
+
+        insertedId = inserted[0].id;
+        break;
+      }
     }
 
     if (insertedId) {
@@ -1466,6 +1523,50 @@ export async function updateMasterDataRecord(
 
         if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Department not found.' };
+        }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
+        break;
+      }
+
+      case 'statuses': {
+        const parsed = customStatusSchema.safeParse({
+          name: formData.get('name'),
+          color: formData.get('color'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Validation failed.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const oldRecord = await db.query.customStatuses.findFirst({
+          where: eq(customStatuses.id, idRaw),
+        });
+
+        const updated = await db
+          .update(customStatuses)
+          .set({
+            name: parsed.data.name,
+            color: parsed.data.color,
+            isActive: parsed.data.isActive,
+          })
+          .where(eq(customStatuses.id, idRaw))
+          .returning();
+
+        if (updated.length === 0 || !oldRecord) {
+          return { success: false, message: 'Status not found.' };
         }
 
         await logAuditAction({

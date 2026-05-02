@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { assets, maintenanceRecords, systemAuditLogs } from '@/db/schema';
+import { assets, maintenanceTickets, systemAuditLogs } from '@/db/schema';
 import { isValidUuid } from '@/lib/auth/uuid';
 
 // ---------------------------------------------------------------------------
@@ -88,16 +88,15 @@ export interface HistoryEvent {
 export interface MaintenanceEvent {
   id: number;
   assetId: string;
-  vendorId: number | null;
+  vendorName: string | null;
   status: string;
-  description: string;
-  rmaTicketNumber: string | null;
+  reportedIssue: string;
+  rmaNumber: string | null;
   estimatedCost: string | null;
   actualCost: string | null;
-  serviceDate: string | null;
-  closedAt: string | null;
+  estimatedReturnDate: string | null;
+  actualCompletionDate: string | null;
   createdAt: string;
-  vendor: { companyName: string } | null;
 }
 
 export interface AllocationData {
@@ -405,26 +404,24 @@ export async function getAssetMaintenanceById(
     return [];
   }
 
-  const maintenanceList = await db.query.maintenanceRecords.findMany({
-    where: eq(maintenanceRecords.assetId, resolvedAssetId),
+  const maintenanceList = await db.query.maintenanceTickets.findMany({
+    where: eq(maintenanceTickets.assetId, resolvedAssetId),
     orderBy: (records, { desc }) => [desc(records.createdAt)],
     limit: 5,
-    with: { vendor: { columns: { companyName: true } } },
   });
 
   return maintenanceList.map((record) => ({
     id: record.id,
     assetId: record.assetId,
-    vendorId: record.vendorId,
+    vendorName: record.vendorName,
     status: record.status,
-    description: record.description,
-    rmaTicketNumber: record.rmaTicketNumber,
+    reportedIssue: record.reportedIssue,
+    rmaNumber: record.rmaNumber,
     estimatedCost: record.estimatedCost?.toString() ?? null,
     actualCost: record.actualCost?.toString() ?? null,
-    serviceDate: record.serviceDate?.toString() ?? null,
-    closedAt: record.closedAt?.toISOString() ?? null,
+    estimatedReturnDate: record.estimatedReturnDate?.toString() ?? null,
+    actualCompletionDate: record.actualCompletionDate?.toISOString() ?? null,
     createdAt: record.createdAt.toISOString(),
-    vendor: record.vendor,
   }));
 }
 
