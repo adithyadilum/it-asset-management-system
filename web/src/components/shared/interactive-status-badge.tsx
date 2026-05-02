@@ -26,7 +26,7 @@ interface InteractiveStatusBadgeProps {
   assetId: string;
   currentStatus: string;
   availableStatuses: Array<{ value: string; label: string; color?: string }>;
-  onStatusChanged?: () => void;
+  onStatusChanged?: (nextStatus: string) => void;
   className?: string;
 }
 
@@ -41,6 +41,14 @@ export function InteractiveStatusBadge({
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [reasonNote, setReasonNote] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [localStatus, setLocalStatus] = useState(currentStatus);
+  const [prevCurrentStatus, setPrevCurrentStatus] = useState(currentStatus);
+
+  // Sync local status when currentStatus prop changes from parent
+  if (currentStatus !== prevCurrentStatus) {
+    setLocalStatus(currentStatus);
+    setPrevCurrentStatus(currentStatus);
+  }
 
   const handleStatusSelect = (status: string) => {
     if (status === currentStatus) return;
@@ -62,8 +70,9 @@ export function InteractiveStatusBadge({
 
         if (result.success) {
           tiqriToast.success(result.message);
+          setLocalStatus(selectedStatus);
           setIsModalOpen(false);
-          onStatusChanged?.();
+          onStatusChanged?.(selectedStatus);
         } else {
           tiqriToast.error(result.message);
         }
@@ -75,7 +84,7 @@ export function InteractiveStatusBadge({
   };
 
   const filteredStatuses = availableStatuses.filter(
-    (s) => s.value !== currentStatus
+    (s) => s.value !== localStatus
   );
 
   return (
@@ -89,7 +98,7 @@ export function InteractiveStatusBadge({
             )}
           >
             <StatusBadge
-              value={currentStatus}
+              value={localStatus}
               showIcon
               className="group-hover:ring-2 group-hover:ring-slate-200 group-hover:scale-[1.02] transition-all duration-150"
             />
@@ -132,7 +141,7 @@ export function InteractiveStatusBadge({
                 <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
                   Current
                 </span>
-                <StatusBadge value={currentStatus} />
+                <StatusBadge value={localStatus} />
               </div>
               <div className="text-slate-300">→</div>
               <div className="flex flex-col gap-1 items-end">

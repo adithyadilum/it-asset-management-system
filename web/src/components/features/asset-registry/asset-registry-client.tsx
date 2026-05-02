@@ -9,6 +9,9 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
+import {
+  STATUSES_REQUIRING_ASSIGNMENT_CLOSURE,
+} from '@/lib/constants';
 import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
@@ -187,6 +190,23 @@ export function AssetRegistryClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const handleStatusUpdate = useCallback((assetId: string, nextStatus: string) => {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.id === assetId) {
+          const needsClosure = STATUSES_REQUIRING_ASSIGNMENT_CLOSURE.has(nextStatus);
+          return {
+            ...row,
+            status: nextStatus,
+            assignedTo: needsClosure ? null : row.assignedTo,
+          };
+        }
+        return row;
+      })
+    );
+    setRefreshNonce((n) => n + 1);
+  }, []);
   const isPanelOpen = Boolean(currentPanel);
   const activeRecordId =
     currentPanel === 'record' ? searchParams.get('id') : null;
@@ -742,12 +762,12 @@ export function AssetRegistryClient({
             assetId={row.original.id}
             currentStatus={row.original.status}
             availableStatuses={manualStatuses}
-            onStatusChanged={() => setRefreshNonce((n) => n + 1)}
+            onStatusChanged={(nextStatus) => handleStatusUpdate(row.original.id, nextStatus)}
           />
         ),
       },
     ];
-  }, [config.view, manualStatuses]);
+  }, [config.view, manualStatuses, handleStatusUpdate]);
 
   const selectionActions: DataTableSelectionAction<AssetRegistryRow>[] = [
     { id: 'print-qr', label: 'Print QR code', disabled: isMutating },

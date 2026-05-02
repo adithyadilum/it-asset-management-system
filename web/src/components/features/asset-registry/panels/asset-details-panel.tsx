@@ -79,6 +79,7 @@ export interface AssetDetailsPanelProps {
   onCurrencyChange?: (currency: string) => void;
   onRevokeAllocation?: (userId: string) => void;
   manualStatuses?: Array<{ value: string; label: string; color?: string }>;
+  onStatusChanged?: (nextStatus: string) => void;
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
@@ -444,6 +445,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         assetId={props.assetId}
         currentStatus={props.status}
         availableStatuses={props.manualStatuses ?? []}
+        onStatusChanged={props.onStatusChanged}
       />
     </div>
   );

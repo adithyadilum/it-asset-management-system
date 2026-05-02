@@ -15,6 +15,7 @@ import {
   type MaintenanceEvent,
   type AllocationData,
 } from "@/lib/data/asset-details-repo";
+import { STATUSES_REQUIRING_ASSIGNMENT_CLOSURE } from "@/lib/constants";
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
@@ -73,6 +74,7 @@ export function AssetDetailsPanelWrapper({
   const [allocations, setAllocations] = useState<AllocationData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   if (isOpen && recordId !== prevRecordId) {
     setPrevRecordId(recordId);
@@ -130,7 +132,7 @@ export function AssetDetailsPanelWrapper({
         isMounted = false;
       };
     }
-  }, [isOpen, recordId]);
+  }, [isOpen, recordId, refreshNonce]);
 
   return (
     <AssetDetailsPanel
@@ -181,6 +183,21 @@ export function AssetDetailsPanelWrapper({
       totalSeats={parseInt(String(data?.model.technicalDetails?.max_seats ?? data?.model.technicalDetails?.total_seats ?? 0), 10)}
       onCurrencyChange={setDisplayCurrencyOverride}
       manualStatuses={manualStatuses}
+      onStatusChanged={(nextStatus) => {
+        setData((prev) => {
+          if (!prev) return null;
+          const needsClosure = STATUSES_REQUIRING_ASSIGNMENT_CLOSURE.has(nextStatus);
+          return {
+            ...prev,
+            asset: {
+              ...prev.asset,
+              status: nextStatus,
+            },
+            assignment: needsClosure ? null : prev.assignment,
+          };
+        });
+        setRefreshNonce((n) => n + 1);
+      }}
     />
   );
 }
