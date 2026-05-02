@@ -1065,11 +1065,38 @@ async function seed() {
             'asset_disposals',
             'software_licenses',
             'software_allocations',
+            'custom_statuses',
             'system_audit_logs',
           ],
         },
         performedAt: now,
       });
+    }
+
+    const customStatusSeeds = [
+      { name: 'On Hold', color: '#f59e0b', isActive: true },
+      { name: 'In Transit', color: '#3b82f6', isActive: true },
+      { name: 'In Warehouse', color: '#10b981', isActive: true },
+    ];
+
+    for (const statusSeed of customStatusSeeds) {
+      const existing = await first(
+        db
+          .select({ id: customStatuses.id })
+          .from(customStatuses)
+          .where(eq(customStatuses.name, statusSeed.name))
+          .limit(1)
+      );
+
+      if (existing) {
+        await db
+          .update(customStatuses)
+          .set({ color: statusSeed.color, isActive: statusSeed.isActive })
+          .where(eq(customStatuses.id, existing.id));
+        continue;
+      }
+
+      await db.insert(customStatuses).values(statusSeed);
     }
 
     console.log(

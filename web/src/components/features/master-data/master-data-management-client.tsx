@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { tiqriToast } from "@/components/shared/sonner";
-import { getCustomStatuses, createCustomStatus, deleteCustomStatus } from '@/actions/statuses';
 
 export type MasterDataTabId =
     | "locations"
@@ -133,6 +132,16 @@ export type MasterDataOwnerRow = {
     isActive: boolean;
 };
 
+export type MasterDataCustomStatusRow = {
+    id: number;
+    code: string | null;
+    name: string;
+    color: string;
+    isActive: boolean;
+    createdAt: Date | string;
+    linkedAssets: number;
+};
+
 interface MasterDataManagementClientProps {
     categories: MasterDataCategoryRow[];
     locations: MasterDataLocationRow[];
@@ -141,6 +150,7 @@ interface MasterDataManagementClientProps {
     vendors: MasterDataVendorRow[];
     owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
+    customStatuses: MasterDataCustomStatusRow[];
     initialTab?: MasterDataTabId;
 }
 
@@ -192,6 +202,7 @@ const MASTER_DATA_CODE_PREFIX: Record<MasterDataTabId, string> = {
     vendors: "VND",
     owners: "OWN",
     departments: "DEP",
+    statuses: "STS",
 };
 
 const MASTER_DATA_EMPTY_STATE_META: Record<
@@ -297,6 +308,7 @@ export function MasterDataManagementClient({
     vendors,
     owners,
     departments,
+    customStatuses,
     initialTab,
 }: MasterDataManagementClientProps) {
     const pathname = usePathname();
@@ -445,6 +457,8 @@ export function MasterDataManagementClient({
                 return resolveBlockedCodes(owners);
             case "departments":
                 return resolveBlockedCodes(departments);
+            case "statuses":
+                return resolveBlockedCodes(customStatuses);
             default:
                 return [];
         }
@@ -466,6 +480,7 @@ export function MasterDataManagementClient({
             vendors: "Vendor",
             owners: "Owner",
             departments: "Department",
+            statuses: "Status",
         }[pendingDeleteEntity];
         return `Delete ${entityLabel}${pendingDeleteRows.length > 1 ? "s" : ""}`;
     };
@@ -700,6 +715,64 @@ export function MasterDataManagementClient({
         ],
         []
     );
+    
+    const customStatusColumns = useMemo<ColumnDef<MasterDataCustomStatusRow>[]>(
+        () => [
+            {
+                accessorKey: "id",
+                header: "Status ID",
+                cell: ({ row }) =>
+                    resolveMasterDataCode("statuses", null, row.original.id),
+            },
+            {
+                accessorKey: "name",
+                header: "Name",
+                cell: ({ row }) => <span>{row.original.name}</span>,
+            },
+            {
+                accessorKey: "color",
+                header: "Color",
+                cell: ({ row }) => (
+                    <div className="flex items-center gap-2">
+                        <div
+                            className="h-3 w-3 rounded-full shrink-0"
+                            style={{ backgroundColor: row.original.color }}
+                        />
+                        <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">
+                            {row.original.color}
+                        </code>
+                    </div>
+                ),
+            },
+            {
+                accessorKey: "isActive",
+                header: "Active Status",
+                cell: ({ row }) => (
+                    <StatusBadge
+                        value={row.original.isActive ? "active" : "inactive"}
+                        showIcon={false}
+                    />
+                ),
+            },
+            {
+                id: "preview",
+                header: "Badge Preview",
+                cell: ({ row }) => (
+                    <div 
+                        className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        style={{ 
+                            borderColor: row.original.color,
+                            color: row.original.color,
+                            backgroundColor: `${row.original.color}10` // 10 is ~6% opacity in hex
+                        }}
+                    >
+                        {row.original.name}
+                    </div>
+                ),
+            },
+        ],
+        []
+    );
 
     const filteredCategories = useMemo(() => {
         return categories.filter((item) => {
@@ -779,6 +852,17 @@ export function MasterDataManagementClient({
                 )
             ),
         [departments, searchByTab.departments]
+    );
+
+    const filteredCustomStatuses = useMemo(
+        () =>
+            customStatuses.filter((item) =>
+                containsSearch(
+                    [item.id, item.name, item.color],
+                    searchByTab.statuses
+                )
+            ),
+        [customStatuses, searchByTab.statuses]
     );
 
     const activeSearchValue = searchByTab[activeTab];
@@ -960,7 +1044,9 @@ export function MasterDataManagementClient({
                                                             ? "Search vendors..."
                                                             : activeTab === "owners"
                                                                 ? "Search owners..."
-                                                                : "Search departments..."
+                                                                : activeTab === "departments"
+                                                                    ? "Search departments..."
+                                                                    : "Search statuses..."
                                     }
                                 />
                             </div>
@@ -1080,9 +1166,18 @@ export function MasterDataManagementClient({
                     </TabsContent>
 
                     <TabsContent value="statuses" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                        <div className="flex flex-col gap-4">
-                            <StatusesManager />
-                        </div>
+                        <DataTable
+                            columns={customStatusColumns}
+                            data={filteredCustomStatuses}
+                            initialPageSize={10}
+                            pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
+                            selectionActions={buildSelectionActions("statuses")}
+                            onRowClick={(row) => openRecordPanel("statuses", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("statuses")}
+                        />
                     </TabsContent>
                 </div>
             </Tabs>
@@ -1117,80 +1212,3 @@ export function MasterDataManagementClient({
     );
 }
 
-function StatusesManager() {
-    const [statuses, setStatuses] = useState<Array<{ id: number; name: string; color: string; isActive: boolean; createdAt: string }>>([]);
-    const [name, setName] = useState("");
-    const [color, setColor] = useState("#6b7280");
-    const [, startTransition] = useTransition();
-
-    useEffect(() => {
-        let mounted = true;
-        (async () => {
-            try {
-                const rows = await getCustomStatuses();
-                if (!mounted) return;
-                setStatuses(rows.map((r) => ({ ...r, createdAt: String(r.createdAt) })));
-            } catch (err) {
-                console.error(err);
-                tiqriToast.error('Failed to load statuses');
-            }
-        })();
-
-        return () => { mounted = false; };
-    }, []);
-
-    const handleCreate = useCallback(() => {
-        if (!name.trim()) {
-            tiqriToast.warning('Name is required');
-            return;
-        }
-
-        startTransition(async () => {
-            try {
-                const created = await createCustomStatus(name.trim(), color || '#6b7280');
-                setStatuses((prev) => [created as any, ...prev]);
-                setName('');
-                tiqriToast.success('Status created');
-            } catch (err: any) {
-                tiqriToast.error(err?.message ?? 'Failed to create status');
-            }
-        });
-    }, [name, color, startTransition]);
-
-    const handleDelete = useCallback((id: number) => {
-        startTransition(async () => {
-            try {
-                await deleteCustomStatus(id);
-                setStatuses((prev) => prev.filter((s) => s.id !== id));
-                tiqriToast.success('Deleted');
-            } catch (err) {
-                tiqriToast.error('Delete failed');
-            }
-        });
-    }, [startTransition]);
-
-    return (
-        <div className="flex flex-col gap-4">
-            <div className="flex gap-2 items-center">
-                <Input placeholder="Status name" value={name} onChange={(e) => setName(e.target.value)} className="w-64" />
-                <Input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-12 h-9 p-0" />
-                <Button onClick={handleCreate}>Create</Button>
-            </div>
-
-            <div className="flex flex-col gap-2">
-                {statuses.length === 0 && <div className="text-sm text-slate-500">No statuses found.</div>}
-                {statuses.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between gap-4 rounded-md bg-slate-50 p-2">
-                        <div className="flex items-center gap-3">
-                            <div style={{ background: s.color }} className="w-4 h-4 rounded" />
-                            <div className="text-sm text-slate-700">{s.name}</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button variant="destructive" onClick={() => handleDelete(s.id)}>Delete</Button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
