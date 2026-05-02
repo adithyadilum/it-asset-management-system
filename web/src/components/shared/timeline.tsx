@@ -203,6 +203,20 @@ function formatTimelineValue(field: string, value: unknown): string {
     return text;
 }
 
+function humanizeFieldName(field: string): string {
+    return field
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/_/g, ' ')
+        .replace(/\bId\b/gi, 'ID')
+        .replace(/\bMac\b/gi, 'MAC')
+        .replace(/\bIp\b/gi, 'IP')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .map((word) => (word.toUpperCase() === 'ID' || word.toUpperCase() === 'IP' || word.toUpperCase() === 'MAC' ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
+        .join(' ');
+}
+
 function buildChangeList(
     oldValue: Record<string, unknown> | null,
     newValue: Record<string, unknown> | null
@@ -217,7 +231,7 @@ function buildChangeList(
     if (!oldValue && newValue) {
         for (const key of Object.keys(newValue)) {
             changes.push({
-                field: key.replace(/([a-z])([A-Z])/g, '$1 $2'),
+                field: humanizeFieldName(key),
                 oldValue: '-',
                 newValue: formatTimelineValue(key, newValue[key]),
             });
@@ -229,7 +243,7 @@ function buildChangeList(
     if (oldValue && !newValue) {
         for (const key of Object.keys(oldValue)) {
             changes.push({
-                field: key.replace(/([a-z])([A-Z])/g, '$1 $2'),
+                field: humanizeFieldName(key),
                 oldValue: formatTimelineValue(key, oldValue[key]),
                 newValue: '-',
             });
@@ -248,7 +262,7 @@ function buildChangeList(
 
         if (!areValuesEqual(old, neu)) {
             changes.push({
-                field: key.replace(/([a-z])([A-Z])/g, '$1 $2'),
+                field: humanizeFieldName(key),
                 oldValue: formatTimelineValue(key, old),
                 newValue: formatTimelineValue(key, neu),
             });
