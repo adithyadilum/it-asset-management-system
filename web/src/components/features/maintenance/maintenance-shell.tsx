@@ -61,7 +61,7 @@ export function MaintenanceShell() {
   const [activeRepairTickets, setActiveRepairTickets] = useState<ActiveRepairTicket[]>([]);
   const [repairHistoryTickets, setRepairHistoryTickets] = useState<RepairHistoryTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const { setOpen } = useSidebar();
@@ -108,13 +108,13 @@ export function MaintenanceShell() {
 
   const handlePendingRowClick = (row: PendingReviewTicket) => {
     dispatch({ type: 'OPEN_PANEL', payload: row.id });
-    setOpen(false); 
+    setOpen(false);
   };
 
   const handlePanelClose = () => {
     dispatch({ type: 'CLOSE_PANEL' });
-    setTimeout(() => dispatch({ type: 'CLEAR_SELECTED_TICKET' }), 300); 
-    setOpen(true); 
+    setTimeout(() => dispatch({ type: 'CLEAR_SELECTED_TICKET' }), 300);
+    setOpen(true);
   };
 
   const handleActiveRepairRowClick = (ticket: ActiveRepairTicket) => {
@@ -131,7 +131,7 @@ export function MaintenanceShell() {
         formData.resolutionNotes,
         formData.updateStatusTo
       );
-      
+
       toast.success('Repair logged successfully!');
       dispatch({ type: 'CLOSE_COMPLETE_DIALOG' });
       await loadData(debouncedSearch);
@@ -145,40 +145,42 @@ export function MaintenanceShell() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full bg-muted/20 p-5 overflow-hidden">
-      
-      {/* LEFT CARD */}
-      <div className="flex flex-1 flex-col bg-card rounded-xl shadow-sm border border-border overflow-hidden min-w-0 transition-all duration-300">
-        <div className="px-6 pt-6 pb-2 shrink-0">
-          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
-          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground mt-1`}>
-            Manage asset maintenance requests, repairs, and service history
-          </p>
+    <div className="flex h-full w-full overflow-hidden bg-slate-50">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+        <div className="mb-4 shrink-0">
+          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+            Maintenance & Repairs
+          </h1>
         </div>
 
-        <MaintenanceTabs
-          pendingTickets={pendingTickets}
-          activeRepairTickets={activeRepairTickets}
-          repairHistoryTickets={repairHistoryTickets}
-          isLoading={isLoading}
-          onRowClick={handlePendingRowClick}
-          onActiveRepairRowClick={handleActiveRepairRowClick}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedTicketId={uiState.selectedTicketId}
-        />
-      </div>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <MaintenanceTabs
+            pendingTickets={pendingTickets}
+            activeRepairTickets={activeRepairTickets}
+            repairHistoryTickets={repairHistoryTickets}
+            isLoading={isLoading}
+            onRowClick={handlePendingRowClick}
+            onActiveRepairRowClick={handleActiveRepairRowClick}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            selectedTicketId={uiState.selectedTicketId}
+          />
+        </div>
+      </main>
 
-      {/* RIGHT CARD */}
-      <div 
+      <div
         className={cn(
-          "shrink-0 bg-card rounded-xl shadow-sm overflow-hidden transition-all duration-300 ease-in-out transform",
-          uiState.isPanelOpen 
-            ? "w-[550px] xl:w-[600px] ml-5 border border-border opacity-100 translate-x-0" 
-            : "w-0 ml-0 border-0 opacity-0 translate-x-8" 
+          "shrink-0 overflow-hidden rounded-xl bg-white shadow-box-shadow-shadow-lg transition-[width,margin,opacity,transform] duration-300 ease-out",
+          uiState.isPanelOpen
+            ? "border border-border opacity-100 translate-x-0"
+            : "border-0 opacity-0 translate-x-8"
         )}
+        style={{
+          width: uiState.isPanelOpen ? '550px' : '0px',
+          marginLeft: uiState.isPanelOpen ? '1.25rem' : '0px',
+        }}
       >
-        <div className="w-[550px] xl:w-[600px] h-full flex flex-col">
+        <div className="flex h-full w-full flex-col">
           <IssueReviewPanelWrapper
             isOpen={uiState.isPanelOpen}
             onClose={handlePanelClose}

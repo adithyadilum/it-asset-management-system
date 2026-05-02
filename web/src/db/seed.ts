@@ -14,7 +14,6 @@ import {
   categories,
   departments,
   locations,
-  maintenanceRecords,
   maintenanceTickets,
   models,
   owners,
@@ -847,51 +846,6 @@ async function seed() {
       await db.insert(assetAssignments).values(values);
     }
 
-    const maintenanceRecordSeed = {
-      assetTag: 'MON-BR-001',
-      vendorId: vendorIds['Atlas Tech Services'],
-      reportedById: itUserId,
-      status: 'In Progress',
-      description: 'Monitor has intermittent flickering after power cycles.',
-      rmaTicketNumber: 'RMA-2026-001',
-      estimatedCost: '45.00',
-      actualCost: null,
-      serviceDate: '2026-04-14',
-      closedAt: null,
-    } as const;
-
-    {
-      const assetId = assetIds[maintenanceRecordSeed.assetTag];
-      const existing = await first(
-        db
-          .select({ id: maintenanceRecords.id })
-          .from(maintenanceRecords)
-          .where(eq(maintenanceRecords.assetId, assetId))
-          .limit(1)
-      );
-
-      const values = {
-        assetId,
-        vendorId: maintenanceRecordSeed.vendorId,
-        reportedById: maintenanceRecordSeed.reportedById,
-        status: maintenanceRecordSeed.status as never,
-        description: maintenanceRecordSeed.description,
-        rmaTicketNumber: maintenanceRecordSeed.rmaTicketNumber,
-        estimatedCost: maintenanceRecordSeed.estimatedCost,
-        actualCost: maintenanceRecordSeed.actualCost ?? undefined,
-        serviceDate: maintenanceRecordSeed.serviceDate,
-        closedAt: maintenanceRecordSeed.closedAt ?? undefined,
-      };
-
-      if (existing) {
-        await db
-          .update(maintenanceRecords)
-          .set(values)
-          .where(eq(maintenanceRecords.id, existing.id));
-      } else {
-        await db.insert(maintenanceRecords).values(values);
-      }
-    }
 
     const maintenanceTicketSeeds = [
       {
@@ -1107,7 +1061,6 @@ async function seed() {
             'asset_purchases',
             'asset_documents',
             'asset_assignments',
-            'maintenance_records',
             'maintenance_tickets',
             'asset_disposals',
             'software_licenses',

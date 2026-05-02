@@ -2,16 +2,24 @@ import { db } from '@/db';
 import { systemAuditLogs } from '@/db/schema';
 import { headers } from 'next/headers';
 
+export type AuditActionType =
+  | 'CREATE'
+  | 'UPDATE'
+  | 'DELETE'
+  | 'ASSIGN'
+  | 'RETURN'
+  | 'STATUS_CHANGE'
+  | 'REPAIR_INITIATED'
+  | 'REPAIR_COMPLETED'
+  | 'RESOLVED_INTERNALLY'
+  | 'LOGIN'
+  | 'LOGOUT'
+  | 'ACCESS_DENIED';
+
 type AuditPayload = {
   entityType: string;
   entityId: string;
-  actionType:
-    | 'CREATE'
-    | 'UPDATE'
-    | 'DELETE'
-    | 'ACCESS_DENIED'
-    | 'LOGIN'
-    | 'LOGOUT';
+  actionType: AuditActionType;
   performedById: string;
   oldData?: Record<string, unknown> | null;
   newData?: Record<string, unknown> | null;
@@ -64,51 +72,74 @@ function areAuditValuesEqual(left: unknown, right: unknown): boolean {
   return false;
 }
 
-export async function logAuditAction(payload: AuditPayload) {
+async function buildAuditRecord(payload: AuditPayload) {
+  // 1. Silent IP Capture via Next.js Headers
+  // In Next.js 15+, headers() must be awaited
+  let ipAddress = 'Unknown IP';
   try {
-    // 1. Silent IP Capture via Next.js Headers
-    // In Next.js 15+, headers() must be awaited
     const headersList = await headers();
-    // Vercel/proxies use x-forwarded-for. Fallback to standard remote address.
     const forwardedFor = headersList.get('x-forwarded-for');
-    const ipAddress = (
+    ipAddress = (
       forwardedFor ? forwardedFor.split(',')[0].trim() : 'Unknown IP'
     ).slice(0, 45);
+  } catch {
+    // If called outside of a request context, headers() will throw.
+  }
 
-    // 2. State Diff Calculation (Only log what actually changed)
-    let finalOldValue = payload.oldData;
-    let finalNewValue = payload.newData;
+  // 2. State Diff Calculation (Only log what actually changed)
+  let finalOldValue = payload.oldData;
+  let finalNewValue = payload.newData;
 
-    if (payload.actionType === 'UPDATE' && payload.oldData && payload.newData) {
-      finalOldValue = {};
-      finalNewValue = {};
+  if (payload.actionType === 'UPDATE' && payload.oldData && payload.newData) {
+    finalOldValue = {};
+    finalNewValue = {};
 
-      // Compare keys to find the exact diff
-      for (const key in payload.newData) {
-        if (!areAuditValuesEqual(payload.newData[key], payload.oldData[key])) {
-          finalOldValue[key] = payload.oldData[key];
-          finalNewValue[key] = payload.newData[key];
-        }
+    // Compare keys to find the exact diff
+    for (const key in payload.newData) {
+      if (!areAuditValuesEqual(payload.newData[key], payload.oldData[key])) {
+        finalOldValue[key] = payload.oldData[key];
+        finalNewValue[key] = payload.newData[key];
       }
-
-      // If nothing actually changed, skip logging to save DB space
-      if (Object.keys(finalNewValue).length === 0) return;
     }
 
+    // If nothing actually changed, skip logging to save DB space
+    if (Object.keys(finalNewValue).length === 0) return null;
+  }
+
+  return {
+    entityType: payload.entityType,
+    entityId: String(payload.entityId),
+    actionType: payload.actionType,
+    performedById: payload.performedById,
+    oldValue: finalOldValue ? finalOldValue : null,
+    newValue: finalNewValue ? finalNewValue : null,
+    ipAddress: ipAddress,
+  };
+}
+
+export async function logAuditAction(payload: AuditPayload) {
+  try {
+    const record = await buildAuditRecord(payload);
+    if (!record) return;
+
     // 3. Write the Immutable Record
-    await db.insert(systemAuditLogs).values({
-      entityType: payload.entityType,
-      entityId: payload.entityId,
-      actionType: payload.actionType,
-      performedById: payload.performedById,
-      // Drizzle handles jsonb natively, passing objects is correct
-      oldValue: finalOldValue ? finalOldValue : null,
-      newValue: finalNewValue ? finalNewValue : null,
-      ipAddress: ipAddress,
-    });
+    await db.insert(systemAuditLogs).values(record);
   } catch (error) {
     // We log the error to the server console, but DO NOT throw it.
     // We don't want a failed audit log to break the user's CRUD operation.
     console.error('CRITICAL: Failed to write to audit ledger', error);
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function logAuditActionTx(tx: any, payload: AuditPayload) {
+  try {
+    const record = await buildAuditRecord(payload);
+    if (!record) return;
+
+    // 3. Write the Immutable Record via Transaction
+    await tx.insert(systemAuditLogs).values(record);
+  } catch (error) {
+    console.error('CRITICAL: Failed to write to audit ledger via tx', error);
   }
 }

@@ -16,10 +16,8 @@ import {
 } from '@/db/schema';
 import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import {
-  canManageAssets,
-  getAuthenticatedUser,
-} from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { canManageAssets } from '@/lib/auth/roles';
 
 export interface AuditLogFilter {
   field: string;

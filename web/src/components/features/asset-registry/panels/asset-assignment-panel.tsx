@@ -107,7 +107,7 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       },
     ];
 
-    const maintenanceSummary = props.maintenanceEvents?.[0]?.description || 'No maintenance notes available.';
+    const maintenanceSummary = props.maintenanceEvents?.[0]?.reportedIssue || 'No maintenance notes available.';
 
     return (
       <div className="flex w-full flex-col gap-6 pb-2">
@@ -145,8 +145,8 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
               <dl className="space-y-2">
                 {props.maintenanceEvents.slice(0, 3).map((record) => (
                   <div key={record.id} className="grid grid-cols-[145px_minmax(0,1fr)] gap-x-5">
-                    <dt className="font-semibold text-slate-900">{formatDateValue(record.serviceDate || record.createdAt)} :</dt>
-                    <dd className="text-slate-700">{record.description || '-'}</dd>
+                    <dt className="font-semibold text-slate-900">{formatDateValue(record.estimatedReturnDate || record.createdAt)} :</dt>
+                    <dd className="text-slate-700">{record.reportedIssue || '-'}</dd>
                   </div>
                 ))}
               </dl>
