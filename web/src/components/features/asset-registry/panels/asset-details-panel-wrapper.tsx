@@ -21,7 +21,12 @@ export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
   onClose: () => void;
   recordId: string;
-  manualStatuses?: Array<{ value: string; label: string; color?: string }>;
+  manualStatuses?: Array<{ 
+    value: string; 
+    label: string; 
+    colorTheme?: string; 
+    iconName?: string; 
+  }>;
   onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
 

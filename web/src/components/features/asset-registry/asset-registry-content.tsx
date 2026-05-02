@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type MutableRefObject } from 'react';
+import { useRef } from 'react';
 import { AssetRegistryClient } from './asset-registry-client';
 import { AssetRegistryPanels } from './asset-registry-panels';
 import {
@@ -39,7 +39,12 @@ interface AssetRegistryContentProps {
     recordId?: string;
     closePanelUrl: string;
     pillar: string;
-    manualStatuses?: Array<{ value: string; label: string; color?: string }>;
+    manualStatuses?: Array<{ 
+        value: string; 
+        label: string; 
+        colorTheme?: string; 
+        iconName?: string; 
+    }>;
 }
 
 export function AssetRegistryContent({

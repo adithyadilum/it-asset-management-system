@@ -1074,9 +1074,9 @@ async function seed() {
     }
 
     const customStatusSeeds = [
-      { name: 'On Hold', color: '#f59e0b', isActive: true },
-      { name: 'In Transit', color: '#3b82f6', isActive: true },
-      { name: 'In Warehouse', color: '#10b981', isActive: true },
+      { name: 'On Hold', iconName: 'Clock', colorTheme: 'amber', isActive: true },
+      { name: 'In Transit', iconName: 'Truck', colorTheme: 'blue', isActive: true },
+      { name: 'In Warehouse', iconName: 'Warehouse', colorTheme: 'emerald', isActive: true },
     ];
 
     for (const statusSeed of customStatusSeeds) {
@@ -1091,7 +1091,11 @@ async function seed() {
       if (existing) {
         await db
           .update(customStatuses)
-          .set({ color: statusSeed.color, isActive: statusSeed.isActive })
+          .set({ 
+            iconName: statusSeed.iconName, 
+            colorTheme: statusSeed.colorTheme, 
+            isActive: statusSeed.isActive 
+          })
           .where(eq(customStatuses.id, existing.id));
         continue;
       }

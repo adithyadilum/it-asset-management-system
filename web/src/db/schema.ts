@@ -53,7 +53,6 @@ export const conditionEnum = pgEnum('asset_condition', [
   'Damaged',
 ]);
 
-
 // Epic 15: Maintenance Tickets Enums
 export const maintenanceTicketStatusEnum = pgEnum('maintenance_ticket_status', [
   'ACTIVE',
@@ -79,7 +78,9 @@ export const disposalStatusEnum = pgEnum('disposal_status', [
 export const customStatuses = pgTable('custom_statuses', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
-  color: varchar('color', { length: 32 }).notNull(),
+  // New visual metadata columns
+  iconName: varchar('icon_name', { length: 50 }).notNull().default('CircleDot'),
+  colorTheme: varchar('color_theme', { length: 50 }).notNull().default('gray'),
   createdById: uuid('created_by_id').references(() => users.id),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -320,8 +321,6 @@ export const assetAssignments = pgTable('asset_assignments', {
   returnRequestedAt: timestamp('return_requested_at'),
 });
 
-
-
 // Epic 15: New Maintenance Tickets System
 export const maintenanceTickets = pgTable('maintenance_tickets', {
   id: serial('id').primaryKey(),
@@ -495,8 +494,6 @@ export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
     references: [vendors.id],
   }),
 }));
-
-
 
 export const maintenanceTicketsRelations = relations(
   maintenanceTickets,

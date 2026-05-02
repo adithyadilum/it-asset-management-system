@@ -25,7 +25,12 @@ import { cn } from '@/lib/utils';
 interface InteractiveStatusBadgeProps {
   assetId: string;
   currentStatus: string;
-  availableStatuses: Array<{ value: string; label: string; color?: string }>;
+  availableStatuses: Array<{ 
+    value: string; 
+    label: string; 
+    colorTheme?: string;
+    iconName?: string;
+  }>;
   onStatusChanged?: (nextStatus: string) => void;
   className?: string;
 }
@@ -87,6 +92,9 @@ export function InteractiveStatusBadge({
     (s) => s.value !== localStatus
   );
 
+  const selectedStatusConfig = availableStatuses.find(s => s.value === selectedStatus);
+  const currentStatusConfig = availableStatuses.find(s => s.value === localStatus);
+
   return (
     <>
       <DropdownMenu>
@@ -100,6 +108,8 @@ export function InteractiveStatusBadge({
             <StatusBadge
               value={localStatus}
               showIcon
+              colorTheme={currentStatusConfig?.colorTheme}
+              iconName={currentStatusConfig?.iconName}
               className="group-hover:ring-2 group-hover:ring-slate-200 group-hover:scale-[1.02] transition-all duration-150"
             />
             <ChevronDown className="h-3 w-3 ml-1 text-slate-400 group-hover:text-slate-600 transition-colors" />
@@ -113,7 +123,12 @@ export function InteractiveStatusBadge({
                 onClick={() => handleStatusSelect(status.value)}
                 className="flex items-center gap-2 cursor-pointer"
               >
-                <StatusBadge value={status.value} showIcon />
+                <StatusBadge 
+                  value={status.value} 
+                  showIcon 
+                  colorTheme={status.colorTheme}
+                  iconName={status.iconName}
+                />
               </DropdownMenuItem>
             ))
           ) : (
@@ -135,14 +150,22 @@ export function InteractiveStatusBadge({
                 <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
                   Current
                 </span>
-                <StatusBadge value={localStatus} />
+                <StatusBadge 
+                  value={localStatus} 
+                  colorTheme={currentStatusConfig?.colorTheme}
+                  iconName={currentStatusConfig?.iconName}
+                />
               </div>
               <div className="text-slate-300">→</div>
               <div className="flex flex-col gap-1 items-end">
                 <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
                   New
                 </span>
-                <StatusBadge value={selectedStatus ?? ''} />
+                <StatusBadge 
+                  value={selectedStatus ?? ''} 
+                  colorTheme={selectedStatusConfig?.colorTheme}
+                  iconName={selectedStatusConfig?.iconName}
+                />
               </div>
             </div>
 

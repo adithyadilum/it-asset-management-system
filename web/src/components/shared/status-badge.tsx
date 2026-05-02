@@ -1,4 +1,3 @@
-// src/components/shared/status-badge.tsx
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -12,8 +11,11 @@ import {
     AlertTriangle,
     XCircle,
     HelpCircle,
+    CircleDot,
     LucideIcon,
 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { STATUS_THEMES } from "@/lib/constants";
 
 // 1. Define the distinct domains we are badging
 export type BadgeType = "assetStatus" | "hardwareCondition" | "userRole";
@@ -73,12 +75,12 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
     damaged: { label: "Damaged", className: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle },
     broken: { label: "Broken", className: "bg-rose-50 text-rose-700 border-rose-200", icon: XCircle },
 
-    // User Roles (From Epic 2!)
+    // User Roles
     GlobalAdmin: { label: "Global Admin", className: "bg-purple-50 text-purple-700 border-purple-200", icon: CheckCircle2 },
     ITOperator: { label: "IT Operator", className: "bg-indigo-50 text-indigo-700 border-indigo-200", icon: CheckCircle2 },
     Employee: { label: "Employee", className: "bg-slate-50 text-slate-700 border-slate-200", icon: CheckCircle2 },
 
-    // Additional Asset Statuses (must match the asset_status enum)
+    // Additional Asset Statuses
     retired: { label: "Retired", className: "bg-stone-50 text-stone-600 border-stone-300", icon: Archive },
     pending_disposal: { label: "Pending Disposal", className: "bg-orange-50 text-orange-700 border-orange-300", icon: AlertTriangle },
     disposed: { label: "Disposed", className: "bg-rose-50 text-rose-700 border-rose-300", icon: XCircle },
@@ -86,7 +88,7 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
 };
 
 // Fallback for unknown strings
-const FALLBACK = { label: "Unknown", className: "bg-slate-100 text-slate-600 border-slate-200", icon: HelpCircle };
+const FALLBACK = { label: "Unknown", className: "bg-slate-50 text-slate-700 border-slate-200", icon: HelpCircle };
 
 interface StatusBadgeProps {
     value?: string;
@@ -95,6 +97,8 @@ interface StatusBadgeProps {
     label?: string;
     showIcon?: boolean;
     className?: string;
+    colorTheme?: string;
+    iconName?: string;
 }
 
 export function StatusBadge({
@@ -104,6 +108,8 @@ export function StatusBadge({
     label,
     showIcon = true,
     className,
+    colorTheme,
+    iconName,
 }: StatusBadgeProps) {
     if (variant === "linkedAssets") {
         const normalizedCount = Number.isFinite(count) ? Math.max(0, Math.trunc(count ?? 0)) : 0;
@@ -133,14 +139,32 @@ export function StatusBadge({
     }
 
     const normalizedValue = typeof value === "string" ? value : "";
-    const config =
+    
+    // 1. Try to find in dictionary first (built-in statuses)
+    const dictionaryConfig =
         BADGE_DICTIONARY[normalizedValue] ??
-        BADGE_DICTIONARY[normalizedValue.trim().toLowerCase().replace(/\s+/g, "_")] ??
-        null;
+        BADGE_DICTIONARY[normalizedValue.trim().toLowerCase().replace(/\s+/g, "_")];
 
-    // For custom statuses not in the dictionary, show the actual name with a neutral style
-    const resolvedConfig = config ?? FALLBACK;
-    const displayLabel = config ? resolvedConfig.label : (normalizedValue || FALLBACK.label);
+    // 2. If it's a custom status with theme/icon props
+    if (colorTheme || iconName) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Icon = (LucideIcons as any)[iconName || ""] as LucideIcon || CircleDot;
+        const themeClass = STATUS_THEMES[colorTheme as keyof typeof STATUS_THEMES] || FALLBACK.className;
+        
+        return (
+            <Badge
+                variant="outline"
+                className={cn("font-medium gap-1.5 whitespace-nowrap", themeClass, className)}
+            >
+                {showIcon && <Icon className="h-3.5 w-3.5" />}
+                {label ?? value}
+            </Badge>
+        );
+    }
+
+    // 3. Fallback to dictionary or general fallback
+    const resolvedConfig = dictionaryConfig ?? FALLBACK;
+    const displayLabel = label ?? (dictionaryConfig ? resolvedConfig.label : (normalizedValue || FALLBACK.label));
     const Icon = resolvedConfig.icon;
 
     return (

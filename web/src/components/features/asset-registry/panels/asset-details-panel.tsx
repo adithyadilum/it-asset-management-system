@@ -78,7 +78,12 @@ export interface AssetDetailsPanelProps {
   onQRCodeClick?: () => void;
   onCurrencyChange?: (currency: string) => void;
   onRevokeAllocation?: (userId: string) => void;
-  manualStatuses?: Array<{ value: string; label: string; color?: string }>;
+  manualStatuses?: Array<{ 
+    value: string; 
+    label: string; 
+    colorTheme?: string; 
+    iconName?: string; 
+  }>;
   onStatusChanged?: (nextStatus: string) => void;
 }
 

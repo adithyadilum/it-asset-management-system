@@ -176,7 +176,12 @@ interface AssetRegistryClientProps {
   initialCategories: AssetRegistryCategory[];
   initialResult: AssetRegistryResult;
   currentPanel?: string;
-  manualStatuses?: Array<{ value: string; label: string; color?: string }>;
+  manualStatuses?: Array<{ 
+    value: string; 
+    label: string; 
+    colorTheme?: string; 
+    iconName?: string; 
+  }>;
   onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
 
@@ -765,9 +770,17 @@ export function AssetRegistryClient({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => (
-          <StatusBadge value={row.original.status} showIcon />
-        ),
+        cell: ({ row }) => {
+          const statusConfig = manualStatuses.find(s => s.value === row.original.status);
+          return (
+            <StatusBadge 
+              value={row.original.status} 
+              showIcon 
+              colorTheme={statusConfig?.colorTheme}
+              iconName={statusConfig?.iconName}
+            />
+          );
+        },
       },
     ];
   }, [config.view, manualStatuses]);
