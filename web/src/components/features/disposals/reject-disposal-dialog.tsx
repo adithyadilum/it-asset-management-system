@@ -41,16 +41,23 @@ export function RejectDisposalDialog({
 }: RejectDisposalDialogProps) {
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState('Available');
+  const [maintenanceIssue, setMaintenanceIssue] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const isBulk = selectedAssets.length > 1;
   const singleAsset = selectedAssets[0];
 
-  const isValid = selectedAssets.length > 0 && reason.trim().length >= 10 && status.length > 0;
+  // UPDATED: Enforce maintenanceIssue if status is 'In Repair'
+  const isValid = 
+    selectedAssets.length > 0 && 
+    reason.trim().length >= 10 && 
+    status.length > 0 &&
+    (status !== 'In Repair' || maintenanceIssue.trim().length > 0);
 
   const handleReset = () => {
     setReason('');
     setStatus('Available');
+    setMaintenanceIssue('');
   };
 
   const handleSubmit = () => {
@@ -58,14 +65,16 @@ export function RejectDisposalDialog({
 
     startTransition(async () => {
       try {
-        // Build the FormData object
         const formData = new FormData();
         formData.set('disposalIds', JSON.stringify(selectedAssets.map(a => a.id)));
         formData.set('assetIds', JSON.stringify(selectedAssets.map(a => a.assetId)));
         formData.set('rejectionReason', reason);
         formData.set('fallbackStatus', status);
+        
+        if (status === 'In Repair' && maintenanceIssue.trim()) {
+          formData.set('maintenanceIssue', maintenanceIssue.trim());
+        }
 
-        // Call the action with the dummy initial state and the formData
         const result = await rejectDisposalRequest({ success: false, message: '' }, formData);
 
         if (result.success) {
@@ -76,7 +85,7 @@ export function RejectDisposalDialog({
           );
           handleReset();
           onSuccess();
-          onOpenChange(false); // Close the dialog on success
+          onOpenChange(false);
         } else {
           tiqriToast.error(result.message || 'Failed to reject request.');
         }
@@ -140,7 +149,13 @@ export function RejectDisposalDialog({
               <Label htmlFor="status" className="text-[13px] font-semibold text-foreground">
                 Update Status To <span className="text-destructive">*</span>
               </Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select 
+                value={status} 
+                onValueChange={(val) => {
+                  setStatus(val);
+                  if (val !== 'In Repair') setMaintenanceIssue('');
+                }}
+              >
                 <SelectTrigger className="w-full h-10 bg-background border-input text-foreground focus:ring-ring">
                   <SelectValue placeholder="Select fallback status" />
                 </SelectTrigger>
@@ -155,6 +170,24 @@ export function RejectDisposalDialog({
                 </p>
               )}
             </div>
+
+            {/* UPDATED: Made mandatory visually and strictly */}
+            {status === 'In Repair' && (
+              <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <Label htmlFor="maintenanceIssue" className="text-[13px] font-semibold text-foreground">
+                  Maintenance Issue Description <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="maintenanceIssue"
+                  value={maintenanceIssue}
+                  onChange={(e) => setMaintenanceIssue(e.target.value)}
+                  placeholder="Describe the issue for the maintenance team to investigate..."
+                  className="min-h-20 resize-none bg-background border-input focus-visible:ring-ring"
+                />
+                
+              </div>
+            )}
+
           </div>
         </ScrollArea>
 

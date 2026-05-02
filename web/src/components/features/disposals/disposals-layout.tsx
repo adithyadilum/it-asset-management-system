@@ -72,7 +72,7 @@ export function DisposalsLayout({ pendingData }: DisposalsLayoutProps) {
                 value="pending"
                 className={`rounded-md px-4 py-1 ${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm`}
               >
-                Pending Disposal
+                Pending Disposal ({pendingData.length})
               </TabsTrigger>
               <TabsTrigger
                 value="history"

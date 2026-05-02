@@ -13,7 +13,8 @@ import {
   models, 
   categories, 
   brands, 
-  systemAuditLogs 
+  systemAuditLogs,
+  maintenanceTickets,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { uploadFileToStorage } from '@/lib/storage'; 
@@ -310,6 +311,7 @@ export async function rejectDisposalRequest(
     assetIds: parsedAssetIds,
     rejectionReason: formData.get('rejectionReason'),
     fallbackStatus: formData.get('fallbackStatus'),
+    maintenanceIssue: formData.get('maintenanceIssue'),
   });
 
   if (!parsed.success) {
@@ -324,7 +326,8 @@ export async function rejectDisposalRequest(
     disposalIds: validDisposalIds,
     assetIds: validAssetIds,
     rejectionReason: normalizedReason, 
-    fallbackStatus: validStatus 
+    fallbackStatus: validStatus,
+    maintenanceIssue // Extracted directly to utilize
   } = parsed.data;
 
   const user = await getAuthenticatedUser();
@@ -423,6 +426,23 @@ export async function rejectDisposalRequest(
         throw new Error('Failed to revert asset statuses.');
       }
 
+      // --- NEW: 5b. Create Maintenance Tickets for 'In Repair' Assets ---
+      if (validFallbackStatus === 'In Repair') {
+        const issueText = maintenanceIssue?.trim() || `Automated Routing - Disposal Rejected. Reason: ${normalizedReason}`;
+        
+        const maintenanceEntries = normalizedAssetIds.map((assetId) => ({
+          assetId: assetId,
+          ticketType: 'INTERNAL' as const,
+          reportedIssue: issueText,
+          status: 'ACTIVE' as const,
+          dispatchedById: user.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }));
+
+        await tx.insert(maintenanceTickets).values(maintenanceEntries);
+      }
+
       // 6. Log audit trail
       const auditEntries = normalizedAssetIds.map((assetId) => ({
         entityType: 'Asset' as const,
@@ -448,6 +468,7 @@ export async function rejectDisposalRequest(
     logLatency({ scope: 'DB ACTION', label: 'disposals.reject', startTime: dbTimer });
 
     revalidatePath('/operations/disposals');
+    revalidatePath('/operations/maintenance'); // Added to trigger maintenance view refresh
     revalidatePath('/assets');
     revalidatePath('/assets/hardware');
     revalidatePath('/assets/furniture');
