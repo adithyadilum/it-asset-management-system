@@ -651,10 +651,6 @@ export async function executeAssetDisposal(
           approvedById: user.id,
           resolvedAt: validData.disposalDate ? new Date(validData.disposalDate) : new Date(),
           reason: validData.reason, 
-          disposalMethod: validData.disposalMethod,
-          dataWiped: validData.dataWiped,
-          tagsRemoved: validData.tagsRemoved,
-          disposalReceiptUrl: validData.receiptUrl,
         })
         .where(inArray(assetDisposals.id, normalizedDisposalIds))
         .returning({ disposalId: assetDisposals.id });
