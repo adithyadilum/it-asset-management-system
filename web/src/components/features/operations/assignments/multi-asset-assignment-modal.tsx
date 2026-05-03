@@ -7,6 +7,14 @@ import { bulkAssignAssetsAction } from "@/actions/assignments";
 import { searchUsers } from "@/actions/users";
 import { searchLocations } from "@/actions/locations";
 import { tiqriToast } from "@/components/shared/sonner";
+import {
+  DURATION_OPTIONS,
+  isPresetDuration,
+  toDateValue,
+  getLocalStartOfDay,
+  calculateExpectedReturnDate,
+  calculateDurationFromDate,
+} from "@/lib/assignment-date-utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,48 +52,6 @@ type AssigneeOption = {
   id: string;
   label: string;
 };
-
-const DURATION_OPTIONS = [7, 14, 30] as const;
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-const isPresetDuration = (value: string) =>
-  DURATION_OPTIONS.some((option) => String(option) === value);
-
-function toDateValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getLocalStartOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function calculateExpectedReturnDate(durationDays: number) {
-  const today = getLocalStartOfDay(new Date());
-  today.setDate(today.getDate() + durationDays);
-  return toDateValue(today);
-}
-
-function calculateDurationFromDate(dateValue: string) {
-  const [year, month, day] = dateValue.split("-").map((part) => Number(part));
-
-  if (!year || !month || !day) {
-    return "";
-  }
-
-  const selectedDate = new Date(year, month - 1, day);
-
-  if (Number.isNaN(selectedDate.getTime())) {
-    return "";
-  }
-
-  const today = getLocalStartOfDay(new Date());
-  const diffDays = Math.round((selectedDate.getTime() - today.getTime()) / DAY_IN_MS);
-  return diffDays > 0 ? String(diffDays) : "";
-}
 
 export function MultiAssetAssignmentModal({
   isOpen,
@@ -386,7 +352,7 @@ export function MultiAssetAssignmentModal({
               Cancel
             </Button>
             <Button type="submit" className="bg-[#00145a] hover:bg-[#000d3d]" disabled={isSubmitting}>
-              Assign Asset
+              Assign {assets.length} {assets.length === 1 ? "Asset" : "Assets"}
             </Button>
           </div>
         </form>

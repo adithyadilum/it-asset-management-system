@@ -75,6 +75,11 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
     damaged: { label: "Damaged", className: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle },
     broken: { label: "Broken", className: "bg-rose-50 text-rose-700 border-rose-200", icon: XCircle },
 
+    // Pending Alert States
+    critical: { label: "Critical", className: "bg-red-50 text-red-700 border-red-400", icon: AlertTriangle },
+    warning: { label: "Warning", className: "bg-amber-50 text-amber-700 border-amber-400", icon: AlertCircle },
+    neutral: { label: "Neutral", className: "bg-slate-50 text-slate-600 border-slate-300", icon: MinusCircle },
+
     // User Roles
     GlobalAdmin: { label: "Global Admin", className: "bg-purple-50 text-purple-700 border-purple-200", icon: CheckCircle2 },
     ITOperator: { label: "IT Operator", className: "bg-indigo-50 text-indigo-700 border-indigo-200", icon: CheckCircle2 },
@@ -139,7 +144,7 @@ export function StatusBadge({
     }
 
     const normalizedValue = typeof value === "string" ? value : "";
-    
+
     // 1. Try to find in dictionary first (built-in statuses)
     const dictionaryConfig =
         BADGE_DICTIONARY[normalizedValue] ??
@@ -150,7 +155,7 @@ export function StatusBadge({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Icon = (LucideIcons as any)[iconName || ""] as LucideIcon || CircleDot;
         const themeClass = STATUS_THEMES[colorTheme as keyof typeof STATUS_THEMES] || FALLBACK.className;
-        
+
         return (
             <Badge
                 variant="outline"
@@ -176,4 +181,5 @@ export function StatusBadge({
             {displayLabel}
         </Badge>
     );
+
 }

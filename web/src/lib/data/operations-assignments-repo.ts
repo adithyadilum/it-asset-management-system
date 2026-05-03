@@ -1,6 +1,5 @@
 import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 
-import { getAssetsByPillar } from '@/actions/asset-registry';
 import { db } from '@/db';
 import {
   assetAssignments,
@@ -8,9 +7,9 @@ import {
   categories,
   locations,
   models,
-  systemAuditLogs,
   users,
 } from '@/db/schema';
+import { logAuditActionTx } from '@/lib/audit';
 import type { AssetRegistryRow, AssetStatus } from '@/lib/data/asset-registry-repo';
 
 export type AssignmentsDashboardTab = 'available' | 'assigned' | 'returned';
@@ -39,7 +38,6 @@ const DASHBOARD_PILLARS: Array<'IT & Digital' | 'Office Furniture' | 'Office Ele
   'Office Furniture',
   'Office Electronics',
 ];
-const BULK_PAGE_SIZE = 100;
 
 export type AssignmentTargetType = 'user' | 'location';
 
@@ -242,32 +240,56 @@ function toDashboardRow(row: AssetRegistryRow): AssignmentsDashboardRow {
   };
 }
 
+async function loadAssetsByStatusDirect(status: AssetStatus): Promise<AssignmentsDashboardRow[]> {
+  // Single direct DB query instead of multiple API calls across pillars
+  const results = await db
+    .select({
+      id: assets.id,
+      assetTag: assets.assetTag,
+      name: assets.name,
+      serialNumber: assets.serialNumber,
+      category: categories.name,
+      pillar: categories.pillar,
+      assetLocation: locations.name,
+      assignedToUser: users.name,
+      assignedToLocationId: assetAssignments.assignedToLocationId,
+    })
+    .from(assets)
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(categories, eq(models.categoryId, categories.id))
+    .leftJoin(locations, eq(assets.locationId, locations.id))
+    .leftJoin(
+      assetAssignments,
+      and(
+        eq(assetAssignments.assetId, assets.id),
+        isNull(assetAssignments.returnedDate)
+      )
+    )
+    .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .where(
+      and(
+        eq(assets.status, status),
+        inArray(categories.pillar, DASHBOARD_PILLARS)
+      )
+    )
+    .orderBy(desc(assets.createdAt));
+
+  return results.map((row) => ({
+    id: row.id,
+    assetTag: row.assetTag,
+    name: row.name,
+    serialNumber: row.serialNumber,
+    category: row.category,
+    pillar: row.pillar,
+    status: status,
+    location: row.assetLocation,
+    assignedTo: row.assignedToUser || null,
+    returnedDate: null,
+  }));
+}
+
 async function loadAssetsByStatus(status: AssetStatus): Promise<AssignmentsDashboardRow[]> {
-  const rows: AssignmentsDashboardRow[] = [];
-
-  for (const pillar of DASHBOARD_PILLARS) {
-    const firstPage = await getAssetsByPillar({
-      pillar,
-      status,
-      page: 1,
-      pageSize: BULK_PAGE_SIZE,
-    });
-
-    rows.push(...firstPage.data.map(toDashboardRow));
-
-    for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
-      const nextPage = await getAssetsByPillar({
-        pillar,
-        status,
-        page,
-        pageSize: BULK_PAGE_SIZE,
-      });
-
-      rows.push(...nextPage.data.map(toDashboardRow));
-    }
-  }
-
-  return rows;
+  return loadAssetsByStatusDirect(status);
 }
 
 async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
@@ -391,16 +413,16 @@ export async function assignSingleAsset(
       );
     }
 
-    // Step 3: Create audit log
-    await tx.insert(systemAuditLogs).values({
+    // Step 3: Create audit log (transaction-safe helper)
+    await logAuditActionTx(tx, {
       entityType: 'Asset',
       entityId: normalizedAssetId,
       actionType: 'ASSIGN',
       performedById: assignedById,
-      oldValue: {
+      oldData: {
         status: 'Available',
       },
-      newValue: {
+      newData: {
         status: 'Assigned',
         assignmentType: input.assignmentType,
         assignedToUserId: target.assignedToUserId,
@@ -483,24 +505,26 @@ export async function assignMultipleAssets(
       );
     }
 
-    // Step 3: Create audit logs
-    await tx.insert(systemAuditLogs).values(
-      normalizedAssetIds.map((assetId) => ({
-        entityType: 'Asset',
-        entityId: assetId,
-        actionType: 'ASSIGN',
-        performedById: assignedById,
-        oldValue: {
-          status: 'Available',
-        },
-        newValue: {
-          status: 'Assigned',
-          assignmentType: input.assignmentType,
-          assignedToUserId: target.assignedToUserId,
-          assignedToLocationId: target.assignedToLocationId,
-          expectedReturnDate,
-        },
-      }))
+    // Step 3: Create audit logs (transaction-safe helper)
+    await Promise.all(
+      normalizedAssetIds.map((assetId) =>
+        logAuditActionTx(tx, {
+          entityType: 'Asset',
+          entityId: assetId,
+          actionType: 'ASSIGN',
+          performedById: assignedById,
+          oldData: {
+            status: 'Available',
+          },
+          newData: {
+            status: 'Assigned',
+            assignmentType: input.assignmentType,
+            assignedToUserId: target.assignedToUserId,
+            assignedToLocationId: target.assignedToLocationId,
+            expectedReturnDate,
+          },
+        })
+      )
     );
 
     return {

@@ -1,30 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
-import { getDisposalReviewDetails, type DisposalReviewDetails } from '@/actions/disposals';
+import { getDisposalReviewDetails } from '@/actions/disposals';
+import type { DisposalReviewDetails } from '@/types/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
+import { ExecuteDisposalDialog } from './execute-disposal-dialog';
 import type { PendingDisposalRow } from './pending-disposals-grid';
 
 export interface DisposalReviewPanelWrapperProps {
   isOpen: boolean;
-  onCloseUrl: string; 
+  onClose: (open: boolean) => void;
   row: PendingDisposalRow | null;
 }
 
 export function DisposalReviewPanelWrapper({
   isOpen,
-  onCloseUrl,
+  onClose,
   row,
 }: DisposalReviewPanelWrapperProps) {
-  const router = useRouter();
-  const [extendedData, setExtendedData] = useState<DisposalReviewDetails | null>(null);
+  const [extendedData, setExtendedData] =
+    useState<DisposalReviewDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // New state to control the Reject Modal
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+
+  // State for both dialogs
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isExecuteDialogOpen, setIsExecuteDialogOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +44,7 @@ export function DisposalReviewPanelWrapper({
         const data = await getDisposalReviewDetails(row.id);
         if (cancelled) return;
         setExtendedData(data);
-      } catch  {
+      } catch {
         if (cancelled) return;
         setExtendedData(null);
       } finally {
@@ -58,54 +60,69 @@ export function DisposalReviewPanelWrapper({
     };
   }, [isOpen, row]);
 
+  const handleRejectSuccess = () => {
+    setIsRejectDialogOpen(false);
+    onClose(false);
+  };
+
+  const handleExecuteSuccess = () => {
+    setIsExecuteDialogOpen(false);
+    onClose(false);
+  };
+
   return (
     <>
       <DisposalReviewPanel
+        key={row ? row.id : 'empty-panel'}
         isOpen={isOpen}
-        onCloseUrl={onCloseUrl}
+        onClose={onClose}
         isLoading={isLoading}
-        
-        // Known Row Data
         assetTag={row?.assetTag ?? ''}
         model={row?.assetName ?? ''}
+        serialNumber={extendedData?.serialNumber ?? '-'}
+        category={extendedData?.category ?? '-'}
+        brand={extendedData?.brand ?? '-'}
+        imageUrl={undefined}
         requestedBy={row?.flaggedBy ?? ''}
-        dateRequested={row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''}
+        dateRequested={
+          row?.requestedAt ? new Date(row.requestedAt).toISOString() : ''
+        }
         reason={row?.reason ?? ''}
-
-        // Fetched Extended Data
-        serialNumber={extendedData?.assetTag ?? 'N/A'} 
-        // 👇 THESE TWO LINES CHANGED 👇
-        category={extendedData?.category ?? '-'} 
-        brand={extendedData?.brand ?? '-'} 
-        // 👆 ---------------------- 👆
-        dateCreated={extendedData?.requestedAt ?? ''} 
         justification={extendedData?.justification ?? ''}
         purchaseDate={extendedData?.purchaseDate ?? ''}
         originalCost={extendedData?.originalCost ?? undefined}
         currentBookValue={undefined}
-        warrantyStatus={extendedData?.warrantyStatus === 'Expired' ? 'Expired' : extendedData?.warrantyStatus === 'Valid' ? 'Valid' : ''}
-
-        // Trigger the modal when Reject is clicked
-        onReject={() => setIsRejectModalOpen(true)}
-        
-        onApprove={() => console.log('Initiate disposal clicked')}
+        warrantyStatus={
+          extendedData?.warrantyStatus === 'Expired'
+            ? 'Expired'
+            : extendedData?.warrantyStatus === 'Valid'
+              ? 'Valid'
+              : ''
+        }
+        dateCreated={extendedData?.dateCreated ?? ''}
+        onReject={() => setIsRejectDialogOpen(true)}
+        onApprove={() => setIsExecuteDialogOpen(true)}
       />
 
-      {/* Render the modal overlay */}
       {row && (
-        <RejectDisposalDialog
-          isOpen={isRejectModalOpen}
-          onOpenChange={setIsRejectModalOpen}
-          disposalId={row.id}
-          assetId={row.assetId}
-          assetName={row.assetName ?? 'Unknown Device'}
-          assetTag={row.assetTag}
-          onSuccess={() => {
-            setIsRejectModalOpen(false);
-            // Close the side panel and return to the main table after successful rejection
-            router.push(onCloseUrl, { scroll: false }); 
-          }}
-        />
+        <>
+          {/* Unified Reject Dialog - Passed as an array of 1 */}
+          <RejectDisposalDialog
+            isOpen={isRejectDialogOpen}
+            onOpenChange={setIsRejectDialogOpen}
+            selectedAssets={[row]}
+            onSuccess={handleRejectSuccess}
+          />
+
+          {/* Unified Execute Dialog - Passed as an array of 1 */}
+          <ExecuteDisposalDialog
+            isOpen={isExecuteDialogOpen}
+            onOpenChange={setIsExecuteDialogOpen}
+            selectedAssets={[row]}
+            singleCategory={extendedData?.category ?? ''}
+            onSuccess={handleExecuteSuccess}
+          />
+        </>
       )}
     </>
   );

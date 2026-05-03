@@ -1,6 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { ZodError } from 'zod';
+import {
+  assignAssetPayloadSchema,
+  bulkAssignAssetsPayloadSchema,
+} from '@/lib/validations/asset-assignment';
 
 import {
   AssignmentServiceError,
@@ -63,6 +68,24 @@ export async function assignAssetAction(
   }
 
   try {
+    // Validate input using Zod schemas
+    try {
+      assignAssetPayloadSchema.parse({
+        assignmentType: input.assignmentType,
+        targetId: input.targetId,
+        expectedReturnDate: input.expectedReturnDate,
+        notes: input.notes,
+      });
+    } catch (err) {
+      if (err instanceof ZodError) {
+        return {
+          success: false,
+          error: 'Invalid input for assignAssetAction.',
+          code: 'VALIDATION_ERROR',
+        };
+      }
+      throw err;
+    }
     const result = await assignSingleAsset(input, currentUser.id);
 
     revalidatePath('/operations/assignments');
@@ -111,6 +134,19 @@ export async function bulkAssignAssetsAction(
   }
 
   try {
+    // Validate input using Zod schemas
+    try {
+      bulkAssignAssetsPayloadSchema.parse(input);
+    } catch (err) {
+      if (err instanceof ZodError) {
+        return {
+          success: false,
+          error: 'Invalid input for bulkAssignAssetsAction.',
+          code: 'VALIDATION_ERROR',
+        };
+      }
+      throw err;
+    }
     const result = await assignMultipleAssets(input, currentUser.id);
 
     revalidatePath('/operations/assignments');
