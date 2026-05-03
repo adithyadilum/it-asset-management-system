@@ -10,8 +10,6 @@ import { tiqriToast } from "@/components/shared/sonner";
 import {
   DURATION_OPTIONS,
   isPresetDuration,
-  toDateValue,
-  getLocalStartOfDay,
   calculateExpectedReturnDate,
   calculateDurationFromDate,
 } from "@/lib/assignment-date-utils";
@@ -217,7 +215,7 @@ export function MultiAssetAssignmentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[640px] rounded-xl p-0" showCloseButton={true}>
+      <DialogContent className="max-w-160 rounded-xl p-0" showCloseButton={true}>
         <DialogHeader className="gap-1 px-6 pt-5 pb-4">
           <DialogTitle className="text-[18px] font-semibold text-slate-900">
             Assign {assetCount} {assetCount === 1 ? "Asset" : "Assets"}
@@ -229,7 +227,7 @@ export function MultiAssetAssignmentModal({
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 pt-2 pb-5">
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-            <ScrollArea className="h-[86px] w-full">
+            <ScrollArea className="h-21.5 w-full">
               <div className="space-y-2 p-3">
                 {assets.map((asset) => (
                   <div
@@ -338,7 +336,7 @@ export function MultiAssetAssignmentModal({
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Add any additional Notes"
-              className="min-h-[80px] resize-none"
+              className="min-h-20 resize-none"
             />
           </div>
 

@@ -11,7 +11,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImagePlus, Info, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Info, Pencil, Plus, Trash2, Upload, CircleDot, type LucideIcon } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 
 import { createMasterDataRecord } from "@/actions/master-data";
 import {
@@ -58,6 +59,12 @@ import type {
     MasterDataVendorRow,
     MasterDataCustomStatusRow,
 } from "./master-data-management-client";
+import { 
+    AVAILABLE_STATUS_ICONS, 
+    STATUS_COLORS, 
+    STATUS_THEMES,
+    type StatusTheme 
+} from "@/lib/constants";
 
 type Pillar =
     | "IT & Digital"
@@ -238,7 +245,8 @@ export function MasterDataCreatePanel({
         createCustomAttribute(),
     ]);
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
-    const [statusColorInput, setStatusColorInput] = useState("#64748b");
+    const [statusColorTheme, setStatusColorTheme] = useState<StatusTheme>("gray");
+    const [statusIconName, setStatusIconName] = useState("CircleDot");
     const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
@@ -436,7 +444,8 @@ export function MasterDataCreatePanel({
         setModelSpecAttributes([createCustomAttribute()]);
         setAssetTrackingAttributes([createCustomAttribute()]);
         setModelSpecValues({});
-        setStatusColorInput("#64748b");
+        setStatusColorTheme("gray");
+        setStatusIconName("CircleDot");
     }, []);
 
     const handleClose = useCallback(
@@ -1513,32 +1522,87 @@ export function MasterDataCreatePanel({
                                 )}
                             </div>
 
-                            <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                    Status Color <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex gap-3">
-                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border border-slate-200">
-                                        <input
-                                            type="color"
-                                            name="color"
-                                            value={statusColorInput}
-                                            onChange={(e) => setStatusColorInput(e.target.value)}
-                                            className="absolute -inset-2 h-14 w-14 cursor-pointer border-none bg-transparent p-0"
-                                        />
-                                    </div>
-                                    <Input
-                                        value={statusColorInput}
-                                        onChange={(e) => setStatusColorInput(e.target.value)}
-                                        className="font-mono"
-                                        placeholder="#000000"
-                                    />
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Icon <span className="text-red-500">*</span>
+                                    </label>
+                                    <Select
+                                        value={statusIconName}
+                                        onValueChange={setStatusIconName}
+                                        name="iconName"
+                                    >
+                                        <SelectTrigger className="h-10">
+                                            <div className="flex items-center gap-2">
+                                                {(() => {
+                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                    const Icon = (LucideIcons as any)[statusIconName] as LucideIcon;
+                                                    return Icon ? <Icon className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />;
+                                                })()}
+                                                <SelectValue placeholder="Select an icon" />
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <div className="grid grid-cols-4 gap-1 p-1 max-h-60 overflow-y-auto">
+                                                {AVAILABLE_STATUS_ICONS.map((iconName) => {
+                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                    const Icon = (LucideIcons as any)[iconName] as LucideIcon;
+                                                    return (
+                                                        <SelectItem 
+                                                            key={iconName} 
+                                                            value={iconName}
+                                                            className="flex items-center justify-center p-2 hover:bg-slate-100 cursor-pointer rounded"
+                                                        >
+                                                            {Icon ? <Icon className="h-5 w-5" /> : <span>{iconName}</span>}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </div>
+                                        </SelectContent>
+                                    </Select>
+                                    {getFieldError("iconName") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {getFieldError("iconName")}
+                                        </p>
+                                    )}
                                 </div>
-                                {getFieldError("color") && (
-                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                                        {getFieldError("color")}
-                                    </p>
-                                )}
+
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Theme <span className="text-red-500">*</span>
+                                    </label>
+                                    <Select
+                                        value={statusColorTheme}
+                                        onValueChange={(val) => setStatusColorTheme(val as StatusTheme)}
+                                        name="colorTheme"
+                                    >
+                                        <SelectTrigger className="h-10">
+                                            <div className="flex items-center gap-2">
+                                                <div 
+                                                    className={`h-4 w-4 rounded-full border ${STATUS_THEMES[statusColorTheme]}`} 
+                                                />
+                                                <SelectValue placeholder="Select a theme" />
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {STATUS_COLORS.map((theme) => (
+                                                <SelectItem key={theme.value} value={theme.value}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div 
+                                                            className={`h-4 w-4 rounded-full border ${STATUS_THEMES[theme.value]}`} 
+                                                        />
+                                                        <span>{theme.label}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {getFieldError("colorTheme") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {getFieldError("colorTheme")}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

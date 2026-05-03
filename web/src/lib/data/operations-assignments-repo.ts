@@ -10,7 +10,7 @@ import {
   users,
 } from '@/db/schema';
 import { logAuditActionTx } from '@/lib/audit';
-import type { AssetRegistryRow, AssetStatus } from '@/lib/data/asset-registry-repo';
+import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 
 export type AssignmentsDashboardTab = 'available' | 'assigned' | 'returned';
 
@@ -33,11 +33,9 @@ export interface AssignmentsDashboardData {
   returned: AssignmentsDashboardRow[];
 }
 
-const DASHBOARD_PILLARS: Array<'IT & Digital' | 'Office Furniture' | 'Office Electronics'> = [
-  'IT & Digital',
-  'Office Furniture',
-  'Office Electronics',
-];
+const DASHBOARD_PILLARS: Array<
+  'IT & Digital' | 'Office Furniture' | 'Office Electronics'
+> = ['IT & Digital', 'Office Furniture', 'Office Electronics'];
 
 export type AssignmentTargetType = 'user' | 'location';
 
@@ -163,7 +161,9 @@ async function ensureActiveTargetExists(
   const [targetLocation] = await db
     .select({ id: locations.id })
     .from(locations)
-    .where(and(eq(locations.id, normalizedLocationId), eq(locations.isActive, true)))
+    .where(
+      and(eq(locations.id, normalizedLocationId), eq(locations.isActive, true))
+    )
     .limit(1);
 
   if (!targetLocation) {
@@ -181,7 +181,9 @@ async function ensureActiveTargetExists(
 }
 
 function dedupeAssetIds(assetIds: string[]) {
-  return [...new Set(assetIds.map((id) => id.trim()).filter((id) => id.length > 0))];
+  return [
+    ...new Set(assetIds.map((id) => id.trim()).filter((id) => id.length > 0)),
+  ];
 }
 
 async function validateAssetsForAssignment(assetIds: string[]) {
@@ -196,7 +198,9 @@ async function validateAssetsForAssignment(assetIds: string[]) {
 
   if (assetsInDb.length !== assetIds.length) {
     const existingIds = new Set(assetsInDb.map((asset) => asset.id));
-    const missingAssetIds = assetIds.filter((assetId) => !existingIds.has(assetId));
+    const missingAssetIds = assetIds.filter(
+      (assetId) => !existingIds.has(assetId)
+    );
 
     throw new AssignmentServiceError(
       'One or more assets were not found.',
@@ -206,7 +210,9 @@ async function validateAssetsForAssignment(assetIds: string[]) {
     );
   }
 
-  const unavailableAssets = assetsInDb.filter((asset) => asset.status !== 'Available');
+  const unavailableAssets = assetsInDb.filter(
+    (asset) => asset.status !== 'Available'
+  );
   if (unavailableAssets.length > 0) {
     throw new AssignmentServiceError(
       'One or more assets are no longer available.',
@@ -225,22 +231,9 @@ async function validateAssetsForAssignment(assetIds: string[]) {
   return assetsInDb;
 }
 
-function toDashboardRow(row: AssetRegistryRow): AssignmentsDashboardRow {
-  return {
-    id: row.id,
-    assetTag: row.assetTag,
-    name: row.name,
-    serialNumber: row.serialNumber,
-    category: row.category,
-    pillar: row.pillar,
-    status: row.status,
-    location: row.location,
-    assignedTo: row.assignedTo,
-    returnedDate: null,
-  };
-}
-
-async function loadAssetsByStatusDirect(status: AssetStatus): Promise<AssignmentsDashboardRow[]> {
+async function loadAssetsByStatusDirect(
+  status: AssetStatus
+): Promise<AssignmentsDashboardRow[]> {
   // Single direct DB query instead of multiple API calls across pillars
   const results = await db
     .select({
@@ -288,7 +281,9 @@ async function loadAssetsByStatusDirect(status: AssetStatus): Promise<Assignment
   }));
 }
 
-async function loadAssetsByStatus(status: AssetStatus): Promise<AssignmentsDashboardRow[]> {
+async function loadAssetsByStatus(
+  status: AssetStatus
+): Promise<AssignmentsDashboardRow[]> {
   return loadAssetsByStatusDirect(status);
 }
 
@@ -313,7 +308,10 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
     .where(isNotNull(assetAssignments.returnedDate))
-    .orderBy(desc(assetAssignments.returnedDate), desc(assetAssignments.assignedDate));
+    .orderBy(
+      desc(assetAssignments.returnedDate),
+      desc(assetAssignments.assignedDate)
+    );
 
   const returnedRowsByAssetId = new Map<string, AssignmentsDashboardRow>();
 
@@ -367,9 +365,14 @@ export async function assignSingleAsset(
     );
   }
 
-  const expectedReturnDate = normalizeExpectedReturnDate(input.expectedReturnDate);
+  const expectedReturnDate = normalizeExpectedReturnDate(
+    input.expectedReturnDate
+  );
   const notes = normalizeNotes(input.notes);
-  const target = await ensureActiveTargetExists(input.assignmentType, input.targetId);
+  const target = await ensureActiveTargetExists(
+    input.assignmentType,
+    input.targetId
+  );
 
   await validateAssetsForAssignment([normalizedAssetId]);
 
@@ -381,8 +384,14 @@ export async function assignSingleAsset(
         status: 'Assigned',
         updatedAt: new Date(),
       })
-      .where(and(eq(assets.id, normalizedAssetId), eq(assets.status, 'Available')))
-      .returning({ id: assets.id, assetTag: assets.assetTag, previousStatus: assets.status });
+      .where(
+        and(eq(assets.id, normalizedAssetId), eq(assets.status, 'Available'))
+      )
+      .returning({
+        id: assets.id,
+        assetTag: assets.assetTag,
+        previousStatus: assets.status,
+      });
 
     if (!asset) {
       throw new AssignmentServiceError(
@@ -403,7 +412,10 @@ export async function assignSingleAsset(
         expectedReturnDate,
         notes,
       })
-      .returning({ id: assetAssignments.id, assetId: assetAssignments.assetId });
+      .returning({
+        id: assetAssignments.id,
+        assetId: assetAssignments.assetId,
+      });
 
     if (!assignment) {
       throw new AssignmentServiceError(
@@ -452,9 +464,14 @@ export async function assignMultipleAssets(
     );
   }
 
-  const expectedReturnDate = normalizeExpectedReturnDate(input.expectedReturnDate);
+  const expectedReturnDate = normalizeExpectedReturnDate(
+    input.expectedReturnDate
+  );
   const notes = normalizeNotes(input.notes);
-  const target = await ensureActiveTargetExists(input.assignmentType, input.targetId);
+  const target = await ensureActiveTargetExists(
+    input.assignmentType,
+    input.targetId
+  );
 
   await validateAssetsForAssignment(normalizedAssetIds);
 
@@ -495,7 +512,10 @@ export async function assignMultipleAssets(
           notes,
         }))
       )
-      .returning({ id: assetAssignments.id, assetId: assetAssignments.assetId });
+      .returning({
+        id: assetAssignments.id,
+        assetId: assetAssignments.assetId,
+      });
 
     if (insertedAssignments.length !== normalizedAssetIds.length) {
       throw new AssignmentServiceError(

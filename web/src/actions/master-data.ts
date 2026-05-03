@@ -257,7 +257,7 @@ async function countVendorMaintenanceReferences(
     .from(vendors)
     .where(inArray(vendors.id, recordIds));
 
-  const companyNames = vendorsList.map(v => v.companyName).filter(Boolean);
+  const companyNames = vendorsList.map((v) => v.companyName).filter(Boolean);
 
   if (companyNames.length === 0) return 0;
 
@@ -1055,7 +1055,8 @@ export async function createMasterDataRecord(
       case 'statuses': {
         const parsed = customStatusSchema.safeParse({
           name: formData.get('name'),
-          color: formData.get('color'),
+          iconName: formData.get('iconName'),
+          colorTheme: formData.get('colorTheme'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
 
@@ -1071,8 +1072,10 @@ export async function createMasterDataRecord(
           .insert(customStatuses)
           .values({
             name: parsed.data.name,
-            color: parsed.data.color,
+            iconName: parsed.data.iconName,
+            colorTheme: parsed.data.colorTheme,
             isActive: parsed.data.isActive,
+            createdById: currentUser.id,
           })
           .returning({ id: customStatuses.id });
 
@@ -1539,7 +1542,8 @@ export async function updateMasterDataRecord(
       case 'statuses': {
         const parsed = customStatusSchema.safeParse({
           name: formData.get('name'),
-          color: formData.get('color'),
+          iconName: formData.get('iconName'),
+          colorTheme: formData.get('colorTheme'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
 
@@ -1559,7 +1563,8 @@ export async function updateMasterDataRecord(
           .update(customStatuses)
           .set({
             name: parsed.data.name,
-            color: parsed.data.color,
+            iconName: parsed.data.iconName,
+            colorTheme: parsed.data.colorTheme,
             isActive: parsed.data.isActive,
           })
           .where(eq(customStatuses.id, idRaw))

@@ -97,15 +97,18 @@ function formatAuditTimestamp(value: string | Date) {
     return format(date, "yyyy-MM-dd HH:mm:ss");
 }
 
-function humanizeFieldName(field: string) {
+function humanizeFieldName(field: string): string {
     return field
         .replace(/([a-z])([A-Z])/g, "$1 $2")
         .replace(/_/g, " ")
-        .replace(/\bId\b/g, "ID")
-        .replace(/\bMac\b/g, "MAC")
-        .replace(/\bIp\b/g, "IP")
+        .replace(/\bId\b/gi, "ID")
+        .replace(/\bMac\b/gi, "MAC")
+        .replace(/\bIp\b/gi, "IP")
         .replace(/\s+/g, " ")
-        .trim();
+        .trim()
+        .split(" ")
+        .map((word) => (word.toUpperCase() === "ID" || word.toUpperCase() === "IP" || word.toUpperCase() === "MAC" ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
+        .join(" ");
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

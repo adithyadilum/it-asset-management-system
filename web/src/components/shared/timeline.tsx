@@ -89,6 +89,12 @@ const ACTION_ICON_MAP: Record<
         ringClass: 'ring-red-200',
         badgeClass: 'border-red-300 bg-red-50 text-red-700',
     },
+    STATUS_CHANGE: {
+        Icon: AlertCircle,
+        color: 'text-amber-600',
+        ringClass: 'ring-amber-200',
+        badgeClass: 'border-amber-300 bg-amber-50 text-amber-700',
+    },
 };
 
 function getInitials(name: string): string {
@@ -197,6 +203,20 @@ function formatTimelineValue(field: string, value: unknown): string {
     return text;
 }
 
+function humanizeFieldName(field: string): string {
+    return field
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/_/g, ' ')
+        .replace(/\bId\b/gi, 'ID')
+        .replace(/\bMac\b/gi, 'MAC')
+        .replace(/\bIp\b/gi, 'IP')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .map((word) => (word.toUpperCase() === 'ID' || word.toUpperCase() === 'IP' || word.toUpperCase() === 'MAC' ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
+        .join(' ');
+}
+
 function buildChangeList(
     oldValue: Record<string, unknown> | null,
     newValue: Record<string, unknown> | null
@@ -211,7 +231,7 @@ function buildChangeList(
     if (!oldValue && newValue) {
         for (const key of Object.keys(newValue)) {
             changes.push({
-                field: key.replace(/([a-z])([A-Z])/g, '$1 $2'),
+                field: humanizeFieldName(key),
                 oldValue: '-',
                 newValue: formatTimelineValue(key, newValue[key]),
             });
@@ -223,7 +243,7 @@ function buildChangeList(
     if (oldValue && !newValue) {
         for (const key of Object.keys(oldValue)) {
             changes.push({
-                field: key.replace(/([a-z])([A-Z])/g, '$1 $2'),
+                field: humanizeFieldName(key),
                 oldValue: formatTimelineValue(key, oldValue[key]),
                 newValue: '-',
             });
@@ -242,7 +262,7 @@ function buildChangeList(
 
         if (!areValuesEqual(old, neu)) {
             changes.push({
-                field: key.replace(/([a-z])([A-Z])/g, '$1 $2'),
+                field: humanizeFieldName(key),
                 oldValue: formatTimelineValue(key, old),
                 newValue: formatTimelineValue(key, neu),
             });
@@ -343,11 +363,19 @@ export function AssetHistoryTimeline({
                                 {changes.length > 0 && (
                                     <div className="mt-1 space-y-2 rounded-md border border-gray-100 bg-gray-50 p-3 text-xs">
                                         {changes.map((change) => (
-                                            <div key={`${log.id}-${change.field}`} className="flex flex-wrap items-start gap-1 text-gray-700">
-                                                <span className="font-medium text-gray-800">{change.field}:</span>
-                                                <span className="line-through text-gray-400">{change.oldValue}</span>
-                                                <span className="text-gray-400">→</span>
-                                                <span className="font-medium text-gray-900">{change.newValue}</span>
+                                            <div key={`${log.id}-${change.field}`} className="space-y-1">
+                                                {change.field === 'reason' ? (
+                                                    <div className="mt-1 text-xs italic text-slate-600 border-l-2 border-slate-300 pl-2">
+                                                        &quot;{change.newValue}&quot;
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-wrap items-start gap-1 text-gray-700">
+                                                        <span className="font-medium text-gray-800">{change.field}:</span>
+                                                        <span className="line-through text-gray-400">{change.oldValue}</span>
+                                                        <span className="text-gray-400">→</span>
+                                                        <span className="font-medium text-gray-900">{change.newValue}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
