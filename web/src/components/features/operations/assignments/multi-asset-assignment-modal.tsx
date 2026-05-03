@@ -10,8 +10,6 @@ import { tiqriToast } from "@/components/shared/sonner";
 import {
   DURATION_OPTIONS,
   isPresetDuration,
-  toDateValue,
-  getLocalStartOfDay,
   calculateExpectedReturnDate,
   calculateDurationFromDate,
 } from "@/lib/assignment-date-utils";

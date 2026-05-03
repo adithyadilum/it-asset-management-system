@@ -10,8 +10,6 @@ import { tiqriToast } from "@/components/shared/sonner";
 import {
   DURATION_OPTIONS,
   isPresetDuration,
-  toDateValue,
-  getLocalStartOfDay,
   calculateExpectedReturnDate,
   calculateDurationFromDate,
 } from "@/lib/assignment-date-utils";
@@ -116,7 +114,7 @@ export function AssetAssignmentModal({
     };
   }, [isOpen, loadOptions]);
 
-  
+
 
   const resetState = React.useCallback(() => {
     setAssignmentMode(disableUserAssignment ? "location" : "user");
@@ -185,31 +183,31 @@ export function AssetAssignmentModal({
       });
   };
 
-    const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
-      setAssignmentMode(mode);
-      setAssignee("");
-      setDuration("");
-      setExpectedReturn("");
-    }, []);
+  const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
+    setAssignmentMode(mode);
+    setAssignee("");
+    setDuration("");
+    setExpectedReturn("");
+  }, []);
 
-    const handleDurationChange = React.useCallback((value: string) => {
-      setDuration(`${value}`);
+  const handleDurationChange = React.useCallback((value: string) => {
+    setDuration(`${value}`);
 
-      const durationDays = Number(value);
-      if (Number.isFinite(durationDays) && durationDays > 0) {
-        setExpectedReturn(calculateExpectedReturnDate(durationDays));
-        return;
-      }
+    const durationDays = Number(value);
+    if (Number.isFinite(durationDays) && durationDays > 0) {
+      setExpectedReturn(calculateExpectedReturnDate(durationDays));
+      return;
+    }
 
-      setExpectedReturn("");
-    }, []);
+    setExpectedReturn("");
+  }, []);
 
-    const handleExpectedReturnChange = React.useCallback((value: string) => {
-      setExpectedReturn(value);
+  const handleExpectedReturnChange = React.useCallback((value: string) => {
+    setExpectedReturn(value);
 
-      const calculatedDuration = calculateDurationFromDate(value);
-      setDuration(`${calculatedDuration}`);
-    }, []);
+    const calculatedDuration = calculateDurationFromDate(value);
+    setDuration(`${calculatedDuration}`);
+  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -305,7 +303,7 @@ export function AssetAssignmentModal({
                     type="date"
                     value={expectedReturn}
                     onChange={(event) => handleExpectedReturnChange(event.target.value)}
-                      className="h-9"
+                    className="h-9"
                   />
                 </div>
               </div>
