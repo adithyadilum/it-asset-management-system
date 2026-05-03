@@ -18,10 +18,10 @@ export type ReportTemplate = {
 
 export function ReportTemplateCard({ title, description, icon: Icon }: ReportTemplate) {
   return (
-    <Card size="sm" className="justify-between border-border/70 shadow-sm">
-      <CardHeader className="gap-4 px-5 pt-5">
+    <Card size="sm" className="h-full justify-between border-border bg-background">
+      <CardHeader className="gap-3 p-4 pb-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <CardTitle className="text-base font-medium text-card-foreground">
               {title}
             </CardTitle>
@@ -29,13 +29,11 @@ export function ReportTemplateCard({ title, description, icon: Icon }: ReportTem
               {description}
             </CardDescription>
           </div>
-          <div className="rounded-md border border-border/60 bg-muted/40 p-2 text-foreground">
-            <Icon className="size-4" />
-          </div>
+          <Icon className="size-4 shrink-0 text-foreground" />
         </div>
       </CardHeader>
-      <CardContent className="px-5 pb-5">
-        <Button size="sm" className="w-full sm:w-auto">
+      <CardContent className="flex px-4 pb-4">
+        <Button size="sm" className="mx-auto w-auto px-3">
           Preview report
           <ChevronRight className="size-4" />
         </Button>

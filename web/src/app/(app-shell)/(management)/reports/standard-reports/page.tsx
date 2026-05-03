@@ -5,28 +5,18 @@ import {
   Download,
   FileText,
   Filter,
+  ListFilter,
   Plus,
-  Search,
   ShieldCheck,
 } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -34,7 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FilterRow, ReportTemplateCard, type ReportTemplate } from '@/components/features/reports/standard-reports/standard-reports-page';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  FilterRow,
+  ReportTemplateCard,
+  type ReportTemplate,
+} from '@/components/features/reports/standard-reports/standard-reports-page';
 
 const REPORT_TEMPLATES: ReportTemplate[] = [
   {
@@ -61,50 +56,48 @@ const STATUS_OPTIONS = ['All statuses', 'Active', 'Pending', 'Flagged', 'Archive
 
 export default function Page() {
   return (
-    <div className="flex h-full flex-1 flex-col gap-6 overflow-hidden bg-muted/50 p-4 sm:p-6">
+    <div className="flex h-full flex-1 flex-col gap-6 overflow-hidden bg-muted p-1">
+      <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[524px_minmax(0,1fr)]">
+        <Card className="flex min-h-0 flex-col gap-0 border-border bg-background">
+          <ScrollArea className="h-full min-h-0 flex-1">
+            <div className="space-y-4 p-4 pb-12">
+              <div className="space-y-1.5">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                  Standard Reports
+                </h2>
+                <p className="text-base leading-6 text-muted-foreground">
+                  Generate, preview, and export compliance and financial intelligence.
+                </p>
+              </div>
 
-      <div className="grid h-full min-h-0 gap-6 xl:grid-cols-[450px_1fr]">
-        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-2">
-          <div className="space-y-1.5 px-0 py-0">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Standard Reports
-            </h2>
-            <p className="text-base leading-6 text-muted-foreground">
-              Generate, preview, and export compliance and financial intelligence.
-            </p>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {REPORT_TEMPLATES.map((template) => (
+                  <ReportTemplateCard key={template.title} {...template} />
+                ))}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {REPORT_TEMPLATES.map((template) => (
-              <ReportTemplateCard key={template.title} {...template} />
-            ))}
+                <Card
+                  size="sm"
+                  className="h-full items-center justify-center border-dashed border-border bg-background text-center"
+                >
+                  <CardContent className="flex min-h-[11rem] flex-col items-center justify-center gap-4 p-4 text-center">
+                    <Plus className="size-6 text-foreground" />
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium text-card-foreground">
+                        Add new report template
+                      </p>
+                      <p className="text-sm leading-5 text-muted-foreground">
+                        Extend the standard reporting library with a reusable template.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-            <Card
-              size="sm"
-              className="items-center justify-center border-dashed border-border/70 bg-background text-center shadow-sm"
-            >
-              <CardContent className="flex min-h-[11rem] flex-col items-center justify-center gap-4 px-5 py-6 text-center">
-                <div className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/30 text-foreground">
-                  <Plus className="size-5" />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-sm font-medium text-card-foreground">
-                    Add new report template
-                  </p>
-                  <p className="text-sm leading-5 text-muted-foreground">
-                    Extend the standard reporting library with a reusable template.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-4">
-            <Card className="gap-0 border-border/70 bg-background shadow-sm">
-                <CardContent className="space-y-6 px-6 py-6">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] md:items-center">
-                    <div className="text-sm font-medium text-foreground">Primary Data Source</div>
-                    <Select defaultValue={SOURCE_OPTIONS[0]}>
+                    <div className="text-sm font-medium text-foreground">
+                      Primary Data Source
+                    </div>
+                    <Select>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Choose source" />
                       </SelectTrigger>
@@ -117,19 +110,17 @@ export default function Page() {
                       </SelectContent>
                     </Select>
                   </div>
-                </CardContent>
-              </Card>
 
-              <Card className="gap-0 border-border bg-card shadow-sm">
-                <CardHeader className="flex flex-col items-start gap-6 px-6 pt-6">
+              <Card className="gap-0 border-border bg-card">
+                <CardHeader className="flex flex-col items-start gap-4 border-b border-border p-4">
                   <div className="flex w-full items-center justify-start gap-2.5">
                     <CardTitle className="flex-1 text-base font-medium text-card-foreground">
                       Filters
                     </CardTitle>
-                    <Filter className="size-5 text-foreground" />
+                    <ListFilter className="size-5 text-foreground" />
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-6 px-6 pb-6">
+                <CardContent className="flex flex-col gap-4 p-4">
                   <FilterRow label="Date Range">
                     <Button
                       variant="outline"
@@ -142,7 +133,7 @@ export default function Page() {
 
                   <FilterRow label="Category">
                     <Select defaultValue={CATEGORY_OPTIONS[0]}>
-                      <SelectTrigger className="w-44">
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a Category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -157,7 +148,7 @@ export default function Page() {
 
                   <FilterRow label="Location">
                     <Select defaultValue={LOCATION_OPTIONS[0]}>
-                      <SelectTrigger className="w-44">
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a Location" />
                       </SelectTrigger>
                       <SelectContent>
@@ -172,7 +163,7 @@ export default function Page() {
 
                   <FilterRow label="Status">
                     <Select defaultValue={STATUS_OPTIONS[0]}>
-                      <SelectTrigger className="w-44">
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -196,11 +187,12 @@ export default function Page() {
                   </div>
                 </CardContent>
               </Card>
-          </div>
-        </div>
+            </div>
+          </ScrollArea>
+        </Card>
 
-        <Card className="flex h-full min-h-0 flex-col gap-0 border-border bg-background shadow-sm">
-          <CardHeader className="border-b border-border px-6 py-4">
+        <Card className="flex h-full min-h-0 flex-col gap-0 overflow-hidden border-border bg-background">
+          <CardHeader className="border-b border-border p-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-semibold text-foreground">
@@ -221,18 +213,16 @@ export default function Page() {
             </div>
           </CardHeader>
 
-          <CardContent className="flex h-full flex-1 items-center justify-center px-6 py-6">
-              <div className="flex max-w-lg flex-col items-center gap-4 text-center text-muted-foreground">
-                <div className="flex size-14 items-center justify-center rounded-full border border-dashed border-border bg-muted/30 text-foreground">
-                  <Filter className="size-6" />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-lg font-normal leading-7 text-muted-foreground">
-                    Select your filters and click Preview Data to see results here.
-                  </p>
-                </div>
+          <CardContent className="flex h-full flex-1 items-center justify-center p-4">
+            <div className="flex max-w-lg flex-col items-center gap-4 text-center text-muted-foreground">
+              <Filter className="size-12 text-foreground" />
+              <div className="space-y-1.5">
+                <p className="text-lg font-normal leading-7 text-muted-foreground">
+                  Select your filters and click Preview Data to see results here.
+                </p>
               </div>
-            </CardContent>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>
