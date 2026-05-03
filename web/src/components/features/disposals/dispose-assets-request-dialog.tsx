@@ -123,7 +123,7 @@ export function DisposeAssetsRequestDialog({
               Disposal Reason <span className="text-destructive">*</span>
             </Label>
             <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger className="bg-muted/50">
+              <SelectTrigger className="w-full bg-muted/50">
                 <SelectValue placeholder="Select a standard reason..." />
               </SelectTrigger>
               <SelectContent>
