@@ -42,6 +42,7 @@ export const assetStatusEnum = pgEnum('asset_status', [
   'Defective',
   'Lost',
   'Retired',
+  'Pending Disposal',
   'Disposed',
 ]);
 export const conditionEnum = pgEnum('asset_condition', [
@@ -51,14 +52,8 @@ export const conditionEnum = pgEnum('asset_condition', [
   'Poor',
   'Damaged',
 ]);
-export const maintenanceStatusEnum = pgEnum('maintenance_status', [
-  'Open',
-  'In Progress',
-  'Pending Parts',
-  'Resolved',
-  'Cancelled',
-]);
 
+// Epic 15: Maintenance Tickets Enums
 export const maintenanceTicketStatusEnum = pgEnum('maintenance_ticket_status', [
   'ACTIVE',
   'COMPLETED',
@@ -70,7 +65,6 @@ export const maintenanceTicketTypeEnum = pgEnum('maintenance_ticket_type', [
   'INTERNAL',
 ]);
 
-
 export const disposalStatusEnum = pgEnum('disposal_status', [
   'Pending Approval',
   'Approved',
@@ -79,10 +73,33 @@ export const disposalStatusEnum = pgEnum('disposal_status', [
 ]);
 
 // -----------------------------------------------------------------------------
+// Custom Statuses (user-configurable)
+// -----------------------------------------------------------------------------
+export const customStatuses = pgTable('custom_statuses', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  // New visual metadata columns
+  iconName: varchar('icon_name', { length: 50 }).notNull().default('CircleDot'),
+  colorTheme: varchar('color_theme', { length: 50 }).notNull().default('gray'),
+  createdById: uuid('created_by_id').references(() => users.id),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// SAM Additions
+export const licenseTypeEnum = pgEnum('license_type', [
+  'Perpetual',
+  'Subscription',
+  'Open Source / Free',
+]);
+
+// -----------------------------------------------------------------------------
 // 2. IDENTITY & ACCESS MANAGEMENT
 // -----------------------------------------------------------------------------
 export const departments = pgTable('departments', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  departmentCode: varchar('department_code', { length: 50 }).unique(),
   name: varchar('name', { length: 255 }).notNull().unique(),
   shortCode: varchar('short_code', { length: 50 }).notNull().unique(),
   costCenterId: varchar('cost_center_id', { length: 100 }).notNull().unique(),
@@ -90,10 +107,10 @@ export const departments = pgTable('departments', {
 });
 
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(), // Switched to UUID to match ER diagram preference
+  id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: text('name').notNull(),
-  password: text('password').notNull(), // Assuming local auth for mock; remove if strict SSO
+  password: text('password').notNull(),
   departmentId: integer('department_id').references(() => departments.id),
   role: roleEnum('role').default('Employee').notNull(),
   isActive: boolean('is_active').notNull().default(true),
@@ -122,6 +139,8 @@ export const locations = pgTable(
   'locations',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    locationCode: varchar('location_code', { length: 50 }).unique(),
     name: varchar('name', { length: 255 }).notNull(),
     type: locationTypeEnum('type').notNull(),
     parentId: integer('parent_id'),
@@ -138,6 +157,8 @@ export const locations = pgTable(
 
 export const vendors = pgTable('vendors', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  vendorCode: varchar('vendor_code', { length: 50 }).unique(),
   companyName: varchar('company_name', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
@@ -145,16 +166,26 @@ export const vendors = pgTable('vendors', {
   isActive: boolean('is_active').default(true).notNull(),
 });
 
+export const owners = pgTable('owners', {
+  id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  ownerCode: varchar('owner_code', { length: 50 }).unique(),
+  companyName: varchar('company_name', { length: 255 }).notNull().unique(),
+  isActive: boolean('is_active').default(true).notNull(),
+});
+
 export const categories = pgTable(
   'categories',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    categoryCode: varchar('category_code', { length: 50 }).unique(),
     name: varchar('name', { length: 255 }).notNull(),
     pillar: pillarEnum('pillar').notNull(),
     prefix: varchar('prefix', { length: 10 }).notNull().unique(),
     requiresSerial: boolean('requires_serial').default(true).notNull(),
     isConsumable: boolean('is_consumable').default(false).notNull(),
-    customSchema: jsonb('custom_schema'), // REPLACES CATEGORY_CUSTOM_FIELDS
+    customSchema: jsonb('custom_schema'),
     isActive: boolean('is_active').default(true).notNull(),
   },
   (table) => ({
@@ -164,6 +195,8 @@ export const categories = pgTable(
 
 export const brands = pgTable('brands', {
   id: serial('id').primaryKey(),
+  uuid: uuid('uuid').defaultRandom().notNull().unique(),
+  brandCode: varchar('brand_code', { length: 50 }).unique(),
   name: varchar('name', { length: 255 }).notNull().unique(),
   isActive: boolean('is_active').default(true).notNull(),
 });
@@ -172,6 +205,8 @@ export const models = pgTable(
   'models',
   {
     id: serial('id').primaryKey(),
+    uuid: uuid('uuid').defaultRandom().notNull().unique(),
+    modelCode: varchar('model_code', { length: 50 }).unique(),
     brandId: integer('brand_id')
       .notNull()
       .references(() => brands.id, { onDelete: 'restrict' }),
@@ -179,6 +214,7 @@ export const models = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: 'restrict' }),
     name: varchar('name', { length: 255 }).notNull(),
+    imageUrl: varchar('image_url', { length: 500 }),
     technicalDetails: jsonb('technical_details'),
     isActive: boolean('is_active').default(true).notNull(),
   },
@@ -192,33 +228,39 @@ export const models = pgTable(
 // -----------------------------------------------------------------------------
 // 4. CORE ASSET REGISTRY
 // -----------------------------------------------------------------------------
-export const assets = pgTable('assets', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  assetTag: varchar('asset_tag', { length: 100 }).notNull().unique(),
-  serialNumber: varchar('serial_number', { length: 255 }),
-  name: varchar('name', { length: 255 }), // e.g., "Main Conference TV"
+export const assets = pgTable(
+  'assets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    assetTag: varchar('asset_tag', { length: 100 }).notNull().unique(),
+    serialNumber: varchar('serial_number', { length: 255 }),
+    name: varchar('name', { length: 255 }),
 
-  // Relations
-  modelId: integer('model_id')
-    .notNull()
-    .references(() => models.id, { onDelete: 'restrict' }),
-  locationId: integer('location_id').references(() => locations.id),
+    // Relations
+    modelId: integer('model_id')
+      .notNull()
+      .references(() => models.id, { onDelete: 'restrict' }),
+    locationId: integer('location_id').references(() => locations.id),
+    ownerId: integer('owner_id').references(() => owners.id), // From incoming
 
-  // Current State
-  status: assetStatusEnum('status').default('Available').notNull(),
-  condition: conditionEnum('condition'),
-  instanceAttributes: jsonb('instance_attributes'), // REPLACES ASSET_CUSTOM_VALUES
+    // Current State — varchar allows both built-in and custom statuses
+    status: varchar('status', { length: 100 }).default('Available').notNull(),
+    condition: conditionEnum('condition'),
+    instanceAttributes: jsonb('instance_attributes'),
 
-  // Lifespan
-  usefulLifeMonths: integer('useful_life_months'),
-  salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
+    // Epic 22 Lifespan Fields
+    usefulLifeMonths: integer('useful_life_months'),
+    salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
 
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  modelIdIdx: index('assets_model_id_idx').on(table.modelId),
-  locationIdIdx: index('assets_location_id_idx').on(table.locationId),
-}));
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    modelIdIdx: index('assets_model_id_idx').on(table.modelId),
+    locationIdIdx: index('assets_location_id_idx').on(table.locationId),
+    ownerIdIdx: index('assets_owner_id_idx').on(table.ownerId),
+  })
+);
 
 export const assetPurchases = pgTable('asset_purchases', {
   id: serial('id').primaryKey(),
@@ -234,8 +276,8 @@ export const assetPurchases = pgTable('asset_purchases', {
   currencyCode: varchar('currency_code', { length: 3 }).default('USD'),
   warrantyExpiry: date('warranty_expiry'),
   invoiceUrl: varchar('invoice_url', { length: 500 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),     
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),   
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const assetDocuments = pgTable('asset_documents', {
@@ -243,7 +285,7 @@ export const assetDocuments = pgTable('asset_documents', {
   assetId: uuid('asset_id')
     .notNull()
     .references(() => assets.id, { onDelete: 'cascade' }),
-  documentType: varchar('document_type', { length: 100 }), // e.g., 'Manual', 'License'
+  documentType: varchar('document_type', { length: 100 }),
   fileUrl: varchar('file_url', { length: 500 }).notNull(),
   uploadedById: uuid('uploaded_by_id')
     .notNull()
@@ -273,97 +315,94 @@ export const assetAssignments = pgTable('asset_assignments', {
 
   returnCondition: conditionEnum('return_condition'),
   notes: text('notes'),
+
+  acceptanceStatus: varchar('acceptance_status', { length: 50 }),
+  acceptedAt: timestamp('accepted_at'),
+  returnRequestedAt: timestamp('return_requested_at'),
 });
 
-export const maintenanceRecords = pgTable('maintenance_records', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),
-  vendorId: integer('vendor_id').references(() => vendors.id),
-  reportedById: uuid('reported_by_id')
-    .notNull()
-    .references(() => users.id),
-
-  status: maintenanceStatusEnum('status').default('Open').notNull(),
-  description: text('description').notNull(),
-  rmaTicketNumber: varchar('rma_ticket_number', { length: 100 }),
-
-  estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
-  actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
-  serviceDate: date('service_date'),
-  closedAt: timestamp('closed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),     
-  updatedAt: timestamp('updated_at').defaultNow().notNull(), 
-});
-
+// Epic 15: New Maintenance Tickets System
 export const maintenanceTickets = pgTable('maintenance_tickets', {
   id: serial('id').primaryKey(),
   assetId: uuid('asset_id')
     .notNull()
     .references(() => assets.id, { onDelete: 'cascade' }),
-  
+
   ticketType: maintenanceTicketTypeEnum('ticket_type').notNull(), // VENDOR or INTERNAL
   vendorName: varchar('vendor_name', { length: 255 }),
   rmaNumber: varchar('rma_number', { length: 100 }),
-  
+
   reportedIssue: text('reported_issue').notNull(),
   resolutionNotes: text('resolution_notes'),
-  
+
   estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
   actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
-  
+
   estimatedReturnDate: date('estimated_return_date'),
   actualCompletionDate: timestamp('actual_completion_date'),
-  
+
   status: maintenanceTicketStatusEnum('status').default('ACTIVE').notNull(),
-  
+
   dispatchedById: uuid('dispatched_by_id')
     .notNull()
     .references(() => users.id),
-  
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const assetDisposals = pgTable('asset_disposals', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'restrict' }),
-  requestedById: uuid('requested_by_id')
-    .notNull()
-    .references(() => users.id),
-  approvedById: uuid('approved_by_id').references(() => users.id),
+// 👇 UPDATED ONLY THIS TABLE WITH INDEXES 👇
+export const assetDisposals = pgTable(
+  'asset_disposals',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'restrict' }),
+    requestedById: uuid('requested_by_id')
+      .notNull()
+      .references(() => users.id),
+    approvedById: uuid('approved_by_id').references(() => users.id),
 
-  status: disposalStatusEnum('status').default('Pending Approval').notNull(),
-  reason: varchar('reason', { length: 255 }).notNull(), // e.g., 'End of Life', 'Damaged Beyond Repair'
-  justification: text('justification'),
+    status: disposalStatusEnum('status').default('Pending Approval').notNull(),
+    reason: varchar('reason', { length: 255 }).notNull(),
+    justification: text('justification'),
+    rejectionReason: text('rejection_reason'),
 
-  dataWiped: boolean('data_wiped').default(false),
-  tagsRemoved: boolean('tags_removed').default(false),
-  actualSalvageValue: decimal('actual_salvage_value', {
-    precision: 12,
-    scale: 2,
-  }),
-  bookValueAtDisposal: decimal('book_value_at_disposal', { 
-    precision: 12, 
-    scale: 2 
-  }),
+    dataWiped: boolean('data_wiped').default(false),
+    tagsRemoved: boolean('tags_removed').default(false),
+    actualSalvageValue: decimal('actual_salvage_value', {
+      precision: 12,
+      scale: 2,
+    }),
+    bookValueAtDisposal: decimal('book_value_at_disposal', {
+      precision: 12,
+      scale: 2,
+    }), // Epic 22 Addition
 
-  requestedAt: timestamp('requested_at').defaultNow().notNull(),
-  resolvedAt: timestamp('resolved_at'),
-  notes: text('notes'),
-});
+    requestedAt: timestamp('requested_at').defaultNow().notNull(),
+    resolvedAt: timestamp('resolved_at'),
+    notes: text('notes'),
+  },
+  (table) => ({
+    // ✨ ADDED THESE 3 INDEXES TO FIX QUERY SLOWNESS ✨
+    statusIdx: index('asset_disposals_status_idx').on(table.status),
+    assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
+    requestedByIdIdx: index('asset_disposals_requested_by_idx').on(
+      table.requestedById
+    ),
+  })
+);
+// 👆 ------------------------------------------ 👆
 
 // -----------------------------------------------------------------------------
 // 6. SYSTEM AUDIT LOG
 // -----------------------------------------------------------------------------
 export const systemAuditLogs = pgTable('system_audit_logs', {
   id: serial('id').primaryKey(),
-  entityType: varchar('entity_type', { length: 100 }).notNull(), // e.g., 'Asset', 'User'
+  entityType: varchar('entity_type', { length: 100 }).notNull(),
   entityId: varchar('entity_id', { length: 255 }).notNull(),
-  actionType: varchar('action_type', { length: 100 }).notNull(), // e.g., 'UPDATE', 'DELETE'
+  actionType: varchar('action_type', { length: 100 }).notNull(),
   performedById: uuid('performed_by_id')
     .notNull()
     .references(() => users.id),
@@ -375,20 +414,66 @@ export const systemAuditLogs = pgTable('system_audit_logs', {
 });
 
 // -----------------------------------------------------------------------------
+// SOFTWARE ASSET MANAGEMENT (SAM)
+// -----------------------------------------------------------------------------
+export const softwareLicenses = pgTable('software_licenses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  modelId: integer('model_id')
+    .notNull()
+    .references(() => models.id, { onDelete: 'restrict' }),
+
+  licenseKey: varchar('license_key', { length: 255 }),
+  licenseType: licenseTypeEnum('license_type').notNull(),
+
+  totalSeats: integer('total_seats').notNull().default(1),
+
+  startDate: date('start_date'),
+  expiryDate: date('expiry_date'),
+
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const softwareAllocations = pgTable('software_allocations', {
+  id: serial('id').primaryKey(),
+  licenseId: uuid('license_id')
+    .notNull()
+    .references(() => softwareLicenses.id, { onDelete: 'cascade' }),
+  assignedToUserId: uuid('assigned_to_user_id')
+    .notNull()
+    .references(() => users.id),
+
+  allocatedAt: timestamp('allocated_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'),
+});
+
+// -----------------------------------------------------------------------------
 // 7. RELATIONS (For Drizzle Query Builder)
 // -----------------------------------------------------------------------------
-
 export const assetRelations = relations(assets, ({ one, many }) => ({
   model: one(models, { fields: [assets.modelId], references: [models.id] }),
   location: one(locations, {
     fields: [assets.locationId],
     references: [locations.id],
   }),
+  owner: one(owners, {
+    fields: [assets.ownerId],
+    references: [owners.id],
+  }),
   purchases: many(assetPurchases),
   assignments: many(assetAssignments),
-  maintenance: many(maintenanceRecords),
+  maintenanceTickets: many(maintenanceTickets), // Added Epic 15 relation
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
+}));
+
+export const ownersRelations = relations(owners, ({ many }) => ({
+  assets: many(assets),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -400,23 +485,25 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export const assetPurchasesRelations = relations(assetPurchases, ({ one }) => ({
-  asset: one(assets, { fields: [assetPurchases.assetId], references: [assets.id] }),
-  vendor: one(vendors, { fields: [assetPurchases.vendorId], references: [vendors.id] }),
+  asset: one(assets, {
+    fields: [assetPurchases.assetId],
+    references: [assets.id],
+  }),
+  vendor: one(vendors, {
+    fields: [assetPurchases.vendorId],
+    references: [vendors.id],
+  }),
 }));
 
-export const maintenanceRecordsRelations = relations(
-  maintenanceRecords,
+export const maintenanceTicketsRelations = relations(
+  maintenanceTickets,
   ({ one }) => ({
     asset: one(assets, {
-      fields: [maintenanceRecords.assetId],
+      fields: [maintenanceTickets.assetId],
       references: [assets.id],
     }),
-    vendor: one(vendors, {
-      fields: [maintenanceRecords.vendorId],
-      references: [vendors.id],
-    }),
-    reporter: one(users, {
-      fields: [maintenanceRecords.reportedById],
+    dispatcher: one(users, {
+      fields: [maintenanceTickets.dispatchedById],
       references: [users.id],
     }),
   })
@@ -458,5 +545,3 @@ export const systemAuditLogsRelations = relations(
     }),
   })
 );
-// Add other standard relation definitions here as needed for your specific nested queries.
-

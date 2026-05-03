@@ -1,7 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { assets, maintenanceRecords, systemAuditLogs } from '@/db/schema';
+import { assets, maintenanceTickets, systemAuditLogs } from '@/db/schema';
+import { isValidUuid } from '@/lib/auth/uuid';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,6 +25,7 @@ export interface AssetDetailsData {
   model: {
     id: number;
     name: string;
+    imageUrl: string | null;
     technicalDetails: Record<string, unknown> | null;
     brand: { id: number; name: string };
     category: {
@@ -41,6 +43,7 @@ export interface AssetDetailsData {
   } | null;
   purchase: {
     id: number;
+    vendorId: number | null;
     purchaseDate: string | null;
     basePrice: string | null;
     tax: string | null;
@@ -56,6 +59,10 @@ export interface AssetDetailsData {
     id: number;
     companyName: string;
     contactInfo: string | null;
+  } | null;
+  owner: {
+    id: number;
+    companyName: string;
   } | null;
   assignment: {
     assignedToUser: {
@@ -81,16 +88,22 @@ export interface HistoryEvent {
 export interface MaintenanceEvent {
   id: number;
   assetId: string;
-  vendorId: number | null;
+  vendorName: string | null;
   status: string;
-  description: string;
-  rmaTicketNumber: string | null;
+  reportedIssue: string;
+  rmaNumber: string | null;
   estimatedCost: string | null;
   actualCost: string | null;
-  serviceDate: string | null;
-  closedAt: string | null;
+  estimatedReturnDate: string | null;
+  actualCompletionDate: string | null;
   createdAt: string;
-  vendor: { companyName: string } | null;
+}
+
+export interface AllocationData {
+  id: string;
+  name: string;
+  email: string;
+  assignedDate: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +162,7 @@ function formatAuditDetails(
 
   return changes.join(', ');
 }
- 
+
 function formatSafeISO(val: unknown): string {
   if (!val) return new Date().toISOString();
   try {
@@ -160,6 +173,27 @@ function formatSafeISO(val: unknown): string {
   }
 }
 
+async function resolveAssetPrimaryId(
+  identifier: string
+): Promise<string | null> {
+  const normalizedIdentifier = identifier.trim();
+  if (normalizedIdentifier.length === 0) {
+    return null;
+  }
+
+  if (isValidUuid(normalizedIdentifier)) {
+    return normalizedIdentifier;
+  }
+
+  const [assetRecord] = await db
+    .select({ id: assets.id })
+    .from(assets)
+    .where(eq(assets.assetTag, normalizedIdentifier))
+    .limit(1);
+
+  return assetRecord?.id ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Read Queries
 // ---------------------------------------------------------------------------
@@ -167,8 +201,13 @@ function formatSafeISO(val: unknown): string {
 export async function getAssetDetailsById(
   id: string
 ): Promise<AssetDetailsData | null> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return null;
+  }
+
   const assetRecord = await db.query.assets.findFirst({
-    where: eq(assets.id, id),
+    where: eq(assets.id, resolvedAssetId),
     with: {
       model: {
         with: {
@@ -183,8 +222,15 @@ export async function getAssetDetailsById(
             },
           },
         },
+        columns: {
+          id: true,
+          name: true,
+          technicalDetails: true,
+          imageUrl: true,
+        },
       },
       location: { columns: { id: true, name: true, type: true } },
+      owner: { columns: { id: true, companyName: true } },
       purchases: {
         limit: 1,
         columns: {
@@ -209,6 +255,7 @@ export async function getAssetDetailsById(
         },
       },
       assignments: {
+        where: (assignments, { isNull }) => isNull(assignments.returnedDate),
         limit: 1,
         orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
         with: {
@@ -245,6 +292,7 @@ export async function getAssetDetailsById(
     model: {
       id: assetRecord.model.id,
       name: assetRecord.model.name,
+      imageUrl: assetRecord.model.imageUrl,
       technicalDetails: assetRecord.model.technicalDetails as Record<
         string,
         unknown
@@ -274,6 +322,7 @@ export async function getAssetDetailsById(
     purchase: purchaseRecord
       ? {
           id: purchaseRecord.id,
+          vendorId: purchaseRecord.vendorId,
           purchaseDate: purchaseRecord.purchaseDate?.toString() ?? null,
           basePrice: purchaseRecord.basePrice?.toString() ?? null,
           tax: purchaseRecord.tax?.toString() ?? null,
@@ -294,6 +343,12 @@ export async function getAssetDetailsById(
             purchaseRecord.vendor.email ?? purchaseRecord.vendor.phone ?? null,
         }
       : null,
+    owner: assetRecord.owner
+      ? {
+          id: assetRecord.owner.id,
+          companyName: assetRecord.owner.companyName,
+        }
+      : null,
     assignment: assignmentRecord
       ? {
           assignedToUser: assignmentRecord.assignedToUser
@@ -312,13 +367,16 @@ export async function getAssetDetailsById(
   };
 }
 
-export async function getAssetHistoryById(
-  id: string
-): Promise<HistoryEvent[]> {
+export async function getAssetHistoryById(id: string): Promise<HistoryEvent[]> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return [];
+  }
+
   const auditRecords = await db.query.systemAuditLogs.findMany({
     where: and(
       eq(systemAuditLogs.entityType, 'Asset'),
-      eq(systemAuditLogs.entityId, id)
+      eq(systemAuditLogs.entityId, resolvedAssetId)
     ),
     orderBy: (logs, { desc }) => [desc(logs.performedAt)],
     limit: 20,
@@ -342,25 +400,63 @@ export async function getAssetHistoryById(
 export async function getAssetMaintenanceById(
   id: string
 ): Promise<MaintenanceEvent[]> {
-  const maintenanceList = await db.query.maintenanceRecords.findMany({
-    where: eq(maintenanceRecords.assetId, id),
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return [];
+  }
+
+  const maintenanceList = await db.query.maintenanceTickets.findMany({
+    where: eq(maintenanceTickets.assetId, resolvedAssetId),
     orderBy: (records, { desc }) => [desc(records.createdAt)],
     limit: 5,
-    with: { vendor: { columns: { companyName: true } } },
   });
 
   return maintenanceList.map((record) => ({
     id: record.id,
     assetId: record.assetId,
-    vendorId: record.vendorId,
+    vendorName: record.vendorName,
     status: record.status,
-    description: record.description,
-    rmaTicketNumber: record.rmaTicketNumber,
+    reportedIssue: record.reportedIssue,
+    rmaNumber: record.rmaNumber,
     estimatedCost: record.estimatedCost?.toString() ?? null,
     actualCost: record.actualCost?.toString() ?? null,
-    serviceDate: record.serviceDate?.toString() ?? null,
-    closedAt: record.closedAt?.toISOString() ?? null,
+    estimatedReturnDate: record.estimatedReturnDate?.toString() ?? null,
+    actualCompletionDate: record.actualCompletionDate?.toISOString() ?? null,
     createdAt: record.createdAt.toISOString(),
-    vendor: record.vendor,
   }));
+}
+
+export async function getAssetAllocationsById(
+  id: string
+): Promise<AllocationData[]> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return [];
+  }
+
+  const allocations = await db.query.assets.findFirst({
+    where: eq(assets.id, resolvedAssetId),
+    with: {
+      assignments: {
+        where: (assignments, { isNull }) => isNull(assignments.returnedDate),
+        orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
+        with: {
+          assignedToUser: { columns: { id: true, name: true, email: true } },
+        },
+      },
+    },
+  });
+
+  if (!allocations || !allocations.assignments) {
+    return [];
+  }
+
+  return allocations.assignments
+    .filter((assignment) => assignment.assignedToUser)
+    .map((assignment) => ({
+      id: assignment.assignedToUser!.id,
+      name: assignment.assignedToUser!.name,
+      email: assignment.assignedToUser!.email,
+      assignedDate: assignment.assignedDate.toISOString(),
+    }));
 }

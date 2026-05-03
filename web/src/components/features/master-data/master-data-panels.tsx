@@ -9,7 +9,9 @@ import type {
     MasterDataDepartmentRow,
     MasterDataDeviceModelRow,
     MasterDataLocationRow,
+    MasterDataOwnerRow,
     MasterDataVendorRow,
+    MasterDataCustomStatusRow,
 } from "./master-data-management-client";
 
 interface MasterDataPanelsProps {
@@ -24,7 +26,9 @@ interface MasterDataPanelsProps {
     brands: MasterDataBrandRow[];
     deviceModels: MasterDataDeviceModelRow[];
     vendors: MasterDataVendorRow[];
+    owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
+    customStatuses: MasterDataCustomStatusRow[];
 }
 
 export function MasterDataPanels({
@@ -39,7 +43,9 @@ export function MasterDataPanels({
     brands,
     deviceModels,
     vendors,
+    owners,
     departments,
+    customStatuses,
 }: MasterDataPanelsProps) {
     const disableTransition = panelAnimation === "0";
 
@@ -54,12 +60,14 @@ export function MasterDataPanels({
                 brands={brands}
                 deviceModels={deviceModels}
                 vendors={vendors}
+                owners={owners}
                 departments={departments}
+                customStatuses={customStatuses}
                 disableTransition={disableTransition}
             />
 
             <MasterDataRecordPanel
-                key={`record-panel-${entity ?? "none"}-${recordId ?? "none"}-${recordMode ?? "detail"}`}
+                key={`record-panel-${entity ?? "none"}`}
                 isOpen={currentPanel === "record"}
                 onCloseUrl={closePanelUrl}
                 entity={entity}
@@ -70,7 +78,9 @@ export function MasterDataPanels({
                 brands={brands}
                 deviceModels={deviceModels}
                 vendors={vendors}
+                owners={owners}
                 departments={departments}
+                customStatuses={customStatuses}
                 disableTransition={disableTransition}
             />
         </>

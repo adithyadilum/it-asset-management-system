@@ -11,7 +11,9 @@ export const MASTER_DATA_RECORD_ENTITIES = [
   'brands',
   'device-models',
   'vendors',
+  'owners',
   'departments',
+  'statuses',
 ] as const satisfies ReadonlyArray<MasterDataRecordEntity>;
 
 export const INITIAL_BRAND_FORM_STATE: BrandFormState = {

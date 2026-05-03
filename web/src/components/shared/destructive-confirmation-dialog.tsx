@@ -60,6 +60,10 @@ export interface DestructiveConfirmationDialogProps {
 
   // Loading State
   isLoading?: boolean;
+
+  // Controlled State (optional - if not provided, uses trigger button)
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // ============================================================================
@@ -100,10 +104,18 @@ export const DestructiveConfirmationDialog = React.forwardRef<
 
       // Loading
       isLoading = false,
+
+      // Controlled State
+      open: controlledOpen,
+      onOpenChange: controlledOnOpenChange,
     },
     ref
   ) => {
-    const [open, setOpen] = React.useState(false);
+    // Support both controlled and uncontrolled modes
+    const isControlled = controlledOpen !== undefined;
+    const [internalOpen, setInternalOpen] = React.useState(false);
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
     const [loading, setLoading] = React.useState(false);
 
     const handleConfirm = async () => {
@@ -128,18 +140,20 @@ export const DestructiveConfirmationDialog = React.forwardRef<
 
     return (
       <AlertDialog open={open} onOpenChange={setOpen}>
-        {/* ===== TRIGGER BUTTON ===== */}
-        <AlertDialogTrigger asChild>
-          <Button
-            ref={ref}
-            variant={triggerVariant}
-            className={triggerClassName}
-            disabled={isLoading}
-          >
-            {triggerIcon || (showDeleteIcon && <Trash2 className="mr-2 h-4 w-4" />)}
-            {triggerLabel}
-          </Button>
-        </AlertDialogTrigger>
+        {/* ===== TRIGGER BUTTON (only show in uncontrolled mode) ===== */}
+        {!isControlled && (
+          <AlertDialogTrigger asChild>
+            <Button
+              ref={ref}
+              variant={triggerVariant}
+              className={triggerClassName}
+              disabled={isLoading}
+            >
+              {triggerIcon || (showDeleteIcon && <Trash2 className="mr-2 h-4 w-4" />)}
+              {triggerLabel}
+            </Button>
+          </AlertDialogTrigger>
+        )}
 
         {/* ===== DIALOG CONTENT ===== */}
         <AlertDialogContent className="w-full max-w-2xl rounded-lg bg-popover p-6 text-popover-foreground shadow-lg">
@@ -176,8 +190,8 @@ export const DestructiveConfirmationDialog = React.forwardRef<
                 <div
                   key={item.id}
                   className={`flex items-center justify-between rounded-md p-4 transition-colors ${itemHasError
-                      ? "border-2 border-red-500 bg-red-50"
-                      : "bg-gray-50"
+                    ? "border-2 border-red-500 bg-red-50"
+                    : "bg-gray-50"
                     }`}
                 >
                   <div className="flex flex-1 gap-6">

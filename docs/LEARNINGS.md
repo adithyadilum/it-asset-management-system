@@ -205,3 +205,69 @@
   1. **`loading.tsx`:** Automatically wraps the route segment in a React `<Suspense>` boundary. This is where we place Tier-1 UI Skeletons to provide instant visual feedback while the server fetches data.
   2. **`error.tsx`:** Automatically wraps the route segment in a React `<ErrorBoundary>`. It _must_ be a Client Component (`"use client"`). It catches unhandled exceptions and displays a localized fallback UI with a retry mechanism, keeping the rest of the application shell (navigation, sidebar) intact.
 - **Impact:** Prevents app-wide crashes from localized database/API failures and eliminates "white screen of death" loading delays. This guarantees a resilient, native-feeling user experience even under heavy server latency or outage conditions.
+
+### Topic: Cross-Platform CI/CD Trap (esbuild)
+
+- **Context:** Running `npm install` on Windows can generate a `package-lock.json` that captures Windows-only binary bindings for tools like `esbuild`.
+- **What We Learned:** When Linux CI runs `npm ci` against that lockfile, it may fail with `EBADPLATFORM` because it strictly expects Linux binaries that are not present in the Windows-generated lock.
+- **Impact:** For cross-platform workflows (Windows local to Linux CI), using `npm install` in CI can be safer in some projects because it resolves platform-specific binaries dynamically.
+
+### Topic: Enterprise ITAM Database Architecture (Drizzle ORM)
+
+- **Context:** We needed an inventory model that supports barcode workflows, enterprise reporting, and long-term data integrity.
+- **What We Learned:** A "Two-Key" pattern is essential: keep an internal UUID primary key for relational integrity, and generate a human-readable unique `asset_tag` for UI and physical labels.
+- **Architecture Decision:** We adopted a Y-shaped split: keep shared master catalog data (categories, brands, models), while separating inventory tables into `assets` (hardware) and `software_licenses` (software seats, expiry, and license lifecycle).
+- **Data Integrity Rules:** Operational statuses should be domain-specific (hardware vs. software), while physical condition enums should remain unified across hardware categories for portfolio-level reporting.
+- **Historical Immutability:** Audit and assignment history must survive user lifecycle changes, so foreign keys should use restrictive or nulling delete policies such as `onDelete: 'restrict'` or `onDelete: 'set null'`.
+- **Implementation Detail:** `defaultNow()` only applies on insert. To keep `updatedAt` accurate on edits, use `$onUpdate(() => new Date())`.
+
+### Topic: Next.js UX & State Management
+
+- **Context:** We needed SaaS-grade navigation behavior and scalable form UX for asset workflows.
+- **What We Learned:** Panel and detail state should be URL-driven (for example, `?panel=record&id=...`) instead of hidden component state to support deep-linking, browser history, and view sharing.
+- **DRY UX Principle:** Image management belongs at model level, not per asset instance, with a fallback like `displayImage = model.imageUrl || '/no-image.png'` to avoid repetitive uploads.
+- **Routing Safety Note:** Auth guards must exclude `/login` and static assets from proxy matching to avoid redirect loops (`ERR_TOO_MANY_REDIRECTS`).
+
+### Topic: Cloud Storage & Next.js Configurations (Vercel Blob)
+
+- **Context:** We needed a scalable upload strategy for model images and document files without overcomplicating storage infrastructure.
+- **What We Learned:** A single Vercel Blob bucket is sufficient when files are organized by prefix paths (for example, `models/img.png` vs. `invoices/doc.pdf`). We also learned that Next.js Server Actions enforce a default 1MB payload limit, so larger uploads require an explicit override in `next.config.mjs` via `experimental.serverActions.bodySizeLimit`.
+- **Security/Platform Constraint:** The Next.js `<Image />` component blocks untrusted external sources by default. The Vercel Blob hostname must be explicitly whitelisted in `images.remotePatterns` in `next.config.mjs`.
+
+### Topic: Zero-Trust Architecture & The Immutable Ledger
+
+- **Context:** Compliance-grade audit data must remain tamper-resistant, even if an internal actor gains direct database access.
+- **What We Learned:** App-layer checks in Next.js are insufficient for true immutability. We must enforce protections at the database engine level using PostgreSQL triggers (for example, `BEFORE UPDATE`/`BEFORE DELETE`) to block ledger mutations.
+- **Impact:** This creates a truly immutable compliance trail independent of application runtime behavior.
+- **Performance Note:** Audit logging can be dispatched asynchronously (without `await`) during CRUD flows to preserve sub-100ms response targets while still recording IP and JSON diff metadata.
+
+### Topic: Enterprise Database Migrations (Drizzle ORM)
+
+- **Context:** Team-based schema evolution needs deterministic change history and safe synchronization across developer environments.
+- **What We Learned:** `npx drizzle-kit push` is useful for solo prototyping but risky in collaborative environments. Teams should use `generate` to create timestamped SQL migration files, then `migrate` to apply them.
+- **Impact:** Treating schema changes like Git commits provides auditable history, conflict control, and safer multi-developer database synchronization.
+
+### Topic: Agile Workflows & GitHub Mastery
+
+- **Context:** We needed stronger traceability from planning artifacts to implementation branches and merged pull requests.
+- **What We Learned:** Epic tasklists can be converted into linked User Story issues directly from GitHub markdown checkboxes. Branch names aligned to issue/story IDs (for example, `83-us-41-ip-logging`) provide clear auditability and automatic issue linkage.
+- **Process Discipline:** Developers should proactively sync long-lived branches (`git pull origin dev` plus merge/rebase) after core fixes land to reduce late-stage conflicts.
+
+### Topic: CI/CD Pipeline Optimization
+
+- **Context:** Frequent micro-commits were triggering excessive Vercel builds, consuming preview/deployment budgets and shared DB resources.
+- **What We Learned:** Deployment triggers should be deliberately constrained.
+- **The Fixes:**
+  1. Add a `.vercelignore` file to skip docs-only changes (for example, `docs/**`, `README.md`).
+  2. Configure Vercel to create preview deployments only when a Pull Request is opened, not on every branch push.
+
+### Topic: The Two-Key Identity Pattern & Audit Log Resiliency
+
+- **Context:** While reviewing the JSON payload generated by the newly implemented Zero-Trust Ledger (`systemAuditLogs` table), we observed that the `entity_id` was storing an auto-incremented integer (for example, `98`) instead of the human-readable asset tag (for example, `LAP-0011`). We needed to understand why the database did not store the visible tag.
+- **What We Learned:** We learned the critical architectural distinction between a Business Key and a Surrogate Key.
+  1. A Business Key (`LAP-0011`) is for humans: it goes on barcode stickers and UI search bars, meaning it is mutable and can be edited if a typo occurs.
+  2. A Surrogate Key (an integer like `98` or a UUID) is for machines: it is hidden, mathematically unique, and entirely immutable.
+  3. Audit logs must always use the Surrogate Key. If an audit log relies on a mutable business key, and a user later corrects a typo in that asset tag, the historical link to all previous audit records is permanently severed.
+- **Impact:** By strictly enforcing Surrogate Keys in the `systemAuditLogs` table, our compliance ledger is completely tamper-proof and resilient to user edits. To make this data human-readable for compliance officers, the frontend UI will simply perform a SQL `JOIN` to map the immutable machine ID back to the current Business Key or category name, ensuring the UI always displays an accurate, unbroken historical trail.
+
+  

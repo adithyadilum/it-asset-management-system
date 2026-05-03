@@ -13,13 +13,14 @@ import {
   SESSION_COOKIE_NAME,
   type TokenRole,
 } from '@/lib/auth/session';
+import { logAuditAction } from '@/lib/audit';
 
 async function verifyTokenAndRole(token: string) {
   const authTimer = startLatencyTimer();
 
   try {
     const verified = await jwtVerify(token, getJwtSecretKey());
-    const payload = verified.payload as { role?: unknown };
+    const payload = verified.payload as { role?: unknown; sub?: string };
 
     const role = normalizeTokenRole(payload.role);
 
@@ -27,7 +28,7 @@ async function verifyTokenAndRole(token: string) {
       throw new Error('Role is missing or invalid in token');
     }
 
-    return { role };
+    return { role, sub: payload.sub };
   } finally {
     logLatency({
       scope: 'PROXY AUTH',
@@ -55,7 +56,7 @@ function canAccessRoute(role: TokenRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
-    pathname === '/dashboard/'
+    pathname === '/dashboard/' 
   ) {
     return true;
   }
@@ -91,7 +92,6 @@ function getLoginRedirectResponse(request: NextRequest) {
   loginUrl.searchParams.set('redirectTo', requestedPath);
   return NextResponse.redirect(loginUrl);
 }
-
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -104,7 +104,7 @@ export async function proxy(request: NextRequest) {
       return getLoginRedirectResponse(request);
     }
 
-    let payload: { role: TokenRole } | null = null;
+    let payload: { role: TokenRole; sub?: string } | null = null;
 
     if (token) {
       try {
@@ -132,6 +132,13 @@ export async function proxy(request: NextRequest) {
       isProtectedRoute &&
       !canAccessRoute(payload.role, pathname)
     ) {
+      await logAuditAction({
+        entityType: 'URL',
+        entityId: request.url,
+        actionType: 'ACCESS_DENIED',
+        performedById: payload.sub ?? 'SYSTEM',
+        newData: { role: payload.role },
+      });
       return NextResponse.redirect(new URL('/403', request.url));
     }
 

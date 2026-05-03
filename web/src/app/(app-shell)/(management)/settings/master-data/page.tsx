@@ -15,6 +15,8 @@ import {
   departments,
   locations,
   models,
+  owners,
+  customStatuses,
   sessions,
   users,
   vendors,
@@ -30,7 +32,9 @@ type MasterDataTabId =
   | "brands"
   | "device-models"
   | "vendors"
-  | "departments";
+  | "owners"
+  | "departments"
+  | "statuses";
 
 const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>([
   "locations",
@@ -38,7 +42,9 @@ const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>([
   "brands",
   "device-models",
   "vendors",
+  "owners",
   "departments",
+  "statuses",
 ]);
 
 function normalizeMasterDataTab(value: string | undefined): MasterDataTabId | undefined {
@@ -217,6 +223,7 @@ const getLocationsData = cache(() =>
   db
     .select({
       id: locations.id,
+      code: locations.locationCode,
       name: locations.name,
       type: locations.type,
       parentId: locations.parentId,
@@ -227,6 +234,7 @@ const getLocationsData = cache(() =>
     .leftJoin(assets, eq(assets.locationId, locations.id))
     .groupBy(
       locations.id,
+      locations.locationCode,
       locations.name,
       locations.type,
       locations.parentId,
@@ -239,6 +247,7 @@ const getBrandsData = cache(() =>
   db
     .select({
       id: brands.id,
+      code: brands.brandCode,
       name: brands.name,
       linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
       isActive: brands.isActive,
@@ -246,7 +255,7 @@ const getBrandsData = cache(() =>
     .from(brands)
     .leftJoin(models, eq(models.brandId, brands.id))
     .leftJoin(assets, eq(assets.modelId, models.id))
-    .groupBy(brands.id, brands.name, brands.isActive)
+    .groupBy(brands.id, brands.brandCode, brands.name, brands.isActive)
     .orderBy(asc(brands.name))
 );
 
@@ -254,6 +263,7 @@ const getVendorsData = cache(() =>
   db
     .select({
       id: vendors.id,
+      code: vendors.vendorCode,
       companyName: vendors.companyName,
       email: vendors.email,
       phone: vendors.phone,
@@ -270,6 +280,7 @@ const getVendorsData = cache(() =>
     .leftJoin(categories, eq(models.categoryId, categories.id))
     .groupBy(
       vendors.id,
+      vendors.vendorCode,
       vendors.companyName,
       vendors.email,
       vendors.phone,
@@ -283,6 +294,7 @@ const getDepartmentsData = cache(() =>
   db
     .select({
       id: departments.id,
+      code: departments.departmentCode,
       name: departments.name,
       shortCode: departments.shortCode,
       costCenterId: departments.costCenterId,
@@ -293,10 +305,47 @@ const getDepartmentsData = cache(() =>
     .orderBy(asc(departments.name))
 );
 
+const getOwnersData = cache(() =>
+  db
+    .select({
+      id: owners.id,
+      code: owners.ownerCode,
+      companyName: owners.companyName,
+      linkedAssets: sql<number>`coalesce(count(${assets.id}), 0)::int`,
+      isActive: owners.isActive,
+    })
+    .from(owners)
+    .leftJoin(assets, eq(assets.ownerId, owners.id))
+    .groupBy(
+      owners.id,
+      owners.ownerCode,
+      owners.companyName,
+      owners.isActive
+    )
+    .orderBy(asc(owners.companyName))
+);
+
+const getStatusesData = cache(() =>
+  db
+    .select({
+      id: customStatuses.id,
+      code: sql<string | null>`null`,
+      name: customStatuses.name,
+      iconName: customStatuses.iconName,
+      colorTheme: customStatuses.colorTheme,
+      isActive: customStatuses.isActive,
+      createdAt: customStatuses.createdAt,
+      linkedAssets: sql<number>`0::int`,
+    })
+    .from(customStatuses)
+    .orderBy(asc(customStatuses.name))
+);
+
 const getCategoriesData = cache(() =>
   db
     .select({
       id: categories.id,
+      code: categories.categoryCode,
       name: categories.name,
       prefix: categories.prefix,
       pillar: categories.pillar,
@@ -309,6 +358,7 @@ const getCategoriesData = cache(() =>
     .leftJoin(assets, eq(assets.modelId, models.id))
     .groupBy(
       categories.id,
+      categories.categoryCode,
       categories.name,
       categories.prefix,
       categories.pillar,
@@ -322,9 +372,11 @@ const getDeviceModelsData = cache(() =>
   db
     .select({
       id: models.id,
+      code: models.modelCode,
       name: models.name,
       brandId: models.brandId,
       categoryId: models.categoryId,
+      imageUrl: models.imageUrl,
       brandName: brands.name,
       categoryName: categories.name,
       pillar: categories.pillar,
@@ -338,9 +390,11 @@ const getDeviceModelsData = cache(() =>
     .leftJoin(assets, eq(assets.modelId, models.id))
     .groupBy(
       models.id,
+      models.modelCode,
       models.name,
       models.brandId,
       models.categoryId,
+      models.imageUrl,
       brands.name,
       categories.name,
       categories.pillar,
@@ -371,16 +425,20 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     locationsData,
     brandsData,
     vendorsData,
+    ownersData,
     departmentsData,
     categoriesData,
     deviceModelsData,
+    statusesData,
   ] = await Promise.all([
     getLocationsData(),
     getBrandsData(),
     getVendorsData(),
+    getOwnersData(),
     getDepartmentsData(),
     getCategoriesData(),
     getDeviceModelsData(),
+    getStatusesData(),
   ]);
 
   const normalizedDeviceModels = deviceModelsData.map((row) => ({
@@ -390,6 +448,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     brandName: row.brandName ?? "Unknown",
     categoryName: row.categoryName ?? "Unknown",
     pillar: row.pillar ?? "IT & Digital",
+    imageUrl: row.imageUrl ?? null,
     technicalDetails: normalizeModelTechnicalDetails(row.technicalDetails),
   }));
 
@@ -415,7 +474,9 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         initialTab={activeTab}
         deviceModels={normalizedDeviceModels}
         vendors={normalizedVendors}
+        owners={ownersData}
         departments={departmentsData}
+        customStatuses={statusesData}
       />
 
       <MasterDataPanels
@@ -430,7 +491,9 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         brands={brandsData}
         deviceModels={normalizedDeviceModels}
         vendors={normalizedVendors}
+        owners={ownersData}
         departments={departmentsData}
+        customStatuses={statusesData}
       />
     </div>
   );
