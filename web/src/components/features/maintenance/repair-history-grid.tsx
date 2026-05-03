@@ -72,14 +72,16 @@ export function RepairHistoryGrid({
 }
 
   return (
-  <DataTable
-    columns={repairHistoryColumns}
-    data={tickets}
-    pageSizeOptions={[10, 20, 30, 50]}
-    initialPageSize={10}
-    enableRowSelection={false} 
-    enableRowScroll={true} 
-    className="border-0 h-full flex-1" 
-  />
+  <div className="flex flex-col h-full overflow-hidden">
+    <DataTable
+      columns={repairHistoryColumns}
+      data={tickets}
+      pageSizeOptions={[10, 20, 30, 50]}
+      initialPageSize={10}
+      enableRowSelection={false} 
+      enableRowScroll={true} 
+      className="border-0 flex-1 min-h-0" 
+    />
+  </div>
 );
 }

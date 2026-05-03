@@ -123,15 +123,17 @@ if (tickets.length === 0) {
 }
 
 return (
-  <DataTable
-    columns={activeRepairsColumns}
-    data={tickets}
-    pageSizeOptions={[10, 20, 30, 50]}
-    initialPageSize={10}
-    onRowClick={(row) => onRowClick(row)}
-    enableRowSelection={false} 
-    enableRowScroll={true} 
-    className="border-0 h-full flex-1" 
-  />
+  <div className="flex flex-col h-full overflow-hidden">
+    <DataTable
+      columns={activeRepairsColumns}
+      data={tickets}
+      pageSizeOptions={[10, 20, 30, 50]}
+      initialPageSize={10}
+      onRowClick={(row) => onRowClick(row)}
+      enableRowSelection={false} 
+      enableRowScroll={true} 
+      className="border-0 flex-1 min-h-0" 
+    />
+  </div>
 );
 }

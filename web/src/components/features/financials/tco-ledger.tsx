@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useMemo } from "react";
 import { Download, Search, ChevronDown } from "lucide-react";
@@ -8,6 +8,7 @@ import { DataTable } from "@/components/shared/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TCOLedgerRecord } from "@/types/financials";
 import { format } from "date-fns";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 
 // US-22.3 Localized Currency Formatter
 const formatCurrency = (value: number) => {
@@ -74,18 +75,18 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
     {
       accessorKey: "assetId",
       header: "Asset ID",
-      cell: ({ row }) => <span className="font-medium text-slate-900">{row.original.assetId}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{row.original.assetId}</span>,
     },
     {
       accessorKey: "category",
       header: "Category",
-      cell: ({ row }) => <span className="text-slate-600">{row.original.category}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.category}</span>,
     },
     {
       accessorKey: "purchaseDate",
       header: "Purchase Date",
       cell: ({ row }) => (
-        <span className="text-slate-600">
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
           {row.original.purchaseDate ? format(new Date(row.original.purchaseDate), "MM/dd/yyyy") : "N/A"}
         </span>
       ),
@@ -93,13 +94,13 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
     {
       accessorKey: "originalPrice",
       header: "Original Purchase Price",
-      cell: ({ row }) => <span className="text-slate-600">{formatCurrency(row.original.originalPrice)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatCurrency(row.original.originalPrice)}</span>,
     },
     {
       accessorKey: "totalRepairCosts",
       header: "Total Repair Costs",
       cell: ({ row }) => (
-        <span className="text-slate-600">
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
           {formatCurrency(row.original.totalRepairCosts)}
         </span>
       ),
@@ -108,7 +109,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
       accessorKey: "totalTCO",
       header: "Total TCO",
       cell: ({ row }) => (
-        <span className="font-medium text-slate-900">
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
           {formatCurrency(row.original.totalTCO)}
         </span>
       ),
@@ -116,23 +117,23 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col h-full overflow-hidden gap-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div className="relative w-[320px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-white"
+            className={`pl-9 bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
           />
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="bg-white" disabled>
+          <Button variant="outline" className="bg-background text-foreground" disabled>
             Filters <ChevronDown className="ml-2 h-4 w-4" />
           </Button>
-          <Button onClick={exportToCSV} className="bg-[#040d5a] hover:bg-[#040d5a]/90 text-white">
+          <Button onClick={exportToCSV} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             <Download className="mr-2 h-4 w-4" />
             Export Log (CSV)
           </Button>
@@ -145,8 +146,8 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
         data={filteredData}
         pageSizeOptions={[16, 24, 32, 48]}
         initialPageSize={16}
-        enableSelection={false}
-        className="bg-white border-slate-200"
+        enableRowSelection={false}
+        className="bg-background border-border flex-1 min-h-0"
       />
     </div>
   );

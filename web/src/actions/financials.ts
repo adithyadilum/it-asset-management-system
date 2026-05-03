@@ -170,7 +170,7 @@ export async function getWriteOffsLedger() {
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
-      .where(eq(assetDisposals.status, 'Approved'))
+      .where(eq(assetDisposals.status, 'Completed'))
       .orderBy(desc(assetDisposals.resolvedAt));
 
     return result.map((row) => ({

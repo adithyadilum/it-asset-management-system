@@ -230,7 +230,7 @@ export function MaintenanceTabs({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
+                    className={`h-8 rounded-lg border-border bg-background px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
                     onClick={() => setIsFilterPopoverOpen((currentOpen) => !currentOpen)}
                   >
                     Filters
@@ -241,14 +241,14 @@ export function MaintenanceTabs({
                   align="end"
                   side="bottom"
                   sideOffset={10}
-                  className="w-61.25 rounded-lg border border-slate-200 p-0 shadow-xl"
+                  className="w-61.25 rounded-lg border border-border bg-background p-0 shadow-xl"
                 >
-                  <div className="border-b border-slate-200 px-3 py-2">
+                  <div className="border-b border-border px-3 py-2">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
+                      <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Filter by</h3>
                       <button
                         type="button"
-                        className="text-slate-400 hover:text-slate-600"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={() => setIsFilterPopoverOpen(false)}
                       >
                         <X className="size-4" />
@@ -260,7 +260,7 @@ export function MaintenanceTabs({
                     <select
                       value={draftField}
                       onChange={(event) => setDraftField(event.target.value as PendingFilterField)}
-                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                      className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
                     >
                       {pendingFilterFieldOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -269,7 +269,7 @@ export function MaintenanceTabs({
                       ))}
                     </select>
 
-                    <div className="space-y-2 text-sm text-slate-700">
+                    <div className={`space-y-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}>
                       <label className="flex items-center gap-2">
                         <input
                           type="radio"
@@ -291,7 +291,7 @@ export function MaintenanceTabs({
                     <select
                       value={draftValue}
                       onChange={(event) => setDraftValue(event.target.value)}
-                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                      className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
                     >
                       <option value="" disabled>
                         Select value
@@ -304,12 +304,12 @@ export function MaintenanceTabs({
                     </select>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-3 py-2">
+                  <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-lg border-slate-200 px-3 text-sm"
+                      className={`h-8 rounded-lg border-border bg-secondary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-secondary-foreground hover:bg-secondary/80`}
                       onClick={() => setIsFilterPopoverOpen(false)}
                     >
                       Cancel
@@ -317,7 +317,7 @@ export function MaintenanceTabs({
                     <Button
                       type="button"
                       size="sm"
-                      className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
+                      className={`h-8 rounded-lg bg-primary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-primary-foreground hover:bg-primary/90`}
                       onClick={applyFilter}
                     >
                       Apply Filter
@@ -329,17 +329,17 @@ export function MaintenanceTabs({
           </div>
 
           {appliedFilters.length > 0 ? (
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 shrink-0">
               <div className="flex flex-wrap items-center gap-2">
                 {appliedFilters.map((filter) => (
                   <span
                     key={filter.field}
-                    className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700"
+                    className={`inline-flex h-8 items-center gap-2 rounded-lg bg-muted/50 px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
                   >
                     {`${filter.field} ${filter.operator} ${filter.value}`}
                     <button
                       type="button"
-                      className="text-slate-500 hover:text-slate-700"
+                      className="text-muted-foreground hover:text-foreground"
                       onClick={() => clearFilter(filter.field)}
                     >
                       <X className="size-4" />
@@ -352,7 +352,7 @@ export function MaintenanceTabs({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
+                className={`h-8 rounded-lg border-border bg-background px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
                 onClick={clearFilters}
               >
                 Clear Filters
@@ -375,7 +375,7 @@ export function MaintenanceTabs({
                     title: 'No pending maintenance tickets found',
                     description: 'New maintenance requests will appear here once they are submitted.',
                   }}
-                  className="border-0 h-full flex-1"
+                  className="border-0 flex-1 min-h-0"
                   enableRowScroll={true}
                   activeRowCondition={(row: PendingReviewTicket) => row.id === selectedTicketId}
                   enableRowSelection={false}

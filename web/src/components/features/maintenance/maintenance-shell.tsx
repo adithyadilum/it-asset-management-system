@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket, CompleteRepairFormData } from '@/types/maintenance';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
-// ... [Reducer Logic remains unchanged]
 interface UIState {
   isPanelOpen: boolean;
   selectedTicketId: number | null;
@@ -54,7 +53,6 @@ function uiReducer(state: UIState, action: UIAction): UIState {
       return state;
   }
 }
-// ============================================================================
 
 export function MaintenanceShell() {
   const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>([]);
@@ -145,15 +143,18 @@ export function MaintenanceShell() {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-slate-50">
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
-        <div className="mb-4 shrink-0">
-          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
-            Maintenance & Repairs
-          </h1>
+    <div className="flex h-[calc(100vh-64px)] w-full bg-background overflow-hidden">
+      
+      {/* LEFT CARD (Main Tabs) */}
+      <div className="flex flex-1 flex-col bg-background overflow-hidden min-w-0">
+        <div className="px-6 pt-6 pb-2 shrink-0">
+          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
+          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground mt-1`}>
+            Manage asset maintenance requests, repairs, and service history
+          </p>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden flex flex-col">
           <MaintenanceTabs
             pendingTickets={pendingTickets}
             activeRepairTickets={activeRepairTickets}
@@ -166,21 +167,17 @@ export function MaintenanceShell() {
             selectedTicketId={uiState.selectedTicketId}
           />
         </div>
-      </main>
+      </div>
 
-      <div
+      <div 
         className={cn(
-          "shrink-0 overflow-hidden rounded-xl bg-white shadow-box-shadow-shadow-lg transition-[width,margin,opacity,transform] duration-300 ease-out",
-          uiState.isPanelOpen
-            ? "border border-border opacity-100 translate-x-0"
-            : "border-0 opacity-0 translate-x-8"
+          "shrink-0 bg-background overflow-hidden transition-all duration-300 ease-in-out transform",
+          uiState.isPanelOpen 
+            ? "w-[550px] xl:w-[600px] border-l border-border opacity-100 translate-x-0" 
+            : "w-0 border-0 opacity-0 translate-x-8" 
         )}
-        style={{
-          width: uiState.isPanelOpen ? '550px' : '0px',
-          marginLeft: uiState.isPanelOpen ? '1.25rem' : '0px',
-        }}
       >
-        <div className="flex h-full w-full flex-col">
+        <div className="w-[550px] xl:w-[600px] h-full flex flex-col">
           <IssueReviewPanelWrapper
             isOpen={uiState.isPanelOpen}
             onClose={handlePanelClose}
