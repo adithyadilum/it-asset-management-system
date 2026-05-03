@@ -1,6 +1,6 @@
 'use server';
 
-import { eq, like, sql } from 'drizzle-orm';
+import { eq, like, sql, and, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db';
@@ -13,10 +13,16 @@ import {
   models,
   owners,
   vendors,
+  assetAssignments,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
-import { logAuditAction } from '@/lib/audit';
+import { logAuditAction, logAuditActionTx } from '@/lib/audit';
+import { isValidUuid } from '@/lib/auth/uuid';
+import {
+  WORKFLOW_GATED_STATUSES,
+} from '@/lib/constants';
+import { getManualOverrideStatuses } from '@/actions/statuses';
 import {
   getAssetDetailsById,
   getAssetHistoryById,
@@ -597,4 +603,138 @@ export async function updateAsset(
   revalidatePath('/assets');
 
   return updatedAsset ?? null;
+}
+
+/**
+ * Manually overrides the status of an asset.
+ * This action is restricted to GlobalAdmins and requires a justification note.
+ *
+ * @param assetId The UUID of the asset
+ * @param newStatus The target status (built-in or custom)
+ * @param reasonNote Justification for the change (min 10 chars)
+ */
+export async function manualStatusOverrideAction(
+  assetId: string,
+  newStatus: string,
+  reasonNote: string
+): Promise<{ success: boolean; message: string }> {
+  const actionTimer = startLatencyTimer();
+
+  try {
+    // 1. Auth Guard (Strictly GlobalAdmin)
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      return { success: false, message: 'Unauthorized: Please sign in.' };
+    }
+
+    if (currentUser.role !== 'GlobalAdmin') {
+      return {
+        success: false,
+        message: 'Forbidden: Only Global Admins can perform manual overrides.',
+      };
+    }
+
+    // 2. Input Validation
+    if (!isValidUuid(assetId)) {
+      return { success: false, message: 'Invalid Asset ID.' };
+    }
+
+    const trimmedNote = reasonNote.trim();
+    if (trimmedNote.length < 10) {
+      return {
+        success: false,
+        message: 'Justification must be at least 10 characters long.',
+      };
+    }
+
+    // Validate Status
+    const isWorkflowGated = (WORKFLOW_GATED_STATUSES as readonly string[]).includes(newStatus);
+    if (isWorkflowGated) {
+      return {
+        success: false,
+        message: `Status "${newStatus}" cannot be set manually. Use the dedicated workflow.`,
+      };
+    }
+
+    // Fetch permissible statuses (including custom ones) to validate target
+    const manualOptions = await getManualOverrideStatuses();
+    const isValidStatus = manualOptions.some((opt) => opt.value === newStatus);
+
+    if (!isValidStatus) {
+      return { success: false, message: `Invalid status: ${newStatus}` };
+    }
+
+    // 3. Fetch current asset
+    const currentAsset = await db.query.assets.findFirst({
+      where: eq(assets.id, assetId),
+    });
+
+    if (!currentAsset) {
+      return { success: false, message: 'Asset not found.' };
+    }
+
+    if (currentAsset.status === newStatus) {
+      return { success: false, message: `Asset is already "${newStatus}".` };
+    }
+
+    // 4. Atomic Transaction
+    await db.transaction(async (tx) => {
+      // Step A: Update asset status
+      await tx
+        .update(assets)
+        .set({ status: newStatus, updatedAt: new Date() })
+        .where(eq(assets.id, assetId));
+
+      // Step B: Close active assignments
+      // Manual overrides always imply that the current assignment state is being bypassed/ended
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: new Date() })
+        .where(
+          and(
+            eq(assetAssignments.assetId, assetId),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
+
+      // Step C: Audit log
+      await logAuditActionTx(tx, {
+        entityType: 'Asset',
+        entityId: assetId,
+        actionType: 'STATUS_CHANGE',
+        performedById: currentUser.id,
+        oldData: { status: currentAsset.status },
+        newData: { status: newStatus, reason: trimmedNote },
+      });
+    });
+
+    // 5. Revalidation
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+
+    return {
+      success: true,
+      message: `Status successfully updated to ${newStatus}.`,
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assets.manualStatusOverrideAction',
+      error,
+    });
+
+    return {
+      success: false,
+      message: 'Unexpected error while updating status.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assets.manualStatusOverrideAction',
+      startTime: actionTimer,
+    });
+  }
 }

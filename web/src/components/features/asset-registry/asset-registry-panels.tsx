@@ -9,6 +9,13 @@ interface AssetRegistryPanelsProps {
     recordId?: string;
     closePanelUrl: string;
     pillar: string;
+    manualStatuses?: Array<{ 
+        value: string; 
+        label: string; 
+        colorTheme?: string; 
+        iconName?: string; 
+    }>;
+    onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
 
 export function AssetRegistryPanels({
@@ -16,6 +23,8 @@ export function AssetRegistryPanels({
     recordId,
     closePanelUrl,
     pillar,
+    manualStatuses = [],
+    onStatusUpdateRef,
 }: AssetRegistryPanelsProps) {
     const router = useRouter();
 
@@ -36,6 +45,8 @@ export function AssetRegistryPanels({
                     isOpen={currentPanel === "record"}
                     onClose={handleClose}
                     recordId={recordId}
+                    manualStatuses={manualStatuses}
+                    onStatusUpdateRef={onStatusUpdateRef}
                 />
             ) : null}
         </>

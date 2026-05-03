@@ -18,6 +18,7 @@ type AssignmentPanelAsset = {
 	dateCreated: string;
 	updatedAt: string;
 	warranty: string;
+	lastRepaired?: string;
 	note: string;
 	status: string;
 };
@@ -65,7 +66,8 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 				dateCreated={selectedAsset?.dateCreated ?? ""}
 				updatedAt={selectedAsset?.updatedAt ?? ""}
 				warranty={selectedAsset?.warranty ?? ""}
-				lastRepaired="08/10/2025"
+				lastRepaired={selectedAsset?.lastRepaired ?? ""}
+
 				note={selectedAsset?.note ?? ""}
 				status={selectedAsset?.status ?? "Available"}
 				maintenanceEvents={[]}

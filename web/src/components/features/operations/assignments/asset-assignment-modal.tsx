@@ -7,6 +7,12 @@ import { assignAssetAction } from "@/actions/assignments";
 import { searchUsers } from "@/actions/users";
 import { searchLocations } from "@/actions/locations";
 import { tiqriToast } from "@/components/shared/sonner";
+import {
+  DURATION_OPTIONS,
+  isPresetDuration,
+  calculateExpectedReturnDate,
+  calculateDurationFromDate,
+} from "@/lib/assignment-date-utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,47 +44,6 @@ type AssigneeOption = {
   id: string;
   label: string;
 };
-
-const DURATION_OPTIONS = [7, 14, 30] as const;
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-const isPresetDuration = (value: string) =>
-  DURATION_OPTIONS.some((option) => String(option) === value);
-
-function toDateValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getLocalStartOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function calculateExpectedReturnDate(durationDays: number) {
-  const today = getLocalStartOfDay(new Date());
-  today.setDate(today.getDate() + durationDays);
-  return toDateValue(today);
-}
-
-function calculateDurationFromDate(dateValue: string) {
-  const [year, month, day] = dateValue.split("-").map((part) => Number(part));
-
-  if (!year || !month || !day) {
-    return "";
-  }
-
-  const selectedDate = new Date(year, month - 1, day);
-  if (Number.isNaN(selectedDate.getTime())) {
-    return "";
-  }
-
-  const today = getLocalStartOfDay(new Date());
-  const diffDays = Math.round((selectedDate.getTime() - today.getTime()) / DAY_IN_MS);
-  return diffDays > 0 ? String(diffDays) : "";
-}
 
 export function AssetAssignmentModal({
   isOpen,
@@ -149,7 +114,7 @@ export function AssetAssignmentModal({
     };
   }, [isOpen, loadOptions]);
 
-  
+
 
   const resetState = React.useCallback(() => {
     setAssignmentMode(disableUserAssignment ? "location" : "user");
@@ -218,34 +183,35 @@ export function AssetAssignmentModal({
       });
   };
 
-    const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
-      setAssignmentMode(mode);
-      setDuration("");
-      setExpectedReturn("");
-    }, []);
+  const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
+    setAssignmentMode(mode);
+    setAssignee("");
+    setDuration("");
+    setExpectedReturn("");
+  }, []);
 
-    const handleDurationChange = React.useCallback((value: string) => {
-      setDuration(`${value}`);
+  const handleDurationChange = React.useCallback((value: string) => {
+    setDuration(`${value}`);
 
-      const durationDays = Number(value);
-      if (Number.isFinite(durationDays) && durationDays > 0) {
-        setExpectedReturn(calculateExpectedReturnDate(durationDays));
-        return;
-      }
+    const durationDays = Number(value);
+    if (Number.isFinite(durationDays) && durationDays > 0) {
+      setExpectedReturn(calculateExpectedReturnDate(durationDays));
+      return;
+    }
 
-      setExpectedReturn("");
-    }, []);
+    setExpectedReturn("");
+  }, []);
 
-    const handleExpectedReturnChange = React.useCallback((value: string) => {
-      setExpectedReturn(value);
+  const handleExpectedReturnChange = React.useCallback((value: string) => {
+    setExpectedReturn(value);
 
-      const calculatedDuration = calculateDurationFromDate(value);
-      setDuration(`${calculatedDuration}`);
-    }, []);
+    const calculatedDuration = calculateDurationFromDate(value);
+    setDuration(`${calculatedDuration}`);
+  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[560px] rounded-xl p-0" showCloseButton={true}>
+      <DialogContent className="max-w-140 rounded-xl p-0" showCloseButton={true}>
         <DialogHeader className="gap-1 px-6 pt-5 pb-4">
           <DialogTitle className="text-[18px] font-semibold text-slate-900">
             Assign Asset: <span className="font-medium text-slate-700">{assetLabel}</span>
@@ -337,7 +303,7 @@ export function AssetAssignmentModal({
                     type="date"
                     value={expectedReturn}
                     onChange={(event) => handleExpectedReturnChange(event.target.value)}
-                      className="h-9"
+                    className="h-9"
                   />
                 </div>
               </div>
@@ -350,7 +316,7 @@ export function AssetAssignmentModal({
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Add any additional notes"
-              className="min-h-[80px] resize-none"
+              className="min-h-20 resize-none"
             />
           </div>
 

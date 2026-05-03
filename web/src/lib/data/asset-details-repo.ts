@@ -255,6 +255,7 @@ export async function getAssetDetailsById(
         },
       },
       assignments: {
+        where: (assignments, { isNull }) => isNull(assignments.returnedDate),
         limit: 1,
         orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
         with: {
@@ -437,6 +438,7 @@ export async function getAssetAllocationsById(
     where: eq(assets.id, resolvedAssetId),
     with: {
       assignments: {
+        where: (assignments, { isNull }) => isNull(assignments.returnedDate),
         orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
         with: {
           assignedToUser: { columns: { id: true, name: true, email: true } },

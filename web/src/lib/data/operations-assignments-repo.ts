@@ -1,6 +1,5 @@
 import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 
-import { getAssetsByPillar } from '@/actions/asset-registry';
 import { db } from '@/db';
 import {
   assetAssignments,
@@ -8,10 +7,10 @@ import {
   categories,
   locations,
   models,
-  systemAuditLogs,
   users,
 } from '@/db/schema';
-import type { AssetRegistryRow, AssetStatus } from '@/lib/data/asset-registry-repo';
+import { logAuditActionTx } from '@/lib/audit';
+import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 
 export type AssignmentsDashboardTab = 'available' | 'assigned' | 'returned';
 
@@ -34,12 +33,9 @@ export interface AssignmentsDashboardData {
   returned: AssignmentsDashboardRow[];
 }
 
-const DASHBOARD_PILLARS: Array<'IT & Digital' | 'Office Furniture' | 'Office Electronics'> = [
-  'IT & Digital',
-  'Office Furniture',
-  'Office Electronics',
-];
-const BULK_PAGE_SIZE = 100;
+const DASHBOARD_PILLARS: Array<
+  'IT & Digital' | 'Office Furniture' | 'Office Electronics'
+> = ['IT & Digital', 'Office Furniture', 'Office Electronics'];
 
 export type AssignmentTargetType = 'user' | 'location';
 
@@ -165,7 +161,9 @@ async function ensureActiveTargetExists(
   const [targetLocation] = await db
     .select({ id: locations.id })
     .from(locations)
-    .where(and(eq(locations.id, normalizedLocationId), eq(locations.isActive, true)))
+    .where(
+      and(eq(locations.id, normalizedLocationId), eq(locations.isActive, true))
+    )
     .limit(1);
 
   if (!targetLocation) {
@@ -183,7 +181,9 @@ async function ensureActiveTargetExists(
 }
 
 function dedupeAssetIds(assetIds: string[]) {
-  return [...new Set(assetIds.map((id) => id.trim()).filter((id) => id.length > 0))];
+  return [
+    ...new Set(assetIds.map((id) => id.trim()).filter((id) => id.length > 0)),
+  ];
 }
 
 async function validateAssetsForAssignment(assetIds: string[]) {
@@ -198,7 +198,9 @@ async function validateAssetsForAssignment(assetIds: string[]) {
 
   if (assetsInDb.length !== assetIds.length) {
     const existingIds = new Set(assetsInDb.map((asset) => asset.id));
-    const missingAssetIds = assetIds.filter((assetId) => !existingIds.has(assetId));
+    const missingAssetIds = assetIds.filter(
+      (assetId) => !existingIds.has(assetId)
+    );
 
     throw new AssignmentServiceError(
       'One or more assets were not found.',
@@ -208,7 +210,9 @@ async function validateAssetsForAssignment(assetIds: string[]) {
     );
   }
 
-  const unavailableAssets = assetsInDb.filter((asset) => asset.status !== 'Available');
+  const unavailableAssets = assetsInDb.filter(
+    (asset) => asset.status !== 'Available'
+  );
   if (unavailableAssets.length > 0) {
     throw new AssignmentServiceError(
       'One or more assets are no longer available.',
@@ -227,47 +231,60 @@ async function validateAssetsForAssignment(assetIds: string[]) {
   return assetsInDb;
 }
 
-function toDashboardRow(row: AssetRegistryRow): AssignmentsDashboardRow {
-  return {
+async function loadAssetsByStatusDirect(
+  status: AssetStatus
+): Promise<AssignmentsDashboardRow[]> {
+  // Single direct DB query instead of multiple API calls across pillars
+  const results = await db
+    .select({
+      id: assets.id,
+      assetTag: assets.assetTag,
+      name: assets.name,
+      serialNumber: assets.serialNumber,
+      category: categories.name,
+      pillar: categories.pillar,
+      assetLocation: locations.name,
+      assignedToUser: users.name,
+      assignedToLocationId: assetAssignments.assignedToLocationId,
+    })
+    .from(assets)
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(categories, eq(models.categoryId, categories.id))
+    .leftJoin(locations, eq(assets.locationId, locations.id))
+    .leftJoin(
+      assetAssignments,
+      and(
+        eq(assetAssignments.assetId, assets.id),
+        isNull(assetAssignments.returnedDate)
+      )
+    )
+    .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .where(
+      and(
+        eq(assets.status, status),
+        inArray(categories.pillar, DASHBOARD_PILLARS)
+      )
+    )
+    .orderBy(desc(assets.createdAt));
+
+  return results.map((row) => ({
     id: row.id,
     assetTag: row.assetTag,
     name: row.name,
     serialNumber: row.serialNumber,
     category: row.category,
     pillar: row.pillar,
-    status: row.status,
-    location: row.location,
-    assignedTo: row.assignedTo,
+    status: status,
+    location: row.assetLocation,
+    assignedTo: row.assignedToUser || null,
     returnedDate: null,
-  };
+  }));
 }
 
-async function loadAssetsByStatus(status: AssetStatus): Promise<AssignmentsDashboardRow[]> {
-  const rows: AssignmentsDashboardRow[] = [];
-
-  for (const pillar of DASHBOARD_PILLARS) {
-    const firstPage = await getAssetsByPillar({
-      pillar,
-      status,
-      page: 1,
-      pageSize: BULK_PAGE_SIZE,
-    });
-
-    rows.push(...firstPage.data.map(toDashboardRow));
-
-    for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
-      const nextPage = await getAssetsByPillar({
-        pillar,
-        status,
-        page,
-        pageSize: BULK_PAGE_SIZE,
-      });
-
-      rows.push(...nextPage.data.map(toDashboardRow));
-    }
-  }
-
-  return rows;
+async function loadAssetsByStatus(
+  status: AssetStatus
+): Promise<AssignmentsDashboardRow[]> {
+  return loadAssetsByStatusDirect(status);
 }
 
 async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
@@ -291,7 +308,10 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
     .where(isNotNull(assetAssignments.returnedDate))
-    .orderBy(desc(assetAssignments.returnedDate), desc(assetAssignments.assignedDate));
+    .orderBy(
+      desc(assetAssignments.returnedDate),
+      desc(assetAssignments.assignedDate)
+    );
 
   const returnedRowsByAssetId = new Map<string, AssignmentsDashboardRow>();
 
@@ -345,9 +365,14 @@ export async function assignSingleAsset(
     );
   }
 
-  const expectedReturnDate = normalizeExpectedReturnDate(input.expectedReturnDate);
+  const expectedReturnDate = normalizeExpectedReturnDate(
+    input.expectedReturnDate
+  );
   const notes = normalizeNotes(input.notes);
-  const target = await ensureActiveTargetExists(input.assignmentType, input.targetId);
+  const target = await ensureActiveTargetExists(
+    input.assignmentType,
+    input.targetId
+  );
 
   await validateAssetsForAssignment([normalizedAssetId]);
 
@@ -359,8 +384,14 @@ export async function assignSingleAsset(
         status: 'Assigned',
         updatedAt: new Date(),
       })
-      .where(and(eq(assets.id, normalizedAssetId), eq(assets.status, 'Available')))
-      .returning({ id: assets.id, assetTag: assets.assetTag, previousStatus: assets.status });
+      .where(
+        and(eq(assets.id, normalizedAssetId), eq(assets.status, 'Available'))
+      )
+      .returning({
+        id: assets.id,
+        assetTag: assets.assetTag,
+        previousStatus: assets.status,
+      });
 
     if (!asset) {
       throw new AssignmentServiceError(
@@ -381,7 +412,10 @@ export async function assignSingleAsset(
         expectedReturnDate,
         notes,
       })
-      .returning({ id: assetAssignments.id, assetId: assetAssignments.assetId });
+      .returning({
+        id: assetAssignments.id,
+        assetId: assetAssignments.assetId,
+      });
 
     if (!assignment) {
       throw new AssignmentServiceError(
@@ -391,16 +425,16 @@ export async function assignSingleAsset(
       );
     }
 
-    // Step 3: Create audit log
-    await tx.insert(systemAuditLogs).values({
+    // Step 3: Create audit log (transaction-safe helper)
+    await logAuditActionTx(tx, {
       entityType: 'Asset',
       entityId: normalizedAssetId,
       actionType: 'ASSIGN',
       performedById: assignedById,
-      oldValue: {
+      oldData: {
         status: 'Available',
       },
-      newValue: {
+      newData: {
         status: 'Assigned',
         assignmentType: input.assignmentType,
         assignedToUserId: target.assignedToUserId,
@@ -430,9 +464,14 @@ export async function assignMultipleAssets(
     );
   }
 
-  const expectedReturnDate = normalizeExpectedReturnDate(input.expectedReturnDate);
+  const expectedReturnDate = normalizeExpectedReturnDate(
+    input.expectedReturnDate
+  );
   const notes = normalizeNotes(input.notes);
-  const target = await ensureActiveTargetExists(input.assignmentType, input.targetId);
+  const target = await ensureActiveTargetExists(
+    input.assignmentType,
+    input.targetId
+  );
 
   await validateAssetsForAssignment(normalizedAssetIds);
 
@@ -473,7 +512,10 @@ export async function assignMultipleAssets(
           notes,
         }))
       )
-      .returning({ id: assetAssignments.id, assetId: assetAssignments.assetId });
+      .returning({
+        id: assetAssignments.id,
+        assetId: assetAssignments.assetId,
+      });
 
     if (insertedAssignments.length !== normalizedAssetIds.length) {
       throw new AssignmentServiceError(
@@ -483,24 +525,26 @@ export async function assignMultipleAssets(
       );
     }
 
-    // Step 3: Create audit logs
-    await tx.insert(systemAuditLogs).values(
-      normalizedAssetIds.map((assetId) => ({
-        entityType: 'Asset',
-        entityId: assetId,
-        actionType: 'ASSIGN',
-        performedById: assignedById,
-        oldValue: {
-          status: 'Available',
-        },
-        newValue: {
-          status: 'Assigned',
-          assignmentType: input.assignmentType,
-          assignedToUserId: target.assignedToUserId,
-          assignedToLocationId: target.assignedToLocationId,
-          expectedReturnDate,
-        },
-      }))
+    // Step 3: Create audit logs (transaction-safe helper)
+    await Promise.all(
+      normalizedAssetIds.map((assetId) =>
+        logAuditActionTx(tx, {
+          entityType: 'Asset',
+          entityId: assetId,
+          actionType: 'ASSIGN',
+          performedById: assignedById,
+          oldData: {
+            status: 'Available',
+          },
+          newData: {
+            status: 'Assigned',
+            assignmentType: input.assignmentType,
+            assignedToUserId: target.assignedToUserId,
+            assignedToLocationId: target.assignedToLocationId,
+            expectedReturnDate,
+          },
+        })
+      )
     );
 
     return {

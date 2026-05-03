@@ -9,6 +9,8 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
+import {
+} from '@/lib/constants';
 import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
@@ -122,11 +124,6 @@ function normalizeCategoryLabel(value: string) {
     .replace(/s$/, '');
 }
 
-function toHardwareDisplayStatus(row: AssetRegistryRow) {
-  // Status column must always represent the persisted asset status from DB.
-  return row.status;
-}
-
 function toElectronicsDisplayCondition(row: AssetRegistryRow) {
   if (row.condition) {
     return row.condition;
@@ -178,6 +175,13 @@ interface AssetRegistryClientProps {
   initialCategories: AssetRegistryCategory[];
   initialResult: AssetRegistryResult;
   currentPanel?: string;
+  manualStatuses?: Array<{ 
+    value: string; 
+    label: string; 
+    colorTheme?: string; 
+    iconName?: string; 
+  }>;
+  onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
 
 export function AssetRegistryClient({
@@ -185,10 +189,35 @@ export function AssetRegistryClient({
   initialCategories,
   initialResult,
   currentPanel,
+  manualStatuses = [],
+  onStatusUpdateRef,
 }: AssetRegistryClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const handleStatusUpdate = useCallback((assetId: string, nextStatus: string) => {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.id === assetId) {
+          return {
+            ...row,
+            status: nextStatus,
+            assignedTo: null, // Manual override always clears current assignment
+          };
+        }
+        return row;
+      })
+    );
+    setRefreshNonce((n) => n + 1);
+  }, []);
+
+  // Expose the status update handler via ref so detail panel can call it
+  useEffect(() => {
+    if (onStatusUpdateRef) {
+      onStatusUpdateRef.current = handleStatusUpdate;
+    }
+  }, [handleStatusUpdate, onStatusUpdateRef]);
   const isPanelOpen = Boolean(currentPanel);
   const activeRecordId =
     currentPanel === 'record' ? searchParams.get('id') : null;
@@ -739,10 +768,20 @@ export function AssetRegistryClient({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <StatusBadge value={toHardwareDisplayStatus(row.original)} showIcon />,
+        cell: ({ row }) => {
+          const statusConfig = manualStatuses.find(s => s.value === row.original.status);
+          return (
+            <StatusBadge 
+              value={row.original.status} 
+              showIcon 
+              colorTheme={statusConfig?.colorTheme}
+              iconName={statusConfig?.iconName}
+            />
+          );
+        },
       },
     ];
-  }, [config.view]);
+  }, [config.view, manualStatuses]);
 
   const selectionActions: DataTableSelectionAction<AssetRegistryRow>[] = [
     { id: 'print-qr', label: 'Print QR code', disabled: isMutating },

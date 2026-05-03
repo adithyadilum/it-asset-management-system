@@ -13,6 +13,9 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import * as LucideIcons from "lucide-react";
+import { cn } from "@/lib/utils";
+import { STATUS_THEMES } from "@/lib/constants";
 import {
     Select,
     SelectContent,
@@ -136,7 +139,8 @@ export type MasterDataCustomStatusRow = {
     id: number;
     code: string | null;
     name: string;
-    color: string;
+    iconName: string;
+    colorTheme: string;
     isActive: boolean;
     createdAt: Date | string;
     linkedAssets: number;
@@ -730,19 +734,26 @@ export function MasterDataManagementClient({
                 cell: ({ row }) => <span>{row.original.name}</span>,
             },
             {
-                accessorKey: "color",
-                header: "Color",
-                cell: ({ row }) => (
-                    <div className="flex items-center gap-2">
-                        <div
-                            className="h-3 w-3 rounded-full shrink-0"
-                            style={{ backgroundColor: row.original.color }}
-                        />
-                        <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">
-                            {row.original.color}
-                        </code>
-                    </div>
-                ),
+                accessorKey: "colorTheme",
+                header: "Theme & Icon",
+                cell: ({ row }) => {
+                    const iconName = row.original.iconName;
+                    const colorTheme = row.original.colorTheme;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const Icon = (LucideIcons as any)[iconName] || LucideIcons.CircleDot;
+                    
+                    return (
+                        <div className="flex items-center gap-2">
+                            <div className={cn("flex items-center justify-center h-8 w-8 rounded-md border", STATUS_THEMES[colorTheme as keyof typeof STATUS_THEMES])}>
+                                <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-xs font-medium capitalize">{colorTheme}</span>
+                                <span className="text-[10px] text-slate-500 font-mono">{iconName}</span>
+                            </div>
+                        </div>
+                    );
+                },
             },
             {
                 accessorKey: "isActive",
@@ -758,16 +769,11 @@ export function MasterDataManagementClient({
                 id: "preview",
                 header: "Badge Preview",
                 cell: ({ row }) => (
-                    <div 
-                        className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                        style={{ 
-                            borderColor: row.original.color,
-                            color: row.original.color,
-                            backgroundColor: `${row.original.color}10` // 10 is ~6% opacity in hex
-                        }}
-                    >
-                        {row.original.name}
-                    </div>
+                    <StatusBadge 
+                        value={row.original.name}
+                        iconName={row.original.iconName}
+                        colorTheme={row.original.colorTheme}
+                    />
                 ),
             },
         ],
@@ -858,7 +864,7 @@ export function MasterDataManagementClient({
         () =>
             customStatuses.filter((item) =>
                 containsSearch(
-                    [item.id, item.name, item.color],
+                    [item.id, item.name, item.colorTheme, item.iconName],
                     searchByTab.statuses
                 )
             ),

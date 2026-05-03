@@ -20,6 +20,13 @@ export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
   onClose: () => void;
   recordId: string;
+  manualStatuses?: Array<{ 
+    value: string; 
+    label: string; 
+    colorTheme?: string; 
+    iconName?: string; 
+  }>;
+  onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
 
 function formatDisplayDate(value?: string | null) {
@@ -59,7 +66,13 @@ function formatDisplayDateTime(value?: string | null) {
   });
 }
 
-export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDetailsPanelWrapperProps) {
+export function AssetDetailsPanelWrapper({
+  isOpen,
+  onClose,
+  recordId,
+  manualStatuses = [],
+  onStatusUpdateRef,
+}: AssetDetailsPanelWrapperProps) {
   const [data, setData] = useState<AssetDetailsData | null>(null);
   const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
@@ -67,6 +80,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
   const [allocations, setAllocations] = useState<AllocationData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   if (isOpen && recordId !== prevRecordId) {
     setPrevRecordId(recordId);
@@ -124,10 +138,11 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
         isMounted = false;
       };
     }
-  }, [isOpen, recordId]);
+  }, [isOpen, recordId, refreshNonce]);
 
   return (
     <AssetDetailsPanel
+      key={`${recordId}-${refreshNonce}`}
       isOpen={isOpen}
       onClose={onClose}
       isLoading={isLoading}
@@ -174,6 +189,28 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
       allocations={allocations}
       totalSeats={parseInt(String(data?.model.technicalDetails?.max_seats ?? data?.model.technicalDetails?.total_seats ?? 0), 10)}
       onCurrencyChange={setDisplayCurrencyOverride}
+      manualStatuses={manualStatuses}
+      onStatusChanged={(nextStatus) => {
+        setData((prev) => {
+          if (!prev) return null;
+          // ANY manual override clears assignments as per latest requirement
+          return {
+            ...prev,
+            asset: {
+              ...prev.asset,
+              status: nextStatus,
+              updatedAt: new Date().toISOString(),
+            },
+            assignment: null, // Clear assignment in UI immediately
+          };
+        });
+        setAllocations([]); // Also clear allocations list immediately
+        setRefreshNonce((n) => n + 1);
+        // Immediately update the table row via the ref callback
+        if (onStatusUpdateRef?.current && data?.asset.id) {
+          onStatusUpdateRef.current(data.asset.id, nextStatus);
+        }
+      }}
     />
   );
 }

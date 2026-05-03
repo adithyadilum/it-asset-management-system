@@ -16,6 +16,15 @@ import { ImagePlus, Pencil, Upload } from "lucide-react";
 
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
+    STATUS_COLORS,
+    STATUS_THEMES,
+    AVAILABLE_STATUS_ICONS,
+    type StatusTheme 
+} from "@/lib/constants";
+import * as LucideIcons from "lucide-react";
+import { CircleDot, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
     INITIAL_UPDATE_MASTER_DATA_STATE,
     MASTER_DATA_RECORD_ENTITIES,
 } from "@/lib/master-data/shared";
@@ -372,7 +381,8 @@ export function MasterDataRecordPanel({
             case "statuses": {
                 const status = selectedRecord as MasterDataCustomStatusRow;
                 nextDraft.name = status.name;
-                nextDraft.color = status.color;
+                nextDraft.iconName = status.iconName;
+                nextDraft.colorTheme = status.colorTheme;
                 nextDraft.isActive = status.isActive;
                 break;
             }
@@ -1517,7 +1527,10 @@ export function MasterDataRecordPanel({
                 );
             }
 
-            case "statuses":
+            case "statuses": {
+                const iconName = asString(draft.iconName);
+                const colorTheme = asString(draft.colorTheme) as StatusTheme;
+
                 return (
                     <>
                         {renderRecordIdPreview()}
@@ -1528,51 +1541,108 @@ export function MasterDataRecordPanel({
                                 placeholder: "e.g., In Transit",
                             })}
 
-                            <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                                    Status Color
-                                    {!isDetailMode && <span className="text-red-500"> *</span>}
-                                </label>
-                                {isDetailMode ? (
-                                    <div className="flex items-center gap-3 h-9">
-                                        <div
-                                            className="h-6 w-6 rounded border border-slate-200"
-                                            style={{ backgroundColor: asString(draft.color) }}
-                                        />
-                                        <code className="rounded bg-slate-100 px-2 py-0.5 text-sm font-mono text-slate-700">
-                                            {asString(draft.color)}
-                                        </code>
-                                    </div>
-                                ) : (
-                                    <div className="flex gap-3">
-                                        <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-md border border-slate-200">
-                                            <input
-                                                type="color"
-                                                name="color"
-                                                value={asString(draft.color)}
-                                                onChange={(e) => setDraftField("color", e.target.value)}
-                                                className="absolute -inset-2 h-14 w-14 cursor-pointer border-none bg-transparent p-0"
-                                            />
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Icon {!isDetailMode && <span className="text-red-500"> *</span>}
+                                    </label>
+                                    {isDetailMode ? (
+                                        <div className="flex items-center gap-2 h-9 border rounded-md px-3 bg-slate-100">
+                                            {(() => {
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                const Icon = (LucideIcons as any)[iconName] as LucideIcon;
+                                                return Icon ? <Icon className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />;
+                                            })()}
+                                            <span className="text-sm text-slate-700">{iconName}</span>
                                         </div>
-                                        <Input
-                                            value={asString(draft.color)}
-                                            onChange={(e) => setDraftField("color", e.target.value)}
-                                            className="font-mono h-9"
-                                            placeholder="#000000"
-                                        />
-                                    </div>
-                                )}
-                                {!isDetailMode && fieldError("color") ? (
-                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                                        {fieldError("color")}
-                                    </p>
-                                ) : null}
+                                    ) : (
+                                        <Select
+                                            value={iconName}
+                                            onValueChange={(val) => setDraftField("iconName", val)}
+                                            name="iconName"
+                                        >
+                                            <SelectTrigger className="h-9">
+                                                <div className="flex items-center gap-2">
+                                                    {(() => {
+                                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                        const Icon = (LucideIcons as any)[iconName] as LucideIcon;
+                                                        return Icon ? <Icon className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />;
+                                                    })()}
+                                                    <SelectValue placeholder="Select an icon" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <div className="grid grid-cols-4 gap-1 p-1 max-h-60 overflow-y-auto">
+                                                    {AVAILABLE_STATUS_ICONS.map((icon) => {
+                                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                        const Icon = (LucideIcons as any)[icon] as LucideIcon;
+                                                        return (
+                                                            <SelectItem 
+                                                                key={icon} 
+                                                                value={icon}
+                                                                className="flex items-center justify-center p-2 hover:bg-slate-100 cursor-pointer rounded"
+                                                            >
+                                                                {Icon ? <Icon className="h-5 w-5" /> : <span>{icon}</span>}
+                                                            </SelectItem>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                    {!isDetailMode && fieldError("iconName") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {fieldError("iconName")}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Theme {!isDetailMode && <span className="text-red-500"> *</span>}
+                                    </label>
+                                    {isDetailMode ? (
+                                        <div className={cn("flex items-center gap-2 h-9 border rounded-md px-3 bg-slate-100")}>
+                                            <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-slate-200")} />
+                                            <span className="text-sm text-slate-700 capitalize">{colorTheme}</span>
+                                        </div>
+                                    ) : (
+                                        <Select
+                                            value={colorTheme}
+                                            onValueChange={(val) => setDraftField("colorTheme", val)}
+                                            name="colorTheme"
+                                        >
+                                            <SelectTrigger className="h-9">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-slate-200")} />
+                                                    <SelectValue placeholder="Select a theme" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {STATUS_COLORS.map((theme) => (
+                                                    <SelectItem key={theme.value} value={theme.value}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[theme.value as StatusTheme])} />
+                                                            <span>{theme.label}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                    {!isDetailMode && fieldError("colorTheme") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {fieldError("colorTheme")}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
                         {renderActiveStatus()}
                     </>
                 );
+            }
         }
     };
 
