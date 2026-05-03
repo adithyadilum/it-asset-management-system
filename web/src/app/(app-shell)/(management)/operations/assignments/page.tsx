@@ -1,5 +1,9 @@
-﻿import { AssignmentsDashboard } from '@/components/features/operations/assignments/assignments-dashboard';
+﻿import { redirect } from 'next/navigation';
+
+import { AssignmentsDashboard } from '@/components/features/operations/assignments/assignments-dashboard';
 import { getAssignmentsDashboardData } from '@/lib/data/operations-assignments-repo';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { canManageAssets } from '@/lib/auth/roles';
 
 function serializeDatesForClient<T>(value: T): T {
   if (value instanceof Date) {
@@ -23,6 +27,12 @@ function serializeDatesForClient<T>(value: T): T {
 }
 
 export default async function AssignmentsPage() {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    redirect('/403');
+  }
+
   const data = await getAssignmentsDashboardData();
   const serializedData = serializeDatesForClient(data);
 
