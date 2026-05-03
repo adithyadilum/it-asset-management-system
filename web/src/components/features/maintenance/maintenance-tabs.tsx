@@ -20,6 +20,30 @@ import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket } fro
 import { format } from 'date-fns';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
+// 🚨 NEW: Expandable Text Cell Component
+const ExpandableText = ({ text, defaultWidthClass }: { text: string; defaultWidthClass: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (!text || text === 'N/A') {
+    return <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>N/A</span>;
+  }
+  
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        setIsExpanded(!isExpanded);
+      }}
+      className={`cursor-pointer hover:text-foreground transition-colors ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground ${
+        isExpanded ? 'whitespace-nowrap' : `truncate block ${defaultWidthClass}`
+      }`}
+      title={isExpanded ? "Click to collapse" : "Click to expand"}
+    >
+      {text}
+    </div>
+  );
+};
+
 type PendingFilterField = 'Asset ID' | 'Asset Name' | 'Dispatched By' | 'Issue';
 type PendingFilterOperator = 'is' | 'is not';
 
@@ -121,7 +145,6 @@ export function MaintenanceTabs({
     });
   }, [appliedFilters, pendingTickets, searchTerm]);
 
-
   const clearFilters = () => {
     setAppliedFilters([]);
     setDraftField('Asset ID');
@@ -155,7 +178,8 @@ export function MaintenanceTabs({
     {
       accessorKey: 'asset.name',
       header: 'Asset Name',
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.asset.name || row.original.model?.name || 'N/A'}</span>,
+      // 🚨 UPDATED: Expandable Asset Name
+      cell: ({ row }) => <ExpandableText text={row.original.asset.name || row.original.model?.name || 'N/A'} defaultWidthClass="w-[180px]" />,
     },
     {
       accessorKey: 'reportedBy.name',
@@ -167,9 +191,8 @@ export function MaintenanceTabs({
     {
       accessorKey: 'reportedIssue',
       header: 'Issue',
-      cell: ({ row }) => (
-        <span className={`truncate max-w-62.5 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.reportedIssue}</span>
-      ),
+      // 🚨 UPDATED: Expandable Issue
+      cell: ({ row }) => <ExpandableText text={row.original.reportedIssue} defaultWidthClass="w-[250px]" />,
     },
     {
       accessorKey: 'createdAt',
