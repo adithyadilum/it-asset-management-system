@@ -211,7 +211,7 @@ export function AssetAssignmentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[560px] rounded-xl p-0" showCloseButton={true}>
+      <DialogContent className="max-w-140 rounded-xl p-0" showCloseButton={true}>
         <DialogHeader className="gap-1 px-6 pt-5 pb-4">
           <DialogTitle className="text-[18px] font-semibold text-slate-900">
             Assign Asset: <span className="font-medium text-slate-700">{assetLabel}</span>
@@ -316,7 +316,7 @@ export function AssetAssignmentModal({
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Add any additional notes"
-              className="min-h-[80px] resize-none"
+              className="min-h-20 resize-none"
             />
           </div>
 
