@@ -11,14 +11,16 @@ import {
 } from '@/components/ui/empty';
 
 import { PendingDisposalsGrid, type PendingDisposalRow } from './pending-disposals-grid';
+import { DisposalHistoryGrid, type HistoryDisposalRow } from './disposal-history-grid';
 import { DisposalReviewPanelWrapper } from '@/components/features/disposals/disposal-review-panel-wrapper';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface DisposalsLayoutProps {
   pendingData: PendingDisposalRow[];
+  historyData?: HistoryDisposalRow[];
 }
 
-export function DisposalsLayout({ pendingData }: DisposalsLayoutProps) {
+export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -95,15 +97,8 @@ export function DisposalsLayout({ pendingData }: DisposalsLayoutProps) {
           </TabsContent>
 
           {/* Tab Content - History */}
-          <TabsContent value="history" className="m-0 flex flex-1 flex-col min-h-0 outline-none">
-            <Empty className="min-h-80 rounded-lg border-0 border-dashed border-slate-300 p-6">
-              <EmptyHeader>
-                <EmptyTitle className="text-slate-900">No disposal history</EmptyTitle>
-                <EmptyDescription className="text-slate-600">
-                  Disposal history will be implemented in a future iteration.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+          <TabsContent value="history" className="m-0 flex flex-1 flex-col min-h-0 outline-none px-6 py-4">
+            <DisposalHistoryGrid initialData={historyData} />
           </TabsContent>
         </Tabs>
       </div>
