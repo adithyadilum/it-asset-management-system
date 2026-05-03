@@ -63,48 +63,43 @@ const STATUS_OPTIONS = ['All statuses', 'Active', 'Pending', 'Flagged', 'Archive
 
 export default function Page() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4 sm:p-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-6">
 
       <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
-        <Card className="flex min-h-0 flex-col gap-0 border-border/70 shadow-sm">
-          <CardContent className="flex min-h-0 flex-col gap-0 px-6 py-6">
-            <div className="space-y-1.5 px-0 py-0">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                Standard Reports
-              </h2>
-              <p className="text-base leading-6 text-muted-foreground">
-                Generate, preview, and export compliance and financial intelligence.
-              </p>
-            </div>
+        <div className="flex min-h-0 flex-col gap-4 overflow-auto pr-1">
+          <div className="space-y-1.5 px-0 py-0">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              Standard Reports
+            </h2>
+            <p className="text-base leading-6 text-muted-foreground">
+              Generate, preview, and export compliance and financial intelligence.
+            </p>
+          </div>
 
-          <ScrollArea className="mb-4 flex-1">
-            <div className="mt-4 space-y-4 pr-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {REPORT_TEMPLATES.map((template) => (
-                  <ReportTemplateCard key={template.title} {...template} />
-                ))}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {REPORT_TEMPLATES.map((template) => (
+              <ReportTemplateCard key={template.title} {...template} />
+            ))}
 
-                <Card
-                  size="sm"
-                  className="items-center justify-center border-dashed border-border/70 bg-transparent text-center shadow-none"
-                >
-                  <CardContent className="flex min-h-[11rem] flex-col items-center justify-center gap-4 px-5 py-6 text-center">
-                    <div className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/30 text-foreground">
-                      <Plus className="size-5" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <p className="text-sm font-medium text-card-foreground">
-                        Add new report template
-                      </p>
-                      <p className="text-sm leading-5 text-muted-foreground">
-                        Extend the standard reporting library with a reusable template.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </ScrollArea>
+            <Card
+              size="sm"
+              className="items-center justify-center border-dashed border-border/70 bg-transparent text-center shadow-none"
+            >
+              <CardContent className="flex min-h-[11rem] flex-col items-center justify-center gap-4 px-5 py-6 text-center">
+                <div className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/30 text-foreground">
+                  <Plus className="size-5" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-sm font-medium text-card-foreground">
+                    Add new report template
+                  </p>
+                  <p className="text-sm leading-5 text-muted-foreground">
+                    Extend the standard reporting library with a reusable template.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="space-y-4">
             <Card className="gap-0 border-border/70 shadow-sm">
@@ -203,9 +198,8 @@ export default function Page() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         <Card className="flex min-h-0 flex-col gap-4 border-border/70 shadow-sm">
           <CardContent className="flex min-h-0 flex-col gap-4 px-6 py-6">
