@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useCallback, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useSidebar } from '@/components/ui/sidebar'; // Add this import
+import { useSidebar } from '@/components/ui/sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Empty,
@@ -24,7 +25,7 @@ export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayo
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { setOpen } = useSidebar(); // Get sidebar control
+  const { setOpen, open } = useSidebar();
 
   const currentPanel = searchParams.get('panel');
   const recordId = searchParams.get('id');
@@ -32,27 +33,56 @@ export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayo
   const isReviewOpen = currentPanel === 'review';
   const numericRecordId = recordId ? Number(recordId) : null;
 
+  const [activeTab, setActiveTab] = useState('pending');
+
   const selectedRow = numericRecordId
     ? pendingData.find((row) => row.id === numericRecordId) || null
     : null;
+
+  const closeReviewPanel = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('panel');
+    params.delete('id');
+
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, searchParams, router]);
 
   const openReviewPanel = (row: PendingDisposalRow) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('panel', 'review');
     params.set('id', String(row.id));
 
-    setOpen(false); // Close sidebar when panel opens
+    setOpen(false);
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const closeReviewPanel = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('panel');
-    params.delete('id');
+  const handleTabChange = (val: string) => {
+    if (val === activeTab) return;
 
-    // setOpen(true); 
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    if (isReviewOpen) {
+      closeReviewPanel();
+      
+      setTimeout(() => {
+        setActiveTab(val);
+      }, 450);
+    } else {
+      setActiveTab(val);
+    }
   };
+
+  useEffect(() => {
+    
+    if (open && isReviewOpen) {
+      
+      setOpen(false);
+         
+      closeReviewPanel();
+      
+      setTimeout(() => {
+        setOpen(true);
+      }, 450);
+    }
+  }, [open, isReviewOpen, closeReviewPanel, setOpen]);
 
   return (
     <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-slate-50 p-0">
@@ -66,7 +96,11 @@ export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayo
         </div>
 
         {/* Tabs Container */}
-        <Tabs defaultValue="pending" className="flex flex-1 flex-col min-h-0">
+        <Tabs 
+          value={activeTab} 
+          className="flex flex-1 flex-col min-h-0"
+          onValueChange={handleTabChange}
+        >
           {/* Tab List */}
           <div className=" px-4 pt-4">
             <TabsList className="h-8 w-fit justify-start gap-2 rounded-lg bg-slate-100 p-1">
@@ -78,7 +112,7 @@ export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayo
               </TabsTrigger>
               <TabsTrigger
                 value="history"
-                className={`rounded-md px-4 py-1.5 ${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm`}
+                className={`rounded-md px-4 py-1 ${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm`}
               >
                 Disposal History
               </TabsTrigger>
@@ -103,7 +137,7 @@ export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayo
         </Tabs>
       </div>
 
-      {/* Disposal Review Panel - Uses SlidePanel from wrapper */}
+
       <DisposalReviewPanelWrapper
         isOpen={isReviewOpen}
         onClose={closeReviewPanel}
