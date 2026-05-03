@@ -4,12 +4,7 @@ import { useEffect, useCallback, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useSidebar } from '@/components/ui/sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from '@/components/ui/empty';
+
 
 import { PendingDisposalsGrid, type PendingDisposalRow } from './pending-disposals-grid';
 import { DisposalHistoryGrid, type HistoryDisposalRow } from './disposal-history-grid';
@@ -19,9 +14,20 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 interface DisposalsLayoutProps {
   pendingData: PendingDisposalRow[];
   historyData?: HistoryDisposalRow[];
+  historyPageCount?: number;
+  historyCurrentPage?: number;
+  historyPageSize?: number;
+  historySearchQuery?: string;
 }
 
-export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayoutProps) {
+export function DisposalsLayout({ 
+  pendingData, 
+  historyData = [],
+  historyPageCount = 1,
+  historyCurrentPage = 1,
+  historyPageSize = 10,
+  historySearchQuery = '',
+}: DisposalsLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -132,7 +138,13 @@ export function DisposalsLayout({ pendingData, historyData = [] }: DisposalsLayo
 
           {/* Tab Content - History */}
           <TabsContent value="history" className="m-0 flex flex-1 flex-col min-h-0 outline-none px-6 py-4">
-            <DisposalHistoryGrid initialData={historyData} />
+            <DisposalHistoryGrid 
+              initialData={historyData} 
+              pageCount={historyPageCount}
+              currentPage={historyCurrentPage}
+              pageSize={historyPageSize}
+              searchQuery={historySearchQuery}
+            />
           </TabsContent>
         </Tabs>
       </div>

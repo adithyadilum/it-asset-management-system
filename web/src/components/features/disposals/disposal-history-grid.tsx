@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import type { ColumnDef, PaginationState } from '@tanstack/react-table';
 import { Search, FileText } from 'lucide-react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { useDebounce } from '@/hooks/use-debounce';
 
 export interface HistoryDisposalRow {
   id: number;
@@ -17,11 +19,15 @@ export interface HistoryDisposalRow {
   disposedBy: string | null;
   disposalDate: Date | null;
   status: string;
-  documentUrl: string | null;
+  documentUrls: string[];
 }
 
 interface DisposalHistoryGridProps {
   initialData: HistoryDisposalRow[];
+  pageCount?: number;
+  currentPage?: number;
+  pageSize?: number;
+  searchQuery?: string;
 }
 
 function toCellText(value: string | null | undefined) {
@@ -31,22 +37,55 @@ function toCellText(value: string | null | undefined) {
   return value;
 }
 
-export function DisposalHistoryGrid({ initialData }: DisposalHistoryGridProps) {
-  const [searchValue, setSearchValue] = useState('');
+export function DisposalHistoryGrid({ 
+  initialData, 
+  pageCount = 1,
+  currentPage = 1,
+  pageSize = 10,
+  searchQuery = '',
+}: DisposalHistoryGridProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const filteredData = useMemo(() => {
-    if (!searchValue.trim()) return initialData;
-    const lowerQuery = searchValue.toLowerCase();
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const debouncedSearch = useDebounce(localSearch, 500);
 
-    return initialData.filter(
-      (row) =>
-        row.assetTag.toLowerCase().includes(lowerQuery) ||
-        row.category.toLowerCase().includes(lowerQuery) ||
-        row.reason.toLowerCase().includes(lowerQuery) ||
-        row.flaggedBy.toLowerCase().includes(lowerQuery) ||
-        (row.disposedBy?.toLowerCase() || '').includes(lowerQuery)
-    );
-  }, [initialData, searchValue]);
+  // Sync search changes to URL
+  useEffect(() => {
+    if (debouncedSearch === searchQuery) return;
+    
+    const params = new URLSearchParams(searchParams.toString());
+    if (debouncedSearch) {
+      params.set('search', debouncedSearch);
+      params.set('page', '1'); // Reset to page 1 on new search
+    } else {
+      params.delete('search');
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  }, [debouncedSearch, pathname, router, searchParams, searchQuery]);
+
+  const paginationState = useMemo<PaginationState>(
+    () => ({
+      pageIndex: currentPage - 1,
+      pageSize,
+    }),
+    [currentPage, pageSize]
+  );
+
+  const handlePaginationChange = useCallback(
+    (updater: PaginationState | ((old: PaginationState) => PaginationState)) => {
+      const nextState =
+        typeof updater === 'function' ? updater(paginationState) : updater;
+
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('page', (nextState.pageIndex + 1).toString());
+      params.set('pageSize', nextState.pageSize.toString());
+
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [paginationState, pathname, router, searchParams]
+  );
 
   const columns = useMemo<ColumnDef<HistoryDisposalRow>[]>(
     () => [
@@ -119,39 +158,46 @@ export function DisposalHistoryGrid({ initialData }: DisposalHistoryGridProps) {
         },
       },
       {
-        id: 'document',
+        accessorKey: 'documentUrls',
         header: 'Documents',
-        size: 120,
-        minSize: 100,
-        maxSize: 150,
+        size: 160,
+        minSize: 120,
+        maxSize: 250,
         cell: ({ row }) => {
-          if (!row.original.documentUrl) {
+          const urls = row.original.documentUrls || [];
+          if (urls.length === 0) {
             return <span className="text-slate-400 text-sm">-</span>;
           }
           
-          // Extract filename from URL if possible
-          let filename = 'Document.pdf';
-          try {
-            const urlObj = new URL(row.original.documentUrl);
-            const pathParts = urlObj.pathname.split('/');
-            const lastPart = pathParts[pathParts.length - 1];
-            if (lastPart && lastPart.includes('.')) {
-              filename = decodeURIComponent(lastPart);
-            }
-          } catch {
-            // ignore
-          }
-
           return (
-            <a
-              href={row.original.documentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-            >
-              <FileText className="h-4 w-4 text-red-500" />
-              <span className="truncate text-sm font-medium">{filename}</span>
-            </a>
+            <div className="flex flex-col gap-1.5 py-1">
+              {urls.map((url, index) => {
+                let filename = `Document ${index + 1}`;
+                try {
+                  const urlObj = new URL(url);
+                  const pathParts = urlObj.pathname.split('/');
+                  const lastPart = pathParts[pathParts.length - 1];
+                  if (lastPart && lastPart.includes('.')) {
+                    filename = decodeURIComponent(lastPart);
+                  }
+                } catch {
+                  // ignore
+                }
+
+                return (
+                  <a
+                    key={index}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-red-500" />
+                    <span className="truncate text-sm font-medium" title={filename}>{filename}</span>
+                  </a>
+                );
+              })}
+            </div>
           );
         },
       },
@@ -166,8 +212,8 @@ export function DisposalHistoryGrid({ initialData }: DisposalHistoryGridProps) {
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search history..."
             className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm text-slate-900 placeholder:text-slate-500"
           />
@@ -178,8 +224,11 @@ export function DisposalHistoryGrid({ initialData }: DisposalHistoryGridProps) {
       <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
         <DataTable<HistoryDisposalRow, unknown>
           columns={columns}
-          data={filteredData}
-          initialPageSize={10}
+          data={initialData}
+          manualPagination={true}
+          pageCount={pageCount}
+          paginationState={paginationState}
+          onPaginationChange={handlePaginationChange}
           pageSizeOptions={[10, 20, 50]}
           emptyState={{
             title: 'No disposal history',
