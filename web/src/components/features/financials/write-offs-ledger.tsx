@@ -10,22 +10,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { WriteOffsLedgerRecord } from "@/types/financials";
 import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
-
-type CurrencyCode = 'USD' | 'LKR' | 'NOK';
-
-const EXCHANGE_RATES: Record<CurrencyCode, number> = {
-  USD: 1,
-  LKR: 305.50,
-  NOK: 10.85,
-};
-
-const formatCurrency = (value: number, currency: CurrencyCode) => {
-  const convertedValue = value * EXCHANGE_RATES[currency];
-  return new Intl.NumberFormat(currency === 'LKR' ? 'en-LK' : currency === 'NOK' ? 'no-NO' : 'en-US', {
-    style: "currency",
-    currency: currency,
-  }).format(convertedValue);
-};
+import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
 
 interface WriteOffsLedgerProps {
   initialData: WriteOffsLedgerRecord[];
@@ -33,7 +18,7 @@ interface WriteOffsLedgerProps {
 
 export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [currency, setCurrency] = useState<CurrencyCode>('USD');
+  const [currency, setCurrency] = useState<SupportedCurrency>('USD');
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -90,9 +75,9 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       row.assetId,
       row.category,
       row.disposalDate ? format(new Date(row.disposalDate), "MM/dd/yyyy") : "N/A",
-      (row.originalPrice * EXCHANGE_RATES[currency]).toFixed(2),
-      (row.bookValue * EXCHANGE_RATES[currency]).toFixed(2),
-      (row.salvageValue * EXCHANGE_RATES[currency]).toFixed(2),
+      convertCurrencyAmount(row.originalPrice, 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.bookValue, 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.salvageValue, 'USD', currency).toFixed(2),
     ]);
 
     const csvContent = [
@@ -133,17 +118,17 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
     {
       accessorKey: "originalPrice",
       header: "Original Purchase Price",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatCurrency(row.original.originalPrice, currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, 'USD', currency), currency)}</span>,
     },
     {
       accessorKey: "bookValue",
       header: "Book Value at Time of Disposal",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatCurrency(row.original.bookValue, currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.bookValue, 'USD', currency), currency)}</span>,
     },
     {
       accessorKey: "salvageValue",
       header: "Salvage Value",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatCurrency(row.original.salvageValue, currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.salvageValue, 'USD', currency), currency)}</span>,
     },
   ];
 
@@ -171,7 +156,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
             </PopoverAnchor>
             <PopoverContent align="end" className="w-40 p-2 bg-background border-border shadow-md rounded-lg">
               <div className="flex flex-col gap-1">
-                {(['USD', 'LKR', 'NOK'] as CurrencyCode[]).map((c) => (
+                {(['USD', 'LKR', 'NOK'] as SupportedCurrency[]).map((c) => (
                   <Button
                     key={c}
                     variant={currency === c ? 'secondary' : 'ghost'}
@@ -190,13 +175,13 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
             <PopoverAnchor asChild>
               <Button 
               variant="outline" 
-              className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium} `} 
+              className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium} relative`} 
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               >
                 <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                 Filters
                 {activeFilterCount > 0 && (
-                  <span className="ml-2 bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center z-10 shadow-sm">
                     {activeFilterCount}
                   </span>
                 )}
