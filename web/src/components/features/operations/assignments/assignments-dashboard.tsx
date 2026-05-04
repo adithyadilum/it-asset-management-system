@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSidebar } from "@/components/ui/sidebar";
 
 import { AssignmentsPanels } from "./assignments-panels";
 import {
@@ -45,6 +46,7 @@ type AssetAssignmentRow = {
   warranty: string;
   note: string;
   assetTag: string;
+  lastRepaired?: string;
 };
 
 type CategoryFilterOperator = "is" | "is not";
@@ -83,6 +85,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { state: sidebarState } = useSidebar();
   const [isMultiAssignModalOpen, setIsMultiAssignModalOpen] = useState(false);
   const [multiAssignAssets, setMultiAssignAssets] = useState<MultiAssetAssignmentItem[]>([]);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -95,6 +98,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const activeAssetId = searchParams.get("id") || "";
   const currentPanel = searchParams.get("panel");
   const isPanelOpen = currentPanel === "record" && activeAssetId !== "";
+  const isSidebarCollapsed = sidebarState === "collapsed";
+  const shouldCompactTable = isPanelOpen && !isSidebarCollapsed;
 
   // 2. Data Mapping
   const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
@@ -111,6 +116,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     dateCreated: formatDate(asset.returnedDate),
     updatedAt: formatDate(asset.returnedDate),
     warranty: "-",
+    lastRepaired: "-",
     note: asset.location ?? "-",
     assetTag: asset.assetTag,
   });
@@ -204,6 +210,14 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     setDraftCategory("");
   };
 
+  const handleClosePanel = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("panel");
+    params.delete("id");
+    params.delete("animate");
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const selectedAsset = useMemo(
     () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
     [assetRows, activeAssetId]
@@ -268,13 +282,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const handleClosePanel = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("panel");
-    params.delete("id");
-    params.delete("animate");
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+
 
   const handleMultiAssignModalOpenChange = (open: boolean) => {
     setIsMultiAssignModalOpen(open);
@@ -440,30 +448,38 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   );
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
-        <div className="mb-4 shrink-0">
-          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
-            Assignments and Returns
-          </h1>
-        </div>
+    <div
+      className="flex w-full h-full gap-6 overflow-hidden bg-slate-50 p-6"
+      style={{ "--assignment-panel-width": "clamp(520px, 36vw, 684px)" } as React.CSSProperties}
+    >
+      <div
+        className={shouldCompactTable ? "flex-none transition-all duration-300" : "flex-1 transition-all duration-300"}
+        style={shouldCompactTable ? { width: "calc(100% - var(--assignment-panel-width) - 1.5rem)" } : undefined}
+      >
+        <main className="flex min-h-0 min-w-0 h-full flex-col rounded-xl bg-white p-6 border border-slate-200 shadow-sm">
+          <div className="mb-4 shrink-0">
+            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+              Assignments and Returns
+            </h1>
+          </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <ModuleNavigationTabs tabs={tabs} defaultTab="available-assets">
-            <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAvailableRows, selectionActions)}
-            </TabsContent>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ModuleNavigationTabs tabs={tabs} defaultTab="available-assets">
+              <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredAvailableRows, selectionActions)}
+              </TabsContent>
 
-            <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAssignedRows)}
-            </TabsContent>
+              <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredAssignedRows)}
+              </TabsContent>
 
-            <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredReturnedRows)}
-            </TabsContent>
-          </ModuleNavigationTabs>
-        </div>
-      </main>
+              <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredReturnedRows)}
+              </TabsContent>
+            </ModuleNavigationTabs>
+          </div>
+        </main>
+      </div>
 
       <AssignmentsPanels
         isOpen={isPanelOpen}

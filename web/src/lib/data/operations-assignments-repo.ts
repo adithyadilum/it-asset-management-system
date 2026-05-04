@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, max } from 'drizzle-orm';
 
 import { db } from '@/db';
 import {
@@ -23,7 +23,13 @@ export interface AssignmentsDashboardRow {
   pillar: string;
   status: AssetStatus | 'Returned';
   location: string | null;
+  assignmentId?: number | null;
   assignedTo: string | null;
+  assignedToEmail?: string | null;
+  assignedDate?: Date | null;
+  expectedReturnDate?: Date | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
   returnedDate: Date | null;
 }
 
@@ -245,6 +251,9 @@ async function loadAssetsByStatusDirect(
       pillar: categories.pillar,
       assetLocation: locations.name,
       assignedToUser: users.name,
+      assignedToEmail: users.email,
+      createdAt: assets.createdAt,
+      updatedAt: assets.updatedAt,
       assignedToLocationId: assetAssignments.assignedToLocationId,
     })
     .from(assets)
@@ -277,6 +286,73 @@ async function loadAssetsByStatusDirect(
     status: status,
     location: row.assetLocation,
     assignedTo: row.assignedToUser || null,
+    assignedToEmail: row.assignedToEmail || null,
+    createdAt: row.createdAt || null,
+    updatedAt: row.updatedAt || null,
+    returnedDate: null,
+  }));
+}
+
+async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
+  const latestActiveAssignments = db
+    .select({
+      assetId: assetAssignments.assetId,
+      latestAssignmentId: max(assetAssignments.id),
+    })
+    .from(assetAssignments)
+    .where(isNull(assetAssignments.returnedDate))
+    .groupBy(assetAssignments.assetId)
+    .as('latest_active_assignments');
+
+  const results = await db
+    .select({
+      id: assets.id,
+      assetTag: assets.assetTag,
+      name: assets.name,
+      serialNumber: assets.serialNumber,
+      category: categories.name,
+      pillar: categories.pillar,
+      assetLocation: locations.name,
+      assignmentId: assetAssignments.id,
+      assignedToUser: users.name,
+      assignedToEmail: users.email,
+      assignedDate: assetAssignments.assignedDate,
+      expectedReturnDate: assetAssignments.expectedReturnDate,
+      createdAt: assets.createdAt,
+      updatedAt: assets.updatedAt,
+    })
+    .from(assets)
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(categories, eq(models.categoryId, categories.id))
+    .leftJoin(locations, eq(assets.locationId, locations.id))
+    .innerJoin(
+      latestActiveAssignments,
+      eq(latestActiveAssignments.assetId, assets.id)
+    )
+    .innerJoin(
+      assetAssignments,
+      eq(assetAssignments.id, latestActiveAssignments.latestAssignmentId)
+    )
+    .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .where(and(eq(assets.status, 'Assigned'), inArray(categories.pillar, DASHBOARD_PILLARS)))
+    .orderBy(desc(assets.createdAt));
+
+  return results.map((row) => ({
+    id: row.id,
+    assetTag: row.assetTag,
+    name: row.name,
+    serialNumber: row.serialNumber,
+    category: row.category,
+    pillar: row.pillar,
+    status: 'Assigned',
+    location: row.assetLocation,
+    assignmentId: row.assignmentId,
+    assignedTo: row.assignedToUser || null,
+    assignedToEmail: row.assignedToEmail || null,
+    assignedDate: row.assignedDate,
+    expectedReturnDate: row.expectedReturnDate ? new Date(row.expectedReturnDate) : null,
+    createdAt: row.createdAt || null,
+    updatedAt: row.updatedAt || null,
     returnedDate: null,
   }));
 }
@@ -284,6 +360,10 @@ async function loadAssetsByStatusDirect(
 async function loadAssetsByStatus(
   status: AssetStatus
 ): Promise<AssignmentsDashboardRow[]> {
+  if (status === 'Assigned') {
+    return loadAssignedAssetsDirect();
+  }
+
   return loadAssetsByStatusDirect(status);
 }
 
@@ -337,7 +417,12 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
   return [...returnedRowsByAssetId.values()];
 }
 
-export async function getAssignmentsDashboardData(): Promise<AssignmentsDashboardData> {
+export async function getAssignmentsDashboardData(tab?: AssignmentsDashboardTab): Promise<AssignmentsDashboardData> {
+  if (tab === 'assigned') {
+    const assigned = await loadAssetsByStatus('Assigned');
+    return { available: [], assigned, returned: [] };
+  }
+
   const [available, assigned, returned] = await Promise.all([
     loadAssetsByStatus('Available'),
     loadAssetsByStatus('Assigned'),

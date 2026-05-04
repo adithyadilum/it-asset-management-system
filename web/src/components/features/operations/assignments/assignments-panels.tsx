@@ -48,12 +48,15 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 		return selectedAsset.assetId;
 	}, [selectedAsset]);
 
+	if (!isOpen || !selectedAsset) {
+		return null;
+	}
+
 	return (
 		<>
 			<AssetAssignmentDetailsPanel
-				isOpen={isOpen}
-				onClose={onClose}
 				isLoading={false}
+				onClose={onClose}
 				assetId={selectedAsset?.assetId ?? ""}
 				assetTag={selectedAsset?.assetTag ?? "QR Code"}
 				category={selectedAsset?.category ?? ""}
@@ -67,7 +70,6 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 				updatedAt={selectedAsset?.updatedAt ?? ""}
 				warranty={selectedAsset?.warranty ?? ""}
 				lastRepaired={selectedAsset?.lastRepaired ?? ""}
-
 				note={selectedAsset?.note ?? ""}
 				status={selectedAsset?.status ?? "Available"}
 				maintenanceEvents={[]}
@@ -76,7 +78,7 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 			/>
 
 			<AssetAssignmentModal
-				isOpen={isOpen && isAssignmentModalOpen}
+				isOpen={isAssignmentModalOpen}
 				assetId={selectedAsset?.assetId ?? ""}
 				assetLabel={assetLabel}
 				assetGroup={selectedAsset?.group ?? ""}
