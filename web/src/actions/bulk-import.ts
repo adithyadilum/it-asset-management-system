@@ -196,6 +196,24 @@ export async function executeBulkImport(
     };
   }
 
+  const BULK_IMPORT_LOCK_ID = 7777;
+  const lockResult = await db.execute(
+    sql`SELECT pg_try_advisory_lock(${BULK_IMPORT_LOCK_ID})`
+  );
+
+  // Note: lockResult.rows[0] in postgres.js driver using drizzle usually has the column name.
+  // Wait, the postgres driver we use is `pg` or `@neondatabase/serverless` or `postgres`.
+  // Drizzle `db.execute` returns an object. Let's cast properly.
+  const lockGranted = lockResult.rows[0]?.pg_try_advisory_lock;
+
+  if (!lockGranted) {
+    return {
+      success: false,
+      message:
+        'A bulk import is currently in progress. Please wait for it to complete.',
+    };
+  }
+
   try {
     const category = await db.query.categories.findFirst({
       where: eq(categories.id, categoryId),
@@ -325,6 +343,8 @@ export async function executeBulkImport(
           ? error.message
           : 'An unexpected error occurred during import execution.',
     };
+  } finally {
+    await db.execute(sql`SELECT pg_advisory_unlock(${BULK_IMPORT_LOCK_ID})`);
   }
 }
 
