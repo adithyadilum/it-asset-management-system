@@ -44,3 +44,14 @@ export type ImportErrorRow = {
   errorField: string;
   errorMessage: string;
 };
+
+export type BulkImportExecutionResult = {
+  success: boolean;
+  message?: string;
+  summary?: {
+    successCount: number;
+    failedCount: number;
+    importedAssetTags: string[];
+  };
+  errorCsvData?: string; // CSV string of rows that failed during insert
+};
