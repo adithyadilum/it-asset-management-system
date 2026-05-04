@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useSidebar } from "@/components/ui/sidebar";
 
 import { AssignmentsPanels } from "./assignments-panels";
+import { useSidebar } from "@/components/ui/sidebar";
 import {
   MultiAssetAssignmentModal,
   type MultiAssetAssignmentItem,
@@ -85,7 +85,6 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { state: sidebarState } = useSidebar();
   const [isMultiAssignModalOpen, setIsMultiAssignModalOpen] = useState(false);
   const [multiAssignAssets, setMultiAssignAssets] = useState<MultiAssetAssignmentItem[]>([]);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -98,8 +97,6 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const activeAssetId = searchParams.get("id") || "";
   const currentPanel = searchParams.get("panel");
   const isPanelOpen = currentPanel === "record" && activeAssetId !== "";
-  const isSidebarCollapsed = sidebarState === "collapsed";
-  const shouldCompactTable = isPanelOpen && !isSidebarCollapsed;
 
   // 2. Data Mapping
   const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
@@ -222,6 +219,10 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
     [assetRows, activeAssetId]
   );
+
+  const { state } = useSidebar();
+  const sidebarCollapsed = state === "collapsed";
+  const shouldShrinkLeftCard = !sidebarCollapsed && isPanelOpen;
 
   const selectionActions = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
     () => [
@@ -448,13 +449,11 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   );
 
   return (
-    <div
-      className="flex w-full h-full gap-6 overflow-hidden bg-slate-50 p-6"
-      style={{ "--assignment-panel-width": "clamp(520px, 36vw, 684px)" } as React.CSSProperties}
-    >
+    <div className="flex w-full h-full gap-6 overflow-hidden bg-slate-50 p-6">
       <div
-        className={shouldCompactTable ? "flex-none transition-all duration-300" : "flex-1 transition-all duration-300"}
-        style={shouldCompactTable ? { width: "calc(100% - var(--assignment-panel-width) - 1.5rem)" } : undefined}
+        className={`flex-1 transition-all duration-300 min-w-0 ${
+          shouldShrinkLeftCard ? "max-w-[calc(100%-684px)]" : ""
+        }`}
       >
         <main className="flex min-h-0 min-w-0 h-full flex-col rounded-xl bg-white p-6 border border-slate-200 shadow-sm">
           <div className="mb-4 shrink-0">
