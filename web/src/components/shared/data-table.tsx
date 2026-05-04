@@ -18,6 +18,7 @@ import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 import { TableEmptyState, type TableEmptyStateAction } from "@/components/shared/table-empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Table,
   TableBody,
@@ -66,6 +67,8 @@ type DataTableProps<TData, TValue> = {
   paginationState?: PaginationState
   onPaginationChange?: OnChangeFn<PaginationState>
   footerText?: React.ReactNode
+  
+  // 1. ADDED THESE TWO OPTIONAL PROPS
   rowSelection?: RowSelectionState
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
 }
@@ -91,6 +94,8 @@ export function DataTable<TData, TValue>({
   paginationState,
   onPaginationChange,
   footerText,
+  
+  // 2. DESTRUCTURED THEM HERE
   rowSelection: externalRowSelection,
   onRowSelectionChange: externalOnRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
@@ -104,19 +109,23 @@ export function DataTable<TData, TValue>({
     ) {
       return String(value)
     }
+
     return null
   }, [])
 
   const syncOverflowTitle = React.useCallback((element: HTMLElement) => {
     const fullText = element.dataset.fulltext
+
     if (!fullText) {
       element.removeAttribute("title")
       return
     }
+
     if (element.scrollWidth > element.clientWidth) {
       element.title = fullText
       return
     }
+
     element.removeAttribute("title")
   }, [])
 
@@ -132,11 +141,13 @@ export function DataTable<TData, TValue>({
       (value) => value > 0
     )
     normalized.sort((a, b) => a - b)
+
     return normalized
   }, [initialPageSize, pageSizeOptions])
 
   const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
   
+  // 3. UPDATED THIS TO USE EXTERNAL STATE IF PROVIDED (matches pagination logic)
   const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>({})
   const rowSelection = externalRowSelection ?? internalRowSelection
   const setRowSelection = externalOnRowSelectionChange ?? setInternalRowSelection
@@ -200,10 +211,15 @@ export function DataTable<TData, TValue>({
     [columns, enableRowSelection, selectionColumn]
   )
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns: tableColumns,
-    state: { sorting, rowSelection, pagination },
+    state: {
+      sorting,
+      rowSelection,
+      pagination,
+    },
     manualPagination,
     pageCount,
     onSortingChange: setSorting,
@@ -219,9 +235,15 @@ export function DataTable<TData, TValue>({
 
   const handleRowClick = React.useCallback(
     (event: React.MouseEvent<HTMLTableRowElement>, rowData: TData, rowIndex: number) => {
-      if (!onRowClick) return
+      if (!onRowClick) {
+        return
+      }
+
       const clickedElement = event.target as HTMLElement
-      if (clickedElement.closest(INTERACTIVE_SELECTOR)) return
+      if (clickedElement.closest(INTERACTIVE_SELECTOR)) {
+        return
+      }
+
       onRowClick(rowData, rowIndex)
     },
     [onRowClick]
@@ -236,6 +258,82 @@ export function DataTable<TData, TValue>({
   const computedPageCount = Math.max(table.getPageCount(), 1)
   const currentPage = Math.min(table.getState().pagination.pageIndex + 1, computedPageCount)
 
+  const rowsBody = (
+    <Table className="table-fixed">
+      <TableBody>
+        {table.getRowModel().rows.length > 0 ? (
+          table.getRowModel().rows.map((row) => {
+            const isActive =
+              (activeRowCondition ? activeRowCondition(row.original) : false) ||
+              (isRowActive ? isRowActive(row.original, row.index) : false);
+
+            return (
+              <TableRow
+                key={row.id}
+                data-state={(row.getIsSelected() || isActive) ? "selected" : undefined}
+                onClick={(event) => handleRowClick(event, row.original, row.index)}
+                className={cn(
+                  "h-13.25 border-border",
+                  isRowClickable && "cursor-pointer hover:bg-muted/50",
+                  isActive && "bg-slate-50"
+                )}
+              >
+              {row.getVisibleCells().map((cell) => {
+                const cellValue = cell.getValue()
+                const cellTitle = getDisplayText(cellValue)
+                const compactIdColumn = isCompactIdColumn(cell.column.id)
+
+                return (
+                  <TableCell
+                    key={cell.id}
+                    className={cn(
+                      "h-13.25 overflow-hidden px-4 text-foreground",
+                      "font-normal",
+                      cell.column.id === "select" && "w-13 px-0",
+                      compactIdColumn && "w-28"
+                    )}
+                    style={{
+                      width: cell.column.getSize(),
+                      maxWidth: cell.column.getSize(),
+                    }}
+                  >
+                    <div
+                      className={cn(
+                        (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
+                          ?.noTruncate
+                          ? "min-w-0"
+                          : "truncate"
+                      )}
+                      data-fulltext={cellTitle ?? undefined}
+                      onMouseEnter={handleOverflowTooltip}
+                      onFocus={handleOverflowTooltip}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  </TableCell>
+                )
+              })}
+            </TableRow>
+          )
+        })
+        ) : (
+          <TableRow className="border-border">
+            <TableCell
+              colSpan={table.getAllLeafColumns().length}
+              className="py-8"
+            >
+              <TableEmptyState
+                title={emptyState?.title}
+                description={emptyState?.description}
+                action={emptyState?.action}
+              />
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  )
+
   return (
     <div
       className={cn(
@@ -243,198 +341,135 @@ export function DataTable<TData, TValue>({
         className
       )}
     >
-      {/* 🚨 UNIFIED TABLE CONTAINER: Handles overflow-auto and min-w-max for horizontal scrolling */}
-      <div className={cn("flex-1 min-h-0 w-full relative", enableRowScroll && "overflow-auto")}>
-        <Table className="w-full min-w-max">
-          <TableHeader className={cn("bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0", enableRowScroll && "sticky top-0 z-10")}>
-            {selectedRows > 0 ? (
-              <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500">
-                <TableHead
-                  colSpan={table.getAllLeafColumns().length}
-                  className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6"
-                >
-                  <div className="flex h-13.25 w-full items-center justify-between gap-4">
-                    <div className="flex min-w-0 items-center gap-3" data-row-panel-ignore="true">
-                      <Checkbox
-                        aria-label="Select all rows"
-                        checked={
-                          table.getIsAllRowsSelected() ||
-                          (table.getIsSomeRowsSelected() ? "indeterminate" : false)
-                        }
-                        onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
-                        className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
-                      />
-                      <p className="truncate text-sm font-medium text-white">
-                        {actionHeaderLabel}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-1.5" data-row-panel-ignore="true">
-                      {selectionActions.map((action) => {
-                        const isDisabled =
-                          typeof action.disabled === "function"
-                            ? action.disabled(selectedRowData)
-                            : Boolean(action.disabled)
-
-                        return (
-                          <Button
-                            key={action.id}
-                            type="button"
-                            size="sm"
-                            variant={
-                              action.tone === "destructive"
-                                ? "destructive"
-                                : action.tone === "primary"
-                                  ? "default"
-                                  : "outline"
-                            }
-                            disabled={isDisabled}
-                            onClick={() => action.onClick?.(selectedRowData)}
-                            className={cn(
-                              "h-9 rounded-md px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]",
-                              action.tone === "destructive"
-                                ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                : action.tone === "primary"
-                                  ? "border-[#00145a] bg-[#00145a] text-white hover:bg-[#000d3d]"
-                                : "border-border bg-muted text-foreground hover:bg-muted/80"
-                            )}
-                          >
-                            {action.label}
-                          </Button>
-                        )
-                      })}
-                    </div>
+      <Table className="table-fixed">
+        <TableHeader className="bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
+          {selectedRows > 0 ? (
+            <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500">
+              <TableHead
+                colSpan={table.getAllLeafColumns().length}
+                className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6"
+              >
+                <div className="flex h-13.25 w-full items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3" data-row-panel-ignore="true">
+                    <Checkbox
+                      aria-label="Select all rows"
+                      checked={
+                        table.getIsAllRowsSelected() ||
+                        (table.getIsSomeRowsSelected() ? "indeterminate" : false)
+                      }
+                      onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
+                      className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
+                    />
+                    <p className="truncate text-sm font-medium text-white">
+                      {actionHeaderLabel}
+                    </p>
                   </div>
-                </TableHead>
-              </TableRow>
-            ) : (
-              table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="h-13.25 border-border">
-                  {headerGroup.headers.map((header) => {
-                    const canSort = header.column.getCanSort()
-                    const sortState = header.column.getIsSorted()
-                    const SortIcon =
-                      sortState === "asc"
-                        ? ChevronUp
-                        : sortState === "desc"
-                          ? ChevronDown
-                          : ChevronsUpDown
 
-                    return (
-                      <TableHead
-                        key={header.id}
-                        className={cn(
-                          "h-13.25 bg-muted px-4 text-foreground",
-                          "font-medium",
-                          header.column.id === "select" && "w-13 px-0",
-                          isCompactIdColumn(header.column.id) && "w-28"
-                        )}
-                        style={{ width: header.column.getSize() }} // 🚨 Removed maxWidth to allow natural expansion!
-                      >
-                        {header.isPlaceholder ? null : canSort ? (
-                          <button
-                            type="button"
-                            onClick={header.column.getToggleSortingHandler()}
-                            className="inline-flex min-w-0 max-w-full items-center gap-2 text-left"
-                          >
-                            <span
-                              className="truncate"
-                              data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
-                              onMouseEnter={handleOverflowTooltip}
-                              onFocus={handleOverflowTooltip}
-                            >
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                            </span>
-                            <SortIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
-                          </button>
-                        ) : (
+                  <div className="flex flex-wrap items-center gap-1.5" data-row-panel-ignore="true">
+                    {selectionActions.map((action) => {
+                      const isDisabled =
+                        typeof action.disabled === "function"
+                          ? action.disabled(selectedRowData)
+                          : Boolean(action.disabled)
+
+                      return (
+                        <Button
+                          key={action.id}
+                          type="button"
+                          size="sm"
+                          variant={
+                            action.tone === "destructive"
+                              ? "destructive"
+                              : action.tone === "primary"
+                                ? "default"
+                                : "outline"
+                          }
+                          disabled={isDisabled}
+                          onClick={() => action.onClick?.(selectedRowData)}
+                          className={cn(
+                            "h-9 rounded-md px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]",
+                            action.tone === "destructive"
+                              ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              : action.tone === "primary"
+                                ? "border-[#00145a] bg-[#00145a] text-white hover:bg-[#000d3d]"
+                              : "border-border bg-muted text-foreground hover:bg-muted/80"
+                          )}
+                        >
+                          {action.label}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </TableHead>
+            </TableRow>
+          ) : (
+            table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="h-13.25 border-border">
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort()
+                  const sortState = header.column.getIsSorted()
+                  const SortIcon =
+                    sortState === "asc"
+                      ? ChevronUp
+                      : sortState === "desc"
+                        ? ChevronDown
+                        : ChevronsUpDown
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        "h-13.25 bg-muted px-4 text-foreground",
+                        "font-medium",
+                        header.column.id === "select" && "w-13 px-0",
+                        isCompactIdColumn(header.column.id) && "w-28"
+                      )}
+                      style={{
+                        width: header.column.getSize(),
+                        maxWidth: header.column.getSize(),
+                      }}
+                    >
+                      {header.isPlaceholder ? null : canSort ? (
+                        <button
+                          type="button"
+                          onClick={header.column.getToggleSortingHandler()}
+                          className="inline-flex min-w-0 max-w-full items-center gap-2 text-left"
+                        >
                           <span
-                            className="block truncate"
+                            className="truncate"
                             data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
                             onMouseEnter={handleOverflowTooltip}
                             onFocus={handleOverflowTooltip}
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                           </span>
-                        )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))
-            )}
-          </TableHeader>
-          
-          <TableBody>
-            {table.getRowModel().rows.length > 0 ? (
-              table.getRowModel().rows.map((row) => {
-                const isActive =
-                  (activeRowCondition ? activeRowCondition(row.original) : false) ||
-                  (isRowActive ? isRowActive(row.original, row.index) : false);
-
-                return (
-                  <TableRow
-                    key={row.id}
-                    data-state={(row.getIsSelected() || isActive) ? "selected" : undefined}
-                    onClick={(event) => handleRowClick(event, row.original, row.index)}
-                    className={cn(
-                      "h-13.25 border-border",
-                      isRowClickable && "cursor-pointer hover:bg-muted/50",
-                      isActive && "bg-slate-50"
-                    )}
-                  >
-                  {row.getVisibleCells().map((cell) => {
-                    const cellValue = cell.getValue()
-                    const cellTitle = getDisplayText(cellValue)
-                    const compactIdColumn = isCompactIdColumn(cell.column.id)
-
-                    return (
-                      <TableCell
-                        key={cell.id}
-                        className={cn(
-                          "h-13.25 overflow-hidden px-4 text-foreground",
-                          "font-normal",
-                          cell.column.id === "select" && "w-13 px-0",
-                          compactIdColumn && "w-28"
-                        )}
-                        style={{ width: cell.column.getSize() }} // 🚨 Removed maxWidth to allow natural expansion!
-                      >
-                        <div
-                          className={cn(
-                            (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
-                              ?.noTruncate
-                              ? "min-w-0"
-                              : "truncate"
-                          )}
-                          data-fulltext={cellTitle ?? undefined}
+                          <SortIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                        </button>
+                      ) : (
+                        <span
+                          className="block truncate"
+                          data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
                           onMouseEnter={handleOverflowTooltip}
                           onFocus={handleOverflowTooltip}
                         >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </TableCell>
-                    )
-                  })}
-                  </TableRow>
-                )
-              })
-            ) : (
-              <TableRow className="border-border">
-                <TableCell
-                  colSpan={table.getAllLeafColumns().length}
-                  className="py-8"
-                >
-                  <TableEmptyState
-                    title={emptyState?.title}
-                    description={emptyState?.description}
-                    action={emptyState?.action}
-                  />
-                </TableCell>
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </span>
+                      )}
+                    </TableHead>
+                  )
+                })}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          )}
+        </TableHeader>
+      </Table>
+
+      {enableRowScroll ? (
+        <ScrollArea className="flex-1 min-h-0">{rowsBody}</ScrollArea>
+      ) : (
+        <div className="flex-1 min-h-0">{rowsBody}</div>
+      )}
 
       <div className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-sm sm:grid-cols-3">
         <div className="text-muted-foreground">
