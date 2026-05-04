@@ -20,30 +20,6 @@ import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket } fro
 import { format } from 'date-fns';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
-// 🚨 NEW: Expandable Text Cell Component
-const ExpandableText = ({ text, defaultWidthClass }: { text: string; defaultWidthClass: string }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  if (!text || text === 'N/A') {
-    return <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>N/A</span>;
-  }
-  
-  return (
-    <div
-      onClick={(e) => {
-        e.stopPropagation();
-        setIsExpanded(!isExpanded);
-      }}
-      className={`cursor-pointer hover:text-foreground transition-colors ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground ${
-        isExpanded ? 'whitespace-nowrap' : `truncate block ${defaultWidthClass}`
-      }`}
-      title={isExpanded ? "Click to collapse" : "Click to expand"}
-    >
-      {text}
-    </div>
-  );
-};
-
 type PendingFilterField = 'Asset ID' | 'Asset Name' | 'Dispatched By' | 'Issue';
 type PendingFilterOperator = 'is' | 'is not';
 
@@ -145,6 +121,7 @@ export function MaintenanceTabs({
     });
   }, [appliedFilters, pendingTickets, searchTerm]);
 
+
   const clearFilters = () => {
     setAppliedFilters([]);
     setDraftField('Asset ID');
@@ -178,8 +155,7 @@ export function MaintenanceTabs({
     {
       accessorKey: 'asset.name',
       header: 'Asset Name',
-      // 🚨 UPDATED: Expandable Asset Name
-      cell: ({ row }) => <ExpandableText text={row.original.asset.name || row.original.model?.name || 'N/A'} defaultWidthClass="w-[180px]" />,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.asset.name || row.original.model?.name || 'N/A'}</span>,
     },
     {
       accessorKey: 'reportedBy.name',
@@ -191,8 +167,9 @@ export function MaintenanceTabs({
     {
       accessorKey: 'reportedIssue',
       header: 'Issue',
-      // 🚨 UPDATED: Expandable Issue
-      cell: ({ row }) => <ExpandableText text={row.original.reportedIssue} defaultWidthClass="w-[250px]" />,
+      cell: ({ row }) => (
+        <span className={`truncate max-w-62.5 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.reportedIssue}</span>
+      ),
     },
     {
       accessorKey: 'createdAt',
@@ -253,7 +230,7 @@ export function MaintenanceTabs({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className={`h-8 rounded-lg border-border bg-background px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                    className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
                     onClick={() => setIsFilterPopoverOpen((currentOpen) => !currentOpen)}
                   >
                     Filters
@@ -264,14 +241,14 @@ export function MaintenanceTabs({
                   align="end"
                   side="bottom"
                   sideOffset={10}
-                  className="w-61.25 rounded-lg border border-border bg-background p-0 shadow-xl"
+                  className="w-61.25 rounded-lg border border-slate-200 p-0 shadow-xl"
                 >
-                  <div className="border-b border-border px-3 py-2">
+                  <div className="border-b border-slate-200 px-3 py-2">
                     <div className="flex items-center justify-between">
-                      <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Filter by</h3>
+                      <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
                       <button
                         type="button"
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-slate-400 hover:text-slate-600"
                         onClick={() => setIsFilterPopoverOpen(false)}
                       >
                         <X className="size-4" />
@@ -283,7 +260,7 @@ export function MaintenanceTabs({
                     <select
                       value={draftField}
                       onChange={(event) => setDraftField(event.target.value as PendingFilterField)}
-                      className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
                     >
                       {pendingFilterFieldOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -292,7 +269,7 @@ export function MaintenanceTabs({
                       ))}
                     </select>
 
-                    <div className={`space-y-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}>
+                    <div className="space-y-2 text-sm text-slate-700">
                       <label className="flex items-center gap-2">
                         <input
                           type="radio"
@@ -314,7 +291,7 @@ export function MaintenanceTabs({
                     <select
                       value={draftValue}
                       onChange={(event) => setDraftValue(event.target.value)}
-                      className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                      className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
                     >
                       <option value="" disabled>
                         Select value
@@ -327,12 +304,12 @@ export function MaintenanceTabs({
                     </select>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
+                  <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-3 py-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className={`h-8 rounded-lg border-border bg-secondary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-secondary-foreground hover:bg-secondary/80`}
+                      className="h-8 rounded-lg border-slate-200 px-3 text-sm"
                       onClick={() => setIsFilterPopoverOpen(false)}
                     >
                       Cancel
@@ -340,7 +317,7 @@ export function MaintenanceTabs({
                     <Button
                       type="button"
                       size="sm"
-                      className={`h-8 rounded-lg bg-primary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-primary-foreground hover:bg-primary/90`}
+                      className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
                       onClick={applyFilter}
                     >
                       Apply Filter
@@ -352,17 +329,17 @@ export function MaintenanceTabs({
           </div>
 
           {appliedFilters.length > 0 ? (
-            <div className="flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 {appliedFilters.map((filter) => (
                   <span
                     key={filter.field}
-                    className={`inline-flex h-8 items-center gap-2 rounded-lg bg-muted/50 px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                    className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700"
                   >
                     {`${filter.field} ${filter.operator} ${filter.value}`}
                     <button
                       type="button"
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-slate-500 hover:text-slate-700"
                       onClick={() => clearFilter(filter.field)}
                     >
                       <X className="size-4" />
@@ -375,7 +352,7 @@ export function MaintenanceTabs({
                 type="button"
                 variant="outline"
                 size="sm"
-                className={`h-8 rounded-lg border-border bg-background px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
                 onClick={clearFilters}
               >
                 Clear Filters
@@ -398,7 +375,7 @@ export function MaintenanceTabs({
                     title: 'No pending maintenance tickets found',
                     description: 'New maintenance requests will appear here once they are submitted.',
                   }}
-                  className="border-0 flex-1 min-h-0"
+                  className="border-0 h-full flex-1"
                   enableRowScroll={true}
                   activeRowCondition={(row: PendingReviewTicket) => row.id === selectedTicketId}
                   enableRowSelection={false}
