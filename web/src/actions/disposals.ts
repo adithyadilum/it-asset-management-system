@@ -15,6 +15,7 @@ import {
   brands, 
   systemAuditLogs,
   maintenanceTickets,
+  assetDocuments,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { uploadFileToStorage } from '@/lib/storage'; 
@@ -668,6 +669,21 @@ export async function executeAssetDisposal(
 
       if (updatedAssets.length !== normalizedAssetIds.length) {
         throw new Error('Failed to update all assets.');
+      }
+
+      // 5b. Save uploaded disposal certificates/receipts
+      const documentEntries = normalizedAssetIds.flatMap((assetId) => 
+        validData.receiptUrls.map((url) => ({
+          assetId,
+          documentType: 'disposal-certificate',
+          fileUrl: url,
+          uploadedById: user.id,
+          uploadedAt: new Date(),
+        }))
+      );
+
+      if (documentEntries.length > 0) {
+        await tx.insert(assetDocuments).values(documentEntries);
       }
 
       // 6. Log comprehensive audit trail
