@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   FilterRow,
   ReportTemplateCard,
@@ -62,7 +63,7 @@ export default function Page() {
           {/* Header Section - Fixed */}
           <div className="px-4 pt-4 pb-0 shrink-0">
             <div className="space-y-1.5">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              <h2 className={TYPOGRAPHY_CLASSNAMES.text2xlSemiBold}>
                 Standard Reports
               </h2>
             </div>
@@ -83,10 +84,10 @@ export default function Page() {
                   <CardContent className="flex min-h-[11rem] flex-col items-center justify-center gap-4 p-4 text-center">
                     <Plus className="size-6 text-foreground" />
                     <div className="space-y-1.5">
-                      <p className="text-sm font-medium text-card-foreground">
+                      <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                         Add new report template
                       </p>
-                      <p className="text-sm leading-5 text-muted-foreground">
+                      <p className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
                         Extend the standard reporting library with a reusable template.
                       </p>
                     </div>
@@ -99,7 +100,7 @@ export default function Page() {
           {/* Footer Configuration Section - Fixed */}
           <div className="flex flex-col gap-4 px-4 pt-4 pb-4 shrink-0">
             <div className="grid gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] md:items-center">
-              <div className="text-sm font-medium text-foreground">
+              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                 Primary Data Source
               </div>
               <Select>
@@ -119,7 +120,7 @@ export default function Page() {
             <Card className="gap-0 border-border bg-card">
               <CardHeader className="flex flex-col items-start gap-4 p-4">
                 <div className="flex w-full items-center justify-start gap-2.5">
-                  <CardTitle className="flex-1 text-base font-medium text-card-foreground">
+                  <CardTitle className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                     Filters
                   </CardTitle>
                   <ListFilter className="size-5 text-foreground" />
@@ -199,7 +200,7 @@ export default function Page() {
           <CardHeader className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-semibold text-foreground">
+                <h3 className={TYPOGRAPHY_CLASSNAMES.textLgSemiBold}>
                   Report Preview (Showing first 0 rows)
                 </h3>
               </div>
@@ -222,7 +223,7 @@ export default function Page() {
                 <div className="flex max-w-lg flex-col items-center gap-4 text-center text-muted-foreground">
                   <Filter className="size-12 text-foreground" strokeWidth={1} />
                   <div className="space-y-1.5">
-                    <p className="text-lg font-normal leading-7 text-muted-foreground">
+                    <p className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
                       Select your filters and click Preview Data to see results here.
                     </p>
                   </div>
