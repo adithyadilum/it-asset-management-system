@@ -58,19 +58,16 @@ export default function Page() {
   return (
     <div className="flex h-full flex-1 flex-col gap-6 overflow-hidden bg-muted p-1">
       <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[524px_minmax(0,1fr)]">
-        <Card className="flex min-h-0 flex-col gap-0 border-border bg-background">
-          <ScrollArea className="h-full min-h-0 flex-1">
+        <div className="flex min-h-0 flex-col rounded-xl gap-6 bg-background">
             <div className="space-y-4 p-4 pb-12">
-              <div className="space-y-1.5">
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                  Standard Reports
-                </h2>
-                <p className="text-base leading-6 text-muted-foreground">
-                  Generate, preview, and export compliance and financial intelligence.
-                </p>
-              </div>
+            <div className="space-y-1.5">
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                Standard Reports
+              </h2>
+            </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+            <ScrollArea className="h-56 min-h-0 pr-3">
+              <div className="grid gap-4 p-2 sm:grid-cols-2">
                 {REPORT_TEMPLATES.map((template) => (
                   <ReportTemplateCard key={template.title} {...template} />
                 ))}
@@ -92,27 +89,28 @@ export default function Page() {
                   </CardContent>
                 </Card>
               </div>
+            </ScrollArea>
 
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] md:items-center">
-                    <div className="text-sm font-medium text-foreground">
-                      Primary Data Source
-                    </div>
-                    <Select>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choose source" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SOURCE_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] md:items-center">
+              <div className="text-sm font-medium text-foreground">
+                Primary Data Source
+              </div>
+              <Select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <Card className="gap-0 border-border bg-card">
-                <CardHeader className="flex flex-col items-start gap-4 border-b border-border p-4">
+            <Card className="gap-0 border-border bg-card">
+                <CardHeader className="flex flex-col items-start gap-4 p-4">
                   <div className="flex w-full items-center justify-start gap-2.5">
                     <CardTitle className="flex-1 text-base font-medium text-card-foreground">
                       Filters
@@ -120,7 +118,7 @@ export default function Page() {
                     <ListFilter className="size-5 text-foreground" />
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col gap-4 p-4">
+                <CardContent className="flex flex-col gap-4 p-4 pt-3">
                   <FilterRow label="Date Range">
                     <Button
                       variant="outline"
@@ -188,11 +186,10 @@ export default function Page() {
                 </CardContent>
               </Card>
             </div>
-          </ScrollArea>
-        </Card>
+        </div>
 
-        <Card className="flex h-full min-h-0 flex-col gap-0 overflow-hidden border-border bg-background">
-          <CardHeader className="border-b border-border p-4">
+        <div className="flex min-h-0 flex-col rounded-xl gap-6 bg-background">
+          <CardHeader className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-semibold text-foreground">
@@ -212,18 +209,21 @@ export default function Page() {
               </div>
             </div>
           </CardHeader>
-
-          <CardContent className="flex h-full flex-1 items-center justify-center p-4">
-            <div className="flex max-w-lg flex-col items-center gap-4 text-center text-muted-foreground">
-              <Filter className="size-12 text-foreground" />
-              <div className="space-y-1.5">
-                <p className="text-lg font-normal leading-7 text-muted-foreground">
-                  Select your filters and click Preview Data to see results here.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="flex-1 p-6 pt-0 flex flex-col min-h-0">
+            <Card className="border-border bg-card flex h-full min-h-0 flex-col rounded-xl shadow-sm overflow-hidden">
+              <CardContent className="flex h-full flex-1 items-center justify-center p-4">
+                <div className="flex max-w-lg flex-col items-center gap-4 text-center text-muted-foreground">
+                  <Filter className="size-12 text-foreground" strokeWidth={1} />
+                  <div className="space-y-1.5">
+                    <p className="text-lg font-normal leading-7 text-muted-foreground">
+                      Select your filters and click Preview Data to see results here.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
