@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Plus,
   Search,
+  Upload,
   X,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
@@ -15,6 +16,7 @@ import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { bulkUpdateAssets, getAssetsByPillar } from '@/actions/asset-registry';
+import { BulkImportWizard } from '@/components/features/bulk-import/bulk-import-wizard';
 import {
   type RegistryViewConfig,
   type RegistryFilterField,
@@ -42,6 +44,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 type FilterField = RegistryFilterField;
@@ -175,11 +183,11 @@ interface AssetRegistryClientProps {
   initialCategories: AssetRegistryCategory[];
   initialResult: AssetRegistryResult;
   currentPanel?: string;
-  manualStatuses?: Array<{ 
-    value: string; 
-    label: string; 
-    colorTheme?: string; 
-    iconName?: string; 
+  manualStatuses?: Array<{
+    value: string;
+    label: string;
+    colorTheme?: string;
+    iconName?: string;
   }>;
   onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
 }
@@ -231,6 +239,7 @@ export function AssetRegistryClient({
   const [isPending, startTransition] = useTransition();
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [transferSelectionRows, setTransferSelectionRows] = useState<AssetRegistryRow[]>([]);
   const [isMutating, setIsMutating] = useState(false);
@@ -771,9 +780,9 @@ export function AssetRegistryClient({
         cell: ({ row }) => {
           const statusConfig = manualStatuses.find(s => s.value === row.original.status);
           return (
-            <StatusBadge 
-              value={row.original.status} 
-              showIcon 
+            <StatusBadge
+              value={row.original.status}
+              showIcon
               colorTheme={statusConfig?.colorTheme}
               iconName={statusConfig?.iconName}
             />
@@ -1003,14 +1012,25 @@ export function AssetRegistryClient({
               </PopoverContent>
             </Popover>
 
-            <Button
-              type="button"
-              size="sm"
-              onClick={openRegistrationPanel}
-            >
-              <Plus className="h-4 w-4" />
-              {config.addAssetLabel}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {config.addAssetLabel}
+                  <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={openRegistrationPanel}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Single Asset
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsBulkImportOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Import
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -1242,6 +1262,15 @@ export function AssetRegistryClient({
             </div>
           </DialogContent>
         </Dialog>
+
+        <BulkImportWizard
+          isOpen={isBulkImportOpen}
+          onOpenChange={(open) => {
+            setIsBulkImportOpen(open);
+            if (!open) setRefreshNonce((n) => n + 1);
+          }}
+          categories={initialCategories}
+        />
       </div>
     </main>
   );

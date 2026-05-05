@@ -31,7 +31,7 @@ export type WizardState = {
 
 export type WizardAction =
   | { type: 'SET_CATEGORY'; categoryId: number; categoryName: string; pillar: string }
-  | { type: 'SET_FILE'; file: File }
+  | { type: 'SET_FILE'; file: File | null }
   | { type: 'START_VALIDATION' }
   | { type: 'VALIDATION_COMPLETE'; result: BulkImportPreviewResult }
   | { type: 'VALIDATION_FAILED' }
