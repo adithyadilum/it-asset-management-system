@@ -1,3 +1,4 @@
+import React from 'react';
 import { Check } from 'lucide-react';
 import type { WizardStep } from './use-bulk-import-reducer';
 import { cn } from '@/lib/utils';
@@ -15,31 +16,30 @@ const steps = [
 
 export function BulkImportStepper({ currentStep }: BulkImportStepperProps) {
   return (
-    <div className="flex w-full items-center justify-between px-4 pb-6 pt-2">
+    <div className="flex w-full items-start justify-between px-8 pb-4 pt-4">
       {steps.map((s, index) => {
         const isActive = s.step === currentStep;
         const isCompleted = s.step < currentStep;
         const isFuture = s.step > currentStep;
 
         return (
-          <div key={s.step} className="flex flex-1 items-center" aria-current={isActive ? 'step' : undefined}>
-            <div className="flex flex-col items-center gap-2">
+          <React.Fragment key={s.step}>
+            <div className="flex flex-col items-center justify-center gap-2 min-w-15" aria-current={isActive ? 'step' : undefined}>
               <div
                 className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all duration-300',
-                  isActive && 'bg-[#00145a] text-white ring-4 ring-[#00145a]/10',
-                  isCompleted && 'bg-emerald-500 text-white scale-100',
-                  isFuture && 'bg-slate-200 text-slate-400'
+                  'flex size-8 items-center justify-center rounded-full text-sm font-semibold transition-all duration-300',
+                  isActive && 'bg-primary text-primary-foreground ring-4 ring-primary/20',
+                  isCompleted && 'bg-primary text-primary-foreground scale-100',
+                  isFuture && 'bg-muted text-muted-foreground'
                 )}
               >
-                {isCompleted ? <Check className="h-4 w-4" /> : s.step}
+                {isCompleted ? <Check className="size-4" /> : s.step}
               </div>
               <span
                 className={cn(
-                  'text-xs transition-colors duration-300',
-                  isActive && 'text-[#00145a] font-semibold',
-                  isCompleted && 'text-slate-700 font-medium',
-                  isFuture && 'text-slate-400 font-medium'
+                  'text-xs transition-colors duration-300 text-center',
+                  (isActive || isCompleted) && 'text-foreground font-semibold',
+                  isFuture && 'text-muted-foreground font-medium'
                 )}
               >
                 {s.label}
@@ -50,12 +50,12 @@ export function BulkImportStepper({ currentStep }: BulkImportStepperProps) {
             {index < steps.length - 1 && (
               <div
                 className={cn(
-                  'h-0.5 w-full flex-1 mx-4 transition-colors duration-300',
-                  isCompleted ? 'bg-emerald-500' : 'bg-slate-200'
+                  'h-0.5 w-full flex-1 mt-4 mx-2 transition-colors duration-300',
+                  isCompleted ? 'bg-primary' : 'bg-muted'
                 )}
               />
             )}
-          </div>
+          </React.Fragment>
         );
       })}
     </div>

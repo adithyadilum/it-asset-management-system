@@ -3,6 +3,7 @@ import { DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { InfoIcon } from 'lucide-react';
 import type { WizardState, WizardAction } from '../use-bulk-import-reducer';
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 interface StepCategorySelectProps {
   categories: { id: number; name: string; pillar: string }[];
@@ -27,39 +28,33 @@ export function StepCategorySelect({ categories, state, dispatch }: StepCategory
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 p-6 space-y-6">
-        <div className="space-y-2">
-          <label htmlFor="category-select" className="text-sm font-medium text-slate-700">
+    <div className="flex flex-col h-full overflow-visible">
+      <div className="flex flex-col flex-1 gap-6 px-8 py-6 relative overflow-visible">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="category-select" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
             Asset Category
           </label>
-          <select
-            id="category-select"
-            value={selectedCategoryId || ''}
-            onChange={(e) => setSelectedCategoryId(Number(e.target.value) || null)}
-            className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#00145a]/20 focus:border-[#00145a] disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Select asset category"
-          >
-            <option value="" disabled>
-              Select a category...
-            </option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.pillar})
-              </option>
-            ))}
-          </select>
+          <SearchableDropdown
+            options={categories.map((c) => ({
+              value: String(c.id),
+              label: `${c.name} (${c.pillar})`,
+            }))}
+            defaultValue={selectedCategoryId ? String(selectedCategoryId) : ""}
+            onSelect={(val) => setSelectedCategoryId(Number(val))}
+            placeholder="Select a category..."
+            emptyMessage="No category found."
+          />
         </div>
 
-        <div className="flex items-start gap-3 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
-          <InfoIcon className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
-          <p className="text-sm text-slate-600">
+        <div className="flex items-start justify-center gap-3 rounded-lg bg-secondary/50 p-4 border border-border">
+          <InfoIcon className="size-5 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-sm text-muted-foreground">
             The import template and validation rules are specific to the selected category. You will be able to download the correct template on the next step.
           </p>
         </div>
       </div>
 
-      <DialogFooter className="px-6 py-4 border-t border-slate-200">
+      <DialogFooter className="px-8 py-5 border-t border-border mt-auto bg-muted/20">
         <DialogClose asChild>
           <Button type="button" variant="outline">
             Cancel
@@ -69,7 +64,6 @@ export function StepCategorySelect({ categories, state, dispatch }: StepCategory
           type="button"
           onClick={handleNext}
           disabled={!selectedCategoryId}
-          className="bg-[#00145a] hover:bg-[#00145a]/90 text-white"
         >
           Next
         </Button>

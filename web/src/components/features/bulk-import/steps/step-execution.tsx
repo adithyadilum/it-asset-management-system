@@ -107,50 +107,50 @@ export function StepExecution({ state, dispatch, onDone }: StepExecutionProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 p-6 space-y-6 min-h-[250px]">
+      <div className="flex flex-col flex-1 px-8 py-6 gap-6 justify-center">
         
         {isExecuting ? (
-          <div className="flex flex-col items-center justify-center h-full space-y-6 py-10 animate-in fade-in duration-500">
-            <div className="flex flex-col items-center space-y-4 w-full max-w-md">
-              <Loader2 className="h-10 w-10 text-[#00145a] animate-spin" />
-              <p className="text-lg font-semibold text-slate-900 animate-pulse">
+          <div className="flex flex-col items-center justify-center h-full gap-6 py-10 animate-in fade-in duration-500">
+            <div className="flex flex-col items-center gap-4 w-full max-w-md">
+              <Loader2 className="size-10 text-primary animate-spin" />
+              <p className="text-lg font-semibold animate-pulse">
                 Importing {totalToImport} {totalToImport === 1 ? 'asset' : 'assets'}...
               </p>
               <Progress 
                 value={executionProgress} 
-                className="w-full h-2 transition-all duration-300 bg-slate-200" 
+                className="w-full h-2 transition-all duration-300" 
               />
-              <p className="text-xs text-slate-500 font-medium">{executionProgress}% completed</p>
+              <p className="text-xs text-muted-foreground font-medium">{executionProgress}% completed</p>
             </div>
-            <p className="text-sm text-slate-500 text-center max-w-sm mt-4">
+            <p className="text-sm text-muted-foreground text-center max-w-sm mt-4">
               Please do not close this window. Row-level transactions are being committed to the database.
             </p>
           </div>
         ) : executionResult ? (
-          <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="flex flex-col gap-6 animate-in fade-in duration-500">
             {/* Success Banner */}
             <div className={cn(
               "rounded-xl p-4 border",
               executionResult.successCount > 0 
-                ? "bg-emerald-50 border-emerald-200" 
-                : "bg-red-50 border-red-200"
+                ? "bg-success/10 border-success/30" 
+                : "bg-destructive/10 border-destructive/30"
             )}>
               <div className="flex items-start gap-3">
                 {executionResult.successCount > 0 ? (
-                  <CircleCheck className="h-6 w-6 text-emerald-600 mt-0.5 shrink-0" />
+                  <CircleCheck className="size-6 text-success mt-0.5 shrink-0" />
                 ) : (
-                  <CircleX className="h-6 w-6 text-red-600 mt-0.5 shrink-0" />
+                  <CircleX className="size-6 text-destructive mt-0.5 shrink-0" />
                 )}
                 <div>
                   <h3 className={cn(
                     "text-lg font-bold",
-                    executionResult.successCount > 0 ? "text-emerald-900" : "text-red-900"
+                    executionResult.successCount > 0 ? "text-success" : "text-destructive"
                   )}>
                     {executionResult.successCount} {executionResult.successCount === 1 ? 'asset' : 'assets'} imported successfully
                   </h3>
                   {executionResult.failedCount > 0 && (
-                    <p className="text-sm font-medium text-red-700 mt-1 flex items-center gap-1.5">
-                      <CircleX className="h-4 w-4" />
+                    <p className="text-sm font-medium text-destructive mt-1 flex items-center gap-1.5">
+                      <CircleX className="size-4" />
                       {executionResult.failedCount} {executionResult.failedCount === 1 ? 'row' : 'rows'} failed during insertion
                     </p>
                   )}
@@ -160,19 +160,19 @@ export function StepExecution({ state, dispatch, onDone }: StepExecutionProps) {
 
             {/* Error Report Download */}
             {executionResult.errorCsvData && (
-              <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between p-4 rounded-xl border bg-card shadow-sm">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Failed Rows Report</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Download a CSV of rows that failed to insert</p>
+                  <p className="text-sm font-semibold text-foreground">Failed Rows Report</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Download a CSV of rows that failed to insert</p>
                 </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadErrors}
-                  className="text-red-700 border-red-200 hover:bg-red-50"
+                  className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download className="mr-2 size-4" />
                   Download Report
                 </Button>
               </div>
@@ -180,34 +180,34 @@ export function StepExecution({ state, dispatch, onDone }: StepExecutionProps) {
 
             {/* Imported Tags */}
             {executionResult.importedAssetTags.length > 0 && (
-              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <div className="rounded-xl border bg-card overflow-hidden flex flex-col">
                 <div 
-                  className="flex items-center justify-between px-4 py-3 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 bg-muted/50 cursor-pointer hover:bg-muted/80 transition-colors"
                   onClick={() => setShowAllTags(!showAllTags)}
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">Generated Asset Tags</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-foreground">Generated Asset Tags</p>
+                    <p className="text-xs text-muted-foreground">
                       {showAllTags ? 'Showing all generated tags' : `Showing first ${Math.min(10, executionResult.importedAssetTags.length)} tags`}
                     </p>
                   </div>
-                  <Button variant="ghost" size="icon-sm" className="pointer-events-none">
-                    {showAllTags ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                  <Button variant="ghost" size="icon" className="pointer-events-none size-8">
+                    {showAllTags ? <ChevronUp className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
                   </Button>
                 </div>
                 
-                <ScrollArea className={cn("transition-all duration-300", showAllTags ? "h-[200px]" : "max-h-[140px]")}>
+                <ScrollArea className={cn("transition-all duration-300", showAllTags ? "h-50" : "max-h-35")}>
                   <div className="p-4 flex flex-wrap gap-2">
                     {(showAllTags ? executionResult.importedAssetTags : executionResult.importedAssetTags.slice(0, 10)).map(tag => (
                       <span 
                         key={tag}
-                        className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800"
+                        className="inline-flex items-center rounded-md bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground"
                       >
                         {tag}
                       </span>
                     ))}
                     {!showAllTags && executionResult.importedAssetTags.length > 10 && (
-                      <span className="inline-flex items-center rounded-md border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-500">
+                      <span className="inline-flex items-center rounded-md border border-dashed border-input px-2.5 py-1 text-xs font-medium text-muted-foreground">
                         +{executionResult.importedAssetTags.length - 10} more
                       </span>
                     )}
@@ -220,12 +220,12 @@ export function StepExecution({ state, dispatch, onDone }: StepExecutionProps) {
 
       </div>
 
-      <DialogFooter className="px-6 py-4 border-t border-slate-200 flex justify-end">
+      <DialogFooter className="px-8 py-5 border-t border-border flex justify-end bg-muted/20">
         <Button
           type="button"
           onClick={onDone}
           disabled={isExecuting}
-          className="bg-[#00145a] hover:bg-[#00145a]/90 text-white min-w-[100px]"
+          className="min-w-25"
         >
           Done
         </Button>

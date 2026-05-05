@@ -124,17 +124,17 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex flex-col flex-1 px-8 py-6 gap-6">
         
         {/* Template Download Card */}
-        <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between p-4 rounded-xl border bg-card shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <FileSpreadsheet className="h-5 w-5" />
+            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <FileSpreadsheet className="size-5" />
             </div>
             <div>
-              <p className="text-sm text-slate-600">Download the template for</p>
-              <p className="text-sm font-semibold text-slate-900">{state.categoryName}</p>
+              <p className="text-sm text-muted-foreground">Download the template for</p>
+              <p className="text-sm font-semibold">{state.categoryName}</p>
             </div>
           </div>
           <Button
@@ -146,7 +146,7 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
           >
             {isDownloading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 size-4 animate-spin" />
                 Generating...
               </>
             ) : (
@@ -158,12 +158,12 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
         {/* Drag & Drop Zone */}
         <div
           className={cn(
-            'flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer',
+            'flex flex-col flex-1 items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer min-h-40',
             isDragOver 
-              ? 'border-[#00145a] bg-blue-50/60 ring-2 ring-[#00145a]/20' 
+              ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
               : state.file 
-                ? 'border-slate-200 bg-slate-50 border-solid cursor-default'
-                : 'border-slate-300 bg-slate-50/50 hover:bg-slate-50'
+                ? 'border-border bg-muted/30 border-solid cursor-default'
+                : 'border-border bg-muted/10 hover:bg-muted/30'
           )}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
@@ -181,17 +181,17 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
         >
           {state.file ? (
             <div className="flex flex-col items-center text-center w-full">
-              <FileSpreadsheet className="h-10 w-10 text-[#00145a] mb-3" />
-              <p className="text-sm font-semibold text-slate-900 max-w-[200px] truncate">
+              <FileSpreadsheet className="size-10 text-primary mb-3" />
+              <p className="text-sm font-semibold max-w-50 truncate">
                 {state.file.name}
               </p>
-              <p className="text-xs text-slate-500 mt-1">{formatFileSize(state.file.size)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatFileSize(state.file.size)}</p>
               
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="mt-4 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                className="mt-4 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   dispatch({ type: 'SET_FILE', file: null });
@@ -199,19 +199,19 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
                 }}
                 disabled={state.isValidating}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="mr-2 size-4" />
                 Remove File
               </Button>
             </div>
           ) : (
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm border border-slate-200 mb-4">
-                <Upload className="h-5 w-5 text-slate-500" />
+              <div className="flex size-12 items-center justify-center rounded-full bg-background shadow-sm border mb-4 text-muted-foreground">
+                <Upload className="size-5" />
               </div>
-              <p className="text-sm text-slate-700">
-                Drag & drop your file here, or <span className="font-semibold text-[#00145a]">click to browse</span>
+              <p className="text-sm text-foreground">
+                Drag & drop your file here, or <span className="font-semibold text-primary">click to browse</span>
               </p>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Supports .csv and .xlsx files up to 10MB
               </p>
             </div>
@@ -230,7 +230,7 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
         </div>
       </div>
 
-      <DialogFooter className="px-6 py-4 border-t border-slate-200">
+      <DialogFooter className="px-8 py-5 border-t border-border mt-auto bg-muted/20">
         <Button
           type="button"
           variant="outline"
@@ -243,11 +243,10 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
           type="button"
           onClick={handleValidate}
           disabled={!state.file || state.isValidating}
-          className="bg-[#00145a] hover:bg-[#00145a]/90 text-white min-w-[100px]"
         >
           {state.isValidating ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 size-4 animate-spin" />
               Validating...
             </>
           ) : (

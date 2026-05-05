@@ -70,22 +70,24 @@ export function BulkImportWizard({ isOpen, onOpenChange, categories }: BulkImpor
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-[680px] p-0 overflow-hidden"
+        className="sm:max-w-180 p-0 overflow-hidden gap-0"
         showCloseButton={!(state.step === 4 && state.isExecuting)}
       >
-        <div className="bg-slate-50 pt-4 pb-2 border-b border-slate-200">
-          <BulkImportStepper currentStep={state.step} />
-          <DialogHeader className="px-6 pb-2">
-            <DialogTitle className="text-[18px] font-semibold text-slate-900">
+        <div className="bg-muted/10 border-b border-border pl-2 sm:pl-0">
+          <div className="pt-6">
+            <BulkImportStepper currentStep={state.step} />
+          </div>
+          <DialogHeader className="px-8 pb-5 pt-2">
+            <DialogTitle className="text-xl leading-tight">
               {getStepTitle()}
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
+            <DialogDescription className="text-sm">
               {getStepDescription()}
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="transition-opacity duration-200 min-h-[300px]">
+        <div className="transition-opacity duration-200 flex flex-col min-h-87.5">
           {state.step === 1 && (
             <StepCategorySelect categories={categories} state={state} dispatch={dispatch} />
           )}
