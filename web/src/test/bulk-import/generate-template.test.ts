@@ -35,6 +35,7 @@ describe('generateTemplateWorkbook', () => {
   });
 
   it('throws an error if category is inactive', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce({ isActive: false } as any);
     await expect(generateTemplateWorkbook(1)).rejects.toThrow('Category not found or is inactive');
   });
@@ -45,13 +46,14 @@ describe('generateTemplateWorkbook', () => {
       name: 'Standard Category',
       isActive: true,
       customSchema: {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const { buffer, fileName } = await generateTemplateWorkbook(1);
     expect(fileName).toBe('standard-category-import-template.xlsx');
     
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
     
     expect(workbook.worksheets.length).toBe(2);
     const dataSheet = workbook.getWorksheet('Import Data');
@@ -80,11 +82,12 @@ describe('generateTemplateWorkbook', () => {
           { fieldName: 'Touch Screen', inputType: 'Boolean' },
         ],
       },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const { buffer } = await generateTemplateWorkbook(2);
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
     
     const dataSheet = workbook.getWorksheet('Import Data');
     const row = dataSheet?.getRow(1);

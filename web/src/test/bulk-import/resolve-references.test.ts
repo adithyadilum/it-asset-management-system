@@ -1,5 +1,4 @@
 import { preloadMasterDataCache } from '@/lib/bulk-import/resolve-references';
-import { db } from '@/db';
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('@/db', () => ({
@@ -9,6 +8,7 @@ vi.mock('@/db', () => ({
         where: vi.fn(() => Promise.resolve([
           { id: 1, name: 'Model A', brandId: 1, isActive: true },
         ])),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         then: function (resolve: any) {
           resolve([{ id: 1, name: 'Item', isActive: true }]);
         },
