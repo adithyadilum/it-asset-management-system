@@ -88,11 +88,10 @@ function formatSequence(value: number) {
 }
 
 function buildAssetTag(
-  pillarPrefix: string,
   categoryPrefix: string,
   sequence: number
 ) {
-  return `${pillarPrefix}-${categoryPrefix}-${formatSequence(sequence)}`;
+  return `${categoryPrefix}-${formatSequence(sequence)}`;
 }
 
 function validateInvoiceFile(file: File | null) {
@@ -387,8 +386,7 @@ export async function registerAsset(
       : null;
 
     const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
-    const pillarPrefix = PILLAR_PREFIX_MAP[input.pillar];
-    const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
+    const assetTagPrefix = normalizedCategoryPrefix;
 
     // 7. Neon HTTP driver does not support db.transaction(), so use
     // sequential writes with a compensating rollback for partial failures.
@@ -403,7 +401,6 @@ export async function registerAsset(
 
       const nextSequence = (countResult[0]?.value ?? 0) + 1;
       const generatedAssetTag = buildAssetTag(
-        pillarPrefix,
         normalizedCategoryPrefix,
         nextSequence
       );
@@ -414,7 +411,7 @@ export async function registerAsset(
           .values({
             assetTag: generatedAssetTag,
             serialNumber: input.serialNumber ?? null,
-            name: input.name,
+            name: `${brandRecord.name} - ${modelRecord.name}`,
             modelId: input.modelId,
             locationId: input.locationId ?? null,
             ownerId: input.ownerId ?? null,

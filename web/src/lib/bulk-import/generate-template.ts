@@ -76,7 +76,6 @@ export async function generateTemplateWorkbook(categoryId: number) {
 
   // Define Import Data Headers
   const columns = [
-    { header: 'Asset Name', key: 'assetName', width: 25 },
     { header: 'Serial Number', key: 'serialNumber', width: 20 },
     { header: 'Brand Name', key: 'brandName', width: 20 },
     { header: 'Model Name', key: 'modelName', width: 35 },

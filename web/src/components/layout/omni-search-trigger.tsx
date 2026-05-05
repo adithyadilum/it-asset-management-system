@@ -125,7 +125,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
   // Keep keyboard shortcut logic colocated with dialog state.
   useEffect(() => {
     const handleGlobalShortcut = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'k') {
+      if (event.key?.toLowerCase() !== 'k') {
         return;
       }
 

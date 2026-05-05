@@ -190,6 +190,7 @@ interface AssetRegistryClientProps {
     iconName?: string;
   }>;
   onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
+  onRefreshRef?: React.MutableRefObject<() => void>;
 }
 
 export function AssetRegistryClient({
@@ -199,6 +200,7 @@ export function AssetRegistryClient({
   currentPanel,
   manualStatuses = [],
   onStatusUpdateRef,
+  onRefreshRef,
 }: AssetRegistryClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -226,6 +228,13 @@ export function AssetRegistryClient({
       onStatusUpdateRef.current = handleStatusUpdate;
     }
   }, [handleStatusUpdate, onStatusUpdateRef]);
+
+  useEffect(() => {
+    if (onRefreshRef) {
+      onRefreshRef.current = () => setRefreshNonce((n) => n + 1);
+    }
+  }, [onRefreshRef]);
+
   const isPanelOpen = Boolean(currentPanel);
   const activeRecordId =
     currentPanel === 'record' ? searchParams.get('id') : null;

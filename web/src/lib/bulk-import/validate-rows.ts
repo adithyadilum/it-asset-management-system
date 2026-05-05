@@ -78,7 +78,17 @@ export function validateRows(
     const rawRow = rows[i];
     const rowNumber = i + 2; // Assuming row 1 is header
 
-    const assetName = rawRow['Asset Name'] || '';
+    const brandNameRaw = rawRow['Brand Name'] || '';
+    const modelNameRaw = rawRow['Model Name'] || '';
+
+    let cleanModelNameForError = modelNameRaw.trim();
+    const errBracketMatch = cleanModelNameForError.match(/^(.*)\s+\[.*\]$/);
+    if (errBracketMatch) {
+      cleanModelNameForError = errBracketMatch[1].trim();
+    }
+    
+    const generatedAssetName = brandNameRaw.trim() && cleanModelNameForError ? `${brandNameRaw.trim()} - ${cleanModelNameForError}` : '';
+
     const serialNumber = rawRow['Serial Number'] || '';
 
     const fail = (
@@ -88,7 +98,7 @@ export function validateRows(
     ) => {
       errorRows.push({
         rowNumber,
-        assetName: assetName || null,
+        assetName: generatedAssetName || null,
         serialNumber: serialNumber || null,
         errorStage: stage,
         errorField: field,
@@ -99,10 +109,6 @@ export function validateRows(
     // ---------------------------------------------------------------------------
     // STAGE 1: STRUCTURAL
     // ---------------------------------------------------------------------------
-    if (!assetName.trim()) {
-      fail('STRUCTURAL', 'Asset Name', 'Asset Name is required.');
-      continue;
-    }
     if (category.requiresSerial && !serialNumber.trim()) {
       fail(
         'STRUCTURAL',
@@ -112,8 +118,6 @@ export function validateRows(
       continue;
     }
 
-    const brandNameRaw = rawRow['Brand Name'];
-    const modelNameRaw = rawRow['Model Name'];
     const purchaseDateRaw = rawRow['Purchase Date'];
     const basePriceRaw = rawRow['Base Price'];
     const vendorNameRaw = rawRow['Vendor Name'];
@@ -351,7 +355,7 @@ export function validateRows(
     // ---------------------------------------------------------------------------
     validRows.push({
       rowNumber,
-      name: assetName.trim(),
+      name: generatedAssetName,
       serialNumber: serialNumber.trim() || null,
       modelId: modelRef.id,
       brandId: brandRef.id,
@@ -386,7 +390,7 @@ export function validateRows(
         const rawRow = rows[idx];
         errorRows.push({
           rowNumber,
-          assetName: rawRow['Asset Name'] || null,
+          assetName: null,
           serialNumber: rawRow['Serial Number'] || null,
           errorStage: 'BUSINESS_RULE',
           errorField: 'Serial Number',

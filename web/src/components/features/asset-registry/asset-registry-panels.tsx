@@ -16,6 +16,7 @@ interface AssetRegistryPanelsProps {
         iconName?: string; 
     }>;
     onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
+    onRefreshRef?: React.MutableRefObject<() => void>;
 }
 
 export function AssetRegistryPanels({
@@ -25,6 +26,7 @@ export function AssetRegistryPanels({
     pillar,
     manualStatuses = [],
     onStatusUpdateRef,
+    onRefreshRef,
 }: AssetRegistryPanelsProps) {
     const router = useRouter();
 
@@ -36,7 +38,12 @@ export function AssetRegistryPanels({
         <>
             <RegistrationPanelWrapper
                 isOpen={currentPanel === "registration"}
-                onClose={handleClose}
+                onClose={(didSucceed) => {
+                    if (didSucceed) {
+                        onRefreshRef?.current?.();
+                    }
+                    handleClose();
+                }}
                 pillar={pillar}
             />
 

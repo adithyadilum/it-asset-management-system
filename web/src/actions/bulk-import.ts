@@ -30,11 +30,10 @@ function formatSequence(value: number) {
 }
 
 function buildAssetTag(
-  pillarPrefix: string,
   categoryPrefix: string,
   sequence: number
 ) {
-  return `${pillarPrefix}-${categoryPrefix}-${formatSequence(sequence)}`;
+  return `${categoryPrefix}-${formatSequence(sequence)}`;
 }
 
 function toDateString(date: Date) {
@@ -223,9 +222,8 @@ export async function executeBulkImport(
       return { success: false, message: 'Category not found or is inactive.' };
     }
 
-    const pillarPrefix = PILLAR_PREFIX_MAP[category.pillar];
     const categoryPrefix = category.prefix.trim().toUpperCase();
-    const assetTagPrefix = `${pillarPrefix}-${categoryPrefix}`;
+    const assetTagPrefix = categoryPrefix;
 
     const countResult = await db
       .select({ value: sql<number>`cast(count(*) as integer)` })
@@ -244,7 +242,7 @@ export async function executeBulkImport(
 
       try {
         await db.transaction(async (tx) => {
-          assetTag = buildAssetTag(pillarPrefix, categoryPrefix, nextSequence);
+          assetTag = buildAssetTag(categoryPrefix, nextSequence);
 
           // 1. Insert asset
           const [newAsset] = await tx
