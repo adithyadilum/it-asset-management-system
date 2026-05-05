@@ -21,8 +21,11 @@ export interface AssetAssignmentPanelProps {
   serialNumber: string;
   owner: string;
   assignedTo: string;
+  department?: string;
   group: string;
   dateCreated: string;
+  assignedDate?: string;
+  expectedReturnDate?: string;
   updatedAt: string;
   warranty: string;
   lastRepaired: string;
@@ -47,6 +50,8 @@ function formatDateValue(value: string) {
 }
 
 export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
+  const isAssigned = ['Assigned', 'Requested', 'Overdue'].includes(props.status);
+
   const detailsRows = useMemo(() => [
       {
         left: { label: 'Asset ID :', value: props.assetTag || '-' },
@@ -59,10 +64,6 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       {
         left: { label: 'Serial Number :', value: props.serialNumber || '-' },
         right: { label: 'Owner :', value: props.owner || '-' },
-      },
-      {
-        left: { label: 'Assigned to :', value: props.assignedTo || '-' },
-        right: { label: 'Group :', value: props.group || '-' },
       },
       {
         left: { label: 'Date Created :', value: props.dateCreated || '-' },
@@ -139,51 +140,139 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
           </div>
 
           {/* Details Rows */}
-          <div className="space-y-3">
-            {detailsRows.map((row, index) => (
-              <div key={`assignment-row-${index}`} className="grid grid-cols-2 gap-x-8">
-                <div className="grid grid-cols-[150px_minmax(0,1fr)] items-start gap-x-3">
-                  <p className="font-medium text-slate-900">{row.left.label}</p>
-                  <div className="text-slate-700">{row.left.value}</div>
+          {isAssigned ? (
+            <div className="mx-auto w-fit">
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3">
+                <p className="font-medium text-slate-900">Asset ID :</p>
+                <div className="text-slate-700">{props.assetTag || '-'}</div>
+
+                <p className="font-medium text-slate-900">Model :</p>
+                <div className="text-slate-700">{props.model || '-'}</div>
+
+                <p className="font-medium text-slate-900">Serial Number :</p>
+                <div className="text-slate-700">{props.serialNumber || '-'}</div>
+
+                <p className="font-medium text-slate-900">Category :</p>
+                <div className="text-slate-700">{props.category || '-'}</div>
+
+                <p className="font-medium text-slate-900">Brand :</p>
+                <div className="text-slate-700">{props.brand || '-'}</div>
+
+                <p className="font-medium text-slate-900">Date Created :</p>
+                <div className="text-slate-700">{props.dateCreated || '-'}</div>
+
+                <p className="font-medium text-slate-900">Updated at :</p>
+                <div className="text-slate-700">{props.updatedAt || '-'}</div>
+
+                <p className="font-medium text-slate-900">Warranty :</p>
+                <div className="flex items-center">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'h-5 rounded-full px-2 text-[11px] font-medium',
+                      props.warranty === 'Expired'
+                        ? 'border-red-300 bg-red-50 text-red-600'
+                        : 'border-blue-200 bg-blue-50 text-blue-600'
+                    )}
+                  >
+                    {props.warranty || '-'}
+                  </Badge>
                 </div>
-                <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
-                  <p className="font-medium text-slate-900">{row.right.label}</p>
-                  <div className="text-slate-700">{row.right.value}</div>
+
+                <p className="font-medium text-slate-900">Last Repaired :</p>
+                <div className="text-slate-700">{props.lastRepaired || '-'}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {detailsRows.map((row, index) => (
+                <div key={`assignment-row-${index}`} className="grid grid-cols-2 gap-x-8">
+                  <div className="grid grid-cols-[150px_minmax(0,1fr)] items-start gap-x-3">
+                    <p className="font-medium text-slate-900">{row.left.label}</p>
+                    <div className="text-slate-700">{row.left.value}</div>
+                  </div>
+                  <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
+                    <p className="font-medium text-slate-900">{row.right.label}</p>
+                    <div className="text-slate-700">{row.right.value}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {isAssigned ? (
+            <div className="mt-8">
+              <h3 className="mb-4 text-base font-semibold text-slate-900">Assignment Details</h3>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6">
+                <div className="grid grid-cols-[150px_1fr] gap-y-4">
+                  <p className="font-medium text-slate-900">Assigned to :</p>
+                  <div className="text-slate-700">{props.assignedTo || '-'}</div>
+                  
+                  <p className="font-medium text-slate-900">Department :</p>
+                  <div className="text-slate-700">{props.department || props.group || '-'}</div>
+                  
+                  <p className="font-medium text-slate-900">Assigned Date :</p>
+                  <div className="text-slate-700">{props.assignedDate || '-'}</div>
+                  
+                  <p className="font-medium text-slate-900">Due Date :</p>
+                  <div className="text-slate-700">{props.expectedReturnDate || '-'}</div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {props.category !== 'Software' && (
-            <div className="-mx-2 mt-8">
-              <RecentMaintenance 
-                assetTag={props.assetTag} 
-                isOpen={true} 
-              />
             </div>
+          ) : (
+            props.category !== 'Software' && (
+              <div className="-mx-2 mt-8">
+                <RecentMaintenance 
+                  assetTag={props.assetTag} 
+                  isOpen={true} 
+                />
+              </div>
+            )
           )}
         </div>
       </div>
 
       {/* Sticky Action Buttons at Bottom */}
       <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white p-6 rounded-b-xl">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 rounded-lg border-slate-200 px-4 text-sm"
-          onClick={props.onEdit}
-        >
-          Edit
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          className="h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]"
-          onClick={props.onAssign}
-        >
-          Assign
-        </Button>
+        {isAssigned ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-lg border-slate-200 px-4 text-sm"
+            >
+              Received
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]"
+            >
+              Request Return
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-lg border-slate-200 px-4 text-sm"
+              onClick={props.onEdit}
+            >
+              Edit
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]"
+              onClick={props.onAssign}
+            >
+              Assign
+            </Button>
+          </>
+        )}
       </div>
     </aside>
   );

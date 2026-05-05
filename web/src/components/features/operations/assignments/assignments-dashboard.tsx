@@ -40,6 +40,9 @@ type AssetAssignmentRow = {
   owner: string;
   group: string;
   assignedTo: string;
+  department?: string;
+  assignedDate?: string;
+  expectedReturnDate?: string;
   dateCreated: string;
   updatedAt: string;
   warranty: string;
@@ -109,8 +112,11 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     owner: "-",
     group: asset.pillar,
     assignedTo: asset.assignedTo ?? "-",
-    dateCreated: formatDate(asset.returnedDate),
-    updatedAt: formatDate(asset.returnedDate),
+    department: asset.pillar,
+    assignedDate: formatDate(asset.assignedDate),
+    expectedReturnDate: formatDate(asset.expectedReturnDate),
+    dateCreated: formatDate(asset.createdAt),
+    updatedAt: formatDate(asset.updatedAt),
     warranty: "-",
     lastRepaired: "-",
     note: asset.location ?? "-",

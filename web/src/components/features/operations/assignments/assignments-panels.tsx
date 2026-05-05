@@ -14,8 +14,11 @@ type AssignmentPanelAsset = {
 	serialNumber: string;
 	owner: string;
 	assignedTo: string;
+	department?: string;
 	group: string;
 	dateCreated: string;
+	assignedDate?: string;
+	expectedReturnDate?: string;
 	updatedAt: string;
 	warranty: string;
 	lastRepaired?: string;
@@ -65,6 +68,9 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 				serialNumber={selectedAsset?.serialNumber ?? ""}
 				owner={selectedAsset?.owner ?? ""}
 				assignedTo={selectedAsset?.assignedTo ?? ""}
+				department={selectedAsset?.department ?? ""}
+				assignedDate={selectedAsset?.assignedDate ?? ""}
+				expectedReturnDate={selectedAsset?.expectedReturnDate ?? ""}
 				group={selectedAsset?.group ?? ""}
 				dateCreated={selectedAsset?.dateCreated ?? ""}
 				updatedAt={selectedAsset?.updatedAt ?? ""}
