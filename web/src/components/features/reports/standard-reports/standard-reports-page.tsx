@@ -1,5 +1,28 @@
-import { ChevronRight, FileText } from 'lucide-react';
+import { AlertTriangle, ChevronRight, FileText, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
+
+export const REPORT_TEMPLATES: ReportTemplate[] = [
+  {
+    title: 'Monthly Depreciation',
+    description: 'Calculates straight-line value reduction for all active hardware.',
+    icon: FileText,
+  },
+  {
+    title: 'Overdue / Missing',
+    description: 'Lists all loaner devices past their return date and flagged lost items.',
+    icon: AlertTriangle,
+  },
+  {
+    title: 'Software Compliance',
+    description: 'Identifies expired licenses and under-utilized seat allocations.',
+    icon: ShieldCheck,
+  },
+];
+
+export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
+export const CATEGORY_OPTIONS = ['All categories', 'Hardware', 'Software', 'Office'];
+export const LOCATION_OPTIONS = ['All locations', 'Colombo HQ', 'Kandy Branch', 'Remote'];
+export const STATUS_OPTIONS = ['All statuses', 'Active', 'Pending', 'Flagged', 'Archived'];
 
 import {
   Card,
