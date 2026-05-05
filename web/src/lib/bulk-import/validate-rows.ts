@@ -1,9 +1,54 @@
 import { MasterDataCache } from './resolve-references';
+import { z } from 'zod';
 import {
   BulkImportPreviewResult,
   ImportErrorRow,
   ResolvedImportRow,
 } from './types';
+
+const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const dateSchema = z.string().regex(isoDateRegex, 'Date must be in YYYY-MM-DD format');
+
+/**
+ * Normalizes common date string formats to YYYY-MM-DD.
+ * Handles:
+ *  - YYYY-MM-DD  (already ISO, pass through)
+ *  - M/D/YYYY or MM/DD/YYYY  (US-style, as produced by Excel)
+ *  - D-M-YYYY or DD-MM-YYYY  (dash-separated day-first)
+ *  - D.M.YYYY or DD.MM.YYYY  (dot-separated)
+ * Returns the normalized string, or the original string if no pattern matches
+ * (so that downstream validation can still reject it with a clear message).
+ */
+function normalizeDateString(raw: string): string {
+  const trimmed = raw.trim();
+
+  // Already ISO
+  if (isoDateRegex.test(trimmed)) return trimmed;
+
+  // M/D/YYYY or MM/DD/YYYY (slash-separated — Excel's default display format)
+  const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, m, d, y] = slashMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // D-M-YYYY or DD-MM-YYYY (dash-separated day-first)
+  const dashDayFirst = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dashDayFirst) {
+    const [, d, m, y] = dashDayFirst;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // D.M.YYYY or DD.MM.YYYY (dot-separated)
+  const dotMatch = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dotMatch) {
+    const [, d, m, y] = dotMatch;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // No recognized format — return as-is for validation to reject
+  return trimmed;
+}
 
 export function validateRows(
   rows: Record<string, string>[],
@@ -124,7 +169,13 @@ export function validateRows(
       continue;
     }
 
-    const purchaseDateObj = new Date(purchaseDateRaw);
+    const normalizedPurchaseDate = normalizeDateString(purchaseDateRaw || '');
+    const purchaseDateResult = dateSchema.safeParse(normalizedPurchaseDate);
+    if (!purchaseDateResult.success) {
+      fail('TYPE', 'Purchase Date', purchaseDateResult.error.issues[0].message);
+      continue;
+    }
+    const purchaseDateObj = new Date(purchaseDateResult.data);
     if (isNaN(purchaseDateObj.getTime())) {
       fail('TYPE', 'Purchase Date', 'Purchase Date must be a valid date.');
       continue;
@@ -270,8 +321,24 @@ export function validateRows(
             break;
           }
           instanceAttributes[field.fieldName] = fieldVal;
+        } else if (field.inputType === 'Date') {
+          const normalizedVal = normalizeDateString(fieldVal);
+          const dateResult = dateSchema.safeParse(normalizedVal);
+          if (!dateResult.success) {
+            fail('EAV_SCHEMA', field.fieldName, dateResult.error.issues[0].message);
+            eavFailed = true;
+            break;
+          } else {
+             const d = new Date(dateResult.data);
+             if (isNaN(d.getTime())) {
+                fail('EAV_SCHEMA', field.fieldName, `${field.fieldName} must be a valid date.`);
+                eavFailed = true;
+                break;
+             }
+             instanceAttributes[field.fieldName] = normalizedVal;
+          }
         } else {
-          // Text / Date
+          // Text
           instanceAttributes[field.fieldName] = fieldVal;
         }
       }

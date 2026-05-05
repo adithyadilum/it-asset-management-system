@@ -117,9 +117,31 @@ export async function generateTemplateWorkbook(categoryId: number) {
     fgColor: { argb: 'FFE0E0E0' },
   };
 
+  // Enforce Date Formatting across columns
+  dataSheet.getColumn('H').numFmt = 'yyyy-mm-dd'; // Purchase Date
+  let formatColIndex = 15;
+  customFields.forEach(field => {
+    if (field.inputType === 'Date') {
+      dataSheet.getColumn(formatColIndex).numFmt = 'yyyy-mm-dd';
+    }
+    formatColIndex++;
+  });
+
   // Add Data Validation
   const maxRows = 5000;
   for (let i = 2; i <= maxRows; i++) {
+    // Force native date picker / valid layout for Purchase Date
+    dataSheet.getCell(`H${i}`).dataValidation = {
+      type: 'date',
+      operator: 'greaterThanOrEqual',
+      showErrorMessage: true,
+      allowBlank: true,
+      formulae: [new Date('1900-01-01')],
+      errorStyle: 'error',
+      errorTitle: 'Invalid Date',
+      error: 'Please enter a valid date in YYYY-MM-DD format.',
+    };
+
     if (brandNames.length > 0) {
       dataSheet.getCell(`C${i}`).dataValidation = {
         type: 'list',
@@ -172,12 +194,23 @@ export async function generateTemplateWorkbook(categoryId: number) {
     // Add validation for custom fields
     let colIndex = 15;
     customFields.forEach((field) => {
+      const cell = dataSheet.getCell(i, colIndex);
       if (field.inputType === 'Boolean') {
-        const cell = dataSheet.getCell(i, colIndex);
         cell.dataValidation = {
           type: 'list',
           allowBlank: true,
           formulae: ['"Yes,No"'],
+        };
+      } else if (field.inputType === 'Date') {
+        cell.dataValidation = {
+          type: 'date',
+          operator: 'greaterThanOrEqual',
+          showErrorMessage: true,
+          allowBlank: true,
+          formulae: [new Date('1900-01-01')],
+          errorStyle: 'error',
+          errorTitle: 'Invalid Date',
+          error: 'Please enter a valid date in YYYY-MM-DD format.',
         };
       }
       colIndex++;

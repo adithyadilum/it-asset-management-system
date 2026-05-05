@@ -102,7 +102,7 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
       
       const result = await parseAndValidateImport(formData);
       
-      if (result.success) {
+      if (result.success || result.summary) {
         dispatch({ type: 'VALIDATION_COMPLETE', result: result });
       } else {
         throw new Error(result.message || 'Validation failed');

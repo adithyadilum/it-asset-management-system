@@ -7,6 +7,27 @@ export type ParsedFileResult = {
   skippedEmptyRows: number;
 };
 
+/**
+ * Extracts a string value from an ExcelJS cell, normalizing native Date objects
+ * to YYYY-MM-DD format. Excel internally stores dates entered as "2026-04-10"
+ * as Date objects and cell.text returns the locale-formatted string (e.g. "4/10/2026"),
+ * which breaks downstream YYYY-MM-DD validation.
+ */
+function getCellStringValue(cell: ExcelJS.Cell): string {
+  // ExcelJS exposes the underlying value; for dates it's a JS Date object
+  const value = cell.value;
+
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // For everything else, fall back to the text representation
+  return cell.text ? cell.text.trim() : '';
+}
+
 export async function parseFile(file: File): Promise<ParsedFileResult> {
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
   if (file.size > MAX_FILE_SIZE) {
@@ -92,7 +113,7 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         const header = headers[colNumber - 1];
         if (header) {
-          const textValue = cell.text ? cell.text.trim() : '';
+          const textValue = getCellStringValue(cell);
           rowData[header] = textValue;
           if (textValue !== '') {
             isEmpty = false;
