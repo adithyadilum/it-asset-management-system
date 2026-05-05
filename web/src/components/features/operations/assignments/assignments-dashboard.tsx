@@ -5,7 +5,6 @@ import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AssignmentsPanels } from "./assignments-panels";
-import { useSidebar } from "@/components/ui/sidebar";
 import {
   MultiAssetAssignmentModal,
   type MultiAssetAssignmentItem,
@@ -219,10 +218,6 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
     [assetRows, activeAssetId]
   );
-
-  const { state } = useSidebar();
-  const sidebarCollapsed = state === "collapsed";
-  const shouldShrinkLeftCard = !sidebarCollapsed && isPanelOpen;
 
   const selectionActions = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
     () => [
@@ -449,13 +444,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   );
 
   return (
-    <div className="flex w-full h-full gap-6 overflow-hidden bg-slate-50 p-6">
-      <div
-        className={`flex-1 transition-all duration-300 min-w-0 ${
-          shouldShrinkLeftCard ? "max-w-[calc(100%-684px)]" : ""
-        }`}
-      >
-        <main className="flex min-h-0 min-w-0 h-full flex-col rounded-xl bg-white p-6 border border-slate-200 shadow-sm">
+    <div className="flex h-full w-full overflow-hidden bg-slate-50">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
           <div className="mb-4 shrink-0">
             <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
               Assignments and Returns
@@ -478,7 +468,6 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
             </ModuleNavigationTabs>
           </div>
         </main>
-      </div>
 
       <AssignmentsPanels
         isOpen={isPanelOpen}

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { QrCode, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MaintenanceEvent } from '@/lib/data/asset-details-repo';
+import { RecentMaintenance } from './recent-maintenance';
 
 export interface AssetAssignmentPanelProps {
   isLoading?: boolean;
@@ -108,7 +109,7 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
   if (props.isLoading) return <AssetLoadingSkeleton />;
 
   return (
-    <aside className="relative flex h-full w-[clamp(520px,36vw,684px)] min-w-[520px] max-w-[684px] flex-none flex-col overflow-x-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <aside className="relative flex h-full w-[min(700px,92vw)] flex-none flex-col overflow-x-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg ml-2">
       {props.onClose ? (
         <Button
           type="button"
@@ -140,19 +141,10 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
           {/* Details Rows */}
           <div className="space-y-3">
             {detailsRows.map((row, index) => (
-              <div key={`assignment-row-${index}`} className={cn(
-                "grid grid-cols-2 gap-x-8",
-                row.left.label === 'Assigned to :' && 'bg-blue-50 rounded-lg p-3 border border-blue-200'
-              )}>
+              <div key={`assignment-row-${index}`} className="grid grid-cols-2 gap-x-8">
                 <div className="grid grid-cols-[150px_minmax(0,1fr)] items-start gap-x-3">
-                  <p className={cn(
-                    "font-medium text-slate-900",
-                    row.left.label === 'Assigned to :' && 'text-blue-900 font-semibold'
-                  )}>{row.left.label}</p>
-                  <div className={cn(
-                    "text-slate-700",
-                    row.left.label === 'Assigned to :' && 'text-blue-900 font-semibold'
-                  )}>{row.left.value}</div>
+                  <p className="font-medium text-slate-900">{row.left.label}</p>
+                  <div className="text-slate-700">{row.left.value}</div>
                 </div>
                 <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
                   <p className="font-medium text-slate-900">{row.right.label}</p>
@@ -162,36 +154,14 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
             ))}
           </div>
 
-          {/* Maintenance Records */}
-          <div className="space-y-4">
-            <h3 className="text-[18px] font-semibold leading-9 text-slate-900">Maintenance Records</h3>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-              {props.maintenanceEvents && props.maintenanceEvents.length > 0 ? (
-                <dl className="space-y-2">
-                  {props.maintenanceEvents.slice(0, 3).map((record) => (
-                    <div key={record.id} className="grid grid-cols-[145px_minmax(0,1fr)] gap-x-5">
-                      <dt className="font-semibold text-slate-900">{formatDateValue(record.estimatedReturnDate || record.createdAt)} :</dt>
-                      <dd className="text-slate-700">{record.reportedIssue || '-'}</dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <p className="text-slate-600">No maintenance records found.</p>
-              )}
-
-              <div className="mt-6 space-y-3">
-                <p className="font-semibold text-slate-900">Note :</p>
-                <p className="text-slate-700">{maintenanceSummary}</p>
-                <button
-                  type="button"
-                  className="text-[15px] text-[#4A80FF] underline decoration-[#4A80FF] underline-offset-2 hover:text-[#3b6ce0]"
-                >
-                  View all maintenance records
-                </button>
-              </div>
+          {props.category !== 'Software' && (
+            <div className="-mx-2 mt-8">
+              <RecentMaintenance 
+                assetTag={props.assetTag} 
+                isOpen={true} 
+              />
             </div>
-          </div>
+          )}
         </div>
       </div>
 

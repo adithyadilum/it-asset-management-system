@@ -297,7 +297,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
   const latestActiveAssignments = db
     .select({
       assetId: assetAssignments.assetId,
-      latestAssignmentId: max(assetAssignments.id),
+      latestAssignmentId: max(assetAssignments.id).as('latestAssignmentId'),
     })
     .from(assetAssignments)
     .where(isNull(assetAssignments.returnedDate))
