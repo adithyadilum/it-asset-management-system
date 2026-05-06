@@ -79,7 +79,7 @@ export function SlidePanel({
     const hasProvidedContent = React.Children.count(content) > 0;
     const resolvedActions = actions ?? [];
     const [shouldRender, setShouldRender] = React.useState(isOpen);
-    const [isVisible, setIsVisible] = React.useState(false);
+    const [isVisible, setIsVisible] = React.useState(isOpen && disableTransition);
 
     const panelStyle = {
         "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
