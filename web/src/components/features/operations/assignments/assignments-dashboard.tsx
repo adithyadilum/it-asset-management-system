@@ -40,11 +40,15 @@ type AssetAssignmentRow = {
   owner: string;
   group: string;
   assignedTo: string;
+  department?: string;
+  assignedDate?: string;
+  expectedReturnDate?: string;
   dateCreated: string;
   updatedAt: string;
   warranty: string;
   note: string;
   assetTag: string;
+  lastRepaired?: string;
 };
 
 type CategoryFilterOperator = "is" | "is not";
@@ -108,9 +112,13 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     owner: "-",
     group: asset.pillar,
     assignedTo: asset.assignedTo ?? "-",
-    dateCreated: formatDate(asset.returnedDate),
-    updatedAt: formatDate(asset.returnedDate),
+    department: asset.pillar,
+    assignedDate: formatDate(asset.assignedDate),
+    expectedReturnDate: formatDate(asset.expectedReturnDate),
+    dateCreated: formatDate(asset.createdAt),
+    updatedAt: formatDate(asset.updatedAt),
     warranty: "-",
+    lastRepaired: "-",
     note: asset.location ?? "-",
     assetTag: asset.assetTag,
   });
@@ -204,6 +212,14 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     setDraftCategory("");
   };
 
+  const handleClosePanel = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("panel");
+    params.delete("id");
+    params.delete("animate");
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const selectedAsset = useMemo(
     () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
     [assetRows, activeAssetId]
@@ -268,13 +284,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const handleClosePanel = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("panel");
-    params.delete("id");
-    params.delete("animate");
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+
 
   const handleMultiAssignModalOpenChange = (open: boolean) => {
     setIsMultiAssignModalOpen(open);
@@ -440,30 +450,38 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   );
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden bg-slate-50">
       <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
-        <div className="mb-4 shrink-0">
-          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
-            Assignments and Returns
-          </h1>
-        </div>
+          <div className="mb-4 shrink-0">
+            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+              Assignments and Returns
+            </h1>
+          </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <ModuleNavigationTabs tabs={tabs} defaultTab="available-assets">
-            <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAvailableRows, selectionActions)}
-            </TabsContent>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ModuleNavigationTabs 
+              tabs={tabs} 
+              defaultTab="available-assets"
+              onTabChange={() => {
+                if (isPanelOpen) {
+                  handleClosePanel();
+                }
+              }}
+            >
+              <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredAvailableRows, selectionActions)}
+              </TabsContent>
 
-            <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAssignedRows)}
-            </TabsContent>
+              <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredAssignedRows)}
+              </TabsContent>
 
-            <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredReturnedRows)}
-            </TabsContent>
-          </ModuleNavigationTabs>
-        </div>
-      </main>
+              <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredReturnedRows)}
+              </TabsContent>
+            </ModuleNavigationTabs>
+          </div>
+        </main>
 
       <AssignmentsPanels
         isOpen={isPanelOpen}
