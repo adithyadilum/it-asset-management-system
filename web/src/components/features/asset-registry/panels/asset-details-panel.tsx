@@ -433,11 +433,23 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       ];
     }
 
-    return [
-      { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
-      { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
-    ];
-  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV]);
+    const isDisposed = props.status === 'Disposed';
+    const isPendingDisposal = props.status === 'Pending Disposal';
+    
+    const list: SlidePanelAction[] = [];
+
+    // Disposed assets cannot be edited
+    if (!isDisposed) {
+      list.push({ id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit });
+    }
+
+    // Disposed and Pending Disposal assets cannot be assigned/returned
+    if (!isDisposed && !isPendingDisposal) {
+      list.push({ id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick });
+    }
+
+    return list;
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV, props.status]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
