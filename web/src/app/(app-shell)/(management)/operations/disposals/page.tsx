@@ -77,6 +77,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   const historyDataRaw = await db
     .select({
       id: assetDisposals.id,
+      assetId: assets.id,
       assetTag: assets.assetTag,
       category: categories.name,
       reason: assetDisposals.reason,
@@ -103,10 +104,14 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
     .where(historyBaseCondition)
     .groupBy(
       assetDisposals.id,
+      assets.id,
       assets.assetTag,
       categories.name,
+      assetDisposals.reason,
       requester.name,
-      approver.name
+      approver.name,
+      assetDisposals.resolvedAt,
+      assetDisposals.status
     )
     .orderBy(desc(assetDisposals.resolvedAt))
     .limit(validPageSize)

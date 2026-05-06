@@ -468,6 +468,7 @@ export function AssetRegistryClient({
     locationFilter,
     modelFilter,
     assignedToFilter,
+    shouldHideDisposedByDefault,
   ]);
 
   const visibleRows = filteredRows;

@@ -52,6 +52,16 @@ export async function getAssetAllocationsAction(id: string) {
   return { success: true, data: allocations };
 }
 
+export async function getAssetDisposalAction(id: string) {
+  const user = await getAuthenticatedUser();
+  if (!user) return { success: false, message: 'Unauthorized', data: null };
+
+  const { getAssetDisposalById } =
+    await import('@/lib/data/asset-details-repo');
+  const disposal = await getAssetDisposalById(id);
+  return { success: true, data: disposal };
+}
+
 export async function getRegistrationOptionsAction(pillar: string) {
   const user = await getAuthenticatedUser();
   if (!user) return { success: false, message: 'Unauthorized', data: null };

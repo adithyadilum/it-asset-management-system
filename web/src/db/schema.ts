@@ -557,3 +557,18 @@ export const systemAuditLogsRelations = relations(
     }),
   })
 );
+
+export const assetDisposalsRelations = relations(assetDisposals, ({ one }) => ({
+  asset: one(assets, {
+    fields: [assetDisposals.assetId],
+    references: [assets.id],
+  }),
+  requestedBy: one(users, {
+    fields: [assetDisposals.requestedById],
+    references: [users.id],
+  }),
+  approvedBy: one(users, {
+    fields: [assetDisposals.approvedById],
+    references: [users.id],
+  }),
+}));

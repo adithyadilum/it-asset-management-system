@@ -12,6 +12,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 
 export interface HistoryDisposalRow {
   id: number;
+  assetId: string;
   assetTag: string;
   category: string;
   reason: string;
@@ -28,6 +29,7 @@ interface DisposalHistoryGridProps {
   currentPage?: number;
   pageSize?: number;
   searchQuery?: string;
+  onRowClick?: (row: HistoryDisposalRow) => void;
 }
 
 function toCellText(value: string | null | undefined) {
@@ -43,6 +45,7 @@ export function DisposalHistoryGrid({
   currentPage = 1,
   pageSize = 10,
   searchQuery = '',
+  onRowClick,
 }: DisposalHistoryGridProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -230,6 +233,16 @@ export function DisposalHistoryGrid({
           paginationState={paginationState}
           onPaginationChange={handlePaginationChange}
           pageSizeOptions={[10, 20, 50]}
+          onRowClick={(
+            row: { original?: HistoryDisposalRow } | HistoryDisposalRow
+          ) => {
+            if (!onRowClick) return;
+            const rowData =
+              'original' in row && row.original
+                ? row.original
+                : (row as HistoryDisposalRow);
+            onRowClick(rowData);
+          }}
           emptyState={{
             title: 'No disposal history',
             description: 'There are no completed or rejected disposals on record.',

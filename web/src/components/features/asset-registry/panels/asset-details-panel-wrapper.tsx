@@ -1,4 +1,5 @@
 "use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { AssetDetailsPanel } from "./asset-details-panel";
@@ -15,6 +16,7 @@ import {
   type MaintenanceEvent,
   type AllocationData,
 } from "@/lib/data/asset-details-repo";
+import type { TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
@@ -27,6 +29,8 @@ export interface AssetDetailsPanelWrapperProps {
     iconName?: string; 
   }>;
   onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
+  hideActions?: boolean;
+  additionalTabs?: TabbedPanelTab[];
 }
 
 function formatDisplayDate(value?: string | null) {
@@ -72,6 +76,8 @@ export function AssetDetailsPanelWrapper({
   recordId,
   manualStatuses = [],
   onStatusUpdateRef,
+  hideActions,
+  additionalTabs,
 }: AssetDetailsPanelWrapperProps) {
   const [data, setData] = useState<AssetDetailsData | null>(null);
   const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
@@ -81,7 +87,6 @@ export function AssetDetailsPanelWrapper({
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
-
   if (isOpen && recordId !== prevRecordId) {
     setPrevRecordId(recordId);
     setIsLoading(true);
@@ -211,6 +216,8 @@ export function AssetDetailsPanelWrapper({
           onStatusUpdateRef.current(data.asset.id, nextStatus);
         }
       }}
+      hideActions={hideActions}
+      additionalTabs={additionalTabs}
     />
   );
 }

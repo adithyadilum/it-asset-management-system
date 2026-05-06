@@ -85,6 +85,8 @@ export interface AssetDetailsPanelProps {
     iconName?: string; 
   }>;
   onStatusChanged?: (nextStatus: string) => void;
+  hideActions?: boolean;
+  additionalTabs?: TabbedPanelTab[];
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
@@ -247,8 +249,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
               {isLoadingHistory ? (
                 <div className="space-y-3">
-                  <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
-                  <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
+                  <div className="h-20 bg-slate-50 animate-pulse rounded-lg" />
                 </div>
               ) : maintenanceHistory.length > 0 ? (
                 <div className="space-y-3">
@@ -302,6 +303,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         </div>
       ),
     });
+
 
     if (!isSoftware) {
       tabsList.push({
@@ -364,6 +366,9 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab key={props.assetId} assetId={props.assetId} />,
       });
     }
+    if (props.additionalTabs) {
+      tabsList.push(...props.additionalTabs);
+    }
 
     return tabsList;
   }, [props, maintenanceHistory, isLoadingHistory]);
@@ -421,6 +426,8 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   }, [props.assetId, props.assetTag]);
 
   const actions: SlidePanelAction[] = useMemo(() => {
+    if (props.hideActions) return [];
+
     if (activeTabId === 'history') {
       return [
         {
@@ -449,7 +456,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     }
 
     return list;
-  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV, props.status]);
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV, props.status, props.hideActions]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
