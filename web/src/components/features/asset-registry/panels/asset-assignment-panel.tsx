@@ -56,7 +56,7 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
   const isAssigned = ['Assigned', 'Requested', 'Overdue'].includes(props.status);
 
   const detailsFields = useMemo(() => {
-    const fields = [
+    const fields: { label: string; value: React.ReactNode }[] = [
       { label: 'Asset ID', value: props.assetTag || '-' },
       { label: 'Model', value: props.model || '-' },
       { label: 'Serial Number', value: props.serialNumber || '-' },
