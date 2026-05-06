@@ -579,6 +579,10 @@ export async function updateAsset(
     throw new Error('Asset not found');
   }
 
+  if (currentAsset.status === 'Disposed') {
+    throw new Error('Disposed assets cannot be edited.');
+  }
+
   const [updatedAsset] = await db
     .update(assets)
     .set({ ...data, updatedAt: new Date() })
@@ -667,6 +671,10 @@ export async function manualStatusOverrideAction(
 
     if (!currentAsset) {
       return { success: false, message: 'Asset not found.' };
+    }
+
+    if (currentAsset.status === 'Disposed' || currentAsset.status === 'Pending Disposal') {
+      return { success: false, message: `Assets in "${currentAsset.status}" status cannot have their status changed manually.` };
     }
 
     if (currentAsset.status === newStatus) {

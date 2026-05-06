@@ -83,6 +83,8 @@ export interface AssetDetailsPanelProps {
     iconName?: string; 
   }>;
   onStatusChanged?: (nextStatus: string) => void;
+  hideActions?: boolean;
+  additionalTabs?: TabbedPanelTab[];
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
@@ -219,6 +221,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       ),
     });
 
+
     if (!isSoftware) {
       tabsList.push({
         id: isFurniture ? 'physical-details' : 'technical-details',
@@ -280,6 +283,9 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab key={props.assetId} assetId={props.assetId} />,
       });
     }
+    if (props.additionalTabs) {
+      tabsList.push(...props.additionalTabs);
+    }
 
     return tabsList;
   }, [props]);
@@ -337,6 +343,8 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   }, [props.assetId, props.assetTag]);
 
   const actions: SlidePanelAction[] = useMemo(() => {
+    if (props.hideActions) return [];
+
     if (activeTabId === 'history') {
       return [
         {
@@ -349,11 +357,23 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       ];
     }
 
-    return [
-      { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
-      { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
-    ];
-  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV]);
+    const isDisposed = props.status === 'Disposed';
+    const isPendingDisposal = props.status === 'Pending Disposal';
+    
+    const list: SlidePanelAction[] = [];
+
+    // Disposed assets cannot be edited
+    if (!isDisposed) {
+      list.push({ id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit });
+    }
+
+    // Disposed and Pending Disposal assets cannot be assigned/returned
+    if (!isDisposed && !isPendingDisposal) {
+      list.push({ id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick });
+    }
+
+    return list;
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV, props.status, props.hideActions]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
