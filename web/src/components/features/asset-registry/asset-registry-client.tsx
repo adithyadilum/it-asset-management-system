@@ -333,8 +333,8 @@ export function AssetRegistryClient({
 
   const backendStatusFilter =
     statusFilter?.operator === 'is' ? statusFilter.value : undefined;
-  //hide pending disposal from registry by default, unless user explicitly filters for it.
-  const shouldHidePendingDisposalByDefault = backendStatusFilter !== 'Pending Disposal';
+  //hide disposed assets from registry by default, unless user explicitly filters for it.
+  const shouldHideDisposedByDefault = backendStatusFilter !== 'Disposed';
 
 
 
@@ -407,8 +407,8 @@ export function AssetRegistryClient({
     let nextRows = rows;
 
     // DEFAULT hide from registry
-    if (shouldHidePendingDisposalByDefault) {
-      nextRows = nextRows.filter((row) => row.status !== 'Pending Disposal');
+    if (shouldHideDisposedByDefault) {
+      nextRows = nextRows.filter((row) => row.status !== 'Disposed');
     }
 
     if (!selectedCategoryOption.isAll && !selectedCategoryOption.id) {
@@ -462,7 +462,6 @@ export function AssetRegistryClient({
     return nextRows;
   }, [
     rows,
-    shouldHidePendingDisposalByDefault,
     selectedCategoryOption,
     statusFilter,
     conditionFilter,
