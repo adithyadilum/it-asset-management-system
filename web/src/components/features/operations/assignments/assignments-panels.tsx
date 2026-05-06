@@ -14,8 +14,11 @@ type AssignmentPanelAsset = {
 	serialNumber: string;
 	owner: string;
 	assignedTo: string;
+	department?: string;
 	group: string;
 	dateCreated: string;
+	assignedDate?: string;
+	expectedReturnDate?: string;
 	updatedAt: string;
 	warranty: string;
 	lastRepaired?: string;
@@ -48,26 +51,32 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 		return selectedAsset.assetId;
 	}, [selectedAsset]);
 
+	if (!isOpen || !selectedAsset) {
+		return null;
+	}
+
 	return (
 		<>
 			<AssetAssignmentDetailsPanel
-				isOpen={isOpen}
-				onClose={onClose}
 				isLoading={false}
+				onClose={onClose}
 				assetId={selectedAsset?.assetId ?? ""}
 				assetTag={selectedAsset?.assetTag ?? "QR Code"}
+				assetName={selectedAsset?.assetName}
 				category={selectedAsset?.category ?? ""}
 				model={selectedAsset?.model ?? ""}
 				brand={selectedAsset?.brand ?? ""}
 				serialNumber={selectedAsset?.serialNumber ?? ""}
 				owner={selectedAsset?.owner ?? ""}
 				assignedTo={selectedAsset?.assignedTo ?? ""}
+				department={selectedAsset?.department ?? ""}
+				assignedDate={selectedAsset?.assignedDate ?? ""}
+				expectedReturnDate={selectedAsset?.expectedReturnDate ?? ""}
 				group={selectedAsset?.group ?? ""}
 				dateCreated={selectedAsset?.dateCreated ?? ""}
 				updatedAt={selectedAsset?.updatedAt ?? ""}
 				warranty={selectedAsset?.warranty ?? ""}
 				lastRepaired={selectedAsset?.lastRepaired ?? ""}
-
 				note={selectedAsset?.note ?? ""}
 				status={selectedAsset?.status ?? "Available"}
 				maintenanceEvents={[]}
@@ -76,7 +85,7 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 			/>
 
 			<AssetAssignmentModal
-				isOpen={isOpen && isAssignmentModalOpen}
+				isOpen={isAssignmentModalOpen}
 				assetId={selectedAsset?.assetId ?? ""}
 				assetLabel={assetLabel}
 				assetGroup={selectedAsset?.group ?? ""}
