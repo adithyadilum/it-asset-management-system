@@ -221,7 +221,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   };
 
   const selectedAsset = useMemo(
-    () => assetRows.find((a) => a.assetId === activeAssetId) ?? null,
+    () => assetRows.find((a) => a.assetTag === activeAssetId || a.assetId === activeAssetId) ?? null,
     [assetRows, activeAssetId]
   );
 
@@ -278,7 +278,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const handleRowClick = (row: AssetAssignmentRow) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("panel", "record");
-    params.set("id", row.assetId);
+    params.set("id", row.assetTag);
     // Mimic the animation toggle logic from RegistryClient
     params.set("animate", isPanelOpen ? "0" : "1");
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
@@ -485,6 +485,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
       <AssignmentsPanels
         isOpen={isPanelOpen}
+        disableTransition={searchParams.get("animate") === "0"}
         selectedAsset={selectedAsset}
         onClose={handleClosePanel}
       />
