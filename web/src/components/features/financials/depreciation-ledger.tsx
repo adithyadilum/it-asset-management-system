@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import { Download, Search, ChevronDown, DollarSign, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import type { DepreciationLedgerRecord } from "@/types/financials";
 import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
+import { getDepreciationLedger } from "@/actions/financials";
+import { TableSkeleton } from "@/components/shared/table-skeleton"; // 🚨 NEW
 
 type FilterField = 'Asset Category' | 'Purchase Age';
 type FilterOperator = 'is' | 'is not';
@@ -26,7 +28,15 @@ interface DepreciationLedgerProps {
 }
 
 export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
+  // Data & Pagination State
+  const [data, setData] = useState<DepreciationLedgerRecord[]>([]);
+  const [pageCount, setPageCount] = useState(0);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true); // 🚨 NEW: Explicit loading state
+
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currency, setCurrency] = useState<SupportedCurrency>('USD');
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -38,6 +48,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
   const [draftValue, setDraftValue] = useState('');
 
   const filterFieldOptions: FilterField[] = ['Asset Category', 'Purchase Age'];
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; // 🚨 NEW
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -59,36 +70,37 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
     }
   }, [draftValue, filterValueOptions]);
 
-  // Combined Search & Filter Logic
-  const filteredData = useMemo(() => {
-    let nextRows = initialData.filter((item) => {
-      return !searchTerm || 
-        item.assetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-    if (appliedFilters.length > 0) {
-      nextRows = nextRows.filter((row) => {
-        return appliedFilters.every((filter) => {
-          let matches = false;
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+  }, [debouncedSearch, appliedFilters]);
 
-          if (filter.field === 'Asset Category') {
-            matches = row.category === filter.value;
-          } else if (filter.field === 'Purchase Age') {
-            if (!row.purchaseDate) return filter.operator === 'is not'; 
-            const age = new Date().getFullYear() - new Date(row.purchaseDate).getFullYear();
-            if (filter.value === 'This Year') matches = age === 0;
-            else if (filter.value === 'Last Year') matches = age === 1;
-            else if (filter.value === 'Older than 3 Years') matches = age > 3;
-          }
+  // The Server Fetcher
+  useEffect(() => {
+    setIsLoading(true); // 🚨 NEW: Trigger loader immediately
+    startTransition(async () => {
+      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
+      const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age')?.value;
 
-          return filter.operator === 'is' ? matches : !matches;
-        });
+      const response = await getDepreciationLedger({
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        search: debouncedSearch,
+        category: categoryFilter,
+        ageFilter: ageFilter
       });
-    }
 
-    return nextRows;
-  }, [initialData, searchTerm, appliedFilters]);
+      setData(response.data as unknown as DepreciationLedgerRecord[]);
+      setPageCount(response.meta.totalPages);
+      setIsLoading(false); // 🚨 NEW: Disable loader
+    });
+  }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, appliedFilters]);
 
   const applyFilter = () => {
     if (!draftValue) return;
@@ -105,7 +117,18 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
   const clearAllFilters = () => setAppliedFilters([]);
 
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
+    const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
+    const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age')?.value;
+
+    const response = await getDepreciationLedger({
+      page: 1,
+      pageSize: 100000, 
+      search: debouncedSearch,
+      category: categoryFilter,
+      ageFilter: ageFilter
+    });
+
     const headers = [
       "Asset ID",
       "Category",
@@ -115,7 +138,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
       `Current Book Value (${currency})`,
     ];
 
-    const csvRows = filteredData.map((row) => [
+    const csvRows = response.data.map((row) => [
       row.assetId,
       row.category,
       row.purchaseDate ? format(new Date(row.purchaseDate), "MM/dd/yyyy") : "N/A",
@@ -292,7 +315,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
               </PopoverContent>
             </Popover>
 
-            <Button onClick={exportToCSV} className={`bg-primary hover:bg-primary/90 text-primary-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
+            <Button onClick={() => void exportToCSV()} className={`bg-primary hover:bg-primary/90 text-primary-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
               <Download className="mr-2 h-4 w-4" />
               Export Log
             </Button>
@@ -337,14 +360,27 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
         ) : null}
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filteredData}
-        pageSizeOptions={[16, 24, 32, 48]}
-        initialPageSize={16}
-        enableRowSelection={false}
-        className="bg-background border-border flex-1 min-h-0"
-      />
+      {/* 🚨 FIX: Replaced the opacity dimming with conditional skeleton swapping */}
+      <div className="min-h-0 flex-1 flex flex-col">
+        {isLoading || isPending ? (
+          <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
+            <TableSkeleton rowCount={10} columnWidths={tableSkeletonColumnWidths} />
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={data}
+            pageSizeOptions={[16, 24, 32, 48]}
+            initialPageSize={16}
+            enableRowSelection={false}
+            className="bg-background border-border flex-1 min-h-0"
+            manualPagination={true}
+            pageCount={pageCount}
+            paginationState={pagination}
+            onPaginationChange={setPagination}
+          />
+        )}
+      </div>
     </div>
   );
 }

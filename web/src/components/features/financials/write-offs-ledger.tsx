@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import { Download, Search, ChevronDown, DollarSign, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import type { WriteOffsLedgerRecord } from "@/types/financials";
 import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
+import { getWriteOffsLedger } from "@/actions/financials";
+import { TableSkeleton } from "@/components/shared/table-skeleton"; // 🚨 NEW
 
 type FilterField = 'Asset Category' | 'Recouped Salvage Value';
 type FilterOperator = 'is' | 'is not';
@@ -26,7 +28,14 @@ interface WriteOffsLedgerProps {
 }
 
 export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
+  const [data, setData] = useState<WriteOffsLedgerRecord[]>([]);
+  const [pageCount, setPageCount] = useState(0);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true); // 🚨 NEW
+
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currency, setCurrency] = useState<SupportedCurrency>('USD');
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
@@ -38,6 +47,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
   const [draftValue, setDraftValue] = useState('');
 
   const filterFieldOptions: FilterField[] = ['Asset Category', 'Recouped Salvage Value'];
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; // 🚨 NEW
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -59,34 +69,37 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
     }
   }, [draftValue, filterValueOptions]);
 
-  // Combined Search & Filter Logic
-  const filteredData = useMemo(() => {
-    let nextRows = initialData.filter((item) => {
-      return !searchTerm || 
-        item.assetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-    if (appliedFilters.length > 0) {
-      nextRows = nextRows.filter((row) => {
-        return appliedFilters.every((filter) => {
-          let matches = false;
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+  }, [debouncedSearch, appliedFilters]);
 
-          if (filter.field === 'Asset Category') {
-            matches = row.category === filter.value;
-          } else if (filter.field === 'Recouped Salvage Value') {
-            if (filter.value === 'Zero Salvage ($0)') matches = row.salvageValue === 0;
-            else if (filter.value === 'Low Salvage (<$100)') matches = row.salvageValue > 0 && row.salvageValue < 100;
-            else if (filter.value === 'High Salvage (>$100)') matches = row.salvageValue >= 100;
-          }
+  // The Server Fetcher
+  useEffect(() => {
+    setIsLoading(true); // 🚨 NEW
+    startTransition(async () => {
+      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
+      const salvageFilter = appliedFilters.find(f => f.field === 'Recouped Salvage Value')?.value;
 
-          return filter.operator === 'is' ? matches : !matches;
-        });
+      const response = await getWriteOffsLedger({
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        search: debouncedSearch,
+        category: categoryFilter,
+        salvageFilter: salvageFilter
       });
-    }
 
-    return nextRows;
-  }, [initialData, searchTerm, appliedFilters]);
+      setData(response.data as unknown as WriteOffsLedgerRecord[]);
+      setPageCount(response.meta.totalPages);
+      setIsLoading(false); // 🚨 NEW
+    });
+  }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, appliedFilters]);
 
   const applyFilter = () => {
     if (!draftValue) return;
@@ -103,7 +116,18 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
 
   const clearAllFilters = () => setAppliedFilters([]);
 
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
+    const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
+    const salvageFilter = appliedFilters.find(f => f.field === 'Recouped Salvage Value')?.value;
+
+    const response = await getWriteOffsLedger({
+      page: 1,
+      pageSize: 100000, 
+      search: debouncedSearch,
+      category: categoryFilter,
+      salvageFilter: salvageFilter
+    });
+
     const headers = [
       "Asset ID",
       "Category",
@@ -113,7 +137,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       `Salvage Value (${currency})`,
     ];
 
-    const csvRows = filteredData.map((row) => [
+    const csvRows = response.data.map((row) => [
       row.assetId,
       row.category,
       row.disposalDate ? format(new Date(row.disposalDate), "MM/dd/yyyy") : "N/A",
@@ -290,7 +314,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
               </PopoverContent>
             </Popover>
 
-            <Button onClick={exportToCSV} className={`bg-primary hover:bg-primary/90 text-primary-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
+            <Button onClick={() => void exportToCSV()} className={`bg-primary hover:bg-primary/90 text-primary-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
               <Download className="mr-2 h-4 w-4" />
               Export Log
             </Button>
@@ -335,14 +359,27 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
         ) : null}
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filteredData}
-        pageSizeOptions={[16, 24, 32, 48]}
-        initialPageSize={16}
-        enableRowSelection={false}
-        className="bg-background border-border flex-1 min-h-0"
-      />
+      {/* 🚨 FIX: Skeleton Loader */}
+      <div className="min-h-0 flex-1 flex flex-col">
+        {isLoading || isPending ? (
+          <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
+            <TableSkeleton rowCount={10} columnWidths={tableSkeletonColumnWidths} />
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={data}
+            pageSizeOptions={[16, 24, 32, 48]}
+            initialPageSize={16}
+            enableRowSelection={false}
+            className="bg-background border-border flex-1 min-h-0"
+            manualPagination={true}
+            pageCount={pageCount}
+            paginationState={pagination}
+            onPaginationChange={setPagination}
+          />
+        )}
+      </div>
     </div>
   );
 }
