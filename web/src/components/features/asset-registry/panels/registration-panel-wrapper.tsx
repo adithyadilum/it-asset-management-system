@@ -8,7 +8,7 @@ import { type RegistrationPillarInput } from "@/lib/validations/asset-registrati
 
 export interface RegistrationPanelWrapperProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (didSucceed?: boolean) => void;
   pillar: string;
 }
 
@@ -61,7 +61,7 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
 
   const props = {
     isOpen,
-    onClose: (open: boolean) => { if (!open) onClose(); },
+    onClose: (open: boolean, didSucceed?: boolean) => { if (!open) onClose(didSucceed); },
     isLoading: isLoading || !data,
     initialPillar: pillar as RegistrationPillarInput,
     categoryOptions: data?.categories ?? [],

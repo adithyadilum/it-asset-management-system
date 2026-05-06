@@ -58,6 +58,7 @@ export function AssetRegistryContent({
     manualStatuses = [],
 }: AssetRegistryContentProps) {
     const onStatusUpdateRef = useRef<(assetId: string, nextStatus: string) => void>(() => { });
+    const onRefreshRef = useRef<() => void>(() => { });
 
     return (
         <div className="flex h-full w-full overflow-hidden bg-slate-50">
@@ -68,6 +69,7 @@ export function AssetRegistryContent({
                 currentPanel={currentPanel}
                 manualStatuses={manualStatuses}
                 onStatusUpdateRef={onStatusUpdateRef}
+                onRefreshRef={onRefreshRef}
             />
             <AssetRegistryPanels
                 currentPanel={currentPanel}
@@ -76,6 +78,7 @@ export function AssetRegistryContent({
                 pillar={pillar}
                 manualStatuses={manualStatuses}
                 onStatusUpdateRef={onStatusUpdateRef}
+                onRefreshRef={onRefreshRef}
             />
         </div>
     );

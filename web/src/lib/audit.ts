@@ -14,7 +14,8 @@ export type AuditActionType =
   | 'RESOLVED_INTERNALLY'
   | 'LOGIN'
   | 'LOGOUT'
-  | 'ACCESS_DENIED';
+  | 'ACCESS_DENIED'
+  | 'IMPORT';
 
 type AuditPayload = {
   entityType: string;
