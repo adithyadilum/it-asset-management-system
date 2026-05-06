@@ -491,7 +491,7 @@ export function RegistrationForm({
     }
 
     lastToastKeyRef.current = toastKey;
-  }, [formError, state.message, state.success]);
+  }, [formError, state.message, state.success, onClose]);
 
   const panelActions: SlidePanelAction[] = isLoading
     ? []

@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { AssetAssignmentDetailsPanel } from "@/components/features/asset-registry/panels/asset-assignment-panel";
 import { AssetAssignmentModal } from "./asset-assignment-modal";
 import { getAssetDetailsByIdAction, getAssetMaintenanceByIdAction } from "@/actions/asset-registry-panels";
+import { type AssetDetailsData, type MaintenanceEvent } from "@/lib/data/asset-details-repo";
 
 type AssignmentPanelAsset = {
 	assetId: string;
@@ -42,7 +43,7 @@ export function AssignmentsPanels({
 }: AssignmentsPanelsProps) {
 	const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
 	const [cachedAsset, setCachedAsset] = useState<AssignmentPanelAsset | null>(selectedAsset);
-	const [fetchedData, setFetchedData] = useState<{ details: any, maintenance: any[] } | null>(null);
+	const [fetchedData, setFetchedData] = useState<{ details: AssetDetailsData | null, maintenance: MaintenanceEvent[] } | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
 
@@ -122,8 +123,8 @@ export function AssignmentsPanels({
 						: cachedAsset.warranty ?? ""
 				}
 				lastRepaired={
-					fetchedData?.maintenance?.find((m: any) => m.status === 'COMPLETED')?.actualCompletionDate
-						? new Date(fetchedData.maintenance.find((m: any) => m.status === 'COMPLETED').actualCompletionDate).toLocaleDateString('en-GB')
+					fetchedData?.maintenance?.find((m: MaintenanceEvent) => m.status === 'COMPLETED')?.actualCompletionDate
+						? new Date(fetchedData.maintenance.find((m: MaintenanceEvent) => m.status === 'COMPLETED')!.actualCompletionDate!).toLocaleDateString('en-GB')
 						: cachedAsset.lastRepaired ?? ""
 				}
 				note={cachedAsset.note ?? ""}

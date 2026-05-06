@@ -31,7 +31,6 @@ import {
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import {
   assetRegistrationSchema,
-  PILLAR_PREFIX_MAP,
   type RegisterAssetActionState,
 } from '@/lib/validations/asset-registration';
 import { isInvoiceAttachmentFile } from '@/lib/file-types';

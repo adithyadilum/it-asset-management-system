@@ -14,7 +14,6 @@ import {
   ResolvedImportRow,
 } from '@/lib/bulk-import/types';
 import { validateRows } from '@/lib/bulk-import/validate-rows';
-import { PILLAR_PREFIX_MAP } from '@/lib/validations/asset-registration';
 import { eq, like, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import Papa from 'papaparse';
