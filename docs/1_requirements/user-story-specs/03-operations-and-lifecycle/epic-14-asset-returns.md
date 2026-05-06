@@ -23,7 +23,7 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 - [US-14.1 — The Assigned Assets Tab](https://app.clickup.com/t/86ewvnyq7)
 - [US-14.2 — Requesting an Asset Return (Recall)](https://app.clickup.com/t/86ewvnyqk)
 - [US-14.3 — Receiving an Asset (Mark as Returned)](https://app.clickup.com/t/86ewvnyqw)
-- [US-14.4 — The Returned Assets Tab & Condition Check](https://app.clickup.com/t/86ewvnyr6)
+- [US-14.4 — The Returned Assets Tab &  Condition Check](https://app.clickup.com/t/86ewvnyr6)
 
 ---
 

@@ -2,28 +2,33 @@
 
 import Image from 'next/image';
 import React, { useMemo } from 'react';
-import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Badge } from '@/components/ui/badge';
-import { QrCode } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { QrCode, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MaintenanceEvent } from '@/lib/data/asset-details-repo';
+import { RecentMaintenance } from './recent-maintenance';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { Textarea } from '@/components/ui/textarea';
 
 export interface AssetAssignmentPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
   isLoading?: boolean;
   assetId: string;
   assetTag: string;
+  assetName?: string;
   category: string;
   model: string;
   brand: string;
   serialNumber: string;
   owner: string;
   assignedTo: string;
+  department?: string;
   group: string;
   dateCreated: string;
+  assignedDate?: string;
+  expectedReturnDate?: string;
   updatedAt: string;
   warranty: string;
   lastRepaired: string;
@@ -33,6 +38,7 @@ export interface AssetAssignmentPanelProps {
   maintenanceEvents?: MaintenanceEvent[];
   onEdit?: () => void;
   onAssign?: () => void;
+  onClose?: () => void;
 }
 
 function formatDateValue(value: string) {
@@ -47,141 +53,236 @@ function formatDateValue(value: string) {
 }
 
 export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
-  const content = useMemo(() => {
-    if (props.isLoading) return <AssetLoadingSkeleton />;
+  const isAssigned = ['Assigned', 'Requested', 'Overdue'].includes(props.status);
 
-    const detailsRows = [
-      {
-        left: { label: 'Asset ID :', value: props.assetTag || '-' },
-        right: { label: 'Category :', value: props.category || '-' },
-      },
-      {
-        left: { label: 'Model :', value: props.model || '-' },
-        right: { label: 'Brand :', value: props.brand || '-' },
-      },
-      {
-        left: { label: 'Serial Number :', value: props.serialNumber || '-' },
-        right: { label: 'Owner :', value: props.owner || '-' },
-      },
-      {
-        left: { label: 'Assigned to :', value: props.assignedTo || '-' },
-        right: { label: 'Group :', value: props.group || '-' },
-      },
-      {
-        left: { label: 'Date Created :', value: props.dateCreated || '-' },
-        right: {
-          label: 'Warranty :',
-          value: (
-            <Badge
-              variant="outline"
-              className={cn(
-                'h-5 rounded-full px-2 text-[11px] font-medium',
-                props.warranty === 'Expired'
-                  ? 'border-red-300 bg-red-50 text-red-600'
-                  : 'border-blue-200 bg-blue-50 text-blue-600'
-              )}
-            >
-              {props.warranty || '-'}
-            </Badge>
-          ),
-        },
-      },
-      {
-        left: { label: 'Updated at :', value: props.updatedAt || '-' },
-        right: { label: 'Last Repaired :', value: props.lastRepaired || '-' },
-      },
-      {
-        left: { label: 'Note :', value: props.note || '-' },
-        right: {
-          label: 'Asset Tag :',
-          value: (
-            <Badge
-              variant="secondary"
-              className="h-8 gap-1 rounded-lg bg-slate-100 px-3 font-medium text-slate-700 hover:bg-slate-100"
-            >
-              <QrCode className="size-3.5" />
-              {props.assetTag || 'QR Code'}
-            </Badge>
-          ),
-        },
-      },
+  const detailsFields = useMemo(() => {
+    const fields: { label: string; value: React.ReactNode }[] = [
+      { label: 'Asset ID', value: props.assetTag || '-' },
+      { label: 'Model', value: props.model || '-' },
+      { label: 'Serial Number', value: props.serialNumber || '-' },
+      { label: 'Category', value: props.category || '-' },
+      { label: 'Brand', value: props.brand || '-' },
     ];
 
-    const maintenanceSummary = props.maintenanceEvents?.[0]?.reportedIssue || 'No maintenance notes available.';
+    if (!isAssigned) {
+      fields.push({ label: 'Owner', value: props.owner || '-' });
+    }
 
-    return (
-      <div className="flex w-full flex-col gap-6 pb-2">
-        <div className="flex w-full flex-col items-center gap-2 pt-1">
-          <Image
-            src={props.imageUrl || '/asset-placeholder.png'}
-            alt="Asset Image"
-            width={170}
-            height={126}
-            className="h-auto w-[170px] object-contain"
-          />
-          <StatusBadge value={props.status} showIcon className="h-6 rounded-full px-2 text-[12px]" />
-        </div>
-
-        <div className="space-y-3">
-          {detailsRows.map((row, index) => (
-            <div key={`assignment-row-${index}`} className="grid grid-cols-2 gap-x-8">
-              <div className="grid grid-cols-[150px_minmax(0,1fr)] items-start gap-x-3">
-                <p className="font-medium text-slate-900">{row.left.label}</p>
-                <div className="text-slate-700">{row.left.value}</div>
-              </div>
-              <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-x-3">
-                <p className="font-medium text-slate-900">{row.right.label}</p>
-                <div className="text-slate-700">{row.right.value}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-[18px] font-semibold leading-9 text-slate-900">Maintenance Records</h3>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
-            {props.maintenanceEvents && props.maintenanceEvents.length > 0 ? (
-              <dl className="space-y-2">
-                {props.maintenanceEvents.slice(0, 3).map((record) => (
-                  <div key={record.id} className="grid grid-cols-[145px_minmax(0,1fr)] gap-x-5">
-                    <dt className="font-semibold text-slate-900">{formatDateValue(record.estimatedReturnDate || record.createdAt)} :</dt>
-                    <dd className="text-slate-700">{record.reportedIssue || '-'}</dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <p className="text-slate-600">No maintenance records found.</p>
+    fields.push(
+      { label: 'Date Created', value: props.dateCreated || '-' },
+      { label: 'Updated at', value: props.updatedAt || '-' },
+      { 
+        label: 'Warranty', 
+        value: (
+          <Badge
+            variant="outline"
+            className={cn(
+              'h-5 rounded-full px-2 text-[11px] font-medium',
+              props.warranty === 'Expired'
+                ? 'border-red-300 bg-red-50 text-red-600'
+                : 'border-blue-200 bg-blue-50 text-blue-600'
             )}
-
-            <div className="mt-6 space-y-3">
-              <p className="font-semibold text-slate-900">Note :</p>
-              <p className="text-slate-700">{maintenanceSummary}</p>
-              <button
-                type="button"
-                className="text-[15px] text-[#4A80FF] underline decoration-[#4A80FF] underline-offset-2 hover:text-[#3b6ce0]"
-              >
-                View all maintenance records
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+          >
+            {props.warranty || '-'}
+          </Badge>
+        ) 
+      },
+      { label: 'Last Repaired', value: props.lastRepaired || '-' }
     );
-  }, [props]);
 
-  const actions: SlidePanelAction[] = [
-    { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
-    { id: 'assign', label: 'Assign', variant: 'default', onClick: props.onAssign },
-  ];
+    return fields;
+  }, [props, isAssigned]);
+
+  const maintenanceSummary = props.maintenanceEvents?.[0]?.reportedIssue || 'No maintenance notes available.';
+
+  if (props.isLoading) return <AssetLoadingSkeleton />;
 
   return (
-    <SlidePanel
-      isOpen={props.isOpen}
-      onClose={props.onClose}
-      title={null}
-      content={content}
-      actions={actions}
-    />
+    <aside className="relative flex h-full w-[min(700px,92vw)] flex-none flex-col overflow-x-hidden rounded-xl bg-card shadow-box-shadow-shadow-lg ml-2">
+      {/* Header Area */}
+      <header className="shrink-0 px-5 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={cn('truncate text-foreground', TYPOGRAPHY_CLASSNAMES.textLgSemiBold)}>
+              {props.assetName || props.model || 'Asset'}
+            </span>
+            <StatusBadge
+              variant="metadata"
+              label={`ID: ${props.assetTag || '-'}`}
+            />
+            <StatusBadge value={props.status} showIcon className="h-6 rounded-full px-2 text-[12px]" />
+          </div>
+
+          {props.onClose ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="-mr-1 -mt-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              onClick={props.onClose}
+              aria-label="Close panel"
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="flex flex-col gap-6 p-6 pt-2 pb-2 pr-12">
+          {/* Asset Image */}
+          <div className="flex w-full flex-col items-center gap-2.5 mt-2">
+            {props.imageUrl && props.imageUrl.trim().length > 0 ? (
+                <Image
+                    src={props.imageUrl}
+                    alt="Asset Image"
+                    width={153}
+                    height={121}
+                    className="object-cover"
+                />
+            ) : (
+                <div className="flex h-[121px] w-[153px] items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+                    No image available
+                </div>
+            )}
+            
+            <div className="mt-1.5 flex items-center justify-center">
+                <Button
+                    type="button"
+                    variant="outline"
+                    title={props.assetTag}
+                    aria-label="Asset Tag"
+                    className="h-7 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground shadow-none hover:bg-muted"
+                >
+                    <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                    Asset Tag
+                </Button>
+            </div>
+          </div>
+
+          {/* Details Rows */}
+          <div className={cn(
+            "mt-4 w-full gap-y-0",
+            isAssigned 
+              ? "mx-auto flex max-w-[400px] flex-col" 
+              : "grid grid-cols-1 gap-x-12 md:grid-cols-2"
+          )}>
+            {detailsFields.map((item, index) => {
+              const isLongValue = typeof item.value === 'string' && item.value.length > 40;
+
+              return (
+                  <div
+                      key={index}
+                      className={cn(
+                          'flex items-center justify-between border-b border-border/40 py-2.5',
+                          !isAssigned && isLongValue && 'col-span-full'
+                      )}
+                  >
+                      <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+                          {item.label}
+                      </div>
+                      <div
+                          className={cn(
+                              TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                              'text-right text-slate-900',
+                              item.label === 'Asset ID' && 'font-mono tracking-wide'
+                          )}
+                      >
+                          {item.value || '-'}
+                      </div>
+                  </div>
+              );
+            })}
+
+            {props.note ? (
+                <div className="col-span-full mt-4 space-y-2">
+                    <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>
+                        Note
+                    </div>
+                    <Textarea
+                        readOnly
+                        value={props.note}
+                        className="min-h-25 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+                    />
+                </div>
+            ) : null}
+          </div>
+
+          {isAssigned ? (
+            <div className="mt-8">
+              <h3 className="mb-4 text-base font-semibold text-slate-900">Assignment Details</h3>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6">
+                <div className="grid grid-cols-[150px_1fr] gap-y-4">
+                  <p className="font-medium text-slate-900">Assigned to :</p>
+                  <div className="text-slate-700">{props.assignedTo || '-'}</div>
+                  
+                  <p className="font-medium text-slate-900">Department :</p>
+                  <div className="text-slate-700">{props.department || props.group || '-'}</div>
+                  
+                  <p className="font-medium text-slate-900">Assigned Date :</p>
+                  <div className="text-slate-700">{props.assignedDate || '-'}</div>
+                  
+                  <p className="font-medium text-slate-900">Due Date :</p>
+                  <div className="text-slate-700">{props.expectedReturnDate || '-'}</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            props.category !== 'Software' && (
+              <div className="-mx-2 mt-8">
+                <RecentMaintenance 
+                  assetTag={props.assetTag} 
+                  isOpen={true} 
+                />
+              </div>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Sticky Action Buttons at Bottom */}
+      <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white p-6 rounded-b-xl">
+        {isAssigned ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-lg border-slate-200 px-4 text-sm"
+            >
+              Received
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]"
+            >
+              Request Return
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-lg border-slate-200 px-4 text-sm"
+              onClick={props.onEdit}
+            >
+              Edit
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]"
+              onClick={props.onAssign}
+            >
+              Assign
+            </Button>
+          </>
+        )}
+      </div>
+    </aside>
   );
 }
