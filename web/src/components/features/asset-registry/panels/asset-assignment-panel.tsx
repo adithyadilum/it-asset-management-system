@@ -55,33 +55,43 @@ function formatDateValue(value: string) {
 export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
   const isAssigned = ['Assigned', 'Requested', 'Overdue'].includes(props.status);
 
-  const detailsFields = useMemo(() => [
-    { label: 'Asset ID', value: props.assetTag || '-' },
-    { label: 'Category', value: props.category || '-' },
-    { label: 'Model', value: props.model || '-' },
-    { label: 'Brand', value: props.brand || '-' },
-    { label: 'Serial Number', value: props.serialNumber || '-' },
-    { label: 'Owner', value: props.owner || '-' },
-    { label: 'Date Created', value: props.dateCreated || '-' },
-    { 
-      label: 'Warranty', 
-      value: (
-        <Badge
-          variant="outline"
-          className={cn(
-            'h-5 rounded-full px-2 text-[11px] font-medium',
-            props.warranty === 'Expired'
-              ? 'border-red-300 bg-red-50 text-red-600'
-              : 'border-blue-200 bg-blue-50 text-blue-600'
-          )}
-        >
-          {props.warranty || '-'}
-        </Badge>
-      ) 
-    },
-    { label: 'Updated at', value: props.updatedAt || '-' },
-    { label: 'Last Repaired', value: props.lastRepaired || '-' }
-  ], [props]);
+  const detailsFields = useMemo(() => {
+    const fields = [
+      { label: 'Asset ID', value: props.assetTag || '-' },
+      { label: 'Model', value: props.model || '-' },
+      { label: 'Serial Number', value: props.serialNumber || '-' },
+      { label: 'Category', value: props.category || '-' },
+      { label: 'Brand', value: props.brand || '-' },
+    ];
+
+    if (!isAssigned) {
+      fields.push({ label: 'Owner', value: props.owner || '-' });
+    }
+
+    fields.push(
+      { label: 'Date Created', value: props.dateCreated || '-' },
+      { label: 'Updated at', value: props.updatedAt || '-' },
+      { 
+        label: 'Warranty', 
+        value: (
+          <Badge
+            variant="outline"
+            className={cn(
+              'h-5 rounded-full px-2 text-[11px] font-medium',
+              props.warranty === 'Expired'
+                ? 'border-red-300 bg-red-50 text-red-600'
+                : 'border-blue-200 bg-blue-50 text-blue-600'
+            )}
+          >
+            {props.warranty || '-'}
+          </Badge>
+        ) 
+      },
+      { label: 'Last Repaired', value: props.lastRepaired || '-' }
+    );
+
+    return fields;
+  }, [props, isAssigned]);
 
   const maintenanceSummary = props.maintenanceEvents?.[0]?.reportedIssue || 'No maintenance notes available.';
 
@@ -152,7 +162,12 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
           </div>
 
           {/* Details Rows */}
-          <div className="mt-4 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+          <div className={cn(
+            "mt-4 w-full gap-y-0",
+            isAssigned 
+              ? "mx-auto flex max-w-[400px] flex-col" 
+              : "grid grid-cols-1 gap-x-12 md:grid-cols-2"
+          )}>
             {detailsFields.map((item, index) => {
               const isLongValue = typeof item.value === 'string' && item.value.length > 40;
 
@@ -161,7 +176,7 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
                       key={index}
                       className={cn(
                           'flex items-center justify-between border-b border-border/40 py-2.5',
-                          isLongValue && 'col-span-full'
+                          !isAssigned && isLongValue && 'col-span-full'
                       )}
                   >
                       <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
