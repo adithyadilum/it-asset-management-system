@@ -62,6 +62,7 @@ export function AssignmentsPanels({ isOpen, selectedAsset, onClose }: Assignment
 				onClose={onClose}
 				assetId={selectedAsset?.assetId ?? ""}
 				assetTag={selectedAsset?.assetTag ?? "QR Code"}
+				assetName={selectedAsset?.assetName}
 				category={selectedAsset?.category ?? ""}
 				model={selectedAsset?.model ?? ""}
 				brand={selectedAsset?.brand ?? ""}
