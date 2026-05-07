@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
 import { getDepreciationLedger } from "@/actions/financials";
-import { TableSkeleton } from "@/components/shared/table-skeleton"; 
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 
 type FilterField = 'Asset Category' | 'Purchase Age';
 type FilterOperator = 'is' | 'is not';
@@ -28,11 +28,12 @@ interface DepreciationLedgerProps {
 }
 
 export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
-  // Data & Pagination State
-  const [data, setData] = useState<DepreciationLedgerRecord[]>([]);
-  const [pageCount, setPageCount] = useState(0);
+  // Data & Pagination State - Initialize from initialData to avoid empty flash
+  const [data, setData] = useState<DepreciationLedgerRecord[]>(initialData);
+  const [pageCount, setPageCount] = useState(1);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -47,7 +48,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
   const [draftValue, setDraftValue] = useState('');
 
   const filterFieldOptions: FilterField[] = ['Asset Category', 'Purchase Age'];
-  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; 
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]'];
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -68,11 +69,19 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // The Server Fetcher
+  // The Server Fetcher - Skip first fetch if no filters/search on page 0
   useEffect(() => {
+    const shouldSkipFirstFetch = !hasInitialized && pagination.pageIndex === 0 && debouncedSearch === '' && appliedFilters.length === 0;
+    if (shouldSkipFirstFetch) {
+      setHasInitialized(true);
+      return;
+    }
+
+    setHasInitialized(true);
     startTransition(async () => {
-      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
-      const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age')?.value;
+      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category' && f.operator === 'is')?.value;
+      const categoryFilterNot = appliedFilters.find(f => f.field === 'Asset Category' && f.operator === 'is not')?.value;
+      const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age' && f.operator === 'is')?.value;
 
       const response = await getDepreciationLedger({
         page: pagination.pageIndex + 1,
@@ -108,12 +117,12 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
   };
 
   const exportToCSV = async () => {
-    const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
-    const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age')?.value;
+    const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category' && f.operator === 'is')?.value;
+    const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age' && f.operator === 'is')?.value;
 
     const response = await getDepreciationLedger({
       page: 1,
-      pageSize: 100000, 
+      pageSize: 100000,
       search: debouncedSearch,
       category: categoryFilter,
       ageFilter: ageFilter
@@ -132,9 +141,9 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
       row.assetId,
       row.category,
       row.purchaseDate ? format(new Date(row.purchaseDate), "MM/dd/yyyy") : "N/A",
-      convertCurrencyAmount(row.originalPrice, 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.originalPrice, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
       row.expectedLifespan,
-      convertCurrencyAmount(row.currentBookValue, 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.currentBookValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
     ]);
 
     const csvContent = [
@@ -175,7 +184,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
     {
       accessorKey: "originalPrice",
       header: "Original Purchase Price",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, 'USD', currency), currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
     {
       accessorKey: "expectedLifespan",
@@ -185,7 +194,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
     {
       accessorKey: "currentBookValue",
       header: "Current Book Value",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.currentBookValue, 'USD', currency), currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.currentBookValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
   ];
 
@@ -205,7 +214,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
               className={`pl-9 bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
             />
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Currency Switcher */}
             <Popover open={isCurrencyOpen} onOpenChange={setIsCurrencyOpen}>
@@ -234,10 +243,10 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
             {/* Query Builder Filter Dropdown */}
             <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
               <PopoverAnchor asChild>
-                <Button 
-                variant="outline" 
-                className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`} 
-                onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
+                <Button
+                  variant="outline"
+                  className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
+                  onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
                 >
                   <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                   Filters

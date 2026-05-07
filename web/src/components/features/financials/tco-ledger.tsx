@@ -28,10 +28,11 @@ interface TCOLedgerProps {
 }
 
 export function TCOLedger({ initialData }: TCOLedgerProps) {
-  const [data, setData] = useState<TCOLedgerRecord[]>([]);
-  const [pageCount, setPageCount] = useState(0);
+  const [data, setData] = useState<TCOLedgerRecord[]>(initialData);
+  const [pageCount, setPageCount] = useState(1);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -46,7 +47,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
   const [draftValue, setDraftValue] = useState('');
 
   const filterFieldOptions: FilterField[] = ['Asset Category', 'Total Cost (TCO)'];
-  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; 
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]'];
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -67,11 +68,18 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // The Server Fetcher
+  // The Server Fetcher - Skip first fetch if no filters/search on page 0
   useEffect(() => {
+    const shouldSkipFirstFetch = !hasInitialized && pagination.pageIndex === 0 && debouncedSearch === '' && appliedFilters.length === 0;
+    if (shouldSkipFirstFetch) {
+      setHasInitialized(true);
+      return;
+    }
+
+    setHasInitialized(true);
     startTransition(async () => {
-      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
-      const costFilter = appliedFilters.find(f => f.field === 'Total Cost (TCO)')?.value;
+      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category' && f.operator === 'is')?.value;
+      const costFilter = appliedFilters.find(f => f.field === 'Total Cost (TCO)' && f.operator === 'is')?.value;
 
       const response = await getTCOLedger({
         page: pagination.pageIndex + 1,
@@ -112,7 +120,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
 
     const response = await getTCOLedger({
       page: 1,
-      pageSize: 100000, 
+      pageSize: 100000,
       search: debouncedSearch,
       category: categoryFilter,
       costFilter: costFilter
@@ -131,9 +139,9 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
       row.assetId,
       row.category,
       row.purchaseDate ? format(new Date(row.purchaseDate), "MM/dd/yyyy") : "N/A",
-      convertCurrencyAmount(row.originalPrice, 'USD', currency).toFixed(2),
-      convertCurrencyAmount(row.totalRepairCosts, 'USD', currency).toFixed(2),
-      convertCurrencyAmount(row.totalTCO, 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.originalPrice, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.totalRepairCosts, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.totalTCO, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
     ]);
 
     const csvContent = [
@@ -174,14 +182,14 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
     {
       accessorKey: "originalPrice",
       header: "Original Purchase Price",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, 'USD', currency), currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
     {
       accessorKey: "totalRepairCosts",
       header: "Total Repair Costs",
       cell: ({ row }) => (
         <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-          {formatMoneyByCurrency(convertCurrencyAmount(row.original.totalRepairCosts, 'USD', currency), currency)}
+          {formatMoneyByCurrency(convertCurrencyAmount(row.original.totalRepairCosts, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}
         </span>
       ),
     },
@@ -190,7 +198,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
       header: "Total TCO",
       cell: ({ row }) => (
         <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-          {formatMoneyByCurrency(convertCurrencyAmount(row.original.totalTCO, 'USD', currency), currency)}
+          {formatMoneyByCurrency(convertCurrencyAmount(row.original.totalTCO, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}
         </span>
       ),
     },
@@ -212,7 +220,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
               className={`pl-9 bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
             />
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Currency Switcher */}
             <Popover open={isCurrencyOpen} onOpenChange={setIsCurrencyOpen}>
@@ -241,10 +249,10 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
             {/* Query Builder Filter Dropdown */}
             <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
               <PopoverAnchor asChild>
-                <Button 
-                variant="outline" 
-                className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`} 
-                onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
+                <Button
+                  variant="outline"
+                  className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
+                  onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
                 >
                   <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                   Filters

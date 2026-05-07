@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
 import { getWriteOffsLedger } from "@/actions/financials";
-import { TableSkeleton } from "@/components/shared/table-skeleton"; 
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 
 type FilterField = 'Asset Category' | 'Recouped Salvage Value';
 type FilterOperator = 'is' | 'is not';
@@ -28,10 +28,11 @@ interface WriteOffsLedgerProps {
 }
 
 export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
-  const [data, setData] = useState<WriteOffsLedgerRecord[]>([]);
-  const [pageCount, setPageCount] = useState(0);
+  const [data, setData] = useState<WriteOffsLedgerRecord[]>(initialData);
+  const [pageCount, setPageCount] = useState(1);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -46,7 +47,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
   const [draftValue, setDraftValue] = useState('');
 
   const filterFieldOptions: FilterField[] = ['Asset Category', 'Recouped Salvage Value'];
-  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; 
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]'];
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -67,11 +68,18 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // The Server Fetcher
+  // The Server Fetcher - Skip first fetch if no filters/search on page 0
   useEffect(() => {
+    const shouldSkipFirstFetch = !hasInitialized && pagination.pageIndex === 0 && debouncedSearch === '' && appliedFilters.length === 0;
+    if (shouldSkipFirstFetch) {
+      setHasInitialized(true);
+      return;
+    }
+
+    setHasInitialized(true);
     startTransition(async () => {
-      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
-      const salvageFilter = appliedFilters.find(f => f.field === 'Recouped Salvage Value')?.value;
+      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category' && f.operator === 'is')?.value;
+      const salvageFilter = appliedFilters.find(f => f.field === 'Recouped Salvage Value' && f.operator === 'is')?.value;
 
       const response = await getWriteOffsLedger({
         page: pagination.pageIndex + 1,
@@ -112,7 +120,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
 
     const response = await getWriteOffsLedger({
       page: 1,
-      pageSize: 100000, 
+      pageSize: 100000,
       search: debouncedSearch,
       category: categoryFilter,
       salvageFilter: salvageFilter
@@ -131,9 +139,9 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       row.assetId,
       row.category,
       row.disposalDate ? format(new Date(row.disposalDate), "MM/dd/yyyy") : "N/A",
-      convertCurrencyAmount(row.originalPrice, 'USD', currency).toFixed(2),
-      convertCurrencyAmount(row.bookValue, 'USD', currency).toFixed(2),
-      convertCurrencyAmount(row.salvageValue, 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.originalPrice, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.bookValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.salvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
     ]);
 
     const csvContent = [
@@ -174,22 +182,22 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
     {
       accessorKey: "originalPrice",
       header: "Original Purchase Price",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, 'USD', currency), currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
     {
       accessorKey: "bookValue",
       header: "Book Value at Time of Disposal",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.bookValue, 'USD', currency), currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.bookValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
     {
       accessorKey: "salvageValue",
       header: "Salvage Value",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.salvageValue, 'USD', currency), currency)}</span>,
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.salvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
   ];
 
   return (
-    <div className="flex flex-col h-full overflow-hidden gap-4"> 
+    <div className="flex flex-col h-full overflow-hidden gap-4">
       <div className="flex flex-col gap-3 shrink-0">
         <div className="flex items-center justify-between">
           <div className="relative w-[320px]">
@@ -204,7 +212,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
               className={`pl-9 bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
             />
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Currency Switcher */}
             <Popover open={isCurrencyOpen} onOpenChange={setIsCurrencyOpen}>
@@ -233,10 +241,10 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
             {/* Query Builder Filter Dropdown */}
             <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
               <PopoverAnchor asChild>
-                <Button 
-                variant="outline" 
-                className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`} 
-                onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
+                <Button
+                  variant="outline"
+                  className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
+                  onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
                 >
                   <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                   Filters

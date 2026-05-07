@@ -52,16 +52,16 @@ export function IssueReviewPanel({
         </div>
         <div className="flex flex-col flex-1 p-6 space-y-8 overflow-hidden">
           <div className="flex justify-center shrink-0">
-            <Skeleton className="w-[180px] h-[120px] rounded-lg" />
+            <Skeleton className="w-45 h-30 rounded-lg" />
           </div>
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-             <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-             <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
           </div>
           <Skeleton className="h-28 w-full rounded-xl shrink-0" />
           <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-             <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-             <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
           </div>
         </div>
       </div>
@@ -89,7 +89,7 @@ export function IssueReviewPanel({
   return (
     <>
       <div className="flex flex-col h-full w-full bg-background relative">
-        
+
         {/* HEADER */}
         <div className="flex items-center justify-between p-6 border-b border-border shrink-0 bg-background z-10">
           <div className="flex items-center gap-3">
@@ -105,14 +105,14 @@ export function IssueReviewPanel({
 
         {/* SCROLLABLE BODY */}
         <div className="flex flex-col flex-1 p-6 overflow-y-auto">
-          
+
           <div className="flex justify-center mb-6 shrink-0">
             {ticket.asset.imageUrl ? (
-              <div className="relative w-[180px] h-[120px] rounded-lg bg-background overflow-hidden border border-border">
+              <div className="relative w-45 h-30 rounded-lg bg-background overflow-hidden border border-border">
                 <Image src={ticket.asset.imageUrl} alt={ticket.asset.name || ticket.asset.assetTag} fill className="object-contain p-2" />
               </div>
             ) : (
-              <div className="relative w-[180px] h-[120px] bg-muted/30 rounded-lg flex items-center justify-center border border-dashed border-border">
+              <div className="relative w-45 h-30 bg-muted/30 rounded-lg flex items-center justify-center border border-dashed border-border">
                 <span className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>No Image</span>
               </div>
             )}
@@ -129,7 +129,7 @@ export function IssueReviewPanel({
               <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Serial Number :</span>
               <span className="text-muted-foreground truncate">{ticket.asset.serialNumber || 'N/A'}</span>
             </div>
-            
+
             <div className="grid grid-cols-[110px_1fr] gap-2 items-center min-w-0">
               <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Category :</span>
               <span className="text-muted-foreground truncate">{ticket.category?.name || 'N/A'}</span>
@@ -149,7 +149,7 @@ export function IssueReviewPanel({
             </div>
             <div className="flex flex-col gap-2">
               <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Issue:</span>
-              <span className="text-muted-foreground break-words">{ticket.reportedIssue}</span>
+              <span className="text-muted-foreground wrap-break-word">{ticket.reportedIssue}</span>
             </div>
           </div>
 
@@ -161,14 +161,14 @@ export function IssueReviewPanel({
               <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Current Book Value:</span>
               <span className="text-muted-foreground truncate">{formatCurrency(bookValue)}</span>
 
-              {data.totalTCO && (
+              {data.totalTCO != null && (
                 <>
                   <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Total TCO:</span>
-                  <span className="text-muted-foreground truncate font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
+                  <span className="truncate font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
                 </>
               )}
             </div>
-            
+
             <div className="grid grid-cols-[110px_1fr] gap-2 items-center min-w-0">
               <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Original Cost:</span>
               <span className="text-muted-foreground truncate">{formatCurrency(originalCost)}</span>
@@ -194,20 +194,20 @@ export function IssueReviewPanel({
         </div>
       </div>
 
-      <ResolveInternallyDialog 
-        isOpen={showResolveDialog} 
-        onClose={() => setShowResolveDialog(false)} 
-        onConfirm={async (note) => { if (onResolveInternally) await onResolveInternally(note); }} 
-        isLoading={isResolvingInternally} 
+      <ResolveInternallyDialog
+        isOpen={showResolveDialog}
+        onClose={() => setShowResolveDialog(false)}
+        onConfirm={async (note) => { if (onResolveInternally) await onResolveInternally(note); }}
+        isLoading={isResolvingInternally}
       />
-      
-      <InitiateRepairDialog 
-        isOpen={showRepairDialog} 
-        onClose={() => setShowRepairDialog(false)} 
-        onConfirm={async (formData) => { 
-          if (onInitiateRepair) await onInitiateRepair(formData); 
-        }} 
-        vendors={vendors} 
+
+      <InitiateRepairDialog
+        isOpen={showRepairDialog}
+        onClose={() => setShowRepairDialog(false)}
+        onConfirm={async (formData) => {
+          if (onInitiateRepair) await onInitiateRepair(formData);
+        }}
+        vendors={vendors}
         isLoading={isInitiatingRepair}
         assetId={ticket.asset.assetTag}
         assetName={ticket.model?.name || ticket.asset.name || undefined}

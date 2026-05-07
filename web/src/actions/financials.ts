@@ -2,16 +2,17 @@
 'use server';
 
 import { db } from '@/db';
-import { 
-  assets, 
-  assetPurchases, 
-  models, 
-  categories, 
-  maintenanceTickets, 
-  assetDisposals 
+import {
+  assets,
+  assetPurchases,
+  models,
+  categories,
+  maintenanceTickets,
+  assetDisposals,
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
+import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 
 /**
  * Reusable RBAC guard for all financial endpoints
@@ -19,11 +20,30 @@ import { getAuthenticatedUser } from '@/actions/auth';
 async function enforceFinanceAccess() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  
+
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
     throw new Error('Forbidden');
   }
   return user;
+}
+
+/**
+ * Validates and normalizes pagination parameters to prevent abuse.
+ * Enforces server-side limits on page size.
+ */
+function validatePaginationParams(
+  page?: number,
+  pageSize?: number
+): { page: number; pageSize: number } {
+  const MAX_PAGE_SIZE = 1000; // Prevent excessive DB load
+
+  const validPage = Math.max(1, Math.floor(page || 1));
+  const validPageSize = Math.min(
+    Math.max(1, Math.floor(pageSize || 16)),
+    MAX_PAGE_SIZE
+  );
+
+  return { page: validPage, pageSize: validPageSize };
 }
 
 // --- Pagination Interface ---
@@ -38,12 +58,16 @@ export interface LedgerPaginationParams {
  * US-22.2: The Depreciation Ledger
  * Calculates straight-line depreciation for all active assets.
  */
-export async function getDepreciationLedger(params: LedgerPaginationParams & { ageFilter?: string } = {}) {
+export async function getDepreciationLedger(
+  params: LedgerPaginationParams & { ageFilter?: string } = {}
+) {
   try {
     await enforceFinanceAccess();
 
-    const { page = 1, pageSize = 16, search, category, ageFilter } = params;
-    const offset = (page - 1) * pageSize;
+    const { page: validPage, pageSize: validPageSize } =
+      validatePaginationParams(params.page, params.pageSize);
+    const { search, category, ageFilter } = params;
+    const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
     const conditions = [ne(assets.status, 'Disposed')];
@@ -63,11 +87,17 @@ export async function getDepreciationLedger(params: LedgerPaginationParams & { a
 
     if (ageFilter && ageFilter !== 'All') {
       if (ageFilter === 'This Year') {
-        conditions.push(sql`EXTRACT(YEAR FROM ${assetPurchases.purchaseDate}) = EXTRACT(YEAR FROM CURRENT_DATE)`);
+        conditions.push(
+          sql`EXTRACT(YEAR FROM ${assetPurchases.purchaseDate}) = EXTRACT(YEAR FROM CURRENT_DATE)`
+        );
       } else if (ageFilter === 'Last Year') {
-        conditions.push(sql`EXTRACT(YEAR FROM ${assetPurchases.purchaseDate}) = EXTRACT(YEAR FROM CURRENT_DATE) - 1`);
+        conditions.push(
+          sql`EXTRACT(YEAR FROM ${assetPurchases.purchaseDate}) = EXTRACT(YEAR FROM CURRENT_DATE) - 1`
+        );
       } else if (ageFilter === 'Older than 3 Years') {
-        conditions.push(sql`EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM ${assetPurchases.purchaseDate}) > 3`);
+        conditions.push(
+          sql`EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM ${assetPurchases.purchaseDate}) > 3`
+        );
       }
     }
 
@@ -81,7 +111,7 @@ export async function getDepreciationLedger(params: LedgerPaginationParams & { a
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .where(whereClause);
-      
+
     const totalRows = totalCountRes[0].value;
 
     // 3. Fetch ONLY the requested page slice
@@ -92,6 +122,7 @@ export async function getDepreciationLedger(params: LedgerPaginationParams & { a
         categoryName: categories.name,
         purchaseDate: assetPurchases.purchaseDate,
         originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
         usefulLifeMonths: assets.usefulLifeMonths,
       })
       .from(assets)
@@ -100,25 +131,17 @@ export async function getDepreciationLedger(params: LedgerPaginationParams & { a
       .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .where(whereClause)
       .orderBy(desc(assetPurchases.purchaseDate))
-      .limit(pageSize)
+      .limit(validPageSize)
       .offset(offset);
 
-    // 4. Perform math mapping on the small slice
+    // 4. Perform math mapping on the small slice using shared helper
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
-      const lifeMonths = row.usefulLifeMonths || 60;
-      let bookValue = price;
-
-      if (row.purchaseDate && price > 0) {
-        const pDate = new Date(row.purchaseDate);
-        const now = new Date();
-        const monthsElapsed = (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth());
-
-        if (monthsElapsed > 0) {
-          const depreciationAmount = (price / lifeMonths) * monthsElapsed;
-          bookValue = Math.max(0, price - depreciationAmount);
-        }
-      }
+      const bookValue = calculateStraightLineDepreciation(
+        price,
+        row.usefulLifeMonths,
+        row.purchaseDate
+      );
 
       return {
         id: row.id,
@@ -126,7 +149,8 @@ export async function getDepreciationLedger(params: LedgerPaginationParams & { a
         category: row.categoryName,
         purchaseDate: row.purchaseDate,
         originalPrice: price,
-        expectedLifespan: `${lifeMonths / 12} years`,
+        currencyCode: row.currencyCode || 'USD',
+        expectedLifespan: `${(row.usefulLifeMonths || 60) / 12} years`,
         currentBookValue: Math.round(bookValue * 100) / 100,
       };
     });
@@ -135,10 +159,10 @@ export async function getDepreciationLedger(params: LedgerPaginationParams & { a
       data: ledgers,
       meta: {
         total: totalRows,
-        page,
-        pageSize,
-        totalPages: Math.ceil(totalRows / pageSize),
-      }
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: Math.ceil(totalRows / validPageSize),
+      },
     };
   } catch (error) {
     console.error('[getDepreciationLedger] Error:', error);
@@ -150,21 +174,29 @@ export async function getDepreciationLedger(params: LedgerPaginationParams & { a
  * US-22.3: Total Cost of Ownership (TCO)
  * Aggregates base purchase price with SUM(actualCost) from maintenance tickets.
  */
-export async function getTCOLedger(params: LedgerPaginationParams & { costFilter?: string } = {}) {
+export async function getTCOLedger(
+  params: LedgerPaginationParams & { costFilter?: string } = {}
+) {
   try {
     await enforceFinanceAccess();
 
-    const { page = 1, pageSize = 16, search, category, costFilter } = params;
-    const offset = (page - 1) * pageSize;
+    const { page: validPage, pageSize: validPageSize } =
+      validatePaginationParams(params.page, params.pageSize);
+    const { search, category, costFilter } = params;
+    const offset = (validPage - 1) * validPageSize;
 
     const repairCostsSq = db.$with('repair_costs_sq').as(
-      db.select({
-        assetId: maintenanceTickets.assetId,
-        totalRepair: sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as('totalRepair'),
-      })
-      .from(maintenanceTickets)
-      .where(eq(maintenanceTickets.status, 'COMPLETED'))
-      .groupBy(maintenanceTickets.assetId)
+      db
+        .select({
+          assetId: maintenanceTickets.assetId,
+          totalRepair:
+            sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+              'totalRepair'
+            ),
+        })
+        .from(maintenanceTickets)
+        .where(eq(maintenanceTickets.status, 'COMPLETED'))
+        .groupBy(maintenanceTickets.assetId)
     );
 
     // 1. Build Dynamic Conditions
@@ -185,9 +217,12 @@ export async function getTCOLedger(params: LedgerPaginationParams & { costFilter
 
     if (costFilter && costFilter !== 'All') {
       const totalTcoSql = sql`COALESCE(${assetPurchases.totalCost}, 0) + COALESCE(${repairCostsSq.totalRepair}, 0)`;
-      if (costFilter === 'High Value (>$1000)') conditions.push(sql`${totalTcoSql} > 1000`);
-      else if (costFilter === 'Medium Value ($500-$1000)') conditions.push(sql`${totalTcoSql} >= 500 AND ${totalTcoSql} <= 1000`);
-      else if (costFilter === 'Low Value (<$500)') conditions.push(sql`${totalTcoSql} < 500`);
+      if (costFilter === 'High Value (>$1000)')
+        conditions.push(sql`${totalTcoSql} > 1000`);
+      else if (costFilter === 'Medium Value ($500-$1000)')
+        conditions.push(sql`${totalTcoSql} >= 500 AND ${totalTcoSql} <= 1000`);
+      else if (costFilter === 'Low Value (<$500)')
+        conditions.push(sql`${totalTcoSql} < 500`);
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -202,7 +237,7 @@ export async function getTCOLedger(params: LedgerPaginationParams & { costFilter
       .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
       .where(whereClause);
-      
+
     const totalRows = totalCountRes[0].value;
 
     // 3. Fetch Page Slice
@@ -214,6 +249,7 @@ export async function getTCOLedger(params: LedgerPaginationParams & { costFilter
         categoryName: categories.name,
         purchaseDate: assetPurchases.purchaseDate,
         originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
         totalRepairCosts: repairCostsSq.totalRepair,
       })
       .from(assets)
@@ -223,19 +259,20 @@ export async function getTCOLedger(params: LedgerPaginationParams & { costFilter
       .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
       .where(whereClause)
       .orderBy(desc(assetPurchases.purchaseDate))
-      .limit(pageSize)
+      .limit(validPageSize)
       .offset(offset);
 
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
       const repairs = parseFloat(row.totalRepairCosts?.toString() || '0');
-      
+
       return {
         id: row.id,
         assetId: row.assetTag,
         category: row.categoryName,
         purchaseDate: row.purchaseDate,
         originalPrice: price,
+        currencyCode: row.currencyCode || 'USD',
         totalRepairCosts: repairs,
         totalTCO: price + repairs,
       };
@@ -245,10 +282,10 @@ export async function getTCOLedger(params: LedgerPaginationParams & { costFilter
       data: ledgers,
       meta: {
         total: totalRows,
-        page,
-        pageSize,
-        totalPages: Math.ceil(totalRows / pageSize),
-      }
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: Math.ceil(totalRows / validPageSize),
+      },
     };
   } catch (error) {
     console.error('[getTCOLedger] Error:', error);
@@ -260,12 +297,16 @@ export async function getTCOLedger(params: LedgerPaginationParams & { costFilter
  * US-22.4: Write-Offs & Salvage Ledger
  * Fetches only disposed assets and maps their locked-in financial history.
  */
-export async function getWriteOffsLedger(params: LedgerPaginationParams & { salvageFilter?: string } = {}) {
+export async function getWriteOffsLedger(
+  params: LedgerPaginationParams & { salvageFilter?: string } = {}
+) {
   try {
     await enforceFinanceAccess();
 
-    const { page = 1, pageSize = 16, search, category, salvageFilter } = params;
-    const offset = (page - 1) * pageSize;
+    const { page: validPage, pageSize: validPageSize } =
+      validatePaginationParams(params.page, params.pageSize);
+    const { search, category, salvageFilter } = params;
+    const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
     const conditions = [eq(assetDisposals.status, 'Completed')];
@@ -284,9 +325,22 @@ export async function getWriteOffsLedger(params: LedgerPaginationParams & { salv
     }
 
     if (salvageFilter && salvageFilter !== 'All') {
-      if (salvageFilter === 'Zero Salvage ($0)') conditions.push(eq(assetDisposals.actualSalvageValue, '0'));
-      else if (salvageFilter === 'Low Salvage (<$100)') conditions.push(and(sql`${assetDisposals.actualSalvageValue} > 0`, sql`${assetDisposals.actualSalvageValue} < 100`)!);
-      else if (salvageFilter === 'High Salvage (>$100)') conditions.push(sql`${assetDisposals.actualSalvageValue} >= 100`);
+      // Use numeric comparison instead of string equality for decimal values
+      if (salvageFilter === 'Zero Salvage ($0)')
+        conditions.push(
+          sql`CAST(${assetDisposals.actualSalvageValue} AS DECIMAL) = 0`
+        );
+      else if (salvageFilter === 'Low Salvage (<$100)')
+        conditions.push(
+          and(
+            sql`CAST(${assetDisposals.actualSalvageValue} AS DECIMAL) > 0`,
+            sql`CAST(${assetDisposals.actualSalvageValue} AS DECIMAL) < 100`
+          )!
+        );
+      else if (salvageFilter === 'High Salvage (>$100)')
+        conditions.push(
+          sql`CAST(${assetDisposals.actualSalvageValue} AS DECIMAL) >= 100`
+        );
     }
 
     const whereClause = and(...conditions);
@@ -300,7 +354,7 @@ export async function getWriteOffsLedger(params: LedgerPaginationParams & { salv
       .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
       .where(whereClause);
-      
+
     const totalRows = totalCountRes[0].value;
 
     // 3. Fetch Page Slice
@@ -311,6 +365,7 @@ export async function getWriteOffsLedger(params: LedgerPaginationParams & { salv
         categoryName: categories.name,
         disposalDate: assetDisposals.resolvedAt,
         originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
         bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
         salvageValue: assetDisposals.actualSalvageValue,
       })
@@ -321,7 +376,7 @@ export async function getWriteOffsLedger(params: LedgerPaginationParams & { salv
       .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
       .where(whereClause)
       .orderBy(desc(assetDisposals.resolvedAt))
-      .limit(pageSize)
+      .limit(validPageSize)
       .offset(offset);
 
     const ledgers = result.map((row) => ({
@@ -330,6 +385,7 @@ export async function getWriteOffsLedger(params: LedgerPaginationParams & { salv
       category: row.categoryName,
       disposalDate: row.disposalDate,
       originalPrice: parseFloat(row.originalPrice?.toString() || '0'),
+      currencyCode: row.currencyCode || 'USD',
       bookValue: parseFloat(row.bookValueAtDisposal?.toString() || '0'),
       salvageValue: parseFloat(row.salvageValue?.toString() || '0'),
     }));
@@ -338,10 +394,10 @@ export async function getWriteOffsLedger(params: LedgerPaginationParams & { salv
       data: ledgers,
       meta: {
         total: totalRows,
-        page,
-        pageSize,
-        totalPages: Math.ceil(totalRows / pageSize),
-      }
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: Math.ceil(totalRows / validPageSize),
+      },
     };
   } catch (error) {
     console.error('[getWriteOffsLedger] Error:', error);

@@ -6,6 +6,7 @@ export interface DepreciationLedgerRecord {
   category: string;
   purchaseDate: string | null; // YYYY-MM-DD
   originalPrice: number;
+  currencyCode: string; // Source currency of the purchase
   expectedLifespan: string;
   currentBookValue: number;
 }
@@ -16,6 +17,7 @@ export interface TCOLedgerRecord {
   category: string;
   purchaseDate: string | null; // YYYY-MM-DD
   originalPrice: number;
+  currencyCode: string; // Source currency of the purchase
   totalRepairCosts: number;
   totalTCO: number;
 }
@@ -26,6 +28,7 @@ export interface WriteOffsLedgerRecord {
   category: string;
   disposalDate: Date | null;
   originalPrice: number;
+  currencyCode: string; // Source currency of the purchase
   bookValue: number;
   salvageValue: number;
 }

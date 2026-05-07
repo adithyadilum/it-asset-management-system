@@ -2,13 +2,10 @@
 'use server';
 
 import { db } from '@/db';
-import { 
-  assets, 
-  assetPurchases, 
-  maintenanceTickets,
-} from '@/db/schema';
+import { assets, assetPurchases, maintenanceTickets } from '@/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
+import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 
 /**
  * Reusable RBAC guard for financial data.
@@ -17,11 +14,23 @@ import { getAuthenticatedUser } from '@/actions/auth';
 async function enforceFinanceAccess() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  
+
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
-    throw new Error('Forbidden: Insufficient permissions to view financial data.');
+    throw new Error(
+      'Forbidden: Insufficient permissions to view financial data.'
+    );
   }
   return user;
+}
+
+/**
+ * Validates that a string is a valid UUID format (v4).
+ * Prevents invalid IDs from being processed.
+ */
+function isValidUuid(id: string): boolean {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
 }
 
 export interface AssetFinancialVitals {
@@ -45,9 +54,16 @@ export interface AssetFinancialVitals {
  * Fetches comprehensive financial vitals for a single asset.
  * This action integrates data from purchases and maintenance to provide a unified financial view.
  */
-export async function getAssetFinancialVitals(assetId: string): Promise<AssetFinancialVitals> {
+export async function getAssetFinancialVitals(
+  assetId: string
+): Promise<AssetFinancialVitals> {
   try {
     await enforceFinanceAccess();
+
+    // Validate UUID format to prevent malformed queries
+    if (!isValidUuid(assetId)) {
+      throw new Error('Invalid asset ID format');
+    }
 
     // 1. Fetch Asset and Purchase details
     const assetResult = await db
@@ -77,7 +93,10 @@ export async function getAssetFinancialVitals(assetId: string): Promise<AssetFin
     // 2. Fetch Total Repair Costs (Completed Maintenance Tickets)
     const repairResult = await db
       .select({
-        totalRepair: sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as('totalRepair'),
+        totalRepair:
+          sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+            'totalRepair'
+          ),
       })
       .from(maintenanceTickets)
       .where(
@@ -87,30 +106,22 @@ export async function getAssetFinancialVitals(assetId: string): Promise<AssetFin
         )
       );
 
-    const totalRepairCosts = parseFloat(repairResult[0]?.totalRepair?.toString() || '0');
+    const totalRepairCosts = parseFloat(
+      repairResult[0]?.totalRepair?.toString() || '0'
+    );
 
-    // 3. Calculate Depreciation & Book Value
+    // 3. Calculate Depreciation & Book Value using shared math helper
     const price = parseFloat(asset.totalCost?.toString() || '0');
     const lifeMonths = asset.usefulLifeMonths || 60; // Default to 5 years if not set
-    let currentBookValue = price;
-
-    if (asset.purchaseDate && price > 0) {
-      const pDate = new Date(asset.purchaseDate);
-      const now = new Date();
-      
-      // Calculate months elapsed
-      const monthsElapsed = (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth());
-
-      if (monthsElapsed > 0) {
-        const depreciationPerMonth = price / lifeMonths;
-        const totalDepreciation = depreciationPerMonth * monthsElapsed;
-        currentBookValue = Math.max(0, price - totalDepreciation);
-      }
-    }
+    const currentBookValue = calculateStraightLineDepreciation(
+      price,
+      lifeMonths,
+      asset.purchaseDate
+    );
 
     // 4. Determine Warranty Status
-    const isUnderWarranty = asset.warrantyExpiry 
-      ? new Date(asset.warrantyExpiry) > new Date() 
+    const isUnderWarranty = asset.warrantyExpiry
+      ? new Date(asset.warrantyExpiry) > new Date()
       : false;
 
     // 5. Final Assembly
@@ -130,9 +141,22 @@ export async function getAssetFinancialVitals(assetId: string): Promise<AssetFin
       totalRepairCosts,
       totalTCO: Math.round((price + totalRepairCosts) * 100) / 100,
     };
-
   } catch (error) {
-    console.error(`[getAssetFinancialVitals] Error for asset ${assetId}:`, error);
+    // Log authorization failures at debug level, not as errors
+    const isAuthError =
+      error instanceof Error &&
+      (error.message.includes('Unauthorized') ||
+        error.message.includes('Forbidden'));
+    if (isAuthError) {
+      console.debug(
+        `[getAssetFinancialVitals] Authorization denied for asset ${assetId}`
+      );
+    } else {
+      console.error(
+        `[getAssetFinancialVitals] Error for asset ${assetId}:`,
+        error
+      );
+    }
     throw error;
   }
 }
