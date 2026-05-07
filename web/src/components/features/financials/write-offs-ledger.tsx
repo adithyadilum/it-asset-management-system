@@ -1,0 +1,394 @@
+"use client";
+
+import { useState, useMemo, useEffect, useTransition, useRef } from "react";
+import { Download, Search, ChevronDown, DollarSign, Filter, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/shared/data-table";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { WriteOffsLedgerRecord } from "@/types/financials";
+import { format } from "date-fns";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
+import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
+import { getWriteOffsLedger } from "@/actions/financials";
+import { TableSkeleton } from "@/components/shared/table-skeleton";
+
+type FilterField = 'Asset Category' | 'Recouped Salvage Value';
+type FilterOperator = 'is' | 'is not';
+
+type AppliedFilter = {
+  field: FilterField;
+  operator: FilterOperator;
+  value: string;
+};
+
+interface WriteOffsLedgerProps {
+  initialData: WriteOffsLedgerRecord[];
+}
+
+export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
+  const [data, setData] = useState<WriteOffsLedgerRecord[]>(initialData);
+  const [pageCount, setPageCount] = useState(1);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  const [isPending, startTransition] = useTransition();
+  const hasInitializedRef = useRef(false);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currency, setCurrency] = useState<SupportedCurrency>('USD');
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+
+  // Query Builder Filter State
+  const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
+  const [draftField, setDraftField] = useState<FilterField>('Asset Category');
+  const [draftOperator, setDraftOperator] = useState<FilterOperator>('is');
+  const [draftValue, setDraftValue] = useState('');
+
+  const filterFieldOptions: FilterField[] = ['Asset Category', 'Recouped Salvage Value'];
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]'];
+
+  const uniqueCategories = useMemo(() => {
+    return Array.from(new Set(initialData.map(item => item.category))).sort();
+  }, [initialData]);
+
+  const filterValueOptions = useMemo(() => {
+    if (draftField === 'Asset Category') return uniqueCategories;
+    if (draftField === 'Recouped Salvage Value') return ['Zero Salvage ($0)', 'Low Salvage (<$100)', 'High Salvage (>$100)'];
+    return [];
+  }, [draftField, uniqueCategories]);
+
+  // Synchronization moved to event handlers to satisfy strict linting rules
+  // and avoid cascading renders.
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // The Server Fetcher - Skip first fetch if no filters/search on page 0
+  useEffect(() => {
+    const shouldSkipFirstFetch = !hasInitializedRef.current && pagination.pageIndex === 0 && debouncedSearch === '' && appliedFilters.length === 0;
+    if (shouldSkipFirstFetch) {
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    hasInitializedRef.current = true;
+    startTransition(async () => {
+      const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category' && f.operator === 'is')?.value;
+      const salvageFilter = appliedFilters.find(f => f.field === 'Recouped Salvage Value' && f.operator === 'is')?.value;
+
+      const response = await getWriteOffsLedger({
+        page: pagination.pageIndex + 1,
+        pageSize: pagination.pageSize,
+        search: debouncedSearch,
+        category: categoryFilter,
+        salvageFilter: salvageFilter
+      });
+
+      setData(response.data as unknown as WriteOffsLedgerRecord[]);
+      setPageCount(response.meta.totalPages);
+    });
+  }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, appliedFilters]);
+
+  const applyFilter = () => {
+    if (!draftValue) return;
+    setAppliedFilters((currentFilters) => {
+      const withoutCurrentField = currentFilters.filter((f) => f.field !== draftField);
+      return [...withoutCurrentField, { field: draftField, operator: draftOperator, value: draftValue }];
+    });
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+    setIsFilterPopoverOpen(false);
+  };
+
+  const clearFilter = (field: FilterField) => {
+    setAppliedFilters((currentFilters) => currentFilters.filter((f) => f.field !== field));
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+  };
+
+  const clearAllFilters = () => {
+    setAppliedFilters([]);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+  };
+
+  const exportToCSV = async () => {
+    const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
+    const salvageFilter = appliedFilters.find(f => f.field === 'Recouped Salvage Value')?.value;
+
+    const response = await getWriteOffsLedger({
+      page: 1,
+      pageSize: 100000,
+      search: debouncedSearch,
+      category: categoryFilter,
+      salvageFilter: salvageFilter
+    });
+
+    const headers = [
+      "Asset ID",
+      "Category",
+      "Disposal Date",
+      `Original Purchase Price (${currency})`,
+      `Book Value at Time of Disposal (${currency})`,
+      `Salvage Value (${currency})`,
+    ];
+
+    const csvRows = response.data.map((row) => [
+      row.assetId,
+      row.category,
+      row.disposalDate ? format(new Date(row.disposalDate), "MM/dd/yyyy") : "N/A",
+      convertCurrencyAmount(row.originalPrice, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.bookValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.salvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...csvRows.map((r) => r.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Write_Offs_Salvage_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const columns: ColumnDef<WriteOffsLedgerRecord>[] = [
+    {
+      accessorKey: "assetId",
+      header: "Asset ID",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{row.original.assetId}</span>,
+    },
+    {
+      accessorKey: "category",
+      header: "Category",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.category}</span>,
+    },
+    {
+      accessorKey: "disposalDate",
+      header: "Disposal Date",
+      cell: ({ row }) => (
+        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+          {row.original.disposalDate ? format(new Date(row.original.disposalDate), "MM/dd/yyyy") : "N/A"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "originalPrice",
+      header: "Original Purchase Price",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.originalPrice, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
+    },
+    {
+      accessorKey: "bookValue",
+      header: "Book Value at Time of Disposal",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.bookValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
+    },
+    {
+      accessorKey: "salvageValue",
+      header: "Salvage Value",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.salvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
+    },
+  ];
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden gap-4">
+      <div className="flex flex-col gap-3 shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="relative w-[320px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPagination(p => ({ ...p, pageIndex: 0 }));
+              }}
+              className={`pl-9 bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Currency Switcher */}
+            <Popover open={isCurrencyOpen} onOpenChange={setIsCurrencyOpen}>
+              <PopoverAnchor asChild>
+                <Button variant="outline" className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`} onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}>
+                  <DollarSign className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {currency} <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </PopoverAnchor>
+              <PopoverContent align="end" className="w-40 p-2 bg-background border-border shadow-md rounded-lg">
+                <div className="flex flex-col gap-1">
+                  {(['USD', 'LKR', 'NOK'] as SupportedCurrency[]).map((c) => (
+                    <Button
+                      key={c}
+                      variant={currency === c ? 'secondary' : 'ghost'}
+                      className={`justify-start ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+                      onClick={() => { setCurrency(c); setIsCurrencyOpen(false); }}
+                    >
+                      {c === 'USD' ? '🇺🇸' : c === 'NOK' ? '🇳🇴' : '🇱🇰'} {c}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Query Builder Filter Dropdown */}
+            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+              <PopoverAnchor asChild>
+                <Button
+                  variant="outline"
+                  className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
+                  onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
+                >
+                  <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                  Filters
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </PopoverAnchor>
+              <PopoverContent align="end" sideOffset={10} className="w-64 rounded-lg border border-border bg-background p-0 shadow-xl">
+                <div className="border-b border-border px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Filter by</h3>
+                    <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setIsFilterPopoverOpen(false)}>
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3 px-3 py-3">
+                  <select
+                    value={draftField}
+                    onChange={(event) => {
+                      const newField = event.target.value as FilterField;
+                      setDraftField(newField);
+                      // Update draftValue immediately when field changes
+                      if (newField === 'Asset Category') {
+                        setDraftValue(uniqueCategories[0] || '');
+                      } else if (newField === 'Recouped Salvage Value') {
+                        setDraftValue('Zero Salvage ($0)');
+                      }
+                    }}
+                    className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                  >
+                    {filterFieldOptions.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+
+                  <div className={`space-y-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}>
+                    <label className="flex items-center gap-2">
+                      <input type="radio" checked={draftOperator === 'is'} onChange={() => setDraftOperator('is')} /> is
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input type="radio" checked={draftOperator === 'is not'} onChange={() => setDraftOperator('is not')} /> is not
+                    </label>
+                  </div>
+
+                  <select
+                    value={draftValue}
+                    onChange={(event) => setDraftValue(event.target.value)}
+                    className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                  >
+                    <option value="" disabled>Select value</option>
+                    {filterValueOptions.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={`h-8 rounded-lg border-border bg-secondary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-secondary-foreground hover:bg-secondary/80`}
+                    onClick={() => setIsFilterPopoverOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={`h-8 rounded-lg bg-primary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-primary-foreground hover:bg-primary/90`}
+                    onClick={applyFilter}
+                  >
+                    Apply Filter
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Button onClick={() => void exportToCSV()} className={`bg-primary hover:bg-primary/90 text-primary-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
+              <Download className="mr-2 h-4 w-4" />
+              Export Log
+            </Button>
+          </div>
+        </div>
+
+        {/* Applied Filters Badges */}
+        {appliedFilters.length > 0 ? (
+          <div className="flex items-center justify-between gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
+              {appliedFilters.map((filter) => (
+                <span
+                  key={filter.field}
+                  className={`inline-flex h-8 items-center gap-2 rounded-lg bg-muted/50 px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+                >
+                  {`${filter.field} ${filter.operator} ${filter.value}`}
+                  <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => clearFilter(filter.field)}>
+                    <X className="size-4" />
+                  </button>
+                </span>
+              ))}
+
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center rounded-lg text-xl text-muted-foreground hover:bg-muted/50"
+                onClick={() => setIsFilterPopoverOpen(true)}
+              >
+                +
+              </button>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={`h-8 rounded-lg border-border bg-background px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
+              onClick={clearAllFilters}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="min-h-0 flex-1 flex flex-col">
+        {isPending ? (
+          <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
+            <TableSkeleton rowCount={10} columnWidths={tableSkeletonColumnWidths} />
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={data}
+            pageSizeOptions={[16, 24, 32, 48]}
+            initialPageSize={16}
+            enableRowSelection={false}
+            className="bg-background border-border flex-1 min-h-0"
+            manualPagination={true}
+            pageCount={pageCount}
+            paginationState={pagination}
+            onPaginationChange={setPagination}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

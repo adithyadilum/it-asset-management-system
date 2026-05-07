@@ -82,6 +82,7 @@ export interface IssueReviewPanelData {
   warrantyStatus: WarrantyStatus;
   bookValue: number;
   originalCost: number | string;
+  totalTCO?: number;
 }
 
 export interface Vendor {

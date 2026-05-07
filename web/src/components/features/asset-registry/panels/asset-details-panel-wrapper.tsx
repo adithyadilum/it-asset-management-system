@@ -9,6 +9,7 @@ import {
   getAssetMaintenanceByIdAction,
   getAssetAllocationsAction,
 } from "@/actions/asset-registry-panels";
+import { getAssetFinancialVitals, type AssetFinancialVitals } from "@/actions/asset-financial-vitals";
 import { tiqriToast } from "@/components/shared/sonner";
 import {
   type AssetDetailsData,
@@ -84,6 +85,7 @@ export function AssetDetailsPanelWrapper({
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
   const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
   const [allocations, setAllocations] = useState<AllocationData[]>([]);
+  const [financialVitals, setFinancialVitals] = useState<AssetFinancialVitals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -105,8 +107,9 @@ export function AssetDetailsPanelWrapper({
         getAssetHistoryByIdAction(recordId),
         getAssetMaintenanceByIdAction(recordId),
         getAssetAllocationsAction(recordId),
+        getAssetFinancialVitals(recordId).catch(() => null),
       ])
-        .then(([detailsRes, historyRes, maintenanceRes, allocationsRes]) => {
+        .then(([detailsRes, historyRes, maintenanceRes, allocationsRes, financialRes]) => {
           if (isMounted) {
             if (detailsRes.success) {
               setData(detailsRes.data);
@@ -130,6 +133,12 @@ export function AssetDetailsPanelWrapper({
               setAllocations(allocationsRes.data);
             } else {
               setAllocations([]);
+            }
+
+            if (financialRes) {
+              setFinancialVitals(financialRes);
+            } else {
+              setFinancialVitals(null);
             }
           }
         })
@@ -188,6 +197,9 @@ export function AssetDetailsPanelWrapper({
         contactNumber: data?.vendor?.contactInfo ?? ""
       }}
       invoiceUrl={data?.purchase?.invoiceUrl ?? ""}
+      currentBookValue={financialVitals?.currentBookValue}
+      totalRepairCosts={financialVitals?.totalRepairCosts}
+      totalTCO={financialVitals?.totalTCO}
       historyEvents={historyEvents}
       maintenanceEvents={maintenanceEvents}
       allocations={allocations}
