@@ -14,7 +14,6 @@ import {
   type TokenRole,
 } from '@/lib/auth/session';
 import { logAuditAction } from '@/lib/audit';
-import { disposalFinalityMiddleware } from './middleware/disposal-finality-middleware';
 
 async function verifyTokenAndRole(token: string) {
   const authTimer = startLatencyTimer();
@@ -57,7 +56,7 @@ function canAccessRoute(role: TokenRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
-    pathname === '/dashboard/' 
+    pathname === '/dashboard/'
   ) {
     return true;
   }
@@ -103,16 +102,6 @@ export async function proxy(request: NextRequest) {
     !pathname.startsWith('/api');
   const isLoginRoute = pathname === '/login';
 
-  // 1. Disposal Finality Check (Intersects specific API write requests)
-  if (pathname.startsWith('/api/v1/assets')) {
-    const finalityResponse = await disposalFinalityMiddleware(request);
-    // If middleware returned a block (403), return it immediately
-    if (finalityResponse.status !== 200) {
-      return finalityResponse;
-    }
-  }
-
-  // 2. Auth & RBAC Proxy Logic
   try {
     if (!token && isProtectedRoute) {
       return getLoginRedirectResponse(request);
