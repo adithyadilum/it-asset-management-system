@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { assets, maintenanceTickets, systemAuditLogs } from '@/db/schema';
+import { assets, maintenanceTickets, systemAuditLogs, assetDisposals, assetDocuments } from '@/db/schema';
 import { isValidUuid } from '@/lib/auth/uuid';
 
 // ---------------------------------------------------------------------------
@@ -104,6 +104,15 @@ export interface AllocationData {
   name: string;
   email: string;
   assignedDate: string;
+}
+
+export interface DisposalHistoryDetails {
+  reason: string;
+  flaggedBy: string;
+  disposedBy: string | null;
+  disposalDate: string | null;
+  status: string;
+  documentUrls: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -459,4 +468,44 @@ export async function getAssetAllocationsById(
       email: assignment.assignedToUser!.email,
       assignedDate: assignment.assignedDate.toISOString(),
     }));
+}
+
+export async function getAssetDisposalById(
+  id: string
+): Promise<DisposalHistoryDetails | null> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return null;
+  }
+
+  // Fetch the latest disposal record for this asset
+  const disposalRecord = await db.query.assetDisposals.findFirst({
+    where: eq(assetDisposals.assetId, resolvedAssetId),
+    orderBy: (records, { desc }) => [desc(records.requestedAt)],
+    with: {
+      requestedBy: { columns: { name: true } },
+      approvedBy: { columns: { name: true } },
+    },
+  });
+
+  if (!disposalRecord) {
+    return null;
+  }
+
+  // Fetch documents related to this asset and disposal
+  const documents = await db.query.assetDocuments.findMany({
+    where: and(
+      eq(assetDocuments.assetId, resolvedAssetId),
+      eq(assetDocuments.documentType, 'disposal-certificate')
+    ),
+  });
+
+  return {
+    reason: disposalRecord.reason,
+    flaggedBy: disposalRecord.requestedBy?.name ?? 'Unknown',
+    disposedBy: disposalRecord.approvedBy?.name ?? null,
+    disposalDate: disposalRecord.resolvedAt ? disposalRecord.resolvedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+    status: disposalRecord.status,
+    documentUrls: documents.map((doc) => doc.fileUrl),
+  };
 }

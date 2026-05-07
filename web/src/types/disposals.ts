@@ -24,3 +24,12 @@ export type DisposalFormState = {
   message: string;
   errors?: Record<string, string[]>;
 };
+
+export type DisposalHistoryDetails = {
+  reason: string;
+  flaggedBy: string;
+  disposedBy: string | null;
+  disposalDate: string | null;
+  status: string;
+  documentUrls: string[];
+};

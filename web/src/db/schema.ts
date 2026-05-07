@@ -248,6 +248,8 @@ export const assets = pgTable(
     condition: conditionEnum('condition'),
     instanceAttributes: jsonb('instance_attributes'),
 
+    isArchived: boolean('is_archived').default(false).notNull(),
+
     // Epic 22 Lifespan Fields
     usefulLifeMonths: integer('useful_life_months'),
     salvageValue: decimal('salvage_value', { precision: 12, scale: 2 }),
@@ -259,6 +261,10 @@ export const assets = pgTable(
     modelIdIdx: index('assets_model_id_idx').on(table.modelId),
     locationIdIdx: index('assets_location_id_idx').on(table.locationId),
     ownerIdIdx: index('assets_owner_id_idx').on(table.ownerId),
+
+    isArchivedIdx: index('assets_is_archived_idx').on(table.isArchived),
+    statusArchivedIdx: index('assets_status_archived_idx').on(table.status, table.isArchived),
+  
   })
 );
 
@@ -351,7 +357,7 @@ export const maintenanceTickets = pgTable('maintenance_tickets', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// 👇 UPDATED ONLY THIS TABLE WITH INDEXES 👇
+
 export const assetDisposals = pgTable(
   'asset_disposals',
   {
@@ -369,6 +375,10 @@ export const assetDisposals = pgTable(
     justification: text('justification'),
     rejectionReason: text('rejection_reason'),
 
+    
+    disposalMethod: varchar('disposal_method', { length: 50 }),
+    disposalReceiptUrl: varchar('disposal_receipt_url', { length: 500 }),
+
     dataWiped: boolean('data_wiped').default(false),
     tagsRemoved: boolean('tags_removed').default(false),
     actualSalvageValue: decimal('actual_salvage_value', {
@@ -378,22 +388,24 @@ export const assetDisposals = pgTable(
     bookValueAtDisposal: decimal('book_value_at_disposal', {
       precision: 12,
       scale: 2,
-    }), // Epic 22 Addition
+    }),
 
     requestedAt: timestamp('requested_at').defaultNow().notNull(),
     resolvedAt: timestamp('resolved_at'),
     notes: text('notes'),
   },
   (table) => ({
-    // ✨ ADDED THESE 3 INDEXES TO FIX QUERY SLOWNESS ✨
     statusIdx: index('asset_disposals_status_idx').on(table.status),
     assetIdIdx: index('asset_disposals_asset_id_idx').on(table.assetId),
     requestedByIdIdx: index('asset_disposals_requested_by_idx').on(
       table.requestedById
     ),
+    
+    //  ADD THESE INDEXES
+    resolvedAtIdx: index('asset_disposals_resolved_at_idx').on(table.resolvedAt),
+    disposalMethodIdx: index('asset_disposals_method_idx').on(table.disposalMethod),
   })
 );
-// 👆 ------------------------------------------ 👆
 
 // -----------------------------------------------------------------------------
 // 6. SYSTEM AUDIT LOG
@@ -545,3 +557,18 @@ export const systemAuditLogsRelations = relations(
     }),
   })
 );
+
+export const assetDisposalsRelations = relations(assetDisposals, ({ one }) => ({
+  asset: one(assets, {
+    fields: [assetDisposals.assetId],
+    references: [assets.id],
+  }),
+  requestedBy: one(users, {
+    fields: [assetDisposals.requestedById],
+    references: [users.id],
+  }),
+  approvedBy: one(users, {
+    fields: [assetDisposals.approvedById],
+    references: [users.id],
+  }),
+}));

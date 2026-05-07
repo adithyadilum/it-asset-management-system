@@ -88,7 +88,8 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
     // Additional Asset Statuses
     retired: { label: "Retired", className: "bg-stone-50 text-stone-600 border-stone-300", icon: Archive },
     pending_disposal: { label: "Pending Disposal", className: "bg-orange-50 text-orange-700 border-orange-300", icon: AlertTriangle },
-    disposed: { label: "Disposed", className: "bg-rose-50 text-rose-700 border-rose-300", icon: XCircle },
+    disposed: { label: "Disposed", className: "bg-slate-100 text-slate-600 border-slate-300 [&>svg]:text-green-600", icon: CheckCircle2 },
+    rejected: { label: "Rejected", className: "bg-slate-100 text-slate-600 border-slate-300 [&>svg]:text-red-500", icon: XCircle },
     returned: { label: "Returned", className: "bg-teal-50 text-teal-700 border-teal-300", icon: CheckCircle2 },
 };
 

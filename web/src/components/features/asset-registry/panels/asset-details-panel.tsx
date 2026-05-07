@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { TabbedPanel, type TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 import { type SlidePanelAction } from '@/components/shared/slide-panel';
 import { AssetDetailsTab } from './asset-details-tab';
@@ -14,11 +14,9 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { InteractiveStatusBadge } from '@/components/shared/interactive-status-badge';
 
 // Epic 15: Imports for Maintenance Integration
-import { getAssetMaintenanceHistory } from '@/actions/maintenance';
-import type { AssetMaintenanceRecord } from '@/types/maintenance';
-import { Badge } from '@/components/ui/badge';
 import { getAllAssetAuditHistory } from '@/actions/audit-log';
 import { format } from 'date-fns';
+import { RecentMaintenance } from './recent-maintenance';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
@@ -85,35 +83,14 @@ export interface AssetDetailsPanelProps {
     iconName?: string; 
   }>;
   onStatusChanged?: (nextStatus: string) => void;
+  hideActions?: boolean;
+  additionalTabs?: TabbedPanelTab[];
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   const [activeTabId, setActiveTabId] = useState('asset-details');
   const [isExporting, setIsExporting] = useState(false);
 
-  // ============ EPIC 15: DYNAMIC MAINTENANCE FETCHING ============
-  const [maintenanceHistory, setMaintenanceHistory] = useState<AssetMaintenanceRecord[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-
-  useEffect(() => {
-    async function fetchHistory() {
-      if (!props.assetTag) return;
-
-      try {
-        setIsLoadingHistory(true);
-        const history = await getAssetMaintenanceHistory(props.assetTag, 3);
-        setMaintenanceHistory(history);
-      } catch (error) {
-        console.error('Failed to fetch maintenance history:', error);
-      } finally {
-        setIsLoadingHistory(false);
-      }
-    }
-
-    if (props.isOpen) {
-      fetchHistory();
-    }
-  }, [props.assetTag, props.isOpen]);
   // ======================================================
 
   const getActionButtonLabel = useCallback(() => {
@@ -233,75 +210,17 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
           {/* ============ EPIC 15: NEW DYNAMIC MAINTENANCE UI ============ */}
           {!isSoftware && (
-            <div className="mt-8 shrink-0 px-2">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[14px] font-semibold text-slate-900 flex items-center gap-2">
-                  Recent Maintenance
-                </h3>
-                {maintenanceHistory.length > 0 && props.onViewAllMaintenance && (
-                  <button onClick={props.onViewAllMaintenance} className="text-[13px] text-[#040d5a] hover:underline font-medium">
-                    View All
-                  </button>
-                )}
-              </div>
-
-              {isLoadingHistory ? (
-                <div className="space-y-3">
-                  <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
-                  <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
-                </div>
-              ) : maintenanceHistory.length > 0 ? (
-                <div className="space-y-3">
-                  {maintenanceHistory.map((record) => (
-                    <div key={record.id} className="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium text-[14px] text-slate-900">
-                          {record.ticketType === 'VENDOR' ? record.vendorName : 'Internal Repair'}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={
-                            record.status === 'COMPLETED'
-                              ? 'bg-green-50 text-green-700 border-green-200 font-normal shadow-sm'
-                              : record.status === 'ACTIVE'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200 font-normal shadow-sm'
-                                : 'bg-slate-50 text-slate-700 border-slate-200 font-normal shadow-sm'
-                          }
-                        >
-                          {record.status}
-                        </Badge>
-                      </div>
-
-                      <p className="text-[13px] text-slate-600 mb-3 line-clamp-2">
-                        {record.reportedIssue}
-                      </p>
-
-                      <div className="flex justify-between items-center text-[12px] text-slate-500 font-medium pt-3 border-t border-slate-200/60">
-                        <span>
-                          {record.actualCompletionDate
-                            ? new Date(record.actualCompletionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                            : 'In Progress'}
-                        </span>
-                        {record.actualCost && (
-                          <span className="text-slate-700">
-                            ${parseFloat(record.actualCost).toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center p-6 border border-dashed border-slate-200 rounded-xl bg-slate-50">
-                  <p className="text-sm text-slate-500">No maintenance records found.</p>
-                </div>
-              )}
-            </div>
+            <RecentMaintenance 
+              assetTag={props.assetTag} 
+              isOpen={props.isOpen} 
+              onViewAll={props.onViewAllMaintenance} 
+            />
           )}
           {/* ==================================================== */}
         </div>
       ),
     });
+
 
     if (!isSoftware) {
       tabsList.push({
@@ -364,9 +283,12 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab key={props.assetId} assetId={props.assetId} />,
       });
     }
+    if (props.additionalTabs) {
+      tabsList.push(...props.additionalTabs);
+    }
 
     return tabsList;
-  }, [props, maintenanceHistory, isLoadingHistory]);
+  }, [props]);
 
   const handleExportCSV = useCallback(async () => {
     try {
@@ -421,6 +343,8 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   }, [props.assetId, props.assetTag]);
 
   const actions: SlidePanelAction[] = useMemo(() => {
+    if (props.hideActions) return [];
+
     if (activeTabId === 'history') {
       return [
         {
@@ -433,11 +357,23 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       ];
     }
 
-    return [
-      { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
-      { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
-    ];
-  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV]);
+    const isDisposed = props.status === 'Disposed';
+    const isPendingDisposal = props.status === 'Pending Disposal';
+    
+    const list: SlidePanelAction[] = [];
+
+    // Disposed assets cannot be edited
+    if (!isDisposed) {
+      list.push({ id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit });
+    }
+
+    // Disposed and Pending Disposal assets cannot be assigned/returned
+    if (!isDisposed && !isPendingDisposal) {
+      list.push({ id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick });
+    }
+
+    return list;
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV, props.status, props.hideActions]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">

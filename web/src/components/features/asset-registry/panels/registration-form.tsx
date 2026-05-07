@@ -71,7 +71,7 @@ export type { RegistrationOption, ModelRegistrationOption };
 
 type RegistrationFormProps = {
   isOpen: boolean;
-  onClose: (open: boolean) => void;
+  onClose: (open: boolean, didSucceed?: boolean) => void;
   isLoading?: boolean;
   initialPillar?: RegistrationPillarInput;
   categoryOptions?: CategoryRegistrationOption[];
@@ -448,11 +448,12 @@ export function RegistrationForm({
         : 'No models found.';
   const selectedModelLabel =
     modelOptions.find((option) => option.value === modelId)?.label ?? '';
+  const selectedBrandLabel =
+    brandOptions.find((option) => option.value === brandId)?.label ?? '';
   const selectedModelImageUrl = selectedModel?.imageUrl ?? '';
-  const derivedAssetName =
-    isSoftware
-      ? selectedModelLabel.trim() || serialNumber.trim() || 'Software License'
-      : serialNumber.trim() || selectedModelLabel.trim() || 'Hardware Asset';
+  const derivedAssetName = (selectedBrandLabel && selectedModelLabel)
+    ? `${selectedBrandLabel.trim()} - ${selectedModelLabel.trim()}`
+    : 'New Asset';
   const panelDescription = resolvePanelDescription(initialPillar);
   const panelTitle = isSoftware ? 'Software Registry' : 'Asset Registry';
   const serialLabel = isSoftware ? 'License Key :' : 'Serial Number :';
@@ -484,12 +485,13 @@ export function RegistrationForm({
 
     if (state.success) {
       tiqriToast.success(resolvedMessage);
+      onClose(false, true); // Safely close and notify parent to refresh data table
     } else {
       tiqriToast.error(resolvedMessage);
     }
 
     lastToastKeyRef.current = toastKey;
-  }, [formError, state.message, state.success]);
+  }, [formError, state.message, state.success, onClose]);
 
   const panelActions: SlidePanelAction[] = isLoading
     ? []
@@ -586,6 +588,7 @@ export function RegistrationForm({
           <Input
             id="serialNumber"
             name="serialNumber"
+            type="text"
             value={serialNumber}
             onChange={(event) => setSerialNumber(event.target.value)}
             aria-invalid={Boolean(getError(state, 'serialNumber'))}

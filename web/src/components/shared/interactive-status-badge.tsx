@@ -100,6 +100,21 @@ export function InteractiveStatusBadge({
   const selectedStatusConfig = availableStatuses.find(s => s.value === selectedStatus);
   const currentStatusConfig = availableStatuses.find(s => s.value === localStatus);
 
+  const isLockedStatus = localStatus === 'Disposed' || localStatus === 'Pending Disposal';
+
+  if (isLockedStatus) {
+    return (
+      <div className={cn('inline-flex items-center', className)}>
+        <StatusBadge
+          value={localStatus}
+          showIcon
+          colorTheme={currentStatusConfig?.colorTheme}
+          iconName={currentStatusConfig?.iconName}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       <DropdownMenu>
