@@ -91,7 +91,7 @@ export function DisposalReviewPanelWrapper({
         justification={extendedData?.justification ?? ''}
         purchaseDate={extendedData?.purchaseDate ?? ''}
         originalCost={extendedData?.originalCost ?? undefined}
-        currentBookValue={undefined}
+        currentBookValue={extendedData?.currentBookValue ?? undefined}
         warrantyStatus={
           extendedData?.warrantyStatus === 'Expired'
             ? 'Expired'

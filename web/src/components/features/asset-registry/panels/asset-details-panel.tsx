@@ -60,6 +60,9 @@ export interface AssetDetailsPanelProps {
   warrantyPeriod?: string;
   totalRepairCost?: string;
   invoiceUrl?: string;
+  currentBookValue?: number;
+  totalRepairCosts?: number;
+  totalTCO?: number;
   vendorInfo?: { vendorId: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
 
   // Event Data
@@ -327,7 +330,9 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             tax={props.tax || '-'}
             totalCost={props.totalCost || '-'}
             warrantyPeriod={props.warrantyPeriod || '-'}
-            totalRepairCost={props.totalRepairCost}
+            totalRepairCost={props.totalRepairCosts ? String(props.totalRepairCosts) : props.totalRepairCost}
+            currentBookValue={props.currentBookValue}
+            totalTCO={props.totalTCO}
             invoicePdf={props.invoiceUrl}
             vendor={props.vendorInfo || { vendorId: '', vendorName: 'N/A' }}
             onCurrencyChange={props.onCurrencyChange}

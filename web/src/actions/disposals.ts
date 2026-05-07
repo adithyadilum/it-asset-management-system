@@ -20,6 +20,7 @@ import {
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { uploadFileToStorage } from '@/lib/storage'; 
 import { isValidUuid } from '@/lib/auth/uuid';
+import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
 
 import { executeDisposalSchema, rejectDisposalSchema } from '@/lib/validations/disposals';
 import type { DisposalReviewDetails, DisposalFormState } from '@/types/disposals';
@@ -130,8 +131,17 @@ export async function getDisposalReviewDetails(disposalId: number): Promise<Disp
       dateCreated: row.createdAt ? new Date(row.createdAt).toISOString() : null,
       purchaseDate: row.purchaseDate ? new Date(row.purchaseDate).toISOString() : null,
       originalCost,
+      currentBookValue: null, // Placeholder
       warrantyStatus,
     };
+
+    // Fetch real-time book value from centralized financial module
+    try {
+      const vitals = await getAssetFinancialVitals(row.assetId);
+      details.currentBookValue = vitals.currentBookValue;
+    } catch (e) {
+      console.warn(`[getDisposalReviewDetails] Could not fetch book value for asset ${row.assetId}:`, e);
+    }
 
     return details;
   } finally {

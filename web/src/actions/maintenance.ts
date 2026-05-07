@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories, systemAuditLogs, vendors } from '@/db/schema';
 import { eq, and, ilike, or, desc, sql } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
+import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
 import type { PendingReviewTicket, IssueReviewPanelData, ActiveRepairTicket, RepairHistoryTicket, AssetMaintenanceRecord } from '@/types/maintenance';
 
 // ============================================================================
@@ -115,17 +116,26 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
   const row = result[0];
   const purchase = row.purchase;
 
+  // Fetch real-time vitals (Depreciation, TCO, Warranty)
+  let bookValue = 0;
+  let totalTCO = 0;
   let warrantyStatus: 'Active' | 'Expired' = 'Expired';
-  if (purchase?.warrantyExpiry) {
-    const expiryDate = new Date(purchase.warrantyExpiry);
-    warrantyStatus = expiryDate > new Date() ? 'Active' : 'Expired';
-  }
+  let originalCost = purchase?.totalCost ? parseFloat(purchase.totalCost.toString()) : 0;
 
-  const originalCost = purchase?.totalCost ? parseFloat(purchase.totalCost.toString()) : 0;
-  const purchaseDate = purchase?.purchaseDate ? new Date(purchase.purchaseDate) : new Date();
-  const monthsOld = Math.max(0, (Date.now() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
-  const depreciation = (originalCost * monthsOld) / DEPRECIATION_MONTHS;
-  const bookValue = Math.max(0, originalCost - depreciation);
+  try {
+    const vitals = await getAssetFinancialVitals(row.asset.id);
+    bookValue = vitals.currentBookValue;
+    totalTCO = vitals.totalTCO;
+    warrantyStatus = vitals.isUnderWarranty ? 'Active' : 'Expired';
+    originalCost = vitals.totalCost;
+  } catch (e) {
+    console.warn(`[getTicketForIssueReview] Could not fetch financial vitals for asset ${row.asset.id}:`, e);
+    // Fallback if financial vitals fetch fails
+    if (purchase?.warrantyExpiry) {
+      const expiryDate = new Date(purchase.warrantyExpiry);
+      warrantyStatus = expiryDate > new Date() ? 'Active' : 'Expired';
+    }
+  }
 
   return {
     ticket: {
@@ -140,6 +150,7 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
     warrantyStatus,
     bookValue: Math.round(bookValue * 100) / 100,
     originalCost,
+    totalTCO,
   } as unknown as IssueReviewPanelData;
 }
 

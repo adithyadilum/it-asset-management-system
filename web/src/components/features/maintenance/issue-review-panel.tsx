@@ -160,6 +160,13 @@ export function IssueReviewPanel({
 
               <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Current Book Value:</span>
               <span className="text-muted-foreground truncate">{formatCurrency(bookValue)}</span>
+
+              {data.totalTCO && (
+                <>
+                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Total TCO:</span>
+                  <span className="text-muted-foreground truncate font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
+                </>
+              )}
             </div>
             
             <div className="grid grid-cols-[110px_1fr] gap-2 items-center min-w-0">
