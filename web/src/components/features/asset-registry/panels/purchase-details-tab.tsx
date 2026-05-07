@@ -28,6 +28,8 @@ export interface PurchaseDetailsTabProps {
   totalCost: string;
   warrantyPeriod: string;
   totalRepairCost?: string;
+  currentBookValue?: number;
+  totalTCO?: number;
   invoicePdf?: string;
   vendor: {
     vendorId: string;
@@ -53,6 +55,8 @@ export function PurchaseDetailsTab({
   totalCost,
   warrantyPeriod,
   totalRepairCost,
+  currentBookValue,
+  totalTCO,
   invoicePdf,
   vendor,
   onCurrencyChange,
@@ -82,6 +86,12 @@ export function PurchaseDetailsTab({
   const formattedTotalCost = formatConvertedMoney(totalCost);
   const formattedTotalRepairCost = totalRepairCost
     ? formatConvertedMoney(totalRepairCost)
+    : undefined;
+  const formattedBookValue = currentBookValue != null
+    ? formatConvertedMoney(String(currentBookValue))
+    : undefined;
+  const formattedTCO = totalTCO != null
+    ? formatConvertedMoney(String(totalTCO))
     : undefined;
 
   const renderField = (label: string, value: React.ReactNode, isMono: boolean = false, isLong: boolean = false) => (
@@ -134,6 +144,10 @@ export function PurchaseDetailsTab({
         {renderField('Warranty Period', warrantyPeriod)}
         {formattedTotalRepairCost &&
           renderField('Total Repair Cost', formattedTotalRepairCost, true)}
+        {formattedBookValue &&
+          renderField('Current Book Value', formattedBookValue, true)}
+        {formattedTCO &&
+          renderField('Total Cost of Ownership (TCO)', formattedTCO, true)}
 
         <div className="flex items-center justify-between border-b border-border/40 py-2.5">
           <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>

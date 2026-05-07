@@ -1,15 +1,31 @@
 'use server';
 
 import { db } from '@/db';
-import { maintenanceTickets, assets, users, assetPurchases, models, brands, categories, systemAuditLogs, vendors } from '@/db/schema';
+import {
+  maintenanceTickets,
+  assets,
+  users,
+  assetPurchases,
+  models,
+  brands,
+  categories,
+  systemAuditLogs,
+  vendors,
+} from '@/db/schema';
 import { eq, and, ilike, or, desc, sql } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
-import type { PendingReviewTicket, IssueReviewPanelData, ActiveRepairTicket, RepairHistoryTicket, AssetMaintenanceRecord } from '@/types/maintenance';
+import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import type {
+  PendingReviewTicket,
+  IssueReviewPanelData,
+  ActiveRepairTicket,
+  RepairHistoryTicket,
+  AssetMaintenanceRecord,
+} from '@/types/maintenance';
 
 // ============================================================================
 // CONSTANTS & SECURITY UTILITIES
 // ============================================================================
-const DEPRECIATION_MONTHS = 36;
 const MAX_QUERY_LIMIT = 100;
 const DEFAULT_HISTORY_LIMIT = 3;
 
@@ -17,7 +33,10 @@ const DEFAULT_HISTORY_LIMIT = 3;
  * Strips HTML tags and enforces a maximum length to prevent XSS and buffer overflow.
  * Enforces input sanitization before saving to the database or audit logs.
  */
-function sanitizeText(input: string | null | undefined, maxLength: number): string {
+function sanitizeText(
+  input: string | null | undefined,
+  maxLength: number
+): string {
   if (!input) return '';
   const stripped = input.replace(/<[^>]*>?/gm, '');
   return stripped.trim().substring(0, maxLength);
@@ -30,7 +49,8 @@ function sanitizeText(input: string | null | undefined, maxLength: number): stri
 export async function getPendingMaintenanceTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   const baseCondition = and(
     eq(maintenanceTickets.status, 'ACTIVE'),
@@ -56,7 +76,9 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
       reportedBy: users,
     })
     .from(maintenanceTickets)
-    .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition)
+    .where(
+      searchCondition ? and(baseCondition, searchCondition) : baseCondition
+    )
     .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
     .innerJoin(models, eq(assets.modelId, models.id))
     .innerJoin(brands, eq(models.brandId, brands.id))
@@ -80,10 +102,13 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
   return { tickets, total: tickets.length };
 }
 
-export async function getTicketForIssueReview(ticketId: number): Promise<IssueReviewPanelData> {
+export async function getTicketForIssueReview(
+  ticketId: number
+): Promise<IssueReviewPanelData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   const result = await db
     .select({
@@ -115,17 +140,43 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
   const row = result[0];
   const purchase = row.purchase;
 
+  // Calculate Depreciation & Book Value from available purchase data
+  const totalCost = purchase?.totalCost
+    ? parseFloat(purchase.totalCost.toString())
+    : 0;
+  const bookValue = calculateStraightLineDepreciation(
+    totalCost,
+    row.asset.usefulLifeMonths,
+    purchase?.purchaseDate ?? null
+  );
+
+  // Calculate Total Cost of Ownership (add repair costs)
+  const repairResult = await db
+    .select({
+      totalRepair:
+        sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+          'totalRepair'
+        ),
+    })
+    .from(maintenanceTickets)
+    .where(
+      and(
+        eq(maintenanceTickets.assetId, row.asset.id),
+        eq(maintenanceTickets.status, 'COMPLETED')
+      )
+    );
+
+  const totalRepairCosts = parseFloat(
+    repairResult[0]?.totalRepair?.toString() || '0'
+  );
+  const totalTCO = Math.round((totalCost + totalRepairCosts) * 100) / 100;
+
+  // Determine Warranty Status
   let warrantyStatus: 'Active' | 'Expired' = 'Expired';
   if (purchase?.warrantyExpiry) {
     const expiryDate = new Date(purchase.warrantyExpiry);
     warrantyStatus = expiryDate > new Date() ? 'Active' : 'Expired';
   }
-
-  const originalCost = purchase?.totalCost ? parseFloat(purchase.totalCost.toString()) : 0;
-  const purchaseDate = purchase?.purchaseDate ? new Date(purchase.purchaseDate) : new Date();
-  const monthsOld = Math.max(0, (Date.now() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
-  const depreciation = (originalCost * monthsOld) / DEPRECIATION_MONTHS;
-  const bookValue = Math.max(0, originalCost - depreciation);
 
   return {
     ticket: {
@@ -139,14 +190,16 @@ export async function getTicketForIssueReview(ticketId: number): Promise<IssueRe
     },
     warrantyStatus,
     bookValue: Math.round(bookValue * 100) / 100,
-    originalCost,
+    originalCost: totalCost,
+    totalTCO,
   } as unknown as IssueReviewPanelData;
 }
 
 export async function getVendors() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   return await db
     .select({
@@ -165,7 +218,8 @@ export async function getVendors() {
 export async function getActiveRepairTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   const baseCondition = and(
     eq(maintenanceTickets.status, 'ACTIVE'),
@@ -186,7 +240,9 @@ export async function getActiveRepairTickets(searchTerm = '') {
     })
     .from(maintenanceTickets)
     .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition)
+    .where(
+      searchCondition ? and(baseCondition, searchCondition) : baseCondition
+    )
     .limit(MAX_QUERY_LIMIT);
 
   const tickets = result.map((row) => ({
@@ -197,10 +253,15 @@ export async function getActiveRepairTickets(searchTerm = '') {
   return { tickets, total: tickets.length };
 }
 
-export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '') {
+export async function getRepairHistory(
+  page = 1,
+  pageSize = 10,
+  searchTerm = ''
+) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   const offset = (page - 1) * pageSize;
   const baseCondition = eq(maintenanceTickets.status, 'COMPLETED');
@@ -216,7 +277,9 @@ export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '')
     .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(maintenanceTickets)
     .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition);
+    .where(
+      searchCondition ? and(baseCondition, searchCondition) : baseCondition
+    );
 
   const total = countResult[0]?.count || 0;
 
@@ -236,20 +299,32 @@ export async function getRepairHistory(page = 1, pageSize = 10, searchTerm = '')
     })
     .from(maintenanceTickets)
     .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(searchCondition ? and(baseCondition, searchCondition) : baseCondition)
+    .where(
+      searchCondition ? and(baseCondition, searchCondition) : baseCondition
+    )
     .orderBy(desc(maintenanceTickets.actualCompletionDate))
     .limit(pageSize)
     .offset(offset);
 
   const tickets = result.map((row) => row.ticket) as RepairHistoryTicket[];
 
-  return { tickets, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+  return {
+    tickets,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
 }
 
-export async function getAssetMaintenanceHistory(assetId: string, limit = DEFAULT_HISTORY_LIMIT) {
+export async function getAssetMaintenanceHistory(
+  assetId: string,
+  limit = DEFAULT_HISTORY_LIMIT
+) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   const assetRecord = await db
     .select({ id: assets.id })
@@ -286,24 +361,38 @@ export async function getAssetMaintenanceHistory(assetId: string, limit = DEFAUL
 // MUTATIONS (WRAPPED IN ATOMIC TRANSACTIONS)
 // ============================================================================
 
-export async function resolveIssueInternally(ticketId: number, resolutionNote: string) {
+export async function resolveIssueInternally(
+  ticketId: number,
+  resolutionNote: string
+) {
   // 1. Zero Trust: Auth & Role Validation
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
-  
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
   // 2. Input Sanitization
   const safeResolutionNote = sanitizeText(resolutionNote, 1000);
   if (!safeResolutionNote) throw new Error('Resolution note is required');
 
   // 3. Atomic Database Transaction
   return await db.transaction(async (tx) => {
-    const ticketResult = await tx.select().from(maintenanceTickets).where(eq(maintenanceTickets.id, ticketId)).limit(1);
-    if (ticketResult.length === 0) throw new Error(`Ticket with ID ${ticketId} not found`);
+    const ticketResult = await tx
+      .select()
+      .from(maintenanceTickets)
+      .where(eq(maintenanceTickets.id, ticketId))
+      .limit(1);
+    if (ticketResult.length === 0)
+      throw new Error(`Ticket with ID ${ticketId} not found`);
     const ticket = ticketResult[0];
 
-    const currentAssetResult = await tx.select().from(assets).where(eq(assets.id, ticket.assetId)).limit(1);
-    if (currentAssetResult.length === 0) throw new Error(`Asset with ID ${ticket.assetId} not found`);
+    const currentAssetResult = await tx
+      .select()
+      .from(assets)
+      .where(eq(assets.id, ticket.assetId))
+      .limit(1);
+    if (currentAssetResult.length === 0)
+      throw new Error(`Asset with ID ${ticket.assetId} not found`);
     const currentAsset = currentAssetResult[0];
 
     const now = new Date();
@@ -313,7 +402,8 @@ export async function resolveIssueInternally(ticketId: number, resolutionNote: s
       .set({ status: 'Available', updatedAt: now })
       .where(eq(assets.id, ticket.assetId))
       .returning({ id: assets.id });
-    if (updatedAssets.length === 0) throw new Error('Failed to update asset status');
+    if (updatedAssets.length === 0)
+      throw new Error('Failed to update asset status');
 
     const updatedTickets = await tx
       .update(maintenanceTickets)
@@ -325,24 +415,29 @@ export async function resolveIssueInternally(ticketId: number, resolutionNote: s
       })
       .where(eq(maintenanceTickets.id, ticketId))
       .returning({ id: maintenanceTickets.id });
-    if (updatedTickets.length === 0) throw new Error('Failed to update maintenance ticket');
+    if (updatedTickets.length === 0)
+      throw new Error('Failed to update maintenance ticket');
 
     // Audit Log complies with strict Enum ('UPDATE')
     await tx.insert(systemAuditLogs).values({
       entityType: 'Asset',
       entityId: ticket.assetId,
-      actionType: 'UPDATE', 
+      actionType: 'UPDATE',
       performedById: user.id,
       oldValue: { status: currentAsset.status },
-      newValue: { 
-        status: 'Available', 
+      newValue: {
+        status: 'Available',
         resolutionNote: safeResolutionNote,
-        actionContext: 'MAINTENANCE_RESOLVED_INTERNALLY'
+        actionContext: 'MAINTENANCE_RESOLVED_INTERNALLY',
       },
       performedAt: now,
     });
 
-    return { success: true, message: 'Issue resolved successfully', assetId: ticket.assetId };
+    return {
+      success: true,
+      message: 'Issue resolved successfully',
+      assetId: ticket.assetId,
+    };
   });
 }
 
@@ -357,19 +452,30 @@ export async function initiateVendorRepair(
   // 1. Zero Trust: Auth & Role Validation
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   // 2. Input Sanitization
   const safeRmaNumber = sanitizeText(rmaNumber, 100);
 
   // 3. Atomic Database Transaction
   return await db.transaction(async (tx) => {
-    const currentAssetResult = await tx.select().from(assets).where(eq(assets.id, assetId)).limit(1);
-    if (currentAssetResult.length === 0) throw new Error(`Asset ${assetId} not found`);
+    const currentAssetResult = await tx
+      .select()
+      .from(assets)
+      .where(eq(assets.id, assetId))
+      .limit(1);
+    if (currentAssetResult.length === 0)
+      throw new Error(`Asset ${assetId} not found`);
     const currentAsset = currentAssetResult[0];
 
-    const vendorResult = await tx.select().from(vendors).where(eq(vendors.id, parseInt(vendorId))).limit(1);
-    if (vendorResult.length === 0) throw new Error(`Vendor ${vendorId} not found`);
+    const vendorResult = await tx
+      .select()
+      .from(vendors)
+      .where(eq(vendors.id, parseInt(vendorId)))
+      .limit(1);
+    if (vendorResult.length === 0)
+      throw new Error(`Vendor ${vendorId} not found`);
     const vendor = vendorResult[0];
 
     const now = new Date();
@@ -384,14 +490,16 @@ export async function initiateVendorRepair(
       })
       .where(eq(maintenanceTickets.id, ticketId))
       .returning({ id: maintenanceTickets.id });
-    if (closedTicket.length === 0) throw new Error('Failed to close initial triage ticket');
+    if (closedTicket.length === 0)
+      throw new Error('Failed to close initial triage ticket');
 
     const updatedAsset = await tx
       .update(assets)
       .set({ status: 'In Repair', updatedAt: now })
       .where(eq(assets.id, assetId))
       .returning({ id: assets.id });
-    if (updatedAsset.length === 0) throw new Error('Failed to update asset status');
+    if (updatedAsset.length === 0)
+      throw new Error('Failed to update asset status');
 
     const newTicketValues = {
       assetId: assetId,
@@ -399,7 +507,9 @@ export async function initiateVendorRepair(
       vendorName: vendor.companyName,
       rmaNumber: safeRmaNumber,
       reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-      estimatedCost: estimatedCost ? parseFloat(estimatedCost).toString() : null,
+      estimatedCost: estimatedCost
+        ? parseFloat(estimatedCost).toString()
+        : null,
       estimatedReturnDate: expectedReturnDate ? expectedReturnDate : null,
       status: 'ACTIVE' as const,
       dispatchedById: user.id,
@@ -411,7 +521,8 @@ export async function initiateVendorRepair(
       .insert(maintenanceTickets)
       .values(newTicketValues)
       .returning();
-    if (!newTickets[0]) throw new Error('Failed to create vendor repair ticket');
+    if (!newTickets[0])
+      throw new Error('Failed to create vendor repair ticket');
 
     // Audit Log complies with strict Enum ('UPDATE')
     await tx.insert(systemAuditLogs).values({
@@ -425,12 +536,17 @@ export async function initiateVendorRepair(
         vendor: vendor.companyName,
         rmaNumber: safeRmaNumber,
         estimatedReturnDate: expectedReturnDate || null,
-        actionContext: 'MAINTENANCE_VENDOR_REPAIR_INITIATED'
+        actionContext: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
       },
       performedAt: now,
     });
 
-    return { success: true, message: 'Asset dispatched successfully', ticketId: newTickets[0].id, assetId };
+    return {
+      success: true,
+      message: 'Asset dispatched successfully',
+      ticketId: newTickets[0].id,
+      assetId,
+    };
   });
 }
 
@@ -443,24 +559,40 @@ export async function completeRepairTicket(
   // 1. Zero Trust: Auth & Role Validation
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
 
   // 2. Input Validation & Sanitization
-  if (!Number.isInteger(ticketId) || ticketId <= 0) throw new Error('Invalid ticket ID');
+  if (!Number.isInteger(ticketId) || ticketId <= 0)
+    throw new Error('Invalid ticket ID');
   const safeResolutionNotes = sanitizeText(resolutionNotes, 1000);
-  if (safeResolutionNotes.length === 0) throw new Error('Resolution notes are required');
+  if (safeResolutionNotes.length === 0)
+    throw new Error('Resolution notes are required');
   const actualCostNum = Number.parseFloat(actualCost);
-  if (!Number.isFinite(actualCostNum) || actualCostNum < 0) throw new Error('Actual cost must be a finite number greater than or equal to 0');
+  if (!Number.isFinite(actualCostNum) || actualCostNum < 0)
+    throw new Error(
+      'Actual cost must be a finite number greater than or equal to 0'
+    );
 
   // 3. Atomic Database Transaction
   return await db.transaction(async (tx) => {
-    const ticketResult = await tx.select().from(maintenanceTickets).where(eq(maintenanceTickets.id, ticketId)).limit(1);
-    if (ticketResult.length === 0) throw new Error(`Ticket ${ticketId} not found`);
+    const ticketResult = await tx
+      .select()
+      .from(maintenanceTickets)
+      .where(eq(maintenanceTickets.id, ticketId))
+      .limit(1);
+    if (ticketResult.length === 0)
+      throw new Error(`Ticket ${ticketId} not found`);
     const ticket = ticketResult[0];
     const assetId = ticket.assetId;
 
-    const currentAssetResult = await tx.select().from(assets).where(eq(assets.id, assetId)).limit(1);
-    if (currentAssetResult.length === 0) throw new Error(`Asset ${assetId} not found`);
+    const currentAssetResult = await tx
+      .select()
+      .from(assets)
+      .where(eq(assets.id, assetId))
+      .limit(1);
+    if (currentAssetResult.length === 0)
+      throw new Error(`Asset ${assetId} not found`);
     const currentAsset = currentAssetResult[0];
 
     const now = new Date();
@@ -476,7 +608,8 @@ export async function completeRepairTicket(
       })
       .where(eq(maintenanceTickets.id, ticketId))
       .returning({ id: maintenanceTickets.id });
-    if (updatedTickets.length === 0) throw new Error('Failed to update maintenance ticket');
+    if (updatedTickets.length === 0)
+      throw new Error('Failed to update maintenance ticket');
 
     const updatedAssets = await tx
       .update(assets)
@@ -497,11 +630,16 @@ export async function completeRepairTicket(
         ticketStatus: 'COMPLETED',
         actualCost: actualCostNum,
         resolutionNotes: safeResolutionNotes,
-        actionContext: 'MAINTENANCE_REPAIR_COMPLETED'
+        actionContext: 'MAINTENANCE_REPAIR_COMPLETED',
       },
       performedAt: now,
     });
 
-    return { success: true, message: 'Repair completed successfully', ticketId, assetId };
+    return {
+      success: true,
+      message: 'Repair completed successfully',
+      ticketId,
+      assetId,
+    };
   });
 }
