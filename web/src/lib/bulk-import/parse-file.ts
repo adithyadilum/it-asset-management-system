@@ -75,7 +75,7 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
 
     for (const row of result.data) {
       const isEmpty = Object.values(row).every(
-        (val) => !val || val.trim() === ''
+        (val) => !val || (typeof val === 'string' && val.trim() === '')
       );
 
       if (isEmpty) {
@@ -83,7 +83,7 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
       } else {
         const trimmedRow: Record<string, string> = {};
         for (const [key, value] of Object.entries(row)) {
-          trimmedRow[key] = value ? value.trim() : '';
+          trimmedRow[key] = (value && typeof value === 'string') ? value.trim() : '';
         }
         rows.push(trimmedRow);
       }
@@ -100,17 +100,17 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
     }
 
     const headerRow = worksheet.getRow(1);
-    headerRow.eachCell((cell, colNumber) => {
+    headerRow.eachCell((cell: ExcelJS.Cell, colNumber: number) => {
       headers[colNumber - 1] = cell.text ? cell.text.trim() : '';
     });
 
-    worksheet.eachRow((row, rowNumber) => {
+    worksheet.eachRow((row: ExcelJS.Row, rowNumber: number) => {
       if (rowNumber === 1) return; // skip header
 
       let isEmpty = true;
       const rowData: Record<string, string> = {};
 
-      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      row.eachCell({ includeEmpty: true }, (cell: ExcelJS.Cell, colNumber: number) => {
         const header = headers[colNumber - 1];
         if (header) {
           const textValue = getCellStringValue(cell);
