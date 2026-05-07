@@ -144,7 +144,7 @@ export function MaintenanceShell() {
 
   return (
     <div className="flex h-[calc(100vh-64px)] w-full bg-background overflow-hidden">
-      
+
       {/* LEFT CARD (Main Tabs) */}
       <div className="flex flex-1 flex-col bg-background overflow-hidden min-w-0">
         <div className="px-6 pt-6 pb-2 shrink-0">
@@ -169,15 +169,15 @@ export function MaintenanceShell() {
         </div>
       </div>
 
-      <div 
+      <div
         className={cn(
           "shrink-0 bg-background overflow-hidden transition-all duration-300 ease-in-out transform",
-          uiState.isPanelOpen 
-            ? "w-[550px] xl:w-[600px] border-l border-border opacity-100 translate-x-0" 
-            : "w-0 border-0 opacity-0 translate-x-8" 
+          uiState.isPanelOpen
+            ? "w-137.5 xl:w-150 border-l border-border opacity-100 translate-x-0"
+            : "w-0 border-0 opacity-0 translate-x-8"
         )}
       >
-        <div className="w-[550px] xl:w-[600px] h-full flex flex-col">
+        <div className="w-137.5 xl:w-150 h-full flex flex-col">
           <IssueReviewPanelWrapper
             isOpen={uiState.isPanelOpen}
             onClose={handlePanelClose}

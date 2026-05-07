@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useTransition } from "react";
+import { useState, useMemo, useEffect, useTransition, useRef } from "react";
 import { Download, Search, ChevronDown, DollarSign, Filter, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
   const [pageCount, setPageCount] = useState(1);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const hasInitializedRef = useRef(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -70,13 +70,13 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
 
   // The Server Fetcher - Skip first fetch if no filters/search on page 0
   useEffect(() => {
-    const shouldSkipFirstFetch = !hasInitialized && pagination.pageIndex === 0 && debouncedSearch === '' && appliedFilters.length === 0;
+    const shouldSkipFirstFetch = !hasInitializedRef.current && pagination.pageIndex === 0 && debouncedSearch === '' && appliedFilters.length === 0;
     if (shouldSkipFirstFetch) {
-      setHasInitialized(true);
+      hasInitializedRef.current = true;
       return;
     }
 
-    setHasInitialized(true);
+    hasInitializedRef.current = true;
     startTransition(async () => {
       const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category' && f.operator === 'is')?.value;
       const costFilter = appliedFilters.find(f => f.field === 'Total Cost (TCO)' && f.operator === 'is')?.value;
