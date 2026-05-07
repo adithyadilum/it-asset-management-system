@@ -14,6 +14,7 @@ import {
   type TokenRole,
 } from '@/lib/auth/session';
 import { logAuditAction } from '@/lib/audit';
+import { disposalFinalityMiddleware } from './middleware/disposal-finality-middleware';
 
 async function verifyTokenAndRole(token: string) {
   const authTimer = startLatencyTimer();
@@ -96,9 +97,22 @@ export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const { pathname } = request.nextUrl;
-  const isProtectedRoute = pathname !== '/login' && pathname !== '/403';
+  const isProtectedRoute =
+    pathname !== '/login' &&
+    pathname !== '/403' &&
+    !pathname.startsWith('/api');
   const isLoginRoute = pathname === '/login';
 
+  // 1. Disposal Finality Check (Intersects specific API write requests)
+  if (pathname.startsWith('/api/v1/assets')) {
+    const finalityResponse = await disposalFinalityMiddleware(request);
+    // If middleware returned a block (403), return it immediately
+    if (finalityResponse.status !== 200) {
+      return finalityResponse;
+    }
+  }
+
+  // 2. Auth & RBAC Proxy Logic
   try {
     if (!token && isProtectedRoute) {
       return getLoginRedirectResponse(request);
@@ -153,5 +167,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

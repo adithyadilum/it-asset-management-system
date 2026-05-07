@@ -322,12 +322,13 @@ export async function rejectDisposalRequest(
   const parsed = rejectDisposalSchema.safeParse({
     disposalIds: parsedDisposalIds,
     assetIds: parsedAssetIds,
-    rejectionReason: formData.get('rejectionReason'),
-    fallbackStatus: formData.get('fallbackStatus'),
-    maintenanceIssue: formData.get('maintenanceIssue'),
+    rejectionReason: formData.get('rejectionReason')?.toString() || '',
+    fallbackStatus: formData.get('fallbackStatus')?.toString() || '',
+    maintenanceIssue: formData.get('maintenanceIssue')?.toString() || undefined,
   });
 
   if (!parsed.success) {
+    console.error('Validation failed in rejectDisposalRequest:', parsed.error.flatten().fieldErrors);
     return {
       success: false,
       message: 'Validation failed.',
@@ -577,15 +578,16 @@ export async function executeAssetDisposal(
     const parsed = executeDisposalSchema.safeParse({
       disposalIds: parsedDisposalIds,
       assetIds: parsedAssetIds,
-      reason: formData.get('reason'),
-      disposalDate: formData.get('disposalDate') || undefined,
-      disposalMethod: formData.get('disposalMethod'),
+      reason: formData.get('reason')?.toString() || '',
+      disposalDate: formData.get('disposalDate')?.toString() || undefined,
+      disposalMethod: formData.get('disposalMethod')?.toString() || '',
       dataWiped: formData.get('dataWiped') === 'true',
       tagsRemoved: formData.get('tagsRemoved') === 'true',
       receiptUrls: parsedReceiptUrls,
     });
 
     if (!parsed.success) {
+      console.error('Validation failed in executeAssetDisposal:', parsed.error.flatten().fieldErrors);
       return {
         success: false,
         message: 'Validation failed.',
