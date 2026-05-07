@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
 import { getTCOLedger } from "@/actions/financials";
-import { TableSkeleton } from "@/components/shared/table-skeleton"; // 🚨 NEW
+import { TableSkeleton } from "@/components/shared/table-skeleton";
 
 type FilterField = 'Asset Category' | 'Total Cost (TCO)';
 type FilterOperator = 'is' | 'is not';
@@ -32,7 +32,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
   const [pageCount, setPageCount] = useState(0);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(true); // 🚨 NEW
+  const [isLoading, setIsLoading] = useState(true); 
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -47,7 +47,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
   const [draftValue, setDraftValue] = useState('');
 
   const filterFieldOptions: FilterField[] = ['Asset Category', 'Total Cost (TCO)'];
-  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; // 🚨 NEW
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; 
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -82,7 +82,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
 
   // The Server Fetcher
   useEffect(() => {
-    setIsLoading(true); // 🚨 NEW
+    setIsLoading(true); 
     startTransition(async () => {
       const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
       const costFilter = appliedFilters.find(f => f.field === 'Total Cost (TCO)')?.value;
@@ -97,7 +97,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
 
       setData(response.data as unknown as TCOLedgerRecord[]);
       setPageCount(response.meta.totalPages);
-      setIsLoading(false); // 🚨 NEW
+      setIsLoading(false); 
     });
   }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, appliedFilters]);
 
@@ -367,7 +367,6 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
         ) : null}
       </div>
 
-      {/* 🚨 FIX: Skeleton Loader */}
       <div className="min-h-0 flex-1 flex flex-col">
         {isLoading || isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">

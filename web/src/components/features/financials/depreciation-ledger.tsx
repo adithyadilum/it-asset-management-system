@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
 import { getDepreciationLedger } from "@/actions/financials";
-import { TableSkeleton } from "@/components/shared/table-skeleton"; // 🚨 NEW
+import { TableSkeleton } from "@/components/shared/table-skeleton"; 
 
 type FilterField = 'Asset Category' | 'Purchase Age';
 type FilterOperator = 'is' | 'is not';
@@ -33,7 +33,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
   const [pageCount, setPageCount] = useState(0);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(true); // 🚨 NEW: Explicit loading state
+  const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -48,7 +48,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
   const [draftValue, setDraftValue] = useState('');
 
   const filterFieldOptions: FilterField[] = ['Asset Category', 'Purchase Age'];
-  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; // 🚨 NEW
+  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]']; 
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -83,7 +83,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
   // The Server Fetcher
   useEffect(() => {
-    setIsLoading(true); // 🚨 NEW: Trigger loader immediately
+    setIsLoading(true); 
     startTransition(async () => {
       const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
       const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age')?.value;
@@ -98,7 +98,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
       setData(response.data as unknown as DepreciationLedgerRecord[]);
       setPageCount(response.meta.totalPages);
-      setIsLoading(false); // 🚨 NEW: Disable loader
+      setIsLoading(false); 
     });
   }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, appliedFilters]);
 
@@ -360,7 +360,6 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
         ) : null}
       </div>
 
-      {/* 🚨 FIX: Replaced the opacity dimming with conditional skeleton swapping */}
       <div className="min-h-0 flex-1 flex flex-col">
         {isLoading || isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
