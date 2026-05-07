@@ -9,6 +9,7 @@ import {
   SlidePanel,
   type SlidePanelAction,
 } from '@/components/shared/slide-panel';
+import { RegistrationSuccessDialog } from '@/components/features/asset-registry/panels/registration-success-dialog';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
@@ -337,6 +338,13 @@ export function RegistrationForm({
   const [customFieldValues, setCustomFieldValues] = React.useState<Record<string, string>>({});
   const lastToastKeyRef = React.useRef<string>('');
 
+  const [createdAssetId, setCreatedAssetId] = React.useState<string | null>(null);
+
+  const handleSuccessDialogClose = () => {
+    setCreatedAssetId(null);
+    onClose(false, true);
+  };
+
   const handleInvoiceSelection = React.useCallback((files: FileList | null) => {
     const selectedFile = files?.[0] ?? null;
 
@@ -454,8 +462,8 @@ export function RegistrationForm({
   const derivedAssetName = (selectedBrandLabel && selectedModelLabel)
     ? `${selectedBrandLabel.trim()} - ${selectedModelLabel.trim()}`
     : 'New Asset';
-  const panelDescription = resolvePanelDescription(initialPillar);
   const panelTitle = isSoftware ? 'Software Registry' : 'Asset Registry';
+  const panelDescription = resolvePanelDescription(initialPillar);
   const serialLabel = isSoftware ? 'License Key :' : 'Serial Number :';
   const submitLabel = isSoftware ? 'Add Software' : 'Add Asset';
   const submittingLabel = isSoftware ? 'Adding software...' : 'Adding asset...';
@@ -485,7 +493,12 @@ export function RegistrationForm({
 
     if (state.success) {
       tiqriToast.success(resolvedMessage);
-      onClose(false, true); // Safely close and notify parent to refresh data table
+
+      if (state.assetId && !isSoftware) {
+        setCreatedAssetId(state.assetId);
+      } else {
+        onClose(false, true);
+      }
     } else {
       tiqriToast.error(resolvedMessage);
     }
@@ -1005,15 +1018,23 @@ export function RegistrationForm({
   );
 
   return (
-    <SlidePanel
-      isOpen={isOpen}
-      onClose={onClose}
-      title={panelTitle}
-      description={panelDescription}
-      content={panelContent}
-      actions={panelActions}
-      contentClassName="pt-0 pb-2 sm:pt-0"
-    />
+    <>
+      <SlidePanel
+        isOpen={isOpen && !createdAssetId}
+        onClose={onClose}
+        title={panelTitle}
+        description={panelDescription}
+        content={panelContent}
+        actions={panelActions}
+        contentClassName="pt-0 pb-2 sm:pt-0"
+      />
+
+      <RegistrationSuccessDialog
+        assetId={createdAssetId}
+        modelName={selectedModelLabel}
+        onClose={handleSuccessDialogClose}
+      />
+    </>
   );
 }
 
