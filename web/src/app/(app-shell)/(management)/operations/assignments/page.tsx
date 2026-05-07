@@ -1,7 +1,7 @@
 ﻿import { redirect } from 'next/navigation';
 
 import { AssignmentsDashboard } from '@/components/features/operations/assignments/assignments-dashboard';
-import { getAssignmentsDashboardData } from '@/lib/data/operations-assignments-repo';
+import { type AssignmentsDashboardTab, getAssignmentsDashboardData } from '@/lib/data/operations-assignments-repo';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 
@@ -26,15 +26,20 @@ function serializeDatesForClient<T>(value: T): T {
   return value;
 }
 
-export default async function AssignmentsPage() {
+export default async function AssignmentsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const currentUser = await getAuthenticatedUser();
 
   if (!currentUser || !canManageAssets(currentUser.role)) {
     redirect('/403');
   }
 
-  const data = await getAssignmentsDashboardData();
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const tabParam = typeof resolvedSearchParams?.tab === 'string' ? resolvedSearchParams.tab : undefined;
+  // Map UI tab ids to repo tab keys
+  const requestedTab = tabParam === 'assigned-assets' ? 'assigned' : undefined;
+
+  const data = await getAssignmentsDashboardData(requestedTab as AssignmentsDashboardTab | undefined);
   const serializedData = serializeDatesForClient(data);
 
-  return <AssignmentsDashboard data={serializedData} />;
+  return <AssignmentsDashboard data={serializedData as never} />;
 }

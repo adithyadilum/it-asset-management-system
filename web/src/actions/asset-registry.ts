@@ -77,6 +77,7 @@ function normalizeAssetStatus(status: unknown): AssetStatus | undefined {
     status === 'Defective' ||
     status === 'Lost' ||
     status === 'Retired' ||
+    status === 'Pending Disposal' ||
     status === 'Disposed'
   ) {
     return status;

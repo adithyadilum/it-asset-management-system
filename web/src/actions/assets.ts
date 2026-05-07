@@ -31,7 +31,6 @@ import {
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import {
   assetRegistrationSchema,
-  PILLAR_PREFIX_MAP,
   type RegisterAssetActionState,
 } from '@/lib/validations/asset-registration';
 import { isInvoiceAttachmentFile } from '@/lib/file-types';
@@ -88,11 +87,10 @@ function formatSequence(value: number) {
 }
 
 function buildAssetTag(
-  pillarPrefix: string,
   categoryPrefix: string,
   sequence: number
 ) {
-  return `${pillarPrefix}-${categoryPrefix}-${formatSequence(sequence)}`;
+  return `${categoryPrefix}-${formatSequence(sequence)}`;
 }
 
 function validateInvoiceFile(file: File | null) {
@@ -387,8 +385,7 @@ export async function registerAsset(
       : null;
 
     const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
-    const pillarPrefix = PILLAR_PREFIX_MAP[input.pillar];
-    const assetTagPrefix = `${pillarPrefix}-${normalizedCategoryPrefix}`;
+    const assetTagPrefix = normalizedCategoryPrefix;
 
     // 7. Neon HTTP driver does not support db.transaction(), so use
     // sequential writes with a compensating rollback for partial failures.
@@ -403,7 +400,6 @@ export async function registerAsset(
 
       const nextSequence = (countResult[0]?.value ?? 0) + 1;
       const generatedAssetTag = buildAssetTag(
-        pillarPrefix,
         normalizedCategoryPrefix,
         nextSequence
       );
@@ -414,7 +410,7 @@ export async function registerAsset(
           .values({
             assetTag: generatedAssetTag,
             serialNumber: input.serialNumber ?? null,
-            name: input.name,
+            name: `${brandRecord.name} - ${modelRecord.name}`,
             modelId: input.modelId,
             locationId: input.locationId ?? null,
             ownerId: input.ownerId ?? null,
@@ -583,6 +579,10 @@ export async function updateAsset(
     throw new Error('Asset not found');
   }
 
+  if (currentAsset.status === 'Disposed') {
+    throw new Error('Disposed assets cannot be edited.');
+  }
+
   const [updatedAsset] = await db
     .update(assets)
     .set({ ...data, updatedAt: new Date() })
@@ -671,6 +671,10 @@ export async function manualStatusOverrideAction(
 
     if (!currentAsset) {
       return { success: false, message: 'Asset not found.' };
+    }
+
+    if (currentAsset.status === 'Disposed' || currentAsset.status === 'Pending Disposal') {
+      return { success: false, message: `Assets in "${currentAsset.status}" status cannot have their status changed manually.` };
     }
 
     if (currentAsset.status === newStatus) {

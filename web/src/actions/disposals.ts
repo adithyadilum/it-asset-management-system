@@ -1,6 +1,6 @@
 'use server';
 
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
@@ -16,6 +16,7 @@ import {
   systemAuditLogs,
   maintenanceTickets,
   assetDocuments,
+  assetAssignments,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { uploadFileToStorage } from '@/lib/storage'; 
@@ -247,6 +248,17 @@ export async function createBulkDisposalRequests(input: {
         throw new Error('Failed to update asset statuses.');
       }
 
+      // Automatically terminate active assignments for assets requested for disposal
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: new Date() })
+        .where(
+          and(
+            inArray(assetAssignments.assetId, toInsert),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
+
       // Log audit entries for each asset
       const auditTimer = startLatencyTimer();
       const auditEntries = toInsert.map((assetId) => ({
@@ -338,7 +350,7 @@ export async function rejectDisposalRequest(
     assetIds: validAssetIds,
     rejectionReason: normalizedReason, 
     fallbackStatus: validStatus,
-    maintenanceIssue // Extracted directly to utilize
+    maintenanceIssue
   } = parsed.data;
 
   const user = await getAuthenticatedUser();
@@ -400,6 +412,7 @@ export async function rejectDisposalRequest(
         .select({
           id: assets.id,
           status: assets.status,
+          isArchived: assets.isArchived,
         })
         .from(assets)
         .where(inArray(assets.id, normalizedAssetIds));
@@ -422,12 +435,14 @@ export async function rejectDisposalRequest(
         throw new Error('Failed to reject all disposal requests.');
       }
 
-      // 5. Revert asset statuses
+      // 5. Revert asset statuses + UNSET is_archived (soft delete reversal)
+      // ⭐ KEY UPDATE: Ensure is_archived = false when rejection happens
       const validFallbackStatus = validStatus as 'Available' | 'In Repair';
       const updatedAssets = await tx
         .update(assets)
         .set({
           status: validFallbackStatus,
+          isArchived: false,  // ⭐ Soft delete reversal - asset is no longer archived
           updatedAt: new Date(),
         })
         .where(inArray(assets.id, normalizedAssetIds))
@@ -437,7 +452,7 @@ export async function rejectDisposalRequest(
         throw new Error('Failed to revert asset statuses.');
       }
 
-      // --- NEW: 5b. Create Maintenance Tickets for 'In Repair' Assets ---
+      // 5b. Create Maintenance Tickets for 'In Repair' Assets
       if (validFallbackStatus === 'In Repair') {
         const issueText = maintenanceIssue?.trim() || `Automated Routing - Disposal Rejected. Reason: ${normalizedReason}`;
         
@@ -458,13 +473,15 @@ export async function rejectDisposalRequest(
       const auditEntries = normalizedAssetIds.map((assetId) => ({
         entityType: 'Asset' as const,
         entityId: assetId,
-        actionType: 'DISPOSAL_REJECTED', // Updated
+        actionType: 'DISPOSAL_REJECTED',
         performedById: user.id,
-        oldValue: {                      // Fixed to match schema
+        oldValue: {
           status: assetStatusMap.get(assetId) || 'Pending Disposal',
+          isArchived: true,  // Was marked for archival
         },
-        newValue: {                      // Fixed to match schema
+        newValue: {
           status: validFallbackStatus,
+          isArchived: false,  // ⭐ Soft delete reversed
           disposalRejected: true,
           rejectionReason: normalizedReason,
         },
@@ -479,7 +496,7 @@ export async function rejectDisposalRequest(
     logLatency({ scope: 'DB ACTION', label: 'disposals.reject', startTime: dbTimer });
 
     revalidatePath('/operations/disposals');
-    revalidatePath('/operations/maintenance'); // Added to trigger maintenance view refresh
+    revalidatePath('/operations/maintenance');
     revalidatePath('/assets');
     revalidatePath('/assets/hardware');
     revalidatePath('/assets/furniture');
@@ -648,6 +665,7 @@ export async function executeAssetDisposal(
         .select({
           id: assets.id,
           status: assets.status,
+          isArchived: assets.isArchived,
         })
         .from(assets)
         .where(inArray(assets.id, disposalAssetIds));
@@ -670,10 +688,15 @@ export async function executeAssetDisposal(
         throw new Error('Failed to update all disposal requests.');
       }
 
-      // 5. Execute disposal: update asset statuses
+      // 5. Execute disposal: update asset statuses + SET is_archived = true
+      // ⭐ KEY UPDATE: Set is_archived = true when disposal is completed
       const updatedAssets = await tx
         .update(assets)
-        .set({ status: 'Disposed', updatedAt: new Date() })
+        .set({ 
+          status: 'Disposed',
+          isArchived: true,  // ⭐ Soft delete - archive the asset
+          updatedAt: new Date() 
+        })
         .where(inArray(assets.id, normalizedAssetIds))
         .returning({ assetId: assets.id });
 
@@ -700,13 +723,15 @@ export async function executeAssetDisposal(
       const auditEntries = normalizedAssetIds.map((assetId) => ({
         entityType: 'Asset' as const,
         entityId: assetId,
-        actionType: 'ASSET_DISPOSED', // Updated
+        actionType: 'ASSET_DISPOSED',
         performedById: user.id,
-        oldValue: {                   // Fixed to match schema
+        oldValue: {
           status: assetStatusMap.get(assetId) || 'Unknown',
+          isArchived: false,  // Was active
         },
-        newValue: {                   // Fixed to match schema
+        newValue: {
           status: 'Disposed',
+          isArchived: true,  // ⭐ Now archived
           disposalMethod: validData.disposalMethod,
           disposalDate: validData.disposalDate || new Date().toISOString(),
           dataWiped: validData.dataWiped,

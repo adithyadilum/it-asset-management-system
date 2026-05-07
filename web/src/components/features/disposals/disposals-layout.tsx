@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PendingDisposalsGrid, type PendingDisposalRow } from './pending-disposals-grid';
 import { DisposalHistoryGrid, type HistoryDisposalRow } from './disposal-history-grid';
 import { DisposalReviewPanelWrapper } from '@/components/features/disposals/disposal-review-panel-wrapper';
+import { DisposalAssetDetailPanel } from './disposal-asset-detail-panel';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface DisposalsLayoutProps {
@@ -37,12 +38,17 @@ export function DisposalsLayout({
   const recordId = searchParams.get('id');
 
   const isReviewOpen = currentPanel === 'review';
+  const isRecordOpen = currentPanel === 'record';
   const numericRecordId = recordId ? Number(recordId) : null;
 
   const [activeTab, setActiveTab] = useState('pending');
 
-  const selectedRow = numericRecordId
+  const selectedRow = isReviewOpen && numericRecordId
     ? pendingData.find((row) => row.id === numericRecordId) || null
+    : null;
+
+  const selectedHistoryRow = isRecordOpen && recordId
+    ? historyData.find((row) => row.assetId === recordId) || null
     : null;
 
   const closeReviewPanel = useCallback(() => {
@@ -62,10 +68,19 @@ export function DisposalsLayout({
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const openRecordPanel = (row: HistoryDisposalRow) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('panel', 'record');
+    params.set('id', row.assetId);
+
+    setOpen(false);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const handleTabChange = (val: string) => {
     if (val === activeTab) return;
 
-    if (isReviewOpen) {
+    if (isReviewOpen || isRecordOpen) {
       closeReviewPanel();
       
       setTimeout(() => {
@@ -144,6 +159,7 @@ export function DisposalsLayout({
               currentPage={historyCurrentPage}
               pageSize={historyPageSize}
               searchQuery={historySearchQuery}
+              onRowClick={openRecordPanel}
             />
           </TabsContent>
         </Tabs>
@@ -154,6 +170,20 @@ export function DisposalsLayout({
         isOpen={isReviewOpen}
         onClose={closeReviewPanel}
         row={selectedRow}
+      />
+
+      <DisposalAssetDetailPanel
+        isOpen={isRecordOpen}
+        onClose={closeReviewPanel}
+        assetId={recordId ?? ''}
+        disposalDetails={selectedHistoryRow ? {
+          reason: selectedHistoryRow.reason,
+          flaggedBy: selectedHistoryRow.flaggedBy,
+          disposedBy: selectedHistoryRow.disposedBy,
+          disposalDate: selectedHistoryRow.disposalDate ? new Date(selectedHistoryRow.disposalDate).toLocaleDateString() : null,
+          status: selectedHistoryRow.status,
+          documentUrls: selectedHistoryRow.documentUrls
+        } : undefined}
       />
     </div>
   );

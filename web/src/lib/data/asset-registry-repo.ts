@@ -127,7 +127,7 @@ export async function getAssetsByPillar(
     typeof filters.categoryId === 'number'
       ? eq(categories.id, filters.categoryId)
       : undefined,
-    filters.status ? eq(assets.status, filters.status) : undefined,
+    filters.status ? eq(assets.status, filters.status) : eq(assets.isArchived, false),
     normalizedQuery
       ? or(
           ilike(assets.assetTag, `%${normalizedQuery}%`),
