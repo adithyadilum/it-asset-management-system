@@ -1,28 +1,5 @@
-import { AlertTriangle, ChevronRight, FileText, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
-
-export const REPORT_TEMPLATES: ReportTemplate[] = [
-  {
-    title: 'Monthly Depreciation',
-    description: 'Calculates straight-line value reduction for all active hardware.',
-    icon: FileText,
-  },
-  {
-    title: 'Overdue / Missing',
-    description: 'Lists all loaner devices past their return date and flagged lost items.',
-    icon: AlertTriangle,
-  },
-  {
-    title: 'Software Compliance',
-    description: 'Identifies expired licenses and under-utilized seat allocations.',
-    icon: ShieldCheck,
-  },
-];
-
-export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
-export const CATEGORY_OPTIONS = ['All categories', 'Hardware', 'Software', 'Office'];
-export const LOCATION_OPTIONS = ['All locations', 'Colombo HQ', 'Kandy Branch', 'Remote'];
-export const STATUS_OPTIONS = ['All statuses', 'Active', 'Pending', 'Flagged', 'Archived'];
 
 import {
   Card,
@@ -32,14 +9,26 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import type { ReportTemplate } from '@/components/features/reports/standard-reports/standard-reports-types';
 
-export type ReportTemplate = {
-  title: string;
-  description: string;
-  icon: typeof FileText;
-};
+export { type ReportTemplate };
 
-export function ReportTemplateCard({ title, description, icon: Icon }: ReportTemplate) {
+export const REPORT_TEMPLATES: ReportTemplate[] = [
+  {
+    title: 'Overdue / Missing',
+    description: 'Lists all loaner devices past their return date and flagged lost items.',
+    icon: AlertTriangle,
+  },
+];
+
+export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
+
+export function ReportTemplateCard({
+  title,
+  description,
+  icon: Icon,
+  onPreviewClick,
+}: ReportTemplate) {
   return (
     <Card size="sm" className="h-full justify-between border-border bg-background">
       <CardHeader className="gap-3 p-4 pb-3">
@@ -56,7 +45,11 @@ export function ReportTemplateCard({ title, description, icon: Icon }: ReportTem
         </div>
       </CardHeader>
       <CardContent className="flex px-4 pb-4">
-        <Button size="sm" className="mx-auto w-auto px-3">
+        <Button
+          size="sm"
+          className="mx-auto w-auto px-3"
+          onClick={() => onPreviewClick?.(title)}
+        >
           Preview report
           <ChevronRight className="size-4" />
         </Button>

@@ -19,16 +19,36 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
-  CATEGORY_OPTIONS,
   FilterRow,
-  LOCATION_OPTIONS,
   REPORT_TEMPLATES,
   ReportTemplateCard,
   SOURCE_OPTIONS,
-  STATUS_OPTIONS,
 } from '@/components/features/reports/standard-reports/standard-reports-page';
+import type { FilterState } from './standard-reports-types';
 
-export function StandardReportsConfigPanel() {
+interface StandardReportsConfigPanelProps {
+  filterState: FilterState;
+  filterOptions: {
+    categories: string[];
+    locations: string[];
+    statuses: string[];
+  };
+  onFilterChange: (field: keyof FilterState, value: string) => void;
+  onTemplatePreview: (templateTitle: string) => void;
+  onManualPreview: () => void;
+  onClearFilters: () => void;
+  isLoading: boolean;
+}
+
+export function StandardReportsConfigPanel({
+  filterState,
+  filterOptions,
+  onFilterChange,
+  onTemplatePreview,
+  onManualPreview,
+  onClearFilters,
+  isLoading,
+}: StandardReportsConfigPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl gap-0 bg-background">
       {/* Header Section - Fixed */}
@@ -45,7 +65,11 @@ export function StandardReportsConfigPanel() {
         <ScrollArea className="flex-1 min-h-0">
           <div className="grid gap-4 p-4 sm:grid-cols-2">
             {REPORT_TEMPLATES.map((template) => (
-              <ReportTemplateCard key={template.title} {...template} />
+              <ReportTemplateCard
+                key={template.title}
+                {...template}
+                onPreviewClick={onTemplatePreview}
+              />
             ))}
 
             <Card
@@ -57,9 +81,6 @@ export function StandardReportsConfigPanel() {
                 <div className="space-y-1.5">
                   <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                     Add new report template
-                  </p>
-                  <p className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
-                    Extend the standard reporting library with a reusable template.
                   </p>
                 </div>
               </CardContent>
@@ -74,7 +95,10 @@ export function StandardReportsConfigPanel() {
           <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
             Primary Data Source
           </div>
-          <Select>
+          <Select
+            value={filterState.source || undefined}
+            onValueChange={(value) => onFilterChange('source', value)}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Choose source" />
             </SelectTrigger>
@@ -109,12 +133,15 @@ export function StandardReportsConfigPanel() {
             </FilterRow>
 
             <FilterRow label="Category">
-              <Select defaultValue={CATEGORY_OPTIONS[0]}>
+              <Select
+                value={filterState.category}
+                onValueChange={(value) => onFilterChange('category', value)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map((option) => (
+                  {filterOptions.categories.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>
@@ -124,12 +151,15 @@ export function StandardReportsConfigPanel() {
             </FilterRow>
 
             <FilterRow label="Location">
-              <Select defaultValue={LOCATION_OPTIONS[0]}>
+              <Select
+                value={filterState.location}
+                onValueChange={(value) => onFilterChange('location', value)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  {LOCATION_OPTIONS.map((option) => (
+                  {filterOptions.locations.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>
@@ -139,12 +169,15 @@ export function StandardReportsConfigPanel() {
             </FilterRow>
 
             <FilterRow label="Status">
-              <Select defaultValue={STATUS_OPTIONS[0]}>
+              <Select
+                value={filterState.status}
+                onValueChange={(value) => onFilterChange('status', value)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
+                  {filterOptions.statuses.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>
@@ -154,10 +187,14 @@ export function StandardReportsConfigPanel() {
             </FilterRow>
 
             <div className="flex flex-wrap justify-end gap-2.5">
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" onClick={onClearFilters}>
                 Clear filters
               </Button>
-              <Button size="sm">
+              <Button
+                size="sm"
+                onClick={onManualPreview}
+                disabled={isLoading}
+              >
                 Preview report
                 <ChevronRight className="size-4" />
               </Button>
