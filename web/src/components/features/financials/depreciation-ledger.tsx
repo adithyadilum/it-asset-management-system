@@ -33,7 +33,6 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
   const [pageCount, setPageCount] = useState(0);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -60,15 +59,8 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
     return [];
   }, [draftField, uniqueCategories]);
 
-  useEffect(() => {
-    if (filterValueOptions.length === 0) {
-      setDraftValue('');
-      return;
-    }
-    if (!filterValueOptions.includes(draftValue)) {
-      setDraftValue(filterValueOptions[0]);
-    }
-  }, [draftValue, filterValueOptions]);
+  // Synchronization moved to event handlers to satisfy strict linting rules
+  // and avoid cascading renders.
 
   // Debounce search input
   useEffect(() => {
@@ -76,14 +68,8 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Reset to page 1 when filters or search change
-  useEffect(() => {
-    setPagination(p => ({ ...p, pageIndex: 0 }));
-  }, [debouncedSearch, appliedFilters]);
-
   // The Server Fetcher
   useEffect(() => {
-    setIsLoading(true); 
     startTransition(async () => {
       const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
       const ageFilter = appliedFilters.find(f => f.field === 'Purchase Age')?.value;
@@ -98,7 +84,6 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
       setData(response.data as unknown as DepreciationLedgerRecord[]);
       setPageCount(response.meta.totalPages);
-      setIsLoading(false); 
     });
   }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, appliedFilters]);
 
@@ -108,14 +93,19 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
       const withoutCurrentField = currentFilters.filter((f) => f.field !== draftField);
       return [...withoutCurrentField, { field: draftField, operator: draftOperator, value: draftValue }];
     });
+    setPagination(p => ({ ...p, pageIndex: 0 }));
     setIsFilterPopoverOpen(false);
   };
 
   const clearFilter = (field: FilterField) => {
     setAppliedFilters((currentFilters) => currentFilters.filter((f) => f.field !== field));
+    setPagination(p => ({ ...p, pageIndex: 0 }));
   };
 
-  const clearAllFilters = () => setAppliedFilters([]);
+  const clearAllFilters = () => {
+    setAppliedFilters([]);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
+  };
 
   const exportToCSV = async () => {
     const categoryFilter = appliedFilters.find(f => f.field === 'Asset Category')?.value;
@@ -208,7 +198,10 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
             <Input
               placeholder="Search..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPagination(p => ({ ...p, pageIndex: 0 }));
+              }}
               className={`pl-9 bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
             />
           </div>
@@ -264,7 +257,16 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
                 <div className="space-y-3 px-3 py-3">
                   <select
                     value={draftField}
-                    onChange={(event) => setDraftField(event.target.value as FilterField)}
+                    onChange={(event) => {
+                      const newField = event.target.value as FilterField;
+                      setDraftField(newField);
+                      // Update draftValue immediately when field changes
+                      if (newField === 'Asset Category') {
+                        setDraftValue(uniqueCategories[0] || '');
+                      } else if (newField === 'Purchase Age') {
+                        setDraftValue('This Year');
+                      }
+                    }}
                     className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
                   >
                     {filterFieldOptions.map((opt) => (
@@ -361,7 +363,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
       </div>
 
       <div className="min-h-0 flex-1 flex flex-col">
-        {isLoading || isPending ? (
+        {isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
             <TableSkeleton rowCount={10} columnWidths={tableSkeletonColumnWidths} />
           </div>

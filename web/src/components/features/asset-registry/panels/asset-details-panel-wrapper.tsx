@@ -8,7 +8,7 @@ import {
   getAssetMaintenanceByIdAction,
   getAssetAllocationsAction,
 } from "@/actions/asset-registry-panels";
-import { getAssetFinancialVitals } from "@/actions/asset-financial-vitals";
+import { getAssetFinancialVitals, type AssetFinancialVitals } from "@/actions/asset-financial-vitals";
 import { tiqriToast } from "@/components/shared/sonner";
 import {
   type AssetDetailsData,
@@ -79,7 +79,7 @@ export function AssetDetailsPanelWrapper({
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
   const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
   const [allocations, setAllocations] = useState<AllocationData[]>([]);
-  const [financialVitals, setFinancialVitals] = useState<any>(null);
+  const [financialVitals, setFinancialVitals] = useState<AssetFinancialVitals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);

@@ -10,7 +10,6 @@ import type { PendingReviewTicket, IssueReviewPanelData, ActiveRepairTicket, Rep
 // ============================================================================
 // CONSTANTS & SECURITY UTILITIES
 // ============================================================================
-const DEPRECIATION_MONTHS = 36;
 const MAX_QUERY_LIMIT = 100;
 const DEFAULT_HISTORY_LIMIT = 3;
 
