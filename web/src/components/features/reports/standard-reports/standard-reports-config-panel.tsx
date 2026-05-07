@@ -114,7 +114,7 @@ export function StandardReportsConfigPanel({
 
         <Card className="gap-0 border-border bg-card">
           <CardHeader className="flex flex-col items-start gap-4 p-4">
-            <div className="flex w-full items-center justify-start gap-2.5">
+            <div className="flex w-full items-center justify-between gap-2.5">
               <CardTitle className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                 Filters
               </CardTitle>
@@ -134,7 +134,7 @@ export function StandardReportsConfigPanel({
 
             <FilterRow label="Category">
               <Select
-                value={filterState.category}
+                value={filterState.category || undefined}
                 onValueChange={(value) => onFilterChange('category', value)}
               >
                 <SelectTrigger className="w-full">
@@ -152,7 +152,7 @@ export function StandardReportsConfigPanel({
 
             <FilterRow label="Location">
               <Select
-                value={filterState.location}
+                value={filterState.location || undefined}
                 onValueChange={(value) => onFilterChange('location', value)}
               >
                 <SelectTrigger className="w-full">
@@ -170,7 +170,7 @@ export function StandardReportsConfigPanel({
 
             <FilterRow label="Status">
               <Select
-                value={filterState.status}
+                value={filterState.status || undefined}
                 onValueChange={(value) => onFilterChange('status', value)}
               >
                 <SelectTrigger className="w-full">

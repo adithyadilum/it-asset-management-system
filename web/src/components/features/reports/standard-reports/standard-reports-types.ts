@@ -13,9 +13,9 @@ export interface FilterState {
 
 export const DEFAULT_FILTER_STATE: FilterState = {
   source: '',
-  category: 'All categories',
-  location: 'All locations',
-  status: 'All statuses',
+  category: '',
+  location: '',
+  status: '',
 };
 
 // ---------------------------------------------------------------------------
