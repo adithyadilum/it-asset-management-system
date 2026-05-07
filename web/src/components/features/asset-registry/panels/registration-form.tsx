@@ -339,10 +339,12 @@ export function RegistrationForm({
   const lastToastKeyRef = React.useRef<string>('');
 
   const [createdAssetId, setCreatedAssetId] = React.useState<string | null>(null);
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = React.useState(false);
 
   const handleSuccessDialogClose = () => {
+    // Clear the locally-stored created asset id only. Do not call onClose here
+    // so that dismissing the tag dialog does not remount the slide panel.
     setCreatedAssetId(null);
-    onClose(false, true);
   };
 
   const handleInvoiceSelection = React.useCallback((files: FileList | null) => {
@@ -495,7 +497,12 @@ export function RegistrationForm({
       tiqriToast.success(resolvedMessage);
 
       if (state.assetId && !isSoftware) {
+        // Keep the created asset id and open the success dialog while closing
+        // the registration slide panel. Use an explicit dialog open flag so
+        // the dialog visibility does not depend on the transient asset id.
         setCreatedAssetId(state.assetId);
+        setIsSuccessDialogOpen(true);
+        onClose(false, true);
       } else {
         onClose(false, true);
       }
@@ -1030,9 +1037,16 @@ export function RegistrationForm({
       />
 
       <RegistrationSuccessDialog
+        isOpen={isSuccessDialogOpen}
         assetId={createdAssetId}
         modelName={selectedModelLabel}
-        onClose={handleSuccessDialogClose}
+        onOpenChange={(open) => {
+          if (!open) {
+            // clear internal id but do not call parent onClose again
+            setCreatedAssetId(null);
+            setIsSuccessDialogOpen(false);
+          }
+        }}
       />
     </>
   );

@@ -15,15 +15,17 @@ import TagPdfDocument from '@/components/features/asset-registry/tags/tag-pdf-do
 import { tiqriToast } from '@/components/shared/sonner';
 
 export interface RegistrationSuccessDialogProps {
+    isOpen: boolean;
     assetId: string | null;
     modelName: string;
-    onClose: () => void;
+    onOpenChange: (open: boolean) => void;
 }
 
 export function RegistrationSuccessDialog({
+    isOpen,
     assetId,
     modelName,
-    onClose,
+    onOpenChange,
 }: RegistrationSuccessDialogProps) {
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
@@ -57,14 +59,15 @@ export function RegistrationSuccessDialog({
     };
 
     const handleOpenChange = (open: boolean) => {
-        if (!open) {
-            onClose();
-        }
+        // When the dialog is dismissed by the user, notify the parent so it
+        // can clear any local state (e.g., the createdAssetId). The parent
+        // will choose not to re-open the slide panel.
+        onOpenChange(open);
     };
 
     return (
         <>
-            <Dialog open={Boolean(assetId)} onOpenChange={handleOpenChange}>
+            <Dialog open={isOpen} onOpenChange={handleOpenChange}>
                 <DialogContent className="sm:max-w-106.25">
                     <DialogHeader>
                         <DialogTitle>Asset Registered Successfully</DialogTitle>

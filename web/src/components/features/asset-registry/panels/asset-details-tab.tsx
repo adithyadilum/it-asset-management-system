@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
-import { AssetTagDialog } from '@/components/features/asset-registry/panels/asset-tag-dialog';
+import { AssetTagDialog } from '@/components/features/asset-registry/tags/asset-tag-dialog';
 
 export interface AssetDetailsTabProps {
     imageUrl?: string;
