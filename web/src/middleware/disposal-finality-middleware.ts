@@ -9,10 +9,7 @@ import { jwtVerify } from 'jose';
 import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
 
-/**
- * Middleware that blocks PUT, PATCH, and DELETE requests on assets
- * that are marked as Disposed or are Archived.
- */
+
 export async function disposalFinalityMiddleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method.toUpperCase();
@@ -89,11 +86,7 @@ export async function disposalFinalityMiddleware(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error in disposalFinalityMiddleware:', error);
-    // On DB error, we fail open or closed? 
-    // For security, usually fail closed, but for UX, maybe fail open if it's just a status check.
-    // However, the AC says "blocks ALL", so we should be careful.
-    // Let's allow it to pass if we can't verify, or return a 500.
-    // For now, let's let it pass to not break the system on DB hiccups.
+    
     return NextResponse.next();
   }
 

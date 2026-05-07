@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '@/db';
-import { disposalFinalityMiddleware } from './disposal-finality-middleware';
+import { disposalFinalityMiddleware } from '@/middleware/disposal-finality-middleware';
 import { jwtVerify } from 'jose';
 
 vi.mock('@/db', () => ({
@@ -129,6 +129,7 @@ describe('disposalFinalityMiddleware', () => {
 
     vi.mocked(jwtVerify).mockResolvedValue({
       payload: { sub: 'user-123' },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     const req = createRequest(`http://localhost/api/v1/assets/${assetId}`, 'DELETE', 'mock-token');
