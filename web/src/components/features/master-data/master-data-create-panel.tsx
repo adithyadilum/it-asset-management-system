@@ -11,7 +11,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImagePlus, Info, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Info, Pencil, Plus, Trash2, Upload, CircleDot, type LucideIcon } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 
 import { createMasterDataRecord } from "@/actions/master-data";
 import {
@@ -56,7 +57,14 @@ import type {
     MasterDataLocationRow,
     MasterDataOwnerRow,
     MasterDataVendorRow,
+    MasterDataCustomStatusRow,
 } from "./master-data-management-client";
+import { 
+    AVAILABLE_STATUS_ICONS, 
+    STATUS_COLORS, 
+    STATUS_THEMES,
+    type StatusTheme 
+} from "@/lib/constants";
 
 type Pillar =
     | "IT & Digital"
@@ -84,6 +92,7 @@ interface MasterDataCreatePanelProps {
     vendors: MasterDataVendorRow[];
     owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
+    customStatuses: MasterDataCustomStatusRow[];
     disableTransition?: boolean;
 }
 
@@ -142,6 +151,12 @@ const PANEL_META: Record<MasterDataRecordEntity, {
         submitLabel: "Save Department",
         submittingLabel: "Saving Department...",
     },
+    statuses: {
+        title: "Add New Status",
+        description: "Create a custom status for assets (e.g., In Transit).",
+        submitLabel: "Save Status",
+        submittingLabel: "Saving Status...",
+    },
 };
 
 const SCHEMA_CHECKBOX_CLASSNAME =
@@ -158,6 +173,7 @@ const NEXT_ID_LABELS: Record<MasterDataRecordEntity, string> = {
     vendors: "Vendor ID (Preview)",
     owners: "Owner ID (Preview)",
     departments: "Department ID (Preview)",
+    statuses: "Status ID (Preview)",
 };
 
 function formatPreviewId(prefix: string, nextId: number) {
@@ -201,6 +217,7 @@ export function MasterDataCreatePanel({
     vendors,
     owners,
     departments,
+    customStatuses,
     disableTransition = false,
 }: MasterDataCreatePanelProps) {
     const router = useRouter();
@@ -228,6 +245,8 @@ export function MasterDataCreatePanel({
         createCustomAttribute(),
     ]);
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
+    const [statusColorTheme, setStatusColorTheme] = useState<StatusTheme>("gray");
+    const [statusIconName, setStatusIconName] = useState("CircleDot");
     const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
@@ -296,6 +315,12 @@ export function MasterDataCreatePanel({
         [departments]
     );
 
+    const nextStatusRecordId = useMemo(
+        () =>
+            customStatuses.reduce((max, status) => Math.max(max, status.id), 0) + 1,
+        [customStatuses]
+    );
+
     const nextIdPreviewByEntity = useMemo<Record<MasterDataRecordEntity, string>>(
         () => ({
             locations: formatPreviewId("LOC", nextLocationRecordId),
@@ -305,6 +330,7 @@ export function MasterDataCreatePanel({
             vendors: formatPreviewId("VND", nextVendorRecordId),
             owners: formatPreviewId("OWN", nextOwnerRecordId),
             departments: formatPreviewId("DEP", nextDepartmentRecordId),
+            statuses: formatPreviewId("STS", nextStatusRecordId),
         }),
         [
             nextBrandRecordId,
@@ -313,6 +339,7 @@ export function MasterDataCreatePanel({
             nextDeviceModelRecordId,
             nextLocationRecordId,
             nextOwnerRecordId,
+            nextStatusRecordId,
             nextVendorRecordId,
         ]
     );
@@ -417,6 +444,8 @@ export function MasterDataCreatePanel({
         setModelSpecAttributes([createCustomAttribute()]);
         setAssetTrackingAttributes([createCustomAttribute()]);
         setModelSpecValues({});
+        setStatusColorTheme("gray");
+        setStatusIconName("CircleDot");
     }, []);
 
     const handleClose = useCallback(
@@ -1464,6 +1493,117 @@ export function MasterDataCreatePanel({
                                     {getFieldError("companyName")}
                                 </p>
                             )}
+                        </div>
+
+                        {renderActiveSwitch}
+                    </>
+                );
+
+            case "statuses":
+                return (
+                    <>
+                        {nextIdPreviewField}
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    Status Name <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    name="name"
+                                    placeholder="e.g., In Transit"
+                                    required
+                                    className={getFieldError("name") ? "border-red-500" : ""}
+                                />
+                                {getFieldError("name") && (
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                        {getFieldError("name")}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Icon <span className="text-red-500">*</span>
+                                    </label>
+                                    <Select
+                                        value={statusIconName}
+                                        onValueChange={setStatusIconName}
+                                        name="iconName"
+                                    >
+                                        <SelectTrigger className="h-10">
+                                            <div className="flex items-center gap-2">
+                                                {(() => {
+                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                    const Icon = (LucideIcons as any)[statusIconName] as LucideIcon;
+                                                    return Icon ? <Icon className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />;
+                                                })()}
+                                                <SelectValue placeholder="Select an icon" />
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <div className="grid grid-cols-4 gap-1 p-1 max-h-60 overflow-y-auto">
+                                                {AVAILABLE_STATUS_ICONS.map((iconName) => {
+                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                    const Icon = (LucideIcons as any)[iconName] as LucideIcon;
+                                                    return (
+                                                        <SelectItem 
+                                                            key={iconName} 
+                                                            value={iconName}
+                                                            className="flex items-center justify-center p-2 hover:bg-slate-100 cursor-pointer rounded"
+                                                        >
+                                                            {Icon ? <Icon className="h-5 w-5" /> : <span>{iconName}</span>}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </div>
+                                        </SelectContent>
+                                    </Select>
+                                    {getFieldError("iconName") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {getFieldError("iconName")}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Theme <span className="text-red-500">*</span>
+                                    </label>
+                                    <Select
+                                        value={statusColorTheme}
+                                        onValueChange={(val) => setStatusColorTheme(val as StatusTheme)}
+                                        name="colorTheme"
+                                    >
+                                        <SelectTrigger className="h-10">
+                                            <div className="flex items-center gap-2">
+                                                <div 
+                                                    className={`h-4 w-4 rounded-full border ${STATUS_THEMES[statusColorTheme]}`} 
+                                                />
+                                                <SelectValue placeholder="Select a theme" />
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {STATUS_COLORS.map((theme) => (
+                                                <SelectItem key={theme.value} value={theme.value}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div 
+                                                            className={`h-4 w-4 rounded-full border ${STATUS_THEMES[theme.value]}`} 
+                                                        />
+                                                        <span>{theme.label}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {getFieldError("colorTheme") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {getFieldError("colorTheme")}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {renderActiveSwitch}

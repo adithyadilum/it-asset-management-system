@@ -1,7 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { assets, maintenanceRecords, systemAuditLogs } from '@/db/schema';
+import {
+  assets,
+  maintenanceTickets,
+  systemAuditLogs,
+  assetDisposals,
+  assetDocuments,
+} from '@/db/schema';
 import { isValidUuid } from '@/lib/auth/uuid';
 
 // ---------------------------------------------------------------------------
@@ -57,8 +63,11 @@ export interface AssetDetailsData {
   } | null;
   vendor: {
     id: number;
+    vendorCode: string | null;
     companyName: string;
-    contactInfo: string | null;
+    email: string | null;
+    phone: string | null;
+    website: string | null;
   } | null;
   owner: {
     id: number;
@@ -88,16 +97,15 @@ export interface HistoryEvent {
 export interface MaintenanceEvent {
   id: number;
   assetId: string;
-  vendorId: number | null;
+  vendorName: string | null;
   status: string;
-  description: string;
-  rmaTicketNumber: string | null;
+  reportedIssue: string;
+  rmaNumber: string | null;
   estimatedCost: string | null;
   actualCost: string | null;
-  serviceDate: string | null;
-  closedAt: string | null;
+  estimatedReturnDate: string | null;
+  actualCompletionDate: string | null;
   createdAt: string;
-  vendor: { companyName: string } | null;
 }
 
 export interface AllocationData {
@@ -105,6 +113,15 @@ export interface AllocationData {
   name: string;
   email: string;
   assignedDate: string;
+}
+
+export interface DisposalHistoryDetails {
+  reason: string;
+  flaggedBy: string;
+  disposedBy: string | null;
+  disposalDate: string | null;
+  status: string;
+  documentUrls: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -251,11 +268,19 @@ export async function getAssetDetailsById(
         },
         with: {
           vendor: {
-            columns: { id: true, companyName: true, email: true, phone: true },
+            columns: {
+              id: true,
+              vendorCode: true,
+              companyName: true,
+              email: true,
+              phone: true,
+              website: true,
+            },
           },
         },
       },
       assignments: {
+        where: (assignments, { isNull }) => isNull(assignments.returnedDate),
         limit: 1,
         orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
         with: {
@@ -338,9 +363,11 @@ export async function getAssetDetailsById(
     vendor: purchaseRecord?.vendor
       ? {
           id: purchaseRecord.vendor.id,
+          vendorCode: purchaseRecord.vendor.vendorCode,
           companyName: purchaseRecord.vendor.companyName,
-          contactInfo:
-            purchaseRecord.vendor.email ?? purchaseRecord.vendor.phone ?? null,
+          email: purchaseRecord.vendor.email,
+          phone: purchaseRecord.vendor.phone,
+          website: purchaseRecord.vendor.website,
         }
       : null,
     owner: assetRecord.owner
@@ -405,26 +432,24 @@ export async function getAssetMaintenanceById(
     return [];
   }
 
-  const maintenanceList = await db.query.maintenanceRecords.findMany({
-    where: eq(maintenanceRecords.assetId, resolvedAssetId),
+  const maintenanceList = await db.query.maintenanceTickets.findMany({
+    where: eq(maintenanceTickets.assetId, resolvedAssetId),
     orderBy: (records, { desc }) => [desc(records.createdAt)],
     limit: 5,
-    with: { vendor: { columns: { companyName: true } } },
   });
 
   return maintenanceList.map((record) => ({
     id: record.id,
     assetId: record.assetId,
-    vendorId: record.vendorId,
+    vendorName: record.vendorName,
     status: record.status,
-    description: record.description,
-    rmaTicketNumber: record.rmaTicketNumber,
+    reportedIssue: record.reportedIssue,
+    rmaNumber: record.rmaNumber,
     estimatedCost: record.estimatedCost?.toString() ?? null,
     actualCost: record.actualCost?.toString() ?? null,
-    serviceDate: record.serviceDate?.toString() ?? null,
-    closedAt: record.closedAt?.toISOString() ?? null,
+    estimatedReturnDate: record.estimatedReturnDate?.toString() ?? null,
+    actualCompletionDate: record.actualCompletionDate?.toISOString() ?? null,
     createdAt: record.createdAt.toISOString(),
-    vendor: record.vendor,
   }));
 }
 
@@ -440,6 +465,7 @@ export async function getAssetAllocationsById(
     where: eq(assets.id, resolvedAssetId),
     with: {
       assignments: {
+        where: (assignments, { isNull }) => isNull(assignments.returnedDate),
         orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
         with: {
           assignedToUser: { columns: { id: true, name: true, email: true } },
@@ -460,4 +486,50 @@ export async function getAssetAllocationsById(
       email: assignment.assignedToUser!.email,
       assignedDate: assignment.assignedDate.toISOString(),
     }));
+}
+
+export async function getAssetDisposalById(
+  id: string
+): Promise<DisposalHistoryDetails | null> {
+  const resolvedAssetId = await resolveAssetPrimaryId(id);
+  if (!resolvedAssetId) {
+    return null;
+  }
+
+  // Fetch the latest disposal record for this asset
+  const disposalRecord = await db.query.assetDisposals.findFirst({
+    where: eq(assetDisposals.assetId, resolvedAssetId),
+    orderBy: (records, { desc }) => [desc(records.requestedAt)],
+    with: {
+      requestedBy: { columns: { name: true } },
+      approvedBy: { columns: { name: true } },
+    },
+  });
+
+  if (!disposalRecord) {
+    return null;
+  }
+
+  // Fetch documents related to this asset and disposal
+  const documents = await db.query.assetDocuments.findMany({
+    where: and(
+      eq(assetDocuments.assetId, resolvedAssetId),
+      eq(assetDocuments.documentType, 'disposal-certificate')
+    ),
+  });
+
+  return {
+    reason: disposalRecord.reason,
+    flaggedBy: disposalRecord.requestedBy?.name ?? 'Unknown',
+    disposedBy: disposalRecord.approvedBy?.name ?? null,
+    disposalDate: disposalRecord.resolvedAt
+      ? disposalRecord.resolvedAt.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : null,
+    status: disposalRecord.status,
+    documentUrls: documents.map((doc) => doc.fileUrl),
+  };
 }

@@ -148,3 +148,10 @@ export const categorySchema = z.object({
     })
     .pipe(categoryCustomSchemaShape),
 });
+
+export const customStatusSchema = z.object({
+  name: z.string().trim().min(2, 'Status name is required'),
+  iconName: z.string().min(1, 'Icon is required'),
+  colorTheme: z.string().min(1, 'Color theme is required'),
+  isActive: z.boolean(),
+});

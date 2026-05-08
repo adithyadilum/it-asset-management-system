@@ -209,7 +209,7 @@ export function AssetDetailsTab({
                                             <dt className="font-medium text-foreground">
                                                 {new Date(record.createdAt).toLocaleDateString('en-GB')}
                                             </dt>
-                                            <dd className="font-light text-foreground">{record.description}</dd>
+                                            <dd className="font-light text-foreground">{record.reportedIssue}</dd>
                                         </React.Fragment>
                                     ))}
                                 </dl>

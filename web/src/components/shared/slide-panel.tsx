@@ -13,6 +13,7 @@ export type SlidePanelAction = {
     label: React.ReactNode;
     variant?: React.ComponentProps<typeof Button>["variant"];
     onClick?: () => void;
+    className?: string;
     disabled?: boolean;
 };
 
@@ -78,22 +79,7 @@ export function SlidePanel({
     const hasProvidedContent = React.Children.count(content) > 0;
     const resolvedActions = actions ?? [];
     const [shouldRender, setShouldRender] = React.useState(isOpen);
-    const [isVisible, setIsVisible] = React.useState(false);
-    const [prevIsOpen, setPrevIsOpen] = React.useState(isOpen);
-
-    if (isOpen && !prevIsOpen) {
-        setPrevIsOpen(true);
-        setShouldRender(true);
-        if (disableTransition) {
-            setIsVisible(true);
-        }
-    } else if (!isOpen && prevIsOpen) {
-        setPrevIsOpen(false);
-        if (disableTransition) {
-            setIsVisible(false);
-            setShouldRender(false);
-        }
-    }
+    const [isVisible, setIsVisible] = React.useState(isOpen && disableTransition);
 
     const panelStyle = {
         "--slide-panel-width": `min(${DEFAULT_PANEL_WIDTH}px, ${DEFAULT_PANEL_MAX_WIDTH})`,
@@ -102,31 +88,53 @@ export function SlidePanel({
 
     React.useEffect(() => {
         if (isOpen) {
-            if (disableTransition) {
-                return;
-            }
-
+            let innerFrameId: number | null = null;
             const frameId = window.requestAnimationFrame(() => {
-                setIsVisible(true);
+                setShouldRender(true);
+
+                if (disableTransition) {
+                    setIsVisible(true);
+                    return;
+                }
+
+                innerFrameId = window.requestAnimationFrame(() => {
+                    setIsVisible(true);
+                });
             });
 
-            return () => window.cancelAnimationFrame(frameId);
+            return () => {
+                window.cancelAnimationFrame(frameId);
+                if (innerFrameId !== null) {
+                    window.cancelAnimationFrame(innerFrameId);
+                }
+            };
         }
 
         if (disableTransition) {
-            return;
+            const frameId = window.requestAnimationFrame(() => {
+                setIsVisible(false);
+                setShouldRender(false);
+            });
+
+            return () => {
+                window.cancelAnimationFrame(frameId);
+            };
         }
 
-        const frameId = window.requestAnimationFrame(() => {
-            setIsVisible(false);
-        });
+        let frameId: number | null = null;
 
         const timeoutId = window.setTimeout(() => {
             setShouldRender(false);
         }, 300);
 
+        frameId = window.requestAnimationFrame(() => {
+            setIsVisible(false);
+        });
+
         return () => {
-            window.cancelAnimationFrame(frameId);
+            if (frameId !== null) {
+                window.cancelAnimationFrame(frameId);
+            }
             window.clearTimeout(timeoutId);
         };
     }, [disableTransition, isOpen]);
@@ -214,6 +222,7 @@ export function SlidePanel({
                                             key={action.id ?? `${String(action.label)}-${index}`}
                                             type="button"
                                             variant={action.variant ?? (index === resolvedActions.length - 1 ? "default" : "outline")}
+                                            className={action.className} // <--- This line fixes the issue
                                             onClick={() => {
                                                 if (action.onClick) {
                                                     action.onClick();

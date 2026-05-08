@@ -12,15 +12,17 @@ import {
   categories,
   departments,
   locations,
-  maintenanceRecords,
+  maintenanceTickets,
   models,
   owners,
+  customStatuses,
   users,
   vendors,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
 import { uploadFileToStorage } from '@/lib/storage';
+import { logAuditAction } from '@/lib/audit';
 import type {
   BrandFormState,
   CategoryFormState,
@@ -36,6 +38,7 @@ import {
   locationSchema,
   ownerSchema,
   vendorSchema,
+  customStatusSchema,
 } from '@/lib/validations/master-data';
 import { type LocationType } from '@/types/master-data';
 
@@ -54,6 +57,7 @@ const MASTER_DATA_CODE_PREFIX: Record<MasterDataRecordEntity, string> = {
   vendors: 'VND',
   owners: 'OWN',
   departments: 'DEP',
+  statuses: 'STS',
 };
 
 function formatMasterDataCode(prefix: string, numericId: number) {
@@ -166,6 +170,7 @@ async function countLinkedAssetsForEntity(
     }
 
     case 'departments':
+    case 'statuses':
       return 0;
   }
 }
@@ -247,12 +252,21 @@ async function countVendorPurchaseReferences(
 async function countVendorMaintenanceReferences(
   recordIds: number[]
 ): Promise<number> {
+  const vendorsList = await db
+    .select({ companyName: vendors.companyName })
+    .from(vendors)
+    .where(inArray(vendors.id, recordIds));
+
+  const companyNames = vendorsList.map((v) => v.companyName).filter(Boolean);
+
+  if (companyNames.length === 0) return 0;
+
   const linked = await db
     .select({
-      count: sql<number>`coalesce(count(${maintenanceRecords.id}), 0)::int`,
+      count: sql<number>`coalesce(count(${maintenanceTickets.id}), 0)::int`,
     })
-    .from(maintenanceRecords)
-    .where(inArray(maintenanceRecords.vendorId, recordIds));
+    .from(maintenanceTickets)
+    .where(inArray(maintenanceTickets.vendorName, companyNames));
 
   return linked[0]?.count ?? 0;
 }
@@ -394,6 +408,7 @@ export async function deleteMasterDataRecords(
     }
 
     let deletedCount = 0;
+    let deletedRecords: { id: number }[] = [];
 
     switch (entity) {
       case 'locations': {
@@ -401,6 +416,7 @@ export async function deleteMasterDataRecords(
           .delete(locations)
           .where(inArray(locations.id, recordIds))
           .returning({ id: locations.id });
+        deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
       }
@@ -409,6 +425,7 @@ export async function deleteMasterDataRecords(
           .delete(categories)
           .where(inArray(categories.id, recordIds))
           .returning({ id: categories.id });
+        deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
       }
@@ -417,6 +434,7 @@ export async function deleteMasterDataRecords(
           .delete(brands)
           .where(inArray(brands.id, recordIds))
           .returning({ id: brands.id });
+        deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
       }
@@ -425,6 +443,7 @@ export async function deleteMasterDataRecords(
           .delete(models)
           .where(inArray(models.id, recordIds))
           .returning({ id: models.id });
+        deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
       }
@@ -433,6 +452,7 @@ export async function deleteMasterDataRecords(
           .delete(vendors)
           .where(inArray(vendors.id, recordIds))
           .returning({ id: vendors.id });
+        deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
       }
@@ -441,6 +461,7 @@ export async function deleteMasterDataRecords(
           .delete(owners)
           .where(inArray(owners.id, recordIds))
           .returning({ id: owners.id });
+        deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
       }
@@ -449,6 +470,16 @@ export async function deleteMasterDataRecords(
           .delete(departments)
           .where(inArray(departments.id, recordIds))
           .returning({ id: departments.id });
+        deletedRecords = deleted;
+        deletedCount = deleted.length;
+        break;
+      }
+      case 'statuses': {
+        const deleted = await db
+          .delete(customStatuses)
+          .where(inArray(customStatuses.id, recordIds))
+          .returning({ id: customStatuses.id });
+        deletedRecords = deleted;
         deletedCount = deleted.length;
         break;
       }
@@ -459,6 +490,15 @@ export async function deleteMasterDataRecords(
         success: false,
         message: 'No records were deleted.',
       };
+    }
+
+    for (const record of deletedRecords) {
+      await logAuditAction({
+        entityType: entity,
+        entityId: record.id.toString(),
+        actionType: 'DELETE',
+        performedById: currentUser.id,
+      });
     }
 
     revalidatePath('/settings/master-data');
@@ -505,9 +545,31 @@ export async function createBrand(
   }
 
   try {
-    await db.insert(brands).values({
-      name: parsed.data.name,
-      isActive: parsed.data.isActive,
+    const inserted = await db
+      .insert(brands)
+      .values({
+        name: parsed.data.name,
+        isActive: parsed.data.isActive,
+      })
+      .returning({
+        id: brands.id,
+        name: brands.name,
+        isActive: brands.isActive,
+      });
+
+    if (inserted.length === 0) {
+      return {
+        success: false,
+        message: 'Failed to create brand.',
+      };
+    }
+
+    await logAuditAction({
+      entityType: 'brands',
+      entityId: inserted[0].id.toString(),
+      actionType: 'CREATE',
+      performedById: currentUser.id,
+      newData: inserted[0],
     });
 
     revalidatePath('/settings/master-data');
@@ -554,12 +616,37 @@ export async function createCategory(
   }
 
   try {
-    await db.insert(categories).values({
-      pillar: parsed.data.pillar,
-      name: parsed.data.name,
-      prefix: parsed.data.prefix,
-      customSchema: parsed.data.customSchema,
-      requiresSerial: true,
+    const inserted = await db
+      .insert(categories)
+      .values({
+        pillar: parsed.data.pillar,
+        name: parsed.data.name,
+        prefix: parsed.data.prefix,
+        customSchema: parsed.data.customSchema,
+        requiresSerial: true,
+      })
+      .returning({
+        id: categories.id,
+        pillar: categories.pillar,
+        name: categories.name,
+        prefix: categories.prefix,
+        customSchema: categories.customSchema,
+        requiresSerial: categories.requiresSerial,
+      });
+
+    if (inserted.length === 0) {
+      return {
+        success: false,
+        message: 'Failed to create category.',
+      };
+    }
+
+    await logAuditAction({
+      entityType: 'asset-categories',
+      entityId: inserted[0].id.toString(),
+      actionType: 'CREATE',
+      performedById: currentUser.id,
+      newData: inserted[0],
     });
 
     revalidatePath('/settings/master-data');
@@ -586,6 +673,7 @@ export async function createMasterDataRecord(
   }
 
   const entityRaw = String(formData.get('entity') ?? '');
+  let insertedId: number | undefined;
 
   if (
     !MASTER_DATA_RECORD_ENTITIES.includes(entityRaw as MasterDataRecordEntity)
@@ -644,6 +732,7 @@ export async function createMasterDataRecord(
           };
         }
 
+        insertedId = inserted[0].id;
         break;
       }
 
@@ -696,6 +785,7 @@ export async function createMasterDataRecord(
           };
         }
 
+        insertedId = inserted[0].id;
         break;
       }
 
@@ -739,6 +829,7 @@ export async function createMasterDataRecord(
           };
         }
 
+        insertedId = inserted[0].id;
         break;
       }
 
@@ -804,6 +895,7 @@ export async function createMasterDataRecord(
           };
         }
 
+        insertedId = inserted[0].id;
         break;
       }
 
@@ -862,6 +954,7 @@ export async function createMasterDataRecord(
           };
         }
 
+        insertedId = inserted[0].id;
         break;
       }
 
@@ -911,6 +1004,7 @@ export async function createMasterDataRecord(
           };
         }
 
+        insertedId = inserted[0].id;
         break;
       }
 
@@ -954,8 +1048,56 @@ export async function createMasterDataRecord(
           };
         }
 
+        insertedId = inserted[0].id;
         break;
       }
+
+      case 'statuses': {
+        const parsed = customStatusSchema.safeParse({
+          name: formData.get('name'),
+          iconName: formData.get('iconName'),
+          colorTheme: formData.get('colorTheme'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Failed to validate status data.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const inserted = await db
+          .insert(customStatuses)
+          .values({
+            name: parsed.data.name,
+            iconName: parsed.data.iconName,
+            colorTheme: parsed.data.colorTheme,
+            isActive: parsed.data.isActive,
+            createdById: currentUser.id,
+          })
+          .returning({ id: customStatuses.id });
+
+        if (inserted.length === 0) {
+          return {
+            success: false,
+            message: 'Failed to create status.',
+          };
+        }
+
+        insertedId = inserted[0].id;
+        break;
+      }
+    }
+
+    if (insertedId) {
+      await logAuditAction({
+        entityType: entity,
+        entityId: insertedId.toString(),
+        actionType: 'CREATE',
+        performedById: currentUser.id,
+      });
     }
 
     revalidatePath('/settings/master-data');
@@ -1044,15 +1186,29 @@ export async function updateMasterDataRecord(
           updateValues.parentId = parsed.data.parentId ?? null;
         }
 
+        const oldRecord = await db.query.locations.findFirst({
+          where: eq(locations.id, idRaw),
+        });
+
         const updated = await db
           .update(locations)
           .set(updateValues)
           .where(eq(locations.id, idRaw))
-          .returning({ id: locations.id });
+          .returning();
 
-        if (updated.length === 0) {
+        if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Location not found.' };
         }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
+
         break;
       }
 
@@ -1082,6 +1238,10 @@ export async function updateMasterDataRecord(
           };
         }
 
+        const oldRecord = await db.query.categories.findFirst({
+          where: eq(categories.id, idRaw),
+        });
+
         const updated = await db
           .update(categories)
           .set({
@@ -1094,11 +1254,20 @@ export async function updateMasterDataRecord(
             isActive: parseBooleanFormValue(formData.get('isActive')),
           })
           .where(eq(categories.id, idRaw))
-          .returning({ id: categories.id });
+          .returning();
 
-        if (updated.length === 0) {
+        if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Category not found.' };
         }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
         break;
       }
 
@@ -1112,6 +1281,10 @@ export async function updateMasterDataRecord(
           };
         }
 
+        const oldRecord = await db.query.brands.findFirst({
+          where: eq(brands.id, idRaw),
+        });
+
         const updated = await db
           .update(brands)
           .set({
@@ -1119,11 +1292,20 @@ export async function updateMasterDataRecord(
             isActive: parseBooleanFormValue(formData.get('isActive')),
           })
           .where(eq(brands.id, idRaw))
-          .returning({ id: brands.id });
+          .returning();
 
-        if (updated.length === 0) {
+        if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Brand not found.' };
         }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
         break;
       }
 
@@ -1155,6 +1337,10 @@ export async function updateMasterDataRecord(
           };
         }
 
+        const oldRecord = await db.query.models.findFirst({
+          where: eq(models.id, idRaw),
+        });
+
         const updated = await db
           .update(models)
           .set({
@@ -1171,11 +1357,20 @@ export async function updateMasterDataRecord(
             isActive: parsed.data.isActive,
           })
           .where(eq(models.id, idRaw))
-          .returning({ id: models.id });
+          .returning();
 
-        if (updated.length === 0) {
+        if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Model not found.' };
         }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
         break;
       }
 
@@ -1196,6 +1391,10 @@ export async function updateMasterDataRecord(
           };
         }
 
+        const oldRecord = await db.query.vendors.findFirst({
+          where: eq(vendors.id, idRaw),
+        });
+
         const updated = await db
           .update(vendors)
           .set({
@@ -1215,11 +1414,20 @@ export async function updateMasterDataRecord(
             isActive: parsed.data.isActive,
           })
           .where(eq(vendors.id, idRaw))
-          .returning({ id: vendors.id });
+          .returning();
 
-        if (updated.length === 0) {
+        if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Vendor not found.' };
         }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
         break;
       }
 
@@ -1237,6 +1445,10 @@ export async function updateMasterDataRecord(
           };
         }
 
+        const oldRecord = await db.query.owners.findFirst({
+          where: eq(owners.id, idRaw),
+        });
+
         const updated = await db
           .update(owners)
           .set({
@@ -1244,11 +1456,20 @@ export async function updateMasterDataRecord(
             isActive: parsed.data.isActive,
           })
           .where(eq(owners.id, idRaw))
-          .returning({ id: owners.id });
+          .returning();
 
-        if (updated.length === 0) {
+        if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Owner not found.' };
         }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
         break;
       }
 
@@ -1288,6 +1509,10 @@ export async function updateMasterDataRecord(
           };
         }
 
+        const oldRecord = await db.query.departments.findFirst({
+          where: eq(departments.id, idRaw),
+        });
+
         const updated = await db
           .update(departments)
           .set({
@@ -1297,11 +1522,66 @@ export async function updateMasterDataRecord(
             isActive: parseBooleanFormValue(formData.get('isActive')),
           })
           .where(eq(departments.id, idRaw))
-          .returning({ id: departments.id });
+          .returning();
 
-        if (updated.length === 0) {
+        if (updated.length === 0 || !oldRecord) {
           return { success: false, message: 'Department not found.' };
         }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
+        break;
+      }
+
+      case 'statuses': {
+        const parsed = customStatusSchema.safeParse({
+          name: formData.get('name'),
+          iconName: formData.get('iconName'),
+          colorTheme: formData.get('colorTheme'),
+          isActive: parseBooleanFormValue(formData.get('isActive')),
+        });
+
+        if (!parsed.success) {
+          return {
+            success: false,
+            message: 'Validation failed.',
+            errors: parsed.error.flatten().fieldErrors,
+          };
+        }
+
+        const oldRecord = await db.query.customStatuses.findFirst({
+          where: eq(customStatuses.id, idRaw),
+        });
+
+        const updated = await db
+          .update(customStatuses)
+          .set({
+            name: parsed.data.name,
+            iconName: parsed.data.iconName,
+            colorTheme: parsed.data.colorTheme,
+            isActive: parsed.data.isActive,
+          })
+          .where(eq(customStatuses.id, idRaw))
+          .returning();
+
+        if (updated.length === 0 || !oldRecord) {
+          return { success: false, message: 'Status not found.' };
+        }
+
+        await logAuditAction({
+          entityType: entity,
+          entityId: idRaw.toString(),
+          actionType: 'UPDATE',
+          performedById: currentUser.id,
+          oldData: oldRecord as Record<string, unknown>,
+          newData: updated[0] as Record<string, unknown>,
+        });
         break;
       }
     }

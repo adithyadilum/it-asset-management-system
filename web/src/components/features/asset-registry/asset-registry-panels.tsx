@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { AssetDetailsPanelWrapper } from "./panels/asset-details-panel-wrapper";
 import { RegistrationPanelWrapper } from "./panels/registration-panel-wrapper";
 
@@ -9,6 +10,14 @@ interface AssetRegistryPanelsProps {
     recordId?: string;
     closePanelUrl: string;
     pillar: string;
+    manualStatuses?: Array<{
+        value: string;
+        label: string;
+        colorTheme?: string;
+        iconName?: string;
+    }>;
+    onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
+    onRefreshRef?: React.MutableRefObject<() => void>;
 }
 
 export function AssetRegistryPanels({
@@ -16,8 +25,16 @@ export function AssetRegistryPanels({
     recordId,
     closePanelUrl,
     pillar,
+    manualStatuses = [],
+    onStatusUpdateRef,
+    onRefreshRef,
 }: AssetRegistryPanelsProps) {
     const router = useRouter();
+    const [cachedRecordId, setCachedRecordId] = useState(recordId);
+
+    if (recordId && recordId !== cachedRecordId) {
+        setCachedRecordId(recordId);
+    }
 
     const handleClose = () => {
         router.push(closePanelUrl, { scroll: false });
@@ -27,15 +44,22 @@ export function AssetRegistryPanels({
         <>
             <RegistrationPanelWrapper
                 isOpen={currentPanel === "registration"}
-                onClose={handleClose}
+                onClose={(didSucceed) => {
+                    if (didSucceed) {
+                        onRefreshRef?.current?.();
+                    }
+                    handleClose();
+                }}
                 pillar={pillar}
             />
 
-            {recordId ? (
+            {cachedRecordId ? (
                 <AssetDetailsPanelWrapper
-                    isOpen={currentPanel === "record"}
+                    isOpen={currentPanel === "record" && !!recordId}
                     onClose={handleClose}
-                    recordId={recordId}
+                    recordId={cachedRecordId}
+                    manualStatuses={manualStatuses}
+                    onStatusUpdateRef={onStatusUpdateRef}
                 />
             ) : null}
         </>

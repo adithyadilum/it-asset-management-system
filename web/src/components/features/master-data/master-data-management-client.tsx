@@ -13,6 +13,9 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import * as LucideIcons from "lucide-react";
+import { cn } from "@/lib/utils";
+import { STATUS_THEMES } from "@/lib/constants";
 import {
     Select,
     SelectContent,
@@ -30,7 +33,8 @@ export type MasterDataTabId =
     | "device-models"
     | "vendors"
     | "owners"
-    | "departments";
+    | "departments"
+    | "statuses";
 
 type PillarFilter =
     | "all"
@@ -131,6 +135,17 @@ export type MasterDataOwnerRow = {
     isActive: boolean;
 };
 
+export type MasterDataCustomStatusRow = {
+    id: number;
+    code: string | null;
+    name: string;
+    iconName: string;
+    colorTheme: string;
+    isActive: boolean;
+    createdAt: Date | string;
+    linkedAssets: number;
+};
+
 interface MasterDataManagementClientProps {
     categories: MasterDataCategoryRow[];
     locations: MasterDataLocationRow[];
@@ -139,6 +154,7 @@ interface MasterDataManagementClientProps {
     vendors: MasterDataVendorRow[];
     owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
+    customStatuses: MasterDataCustomStatusRow[];
     initialTab?: MasterDataTabId;
 }
 
@@ -150,6 +166,7 @@ const TAB_LABELS: Array<{ id: MasterDataTabId; label: string }> = [
     { id: "vendors", label: "Vendors" },
     { id: "owners", label: "Owners" },
     { id: "departments", label: "Departments" },
+    { id: "statuses", label: "Statuses" },
 ];
 
 const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>(
@@ -164,6 +181,7 @@ const EMPTY_SEARCH_STATE: Record<MasterDataTabId, string> = {
     vendors: "",
     owners: "",
     departments: "",
+    statuses: "",
 };
 
 const TYPE_FILTER_TAB_IDS = new Set<MasterDataTabId>([
@@ -188,6 +206,7 @@ const MASTER_DATA_CODE_PREFIX: Record<MasterDataTabId, string> = {
     vendors: "VND",
     owners: "OWN",
     departments: "DEP",
+    statuses: "STS",
 };
 
 const MASTER_DATA_EMPTY_STATE_META: Record<
@@ -201,6 +220,7 @@ const MASTER_DATA_EMPTY_STATE_META: Record<
     vendors: { singular: "vendor", plural: "vendors" },
     owners: { singular: "owner", plural: "owners" },
     departments: { singular: "department", plural: "departments" },
+    statuses: { singular: "status", plural: "statuses" },
 };
 
 function resolveMasterDataCode(
@@ -292,6 +312,7 @@ export function MasterDataManagementClient({
     vendors,
     owners,
     departments,
+    customStatuses,
     initialTab,
 }: MasterDataManagementClientProps) {
     const pathname = usePathname();
@@ -440,10 +461,12 @@ export function MasterDataManagementClient({
                 return resolveBlockedCodes(owners);
             case "departments":
                 return resolveBlockedCodes(departments);
+            case "statuses":
+                return resolveBlockedCodes(customStatuses);
             default:
                 return [];
         }
-    }, [pendingDeleteEntity, pendingDeleteRows, categories, locations, brands, deviceModels, vendors, owners, departments]);
+    }, [pendingDeleteEntity, pendingDeleteRows, categories, locations, brands, deviceModels, vendors, owners, departments, customStatuses]);
 
     const blockedDeleteIds = pendingDeleteRows
         .filter((row) => row.linkedAssets > 0)
@@ -461,6 +484,7 @@ export function MasterDataManagementClient({
             vendors: "Vendor",
             owners: "Owner",
             departments: "Department",
+            statuses: "Status",
         }[pendingDeleteEntity];
         return `Delete ${entityLabel}${pendingDeleteRows.length > 1 ? "s" : ""}`;
     };
@@ -695,6 +719,66 @@ export function MasterDataManagementClient({
         ],
         []
     );
+    
+    const customStatusColumns = useMemo<ColumnDef<MasterDataCustomStatusRow>[]>(
+        () => [
+            {
+                accessorKey: "id",
+                header: "Status ID",
+                cell: ({ row }) =>
+                    resolveMasterDataCode("statuses", null, row.original.id),
+            },
+            {
+                accessorKey: "name",
+                header: "Name",
+                cell: ({ row }) => <span>{row.original.name}</span>,
+            },
+            {
+                accessorKey: "colorTheme",
+                header: "Theme & Icon",
+                cell: ({ row }) => {
+                    const iconName = row.original.iconName;
+                    const colorTheme = row.original.colorTheme;
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const Icon = (LucideIcons as any)[iconName] || LucideIcons.CircleDot;
+                    
+                    return (
+                        <div className="flex items-center gap-2">
+                            <div className={cn("flex items-center justify-center h-8 w-8 rounded-md border", STATUS_THEMES[colorTheme as keyof typeof STATUS_THEMES])}>
+                                <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-xs font-medium capitalize">{colorTheme}</span>
+                                <span className="text-[10px] text-slate-500 font-mono">{iconName}</span>
+                            </div>
+                        </div>
+                    );
+                },
+            },
+            {
+                accessorKey: "isActive",
+                header: "Active Status",
+                cell: ({ row }) => (
+                    <StatusBadge
+                        value={row.original.isActive ? "active" : "inactive"}
+                        showIcon={false}
+                    />
+                ),
+            },
+            {
+                id: "preview",
+                header: "Badge Preview",
+                cell: ({ row }) => (
+                    <StatusBadge 
+                        value={row.original.name}
+                        iconName={row.original.iconName}
+                        colorTheme={row.original.colorTheme}
+                    />
+                ),
+            },
+        ],
+        []
+    );
 
     const filteredCategories = useMemo(() => {
         return categories.filter((item) => {
@@ -774,6 +858,17 @@ export function MasterDataManagementClient({
                 )
             ),
         [departments, searchByTab.departments]
+    );
+
+    const filteredCustomStatuses = useMemo(
+        () =>
+            customStatuses.filter((item) =>
+                containsSearch(
+                    [item.id, item.name, item.colorTheme, item.iconName],
+                    searchByTab.statuses
+                )
+            ),
+        [customStatuses, searchByTab.statuses]
     );
 
     const activeSearchValue = searchByTab[activeTab];
@@ -955,7 +1050,9 @@ export function MasterDataManagementClient({
                                                             ? "Search vendors..."
                                                             : activeTab === "owners"
                                                                 ? "Search owners..."
-                                                                : "Search departments..."
+                                                                : activeTab === "departments"
+                                                                    ? "Search departments..."
+                                                                    : "Search statuses..."
                                     }
                                 />
                             </div>
@@ -1073,6 +1170,21 @@ export function MasterDataManagementClient({
                             emptyState={getEmptyState("departments")}
                         />
                     </TabsContent>
+
+                    <TabsContent value="statuses" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                        <DataTable
+                            columns={customStatusColumns}
+                            data={filteredCustomStatuses}
+                            initialPageSize={10}
+                            pageSizeOptions={[10, 20, 50]}
+                            defaultSorting={[{ id: 'id', desc: true }]}
+                            selectionActions={buildSelectionActions("statuses")}
+                            onRowClick={(row) => openRecordPanel("statuses", row.id)}
+                            isRowActive={(row) => Boolean(activeRecordId && row.id === activeRecordId)}
+                            selectionResetSignal={selectionResetSignal}
+                            emptyState={getEmptyState("statuses")}
+                        />
+                    </TabsContent>
                 </div>
             </Tabs>
 
@@ -1105,3 +1217,4 @@ export function MasterDataManagementClient({
         </main>
     );
 }
+

@@ -16,6 +16,7 @@ import {
   locations,
   models,
   owners,
+  customStatuses,
   sessions,
   users,
   vendors,
@@ -32,7 +33,8 @@ type MasterDataTabId =
   | "device-models"
   | "vendors"
   | "owners"
-  | "departments";
+  | "departments"
+  | "statuses";
 
 const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>([
   "locations",
@@ -42,6 +44,7 @@ const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>([
   "vendors",
   "owners",
   "departments",
+  "statuses",
 ]);
 
 function normalizeMasterDataTab(value: string | undefined): MasterDataTabId | undefined {
@@ -322,6 +325,22 @@ const getOwnersData = cache(() =>
     .orderBy(asc(owners.companyName))
 );
 
+const getStatusesData = cache(() =>
+  db
+    .select({
+      id: customStatuses.id,
+      code: sql<string | null>`null`,
+      name: customStatuses.name,
+      iconName: customStatuses.iconName,
+      colorTheme: customStatuses.colorTheme,
+      isActive: customStatuses.isActive,
+      createdAt: customStatuses.createdAt,
+      linkedAssets: sql<number>`0::int`,
+    })
+    .from(customStatuses)
+    .orderBy(asc(customStatuses.name))
+);
+
 const getCategoriesData = cache(() =>
   db
     .select({
@@ -410,6 +429,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     departmentsData,
     categoriesData,
     deviceModelsData,
+    statusesData,
   ] = await Promise.all([
     getLocationsData(),
     getBrandsData(),
@@ -418,6 +438,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     getDepartmentsData(),
     getCategoriesData(),
     getDeviceModelsData(),
+    getStatusesData(),
   ]);
 
   const normalizedDeviceModels = deviceModelsData.map((row) => ({
@@ -455,6 +476,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         vendors={normalizedVendors}
         owners={ownersData}
         departments={departmentsData}
+        customStatuses={statusesData}
       />
 
       <MasterDataPanels
@@ -471,6 +493,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
         vendors={normalizedVendors}
         owners={ownersData}
         departments={departmentsData}
+        customStatuses={statusesData}
       />
     </div>
   );

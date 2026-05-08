@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { TabbedPanel, type TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 import { type SlidePanelAction } from '@/components/shared/slide-panel';
 import { AssetDetailsTab } from './asset-details-tab';
@@ -11,7 +11,12 @@ import { AllocationsTab, type AllocationUser } from './allocations-tab';
 import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-repo';
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { InteractiveStatusBadge } from '@/components/shared/interactive-status-badge';
 
+// Epic 15: Imports for Maintenance Integration
+import { getAllAssetAuditHistory } from '@/actions/audit-log';
+import { format } from 'date-fns';
+import { RecentMaintenance } from './recent-maintenance';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
@@ -53,7 +58,10 @@ export interface AssetDetailsPanelProps {
   warrantyPeriod?: string;
   totalRepairCost?: string;
   invoiceUrl?: string;
-  vendorInfo?: { vendorId: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
+  currentBookValue?: number;
+  totalRepairCosts?: number;
+  totalTCO?: number;
+  vendorInfo?: { vendorId: string; vendorCode?: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
 
   // Event Data
   historyEvents?: HistoryEvent[];
@@ -71,19 +79,35 @@ export interface AssetDetailsPanelProps {
   onQRCodeClick?: () => void;
   onCurrencyChange?: (currency: string) => void;
   onRevokeAllocation?: (userId: string) => void;
+  manualStatuses?: Array<{
+    value: string;
+    label: string;
+    colorTheme?: string;
+    iconName?: string;
+  }>;
+  onStatusChanged?: (nextStatus: string) => void;
+  hideActions?: boolean;
+  additionalTabs?: TabbedPanelTab[];
 }
 
 export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
-  const getActionButtonLabel = () => {
+  const [activeTabId, setActiveTabId] = useState('asset-details');
+  const [isExporting, setIsExporting] = useState(false);
+
+  // ======================================================
+
+  const getActionButtonLabel = useCallback(() => {
     if (props.assetCategory === 'Office Furniture') return 'Transfer';
     if (props.assetCategory === 'Software') return 'Return';
     return 'Request Return';
-  };
+  }, [props.assetCategory]);
 
   const tabs: TabbedPanelTab[] = useMemo(() => {
     const tabsList: TabbedPanelTab[] = [];
     const isSoftware = props.assetCategory === 'Software';
     const isFurniture = props.assetCategory === 'Office Furniture';
+
+    // SAM Data mapping from dev branch
     const softwareLicenseKey = props.serialNumber || props.specs?.license_key?.toString() || '-';
     const softwareLicenseType = props.specs?.license_type?.toString() || 'Subscription';
     const softwareVersion = props.specs?.version?.toString() || '-';
@@ -93,7 +117,10 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
+
+    // Dev branch resolution: Using assetTag
     detailsFields.push({ label: 'Asset ID', value: props.assetTag });
+
     if (isFurniture) {
       detailsFields.push(
         { label: 'Category', value: props.assetCategory },
@@ -140,51 +167,63 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       content: props.isLoading ? (
         <AssetLoadingSkeleton />
       ) : (
-        <AssetDetailsTab
-          imageUrl={props.imageUrl}
-          note={props.note}
-          assetTag={props.assetTag}
-          fields={detailsFields}
-          mode={isSoftware ? 'software' : 'default'}
-          softwareSections={isSoftware ? [
-            {
-              title: 'License Details',
-              rows: [
-                { label: 'Product', value: props.model || props.assetName || '-' },
-                { label: 'Publisher', value: props.brand || '-' },
-                { label: 'License Key', value: softwareLicenseKey },
-                { label: 'License Type', value: softwareLicenseType },
-                { label: 'Version', value: softwareVersion },
-                { label: 'Expiration Date', value: softwareExpirationDate },
-              ],
-            },
-            {
-              title: 'Allocation & Ownership',
-              rows: [
-                { label: 'Total Seats', value: softwareTotalSeats },
-                { label: 'Available Seats', value: softwareAvailableSeats },
-                { label: 'Assigned To', value: props.assignedTo || '-' },
-                { label: 'Group', value: props.group || '-' },
-                { label: 'Owner', value: props.owner || '-' },
-              ],
-            },
-            {
-              title: 'Record Metadata',
-              rows: [
-                { label: 'Asset ID', value: props.assetTag || '-' },
-                { label: 'Purchase Date', value: props.purchaseDate || '-' },
-                { label: 'Registered On', value: props.dateCreated || '-' },
-                { label: 'Last Updated', value: props.updatedAt || '-' },
-              ],
-            },
-          ] : undefined}
-          hideMaintenance={isSoftware}
-          maintenanceRecords={props.maintenanceEvents}
-          onQRCodeClick={props.onQRCodeClick}
-          onViewAllMaintenance={props.onViewAllMaintenance}
-        />
+        <div className="flex flex-col pb-6">
+          {/* SAM Upgrade from dev branch, with maintenance hidden so we can use our custom Epic 15 UI */}
+          <AssetDetailsTab
+            imageUrl={props.imageUrl}
+            note={props.note}
+            assetTag={props.assetTag}
+            fields={detailsFields}
+            mode={isSoftware ? 'software' : 'default'}
+            softwareSections={isSoftware ? [
+              {
+                title: 'License Details',
+                rows: [
+                  { label: 'Product', value: props.model || props.assetName || '-' },
+                  { label: 'Publisher', value: props.brand || '-' },
+                  { label: 'License Key', value: softwareLicenseKey },
+                  { label: 'License Type', value: softwareLicenseType },
+                  { label: 'Version', value: softwareVersion },
+                  { label: 'Expiration Date', value: softwareExpirationDate },
+                ],
+              },
+              {
+                title: 'Allocation & Ownership',
+                rows: [
+                  { label: 'Total Seats', value: softwareTotalSeats },
+                  { label: 'Available Seats', value: softwareAvailableSeats },
+                  { label: 'Assigned To', value: props.assignedTo || '-' },
+                  { label: 'Group', value: props.group || '-' },
+                  { label: 'Owner', value: props.owner || '-' },
+                ],
+              },
+              {
+                title: 'Record Metadata',
+                rows: [
+                  { label: 'Asset ID', value: props.assetTag || '-' },
+                  { label: 'Purchase Date', value: props.purchaseDate || '-' },
+                  { label: 'Registered On', value: props.dateCreated || '-' },
+                  { label: 'Last Updated', value: props.updatedAt || '-' },
+                ],
+              },
+            ] : undefined}
+            hideMaintenance={true} // Force hide so our dynamic UI takes over
+            onQRCodeClick={props.onQRCodeClick}
+          />
+
+          {/* ============ EPIC 15: NEW DYNAMIC MAINTENANCE UI ============ */}
+          {!isSoftware && (
+            <RecentMaintenance
+              assetTag={props.assetTag}
+              isOpen={props.isOpen}
+              onViewAll={props.onViewAllMaintenance}
+            />
+          )}
+          {/* ==================================================== */}
+        </div>
       ),
     });
+
 
     if (!isSoftware) {
       tabsList.push({
@@ -210,7 +249,9 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             tax={props.tax || '-'}
             totalCost={props.totalCost || '-'}
             warrantyPeriod={props.warrantyPeriod || '-'}
-            totalRepairCost={props.totalRepairCost}
+            totalRepairCost={props.totalRepairCosts ? String(props.totalRepairCosts) : props.totalRepairCost}
+            currentBookValue={props.currentBookValue}
+            totalTCO={props.totalTCO}
             invoicePdf={props.invoiceUrl}
             vendor={props.vendorInfo || { vendorId: '', vendorName: 'N/A' }}
             onCurrencyChange={props.onCurrencyChange}
@@ -244,17 +285,100 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       tabsList.push({
         id: 'history',
         label: 'History',
-        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab events={props.historyEvents ?? []} onViewAll={props.onViewAllHistory} />,
+        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab key={props.assetId} assetId={props.assetId} />,
       });
+    }
+    if (props.additionalTabs) {
+      tabsList.push(...props.additionalTabs);
     }
 
     return tabsList;
   }, [props]);
 
-  const actions: SlidePanelAction[] = [
-    { id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit },
-    { id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick },
-  ];
+  const handleExportCSV = useCallback(async () => {
+    try {
+      setIsExporting(true);
+      const rows = await getAllAssetAuditHistory(props.assetId);
+
+      const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
+
+      const header = [
+        "Timestamp",
+        "User",
+        "Action Taken",
+        "Target Entity",
+        "IP Address",
+      ];
+
+      const csvRows = rows.map((row) => {
+        const user = row.performedBy
+          ? `${row.performedBy.name} <${row.performedBy.email}>`
+          : "Unknown";
+
+        const target = row.entityLabel && row.entityLabel.trim().length > 0
+          ? row.entityLabel
+          : `${row.entityType}: ${row.entityId}`;
+
+        const timestamp = row.performedAt instanceof Date
+          ? row.performedAt
+          : new Date(row.performedAt);
+
+        return [
+          Number.isNaN(timestamp.getTime()) ? String(row.performedAt) : format(timestamp, "yyyy-MM-dd HH:mm:ss"),
+          user,
+          row.actionType,
+          target,
+          row.ipAddress ?? "-",
+        ].map(escapeCsvValue);
+      });
+
+      const csv = [header.map(escapeCsvValue).join(","), ...csvRows.map((row) => row.join(","))].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `asset-${props.assetTag}-history-${format(new Date(), "yyyyMMdd-HHmmss")}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [props.assetId, props.assetTag]);
+
+  const actions: SlidePanelAction[] = useMemo(() => {
+    if (props.hideActions) return [];
+
+    if (activeTabId === 'history') {
+      return [
+        {
+          id: 'export-csv',
+          label: isExporting ? 'Exporting...' : 'Export to CSV',
+          variant: 'default',
+          onClick: handleExportCSV,
+          disabled: isExporting
+        }
+      ];
+    }
+
+    const isDisposed = props.status === 'Disposed';
+    const isPendingDisposal = props.status === 'Pending Disposal';
+
+    const list: SlidePanelAction[] = [];
+
+    // Disposed assets cannot be edited
+    if (!isDisposed) {
+      list.push({ id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit });
+    }
+
+    // Disposed and Pending Disposal assets cannot be assigned/returned
+    if (!isDisposed && !isPendingDisposal) {
+      list.push({ id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick });
+    }
+
+    return list;
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV, props.status, props.hideActions]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
@@ -263,7 +387,13 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         variant="metadata"
         label={`ID: ${props.assetTag || '-'}`}
       />
-      <StatusBadge value={props.status} showIcon />
+      <InteractiveStatusBadge
+        assetId={props.assetId}
+        currentStatus={props.status}
+        availableStatuses={props.manualStatuses ?? []}
+        hasActiveAssignment={Boolean(props.assignedTo && props.assignedTo !== '-')}
+        onStatusChanged={props.onStatusChanged}
+      />
     </div>
   );
 
@@ -275,6 +405,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       tabs={tabs}
       defaultTabId="asset-details"
       actions={actions}
+      onTabChange={setActiveTabId}
     />
   );
 }

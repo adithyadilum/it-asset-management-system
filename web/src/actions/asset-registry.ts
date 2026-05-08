@@ -12,10 +12,8 @@ import {
   type BulkAssetUpdatePayload,
   type RegistryPillar,
 } from '@/lib/data/asset-registry-repo';
-import {
-  getAuthenticatedUser,
-  canManageAssets,
-} from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/auth/uuid';
 
@@ -79,6 +77,7 @@ function normalizeAssetStatus(status: unknown): AssetStatus | undefined {
     status === 'Defective' ||
     status === 'Lost' ||
     status === 'Retired' ||
+    status === 'Pending Disposal' ||
     status === 'Disposed'
   ) {
     return status;

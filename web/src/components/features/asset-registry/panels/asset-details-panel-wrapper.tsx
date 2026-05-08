@@ -1,4 +1,5 @@
 "use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { AssetDetailsPanel } from "./asset-details-panel";
@@ -8,6 +9,7 @@ import {
   getAssetMaintenanceByIdAction,
   getAssetAllocationsAction,
 } from "@/actions/asset-registry-panels";
+import { getAssetFinancialVitals, type AssetFinancialVitals } from "@/actions/asset-financial-vitals";
 import { tiqriToast } from "@/components/shared/sonner";
 import {
   type AssetDetailsData,
@@ -15,11 +17,21 @@ import {
   type MaintenanceEvent,
   type AllocationData,
 } from "@/lib/data/asset-details-repo";
+import type { TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
   onClose: () => void;
   recordId: string;
+  manualStatuses?: Array<{
+    value: string;
+    label: string;
+    colorTheme?: string;
+    iconName?: string;
+  }>;
+  onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
+  hideActions?: boolean;
+  additionalTabs?: TabbedPanelTab[];
 }
 
 function formatDisplayDate(value?: string | null) {
@@ -59,15 +71,24 @@ function formatDisplayDateTime(value?: string | null) {
   });
 }
 
-export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDetailsPanelWrapperProps) {
+export function AssetDetailsPanelWrapper({
+  isOpen,
+  onClose,
+  recordId,
+  manualStatuses = [],
+  onStatusUpdateRef,
+  hideActions,
+  additionalTabs,
+}: AssetDetailsPanelWrapperProps) {
   const [data, setData] = useState<AssetDetailsData | null>(null);
   const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
   const [maintenanceEvents, setMaintenanceEvents] = useState<MaintenanceEvent[]>([]);
   const [allocations, setAllocations] = useState<AllocationData[]>([]);
+  const [financialVitals, setFinancialVitals] = useState<AssetFinancialVitals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
-
+  const [refreshNonce, setRefreshNonce] = useState(0);
   if (isOpen && recordId !== prevRecordId) {
     setPrevRecordId(recordId);
     setIsLoading(true);
@@ -86,8 +107,9 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
         getAssetHistoryByIdAction(recordId),
         getAssetMaintenanceByIdAction(recordId),
         getAssetAllocationsAction(recordId),
+        getAssetFinancialVitals(recordId).catch(() => null),
       ])
-        .then(([detailsRes, historyRes, maintenanceRes, allocationsRes]) => {
+        .then(([detailsRes, historyRes, maintenanceRes, allocationsRes, financialRes]) => {
           if (isMounted) {
             if (detailsRes.success) {
               setData(detailsRes.data);
@@ -112,6 +134,12 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
             } else {
               setAllocations([]);
             }
+
+            if (financialRes) {
+              setFinancialVitals(financialRes);
+            } else {
+              setFinancialVitals(null);
+            }
           }
         })
         .finally(() => {
@@ -124,7 +152,7 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
         isMounted = false;
       };
     }
-  }, [isOpen, recordId]);
+  }, [isOpen, recordId, refreshNonce]);
 
   return (
     <AssetDetailsPanel
@@ -165,15 +193,45 @@ export function AssetDetailsPanelWrapper({ isOpen, onClose, recordId }: AssetDet
             : data?.purchase?.vendorId != null
               ? String(data.purchase.vendorId)
               : "",
+        vendorCode: data?.vendor?.vendorCode ?? undefined,
         vendorName: data?.vendor?.companyName ?? "",
-        contactNumber: data?.vendor?.contactInfo ?? ""
+        contactNumber: data?.vendor?.phone ?? undefined,
+        email: data?.vendor?.email ?? undefined,
+        website: data?.vendor?.website ?? undefined,
       }}
       invoiceUrl={data?.purchase?.invoiceUrl ?? ""}
+      currentBookValue={financialVitals?.currentBookValue}
+      totalRepairCosts={financialVitals?.totalRepairCosts}
+      totalTCO={financialVitals?.totalTCO}
       historyEvents={historyEvents}
       maintenanceEvents={maintenanceEvents}
       allocations={allocations}
       totalSeats={parseInt(String(data?.model.technicalDetails?.max_seats ?? data?.model.technicalDetails?.total_seats ?? 0), 10)}
       onCurrencyChange={setDisplayCurrencyOverride}
+      manualStatuses={manualStatuses}
+      onStatusChanged={(nextStatus) => {
+        setData((prev) => {
+          if (!prev) return null;
+          // ANY manual override clears assignments as per latest requirement
+          return {
+            ...prev,
+            asset: {
+              ...prev.asset,
+              status: nextStatus,
+              updatedAt: new Date().toISOString(),
+            },
+            assignment: null, // Clear assignment in UI immediately
+          };
+        });
+        setAllocations([]); // Also clear allocations list immediately
+        setRefreshNonce((n) => n + 1);
+        // Immediately update the table row via the ref callback
+        if (onStatusUpdateRef?.current && data?.asset.id) {
+          onStatusUpdateRef.current(data.asset.id, nextStatus);
+        }
+      }}
+      hideActions={hideActions}
+      additionalTabs={additionalTabs}
     />
   );
 }

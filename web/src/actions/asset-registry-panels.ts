@@ -10,7 +10,7 @@ import {
   pillarEnum,
   vendors,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUser } from '@/actions/auth';
 
 export async function getAssetDetailsByIdAction(id: string) {
   const user = await getAuthenticatedUser();
@@ -50,6 +50,16 @@ export async function getAssetAllocationsAction(id: string) {
     await import('@/lib/data/asset-details-repo');
   const allocations = await getAssetAllocationsById(id);
   return { success: true, data: allocations };
+}
+
+export async function getAssetDisposalAction(id: string) {
+  const user = await getAuthenticatedUser();
+  if (!user) return { success: false, message: 'Unauthorized', data: null };
+
+  const { getAssetDisposalById } =
+    await import('@/lib/data/asset-details-repo');
+  const disposal = await getAssetDisposalById(id);
+  return { success: true, data: disposal };
 }
 
 export async function getRegistrationOptionsAction(pillar: string) {

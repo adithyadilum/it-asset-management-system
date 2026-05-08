@@ -16,6 +16,15 @@ import { ImagePlus, Pencil, Upload } from "lucide-react";
 
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
+    STATUS_COLORS,
+    STATUS_THEMES,
+    AVAILABLE_STATUS_ICONS,
+    type StatusTheme 
+} from "@/lib/constants";
+import * as LucideIcons from "lucide-react";
+import { CircleDot, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
     INITIAL_UPDATE_MASTER_DATA_STATE,
     MASTER_DATA_RECORD_ENTITIES,
 } from "@/lib/master-data/shared";
@@ -44,6 +53,7 @@ import type {
     MasterDataLocationRow,
     MasterDataOwnerRow,
     MasterDataVendorRow,
+    MasterDataCustomStatusRow,
 } from "./master-data-management-client";
 
 type PanelMode = "detail" | "edit";
@@ -64,6 +74,7 @@ interface MasterDataRecordPanelProps {
     vendors: MasterDataVendorRow[];
     owners: MasterDataOwnerRow[];
     departments: MasterDataDepartmentRow[];
+    customStatuses: MasterDataCustomStatusRow[];
 }
 
 const ENTITY_LABELS: Record<MasterDataRecordEntity, string> = {
@@ -74,6 +85,7 @@ const ENTITY_LABELS: Record<MasterDataRecordEntity, string> = {
     vendors: "Vendor",
     owners: "Owner",
     departments: "Department",
+    statuses: "Status",
 };
 
 const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
@@ -84,6 +96,7 @@ const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
     vendors: "VND",
     owners: "OWN",
     departments: "DEP",
+    statuses: "STS",
 };
 
 const PILLAR_OPTIONS = [
@@ -165,6 +178,7 @@ function resolveRecordByEntity(
         vendors: MasterDataVendorRow[];
         owners: MasterDataOwnerRow[];
         departments: MasterDataDepartmentRow[];
+        customStatuses: MasterDataCustomStatusRow[];
     }
 ) {
     switch (entity) {
@@ -182,6 +196,8 @@ function resolveRecordByEntity(
             return sources.owners.find((row) => row.id === numericId) ?? null;
         case "departments":
             return sources.departments.find((row) => row.id === numericId) ?? null;
+        case "statuses":
+            return sources.customStatuses.find((row) => row.id === numericId) ?? null;
     }
 }
 
@@ -254,6 +270,7 @@ export function MasterDataRecordPanel({
     vendors,
     owners,
     departments,
+    customStatuses,
 }: MasterDataRecordPanelProps) {
     const router = useRouter();
     const formRef = useRef<HTMLFormElement>(null);
@@ -282,6 +299,7 @@ export function MasterDataRecordPanel({
             vendors,
             owners,
             departments,
+            customStatuses,
         });
     }, [
         brands,
@@ -293,6 +311,7 @@ export function MasterDataRecordPanel({
         numericRecordId,
         owners,
         vendors,
+        customStatuses,
     ]);
     const linkedAssetsCount = selectedRecord?.linkedAssets ?? 0;
 
@@ -357,6 +376,14 @@ export function MasterDataRecordPanel({
                 const owner = selectedRecord as MasterDataOwnerRow;
                 nextDraft.companyName = owner.companyName;
                 nextDraft.isActive = owner.isActive;
+                break;
+            }
+            case "statuses": {
+                const status = selectedRecord as MasterDataCustomStatusRow;
+                nextDraft.name = status.name;
+                nextDraft.iconName = status.iconName;
+                nextDraft.colorTheme = status.colorTheme;
+                nextDraft.isActive = status.isActive;
                 break;
             }
         }
@@ -1499,6 +1526,123 @@ export function MasterDataRecordPanel({
                     </>
                 );
             }
+
+            case "statuses": {
+                const iconName = asString(draft.iconName);
+                const colorTheme = asString(draft.colorTheme) as StatusTheme;
+
+                return (
+                    <>
+                        {renderRecordIdPreview()}
+
+                        <div className="space-y-4">
+                            {renderTextField("name", "Status Name", asString(draft.name), {
+                                required: true,
+                                placeholder: "e.g., In Transit",
+                            })}
+
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Icon {!isDetailMode && <span className="text-red-500"> *</span>}
+                                    </label>
+                                    {isDetailMode ? (
+                                        <div className="flex items-center gap-2 h-9 border rounded-md px-3 bg-slate-100">
+                                            {(() => {
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                const Icon = (LucideIcons as any)[iconName] as LucideIcon;
+                                                return Icon ? <Icon className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />;
+                                            })()}
+                                            <span className="text-sm text-slate-700">{iconName}</span>
+                                        </div>
+                                    ) : (
+                                        <Select
+                                            value={iconName}
+                                            onValueChange={(val) => setDraftField("iconName", val)}
+                                            name="iconName"
+                                        >
+                                            <SelectTrigger className="h-9">
+                                                <div className="flex items-center gap-2">
+                                                    {(() => {
+                                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                        const Icon = (LucideIcons as any)[iconName] as LucideIcon;
+                                                        return Icon ? <Icon className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />;
+                                                    })()}
+                                                    <SelectValue placeholder="Select an icon" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <div className="grid grid-cols-4 gap-1 p-1 max-h-60 overflow-y-auto">
+                                                    {AVAILABLE_STATUS_ICONS.map((icon) => {
+                                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                        const Icon = (LucideIcons as any)[icon] as LucideIcon;
+                                                        return (
+                                                            <SelectItem 
+                                                                key={icon} 
+                                                                value={icon}
+                                                                className="flex items-center justify-center p-2 hover:bg-slate-100 cursor-pointer rounded"
+                                                            >
+                                                                {Icon ? <Icon className="h-5 w-5" /> : <span>{icon}</span>}
+                                                            </SelectItem>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                    {!isDetailMode && fieldError("iconName") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {fieldError("iconName")}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        Status Theme {!isDetailMode && <span className="text-red-500"> *</span>}
+                                    </label>
+                                    {isDetailMode ? (
+                                        <div className={cn("flex items-center gap-2 h-9 border rounded-md px-3 bg-slate-100")}>
+                                            <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-slate-200")} />
+                                            <span className="text-sm text-slate-700 capitalize">{colorTheme}</span>
+                                        </div>
+                                    ) : (
+                                        <Select
+                                            value={colorTheme}
+                                            onValueChange={(val) => setDraftField("colorTheme", val)}
+                                            name="colorTheme"
+                                        >
+                                            <SelectTrigger className="h-9">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-slate-200")} />
+                                                    <SelectValue placeholder="Select a theme" />
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {STATUS_COLORS.map((theme) => (
+                                                    <SelectItem key={theme.value} value={theme.value}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[theme.value as StatusTheme])} />
+                                                            <span>{theme.label}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                    {!isDetailMode && fieldError("colorTheme") && (
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                            {fieldError("colorTheme")}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {renderActiveStatus()}
+                    </>
+                );
+            }
         }
     };
 
@@ -1593,6 +1737,7 @@ export function MasterDataRecordPanel({
             vendors: "Vendor",
             owners: "Owner",
             departments: "Department",
+            statuses: "Status",
         };
         return labels[normalizedEntity] || "Record";
     };
