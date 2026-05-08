@@ -193,8 +193,11 @@ export function AssetDetailsPanelWrapper({
             : data?.purchase?.vendorId != null
               ? String(data.purchase.vendorId)
               : "",
+        vendorCode: data?.vendor?.vendorCode ?? undefined,
         vendorName: data?.vendor?.companyName ?? "",
-        contactNumber: data?.vendor?.contactInfo ?? ""
+        contactNumber: data?.vendor?.phone ?? undefined,
+        email: data?.vendor?.email ?? undefined,
+        website: data?.vendor?.website ?? undefined,
       }}
       invoiceUrl={data?.purchase?.invoiceUrl ?? ""}
       currentBookValue={financialVitals?.currentBookValue}

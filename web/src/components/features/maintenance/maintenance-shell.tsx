@@ -149,12 +149,9 @@ export function MaintenanceShell() {
       <div className="flex flex-1 flex-col bg-background overflow-hidden min-w-0">
         <div className="px-6 pt-6 pb-2 shrink-0">
           <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
-          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground mt-1`}>
-            Manage asset maintenance requests, repairs, and service history
-          </p>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden flex flex-col">
+        <div className="min-h-0 flex-1 overflow-hidden flex flex-col px-6 pb-6">
           <MaintenanceTabs
             pendingTickets={pendingTickets}
             activeRepairTickets={activeRepairTickets}

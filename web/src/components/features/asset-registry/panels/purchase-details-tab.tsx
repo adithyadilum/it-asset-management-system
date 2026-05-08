@@ -33,6 +33,7 @@ export interface PurchaseDetailsTabProps {
   invoicePdf?: string;
   vendor: {
     vendorId: string;
+    vendorCode?: string;
     vendorName: string;
     contactPerson?: string;
     contactNumber?: string;
@@ -64,6 +65,26 @@ export function PurchaseDetailsTab({
   className = '',
 }: PurchaseDetailsTabProps) {
   const resolvedSourceCurrency = sourceCurrency ?? currency;
+
+  const formatDate = (value: string) => {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return value || '-';
+    return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).format(d);
+  };
+
+  const getInvoiceFilename = (url?: string) => {
+    if (!url) return 'Invoice.pdf';
+    try {
+      const parsed = new URL(url, window?.location?.origin ?? undefined);
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      return parts.length ? parts[parts.length - 1] : 'Invoice.pdf';
+    } catch {
+      // fallback: try last segment of the string
+      const parts = url.split('/').filter(Boolean);
+      return parts.length ? parts[parts.length - 1] : 'Invoice.pdf';
+    }
+  };
 
   const formatConvertedMoney = (value: string | undefined) => {
     const parsedValue = tryParseCurrencyAmount(value);
@@ -111,7 +132,7 @@ export function PurchaseDetailsTab({
           isMono && 'font-mono tabular-nums tracking-wide'
         )}
       >
-        {value || '-'}
+        {(value !== null && value !== undefined && value !== '') ? value : '-'}
       </div>
     </div>
   );
@@ -120,7 +141,7 @@ export function PurchaseDetailsTab({
     <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
       {/* Currency Selector */}
       <div className="mt-2 flex w-full items-center">
-        <Select value={currency} onValueChange={onCurrencyChange}>
+        <Select value={currency} onValueChange={onCurrencyChange ?? (() => { })}>
           <SelectTrigger className="h-8 w-28">
             <SelectValue placeholder="Currency" />
           </SelectTrigger>
@@ -136,7 +157,7 @@ export function PurchaseDetailsTab({
 
       {/* Purchase Information */}
       <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-        {renderField('Purchase Date', purchaseDate)}
+        {renderField('Purchase Date', formatDate(purchaseDate))}
         {renderField('Base Price', formattedBasePrice, true)}
         {renderField('Shipping Cost', formattedShippingCost, true)}
         {renderField('Tax', formattedTax, true)}
@@ -163,7 +184,7 @@ export function PurchaseDetailsTab({
                 className="flex w-fit items-center justify-center gap-2.5 rounded-lg border border-border bg-muted px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent"
               >
                 <FileText size={16} />
-                <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Invoice.pdf</span>
+                <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>{getInvoiceFilename(invoicePdf)}</span>
               </a>
             ) : (
               <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-400')}>-</span>
@@ -176,7 +197,7 @@ export function PurchaseDetailsTab({
       <div className="flex w-full flex-col gap-6 rounded-lg border border-border bg-muted/30 p-6 shadow-sm">
         <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-slate-900')}>Vendor Details</h3>
         <div className="grid grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-          {renderField('Vendor ID', vendor.vendorId, true)}
+          {renderField('Vendor ID', vendor.vendorCode ?? vendor.vendorId, true)}
           {renderField('Vendor Name', vendor.vendorName)}
           {renderField('Contact Person', vendor.contactPerson)}
           {renderField('Contact Number', vendor.contactNumber)}

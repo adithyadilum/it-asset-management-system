@@ -1,7 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { assets, maintenanceTickets, systemAuditLogs, assetDisposals, assetDocuments } from '@/db/schema';
+import {
+  assets,
+  maintenanceTickets,
+  systemAuditLogs,
+  assetDisposals,
+  assetDocuments,
+} from '@/db/schema';
 import { isValidUuid } from '@/lib/auth/uuid';
 
 // ---------------------------------------------------------------------------
@@ -57,8 +63,11 @@ export interface AssetDetailsData {
   } | null;
   vendor: {
     id: number;
+    vendorCode: string | null;
     companyName: string;
-    contactInfo: string | null;
+    email: string | null;
+    phone: string | null;
+    website: string | null;
   } | null;
   owner: {
     id: number;
@@ -259,7 +268,14 @@ export async function getAssetDetailsById(
         },
         with: {
           vendor: {
-            columns: { id: true, companyName: true, email: true, phone: true },
+            columns: {
+              id: true,
+              vendorCode: true,
+              companyName: true,
+              email: true,
+              phone: true,
+              website: true,
+            },
           },
         },
       },
@@ -347,9 +363,11 @@ export async function getAssetDetailsById(
     vendor: purchaseRecord?.vendor
       ? {
           id: purchaseRecord.vendor.id,
+          vendorCode: purchaseRecord.vendor.vendorCode,
           companyName: purchaseRecord.vendor.companyName,
-          contactInfo:
-            purchaseRecord.vendor.email ?? purchaseRecord.vendor.phone ?? null,
+          email: purchaseRecord.vendor.email,
+          phone: purchaseRecord.vendor.phone,
+          website: purchaseRecord.vendor.website,
         }
       : null,
     owner: assetRecord.owner
@@ -504,7 +522,13 @@ export async function getAssetDisposalById(
     reason: disposalRecord.reason,
     flaggedBy: disposalRecord.requestedBy?.name ?? 'Unknown',
     disposedBy: disposalRecord.approvedBy?.name ?? null,
-    disposalDate: disposalRecord.resolvedAt ? disposalRecord.resolvedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+    disposalDate: disposalRecord.resolvedAt
+      ? disposalRecord.resolvedAt.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+      : null,
     status: disposalRecord.status,
     documentUrls: documents.map((doc) => doc.fileUrl),
   };
