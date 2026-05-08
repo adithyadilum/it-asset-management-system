@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, ChevronRight, ListFilter, Plus } from 'lucide-react';
+import { ChevronRight, ListFilter, Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -76,7 +76,7 @@ export function StandardReportsConfigPanel({
               size="sm"
               className="h-full items-center justify-center border-dashed border-border bg-background text-center"
             >
-              <CardContent className="flex min-h-[11rem] flex-col items-center justify-center gap-4 p-4 text-center">
+              <CardContent className="flex min-h-44 flex-col items-center justify-center gap-4 p-4 text-center">
                 <Plus className="size-6 text-foreground" />
                 <div className="space-y-1.5">
                   <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
@@ -123,13 +123,22 @@ export function StandardReportsConfigPanel({
           </CardHeader>
           <CardContent className="flex flex-col gap-4 p-4 pt-3">
             <FilterRow label="Date Range">
-              <Button
-                variant="outline"
-                className="w-full justify-between font-normal text-foreground"
-              >
-                <span>June 01, 2025 - June 01, 2025</span>
-                <CalendarDays className="size-4" />
-              </Button>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={filterState.dateFrom || ''}
+                  onChange={(e) => onFilterChange('dateFrom', e.target.value)}
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                  placeholder="From"
+                />
+                <input
+                  type="date"
+                  value={filterState.dateTo || ''}
+                  onChange={(e) => onFilterChange('dateTo', e.target.value)}
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                  placeholder="To"
+                />
+              </div>
             </FilterRow>
 
             <FilterRow label="Category">

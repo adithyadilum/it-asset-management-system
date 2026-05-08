@@ -22,9 +22,14 @@ import { customStatuses } from '@/db/schema';
 // ---------------------------------------------------------------------------
 
 export interface ReportPreviewFilters {
+  source?: string;
   category?: string;
   location?: string;
   status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -32,33 +37,68 @@ export interface ReportPreviewFilters {
 // ---------------------------------------------------------------------------
 
 export async function getStandardReportsFilterOptions() {
-  const [dbLocations, dbCustomStatuses] = await Promise.all([
-    db
-      .select({ name: locations.name })
-      .from(locations)
-      .where(eq(locations.isActive, true)),
-    db
-      .select({ name: customStatuses.name })
-      .from(customStatuses)
-      .where(eq(customStatuses.isActive, true)),
-  ]);
+  const actionTimer = startLatencyTimer();
 
-  const defaultStatuses = [
-    'Available',
-    'Assigned',
-    'In Repair',
-    'Defective',
-    'Lost',
-    'Retired',
-    'Pending Disposal',
-    'Disposed',
-  ];
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    throw new Error('Forbidden: You do not have permission to access reports.');
+  }
 
-  return {
-    categories: ['All categories', 'Hardware', 'Software', 'Electronics', 'Furniture'],
-    locations: ['All locations', ...Array.from(new Set(dbLocations.map((l) => l.name))).sort()],
-    statuses: ['All statuses', ...defaultStatuses, ...Array.from(new Set(dbCustomStatuses.map((s) => s.name))).sort()],
-  };
+  try {
+    const [dbLocations, dbCustomStatuses] = await Promise.all([
+      db
+        .select({ name: locations.name })
+        .from(locations)
+        .where(eq(locations.isActive, true)),
+      db
+        .select({ name: customStatuses.name })
+        .from(customStatuses)
+        .where(eq(customStatuses.isActive, true)),
+    ]);
+
+    const defaultStatuses = [
+      'Available',
+      'Assigned',
+      'In Repair',
+      'Defective',
+      'Lost',
+      'Retired',
+      'Pending Disposal',
+      'Disposed',
+    ];
+
+    return {
+      categories: [
+        'All categories',
+        'Hardware',
+        'Software',
+        'Electronics',
+        'Furniture',
+      ],
+      locations: [
+        'All locations',
+        ...Array.from(new Set(dbLocations.map((l) => l.name))).sort(),
+      ],
+      statuses: [
+        'All statuses',
+        ...defaultStatuses,
+        ...Array.from(new Set(dbCustomStatuses.map((s) => s.name))).sort(),
+      ],
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'standardReports.getStandardReportsFilterOptions',
+      error,
+    });
+    throw new Error('Failed to fetch filter options.');
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'standardReports.getStandardReportsFilterOptions',
+      startTime: actionTimer,
+    });
+  }
 }
 
 export async function fetchReportPreview(
@@ -67,7 +107,13 @@ export async function fetchReportPreview(
   const actionTimer = startLatencyTimer();
 
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) {
+  if (!currentUser) {
+    throw new Error('Unauthorized: Please log in.');
+  }
+
+  // Allow GlobalAdmin, ITOperator, and FinanceAuditor for report viewing
+  const allowedRoles = ['GlobalAdmin', 'ITOperator', 'FinanceAuditor'];
+  if (!allowedRoles.includes(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to generate reports.'
     );
@@ -83,7 +129,7 @@ export async function fetchReportPreview(
       if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
       if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
       if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
-      
+
       conditions.push(eq(categories.pillar, dbPillar as never));
     }
 
@@ -102,6 +148,11 @@ export async function fetchReportPreview(
 
     const queryTimer = startLatencyTimer();
 
+    // Apply server-side pagination: default to 16 rows per preview
+    const pageSize = filters.pageSize ?? 16;
+    const page = filters.page ?? 0;
+    const offset = page * pageSize;
+
     const rows = await db
       .select({
         id: assets.id,
@@ -116,7 +167,9 @@ export async function fetchReportPreview(
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(locations, eq(assets.locationId, locations.id))
       .where(whereCondition)
-      .orderBy(desc(assets.updatedAt), asc(assets.assetTag));
+      .orderBy(desc(assets.updatedAt), asc(assets.assetTag))
+      .limit(pageSize)
+      .offset(offset);
 
     logLatency({
       scope: 'DB ACTION',
@@ -149,10 +202,7 @@ export async function fetchReportPreview(
           !assignedUserByAssetId.has(assignment.assetId) &&
           assignment.assignedTo
         ) {
-          assignedUserByAssetId.set(
-            assignment.assetId,
-            assignment.assignedTo
-          );
+          assignedUserByAssetId.set(assignment.assetId, assignment.assignedTo);
         }
       }
     }

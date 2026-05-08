@@ -26,18 +26,26 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
   const [previewData, setPreviewData] = useState<ReportPreviewRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   // Fetch report data using the current filter state
   const loadPreview = useCallback(async (filters: FilterState) => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchReportPreview({
+        source: filters.source,
         category: filters.category,
         location: filters.location,
         status: filters.status,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
       });
       setPreviewData(data);
       setShowDataGrid(true);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch report preview';
+      setErrorMessage(message);
       console.error('Failed to fetch report preview:', error);
       setPreviewData([]);
       setShowDataGrid(true);
@@ -76,6 +84,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
     setFilterState(DEFAULT_FILTER_STATE);
     setShowDataGrid(false);
     setPreviewData([]);
+    setErrorMessage(null);
   }, []);
 
   // Called when any individual filter changes
@@ -102,6 +111,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
           showDataGrid={showDataGrid}
           previewData={previewData}
           isLoading={isLoading}
+          errorMessage={errorMessage}
         />
       </div>
     </div>

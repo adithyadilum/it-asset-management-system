@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ChevronRight, Download, Filter } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -16,6 +16,7 @@ interface StandardReportsPreviewPanelProps {
   showDataGrid: boolean;
   previewData: ReportPreviewRow[];
   isLoading: boolean;
+  errorMessage?: string | null;
 }
 
 function toCellText(value: string | null | undefined) {
@@ -29,6 +30,7 @@ export function StandardReportsPreviewPanel({
   showDataGrid,
   previewData,
   isLoading,
+  errorMessage,
 }: StandardReportsPreviewPanelProps) {
   const columns = useMemo<ColumnDef<ReportPreviewRow>[]>(
     () => [
@@ -88,7 +90,23 @@ export function StandardReportsPreviewPanel({
         </div>
       </CardHeader>
       <div className="flex-1 p-6 pt-0 flex flex-col min-h-0">
-        {isLoading ? (
+        {errorMessage ? (
+          <Card className="border-border bg-card flex h-full min-h-0 flex-col rounded-xl shadow-sm overflow-hidden">
+            <CardContent className="flex h-full flex-1 items-center justify-center p-4">
+              <div className="flex max-w-lg flex-col items-center gap-4 text-center text-destructive">
+                <AlertTriangle className="size-12 text-destructive" strokeWidth={1} />
+                <div className="space-y-1.5">
+                  <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                    Error loading report
+                  </p>
+                  <p className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
+                    {errorMessage}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : isLoading ? (
           <Card className="border-border bg-card flex h-full min-h-0 flex-col rounded-xl shadow-sm overflow-hidden">
             <CardContent className="flex h-full flex-1 items-center justify-center p-4">
               <TableSkeleton

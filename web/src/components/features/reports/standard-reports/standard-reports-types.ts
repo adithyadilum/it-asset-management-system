@@ -1,4 +1,4 @@
-import type { FileText } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Filter State
@@ -9,6 +9,8 @@ export interface FilterState {
   category: string;
   location: string;
   status: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export const DEFAULT_FILTER_STATE: FilterState = {
@@ -16,6 +18,8 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   category: '',
   location: '',
   status: '',
+  dateFrom: '',
+  dateTo: '',
 };
 
 // ---------------------------------------------------------------------------
@@ -62,6 +66,6 @@ export const TEMPLATE_PRESETS: Record<string, TemplatePreset> = {
 export type ReportTemplate = {
   title: string;
   description: string;
-  icon: typeof FileText;
+  icon: LucideIcon;
   onPreviewClick?: (title: string) => void;
 };
