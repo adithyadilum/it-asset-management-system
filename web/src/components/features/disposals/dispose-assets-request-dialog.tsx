@@ -60,7 +60,6 @@ export function DisposeAssetsRequestDialog({
           justification,
         });
         
-        tiqriToast.success(`Disposal request created: ${result.inserted} submitted.`);
         onOpenChange(false);
         onSubmitted({ inserted: result.inserted, skipped: result.skipped });
       } catch (error) {

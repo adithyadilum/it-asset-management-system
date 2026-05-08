@@ -681,7 +681,110 @@ export async function seedAssets() {
       modelIds[modelSeed.name] = inserted[0].id;
     }
 
-    const assetSeeds = [
+    // ==============================================================================
+    // GENERATE ADDITIONAL TEST DATA FOR GRIDS
+    // ==============================================================================
+    const generatedDisposedAssets = Array.from({ length: 15 }).map((_, i) => ({
+      assetTag: `LAP-DISP-GEN-${i + 100}`,
+      serialNumber: `DISP-GEN-${i + 100}`,
+      name: `Generated Disposed Laptop ${i + 1}`,
+      model: 'ThinkPad T14',
+      location: 'Warehouse Staging',
+      owner: 'Tiqri Holdings',
+      status: 'Disposed',
+      condition: 'Poor',
+      usefulLifeMonths: 48,
+      salvageValue: ((i + 1) * 10).toFixed(2),
+      instanceAttributes: { os: 'Windows 10', ramGb: 8 },
+      vendor: 'Atlas Tech Services',
+      purchaseDate: '2021-01-15',
+      basePrice: '1000.00',
+      tax: '100.00',
+      shippingCost: '20.00',
+      totalCost: '1120.00',
+      warrantyExpiry: '2024-01-15',
+      invoiceUrl: 'https://example.com/invoices/gen.pdf',
+      documentType: 'disposal-certificate',
+      documentUrl: 'https://example.com/docs/gen.pdf',
+    }));
+
+    const generatedInternalMaintenanceAssets = Array.from({ length: 15 }).map(
+      (_, i) => ({
+        assetTag: `LAP-MNT-INT-${i + 100}`,
+        serialNumber: `MNT-INT-${i + 100}`,
+        name: `Generated Internal Maintenance Laptop ${i + 1}`,
+        model: 'Latitude 5440',
+        location: 'IT Floor',
+        owner: 'Tiqri Holdings',
+        status: 'In Repair',
+        condition: 'Fair',
+        usefulLifeMonths: 48,
+        salvageValue: '200.00',
+        instanceAttributes: { os: 'Windows 11', ramGb: 16 },
+        vendor: 'Dell Technologies',
+        purchaseDate: '2023-05-10',
+        basePrice: '1200.00',
+        tax: '120.00',
+        shippingCost: '30.00',
+        totalCost: '1350.00',
+        warrantyExpiry: '2026-05-10',
+        invoiceUrl: 'https://example.com/invoices/gen.pdf',
+        documentType: 'handover',
+        documentUrl: 'https://example.com/docs/gen.pdf',
+      })
+    );
+
+    const generatedVendorRepairAssets = Array.from({ length: 15 }).map(
+      (_, i) => ({
+        assetTag: `LAP-MNT-VND-${i + 100}`,
+        serialNumber: `MNT-VND-${i + 100}`,
+        name: `Generated Vendor Repair Laptop ${i + 1}`,
+        model: 'Surface Laptop 6',
+        location: 'Repair Lab',
+        owner: 'Tiqri Holdings',
+        status: 'In Repair',
+        condition: 'Fair',
+        usefulLifeMonths: 48,
+        salvageValue: '250.00',
+        instanceAttributes: { os: 'Windows 11', ramGb: 16 },
+        vendor: 'Microsoft',
+        purchaseDate: '2023-11-20',
+        basePrice: '1500.00',
+        tax: '150.00',
+        shippingCost: '30.00',
+        totalCost: '1680.00',
+        warrantyExpiry: '2026-11-20',
+        invoiceUrl: 'https://example.com/invoices/gen.pdf',
+        documentType: 'handover',
+        documentUrl: 'https://example.com/docs/gen.pdf',
+      })
+    );
+
+    const generatedHistoryAssets = Array.from({ length: 15 }).map((_, i) => ({
+      assetTag: `LAP-HST-GEN-${i + 100}`,
+      serialNumber: `HST-GEN-${i + 100}`,
+      name: `Generated History Laptop ${i + 1}`,
+      model: 'ThinkPad T14',
+      location: 'IT Floor',
+      owner: 'Tiqri Holdings',
+      status: 'Available', // Repair completed, asset is available again
+      condition: 'Excellent',
+      usefulLifeMonths: 48,
+      salvageValue: '300.00',
+      instanceAttributes: { os: 'Windows 11 Pro', ramGb: 16 },
+      vendor: 'Lenovo',
+      purchaseDate: '2022-08-10',
+      basePrice: '1300.00',
+      tax: '130.00',
+      shippingCost: '20.00',
+      totalCost: '1450.00',
+      warrantyExpiry: '2025-08-10',
+      invoiceUrl: 'https://example.com/invoices/gen.pdf',
+      documentType: 'handover',
+      documentUrl: 'https://example.com/docs/gen.pdf',
+    }));
+
+    const baseAssetSeeds = [
       {
         assetTag: 'LAP-HQ-001',
         serialNumber: 'PC1A2B3C',
@@ -895,7 +998,16 @@ export async function seedAssets() {
         documentType: 'disposal-certificate',
         documentUrl: 'https://example.com/docs/lap-disp-001-disposal.pdf',
       },
-    ] as const;
+    ];
+
+    // Combine manual seeds with all generated seeds
+    const assetSeeds = [
+      ...baseAssetSeeds,
+      ...generatedDisposedAssets,
+      ...generatedInternalMaintenanceAssets,
+      ...generatedVendorRepairAssets,
+      ...generatedHistoryAssets,
+    ];
 
     const assetIds: Record<string, string> = {};
     for (const assetSeed of assetSeeds) {
@@ -1080,7 +1192,60 @@ export async function seedAssets() {
       await db.insert(assetAssignments).values(values);
     }
 
-    const maintenanceTicketSeeds = [
+    // Generate 15 Internal Maintenance Tickets (Pending Review Tab)
+    const generatedInternalMaintenanceTickets =
+      generatedInternalMaintenanceAssets.map((asset, i) => ({
+        assetTag: asset.assetTag,
+        ticketType: 'INTERNAL',
+        vendorName: null,
+        rmaNumber: null,
+        reportedIssue: `Generated internal issue ${i + 1}: Needs diagnostic.`,
+        resolutionNotes: null,
+        estimatedCost: '50.00',
+        actualCost: null,
+        estimatedReturnDate: '2026-06-01',
+        actualCompletionDate: null,
+        status: 'ACTIVE',
+        dispatchedById: itUserId,
+      }));
+
+    // Generate 15 Vendor Maintenance Tickets (Active Repairs Tab)
+    const generatedVendorMaintenanceTickets = generatedVendorRepairAssets.map(
+      (asset, i) => ({
+        assetTag: asset.assetTag,
+        ticketType: 'VENDOR',
+        vendorName: 'Dell Technologies',
+        rmaNumber: `RMA-VND-GEN-${i + 100}`,
+        reportedIssue: `Generated vendor issue ${i + 1}: Shipped for repair.`,
+        resolutionNotes: null,
+        estimatedCost: (150 + i * 5).toFixed(2),
+        actualCost: null,
+        estimatedReturnDate: '2026-07-01',
+        actualCompletionDate: null,
+        status: 'ACTIVE',
+        dispatchedById: itUserId,
+      })
+    );
+
+    // Generate 15 Completed Maintenance Tickets (Repair History Tab)
+    const generatedHistoryTickets = generatedHistoryAssets.map((asset, i) => ({
+      assetTag: asset.assetTag,
+      ticketType: 'VENDOR',
+      vendorName: 'Lenovo',
+      rmaNumber: `RMA-HST-GEN-${i + 100}`,
+      reportedIssue: `Generated history issue ${i + 1}: Battery replacement.`,
+      resolutionNotes: `Replaced battery and tested successfully.`,
+      estimatedCost: '100.00',
+      actualCost: (90 + i * 2).toFixed(2),
+      estimatedReturnDate: '2025-11-01',
+      actualCompletionDate: new Date(
+        new Date().setMonth(new Date().getMonth() - 2)
+      ), // completed 2 months ago
+      status: 'COMPLETED',
+      dispatchedById: itUserId,
+    }));
+
+    const baseMaintenanceTicketSeeds = [
       {
         assetTag: 'MON-OPS-001',
         ticketType: 'VENDOR',
@@ -1123,7 +1288,14 @@ export async function seedAssets() {
         status: 'CANCELLED',
         dispatchedById: itUserId,
       },
-    ] as const;
+    ];
+
+    const maintenanceTicketSeeds = [
+      ...baseMaintenanceTicketSeeds,
+      ...generatedInternalMaintenanceTickets,
+      ...generatedVendorMaintenanceTickets,
+      ...generatedHistoryTickets,
+    ];
 
     for (const ticketSeed of maintenanceTicketSeeds) {
       const assetId = assetIds[ticketSeed.assetTag];
@@ -1161,7 +1333,24 @@ export async function seedAssets() {
       await db.insert(maintenanceTickets).values(values);
     }
 
-    const disposalSeeds = [
+    // Generate 15 Completed Disposals for the Ledger
+    const generatedDisposals = generatedDisposedAssets.map((asset) => ({
+      assetTag: asset.assetTag,
+      requestedById: financeUserId,
+      approvedById: adminUserId,
+      status: 'Completed',
+      reason: 'End of life replacement',
+      justification: 'Automated generated disposal record.',
+      rejectionReason: null,
+      dataWiped: true,
+      tagsRemoved: true,
+      actualSalvageValue: asset.salvageValue,
+      bookValueAtDisposal: '0.00',
+      resolvedAt: now,
+      notes: 'Auto-generated disposal for grid testing.',
+    }));
+
+    const baseDisposalSeeds = [
       {
         assetTag: 'LAP-PEND-001',
         requestedById: financeUserId,
@@ -1207,7 +1396,9 @@ export async function seedAssets() {
         resolvedAt: now,
         notes: 'Rejected by admin during quarterly review.',
       },
-    ] as const;
+    ];
+
+    const disposalSeeds = [...baseDisposalSeeds, ...generatedDisposals];
 
     for (const disposalSeed of disposalSeeds) {
       const assetId = assetIds[disposalSeed.assetTag];

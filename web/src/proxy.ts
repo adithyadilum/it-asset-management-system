@@ -56,7 +56,7 @@ function canAccessRoute(role: TokenRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
-    pathname === '/dashboard/' 
+    pathname === '/dashboard/'
   ) {
     return true;
   }
@@ -96,7 +96,10 @@ export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const { pathname } = request.nextUrl;
-  const isProtectedRoute = pathname !== '/login' && pathname !== '/403';
+  const isProtectedRoute =
+    pathname !== '/login' &&
+    pathname !== '/403' &&
+    !pathname.startsWith('/api');
   const isLoginRoute = pathname === '/login';
 
   try {
@@ -153,5 +156,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
