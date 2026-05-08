@@ -61,7 +61,7 @@ export interface AssetDetailsPanelProps {
   currentBookValue?: number;
   totalRepairCosts?: number;
   totalTCO?: number;
-  vendorInfo?: { vendorId: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
+  vendorInfo?: { vendorId: string; vendorCode?: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
 
   // Event Data
   historyEvents?: HistoryEvent[];
@@ -79,11 +79,11 @@ export interface AssetDetailsPanelProps {
   onQRCodeClick?: () => void;
   onCurrencyChange?: (currency: string) => void;
   onRevokeAllocation?: (userId: string) => void;
-  manualStatuses?: Array<{ 
-    value: string; 
-    label: string; 
-    colorTheme?: string; 
-    iconName?: string; 
+  manualStatuses?: Array<{
+    value: string;
+    label: string;
+    colorTheme?: string;
+    iconName?: string;
   }>;
   onStatusChanged?: (nextStatus: string) => void;
   hideActions?: boolean;
@@ -213,10 +213,10 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
           {/* ============ EPIC 15: NEW DYNAMIC MAINTENANCE UI ============ */}
           {!isSoftware && (
-            <RecentMaintenance 
-              assetTag={props.assetTag} 
-              isOpen={props.isOpen} 
-              onViewAll={props.onViewAllMaintenance} 
+            <RecentMaintenance
+              assetTag={props.assetTag}
+              isOpen={props.isOpen}
+              onViewAll={props.onViewAllMaintenance}
             />
           )}
           {/* ==================================================== */}
@@ -364,7 +364,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     const isDisposed = props.status === 'Disposed';
     const isPendingDisposal = props.status === 'Pending Disposal';
-    
+
     const list: SlidePanelAction[] = [];
 
     // Disposed assets cannot be edited
