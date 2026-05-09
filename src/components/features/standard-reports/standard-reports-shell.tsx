@@ -14,7 +14,8 @@ import { StandardReportsPreviewPanel } from './standard-reports-preview-panel';
 
 interface StandardReportsShellProps {
   filterOptions: {
-    categories: string[];
+    assetTypes: string[];
+    categories: { name: string; pillar: string }[];
     locations: string[];
     statuses: string[];
   };
@@ -35,6 +36,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
     try {
       const data = await fetchReportPreview({
         source: filters.source,
+        assetType: filters.assetType,
         category: filters.category,
         location: filters.location,
         status: filters.status,
@@ -63,7 +65,8 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
       const nextFilterState: FilterState = {
         ...DEFAULT_FILTER_STATE,
         source: preset.source ?? DEFAULT_FILTER_STATE.source,
-        category: preset.category ?? DEFAULT_FILTER_STATE.category,
+        assetType: preset.category ?? DEFAULT_FILTER_STATE.assetType,
+        category: DEFAULT_FILTER_STATE.category,
         location: preset.location ?? DEFAULT_FILTER_STATE.location,
         status: preset.status ?? DEFAULT_FILTER_STATE.status,
       };
@@ -90,7 +93,16 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
   // Called when any individual filter changes
   const handleFilterChange = useCallback(
     (field: keyof FilterState, value: string) => {
-      setFilterState((prev) => ({ ...prev, [field]: value }));
+      setFilterState((prev) => {
+        const next = { ...prev, [field]: value };
+        
+        // Dependent logic: If Asset Type changes, clear Category
+        if (field === 'assetType') {
+          next.category = '';
+        }
+        
+        return next;
+      });
     },
     []
   );
