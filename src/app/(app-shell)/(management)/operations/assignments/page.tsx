@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 import { AssignmentsDashboard } from '@/components/features/operations/assignments/assignments-dashboard';
 import { type AssignmentsDashboardTab, getAssignmentsDashboardData } from '@/lib/data/operations-assignments-repo';

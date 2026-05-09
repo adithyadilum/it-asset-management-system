@@ -48,6 +48,7 @@ type AssetAssignmentRow = {
   warranty: string;
   note: string;
   assetTag: string;
+  state: string;
   lastRepaired?: string;
 };
 
@@ -121,6 +122,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     lastRepaired: "-",
     note: asset.location ?? "-",
     assetTag: asset.assetTag,
+    state: asset.state,
   });
 
   const availableRows = useMemo<AssetAssignmentRow[]>(
@@ -272,6 +274,27 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         </Badge>
       ),
     },
+    {
+      accessorKey: "state",
+      header: "Status",
+      cell: ({ row }) => {
+        const state = row.original.state;
+        const colors: Record<string, string> = {
+          'pending approval': "bg-amber-50 text-amber-700 border-amber-200",
+          'assigned': "bg-emerald-50 text-emerald-700 border-emerald-200",
+          'overdue': "bg-rose-50 text-rose-700 border-rose-200",
+          'requested': "bg-blue-50 text-blue-700 border-blue-200",
+          'returned': "bg-slate-50 text-slate-700 border-slate-200",
+        };
+        const colorClass = colors[state] || "bg-slate-50 text-slate-700 border-slate-200";
+        
+        return (
+          <Badge variant="outline" className={`h-5 rounded-full px-2 text-[11px] font-medium capitalize ${colorClass}`}>
+            {state}
+          </Badge>
+        );
+      },
+    },
   ], []);
 
   // 4. Handlers to trigger the Slide Panel via URL
@@ -296,20 +319,26 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
   const renderTable = (
     rows: AssetAssignmentRow[],
-    actions?: DataTableSelectionAction<AssetAssignmentRow>[]
-  ) => (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-136.25">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search assets..."
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            className="h-9 pl-9"
-          />
-        </div>
+    actions?: DataTableSelectionAction<AssetAssignmentRow>[],
+    showStatusColumn = false
+  ) => {
+    const tableColumns = showStatusColumn
+      ? columns
+      : columns.filter((col) => (col as any).accessorKey !== "state");
+
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative w-full max-w-136.25">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Search assets..."
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              className="h-9 pl-9"
+            />
+          </div>
         <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
           <PopoverAnchor asChild>
             <Button
@@ -438,7 +467,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       ) : null}
 
       <DataTable<AssetAssignmentRow, unknown>
-        columns={columns}
+        columns={tableColumns}
         data={rows}
         onRowClick={handleRowClick}
         initialPageSize={10}
@@ -448,6 +477,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       />
     </div>
   );
+};
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-50">
@@ -469,15 +499,15 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
             }}
           >
             <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAvailableRows, selectionActions)}
+              {renderTable(filteredAvailableRows, selectionActions, false)}
             </TabsContent>
 
             <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAssignedRows)}
+              {renderTable(filteredAssignedRows, undefined, true)}
             </TabsContent>
 
             <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredReturnedRows)}
+              {renderTable(filteredReturnedRows, undefined, false)}
             </TabsContent>
           </ModuleNavigationTabs>
         </div>

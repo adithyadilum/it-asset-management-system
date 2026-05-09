@@ -22,6 +22,7 @@ export interface AssignmentsDashboardRow {
   category: string;
   pillar: string;
   status: AssetStatus | 'Returned';
+  state: 'pending approval' | 'assigned' | 'overdue' | 'requested' | 'returned';
   location: string | null;
   assignmentId?: number | null;
   assignedTo: string | null;
@@ -255,6 +256,7 @@ async function loadAssetsByStatusDirect(
       createdAt: assets.createdAt,
       updatedAt: assets.updatedAt,
       assignedToLocationId: assetAssignments.assignedToLocationId,
+      state: assetAssignments.state,
     })
     .from(assets)
     .innerJoin(models, eq(assets.modelId, models.id))
@@ -290,6 +292,7 @@ async function loadAssetsByStatusDirect(
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
     returnedDate: null,
+    state: row.state as any,
   }));
 }
 
@@ -320,6 +323,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
       expectedReturnDate: assetAssignments.expectedReturnDate,
       createdAt: assets.createdAt,
       updatedAt: assets.updatedAt,
+      state: assetAssignments.state,
     })
     .from(assets)
     .innerJoin(models, eq(assets.modelId, models.id))
@@ -354,6 +358,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
     returnedDate: null,
+    state: row.state as any,
   }));
 }
 
@@ -496,6 +501,7 @@ export async function assignSingleAsset(
         assignedToLocationId: target.assignedToLocationId,
         expectedReturnDate,
         notes,
+        state: 'pending approval',
       })
       .returning({
         id: assetAssignments.id,
@@ -595,6 +601,7 @@ export async function assignMultipleAssets(
           assignedToLocationId: target.assignedToLocationId,
           expectedReturnDate,
           notes,
+          state: 'pending approval',
         }))
       )
       .returning({
