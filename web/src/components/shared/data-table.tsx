@@ -260,6 +260,17 @@ export function DataTable<TData, TValue>({
 
   const tableContent = (
     <Table className="table-fixed min-w-full" containerClassName="!overflow-visible">
+      <colgroup>
+        {table.getAllLeafColumns().map((column) => (
+          <col
+            key={column.id}
+            style={{
+              width: column.getSize(),
+              minWidth: column.getSize(),
+            }}
+          />
+        ))}
+      </colgroup>
       <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
         {selectedRows > 0 ? (
           <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500">
