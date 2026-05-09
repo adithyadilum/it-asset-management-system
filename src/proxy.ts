@@ -45,6 +45,17 @@ function getTopLevelSegment(pathname: string) {
   return pathname.split('/').filter(Boolean)[0] ?? null;
 }
 
+function isPublicAssetPath(pathname: string) {
+  return (
+    pathname.startsWith('/_next/') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/manifest.json' ||
+    /\.[a-z0-9]+$/i.test(pathname)
+  );
+}
+
 /*
  * RBAC Matrix (top-level protected route segments):
  * - GlobalAdmin: all routes
@@ -97,6 +108,7 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const { pathname } = request.nextUrl;
   const isProtectedRoute =
+    !isPublicAssetPath(pathname) &&
     pathname !== '/login' &&
     pathname !== '/403' &&
     !pathname.startsWith('/api');
