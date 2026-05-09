@@ -122,7 +122,7 @@ export function StandardReportsConfigPanel({
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 p-4 pt-3">
-            <FilterRow label="Date Range">
+            {/*<FilterRow label="Date Range">
               <div className="flex gap-2">
                 <input
                   type="date"
@@ -139,7 +139,7 @@ export function StandardReportsConfigPanel({
                   placeholder="To"
                 />
               </div>
-            </FilterRow>
+            </FilterRow>*/}
 
             <FilterRow label="Category">
               <Select
