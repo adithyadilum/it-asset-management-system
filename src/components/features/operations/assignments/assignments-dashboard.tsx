@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
+import { 
+  sendAssignmentReminderAction, 
+  requestAssetReturnAction, 
+  markAssetReceivedAction 
+} from "@/actions/assignments";
 import { AssignmentsPanels } from "./assignments-panels";
 import {
   MultiAssetAssignmentModal,
@@ -49,6 +55,7 @@ type AssetAssignmentRow = {
   note: string;
   assetTag: string;
   state: string;
+  assignmentId?: number;
   lastRepaired?: string;
 };
 
@@ -95,6 +102,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const [draftOperator, setDraftOperator] = useState<CategoryFilterOperator>("is");
   const [draftCategory, setDraftCategory] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   // 1. Panel State from URL (following the Registry Pattern)
   const activeAssetId = searchParams.get("id") || "";
@@ -123,6 +131,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     note: asset.location ?? "-",
     assetTag: asset.assetTag,
     state: asset.state,
+    assignmentId: asset.assignmentId ?? undefined,
   });
 
   const availableRows = useMemo<AssetAssignmentRow[]>(
@@ -204,6 +213,19 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     [filteredAssetRows, returnedRows]
   );
 
+  const selectedAssignedRows = useMemo(() => {
+    return Object.keys(rowSelection)
+      .filter((key) => rowSelection[key])
+      .map((index) => filteredAssignedRows[Number(index)])
+      .filter(Boolean);
+  }, [rowSelection, filteredAssignedRows]);
+
+  const hasReminderCandidates = useMemo(() => {
+    return selectedAssignedRows.some(
+      (r) => r.state === "pending approval" || r.state === "requested"
+    );
+  }, [selectedAssignedRows]);
+
   const categoryFilterLabel = appliedCategoryFilter
     ? `Category ${appliedCategoryFilter.operator} ${appliedCategoryFilter.value}`
     : "Category";
@@ -227,7 +249,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     [assetRows, activeAssetId]
   );
 
-  const selectionActions = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
+  const selectionActionsAvailable = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
     () => [
       {
         id: "assign-assets",
@@ -247,6 +269,69 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       },
     ],
     []
+  );
+
+  const selectionActionsAssigned = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
+    () => [
+      {
+        id: "reminder-or-return",
+        label: hasReminderCandidates ? "Send Reminder" : "Request Return",
+        tone: "secondary",
+        onClick: async (selectedRows) => {
+          const ids = selectedRows
+            .map((r) => r.assignmentId)
+            .filter((id): id is number => id !== undefined);
+
+          if (ids.length === 0) return;
+
+          if (hasReminderCandidates) {
+            // Filter to only those that actually need a reminder if mixed, 
+            // but the user wants the button to 'convert', so we'll act on the candidates.
+            const reminderIds = selectedRows
+              .filter((r) => r.state === "pending approval" || r.state === "requested")
+              .map((r) => r.assignmentId)
+              .filter((id): id is number => id !== undefined);
+
+            const result = await sendAssignmentReminderAction(reminderIds);
+            if (result.success) {
+              toast.success(`Reminder sent for ${reminderIds.length} assets`);
+              setRowSelection({});
+            } else {
+              toast.error(result.error || "Failed to send reminders");
+            }
+          } else {
+            const result = await requestAssetReturnAction(ids);
+            if (result.success) {
+              toast.success(`Return requested for ${ids.length} assets`);
+              setRowSelection({});
+            } else {
+              toast.error(result.error || "Failed to request return");
+            }
+          }
+        },
+      },
+      {
+        id: "mark-received",
+        label: "Mark Received",
+        tone: "primary",
+        onClick: async (selectedRows) => {
+          const ids = selectedRows
+            .map((r) => r.assignmentId)
+            .filter((id): id is number => id !== undefined);
+
+          if (ids.length === 0) return;
+
+          const result = await markAssetReceivedAction(ids);
+          if (result.success) {
+            toast.success(`${ids.length} assets marked as received`);
+            setRowSelection({});
+          } else {
+            toast.error(result.error || "Failed to mark as received");
+          }
+        },
+      },
+    ],
+    [hasReminderCandidates]
   );
 
   // 3. Column Definitions for the Hardware Registry View
@@ -474,6 +559,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         className="rounded-lg border-slate-200"
         selectionActions={actions}
         selectionLabel={(count) => `${count} Assets Selected`}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
       />
     </div>
   );
@@ -493,17 +580,18 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
             tabs={tabs}
             defaultTab="available-assets"
             onTabChange={() => {
+              setRowSelection({});
               if (isPanelOpen) {
                 handleClosePanel();
               }
             }}
           >
             <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAvailableRows, selectionActions, false)}
+              {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
             </TabsContent>
 
             <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAssignedRows, undefined, true)}
+              {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
             </TabsContent>
 
             <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">

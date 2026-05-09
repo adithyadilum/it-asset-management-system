@@ -34,10 +34,14 @@ export interface AssetAssignmentPanelProps {
   lastRepaired: string;
   note: string;
   status: string;
+  state: string;
   imageUrl?: string;
   maintenanceEvents?: MaintenanceEvent[];
   onEdit?: () => void;
   onAssign?: () => void;
+  onSendReminder?: () => void;
+  onRequestReturn?: () => void;
+  onMarkReceived?: () => void;
   onClose?: () => void;
 }
 
@@ -95,18 +99,19 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       <StatusBadge value={props.status} showIcon className="h-6 rounded-full px-2 text-[12px]" />
     </div>
   );
-
   const actions: SlidePanelAction[] = isAssigned ? [
     {
       id: 'received',
       label: 'Received',
       variant: 'outline',
       className: 'h-9 rounded-lg border-slate-200 px-4 text-sm',
+      onClick: props.onMarkReceived,
     },
     {
       id: 'request-return',
-      label: 'Request Return',
+      label: (props.state === 'pending approval' || props.state === 'requested') ? 'Send Reminder' : 'Request Return',
       className: 'h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]',
+      onClick: (props.state === 'pending approval' || props.state === 'requested') ? props.onSendReminder : props.onRequestReturn,
     }
   ] : [
     {
