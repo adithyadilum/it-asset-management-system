@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { ReportTemplate } from '@/components/features/reports/standard-reports/standard-reports-types';
+import type { ReportTemplate } from '@/components/features/standard-reports/standard-reports-types';
 
 export { type ReportTemplate };
 
