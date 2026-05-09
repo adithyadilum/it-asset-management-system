@@ -15,10 +15,9 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
 
-    # 2. Tell GitHub that our Next.js app is inside the 'web' folder
     defaults:
       run:
-        working-directory: ./web
+        working-directory: .
 
     steps:
       # 3. Download the code onto the temporary GitHub server
@@ -31,7 +30,7 @@ jobs:
         with:
           node-version: "20" # Use the latest stable LTS version
           cache: "npm"
-          cache-dependency-path: "./web/package-lock.json"
+          cache-dependency-path: "./package-lock.json"
 
       # 5. Install the project dependencies (using ci for strict lockfile adherence)
       - name: Install Dependencies
