@@ -17,7 +17,6 @@ import {
   DataTable,
   type DataTableSelectionAction,
 } from "@/components/shared/data-table";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import {
   Popover,
@@ -102,41 +101,27 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const isPanelOpen = currentPanel === "record" && activeAssetId !== "";
 
   // 2. Data Mapping
-  const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => {
-    let displayStatus = asset.status;
-
-    if (asset.status === "Assigned" && asset.expectedReturnDate) {
-      const expected = new Date(asset.expectedReturnDate);
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      
-      if (expected.getTime() < now.getTime()) {
-        displayStatus = "Overdue" as any;
-      }
-    }
-
-    return {
-      assetId: asset.id,
-      assetName: asset.name ?? asset.assetTag,
-      serialNumber: asset.serialNumber ?? "-",
-      category: asset.category,
-      status: displayStatus,
-      model: "-",
-      brand: "-",
-      owner: "-",
-      group: asset.pillar,
-      assignedTo: asset.assignedTo ?? "-",
-      department: asset.pillar,
-      assignedDate: formatDate(asset.assignedDate),
-      expectedReturnDate: formatDate(asset.expectedReturnDate),
-      dateCreated: formatDate(asset.createdAt),
-      updatedAt: formatDate(asset.updatedAt),
-      warranty: "-",
-      lastRepaired: "-",
-      note: asset.location ?? "-",
-      assetTag: asset.assetTag,
-    };
-  };
+  const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
+    assetId: asset.id,
+    assetName: asset.name ?? asset.assetTag,
+    serialNumber: asset.serialNumber ?? "-",
+    category: asset.category,
+    status: asset.status,
+    model: "-",
+    brand: "-",
+    owner: "-",
+    group: asset.pillar,
+    assignedTo: asset.assignedTo ?? "-",
+    department: asset.pillar,
+    assignedDate: formatDate(asset.assignedDate),
+    expectedReturnDate: formatDate(asset.expectedReturnDate),
+    dateCreated: formatDate(asset.createdAt),
+    updatedAt: formatDate(asset.updatedAt),
+    warranty: "-",
+    lastRepaired: "-",
+    note: asset.location ?? "-",
+    assetTag: asset.assetTag,
+  });
 
   const availableRows = useMemo<AssetAssignmentRow[]>(
     () => data.available.map(mapRow),
@@ -262,47 +247,12 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     []
   );
 
-  const assignedSelectionActions = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
-    () => [
-      {
-        id: "returned",
-        label: "Returned",
-        tone: "secondary",
-        onClick: (selectedRows) => {
-          // TODO: Implement returned logic
-          console.log("Returned", selectedRows);
-        },
-      },
-      {
-        id: "request-return",
-        label: "Request Return",
-        tone: "primary",
-        onClick: (selectedRows) => {
-          // TODO: Implement request return logic
-          console.log("Request Return", selectedRows);
-        },
-      },
-    ],
-    []
-  );
-
   // 3. Column Definitions for the Hardware Registry View
   const columns = useMemo<ColumnDef<AssetAssignmentRow>[]>(() => [
     {
       accessorKey: "assetId",
       header: "Asset ID",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-slate-700">{row.original.assetTag}</span>
-          {(row.original.status === "Overdue" || row.original.status === "Requested") && (
-            <StatusBadge
-              value={row.original.status.toLowerCase()}
-              showIcon
-              className="h-5 px-1.5 text-[11px]"
-            />
-          )}
-        </div>
-      ),
+      cell: ({ row }) => <span className="font-medium text-slate-700">{row.original.assetTag}</span>,
     },
     {
       accessorKey: "assetName",
@@ -502,36 +452,36 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-50">
       <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
-          <div className="mb-4 shrink-0">
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
-              Assignments and Returns
-            </h1>
-          </div>
+        <div className="mb-4 shrink-0">
+          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+            Assignments and Returns
+          </h1>
+        </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <ModuleNavigationTabs 
-              tabs={tabs} 
-              defaultTab="available-assets"
-              onTabChange={() => {
-                if (isPanelOpen) {
-                  handleClosePanel();
-                }
-              }}
-            >
-              <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAvailableRows, selectionActions)}
-              </TabsContent>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ModuleNavigationTabs
+            tabs={tabs}
+            defaultTab="available-assets"
+            onTabChange={() => {
+              if (isPanelOpen) {
+                handleClosePanel();
+              }
+            }}
+          >
+            <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredAvailableRows, selectionActions)}
+            </TabsContent>
 
-              <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAssignedRows, assignedSelectionActions)}
-              </TabsContent>
+            <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredAssignedRows)}
+            </TabsContent>
 
-              <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredReturnedRows)}
-              </TabsContent>
-            </ModuleNavigationTabs>
-          </div>
-        </main>
+            <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredReturnedRows)}
+            </TabsContent>
+          </ModuleNavigationTabs>
+        </div>
+      </main>
 
       <AssignmentsPanels
         isOpen={isPanelOpen}
