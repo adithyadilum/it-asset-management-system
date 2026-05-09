@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, isNull, max } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
 import {
@@ -417,6 +417,7 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
       location: record.location,
       assignedTo: record.assignedTo,
       returnedDate: record.returnedDate,
+      state: 'returned',
     });
   }
 
@@ -424,6 +425,9 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
 }
 
 export async function getAssignmentsDashboardData(tab?: AssignmentsDashboardTab): Promise<AssignmentsDashboardData> {
+  // Automatic refresh of overdue states on data load
+  await refreshOverdueAssignments();
+
   if (tab === 'assigned') {
     const assigned = await loadAssetsByStatus('Assigned');
     return { available: [], assigned, returned: [] };
@@ -787,4 +791,37 @@ export async function markAssignmentsAsReceived(assignmentIds: number[]): Promis
         .where(inArray(assets.id, assetIds));
     }
   });
+}
+
+/**
+ * Updates assignments with passed due dates to 'overdue' state.
+ */
+export async function refreshOverdueAssignments(): Promise<void> {
+  const now = new Date();
+  await db
+    .update(assetAssignments)
+    .set({ state: 'overdue' })
+    .where(
+      and(
+        eq(assetAssignments.state, 'assigned'),
+        isNotNull(assetAssignments.expectedReturnDate),
+        sql`${assetAssignments.expectedReturnDate} < ${now.toISOString()}`
+      )
+    );
+}
+
+/**
+ * Transitions an assignment from 'pending approval' to 'assigned'.
+ * Typically called when a user accepts an asset.
+ */
+export async function acceptAssignment(assignmentId: number): Promise<void> {
+  await db
+    .update(assetAssignments)
+    .set({ state: 'assigned' })
+    .where(
+      and(
+        eq(assetAssignments.id, assignmentId),
+        eq(assetAssignments.state, 'pending approval')
+      )
+    );
 }

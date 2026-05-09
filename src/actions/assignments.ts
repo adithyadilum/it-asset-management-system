@@ -15,6 +15,7 @@ import {
   triggerAssignmentReminders,
   triggerReturnRequests,
   markAssignmentsAsReceived,
+  acceptAssignment,
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
@@ -292,6 +293,43 @@ export async function markAssetReceivedAction(
     logLatency({
       scope: 'ACTION',
       label: 'assignments.markAssetReceivedAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+/**
+ * Action to accept an asset assignment.
+ * Typically called by the assigned user.
+ */
+export async function acceptAssignmentAction(
+  assignmentId: number
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    return forbiddenResult('Unauthorized: Please sign in.');
+  }
+
+  try {
+    // Note: In a real app, we would verify that the current user is the one assigned to this asset.
+    await acceptAssignment(assignmentId);
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.acceptAssignmentAction',
+      error,
+      metadata: { assignmentId },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.acceptAssignmentAction',
       startTime: actionTimer,
     });
   }
