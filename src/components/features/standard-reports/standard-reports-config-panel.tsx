@@ -23,7 +23,7 @@ import {
   REPORT_TEMPLATES,
   ReportTemplateCard,
   SOURCE_OPTIONS,
-} from '@/components/features/reports/standard-reports/standard-reports-page';
+} from '@/components/features/standard-reports/standard-reports-page';
 import type { FilterState } from './standard-reports-types';
 
 interface StandardReportsConfigPanelProps {
