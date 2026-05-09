@@ -27,13 +27,14 @@ export function AssetTagDialog({
 
     const handleGeneratePdf = async (format: 'a4' | 'thermal') => {
         try {
-            const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://tiqri.com';
+            const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://assets.tiqri.com';
 
             const blob = await pdf(
                 <TagPdfDocument
                     assetIds={[assetId]}
                     format={format}
                     originUrl={originUrl}
+                    modelNames={{ [assetId]: modelName || 'Standard Model' }}
                 />
             ).toBlob();
 
@@ -55,14 +56,12 @@ export function AssetTagDialog({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
-                <DialogContent className="sm:max-w-106.25">
+                <DialogContent className="sm:max-w-115 bg-transparent shadow-none border-none">
                     <DialogHeader>
-                        <DialogTitle>Asset Tag</DialogTitle>
+                        <DialogTitle></DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col items-center justify-center p-6 space-y-6">
-                        <div className="scale-90 transform origin-center">
-                            <PhysicalTag assetId={assetId} modelName={modelName} />
-                        </div>
+                        <PhysicalTag assetId={assetId} modelName={modelName} />
 
                         <Button
                             className="w-full gap-2 bg-[#0a1445] hover:bg-[#0a1445]/90 text-white"

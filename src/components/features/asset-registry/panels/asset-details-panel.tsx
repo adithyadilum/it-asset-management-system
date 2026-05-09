@@ -173,6 +173,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             imageUrl={props.imageUrl}
             note={props.note}
             assetTag={props.assetTag}
+            modelName={props.model}
             fields={detailsFields}
             mode={isSoftware ? 'software' : 'default'}
             softwareSections={isSoftware ? [

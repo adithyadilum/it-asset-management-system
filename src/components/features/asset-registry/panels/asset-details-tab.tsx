@@ -9,13 +9,13 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-
 import { AssetTagDialog } from '@/components/features/asset-registry/tags/asset-tag-dialog';
 
 export interface AssetDetailsTabProps {
     imageUrl?: string;
     note?: string;
     assetTag: string;
+    modelName?: string;
     fields: { label: string; value: React.ReactNode }[];
     mode?: 'default' | 'software';
     softwareSections?: {
@@ -33,6 +33,7 @@ export function AssetDetailsTab({
     imageUrl,
     note,
     assetTag,
+    modelName,
     fields,
     mode = 'default',
     softwareSections = [],
@@ -249,6 +250,7 @@ export function AssetDetailsTab({
                 isOpen={isTagDialogOpen}
                 onOpenChange={setIsTagDialogOpen}
                 assetId={assetTag}
+                modelName={modelName}
             />
         </div>
     );

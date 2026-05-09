@@ -12,7 +12,8 @@ const styles = StyleSheet.create({
     pageThermal: {
         flexDirection: 'row',
         backgroundColor: '#ffffff',
-        padding: 5,
+        padding: 0,
+        margin: 0,
     },
     tagContainerA4: {
         width: '33.33%', // 3 columns
@@ -28,6 +29,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
+    tagContentThermal: {
+        width: '100%',
+        height: '100%',
+        flexDirection: 'row',
+        padding: 10,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
     leftColumn: {
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -37,15 +46,15 @@ const styles = StyleSheet.create({
     brandSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     brandLogo: {
-        width: 40,
-        height: 22,
+        width: 36,
+        height: 18,
         objectFit: 'contain',
     },
     brandText: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: 'bold',
         marginLeft: 4,
         color: '#0f172a',
@@ -55,18 +64,23 @@ const styles = StyleSheet.create({
     },
     assetId: {
         fontFamily: 'Courier',
-        fontSize: 14,
+        fontSize: 11,
         fontWeight: 'bold',
         color: '#0f172a',
+        marginBottom: 1,
     },
     assetModel: {
-        fontSize: 8,
+        fontSize: 7,
         color: '#475569',
-        marginTop: 2,
+        maxWidth: 70,
     },
     qrCode: {
-        width: 50,
-        height: 50,
+        width: 48,
+        height: 48,
+    },
+    qrCodeThermal: {
+        width: 48,
+        height: 48,
     }
 });
 
@@ -76,44 +90,54 @@ export interface TagPdfDocumentProps {
     originUrl?: string;
     // Optional pre-generated QR base64 data URLs for each asset ID to support offline/secure generation
     qrDataUrls?: Record<string, string>;
+    // Mapping of assetId to modelName for dynamic printing
+    modelNames?: Record<string, string>;
 }
 
 // Sub-component for individual tag
-const AssetTag = ({ assetId, origin, qrDataUrl }: { assetId: string, origin: string, qrDataUrl?: string }) => {
+const AssetTag = ({ assetId, modelName = "Standard Model", origin, qrDataUrl, format }: { assetId: string, modelName?: string, origin: string, qrDataUrl?: string, format: 'a4' | 'thermal' }) => {
     const targetUrl = `${origin}/assets/${assetId}`;
     const fallbackQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(targetUrl)}`;
 
     return (
-        <View style={styles.tagContent}>
+        <View wrap={false} style={format === 'thermal' ? styles.tagContentThermal : styles.tagContent}>
             <View style={styles.leftColumn}>
                 <View style={styles.brandSection}>
-                    <Text style={styles.brandText}>TIQRI</Text>
+                    <Image
+                        style={styles.brandLogo}
+                        src="/tiqri-logo.png"
+                    />
                 </View>
                 <View style={styles.assetInfo}>
                     <Text style={styles.assetId}>{assetId}</Text>
-                    <Text style={styles.assetModel}>Standard Model</Text>
+                    <Text style={styles.assetModel}>{modelName}</Text>
                 </View>
             </View>
             <Image
-                style={styles.qrCode}
+                style={format === 'thermal' ? styles.qrCodeThermal : styles.qrCode}
                 src={qrDataUrl || fallbackQrUrl}
             />
         </View>
     );
 };
 
-export function TagPdfDocument({ assetIds, format, originUrl = 'https://tiqri.com', qrDataUrls = {} }: TagPdfDocumentProps) {
+export function TagPdfDocument({ assetIds, format, originUrl = 'https://tiqri.com', qrDataUrls = {}, modelNames = {} }: TagPdfDocumentProps) {
     // Thermal format: 2" x 1" roughly corresponds to 144 x 72 points
-    // We'll use 288 x 144 points (4" x 2") for better PDF resolution scaling if needed, 
-    // or standard 144x72. Let's use 144x72 for 2x1 inches.
+    // We'll use 144x72 for 2x1 inches.
     const thermalPageSize: [number, number] = [144, 72];
 
     if (format === 'thermal') {
         return (
             <Document>
                 {assetIds.map((assetId) => (
-                    <Page key={assetId} size={thermalPageSize} style={styles.pageThermal}>
-                        <AssetTag assetId={assetId} origin={originUrl} qrDataUrl={qrDataUrls[assetId]} />
+                    <Page key={assetId} size={thermalPageSize} style={styles.pageThermal} wrap={false}>
+                        <AssetTag
+                            assetId={assetId}
+                            modelName={modelNames[assetId]}
+                            origin={originUrl}
+                            qrDataUrl={qrDataUrls[assetId]}
+                            format="thermal"
+                        />
                     </Page>
                 ))}
             </Document>
@@ -133,7 +157,13 @@ export function TagPdfDocument({ assetIds, format, originUrl = 'https://tiqri.co
                 <Page key={`page-${pageIndex}`} size="A4" style={styles.pageA4}>
                     {pageAssets.map((assetId) => (
                         <View key={assetId} style={styles.tagContainerA4}>
-                            <AssetTag assetId={assetId} origin={originUrl} qrDataUrl={qrDataUrls[assetId]} />
+                            <AssetTag
+                                assetId={assetId}
+                                modelName={modelNames[assetId]}
+                                origin={originUrl}
+                                qrDataUrl={qrDataUrls[assetId]}
+                                format="a4"
+                            />
                         </View>
                     ))}
                 </Page>

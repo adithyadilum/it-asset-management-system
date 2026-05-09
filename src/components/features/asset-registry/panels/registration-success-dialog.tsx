@@ -40,6 +40,7 @@ export function RegistrationSuccessDialog({
                     assetIds={[assetId]}
                     format={format}
                     originUrl={originUrl}
+                    modelNames={{ [assetId]: modelName }}
                 />
             ).toBlob();
 
@@ -68,16 +69,14 @@ export function RegistrationSuccessDialog({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-                <DialogContent className="sm:max-w-106.25">
+                <DialogContent className="sm:max-w-115">
                     <DialogHeader>
                         <DialogTitle>Asset Registered Successfully</DialogTitle>
                     </DialogHeader>
                     <div className="flex flex-col items-center justify-center p-6 space-y-6">
                         <div className="relative">
                             {assetId && (
-                                <div className="scale-90 transform origin-center">
-                                    <PhysicalTag assetId={assetId} modelName={modelName} />
-                                </div>
+                                <PhysicalTag assetId={assetId} modelName={modelName} />
                             )}
                         </div>
 
