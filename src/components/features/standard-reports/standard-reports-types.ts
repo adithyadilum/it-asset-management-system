@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 
 export interface FilterState {
   source: string;
+  assetType: string;
   category: string;
   location: string;
   status: string;
@@ -15,6 +16,7 @@ export interface FilterState {
 
 export const DEFAULT_FILTER_STATE: FilterState = {
   source: '',
+  assetType: '',
   category: '',
   location: '',
   status: '',

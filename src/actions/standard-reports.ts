@@ -14,7 +14,7 @@ import {
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewRow } from '@/components/features/reports/standard-reports/standard-reports-types';
+import type { ReportPreviewRow } from '@/components/features/standard-reports/standard-reports-types';
 import { customStatuses } from '@/db/schema';
 
 // ---------------------------------------------------------------------------
@@ -23,6 +23,7 @@ import { customStatuses } from '@/db/schema';
 
 export interface ReportPreviewFilters {
   source?: string;
+  assetType?: string;
   category?: string;
   location?: string;
   status?: string;
@@ -45,7 +46,7 @@ export async function getStandardReportsFilterOptions() {
   }
 
   try {
-    const [dbLocations, dbCustomStatuses] = await Promise.all([
+    const [dbLocations, dbCustomStatuses, dbCategories] = await Promise.all([
       db
         .select({ name: locations.name })
         .from(locations)
@@ -54,6 +55,10 @@ export async function getStandardReportsFilterOptions() {
         .select({ name: customStatuses.name })
         .from(customStatuses)
         .where(eq(customStatuses.isActive, true)),
+      db
+        .select({ name: categories.name, pillar: categories.pillar })
+        .from(categories)
+        .where(eq(categories.isActive, true)),
     ]);
 
     const defaultStatuses = [
@@ -68,13 +73,17 @@ export async function getStandardReportsFilterOptions() {
     ];
 
     return {
-      categories: [
-        'All categories',
+      assetTypes: [
+        'All Assets',
         'Hardware',
         'Software',
         'Electronics',
         'Furniture',
       ],
+      categories: dbCategories.map((c) => ({
+        name: c.name,
+        pillar: c.pillar,
+      })),
       locations: [
         'All locations',
         ...Array.from(new Set(dbLocations.map((l) => l.name))).sort(),
@@ -123,14 +132,19 @@ export async function fetchReportPreview(
     // Build dynamic where conditions
     const conditions = [];
 
-    // Category filter — map frontend generic names to DB pillars
-    if (filters.category && filters.category !== 'All categories') {
-      let dbPillar = filters.category;
+    // Asset Type filter — map frontend generic names to DB pillars
+    if (filters.assetType && filters.assetType !== 'All Assets') {
+      let dbPillar = filters.assetType;
       if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
       if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
       if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
 
       conditions.push(eq(categories.pillar, dbPillar as never));
+    }
+
+    // Category filter
+    if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      conditions.push(eq(categories.name, filters.category));
     }
 
     // Location filter
