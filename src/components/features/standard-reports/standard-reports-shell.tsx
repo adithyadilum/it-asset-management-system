@@ -40,6 +40,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
         category: filters.category,
         location: filters.location,
         status: filters.status,
+        masterDataType: filters.masterDataType,
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
       });
