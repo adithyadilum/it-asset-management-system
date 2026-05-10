@@ -23,13 +23,14 @@ import {
   REPORT_TEMPLATES,
   ReportTemplateCard,
   SOURCE_OPTIONS,
-} from '@/components/features/reports/standard-reports/standard-reports-page';
+} from '@/components/features/standard-reports/standard-reports-page';
 import type { FilterState } from './standard-reports-types';
 
 interface StandardReportsConfigPanelProps {
   filterState: FilterState;
   filterOptions: {
-    categories: string[];
+    assetTypes: string[];
+    categories: { name: string; pillar: string }[];
     locations: string[];
     statuses: string[];
   };
@@ -49,6 +50,21 @@ export function StandardReportsConfigPanel({
   onClearFilters,
   isLoading,
 }: StandardReportsConfigPanelProps) {
+  // Map UI Asset Types to DB Pillars for filtering category options
+  const typeToPillarMap: Record<string, string> = {
+    'Hardware': 'IT & Digital',
+    'Software': 'Software',
+    'Electronics': 'Office Electronics',
+    'Furniture': 'Office Furniture',
+  };
+
+  const selectedPillar = typeToPillarMap[filterState.assetType];
+
+  const filteredCategories = filterOptions.categories
+    .filter((cat) => !selectedPillar || cat.pillar === selectedPillar)
+    .map((cat) => cat.name)
+    .sort();
+
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl gap-0 bg-background">
       {/* Header Section - Fixed */}
@@ -122,35 +138,36 @@ export function StandardReportsConfigPanel({
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 p-4 pt-3">
-            <FilterRow label="Date Range">
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={filterState.dateFrom || ''}
-                  onChange={(e) => onFilterChange('dateFrom', e.target.value)}
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                  placeholder="From"
-                />
-                <input
-                  type="date"
-                  value={filterState.dateTo || ''}
-                  onChange={(e) => onFilterChange('dateTo', e.target.value)}
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                  placeholder="To"
-                />
-              </div>
+            <FilterRow label="Asset Type">
+              <Select
+                value={filterState.assetType || undefined}
+                onValueChange={(value) => onFilterChange('assetType', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Assets" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.assetTypes.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FilterRow>
 
             <FilterRow label="Category">
               <Select
                 value={filterState.category || undefined}
                 onValueChange={(value) => onFilterChange('category', value)}
+                disabled={!filterState.assetType || filterState.assetType === 'All Assets'}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a Category" />
+                  <SelectValue placeholder={!filterState.assetType || filterState.assetType === 'All Assets' ? 'Select Asset Type first' : 'All categories'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {filterOptions.categories.map((option) => (
+                  <SelectItem value="All categories">All categories</SelectItem>
+                  {filteredCategories.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>
