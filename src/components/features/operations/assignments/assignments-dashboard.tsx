@@ -274,26 +274,6 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const selectionActionsAssigned = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
     () => [
       {
-        id: "mark-received",
-        label: "Received",
-        tone: "secondary",
-        onClick: async (selectedRows) => {
-          const ids = selectedRows
-            .map((r) => r.assignmentId)
-            .filter((id): id is number => id !== undefined);
-
-          if (ids.length === 0) return;
-
-          const result = await markAssetReceivedAction(ids);
-          if (result.success) {
-            toast.success(`${ids.length} assets marked as received`);
-            setRowSelection({});
-          } else {
-            toast.error(result.error || "Failed to mark as received");
-          }
-        },
-      },
-      {
         id: "reminder-or-return",
         label: hasReminderCandidates ? "Send Reminder" : "Request Return",
         tone: "primary",

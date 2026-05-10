@@ -41,7 +41,6 @@ export interface AssetAssignmentPanelProps {
   onAssign?: () => void;
   onSendReminder?: () => void;
   onRequestReturn?: () => void;
-  onMarkReceived?: () => void;
   onClose?: () => void;
 }
 
@@ -100,13 +99,6 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
     </div>
   );
   const actions: SlidePanelAction[] = isAssigned ? [
-    {
-      id: 'received',
-      label: 'Received',
-      variant: 'outline',
-      className: 'h-9 rounded-lg border-slate-200 px-4 text-sm',
-      onClick: props.onMarkReceived,
-    },
     {
       id: 'request-return',
       label: (props.state === 'pending approval' || props.state === 'requested') ? 'Send Reminder' : 'Request Return',
