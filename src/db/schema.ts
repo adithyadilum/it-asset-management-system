@@ -46,6 +46,13 @@ export const assetStatusEnum = pgEnum('asset_status', [
   'Pending Disposal',
   'Disposed',
 ]);
+export const assignmentStateEnum = pgEnum('assignment_state', [
+  'pending approval',
+  'assigned',
+  'overdue',
+  'requested',
+  'returned',
+]);
 export const conditionEnum = pgEnum('asset_condition', [
   'New',
   'Excellent',
@@ -326,6 +333,7 @@ export const assetAssignments = pgTable('asset_assignments', {
   acceptanceStatus: varchar('acceptance_status', { length: 50 }),
   acceptedAt: timestamp('accepted_at'),
   returnRequestedAt: timestamp('return_requested_at'),
+  state: assignmentStateEnum('state').default('pending approval').notNull(),
 });
 
 // Epic 15: New Maintenance Tickets System
