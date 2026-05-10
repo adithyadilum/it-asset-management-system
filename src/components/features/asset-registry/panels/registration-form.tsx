@@ -9,7 +9,6 @@ import {
   SlidePanel,
   type SlidePanelAction,
 } from '@/components/shared/slide-panel';
-import { RegistrationSuccessDialog } from '@/components/features/asset-registry/panels/registration-success-dialog';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
@@ -73,6 +72,7 @@ export type { RegistrationOption, ModelRegistrationOption };
 type RegistrationFormProps = {
   isOpen: boolean;
   onClose: (open: boolean, didSucceed?: boolean) => void;
+  onRegistrationSuccess?: (assetId: string, modelName: string) => void;
   isLoading?: boolean;
   initialPillar?: RegistrationPillarInput;
   categoryOptions?: CategoryRegistrationOption[];
@@ -300,6 +300,7 @@ function RegistrationFormSkeleton() {
 export function RegistrationForm({
   isOpen,
   onClose,
+  onRegistrationSuccess,
   isLoading = false,
   initialPillar,
   categoryOptions = [],
@@ -337,15 +338,6 @@ export function RegistrationForm({
   const [isInvoiceDragOver, setIsInvoiceDragOver] = React.useState(false);
   const [customFieldValues, setCustomFieldValues] = React.useState<Record<string, string>>({});
   const lastToastKeyRef = React.useRef<string>('');
-
-  const [createdAssetId, setCreatedAssetId] = React.useState<string | null>(null);
-  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = React.useState(false);
-
-  const handleSuccessDialogClose = () => {
-    // Clear the locally-stored created asset id only. Do not call onClose here
-    // so that dismissing the tag dialog does not remount the slide panel.
-    setCreatedAssetId(null);
-  };
 
   const handleInvoiceSelection = React.useCallback((files: FileList | null) => {
     const selectedFile = files?.[0] ?? null;
@@ -497,21 +489,16 @@ export function RegistrationForm({
       tiqriToast.success(resolvedMessage);
 
       if (state.assetId && !isSoftware) {
-        // Keep the created asset id and open the success dialog while closing
-        // the registration slide panel. Use an explicit dialog open flag so
-        // the dialog visibility does not depend on the transient asset id.
-        setCreatedAssetId(state.assetId);
-        setIsSuccessDialogOpen(true);
-        onClose(false, true);
-      } else {
-        onClose(false, true);
+        // Notify the parent to show the success dialog before closing the panel
+        onRegistrationSuccess?.(state.assetId, selectedModelLabel);
       }
+      onClose(false, true);
     } else {
       tiqriToast.error(resolvedMessage);
     }
 
     lastToastKeyRef.current = toastKey;
-  }, [formError, state.message, state.success, onClose]);
+  }, [formError, state.message, state.success, state.assetId, isSoftware, onRegistrationSuccess, selectedModelLabel, onClose]);
 
   const panelActions: SlidePanelAction[] = isLoading
     ? []
@@ -1027,26 +1014,13 @@ export function RegistrationForm({
   return (
     <>
       <SlidePanel
-        isOpen={isOpen && !createdAssetId}
+        isOpen={isOpen}
         onClose={onClose}
         title={panelTitle}
         description={panelDescription}
         content={panelContent}
         actions={panelActions}
         contentClassName="pt-0 pb-2 sm:pt-0"
-      />
-
-      <RegistrationSuccessDialog
-        isOpen={isSuccessDialogOpen}
-        assetId={createdAssetId}
-        modelName={selectedModelLabel}
-        onOpenChange={(open) => {
-          if (!open) {
-            // clear internal id but do not call parent onClose again
-            setCreatedAssetId(null);
-            setIsSuccessDialogOpen(false);
-          }
-        }}
       />
     </>
   );

@@ -41,7 +41,7 @@ export function PrintConfigurationModal({
         <Dialog open={isOpen} onOpenChange={!isGenerating ? onOpenChange : undefined}>
             <DialogContent className="sm:max-w-125">
                 <DialogHeader>
-                    <DialogTitle>Generate Hardware Tags</DialogTitle>
+                    <DialogTitle>Generate Asset Tags</DialogTitle>
                     <DialogDescription className="text-slate-600 text-sm mt-2">
                         Your selected asset tags will be printed at standard label size.
                     </DialogDescription>
@@ -64,6 +64,7 @@ export function PrintConfigurationModal({
                             )}
                         >
                             <div className="bg-white rounded-md p-2 shadow-sm border border-slate-200 mb-4 inline-flex">
+                                {/* Visual preview of A4 3x10 grid layout */}
                                 <svg width="48" height="72" viewBox="0 0 48 72" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     {Array.from({ length: 10 }).map((_, row) =>
                                         Array.from({ length: 3 }).map((_, col) => (
@@ -100,6 +101,7 @@ export function PrintConfigurationModal({
                             )}
                         >
                             <div className="bg-white rounded-md p-2 shadow-sm border border-slate-200 mb-4 inline-flex">
+                                {/* Visual preview of continuous thermal roll layout */}
                                 <svg width="32" height="72" viewBox="0 0 32 72" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     {Array.from({ length: 12 }).map((_, row) => (
                                         <rect

@@ -10,10 +10,12 @@ export interface PhysicalTagProps {
 }
 
 export function PhysicalTag({ assetId, modelName = "Standard Model" }: PhysicalTagProps) {
-    const [origin, setOrigin] = useState('https://assets.tiqri.com');
+    const [origin, setOrigin] = useState<string | null>(null);
 
     useEffect(() => {
+        // Resolve origin on the client to ensure correct routing URLs
         if (typeof window !== 'undefined') {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setOrigin(window.location.origin);
         }
     }, []);
@@ -50,6 +52,7 @@ export function PhysicalTag({ assetId, modelName = "Standard Model" }: PhysicalT
                             includeMargin={false}
                         />
                     ) : (
+                        // Show skeleton during SSR/Hydration until origin is resolved
                         <div className="w-32 h-32 bg-slate-100 animate-pulse rounded-md" />
                     )}
                 </div>

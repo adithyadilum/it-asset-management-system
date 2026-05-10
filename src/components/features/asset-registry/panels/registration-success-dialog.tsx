@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -10,8 +11,7 @@ import { Printer } from 'lucide-react';
 import { PhysicalTag } from '@/components/features/asset-registry/tags/physical-tag';
 import { PrintConfigurationModal } from '@/components/features/asset-registry/tags/print-configuration-modal';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { pdf } from '@react-pdf/renderer';
-import TagPdfDocument from '@/components/features/asset-registry/tags/tag-pdf-document';
+import { generateAndPrintTagPdf } from '@/lib/utils/tag-print';
 import { tiqriToast } from '@/components/shared/sonner';
 
 export interface RegistrationSuccessDialogProps {
@@ -33,27 +33,11 @@ export function RegistrationSuccessDialog({
         if (!assetId) return;
 
         try {
-            const originUrl = window.location.origin;
-
-            const blob = await pdf(
-                <TagPdfDocument
-                    assetIds={[assetId]}
-                    format={format}
-                    originUrl={originUrl}
-                    modelNames={{ [assetId]: modelName }}
-                />
-            ).toBlob();
-
-            const blobUrl = URL.createObjectURL(blob);
-            const printWindow = window.open(blobUrl, '_blank');
-
-            if (printWindow) {
-                printWindow.onload = () => {
-                    printWindow.print();
-                };
-            } else {
-                tiqriToast.error('Popup blocker prevented opening the print window.');
-            }
+            await generateAndPrintTagPdf({
+                assetIds: [assetId],
+                format,
+                modelNames: { [assetId]: modelName },
+            });
         } catch {
             tiqriToast.error('Failed to generate PDF for printing.');
         }
@@ -72,6 +56,9 @@ export function RegistrationSuccessDialog({
                 <DialogContent className="sm:max-w-115">
                     <DialogHeader>
                         <DialogTitle>Asset Registered Successfully</DialogTitle>
+                        <DialogDescription className="sr-only">
+                            Confirmation that the asset has been registered and options to print its physical tag.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center justify-center p-6 space-y-6">
                         <div className="relative">

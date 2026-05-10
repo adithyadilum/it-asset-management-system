@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Printer, QrCode } from 'lucide-react';
+import { QrCode } from 'lucide-react';
 
 import type { MaintenanceEvent } from '@/lib/data/asset-details-repo';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';

@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Printer } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { PhysicalTag } from '@/components/features/asset-registry/tags/physical-tag';
 import { PrintConfigurationModal } from '@/components/features/asset-registry/tags/print-configuration-modal';
-import { pdf } from '@react-pdf/renderer';
-import TagPdfDocument from '@/components/features/asset-registry/tags/tag-pdf-document';
+import { generateAndPrintTagPdf } from '@/lib/utils/tag-print';
 import { tiqriToast } from '@/components/shared/sonner';
 
 export interface AssetTagDialogProps {
@@ -27,27 +26,11 @@ export function AssetTagDialog({
 
     const handleGeneratePdf = async (format: 'a4' | 'thermal') => {
         try {
-            const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://assets.tiqri.com';
-
-            const blob = await pdf(
-                <TagPdfDocument
-                    assetIds={[assetId]}
-                    format={format}
-                    originUrl={originUrl}
-                    modelNames={{ [assetId]: modelName || 'Standard Model' }}
-                />
-            ).toBlob();
-
-            const blobUrl = URL.createObjectURL(blob);
-            const printWindow = window.open(blobUrl, '_blank');
-
-            if (printWindow) {
-                printWindow.onload = () => {
-                    printWindow.print();
-                };
-            } else {
-                tiqriToast.error('Popup blocker prevented opening the print window.');
-            }
+            await generateAndPrintTagPdf({
+                assetIds: [assetId],
+                format,
+                modelNames: { [assetId]: modelName || 'Standard Model' },
+            });
         } catch {
             tiqriToast.error('Failed to generate PDF for printing.');
         }
@@ -58,7 +41,11 @@ export function AssetTagDialog({
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-115 bg-transparent shadow-none border-none">
                     <DialogHeader>
-                        <DialogTitle></DialogTitle>
+                        {/* Visually hidden title and description for accessibility (Screen Readers) */}
+                        <DialogTitle className="sr-only">Asset Tag Preview</DialogTitle>
+                        <DialogDescription className="sr-only">
+                            Preview of the physical asset tag including QR code and corporate branding.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center justify-center p-6 space-y-6">
                         <PhysicalTag assetId={assetId} modelName={modelName} />

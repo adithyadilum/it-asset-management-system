@@ -17,6 +17,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { bulkUpdateAssets, getAssetsByPillar } from '@/actions/asset-registry';
 import { BulkImportWizard } from '@/components/features/bulk-import/bulk-import-wizard';
+import { PrintConfigurationModal } from '@/components/features/asset-registry/tags/print-configuration-modal';
+import { generateAndPrintTagPdf } from '@/lib/utils/tag-print';
 import {
   type RegistryViewConfig,
   type RegistryFilterField,
@@ -251,6 +253,8 @@ export function AssetRegistryClient({
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [transferSelectionRows, setTransferSelectionRows] = useState<AssetRegistryRow[]>([]);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printSelectionRows, setPrintSelectionRows] = useState<AssetRegistryRow[]>([]);
   const [isMutating, setIsMutating] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -802,7 +806,15 @@ export function AssetRegistryClient({
   }, [config.view, manualStatuses]);
 
   const selectionActions: DataTableSelectionAction<AssetRegistryRow>[] = [
-    { id: 'print-qr', label: 'Print QR code', disabled: isMutating },
+    {
+      id: 'print-qr',
+      label: 'Print Asset Tags',
+      disabled: isMutating,
+      onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
+        setPrintSelectionRows(selectedRowsForAction);
+        setIsPrintModalOpen(true);
+      },
+    },
     ...(config.view === 'hardware'
       ? [
         {
@@ -1279,6 +1291,28 @@ export function AssetRegistryClient({
             if (!open) setRefreshNonce((n) => n + 1);
           }}
           categories={initialCategories}
+        />
+
+        <PrintConfigurationModal
+          isOpen={isPrintModalOpen}
+          onOpenChange={(open) => {
+            setIsPrintModalOpen(open);
+            if (!open) setPrintSelectionRows([]);
+          }}
+          selectedCount={printSelectionRows.length}
+          onGenerate={async (format) => {
+            const assetIds = printSelectionRows.map((row) => row.assetTag);
+            const modelNames: Record<string, string> = {};
+            for (const row of printSelectionRows) {
+              modelNames[row.assetTag] = row.model || 'Standard Model';
+            }
+
+            try {
+              await generateAndPrintTagPdf({ assetIds, format, modelNames });
+            } catch {
+              tiqriToast.error('Failed to generate PDF for printing.');
+            }
+          }}
         />
       </div>
     </main>
