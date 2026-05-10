@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/popover";
 import { TabsContent } from "@/components/ui/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { RowSelectionState } from "@tanstack/react-table";
 import type { AssignmentsDashboardData, AssignmentsDashboardRow } from "@/lib/data/operations-assignments-repo";
 
 // --- Types ---
@@ -428,7 +429,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   ) => {
     const tableColumns = showStatusColumn
       ? columns
-      : columns.filter((col) => (col as any).accessorKey !== "state");
+      : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
 
     return (
       <div className="space-y-4">

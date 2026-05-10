@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm
 
 import { db } from '@/db';
 import {
+  assignmentStateEnum,
   assetAssignments,
   assets,
   categories,
@@ -12,6 +13,8 @@ import {
 import { logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 import { sendAssetNotification } from '../notifications';
+
+type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
 
 export type AssignmentsDashboardTab = 'available' | 'assigned' | 'returned';
 
@@ -293,7 +296,7 @@ async function loadAssetsByStatusDirect(
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
     returnedDate: null,
-    state: row.state as any,
+    state: row.state as AssignmentState,
   }));
 }
 
@@ -359,7 +362,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
     returnedDate: null,
-    state: row.state as any,
+    state: row.state as AssignmentState,
   }));
 }
 
@@ -606,7 +609,7 @@ export async function assignMultipleAssets(
           assignedToLocationId: target.assignedToLocationId,
           expectedReturnDate,
           notes,
-          state: 'pending approval',
+          state: 'pending approval' as AssignmentState,
         }))
       )
       .returning({
