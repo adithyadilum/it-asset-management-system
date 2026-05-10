@@ -41,6 +41,7 @@ export interface AssetAssignmentPanelProps {
   onAssign?: () => void;
   onSendReminder?: () => void;
   onRequestReturn?: () => void;
+  onMarkReceived?: () => void;
   onClose?: () => void;
 }
 
@@ -98,13 +99,24 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       <StatusBadge value={props.status} showIcon className="h-6 rounded-full px-2 text-[12px]" />
     </div>
   );
+  const showReminder = ["pending approval", "overdue", "requested"].includes(props.state);
+  const showReturn = props.state === "assigned";
+  const showMarkReceived = ["requested", "overdue", "assigned"].includes(props.state);
+
   const actions: SlidePanelAction[] = isAssigned ? [
-    {
-      id: 'request-return',
-      label: (props.state === 'pending approval' || props.state === 'requested') ? 'Send Reminder' : 'Request Return',
+    ...(showMarkReceived ? [{
+      id: 'received',
+      label: 'Received',
+      variant: 'outline' as const,
+      className: 'h-9 rounded-lg border-slate-200 px-4 text-sm',
+      onClick: props.onMarkReceived,
+    }] : []),
+    ...(showReminder || showReturn ? [{
+      id: 'lifecycle-action',
+      label: showReminder ? 'Send Reminder' : 'Request Return',
       className: 'h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]',
-      onClick: (props.state === 'pending approval' || props.state === 'requested') ? props.onSendReminder : props.onRequestReturn,
-    }
+      onClick: showReminder ? props.onSendReminder : props.onRequestReturn,
+    }] : [])
   ] : [
     {
       id: 'edit',

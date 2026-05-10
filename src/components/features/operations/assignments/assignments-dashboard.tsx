@@ -222,7 +222,13 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
   const hasReminderCandidates = useMemo(() => {
     return selectedAssignedRows.some(
-      (r) => r.state === "pending approval" || r.state === "requested"
+      (r) => ["pending approval", "overdue", "requested"].includes(r.state)
+    );
+  }, [selectedAssignedRows]);
+
+  const hasMarkReceivedCandidates = useMemo(() => {
+    return selectedAssignedRows.some(
+      (r) => ["requested", "overdue", "assigned"].includes(r.state)
     );
   }, [selectedAssignedRows]);
 
@@ -272,46 +278,79 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   );
 
   const selectionActionsAssigned = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
-    () => [
-      {
-        id: "reminder-or-return",
-        label: hasReminderCandidates ? "Send Reminder" : "Request Return",
-        tone: "primary",
-        onClick: async (selectedRows) => {
-          const ids = selectedRows
-            .map((r) => r.assignmentId)
-            .filter((id): id is number => id !== undefined);
+    () => {
+      const actions: DataTableSelectionAction<AssetAssignmentRow>[] = [];
 
-          if (ids.length === 0) return;
-
-          if (hasReminderCandidates) {
-            // Filter to only those that actually need a reminder if mixed, 
-            // but the user wants the button to 'convert', so we'll act on the candidates.
-            const reminderIds = selectedRows
-              .filter((r) => r.state === "pending approval" || r.state === "requested")
+      if (hasMarkReceivedCandidates) {
+        actions.push({
+          id: "mark-received",
+          label: "Received",
+          tone: "secondary",
+          onClick: async (selectedRows) => {
+            const ids = selectedRows
+              .filter((r) => ["requested", "overdue", "assigned"].includes(r.state))
               .map((r) => r.assignmentId)
               .filter((id): id is number => id !== undefined);
 
-            const result = await sendAssignmentReminderAction(reminderIds);
+            if (ids.length === 0) return;
+
+            const result = await markAssetReceivedAction(ids);
             if (result.success) {
-              toast.success(`Reminder sent for ${reminderIds.length} assets`);
+              toast.success(`${ids.length} assets marked as received`);
               setRowSelection({});
             } else {
-              toast.error(result.error || "Failed to send reminders");
+              toast.error(result.error || "Failed to mark as received");
             }
-          } else {
-            const result = await requestAssetReturnAction(ids);
-            if (result.success) {
-              toast.success(`Return requested for ${ids.length} assets`);
-              setRowSelection({});
+          },
+        });
+      }
+
+      if (hasReminderCandidates || selectedAssignedRows.some(r => r.state === "assigned")) {
+        actions.push({
+          id: "reminder-or-return",
+          label: hasReminderCandidates ? "Send Reminder" : "Request Return",
+          tone: "primary",
+          onClick: async (selectedRows) => {
+            const ids = selectedRows
+              .map((r) => r.assignmentId)
+              .filter((id): id is number => id !== undefined);
+
+            if (ids.length === 0) return;
+
+            if (hasReminderCandidates) {
+              const reminderIds = selectedRows
+                .filter((r) => ["pending approval", "overdue", "requested"].includes(r.state))
+                .map((r) => r.assignmentId)
+                .filter((id): id is number => id !== undefined);
+
+              const result = await sendAssignmentReminderAction(reminderIds);
+              if (result.success) {
+                toast.success(`Reminder sent for ${reminderIds.length} assets`);
+                setRowSelection({});
+              } else {
+                toast.error(result.error || "Failed to send reminders");
+              }
             } else {
-              toast.error(result.error || "Failed to request return");
+              const returnIds = selectedRows
+                .filter((r) => r.state === "assigned")
+                .map((r) => r.assignmentId)
+                .filter((id): id is number => id !== undefined);
+
+              const result = await requestAssetReturnAction(returnIds);
+              if (result.success) {
+                toast.success(`Return requested for ${returnIds.length} assets`);
+                setRowSelection({});
+              } else {
+                toast.error(result.error || "Failed to request return");
+              }
             }
-          }
-        },
-      },
-    ],
-    [hasReminderCandidates]
+          },
+        });
+      }
+
+      return actions;
+    },
+    [selectedAssignedRows, hasReminderCandidates, hasMarkReceivedCandidates]
   );
 
   // 3. Column Definitions for the Hardware Registry View

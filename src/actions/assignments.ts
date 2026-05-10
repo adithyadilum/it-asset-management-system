@@ -14,6 +14,7 @@ import {
   getAssignmentsDashboardData,
   triggerAssignmentReminders,
   triggerReturnRequests,
+  markAssignmentsAsReceived,
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
@@ -259,6 +260,38 @@ export async function requestAssetReturnAction(
     logLatency({
       scope: 'ACTION',
       label: 'assignments.requestAssetReturnAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function markAssetReceivedAction(
+  assignmentIds: number[]
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult('Forbidden: You do not have permission to mark assets as received.');
+  }
+
+  try {
+    await markAssignmentsAsReceived(assignmentIds);
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.markAssetReceivedAction',
+      error,
+      metadata: { count: assignmentIds.length },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.markAssetReceivedAction',
       startTime: actionTimer,
     });
   }

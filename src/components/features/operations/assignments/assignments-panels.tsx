@@ -6,7 +6,8 @@ import { AssetAssignmentModal } from "./asset-assignment-modal";
 import { getAssetDetailsByIdAction, getAssetMaintenanceByIdAction } from "@/actions/asset-registry-panels";
 import { 
   sendAssignmentReminderAction, 
-  requestAssetReturnAction 
+  requestAssetReturnAction,
+  markAssetReceivedAction 
 } from "@/actions/assignments";
 import { toast } from "sonner";
 import { type AssetDetailsData, type MaintenanceEvent } from "@/lib/data/asset-details-repo";
@@ -122,7 +123,16 @@ export function AssignmentsPanels({
 		}
 	};
 
-
+	const handleMarkReceived = async () => {
+		if (!cachedAsset.assignmentId) return;
+		const result = await markAssetReceivedAction([cachedAsset.assignmentId]);
+		if (result.success) {
+			toast.success("Asset marked as received");
+			onClose();
+		} else {
+			toast.error(result.error || "Failed to mark as received");
+		}
+	};
 
 	return (
 		<>
@@ -164,6 +174,7 @@ export function AssignmentsPanels({
 				onAssign={() => setIsAssignmentModalOpen(true)}
 				onSendReminder={handleSendReminder}
 				onRequestReturn={handleRequestReturn}
+				onMarkReceived={handleMarkReceived}
 			/>
 
 			<AssetAssignmentModal
