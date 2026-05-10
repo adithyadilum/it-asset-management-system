@@ -10,6 +10,9 @@ import {
   locations,
   models,
   users,
+  brands,
+  vendors,
+  owners,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
@@ -27,6 +30,7 @@ export interface ReportPreviewFilters {
   category?: string;
   location?: string;
   status?: string;
+  masterDataType?: string;
   dateFrom?: string;
   dateTo?: string;
   page?: number;
@@ -129,7 +133,93 @@ export async function fetchReportPreview(
   }
 
   try {
-    // Build dynamic where conditions
+    const pageSize = filters.pageSize ?? 16;
+    const page = filters.page ?? 0;
+    const offset = page * pageSize;
+
+    // -------------------------------------------------------------------------
+    // MASTER DATA SOURCE LOGIC
+    // -------------------------------------------------------------------------
+    if (filters.source === 'Master Data') {
+      const queryTimer = startLatencyTimer();
+      let data: ReportPreviewRow[] = [];
+      
+      const statusEq = filters.status === 'Active' ? true : filters.status === 'Inactive' ? false : undefined;
+
+      // Filter by Asset Type mapper for Master Data (categories/brands/models)
+      let dbPillar: string | undefined = undefined;
+      if (filters.assetType && filters.assetType !== 'All Assets') {
+        dbPillar = filters.assetType;
+        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
+        if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
+      }
+
+      switch (filters.masterDataType) {
+        case 'asset-categories': {
+          let q = db.select().from(categories).$dynamic();
+          if (statusEq !== undefined) q = q.where(eq(categories.isActive, statusEq));
+          if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
+          
+          const rows = await q.limit(pageSize).offset(offset);
+          data = rows.map(r => ({ id: String(r.id), assetTag: 'CAT', name: r.name, category: r.pillar, assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          break;
+        }
+        case 'locations': {
+          let q = db.select().from(locations).$dynamic();
+          if (statusEq !== undefined) q = q.where(eq(locations.isActive, statusEq));
+          
+          const rows = await q.limit(pageSize).offset(offset);
+          data = rows.map(r => ({ id: String(r.id), assetTag: 'LOC', name: r.name, category: r.type || 'Location', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          break;
+        }
+        case 'brands': {
+          let q = db.select().from(brands).$dynamic();
+          if (statusEq !== undefined) q = q.where(eq(brands.isActive, statusEq));
+          
+          const rows = await q.limit(pageSize).offset(offset);
+          data = rows.map(r => ({ id: String(r.id), assetTag: 'BRD', name: r.name, category: 'Brand', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          break;
+        }
+        case 'device-models': {
+          let q = db.select({ id: models.id, name: models.name, categoryName: categories.name, isActive: models.isActive }).from(models).leftJoin(categories, eq(models.categoryId, categories.id)).$dynamic();
+          if (statusEq !== undefined) q = q.where(eq(models.isActive, statusEq));
+          if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
+          
+          const rows = await q.limit(pageSize).offset(offset);
+          data = rows.map(r => ({ id: String(r.id), assetTag: 'MDL', name: r.name, category: r.categoryName || 'Model', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          break;
+        }
+        case 'vendors': {
+          let q = db.select().from(vendors).$dynamic();
+          if (statusEq !== undefined) q = q.where(eq(vendors.isActive, statusEq));
+          
+          const rows = await q.limit(pageSize).offset(offset);
+          data = rows.map(r => ({ id: String(r.id), assetTag: 'VND', name: r.companyName, category: 'Vendor', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          break;
+        }
+        case 'owners': {
+          let q = db.select().from(owners).$dynamic();
+          if (statusEq !== undefined) q = q.where(eq(owners.isActive, statusEq));
+          
+          const rows = await q.limit(pageSize).offset(offset);
+          data = rows.map(r => ({ id: String(r.id), assetTag: 'OWN', name: r.companyName, category: 'Owner', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          break;
+        }
+      }
+
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'standardReports.fetchReportPreview.masterData',
+        startTime: queryTimer,
+      });
+
+      return data;
+    }
+
+    // -------------------------------------------------------------------------
+    // ASSET REGISTRY LOGIC (Default)
+    // -------------------------------------------------------------------------
     const conditions = [];
 
     // Asset Type filter — map frontend generic names to DB pillars
@@ -161,11 +251,6 @@ export async function fetchReportPreview(
       conditions.length > 0 ? and(...conditions) : undefined;
 
     const queryTimer = startLatencyTimer();
-
-    // Apply server-side pagination: default to 16 rows per preview
-    const pageSize = filters.pageSize ?? 16;
-    const page = filters.page ?? 0;
-    const offset = page * pageSize;
 
     const rows = await db
       .select({

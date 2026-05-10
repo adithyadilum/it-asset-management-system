@@ -10,6 +10,7 @@ export interface FilterState {
   category: string;
   location: string;
   status: string;
+  masterDataType: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -20,6 +21,7 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   category: '',
   location: '',
   status: '',
+  masterDataType: '',
   dateFrom: '',
   dateTo: '',
 };

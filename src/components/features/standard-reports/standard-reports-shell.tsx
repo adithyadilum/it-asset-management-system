@@ -100,6 +100,15 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
         if (field === 'assetType') {
           next.category = '';
         }
+
+        // Reset filters when source changes
+        if (field === 'source') {
+          next.assetType = '';
+          next.category = '';
+          next.location = '';
+          next.status = '';
+          next.masterDataType = '';
+        }
         
         return next;
       });
