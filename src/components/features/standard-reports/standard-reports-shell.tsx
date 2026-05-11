@@ -23,6 +23,7 @@ interface StandardReportsShellProps {
 
 export function StandardReportsShell({ filterOptions }: StandardReportsShellProps) {
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
+  const [resetKey, setResetKey] = useState(0);
   const [showDataGrid, setShowDataGrid] = useState(false);
   const [previewData, setPreviewData] = useState<ReportPreviewRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -86,6 +87,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
   // Called when the "Clear filters" button is clicked
   const handleClearFilters = useCallback(() => {
     setFilterState(DEFAULT_FILTER_STATE);
+    setResetKey((prev) => prev + 1);
     setShowDataGrid(false);
     setPreviewData([]);
     setErrorMessage(null);
@@ -121,6 +123,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
     <div className="flex h-full flex-1 flex-col gap-6 overflow-hidden bg-muted p-1">
       <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[524px_minmax(0,1fr)]">
         <StandardReportsConfigPanel
+          resetKey={resetKey}
           filterState={filterState}
           filterOptions={filterOptions}
           onFilterChange={handleFilterChange}

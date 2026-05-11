@@ -39,6 +39,7 @@ interface StandardReportsConfigPanelProps {
   onManualPreview: () => void;
   onClearFilters: () => void;
   isLoading: boolean;
+  resetKey: number;
 }
 
 export function StandardReportsConfigPanel({
@@ -49,6 +50,7 @@ export function StandardReportsConfigPanel({
   onManualPreview,
   onClearFilters,
   isLoading,
+  resetKey,
 }: StandardReportsConfigPanelProps) {
   // Map UI Asset Types to DB Pillars for filtering category options
   const typeToPillarMap: Record<string, string> = {
@@ -106,7 +108,7 @@ export function StandardReportsConfigPanel({
       </div>
 
       {/* Footer Configuration Section - Fixed */}
-      <div className="flex flex-col gap-4 px-4 pt-4 pb-4 shrink-0">
+      <div key={resetKey} className="flex flex-col gap-4 px-4 pt-4 pb-4 shrink-0">
         <div className="grid gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] md:items-center">
           <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
             Primary Data Source
