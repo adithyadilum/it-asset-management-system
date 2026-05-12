@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { QrCode } from 'lucide-react';
 
@@ -9,11 +9,13 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { AssetTagDialog } from '@/components/features/asset-registry/tags/asset-tag-dialog';
 
 export interface AssetDetailsTabProps {
     imageUrl?: string;
     note?: string;
     assetTag: string;
+    modelName?: string;
     fields: { label: string; value: React.ReactNode }[];
     mode?: 'default' | 'software';
     softwareSections?: {
@@ -31,6 +33,7 @@ export function AssetDetailsTab({
     imageUrl,
     note,
     assetTag,
+    modelName,
     fields,
     mode = 'default',
     softwareSections = [],
@@ -41,6 +44,14 @@ export function AssetDetailsTab({
     className = '',
 }: AssetDetailsTabProps) {
     const hasImage = typeof imageUrl === 'string' && imageUrl.trim().length > 0;
+    const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+
+    const handleTagButtonClick = () => {
+        setIsTagDialogOpen(true);
+        if (onQRCodeClick) {
+            onQRCodeClick();
+        }
+    };
 
     if (mode === 'software') {
         return (
@@ -63,7 +74,7 @@ export function AssetDetailsTab({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={onQRCodeClick}
+                        onClick={handleTagButtonClick}
                         title={assetTag}
                         aria-label="Asset Tag"
                         className="h-7 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground shadow-none hover:bg-muted"
@@ -143,7 +154,7 @@ export function AssetDetailsTab({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={onQRCodeClick}
+                        onClick={handleTagButtonClick}
                         title={assetTag}
                         aria-label="Asset Tag"
                         className="h-7 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground shadow-none hover:bg-muted"
@@ -234,6 +245,13 @@ export function AssetDetailsTab({
                     </div>
                 </div>
             ) : null}
+
+            <AssetTagDialog
+                isOpen={isTagDialogOpen}
+                onOpenChange={setIsTagDialogOpen}
+                assetId={assetTag}
+                modelName={modelName}
+            />
         </div>
     );
 }

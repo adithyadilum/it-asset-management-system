@@ -72,6 +72,7 @@ export type { RegistrationOption, ModelRegistrationOption };
 type RegistrationFormProps = {
   isOpen: boolean;
   onClose: (open: boolean, didSucceed?: boolean) => void;
+  onRegistrationSuccess?: (assetId: string, modelName: string) => void;
   isLoading?: boolean;
   initialPillar?: RegistrationPillarInput;
   categoryOptions?: CategoryRegistrationOption[];
@@ -299,6 +300,7 @@ function RegistrationFormSkeleton() {
 export function RegistrationForm({
   isOpen,
   onClose,
+  onRegistrationSuccess,
   isLoading = false,
   initialPillar,
   categoryOptions = [],
@@ -454,8 +456,8 @@ export function RegistrationForm({
   const derivedAssetName = (selectedBrandLabel && selectedModelLabel)
     ? `${selectedBrandLabel.trim()} - ${selectedModelLabel.trim()}`
     : 'New Asset';
-  const panelDescription = resolvePanelDescription(initialPillar);
   const panelTitle = isSoftware ? 'Software Registry' : 'Asset Registry';
+  const panelDescription = resolvePanelDescription(initialPillar);
   const serialLabel = isSoftware ? 'License Key :' : 'Serial Number :';
   const submitLabel = isSoftware ? 'Add Software' : 'Add Asset';
   const submittingLabel = isSoftware ? 'Adding software...' : 'Adding asset...';
@@ -485,13 +487,18 @@ export function RegistrationForm({
 
     if (state.success) {
       tiqriToast.success(resolvedMessage);
-      onClose(false, true); // Safely close and notify parent to refresh data table
+
+      if (state.assetId && !isSoftware) {
+        // Notify the parent to show the success dialog before closing the panel
+        onRegistrationSuccess?.(state.assetId, selectedModelLabel);
+      }
+      onClose(false, true);
     } else {
       tiqriToast.error(resolvedMessage);
     }
 
     lastToastKeyRef.current = toastKey;
-  }, [formError, state.message, state.success, onClose]);
+  }, [formError, state.message, state.success, state.assetId, isSoftware, onRegistrationSuccess, selectedModelLabel, onClose]);
 
   const panelActions: SlidePanelAction[] = isLoading
     ? []
@@ -1005,15 +1012,17 @@ export function RegistrationForm({
   );
 
   return (
-    <SlidePanel
-      isOpen={isOpen}
-      onClose={onClose}
-      title={panelTitle}
-      description={panelDescription}
-      content={panelContent}
-      actions={panelActions}
-      contentClassName="pt-0 pb-2 sm:pt-0"
-    />
+    <>
+      <SlidePanel
+        isOpen={isOpen}
+        onClose={onClose}
+        title={panelTitle}
+        description={panelDescription}
+        content={panelContent}
+        actions={panelActions}
+        contentClassName="pt-0 pb-2 sm:pt-0"
+      />
+    </>
   );
 }
 
