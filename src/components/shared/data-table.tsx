@@ -67,7 +67,7 @@ type DataTableProps<TData, TValue> = {
   paginationState?: PaginationState
   onPaginationChange?: OnChangeFn<PaginationState>
   footerText?: React.ReactNode
-  
+
   // 1. ADDED THESE TWO OPTIONAL PROPS
   rowSelection?: RowSelectionState
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
@@ -94,7 +94,7 @@ export function DataTable<TData, TValue>({
   paginationState,
   onPaginationChange,
   footerText,
-  
+
   // 2. DESTRUCTURED THEM HERE
   rowSelection: externalRowSelection,
   onRowSelectionChange: externalOnRowSelectionChange,
@@ -146,7 +146,7 @@ export function DataTable<TData, TValue>({
   }, [initialPageSize, pageSizeOptions])
 
   const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
-  
+
   // 3. UPDATED THIS TO USE EXTERNAL STATE IF PROVIDED (matches pagination logic)
   const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>({})
   const rowSelection = externalRowSelection ?? internalRowSelection
@@ -310,7 +310,7 @@ export function DataTable<TData, TValue>({
                             ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             : action.tone === "primary"
                               ? "border-[#00145a] bg-[#00145a] text-white hover:bg-[#000d3d]"
-                            : "border-border bg-muted text-foreground hover:bg-muted/80"
+                              : "border-border bg-muted text-foreground hover:bg-muted/80"
                         )}
                       >
                         {action.label}
@@ -400,44 +400,44 @@ export function DataTable<TData, TValue>({
                   isActive && "bg-slate-50"
                 )}
               >
-              {row.getVisibleCells().map((cell) => {
-                const cellValue = cell.getValue()
-                const cellTitle = getDisplayText(cellValue)
-                const compactIdColumn = isCompactIdColumn(cell.column.id)
+                {row.getVisibleCells().map((cell) => {
+                  const cellValue = cell.getValue()
+                  const cellTitle = getDisplayText(cellValue)
+                  const compactIdColumn = isCompactIdColumn(cell.column.id)
 
-                return (
-                  <TableCell
-                    key={cell.id}
-                    className={cn(
-                      "h-13.25 overflow-hidden px-4 text-foreground",
-                      "font-normal",
-                      cell.column.id === "select" && "w-13 px-0",
-                      compactIdColumn && "w-28"
-                    )}
-                    style={{
-                      width: cell.column.getSize(),
-                      maxWidth: cell.column.getSize(),
-                    }}
-                  >
-                    <div
+                  return (
+                    <TableCell
+                      key={cell.id}
                       className={cn(
-                        (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
-                          ?.noTruncate
-                          ? "min-w-0"
-                          : "truncate"
+                        "h-13.25 overflow-hidden px-4 text-foreground",
+                        "font-normal",
+                        cell.column.id === "select" && "w-13 px-0",
+                        compactIdColumn && "w-28"
                       )}
-                      data-fulltext={cellTitle ?? undefined}
-                      onMouseEnter={handleOverflowTooltip}
-                      onFocus={handleOverflowTooltip}
+                      style={{
+                        width: cell.column.getSize(),
+                        maxWidth: cell.column.getSize(),
+                      }}
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                  </TableCell>
-                )
-              })}
-            </TableRow>
-          )
-        })
+                      <div
+                        className={cn(
+                          (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
+                            ?.noTruncate
+                            ? "min-w-0"
+                            : "truncate"
+                        )}
+                        data-fulltext={cellTitle ?? undefined}
+                        onMouseEnter={handleOverflowTooltip}
+                        onFocus={handleOverflowTooltip}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    </TableCell>
+                  )
+                })}
+              </TableRow>
+            )
+          })
         ) : (
           <TableRow className="border-border">
             <TableCell

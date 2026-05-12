@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
+import { 
+  sendAssignmentReminderAction, 
+  requestAssetReturnAction, 
+  markAssetReceivedAction 
+} from "@/actions/assignments";
 import { AssignmentsPanels } from "./assignments-panels";
 import {
   MultiAssetAssignmentModal,
@@ -25,6 +31,7 @@ import {
 } from "@/components/ui/popover";
 import { TabsContent } from "@/components/ui/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { RowSelectionState } from "@tanstack/react-table";
 import type { AssignmentsDashboardData, AssignmentsDashboardRow } from "@/lib/data/operations-assignments-repo";
 
 // --- Types ---
@@ -48,6 +55,8 @@ type AssetAssignmentRow = {
   warranty: string;
   note: string;
   assetTag: string;
+  state: string;
+  assignmentId?: number;
   lastRepaired?: string;
 };
 
@@ -94,6 +103,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const [draftOperator, setDraftOperator] = useState<CategoryFilterOperator>("is");
   const [draftCategory, setDraftCategory] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   // 1. Panel State from URL (following the Registry Pattern)
   const activeAssetId = searchParams.get("id") || "";
@@ -121,6 +131,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     lastRepaired: "-",
     note: asset.location ?? "-",
     assetTag: asset.assetTag,
+    state: asset.state,
+    assignmentId: asset.assignmentId ?? undefined,
   });
 
   const availableRows = useMemo<AssetAssignmentRow[]>(
@@ -202,6 +214,25 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     [filteredAssetRows, returnedRows]
   );
 
+  const selectedAssignedRows = useMemo(() => {
+    return Object.keys(rowSelection)
+      .filter((key) => rowSelection[key])
+      .map((index) => filteredAssignedRows[Number(index)])
+      .filter(Boolean);
+  }, [rowSelection, filteredAssignedRows]);
+
+  const hasReminderCandidates = useMemo(() => {
+    return selectedAssignedRows.some(
+      (r) => ["pending approval", "overdue", "requested"].includes(r.state)
+    );
+  }, [selectedAssignedRows]);
+
+  const hasMarkReceivedCandidates = useMemo(() => {
+    return selectedAssignedRows.some(
+      (r) => ["requested", "overdue", "assigned"].includes(r.state)
+    );
+  }, [selectedAssignedRows]);
+
   const categoryFilterLabel = appliedCategoryFilter
     ? `Category ${appliedCategoryFilter.operator} ${appliedCategoryFilter.value}`
     : "Category";
@@ -225,7 +256,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     [assetRows, activeAssetId]
   );
 
-  const selectionActions = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
+  const selectionActionsAvailable = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
     () => [
       {
         id: "assign-assets",
@@ -245,6 +276,82 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       },
     ],
     []
+  );
+
+  const selectionActionsAssigned = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(
+    () => {
+      const actions: DataTableSelectionAction<AssetAssignmentRow>[] = [];
+
+      if (hasMarkReceivedCandidates) {
+        actions.push({
+          id: "mark-received",
+          label: "Received",
+          tone: "secondary",
+          onClick: async (selectedRows) => {
+            const ids = selectedRows
+              .filter((r) => ["requested", "overdue", "assigned"].includes(r.state))
+              .map((r) => r.assignmentId)
+              .filter((id): id is number => id !== undefined);
+
+            if (ids.length === 0) return;
+
+            const result = await markAssetReceivedAction(ids);
+            if (result.success) {
+              toast.success(`${ids.length} assets marked as received`);
+              setRowSelection({});
+            } else {
+              toast.error(result.error || "Failed to mark as received");
+            }
+          },
+        });
+      }
+
+      if (hasReminderCandidates || selectedAssignedRows.some(r => r.state === "assigned")) {
+        actions.push({
+          id: "reminder-or-return",
+          label: hasReminderCandidates ? "Send Reminder" : "Request Return",
+          tone: "primary",
+          onClick: async (selectedRows) => {
+            const ids = selectedRows
+              .map((r) => r.assignmentId)
+              .filter((id): id is number => id !== undefined);
+
+            if (ids.length === 0) return;
+
+            if (hasReminderCandidates) {
+              const reminderIds = selectedRows
+                .filter((r) => ["pending approval", "overdue", "requested"].includes(r.state))
+                .map((r) => r.assignmentId)
+                .filter((id): id is number => id !== undefined);
+
+              const result = await sendAssignmentReminderAction(reminderIds);
+              if (result.success) {
+                toast.success(`Reminder sent for ${reminderIds.length} assets`);
+                setRowSelection({});
+              } else {
+                toast.error(result.error || "Failed to send reminders");
+              }
+            } else {
+              const returnIds = selectedRows
+                .filter((r) => r.state === "assigned")
+                .map((r) => r.assignmentId)
+                .filter((id): id is number => id !== undefined);
+
+              const result = await requestAssetReturnAction(returnIds);
+              if (result.success) {
+                toast.success(`Return requested for ${returnIds.length} assets`);
+                setRowSelection({});
+              } else {
+                toast.error(result.error || "Failed to request return");
+              }
+            }
+          },
+        });
+      }
+
+      return actions;
+    },
+    [selectedAssignedRows, hasReminderCandidates, hasMarkReceivedCandidates]
   );
 
   // 3. Column Definitions for the Hardware Registry View
@@ -272,6 +379,27 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         </Badge>
       ),
     },
+    {
+      accessorKey: "state",
+      header: "Status",
+      cell: ({ row }) => {
+        const state = row.original.state;
+        const colors: Record<string, string> = {
+          'pending approval': "bg-amber-50 text-amber-700 border-amber-200",
+          'assigned': "bg-emerald-50 text-emerald-700 border-emerald-200",
+          'overdue': "bg-rose-50 text-rose-700 border-rose-200",
+          'requested': "bg-blue-50 text-blue-700 border-blue-200",
+          'returned': "bg-slate-50 text-slate-700 border-slate-200",
+        };
+        const colorClass = colors[state] || "bg-slate-50 text-slate-700 border-slate-200";
+        
+        return (
+          <Badge variant="outline" className={`h-5 rounded-full px-2 text-[11px] font-medium capitalize ${colorClass}`}>
+            {state}
+          </Badge>
+        );
+      },
+    },
   ], []);
 
   // 4. Handlers to trigger the Slide Panel via URL
@@ -296,20 +424,26 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
   const renderTable = (
     rows: AssetAssignmentRow[],
-    actions?: DataTableSelectionAction<AssetAssignmentRow>[]
-  ) => (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-136.25">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search assets..."
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            className="h-9 pl-9"
-          />
-        </div>
+    actions?: DataTableSelectionAction<AssetAssignmentRow>[],
+    showStatusColumn = false
+  ) => {
+    const tableColumns = showStatusColumn
+      ? columns
+      : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
+
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="relative w-full max-w-136.25">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Search assets..."
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              className="h-9 pl-9"
+            />
+          </div>
         <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
           <PopoverAnchor asChild>
             <Button
@@ -438,50 +572,54 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       ) : null}
 
       <DataTable<AssetAssignmentRow, unknown>
-        columns={columns}
+        columns={tableColumns}
         data={rows}
         onRowClick={handleRowClick}
         initialPageSize={10}
         className="rounded-lg border-slate-200"
         selectionActions={actions}
         selectionLabel={(count) => `${count} Assets Selected`}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
       />
     </div>
   );
+};
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-50">
       <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
-          <div className="mb-4 shrink-0">
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
-              Assignments and Returns
-            </h1>
-          </div>
+        <div className="mb-4 shrink-0">
+          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+            Assignments and Returns
+          </h1>
+        </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <ModuleNavigationTabs 
-              tabs={tabs} 
-              defaultTab="available-assets"
-              onTabChange={() => {
-                if (isPanelOpen) {
-                  handleClosePanel();
-                }
-              }}
-            >
-              <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAvailableRows, selectionActions)}
-              </TabsContent>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <ModuleNavigationTabs
+            tabs={tabs}
+            defaultTab="available-assets"
+            onTabChange={() => {
+              setRowSelection({});
+              if (isPanelOpen) {
+                handleClosePanel();
+              }
+            }}
+          >
+            <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
+            </TabsContent>
 
-              <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAssignedRows)}
-              </TabsContent>
+            <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
+            </TabsContent>
 
-              <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredReturnedRows)}
-              </TabsContent>
-            </ModuleNavigationTabs>
-          </div>
-        </main>
+            <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+              {renderTable(filteredReturnedRows, undefined, false)}
+            </TabsContent>
+          </ModuleNavigationTabs>
+        </div>
+      </main>
 
       <AssignmentsPanels
         isOpen={isPanelOpen}
