@@ -213,7 +213,7 @@ export async function sendAssignmentReminderAction(
   }
 
   try {
-    await triggerAssignmentReminders(assignmentIds);
+    await triggerAssignmentReminders(assignmentIds, currentUser.id);
     revalidatePath('/operations/assignments');
     return { success: true };
   } catch (error) {
@@ -244,7 +244,7 @@ export async function requestAssetReturnAction(
   }
 
   try {
-    await triggerReturnRequests(assignmentIds);
+    await triggerReturnRequests(assignmentIds, currentUser.id);
     revalidatePath('/operations/assignments');
     revalidatePath('/assets');
     return { success: true };
@@ -276,7 +276,7 @@ export async function markAssetReceivedAction(
   }
 
   try {
-    await markAssignmentsAsReceived(assignmentIds);
+    await markAssignmentsAsReceived(assignmentIds, currentUser.id);
     revalidatePath('/operations/assignments');
     revalidatePath('/assets');
     return { success: true };

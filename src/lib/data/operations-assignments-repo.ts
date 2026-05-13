@@ -10,7 +10,7 @@ import {
   models,
   users,
 } from '@/db/schema';
-import { logAuditActionTx } from '@/lib/audit';
+import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 import { sendAssetNotification } from '../notifications';
 
@@ -539,6 +539,7 @@ export async function assignSingleAsset(
         assignedToUserId: target.assignedToUserId,
         assignedToLocationId: target.assignedToLocationId,
         expectedReturnDate,
+        state: 'pending approval',
       },
     });
 
@@ -642,6 +643,7 @@ export async function assignMultipleAssets(
             assignedToUserId: target.assignedToUserId,
             assignedToLocationId: target.assignedToLocationId,
             expectedReturnDate,
+            state: 'pending approval',
           },
         })
       )
@@ -699,10 +701,14 @@ export async function updateAssignmentsState(
 /**
  * Triggers a reminder notification for pending assignments.
  */
-export async function triggerAssignmentReminders(assignmentIds: number[]): Promise<void> {
+export async function triggerAssignmentReminders(
+  assignmentIds: number[],
+  performedById: string
+): Promise<void> {
   const assignments = await db
     .select({
       id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
       assetTag: assets.assetTag,
       assetName: assets.name,
       userEmail: users.email,
@@ -713,24 +719,38 @@ export async function triggerAssignmentReminders(assignmentIds: number[]): Promi
     .where(inArray(assetAssignments.id, assignmentIds));
 
   await Promise.all(
-    assignments.map((a) =>
-      sendAssetNotification({
+    assignments.map(async (a) => {
+      // Send notification
+      await sendAssetNotification({
         type: 'assignment_reminder',
         recipientEmail: a.userEmail,
         assetTag: a.assetTag,
         assetName: a.assetName || a.assetTag,
-      })
-    )
+      });
+
+      // Log reminder action
+      await logAuditAction({
+        entityType: 'Asset',
+        entityId: a.assetId,
+        actionType: 'UPDATE',
+        performedById,
+        newData: { notificationSent: 'assignment_reminder' },
+      });
+    })
   );
 }
 
 /**
  * Triggers a return request and updates state to 'requested'.
  */
-export async function triggerReturnRequests(assignmentIds: number[]): Promise<void> {
+export async function triggerReturnRequests(
+  assignmentIds: number[],
+  performedById: string
+): Promise<void> {
   const assignments = await db
     .select({
       id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
       assetTag: assets.assetTag,
       assetName: assets.name,
       userEmail: users.email,
@@ -744,19 +764,31 @@ export async function triggerReturnRequests(assignmentIds: number[]): Promise<vo
     // Update state to 'requested'
     await tx
       .update(assetAssignments)
-      .set({ state: 'requested' })
+      .set({ 
+        state: 'requested',
+        returnRequestedAt: new Date()
+      })
       .where(inArray(assetAssignments.id, assignmentIds));
 
-    // Send notifications
+    // Send notifications and log audit
     await Promise.all(
-      assignments.map((a) =>
-        sendAssetNotification({
+      assignments.map(async (a) => {
+        await sendAssetNotification({
           type: 'return_request',
           recipientEmail: a.userEmail,
           assetTag: a.assetTag,
           assetName: a.assetName || a.assetTag,
-        })
-      )
+        });
+
+        await logAuditActionTx(tx, {
+          entityType: 'Asset',
+          entityId: a.assetId,
+          actionType: 'UPDATE',
+          performedById,
+          oldData: { state: 'assigned' },
+          newData: { state: 'requested' },
+        });
+      })
     );
   });
 }
@@ -765,13 +797,18 @@ export async function triggerReturnRequests(assignmentIds: number[]): Promise<vo
  * Marks assets as received and updates state to 'returned'.
  * This also updates the asset status back to 'Available'.
  */
-export async function markAssignmentsAsReceived(assignmentIds: number[]): Promise<void> {
+export async function markAssignmentsAsReceived(
+  assignmentIds: number[],
+  performedById: string
+): Promise<void> {
   const assignments = await db
     .select({
       id: assetAssignments.id,
       assetId: assetAssignments.assetId,
+      assetTag: assets.assetTag,
     })
     .from(assetAssignments)
+    .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
     .where(inArray(assetAssignments.id, assignmentIds));
 
   const assetIds = assignments.map((a) => a.assetId);
@@ -790,9 +827,23 @@ export async function markAssignmentsAsReceived(assignmentIds: number[]): Promis
     if (assetIds.length > 0) {
       await tx
         .update(assets)
-        .set({ status: 'Available' })
+        .set({ status: 'Available', updatedAt: new Date() })
         .where(inArray(assets.id, assetIds));
     }
+
+    // Log audit for each asset
+    await Promise.all(
+      assignments.map((a) =>
+        logAuditActionTx(tx, {
+          entityType: 'Asset',
+          entityId: a.assetId,
+          actionType: 'RETURN',
+          performedById,
+          oldData: { status: 'Assigned' },
+          newData: { status: 'Available' },
+        })
+      )
+    );
   });
 }
 
