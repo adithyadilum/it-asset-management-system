@@ -1,4 +1,13 @@
-import { AlertTriangle, ChevronRight } from 'lucide-react';
+import {
+  ChevronRight,
+  Database,
+  FileText,
+  HardDrive,
+  Monitor,
+  ScrollText,
+  Wrench,
+} from 'lucide-react';
+import type { LucideIcon, LucideProps } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import {
@@ -9,36 +18,51 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { ReportTemplate } from '@/components/features/standard-reports/standard-reports-types';
-
-export { type ReportTemplate };
-
-export const REPORT_TEMPLATES: ReportTemplate[] = [
-  {
-    title: 'Overdue / Missing',
-    description: 'Lists all loaner devices past their return date and flagged lost items.',
-    icon: AlertTriangle,
-  },
-];
+import type { ReportTemplateData } from '@/types/standard-reports';
 
 export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
 
+/**
+ * Maps a data source name to a Lucide icon for the template card.
+ */
+function getDataSourceIcon(dataSource: string): LucideIcon {
+  switch (dataSource) {
+    case 'Assets':
+      return HardDrive;
+    case 'Maintenance Records':
+      return Wrench;
+    case 'Disposal Records':
+      return FileText;
+    case 'Software Licenses':
+      return Monitor;
+    case 'Audit Logs':
+      return ScrollText;
+    default:
+      return Database;
+  }
+}
+
+interface ReportTemplateCardProps {
+  template: ReportTemplateData;
+  onPreviewClick?: (templateId: number) => void;
+}
+
 export function ReportTemplateCard({
-  title,
-  description,
-  icon: Icon,
+  template,
   onPreviewClick,
-}: ReportTemplate) {
+}: ReportTemplateCardProps) {
+  const Icon = getDataSourceIcon(template.dataSource);
+
   return (
     <Card size="sm" className="h-full justify-between border-border bg-background">
       <CardHeader className="gap-3 p-4 pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle className="text-base font-medium text-card-foreground">
-              {title}
+              {template.name}
             </CardTitle>
             <CardDescription className="text-sm leading-5 text-muted-foreground">
-              {description}
+              {template.description || template.dataSource}
             </CardDescription>
           </div>
           <Icon className="size-4 shrink-0 text-foreground" />
@@ -48,7 +72,7 @@ export function ReportTemplateCard({
         <Button
           size="sm"
           className="mx-auto w-auto px-3"
-          onClick={() => onPreviewClick?.(title)}
+          onClick={() => onPreviewClick?.(template.id)}
         >
           Preview report
           <ChevronRight className="size-4" />
