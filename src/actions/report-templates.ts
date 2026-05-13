@@ -10,7 +10,7 @@ import { canManageAssets } from '@/lib/auth/roles';
 import { logAuditAction } from '@/lib/audit';
 import { reportTemplateSchema } from '@/lib/validations/report-templates';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportTemplateRow, CreateReportTemplateResult } from '@/components/features/standard-reports/standard-reports-types';
+import type { ReportTemplateRow, CreateReportTemplateResult } from '@/types/standard-reports';
 
 // ---------------------------------------------------------------------------
 // Fetch all report templates

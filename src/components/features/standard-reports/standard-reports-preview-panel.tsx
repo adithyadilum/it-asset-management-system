@@ -10,7 +10,7 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
-import type { ReportPreviewRow } from './standard-reports-types';
+import type { ReportPreviewRow } from '@/types/standard-reports';
 
 interface StandardReportsPreviewPanelProps {
   showDataGrid: boolean;

@@ -17,7 +17,7 @@ import {
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewRow } from '@/components/features/standard-reports/standard-reports-types';
+import type { ReportPreviewRow } from '@/types/standard-reports';
 import { customStatuses } from '@/db/schema';
 
 // ---------------------------------------------------------------------------
