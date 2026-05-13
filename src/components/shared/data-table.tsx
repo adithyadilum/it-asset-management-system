@@ -260,25 +260,38 @@ export function DataTable<TData, TValue>({
 
   const tableContent = (
     <Table className="table-fixed min-w-full" containerClassName="!overflow-visible">
+      <colgroup>
+        {table.getFlatHeaders().map((header) => (
+          <col
+            key={header.id}
+            style={{
+              width: header.getSize(),
+              minWidth: header.getSize(),
+            }}
+          />
+        ))}
+      </colgroup>
       <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
         {selectedRows > 0 ? (
           <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500">
             <TableHead
               colSpan={table.getAllLeafColumns().length}
-              className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6"
+              className="h-13.25 bg-slate-500 p-0 font-medium text-white"
             >
-              <div className="flex h-13.25 w-full items-center justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3" data-row-panel-ignore="true">
-                  <Checkbox
-                    aria-label="Select all rows"
-                    checked={
-                      table.getIsAllRowsSelected() ||
-                      (table.getIsSomeRowsSelected() ? "indeterminate" : false)
-                    }
-                    onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
-                    className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
-                  />
-                  <p className="truncate text-sm font-medium text-white">
+              <div className="flex h-13.25 w-full items-center justify-between pr-6">
+                <div className="flex min-w-0 items-center">
+                  <div className="flex w-13 items-center justify-center" data-row-panel-ignore="true">
+                    <Checkbox
+                      aria-label="Select all rows"
+                      checked={
+                        table.getIsAllRowsSelected() ||
+                        (table.getIsSomeRowsSelected() ? "indeterminate" : false)
+                      }
+                      onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
+                      className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
+                    />
+                  </div>
+                  <p className="truncate text-sm font-medium text-white ml-3">
                     {actionHeaderLabel}
                   </p>
                 </div>
