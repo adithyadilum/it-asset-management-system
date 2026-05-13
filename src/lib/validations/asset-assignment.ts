@@ -5,6 +5,14 @@ const assignmentTypeSchema = z.enum(['user', 'location']);
 const expectedReturnDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((date) => {
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return selectedDate >= today;
+  }, {
+    message: "Select a valid date",
+  })
   .optional();
 
 const notesSchema = z.string().max(2000).optional();
