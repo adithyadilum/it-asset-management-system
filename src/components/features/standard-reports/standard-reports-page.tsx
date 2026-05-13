@@ -7,7 +7,6 @@ import {
   ScrollText,
   Wrench,
 } from 'lucide-react';
-import type { LucideIcon, LucideProps } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import {
@@ -23,22 +22,22 @@ import type { ReportTemplateData } from '@/types/standard-reports';
 export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
 
 /**
- * Maps a data source name to a Lucide icon for the template card.
+ * Renders the appropriate Lucide icon for the given data source.
  */
-function getDataSourceIcon(dataSource: string): LucideIcon {
+function DataSourceIcon({ dataSource, className }: { dataSource: string; className?: string }) {
   switch (dataSource) {
     case 'Assets':
-      return HardDrive;
+      return <HardDrive className={className} />;
     case 'Maintenance Records':
-      return Wrench;
+      return <Wrench className={className} />;
     case 'Disposal Records':
-      return FileText;
+      return <FileText className={className} />;
     case 'Software Licenses':
-      return Monitor;
+      return <Monitor className={className} />;
     case 'Audit Logs':
-      return ScrollText;
+      return <ScrollText className={className} />;
     default:
-      return Database;
+      return <Database className={className} />;
   }
 }
 
@@ -51,8 +50,6 @@ export function ReportTemplateCard({
   template,
   onPreviewClick,
 }: ReportTemplateCardProps) {
-  const Icon = getDataSourceIcon(template.dataSource);
-
   return (
     <Card size="sm" className="h-full justify-between border-border bg-background">
       <CardHeader className="gap-3 p-4 pb-3">
@@ -65,7 +62,7 @@ export function ReportTemplateCard({
               {template.description || template.dataSource}
             </CardDescription>
           </div>
-          <Icon className="size-4 shrink-0 text-foreground" />
+          <DataSourceIcon dataSource={template.dataSource} className="size-4 shrink-0 text-foreground" />
         </div>
       </CardHeader>
       <CardContent className="flex px-4 pb-4">
