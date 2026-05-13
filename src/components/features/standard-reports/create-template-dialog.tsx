@@ -45,6 +45,7 @@ interface CreateTemplateDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
   filterOptions: {
+    assetTypes: string[];
     categories: { name: string; pillar: string }[];
     locations: string[];
     statuses: string[];
@@ -68,8 +69,7 @@ export function CreateTemplateDialog({
   const [dataSource, setDataSource] = useState('');
 
   // Filters
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [assetType, setAssetType] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState('');
@@ -88,8 +88,7 @@ export function CreateTemplateDialog({
     setDescription('');
     setIsActive(true);
     setDataSource('');
-    setDateFrom('');
-    setDateTo('');
+    setAssetType('');
     setCategory('');
     setLocation('');
     setStatus('');
@@ -139,8 +138,7 @@ export function CreateTemplateDialog({
         isActive,
         dataSource,
         filters: {
-          dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
+          assetType: assetType || undefined,
           category: category || undefined,
           location: location || undefined,
           status: status || undefined,
@@ -162,8 +160,7 @@ export function CreateTemplateDialog({
     description,
     isActive,
     dataSource,
-    dateFrom,
-    dateTo,
+    assetType,
     category,
     location,
     status,
@@ -274,22 +271,22 @@ export function CreateTemplateDialog({
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-4 p-4 pt-3">
-                <FilterRow label="Date Range">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                      className="flex-1"
-                    />
-                    <span className="text-xs text-muted-foreground">-</span>
-                    <Input
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
+                <FilterRow label="Asset Type">
+                  <Select
+                    value={assetType}
+                    onValueChange={setAssetType}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="All Assets" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filterOptions.assetTypes?.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FilterRow>
 
                 <FilterRow label="Category">

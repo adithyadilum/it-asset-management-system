@@ -75,8 +75,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
         category: template.filters?.category ?? DEFAULT_FILTER_STATE.category,
         location: template.filters?.location ?? DEFAULT_FILTER_STATE.location,
         status: template.filters?.status ?? DEFAULT_FILTER_STATE.status,
-        dateFrom: template.filters?.dateFrom ?? DEFAULT_FILTER_STATE.dateFrom,
-        dateTo: template.filters?.dateTo ?? DEFAULT_FILTER_STATE.dateTo,
+        assetType: template.filters?.assetType ?? DEFAULT_FILTER_STATE.assetType,
       };
 
       setFilterState(nextFilterState);

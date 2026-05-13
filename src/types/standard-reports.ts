@@ -49,8 +49,7 @@ export interface ReportTemplateData {
   isActive: boolean;
   dataSource: string;
   filters: {
-    dateFrom?: string;
-    dateTo?: string;
+    assetType?: string;
     category?: string;
     location?: string;
     status?: string;
