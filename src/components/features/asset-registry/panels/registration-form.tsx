@@ -42,6 +42,7 @@ import {
   type RegisterAssetActionState,
   type RegistrationPillarInput,
 } from '@/lib/validations/asset-registration';
+import { getPillarFormConfig } from '@/components/features/asset-registry/panels/pillar-form-config';
 
 type RegistrationOption = React.ComponentProps<
   typeof SearchableDropdown
@@ -173,18 +174,6 @@ function resolveStartingPillar(
   initialPillar?: RegistrationPillarInput
 ): RegistrationPillarInput {
   return initialPillar ?? 'IT & Digital';
-}
-
-function resolvePanelDescription(initialPillar?: RegistrationPillarInput) {
-  if (initialPillar === 'IT & Digital') {
-    return 'Hardware';
-  }
-
-  if (initialPillar === 'Software') {
-    return 'Software';
-  }
-
-  return initialPillar ?? 'Register a new asset';
 }
 
 function getError(
@@ -436,18 +425,14 @@ export function RegistrationForm({
     return payload;
   }, [assetTrackingFields, customFieldValues]);
 
+  const config = getPillarFormConfig(pillar);
   const isPillarLocked = Boolean(initialPillar);
-  const isSoftware = pillar === 'Software';
-  const softwareModelLabel = isSoftware ? 'Product' : 'Model';
+
   const formError = state.errors?.form?.[0];
   const modelEmptyMessage =
     brandId.length > 0 || categoryId.length > 0
-      ? isSoftware
-        ? 'No products found for selected category and brand.'
-        : 'No models found for selected category and brand.'
-      : isSoftware
-        ? 'No products found.'
-        : 'No models found.';
+      ? config.modelFilteredEmptyMessage
+      : config.modelEmptyMessage;
   const selectedModelLabel =
     modelOptions.find((option) => option.value === modelId)?.label ?? '';
   const selectedBrandLabel =
@@ -456,11 +441,6 @@ export function RegistrationForm({
   const derivedAssetName = (selectedBrandLabel && selectedModelLabel)
     ? `${selectedBrandLabel.trim()} - ${selectedModelLabel.trim()}`
     : 'New Asset';
-  const panelTitle = isSoftware ? 'Software Registry' : 'Asset Registry';
-  const panelDescription = resolvePanelDescription(initialPillar);
-  const serialLabel = isSoftware ? 'License Key :' : 'Serial Number :';
-  const submitLabel = isSoftware ? 'Add Software' : 'Add Asset';
-  const submittingLabel = isSoftware ? 'Adding software...' : 'Adding asset...';
   const purchaseDateLabel = formatPurchaseDateLabel(purchaseDate);
   const purchaseDateValue = parseInputDate(purchaseDate);
   const currencySymbol = formatCurrencySymbol(currencyCode);
@@ -488,7 +468,7 @@ export function RegistrationForm({
     if (state.success) {
       tiqriToast.success(resolvedMessage);
 
-      if (state.assetId && !isSoftware) {
+      if (state.assetId && config.showSuccessTagDialog) {
         // Notify the parent to show the success dialog before closing the panel
         onRegistrationSuccess?.(state.assetId, selectedModelLabel);
       }
@@ -498,7 +478,7 @@ export function RegistrationForm({
     }
 
     lastToastKeyRef.current = toastKey;
-  }, [formError, state.message, state.success, state.assetId, isSoftware, onRegistrationSuccess, selectedModelLabel, onClose]);
+  }, [formError, state.message, state.success, state.assetId, config.showSuccessTagDialog, onRegistrationSuccess, selectedModelLabel, onClose]);
 
   const panelActions: SlidePanelAction[] = isLoading
     ? []
@@ -515,10 +495,10 @@ export function RegistrationForm({
         label: isPending ? (
           <span className="inline-flex items-center gap-2">
             <LoaderCircle className="h-4 w-4 animate-spin" />
-            <span>{submittingLabel}</span>
+            <span>{config.submittingLabel}</span>
           </span>
         ) : (
-          submitLabel
+          config.submitLabel
         ),
         onClick: () => formRef.current?.requestSubmit(),
         disabled: isPending,
@@ -588,7 +568,7 @@ export function RegistrationForm({
         />
 
         <InlineFieldRow
-          label={serialLabel}
+          label={config.serialLabel}
           htmlFor="serialNumber"
           error={getError(state, 'serialNumber')}
         >
@@ -603,12 +583,12 @@ export function RegistrationForm({
         </InlineFieldRow>
 
         <SearchableFieldRow
-          label={`${softwareModelLabel} :`}
+          label={`${config.modelLabel} :`}
           name="modelId"
           value={modelId}
           onChange={setModelId}
           options={filteredModelOptions}
-          placeholder={`Select ${softwareModelLabel}..`}
+          placeholder={`Select ${config.modelLabel}..`}
           emptyMessage={modelEmptyMessage}
           error={getError(state, 'modelId')}
         />
@@ -619,7 +599,7 @@ export function RegistrationForm({
               {selectedModelImageUrl ? (
                 <Image
                   src={selectedModelImageUrl}
-                  alt={selectedModelLabel || `Selected ${softwareModelLabel.toLowerCase()}`}
+                  alt={selectedModelLabel || `Selected ${config.modelLabel.toLowerCase()}`}
                   width={80}
                   height={80}
                   className="h-full w-full object-cover"
@@ -631,10 +611,10 @@ export function RegistrationForm({
 
             <div className="min-w-0 flex-1 space-y-1">
               <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                {`Selected ${softwareModelLabel}`}
+                {`Selected ${config.modelLabel}`}
               </div>
               <p className="truncate text-sm text-muted-foreground">
-                {selectedModelLabel || `Select a ${softwareModelLabel.toLowerCase()} to load its image and custom inputs.`}
+                {selectedModelLabel || `Select a ${config.modelLabel.toLowerCase()} to load its image and custom inputs.`}
               </p>
             </div>
           </div>
@@ -648,7 +628,7 @@ export function RegistrationForm({
                   Custom Inputs
                 </h3>
                 <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-                  {`Fields are driven by the selected ${softwareModelLabel.toLowerCase()}\'s category.`}
+                  {`Fields are driven by the selected ${config.modelLabel.toLowerCase()}\'s category.`}
                 </p>
               </div>
             </div>
@@ -740,7 +720,7 @@ export function RegistrationForm({
       <section className="rounded-lg border border-border bg-muted/60 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h3 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
-            Purchase Details
+            {config.purchaseSectionTitle}
           </h3>
 
           <div className="w-24">
@@ -1016,8 +996,8 @@ export function RegistrationForm({
       <SlidePanel
         isOpen={isOpen}
         onClose={onClose}
-        title={panelTitle}
-        description={panelDescription}
+        title={config.panelTitle}
+        description={config.panelDescription}
         content={panelContent}
         actions={panelActions}
         contentClassName="pt-0 pb-2 sm:pt-0"
