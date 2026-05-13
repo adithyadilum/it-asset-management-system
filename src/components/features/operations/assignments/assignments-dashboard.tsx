@@ -469,7 +469,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
 
     return (
-      <div className="space-y-4">
+      <div className="flex flex-1 flex-col min-h-0 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="relative w-full max-w-136.25">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -718,7 +718,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         data={rows}
         onRowClick={handleRowClick}
         initialPageSize={10}
-        className="rounded-lg border-slate-200"
+        className="flex-1 min-h-0 rounded-lg border-slate-200"
         selectionActions={actions}
         selectionLabel={(count) => `${count} Assets Selected`}
         rowSelection={rowSelection}
@@ -737,10 +737,11 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
           </h1>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <ModuleNavigationTabs
             tabs={tabs}
             defaultTab="available-assets"
+            containerClassName="flex flex-col flex-1 min-h-0"
             onTabChange={() => {
               setRowSelection({});
               if (isPanelOpen) {
