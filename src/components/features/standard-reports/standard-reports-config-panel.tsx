@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronRight, ListFilter, Plus } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +21,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   FilterRow,
-  REPORT_TEMPLATES,
   ReportTemplateCard,
   SOURCE_OPTIONS,
 } from '@/components/features/standard-reports/standard-reports-page';
-import type { FilterState } from './standard-reports-types';
+import type { FilterState, ReportTemplateData } from '@/types/standard-reports';
+import { CreateTemplateDialog } from './create-template-dialog';
 
 interface StandardReportsConfigPanelProps {
   filterState: FilterState;
@@ -34,10 +35,12 @@ interface StandardReportsConfigPanelProps {
     locations: string[];
     statuses: string[];
   };
+  templates: ReportTemplateData[];
   onFilterChange: (field: keyof FilterState, value: string) => void;
-  onTemplatePreview: (templateTitle: string) => void;
+  onTemplatePreview: (templateId: number) => void;
   onManualPreview: () => void;
   onClearFilters: () => void;
+  onTemplateCreated: () => void;
   isLoading: boolean;
   resetKey: number;
 }
@@ -45,13 +48,17 @@ interface StandardReportsConfigPanelProps {
 export function StandardReportsConfigPanel({
   filterState,
   filterOptions,
+  templates,
   onFilterChange,
   onTemplatePreview,
   onManualPreview,
   onClearFilters,
+  onTemplateCreated,
   isLoading,
   resetKey,
 }: StandardReportsConfigPanelProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   // Map UI Asset Types to DB Pillars for filtering category options
   const typeToPillarMap: Record<string, string> = {
     'Hardware': 'IT & Digital',
@@ -82,17 +89,18 @@ export function StandardReportsConfigPanel({
       <div className="flex flex-1 min-h-0 flex-col gap-0">
         <ScrollArea className="flex-1 min-h-0">
           <div className="grid gap-4 p-4 sm:grid-cols-2">
-            {REPORT_TEMPLATES.map((template) => (
+            {templates.map((template) => (
               <ReportTemplateCard
-                key={template.title}
-                {...template}
+                key={template.id}
+                template={template}
                 onPreviewClick={onTemplatePreview}
               />
             ))}
 
             <Card
               size="sm"
-              className="h-full items-center justify-center border-dashed border-border bg-background text-center"
+              className="h-full cursor-pointer items-center justify-center border-dashed border-border bg-background text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
+              onClick={() => setDialogOpen(true)}
             >
               <CardContent className="flex min-h-44 flex-col items-center justify-center gap-4 p-4 text-center">
                 <Plus className="size-6 text-foreground" />
@@ -288,6 +296,14 @@ export function StandardReportsConfigPanel({
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Template Dialog */}
+      <CreateTemplateDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onCreated={onTemplateCreated}
+        filterOptions={filterOptions}
+      />
     </div>
   );
 }
