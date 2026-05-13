@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -67,6 +67,14 @@ type CategoryFilter = {
   value: string;
 };
 
+type AssignedFilterField = "Status" | "Category";
+
+type AssignedFilter = {
+  field: AssignedFilterField;
+  operator: CategoryFilterOperator;
+  value: string;
+};
+
 interface AssignmentsDashboardProps {
   data: AssignmentsDashboardData;
 }
@@ -76,6 +84,8 @@ const tabs = [
   { id: "assigned-assets", label: "Assigned Assets" },
   { id: "returned-assets", label: "Returned Assets" },
 ];
+
+const ASSIGNED_STATUS_OPTIONS = ["pending approval", "assigned", "overdue", "requested", "returned"];
 
 // --- Helpers ---
 
@@ -105,13 +115,19 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const [searchValue, setSearchValue] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
+  // Assigned Assets Filter State
+  const [appliedAssignedFilters, setAppliedAssignedFilters] = useState<AssignedFilter[]>([]);
+  const [assignedDraftField, setAssignedDraftField] = useState<AssignedFilterField>("Status");
+  const [assignedDraftOperator, setAssignedDraftOperator] = useState<CategoryFilterOperator>("is");
+  const [assignedDraftValue, setAssignedDraftValue] = useState("");
+
   // 1. Panel State from URL (following the Registry Pattern)
   const activeAssetId = searchParams.get("id") || "";
   const currentPanel = searchParams.get("panel");
   const isPanelOpen = currentPanel === "record" && activeAssetId !== "";
 
   // 2. Data Mapping
-  const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
+  const mapRow = useCallback((asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
     assetId: asset.id,
     assetName: asset.name ?? asset.assetTag,
     serialNumber: asset.serialNumber ?? "-",
@@ -133,21 +149,21 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     assetTag: asset.assetTag,
     state: asset.state,
     assignmentId: asset.assignmentId ?? undefined,
-  });
+  }), []);
 
   const availableRows = useMemo<AssetAssignmentRow[]>(
     () => data.available.map(mapRow),
-    [data.available]
+    [data.available, mapRow]
   );
 
   const assignedRows = useMemo<AssetAssignmentRow[]>(
     () => data.assigned.map(mapRow),
-    [data.assigned]
+    [data.assigned, mapRow]
   );
 
   const returnedRows = useMemo<AssetAssignmentRow[]>(
     () => data.returned.map(mapRow),
-    [data.returned]
+    [data.returned, mapRow]
   );
 
   const assetRows = useMemo(
@@ -166,6 +182,13 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
     return [...categories].sort((left, right) => left.localeCompare(right));
   }, [assetRows]);
+
+  const assignedFilterValueOptions = useMemo(() => {
+    if (assignedDraftField === "Status") {
+      return ASSIGNED_STATUS_OPTIONS;
+    }
+    return categoryOptions;
+  }, [assignedDraftField, categoryOptions]);
 
   const searchedAssetRows = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -204,10 +227,23 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     [availableRows, filteredAssetRows]
   );
 
-  const filteredAssignedRows = useMemo(
-    () => filteredAssetRows.filter((row) => assignedRows.some((assignedRow) => assignedRow.assetId === row.assetId)),
-    [assignedRows, filteredAssetRows]
-  );
+  const filteredAssignedRows = useMemo(() => {
+    let results = searchedAssetRows.filter((row) => assignedRows.some((assignedRow) => assignedRow.assetId === row.assetId));
+
+    if (appliedAssignedFilters.length === 0) {
+      return results;
+    }
+
+    for (const filter of appliedAssignedFilters) {
+      results = results.filter((row) => {
+        const val = filter.field === "Status" ? row.state : row.category;
+        const matches = val === filter.value;
+        return filter.operator === "is" ? matches : !matches;
+      });
+    }
+
+    return results;
+  }, [assignedRows, searchedAssetRows, appliedAssignedFilters]);
 
   const filteredReturnedRows = useMemo(
     () => filteredAssetRows.filter((row) => returnedRows.some((returnedRow) => returnedRow.assetId === row.assetId)),
@@ -425,7 +461,8 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const renderTable = (
     rows: AssetAssignmentRow[],
     actions?: DataTableSelectionAction<AssetAssignmentRow>[],
-    showStatusColumn = false
+    showStatusColumn = false,
+    filterType: "available" | "assigned" | "returned" = "available"
   ) => {
     const tableColumns = showStatusColumn
       ? columns
@@ -477,39 +514,94 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
             </div>
 
             <div className="space-y-3 px-3 py-3">
-              <div className="space-y-2 text-sm text-slate-700">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={draftOperator === "is"}
-                    onChange={() => setDraftOperator("is")}
-                  />
-                  is
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={draftOperator === "is not"}
-                    onChange={() => setDraftOperator("is not")}
-                  />
-                  is not
-                </label>
-              </div>
+              {filterType === "assigned" ? (
+                <>
+                  <select
+                    value={assignedDraftField}
+                    onChange={(event) => {
+                      const nextField = event.target.value as AssignedFilterField;
+                      setAssignedDraftField(nextField);
+                      const nextOptions = nextField === "Status" ? ASSIGNED_STATUS_OPTIONS : categoryOptions;
+                      setAssignedDraftValue(nextOptions[0] || "");
+                    }}
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  >
+                    <option value="Status">Status</option>
+                    <option value="Category">Category</option>
+                  </select>
 
-              <select
-                value={draftCategory}
-                onChange={(event) => setDraftCategory(event.target.value)}
-                className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-              >
-                <option value="" disabled>
-                  Select category
-                </option>
-                {categoryOptions.map((categoryOption) => (
-                  <option key={categoryOption} value={categoryOption}>
-                    {categoryOption}
-                  </option>
-                ))}
-              </select>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={assignedDraftOperator === "is"}
+                        onChange={() => setAssignedDraftOperator("is")}
+                      />
+                      is
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={assignedDraftOperator === "is not"}
+                        onChange={() => setAssignedDraftOperator("is not")}
+                      />
+                      is not
+                    </label>
+                  </div>
+
+                  <select
+                    value={assignedDraftValue}
+                    onChange={(event) => setAssignedDraftValue(event.target.value)}
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  >
+                    <option value="" disabled>
+                      Select {assignedDraftField.toLowerCase()}
+                    </option>
+                    {assignedFilterValueOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm font-medium text-slate-700 mb-1">Category</div>
+                  <div className="space-y-2 text-sm text-slate-700">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={draftOperator === "is"}
+                        onChange={() => setDraftOperator("is")}
+                      />
+                      is
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        checked={draftOperator === "is not"}
+                        onChange={() => setDraftOperator("is not")}
+                      />
+                      is not
+                    </label>
+                  </div>
+
+                  <select
+                    value={draftCategory}
+                    onChange={(event) => setDraftCategory(event.target.value)}
+                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  >
+                    <option value="" disabled>
+                      Select category
+                    </option>
+                    {categoryOptions.map((categoryOption) => (
+                      <option key={categoryOption} value={categoryOption}>
+                        {categoryOption}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-3 py-2">
@@ -527,11 +619,25 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
                 size="sm"
                 className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
                 onClick={() => {
-                  if (draftCategory) {
-                    setAppliedCategoryFilter({
-                      operator: draftOperator,
-                      value: draftCategory,
-                    });
+                  if (filterType === "assigned") {
+                    if (assignedDraftValue) {
+                      const nextFilter: AssignedFilter = {
+                        field: assignedDraftField,
+                        operator: assignedDraftOperator,
+                        value: assignedDraftValue,
+                      };
+                      setAppliedAssignedFilters((current) => {
+                        const withoutCurrentField = current.filter(f => f.field !== nextFilter.field);
+                        return [...withoutCurrentField, nextFilter];
+                      });
+                    }
+                  } else {
+                    if (draftCategory) {
+                      setAppliedCategoryFilter({
+                        operator: draftOperator,
+                        value: draftCategory,
+                      });
+                    }
                   }
 
                   setIsFilterPopoverOpen(false);
@@ -544,7 +650,43 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         </Popover>
       </div>
 
-      {appliedCategoryFilter ? (
+      {filterType === "assigned" ? (
+        appliedAssignedFilters.length > 0 ? (
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {appliedAssignedFilters.map((filter) => (
+                <span key={filter.field} className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700">
+                  {`${filter.field} ${filter.operator} ${filter.value}`}
+                  <button
+                    type="button"
+                    className="text-slate-500 hover:text-slate-700"
+                    onClick={() => setAppliedAssignedFilters(current => current.filter(f => f.field !== filter.field))}
+                  >
+                    <X className="size-4" />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                className="inline-flex size-8 items-center justify-center rounded-lg text-xl text-slate-600 hover:bg-slate-100"
+                onClick={() => setIsFilterPopoverOpen(true)}
+              >
+                +
+              </button>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
+              onClick={() => setAppliedAssignedFilters([])}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        ) : null
+      ) : appliedCategoryFilter ? (
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700">
@@ -607,15 +749,15 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
             }}
           >
             <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
+              {renderTable(filteredAvailableRows, selectionActionsAvailable, false, "available")}
             </TabsContent>
 
             <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
+              {renderTable(filteredAssignedRows, selectionActionsAssigned, true, "assigned")}
             </TabsContent>
 
             <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredReturnedRows, undefined, false)}
+              {renderTable(filteredReturnedRows, undefined, false, "returned")}
             </TabsContent>
           </ModuleNavigationTabs>
         </div>
