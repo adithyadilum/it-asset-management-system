@@ -466,7 +466,27 @@ export const softwareAllocations = pgTable('software_allocations', {
 });
 
 // -----------------------------------------------------------------------------
-// 7. RELATIONS (For Drizzle Query Builder)
+// 7. CUSTOM REPORT TEMPLATES 
+// -----------------------------------------------------------------------------
+export const reportTemplates = pgTable('report_templates', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  reportCode: varchar('report_code', { length: 50 }).notNull().unique(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true).notNull(),
+  dataSource: varchar('data_source', { length: 100 }).notNull(),
+  filters: jsonb('filters'),
+  fields: jsonb('fields'),
+  sortDirection: varchar('sort_direction', { length: 10 }).default('asc').notNull(),
+  createdById: uuid('created_by_id')
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// -----------------------------------------------------------------------------
+// 8. RELATIONS (For Drizzle Query Builder)
 // -----------------------------------------------------------------------------
 export const assetRelations = relations(assets, ({ one, many }) => ({
   model: one(models, { fields: [assets.modelId], references: [models.id] }),
