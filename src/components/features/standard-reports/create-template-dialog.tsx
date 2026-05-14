@@ -29,7 +29,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ListFilter } from 'lucide-react';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
@@ -188,7 +187,7 @@ export function CreateTemplateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 px-6">
+        <div className="flex-1 overflow-y-auto px-6">
           <div className="flex flex-col gap-6 py-4">
             {/* Basic Information */}
             <div className="space-y-4">
@@ -402,7 +401,7 @@ export function CreateTemplateDialog({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Error display */}
         {error && (
