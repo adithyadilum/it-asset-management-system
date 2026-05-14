@@ -49,7 +49,7 @@
     "@upstash/qstash": "^1.1.1",
     "@upstash/redis": "^1.34.0",
     "resend": "^4.0.0",
-    "@react-email/components": "^0.0.16"
+    "@react-email/components": "^0.0.17"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.4.0",
