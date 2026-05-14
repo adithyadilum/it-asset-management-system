@@ -3,9 +3,14 @@ import {
   asc,
   desc,
   eq,
+  gt,
+  gte,
   ilike,
   inArray,
+  isNotNull,
   isNull,
+  lt,
+  lte,
   or,
   sql,
 } from 'drizzle-orm';
@@ -17,6 +22,8 @@ import {
   categories,
   locations,
   models,
+  softwareAllocations,
+  softwareLicenses,
   systemAuditLogs,
   users,
 } from '@/db/schema';
@@ -50,6 +57,11 @@ export interface AssetRegistryRow {
   assignedTo: string | null;
   instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date;
+  // SAM fields
+  totalSeats?: number | null;
+  availableSeats?: number | null;
+  expiryDate?: string | null;
+  licenseType?: string | null;
 }
 
 export interface PaginatedAssetsResult {
@@ -127,7 +139,8 @@ export async function getAssetsByPillar(
     typeof filters.categoryId === 'number'
       ? eq(categories.id, filters.categoryId)
       : undefined,
-    filters.status ? eq(assets.status, filters.status) : eq(assets.isArchived, false),
+    filters.status && filters.pillar !== 'Software' ? eq(assets.status, filters.status) : undefined,
+    !filters.status ? eq(assets.isArchived, false) : undefined,
     normalizedQuery
       ? or(
           ilike(assets.assetTag, `%${normalizedQuery}%`),
@@ -140,15 +153,60 @@ export async function getAssetsByPillar(
       : undefined
   );
 
+  const assignedSeatsSubquery = db
+    .select({
+      licenseId: softwareAllocations.licenseId,
+      count: sql<number>`count(*)::int`.as('count'),
+    })
+    .from(softwareAllocations)
+    .groupBy(softwareAllocations.licenseId)
+    .as('assigned_seats');
+
+  // Dynamic Status Filtering for Software
+  let softwareStatusCondition = undefined;
+  if (filters.status && filters.pillar === 'Software') {
+    const now = new Date().toISOString().split('T')[0];
+    const warningDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    if (filters.status === 'expired') {
+      softwareStatusCondition = lt(softwareLicenses.expiryDate, now);
+    } else if (filters.status === 'full') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
+        lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`)
+      );
+    } else if (filters.status === 'warning') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
+        or(
+          and(isNotNull(softwareLicenses.expiryDate), lt(softwareLicenses.expiryDate, warningDate)),
+          and(
+            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`), 
+            lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+          )
+        )
+      );
+    } else if (filters.status === 'available') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, warningDate)),
+        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+      );
+    }
+  }
+
   const totalRows = await db
     .select({ total: sql<number>`count(*)::int` })
     .from(assets)
     .innerJoin(models, eq(assets.modelId, models.id))
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
-    .where(whereCondition);
+    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
+    .leftJoin(assignedSeatsSubquery, eq(softwareLicenses.id, assignedSeatsSubquery.licenseId))
+    .where(and(whereCondition, softwareStatusCondition));
 
   const total = totalRows[0]?.total ?? 0;
+
+  // Subquery already defined above
 
   const rows = await db
     .select({
@@ -166,12 +224,22 @@ export async function getAssetsByPillar(
       location: locations.name,
       instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
+      // SAM fields
+      totalSeats: softwareLicenses.totalSeats,
+      expiryDate: softwareLicenses.expiryDate,
+      licenseType: softwareLicenses.licenseType,
+      assignedSeats: sql<number>`COALESCE(${assignedSeatsSubquery.count}, 0)`,
     })
     .from(assets)
     .innerJoin(models, eq(assets.modelId, models.id))
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
-    .where(whereCondition)
+    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
+    .leftJoin(
+      assignedSeatsSubquery,
+      eq(softwareLicenses.id, assignedSeatsSubquery.licenseId)
+    )
+    .where(and(whereCondition, softwareStatusCondition))
     .orderBy(desc(assets.updatedAt), asc(assets.assetTag))
     .limit(safePageSize)
     .offset(offset);
@@ -208,11 +276,37 @@ export async function getAssetsByPillar(
     }
   }
 
-  const data: AssetRegistryRow[] = rows.map((row) => ({
-    ...row,
-    instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
-    assignedTo: assignedUserByAssetId.get(row.id) ?? null,
-  }));
+  const data: AssetRegistryRow[] = rows.map((row) => {
+    const totalSeats = typeof row.totalSeats === 'number' ? row.totalSeats : 0;
+    const assignedSeats = typeof row.assignedSeats === 'number' ? row.assignedSeats : 0;
+    const availableSeats = Math.max(0, totalSeats - assignedSeats);
+    const expiryDate = row.expiryDate ? new Date(row.expiryDate) : null;
+    const isExpired = expiryDate ? expiryDate < new Date() : false;
+    const isNearExpiry = expiryDate ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
+    const isFull = totalSeats > 0 && availableSeats <= 0;
+    const isNearFull = totalSeats > 0 && availableSeats <= 2;
+
+    let calculatedStatus = row.status;
+    if (row.pillar === 'Software') {
+      if (isExpired) {
+        calculatedStatus = 'expired';
+      } else if (isFull) {
+        calculatedStatus = 'full';
+      } else if (isNearExpiry || isNearFull) {
+        calculatedStatus = 'warning';
+      } else {
+        calculatedStatus = 'available';
+      }
+    }
+
+    return {
+      ...row,
+      status: calculatedStatus,
+      instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
+      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
+    };
+  });
 
   return {
     data,

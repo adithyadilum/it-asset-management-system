@@ -31,6 +31,7 @@ import { DisposeAssetsRequestDialog } from '@/components/features/disposals/disp
 import { StatusBadge } from '@/components/shared/status-badge';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { CopyableField } from '@/components/shared/copyable-field';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import {
@@ -80,6 +81,11 @@ type AssetRegistryRow = {
   assignedTo: string | null;
   instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date | string;
+  // SAM fields
+  totalSeats?: number | null;
+  availableSeats?: number | null;
+  expiryDate?: string | null;
+  licenseType?: string | null;
 };
 
 type AssetRegistryResult = {
@@ -740,31 +746,90 @@ export function AssetRegistryClient({
           accessorKey: 'serialNumber',
           header: 'License Key',
           cell: ({ row }) => {
-            const serialNumber =
-              row.original.serialNumber ??
+            const serialNumber = 
+              row.original.serialNumber || 
               String(row.original.instanceAttributes?.['license_key'] ?? row.original.instanceAttributes?.['License Key'] ?? '');
 
-            return serialNumber
-              ? `${serialNumber.slice(0, 4)}-${serialNumber.slice(-4)}`
-              : 'XXXX-XXXX';
+            if (!serialNumber || serialNumber === '-') return '-';
+            
+            return (
+              <div className="flex w-full pr-2">
+                <CopyableField 
+                  value={serialNumber} 
+                  label="License Key" 
+                  className="w-full"
+                />
+              </div>
+            );
           },
         },
         {
           id: 'licenseType',
           header: 'License Type',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['license_type'] ?? row.original.instanceAttributes?.['License Type'] ?? '-'),
+          cell: ({ row }) => row.original.licenseType ?? '-',
           enableSorting: false,
         },
         {
-          id: 'totalSeats',
-          header: 'Total Seats',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['max_seats'] ?? row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? '-'),
+          id: 'availability',
+          header: 'Availability',
+          cell: ({ row }) => {
+            const coreTotal = row.original.totalSeats;
+            const coreAvailable = row.original.availableSeats;
+            
+            // Fallbacks from instance attributes
+            const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
+            
+            const total = coreTotal ?? attrTotal;
+            const available = coreAvailable ?? (total > 0 ? total : 0); // Crude fallback for availability
+            
+            const isLow = total > 0 && available <= 2;
+            
+            if (row.original.pillar !== 'Software') return null;
+            
+            return (
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                  available === 0 
+                    ? "bg-red-50 text-red-700 ring-red-600/10" 
+                    : isLow 
+                      ? "bg-amber-50 text-amber-700 ring-amber-600/10"
+                      : "bg-green-50 text-green-700 ring-green-600/10"
+                }`}>
+                  {available} / {total} Available
+                </span>
+              </div>
+            );
+          },
           enableSorting: false,
         },
         {
           id: 'expirationDate',
           header: 'Expiration Date',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['expiration_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
+          cell: ({ row }) => {
+            const coreExpiry = row.original.expiryDate;
+            const attrExpiry = String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? row.original.instanceAttributes?.['license_expiry'] ?? '');
+            
+            const expiryStr = coreExpiry || attrExpiry;
+            if (!expiryStr || expiryStr === 'null') return '-';
+            
+            const expiryDate = new Date(expiryStr);
+            const today = new Date();
+            const diffTime = expiryDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let colorClass = "text-slate-600";
+            if (diffDays <= 0) {
+              colorClass = "text-red-600 font-medium";
+            } else if (diffDays <= 30) {
+              colorClass = "text-amber-600 font-medium";
+            }
+            
+            return (
+              <span className={colorClass}>
+                {expiryDate.toLocaleDateString()}
+              </span>
+            );
+          },
           enableSorting: false,
         },
       ];

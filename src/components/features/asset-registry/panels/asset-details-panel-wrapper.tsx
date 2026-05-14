@@ -176,7 +176,10 @@ export function AssetDetailsPanelWrapper({
       dateCreated={formatDisplayDateTime(data?.asset.createdAt)}
       updatedAt={formatDisplayDateTime(data?.asset.updatedAt)}
       note={data?.assignment?.notes ?? ""}
-      specs={(data?.model.technicalDetails as Record<string, string | number | undefined>) ?? {}}
+      specs={{
+        ...(data?.model?.technicalDetails as Record<string, any>),
+        ...(data?.instanceAttributes as Record<string, any>)
+      }}
       techNote={""} // techNote doesn't exist
       currency={displayCurrency}
       sourceCurrency={sourceCurrency}
@@ -206,7 +209,10 @@ export function AssetDetailsPanelWrapper({
       historyEvents={historyEvents}
       maintenanceEvents={maintenanceEvents}
       allocations={allocations}
-      totalSeats={parseInt(String(data?.model.technicalDetails?.max_seats ?? data?.model.technicalDetails?.total_seats ?? 0), 10)}
+      totalSeats={data?.softwareLicense?.totalSeats}
+      availableSeats={data?.softwareLicense?.availableSeats}
+      expiryDate={formatDisplayDate(data?.softwareLicense?.expiryDate)}
+      licenseType={data?.softwareLicense?.licenseType}
       onCurrencyChange={setDisplayCurrencyOverride}
       manualStatuses={manualStatuses}
       onStatusChanged={(nextStatus) => {

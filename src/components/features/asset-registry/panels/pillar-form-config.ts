@@ -77,6 +77,7 @@ export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
     showSoftwareLicensingSection: true,
     showCostPerSeat: true,
     showShippingCost: false,
+    showWarrantyPeriod: false,
     showSuccessTagDialog: false,
   },
   'Office Furniture': {
