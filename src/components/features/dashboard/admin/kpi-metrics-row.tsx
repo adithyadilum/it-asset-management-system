@@ -2,7 +2,7 @@ import { KpiCard } from "./kpi-card"
 
 export function KpiMetricsRow() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-4">
       <KpiCard 
         title="Total Asset Value"
         value="$1.24M"
@@ -28,7 +28,7 @@ export function KpiMetricsRow() {
         subText2="2 critical server components included."
       />
       <KpiCard 
-        title="Expiring Software (30 Days)"
+        title="Expiring Software"
         value="12"
         badgeText="+4.5%"
         badgeType="positive"

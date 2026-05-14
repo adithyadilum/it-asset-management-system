@@ -40,12 +40,14 @@ export function DatePickerWithRange({
           <Button
             id="date"
             variant={"outline"}
+            size="sm" // 1. Set Shadcn button size to small
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
+              // 2. Forced smaller height (h-8), smaller text (text-xs), and tighter width (w-[240px])
+              "w-[240px] justify-start text-left font-normal h-8 text-xs", 
               !internalDate && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-3.5 w-3.5" /> {/* 3. Slightly shrunk the icon */}
             {internalDate?.from ? (
               internalDate.to ? (
                 <>
