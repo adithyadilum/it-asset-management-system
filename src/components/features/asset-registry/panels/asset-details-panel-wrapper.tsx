@@ -177,8 +177,8 @@ export function AssetDetailsPanelWrapper({
       updatedAt={formatDisplayDateTime(data?.asset.updatedAt)}
       note={data?.assignment?.notes ?? ""}
       specs={{
-        ...(data?.model?.technicalDetails as Record<string, any>),
-        ...(data?.instanceAttributes as Record<string, any>)
+        ...(data?.model?.technicalDetails as Record<string, string | number | undefined>),
+        ...(data?.asset?.instanceAttributes as Record<string, string | number | undefined>)
       }}
       techNote={""} // techNote doesn't exist
       currency={displayCurrency}

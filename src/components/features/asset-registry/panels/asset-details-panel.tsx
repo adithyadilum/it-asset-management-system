@@ -134,7 +134,6 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         : rawExpiry
     ) : '-';
     const softwareTotalSeats = props.totalSeats?.toString() || props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-';
-    const softwareAvailableSeats = props.availableSeats?.toString() || '-';
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
@@ -313,7 +312,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     }
 
     return tabsList;
-  }, [props]);
+  }, [props, isSoftware, isFurniture]);
 
   const handleExportCSV = useCallback(async () => {
     try {

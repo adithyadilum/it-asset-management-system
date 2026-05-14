@@ -313,7 +313,7 @@ export async function getAssetDetailsById(
   const purchaseRecord = assetRecord.purchases?.[0];
   const assignmentRecord = assetRecord.assignments?.[0];
 
-  return {
+  const result: AssetDetailsData = {
     asset: {
       id: assetRecord.id,
       assetTag: assetRecord.assetTag,
@@ -564,7 +564,7 @@ export async function getAssetAllocationsById(
           id: alloc.assignedToUser!.id,
           name: alloc.assignedToUser!.name,
           email: alloc.assignedToUser!.email,
-          assignedDate: alloc.allocatedDate.toISOString(),
+          assignedDate: alloc.allocatedAt.toISOString(),
         });
       });
   }

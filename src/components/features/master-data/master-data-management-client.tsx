@@ -988,7 +988,7 @@ export function MasterDataManagementClient({
                 onValueChange={handleTabChange}
                 className="min-h-0 flex-1"
             >
-                <TabsList className="h-9 gap-1 rounded-lg bg-slate-100 p-1">
+                <TabsList className="h-9 w-fit gap-1 rounded-lg bg-slate-100 p-1">
                     {TAB_LABELS.map((tab) => (
                         <TabsTrigger
                             key={tab.id}

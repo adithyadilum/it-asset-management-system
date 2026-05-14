@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
-import { 
-  sendAssignmentReminderAction, 
-  requestAssetReturnAction, 
-  markAssetReceivedAction 
+import {
+  sendAssignmentReminderAction,
+  requestAssetReturnAction,
+  markAssetReceivedAction
 } from "@/actions/assignments";
 import { AssignmentsPanels } from "./assignments-panels";
 import {
@@ -17,18 +16,12 @@ import {
 } from "./multi-asset-assignment-modal";
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DataTable,
   type DataTableSelectionAction,
 } from "@/components/shared/data-table";
+import { FilterBar, type AppliedFilter, type FilterFieldConfig } from "@/components/shared/filter-bar";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-} from "@/components/ui/popover";
 import { TabsContent } from "@/components/ui/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { RowSelectionState } from "@tanstack/react-table";
@@ -58,13 +51,6 @@ type AssetAssignmentRow = {
   state: string;
   assignmentId?: number;
   lastRepaired?: string;
-};
-
-type CategoryFilterOperator = "is" | "is not";
-
-type CategoryFilter = {
-  operator: CategoryFilterOperator;
-  value: string;
 };
 
 interface AssignmentsDashboardProps {
@@ -98,10 +84,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const searchParams = useSearchParams();
   const [isMultiAssignModalOpen, setIsMultiAssignModalOpen] = useState(false);
   const [multiAssignAssets, setMultiAssignAssets] = useState<MultiAssetAssignmentItem[]>([]);
-  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-  const [appliedCategoryFilter, setAppliedCategoryFilter] = useState<CategoryFilter | null>(null);
-  const [draftOperator, setDraftOperator] = useState<CategoryFilterOperator>("is");
-  const [draftCategory, setDraftCategory] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -167,6 +150,10 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     return [...categories].sort((left, right) => left.localeCompare(right));
   }, [assetRows]);
 
+  const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => [
+    { value: 'Category', label: 'Category', options: categoryOptions },
+  ], [categoryOptions]);
+
   const searchedAssetRows = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
 
@@ -189,15 +176,20 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   }, [assetRows, searchValue]);
 
   const filteredAssetRows = useMemo(() => {
-    if (!appliedCategoryFilter) {
+    if (appliedFilters.length === 0) {
       return searchedAssetRows;
     }
 
     return searchedAssetRows.filter((row) => {
-      const matches = row.category === appliedCategoryFilter.value;
-      return appliedCategoryFilter.operator === "is" ? matches : !matches;
+      return appliedFilters.every((filter) => {
+        if (filter.field === 'Category') {
+          const matches = row.category === filter.value;
+          return filter.operator === "is" ? matches : !matches;
+        }
+        return true;
+      });
     });
-  }, [searchedAssetRows, appliedCategoryFilter]);
+  }, [searchedAssetRows, appliedFilters]);
 
   const filteredAvailableRows = useMemo(
     () => filteredAssetRows.filter((row) => availableRows.some((availableRow) => availableRow.assetId === row.assetId)),
@@ -233,14 +225,19 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     );
   }, [selectedAssignedRows]);
 
-  const categoryFilterLabel = appliedCategoryFilter
-    ? `Category ${appliedCategoryFilter.operator} ${appliedCategoryFilter.value}`
-    : "Category";
+  const applyFilter = (nextFilter: AppliedFilter) => {
+    setAppliedFilters((currentFilters) => {
+      const withoutCurrentField = currentFilters.filter((f) => f.field !== nextFilter.field);
+      return [...withoutCurrentField, nextFilter];
+    });
+  };
 
-  const clearCategoryFilter = () => {
-    setAppliedCategoryFilter(null);
-    setDraftOperator("is");
-    setDraftCategory("");
+  const clearFilter = (field: string) => {
+    setAppliedFilters((currentFilters) => currentFilters.filter((f) => f.field !== field));
+  };
+
+  const clearAllFilters = () => {
+    setAppliedFilters([]);
   };
 
   const handleClosePanel = () => {
@@ -392,7 +389,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
           'returned': "bg-slate-50 text-slate-700 border-slate-200",
         };
         const colorClass = colors[state] || "bg-slate-50 text-slate-700 border-slate-200";
-        
+
         return (
           <Badge variant="outline" className={`h-5 rounded-full px-2 text-[11px] font-medium capitalize ${colorClass}`}>
             {state}
@@ -432,194 +429,70 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
 
     return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="relative w-full max-w-136.25">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              type="search"
-              placeholder="Search assets..."
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-              className="h-9 pl-9"
-            />
-          </div>
-        <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-          <PopoverAnchor asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
-              onClick={() => setIsFilterPopoverOpen((currentOpen) => !currentOpen)}
-            >
-              Filters
-              <ChevronDown className="size-4" />
-            </Button>
-          </PopoverAnchor>
-          <PopoverContent
-            align="end"
-            side="bottom"
-            sideOffset={10}
-            className="w-61.25 rounded-lg border border-slate-200 p-0 shadow-xl"
-          >
-            <div className="border-b border-slate-200 px-3 py-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-slate-600"
-                  onClick={() => setIsFilterPopoverOpen(false)}
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            </div>
+      <div className="flex flex-1 flex-col min-h-0 gap-4">
+        <FilterBar
+          searchQuery={searchValue}
+          onSearchChange={setSearchValue}
+          searchPlaceholder="Search assets..."
+          fields={filterFieldConfigs}
+          appliedFilters={appliedFilters}
+          onApplyFilter={applyFilter}
+          onClearFilter={clearFilter}
+          onClearAllFilters={clearAllFilters}
+        />
 
-            <div className="space-y-3 px-3 py-3">
-              <div className="space-y-2 text-sm text-slate-700">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={draftOperator === "is"}
-                    onChange={() => setDraftOperator("is")}
-                  />
-                  is
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={draftOperator === "is not"}
-                    onChange={() => setDraftOperator("is not")}
-                  />
-                  is not
-                </label>
-              </div>
-
-              <select
-                value={draftCategory}
-                onChange={(event) => setDraftCategory(event.target.value)}
-                className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-              >
-                <option value="" disabled>
-                  Select category
-                </option>
-                {categoryOptions.map((categoryOption) => (
-                  <option key={categoryOption} value={categoryOption}>
-                    {categoryOption}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-3 py-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-lg border-slate-200 px-3 text-sm"
-                onClick={() => setIsFilterPopoverOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
-                onClick={() => {
-                  if (draftCategory) {
-                    setAppliedCategoryFilter({
-                      operator: draftOperator,
-                      value: draftCategory,
-                    });
-                  }
-
-                  setIsFilterPopoverOpen(false);
-                }}
-              >
-                Apply Filter
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <DataTable<AssetAssignmentRow, unknown>
+          columns={tableColumns}
+          data={rows}
+          onRowClick={handleRowClick}
+          initialPageSize={10}
+          className="rounded-lg border-slate-200"
+          selectionActions={actions}
+          selectionLabel={(count) => `${count} Assets Selected`}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+        />
       </div>
-
-      {appliedCategoryFilter ? (
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700">
-              {categoryFilterLabel}
-              <button
-                type="button"
-                className="text-slate-500 hover:text-slate-700"
-                onClick={clearCategoryFilter}
-              >
-                <X className="size-4" />
-              </button>
-            </span>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
-            onClick={clearCategoryFilter}
-          >
-            Clear Filters
-          </Button>
-        </div>
-      ) : null}
-
-      <DataTable<AssetAssignmentRow, unknown>
-        columns={tableColumns}
-        data={rows}
-        onRowClick={handleRowClick}
-        initialPageSize={10}
-        className="rounded-lg border-slate-200"
-        selectionActions={actions}
-        selectionLabel={(count) => `${count} Assets Selected`}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
-      />
-    </div>
-  );
-};
+    );
+  };
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-50">
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
-        <div className="mb-4 shrink-0">
-          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
-            Assignments and Returns
-          </h1>
-        </div>
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+          <div className="mb-4 shrink-0">
+            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+              Assignments and Returns
+            </h1>
+          </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <ModuleNavigationTabs
-            tabs={tabs}
-            defaultTab="available-assets"
-            onTabChange={() => {
-              setRowSelection({});
-              if (isPanelOpen) {
-                handleClosePanel();
-              }
-            }}
-          >
-            <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
-            </TabsContent>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ModuleNavigationTabs
+              tabs={tabs}
+              defaultTab="available-assets"
+              onTabChange={() => {
+                setRowSelection({});
+                if (isPanelOpen) {
+                  handleClosePanel();
+                }
+              }}
+              containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
+            >
+              <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
+              </TabsContent>
 
-            <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
-            </TabsContent>
+              <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
+              </TabsContent>
 
-            <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-              {renderTable(filteredReturnedRows, undefined, false)}
-            </TabsContent>
-          </ModuleNavigationTabs>
-        </div>
-      </main>
+              <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                {renderTable(filteredReturnedRows, undefined, false)}
+              </TabsContent>
+            </ModuleNavigationTabs>
+          </div>
+        </main>
+      </div>
 
       <AssignmentsPanels
         isOpen={isPanelOpen}
