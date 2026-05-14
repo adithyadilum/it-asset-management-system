@@ -15,8 +15,9 @@ import {
   uuid,
   foreignKey,
   index,
+  check
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 import { LOCATION_TYPES } from '@/types/master-data';
 
@@ -460,6 +461,17 @@ export const notificationCategoryEnum = pgEnum('notification_category', [
   'FINANCIAL',
 ]);
 
+export const notificationChannelEnum = pgEnum('notification_channel', [
+  'in_app', 
+  'email', 
+  'teams'
+]);
+export const notificationLogStatusEnum = pgEnum('notification_log_status', [
+  'sent', 
+  'failed', 
+  'pending'
+]);
+
 export const appNotifications = pgTable(
   'app_notifications',
   {
@@ -467,6 +479,7 @@ export const appNotifications = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    title: varchar('title', { length: 255 }).notNull(),
     message: text('message').notNull(),
     targetUrl: varchar('target_url', { length: 500 }), // Deep-link path
     isRead: boolean('is_read').default(false).notNull(),
@@ -505,15 +518,18 @@ export const notificationRules = pgTable(
 export const integrationSettings = pgTable(
   'integration_settings',
   {
-    id: serial('id').primaryKey(),
-    resendApiKey: text('resend_api_key'), // Encrypted
-    teamsWebhookUrl: text('teams_webhook_url'), // Encrypted
+    id: integer('id').default(1).primaryKey(), 
+    resendApiKey: text('resend_api_key'), 
+    teamsWebhookUrl: text('teams_webhook_url'), 
     smtpHost: varchar('smtp_host', { length: 255 }),
     smtpPort: integer('smtp_port'),
-    smtpUser: text('smtp_user'), // Encrypted
-    smtpPass: text('smtp_pass'), // Encrypted
+    smtpUser: text('smtp_user'), 
+    smtpPass: text('smtp_pass'), 
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
-  }
+  },
+  (table) => ({
+    singleRowConstraint: check('single_row_check', sql`${table.id} = 1`),
+  })
 );
 
 export const notificationLogs = pgTable(
@@ -522,8 +538,8 @@ export const notificationLogs = pgTable(
     id: serial('id').primaryKey(),
     notificationId: uuid('notification_id').references(() => appNotifications.id),
     eventType: notificationEventTypeEnum('event_type').notNull(),
-    channel: varchar('channel', { length: 50 }).notNull(), // 'in_app', 'email', 'teams'
-    status: varchar('status', { length: 50 }).notNull(), // 'sent', 'failed', 'pending'
+    channel: notificationChannelEnum('channel').notNull(), 
+    status: notificationLogStatusEnum('status').notNull(), 
     errorMessage: text('error_message'),
     sentAt: timestamp('sent_at').defaultNow().notNull(),
   },

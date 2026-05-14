@@ -1,41 +1,38 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
+const IV_LENGTH = 12; // Standard for GCM
+
+function getKey(): Buffer {
+  const secret = process.env.ENCRYPTION_SECRET;
+  if (!secret) {
+    throw new Error('ENCRYPTION_SECRET not set in environment variables');
+  }
+
+  // Directly decode the base64 secret into a 32-byte Buffer
+  const key = Buffer.from(secret, 'base64');
+  
+  if (key.length !== 32) {
+    throw new Error('ENCRYPTION_SECRET must be exactly 32 bytes (base64 encoded)');
+  }
+  
+  return key;
+}
 
 /**
  * Encrypts a plaintext string using AES-256-GCM
  * Returns format: "iv:authTag:encryptedData" (all base64/hex encoded)
  */
 export function encrypt(plaintext: string): string {
-  const secret = process.env.ENCRYPTION_SECRET;
-  if (!secret) {
-    throw new Error('ENCRYPTION_SECRET not set in environment variables');
-  }
-
-  // Derive a 256-bit key from the secret
-  const key = crypto
-    .createHash('sha256')
-    .update(secret)
-    .digest();
-
-  // Generate random IV
+  const key = getKey();
   const iv = crypto.randomBytes(IV_LENGTH);
-  
-  // Create cipher
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-  // Encrypt
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-
-  // Get auth tag
   const authTag = cipher.getAuthTag();
 
-  // Combine: base64(iv):base64(authTag):hex(encrypted)
-  const combined = `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted}`;
-
-  return combined;
+  return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted}`;
 }
 
 /**
@@ -43,35 +40,21 @@ export function encrypt(plaintext: string): string {
  * Expects format: "iv:authTag:encryptedData"
  */
 export function decrypt(encrypted: string): string {
-  const secret = process.env.ENCRYPTION_SECRET;
-  if (!secret) {
-    throw new Error('ENCRYPTION_SECRET not set in environment variables');
-  }
-
   try {
-    // Split the combined string
+    const key = getKey();
     const parts = encrypted.split(':');
+    
     if (parts.length !== 3) {
       throw new Error('Invalid encrypted data format');
     }
 
     const [ivBase64, authTagBase64, encryptedHex] = parts;
-
-    // Derive the same key
-    const key = crypto
-      .createHash('sha256')
-      .update(secret)
-      .digest();
-
-    // Decode IV and auth tag
     const iv = Buffer.from(ivBase64, 'base64');
     const authTag = Buffer.from(authTagBase64, 'base64');
 
-    // Create decipher
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
 
-    // Decrypt
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 

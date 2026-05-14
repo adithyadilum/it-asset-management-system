@@ -64,6 +64,7 @@ export interface NotificationRule {
 export interface AppNotification {
   id: string;
   userId: string;
+  title: string;
   message: string;
   targetUrl?: string;
   isRead: boolean;
