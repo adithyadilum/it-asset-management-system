@@ -94,17 +94,26 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:p-6">
-            <DashboardHeader />
-            <KpiMetricsRow />
-
-            <div className="grid gap-4 md:grid-cols-3 mt-4">
-                <div className="h-64 rounded-md bg-muted" />
-                <div className="h-64 rounded-md bg-muted" />
-                <div className="h-64 rounded-md bg-muted" />
+        <div className="h-screen w-full flex flex-col overflow-hidden p-4">
+            {/* Row 1: Header */}
+            <div className="shrink-0">
+                <DashboardHeader />
             </div>
 
-            <div className="min-h-0 flex-1 rounded-md bg-muted mt-4" />
+            {/* Row 2: KPI Cards */}
+            <div className="shrink-0 mt-3">
+                <KpiMetricsRow />
+            </div>
+
+            {/* Rows 3 & 4: Charts + Tables — fills remaining height */}
+            <div className="flex-1 min-h-0 flex flex-col gap-3 mt-3">
+                <div className="grid gap-3 md:grid-cols-3 flex-1 min-h-0">
+                    <div className="rounded-md bg-muted" />
+                    <div className="rounded-md bg-muted" />
+                    <div className="rounded-md bg-muted" />
+                </div>
+                <div className="flex-1 min-h-0 rounded-md bg-muted" />
+            </div>
         </div>
     )
 }
