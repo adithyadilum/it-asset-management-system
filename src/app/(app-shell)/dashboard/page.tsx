@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
 import { KpiMetricsRow } from "@/components/features/dashboard/admin/kpi-metrics-row"
+import { DashboardChartsRow, DashboardTableTabsHeader } from "@/components/features/dashboard/admin/dashboard-charts-row"
 import { AssetCard } from "@/components/shared/asset-card"
 import {
     Empty,
@@ -94,25 +95,24 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="h-screen w-full flex flex-col overflow-hidden p-4">
-            {/* Row 1: Header */}
-            <div className="shrink-0">
+        // 1. Lock the outer screen height
+        <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
+
+            {/* 2. Pin the header to the top */}
+            <div className="shrink-0 p-4 pb-2 border-b border-border">
                 <DashboardHeader />
             </div>
 
-            {/* Row 2: KPI Cards */}
-            <div className="shrink-0 mt-3">
+            {/* 3. Let the inner content scroll ONLY if needed */}
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
                 <KpiMetricsRow />
-            </div>
 
-            {/* Rows 3 & 4: Charts + Tables — fills remaining height */}
-            <div className="flex-1 min-h-0 flex flex-col gap-3 mt-3">
-                <div className="grid gap-3 md:grid-cols-3 flex-1 min-h-0">
-                    <div className="rounded-md bg-muted" />
-                    <div className="rounded-md bg-muted" />
-                    <div className="rounded-md bg-muted" />
+                <div className="flex flex-col gap-4">
+                    <DashboardChartsRow />
+                    <DashboardTableTabsHeader />
+                    {/* Table component will go here */}
+                    <div className="min-h-[400px] rounded-md bg-muted/30 border border-border" />
                 </div>
-                <div className="flex-1 min-h-0 rounded-md bg-muted" />
             </div>
         </div>
     )

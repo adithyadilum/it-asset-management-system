@@ -32,41 +32,38 @@ export function KpiCard({
 
   return (
     <Card className="flex flex-col shadow-sm">
-      
-      <CardHeader className="flex flex-row items-center justify-between p-2 pb-0 space-y-0">
-        <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-muted-foreground text-xs")}>
+      <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 space-y-0">
+        <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-muted-foreground")}>
           {title}
         </CardTitle>
         <Badge 
           variant="outline"
           className={cn(
-            "rounded px-1 py-0 flex items-center gap-0.5",
-            "text-[10px] md:text-xs font-semibold leading-none h-5", 
+            "rounded px-1.5 py-0.5 flex items-center gap-0.5",
+            "text-xs font-semibold leading-none",
             isPositive && "border-border text-[#7cc000] dark:text-[#a3e635]",
             isNegative && "border-border text-muted-foreground",
             !isPositive && !isNegative && "border-border text-muted-foreground"
           )}
         >
-          {isPositive && <ArrowUpRight className="w-2.5 h-2.5" />}
-          {isNegative && <ArrowDownRight className="w-2.5 h-2.5" />}
+          {isPositive && <ArrowUpRight className="w-3 h-3" />}
+          {isNegative && <ArrowDownRight className="w-3 h-3" />}
           {badgeText}
         </Badge>
       </CardHeader>
 
-     
-      <CardContent className="p-2 pt-1 flex flex-col gap-0.5">
-       
-        <div className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, "leading-none tracking-tight", valueColorClass)}>
+      <CardContent className="p-4 pt-1 flex flex-col gap-1">
+        <div className={cn(TYPOGRAPHY_CLASSNAMES.text2xlSemiBold, "leading-none tracking-tight", valueColorClass)}>
           {value}
         </div>
-        <div className="mt-1">
+        <div className="mt-2">
           <div className="flex items-center justify-between">
-            <p className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-[11px] leading-tight text-foreground")}>
+            <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsMedium, "leading-tight text-foreground")}>
               {subText1}
             </p>
-            <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
-          </div> 
-          <p className="text-[10px] leading-tight text-muted-foreground mt-0.5">
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          </div>
+          <p className="text-xs leading-tight text-muted-foreground mt-1">
             {subText2}
           </p>
         </div>
