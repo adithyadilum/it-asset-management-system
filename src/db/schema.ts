@@ -434,6 +434,106 @@ export const systemAuditLogs = pgTable('system_audit_logs', {
   performedAt: timestamp('performed_at').defaultNow().notNull(),
 });
 
+// =====================================================================
+// EPIC 23: NOTIFICATION SYSTEM TABLES
+// =====================================================================
+
+export const notificationEventTypeEnum = pgEnum('notification_event_type', [
+  'WARRANTY_EXPIRY',
+  'SOFTWARE_LICENSE_RENEWAL',
+  'RETURN_OVERDUE',
+  'MAINTENANCE_COMPLETED',
+  'DISPOSAL_REQUEST',
+  'DISPOSAL_APPROVED',
+  'DISPOSAL_REJECTED',
+  'ROLE_CHANGE',
+  'ASSIGNMENT_PENDING',
+  'ASSIGNMENT_ACCEPTED',
+  'ASSIGNMENT_DECLINED',
+  'ASSET_DEFECTIVE_REPORTED',
+]);
+
+export const notificationCategoryEnum = pgEnum('notification_category', [
+  'HARDWARE_LIFECYCLE',
+  'OPERATIONAL',
+  'SECURITY',
+  'FINANCIAL',
+]);
+
+export const appNotifications = pgTable(
+  'app_notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    message: text('message').notNull(),
+    targetUrl: varchar('target_url', { length: 500 }), // Deep-link path
+    isRead: boolean('is_read').default(false).notNull(),
+    eventType: notificationEventTypeEnum('event_type').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('app_notifications_user_id_idx').on(table.userId),
+    isReadIdx: index('app_notifications_is_read_idx').on(table.isRead),
+    createdAtIdx: index('app_notifications_created_at_idx').on(table.createdAt),
+    userIsReadIdx: index('app_notifications_user_is_read_idx').on(table.userId, table.isRead),
+  })
+);
+
+export const notificationRules = pgTable(
+  'notification_rules',
+  {
+    id: serial('id').primaryKey(),
+    ruleKey: varchar('rule_key', { length: 100 }).notNull().unique(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    category: notificationCategoryEnum('category').notNull(),
+    isEnabled: boolean('is_enabled').default(true).notNull(),
+    thresholdDays: integer('threshold_days'), // e.g., warranty expiry in 30 days
+    channelInApp: boolean('channel_in_app').default(true).notNull(),
+    channelEmail: boolean('channel_email').default(true).notNull(),
+    channelTeams: boolean('channel_teams').default(false).notNull(),
+    updatedById: uuid('updated_by_id').references(() => users.id),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    ruleKeyIdx: index('notification_rules_rule_key_idx').on(table.ruleKey),
+    categoryIdx: index('notification_rules_category_idx').on(table.category),
+  })
+);
+
+export const integrationSettings = pgTable(
+  'integration_settings',
+  {
+    id: serial('id').primaryKey(),
+    resendApiKey: text('resend_api_key'), // Encrypted
+    teamsWebhookUrl: text('teams_webhook_url'), // Encrypted
+    smtpHost: varchar('smtp_host', { length: 255 }),
+    smtpPort: integer('smtp_port'),
+    smtpUser: text('smtp_user'), // Encrypted
+    smtpPass: text('smtp_pass'), // Encrypted
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  }
+);
+
+export const notificationLogs = pgTable(
+  'notification_logs',
+  {
+    id: serial('id').primaryKey(),
+    notificationId: uuid('notification_id').references(() => appNotifications.id),
+    eventType: notificationEventTypeEnum('event_type').notNull(),
+    channel: varchar('channel', { length: 50 }).notNull(), // 'in_app', 'email', 'teams'
+    status: varchar('status', { length: 50 }).notNull(), // 'sent', 'failed', 'pending'
+    errorMessage: text('error_message'),
+    sentAt: timestamp('sent_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    eventTypeIdx: index('notification_logs_event_type_idx').on(table.eventType),
+    channelIdx: index('notification_logs_channel_idx').on(table.channel),
+    statusIdx: index('notification_logs_status_idx').on(table.status),
+  })
+);
+
 // -----------------------------------------------------------------------------
 // SOFTWARE ASSET MANAGEMENT (SAM)
 // -----------------------------------------------------------------------------
@@ -579,5 +679,26 @@ export const assetDisposalsRelations = relations(assetDisposals, ({ one }) => ({
   approvedBy: one(users, {
     fields: [assetDisposals.approvedById],
     references: [users.id],
+  }),
+}));
+
+export const appNotificationsRelations = relations(appNotifications, ({ one }) => ({
+  user: one(users, {
+    fields: [appNotifications.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationRulesRelations = relations(notificationRules, ({ one }) => ({
+  updatedBy: one(users, {
+    fields: [notificationRules.updatedById],
+    references: [users.id],
+  }),
+}));
+
+export const notificationLogsRelations = relations(notificationLogs, ({ one }) => ({
+  notification: one(appNotifications, {
+    fields: [notificationLogs.notificationId],
+    references: [appNotifications.id],
   }),
 }));
