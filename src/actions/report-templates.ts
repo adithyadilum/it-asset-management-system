@@ -162,3 +162,60 @@ export async function createReportTemplate(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Delete a report template
+// ---------------------------------------------------------------------------
+export async function deleteReportTemplate(id: number): Promise<{ success: boolean; message: string }> {
+  const actionTimer = startLatencyTimer();
+
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return {
+      success: false,
+      message: 'Forbidden: You do not have permission to delete report templates.',
+    };
+  }
+
+  try {
+    const deleted = await db
+      .delete(reportTemplates)
+      .where(sql`${reportTemplates.id} = ${id}`)
+      .returning({ id: reportTemplates.id });
+
+    if (deleted.length === 0) {
+      return { success: false, message: 'Report template not found or already deleted.' };
+    }
+
+    await logAuditAction({
+      entityType: 'report-template',
+      entityId: id.toString(),
+      actionType: 'DELETE',
+      performedById: currentUser.id,
+      oldData: { id },
+    });
+
+    revalidatePath('/reports/standard-reports');
+
+    return {
+      success: true,
+      message: 'Report template deleted successfully.',
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'reportTemplates.deleteReportTemplate',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Database error: failed to delete report template.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'reportTemplates.deleteReportTemplate',
+      startTime: actionTimer,
+    });
+  }
+}
+

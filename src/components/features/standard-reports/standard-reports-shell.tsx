@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { fetchReportPreview } from '@/actions/standard-reports';
+import { deleteReportTemplate } from '@/actions/report-templates';
 import {
   DEFAULT_FILTER_STATE,
   type FilterState,
@@ -124,6 +125,24 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
     []
   );
 
+  // Called when a template is deleted
+  const handleTemplateDelete = useCallback(
+    async (templateId: number) => {
+      try {
+        const result = await deleteReportTemplate(templateId);
+        if (result.success) {
+          // Re-fetch triggers implicitly due to revalidatePath in action
+          router.refresh();
+        } else {
+          setErrorMessage(result.message || 'Failed to delete template');
+        }
+      } catch {
+        setErrorMessage('An unexpected error occurred while deleting the template.');
+      }
+    },
+    [router]
+  );
+
   // Called after a new template is created — refresh server data
   const handleTemplateCreated = useCallback(() => {
     router.refresh();
@@ -139,6 +158,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           templates={templates}
           onFilterChange={handleFilterChange}
           onTemplatePreview={handleTemplatePreview}
+          onTemplateDelete={handleTemplateDelete}
           onManualPreview={handleManualPreview}
           onClearFilters={handleClearFilters}
           onTemplateCreated={handleTemplateCreated}

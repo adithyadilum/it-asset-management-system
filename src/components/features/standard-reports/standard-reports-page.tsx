@@ -1,3 +1,5 @@
+'use client';
+
 import {
   ChevronRight,
   Database,
@@ -6,8 +8,10 @@ import {
   Monitor,
   ScrollText,
   Wrench,
+  MoreVertical,
+  Trash2,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import {
   Card,
@@ -17,6 +21,22 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { ReportTemplateData } from '@/types/standard-reports';
 
 export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
@@ -44,38 +64,87 @@ function DataSourceIcon({ dataSource, className }: { dataSource: string; classNa
 interface ReportTemplateCardProps {
   template: ReportTemplateData;
   onPreviewClick?: (templateId: number) => void;
+  onDeleteClick?: (templateId: number) => void;
 }
 
 export function ReportTemplateCard({
   template,
   onPreviewClick,
+  onDeleteClick,
 }: ReportTemplateCardProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   return (
-    <Card size="sm" className="h-full justify-between border-border bg-background">
-      <CardHeader className="gap-3 p-4 pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="text-base font-medium text-card-foreground">
-              {template.name}
-            </CardTitle>
-            <CardDescription className="text-sm leading-5 text-muted-foreground">
-              {template.description || template.dataSource}
-            </CardDescription>
+    <>
+      <Card size="sm" className="h-full justify-between border-border bg-background">
+        <CardHeader className="gap-3 p-4 pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle className="text-base font-medium text-card-foreground">
+                {template.name}
+              </CardTitle>
+              <CardDescription className="text-sm leading-5 text-muted-foreground">
+                {template.description || template.dataSource}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <DataSourceIcon dataSource={template.dataSource} className="size-4 shrink-0 text-foreground" />
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete report
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-          <DataSourceIcon dataSource={template.dataSource} className="size-4 shrink-0 text-foreground" />
-        </div>
-      </CardHeader>
-      <CardContent className="flex px-4 pb-4">
-        <Button
-          size="sm"
-          className="mx-auto w-auto px-3"
-          onClick={() => onPreviewClick?.(template.id)}
-        >
-          Preview report
-          <ChevronRight className="size-4" />
-        </Button>
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="flex px-4 pb-4">
+          <Button
+            size="sm"
+            className="mx-auto w-auto px-3"
+            onClick={() => onPreviewClick?.(template.id)}
+          >
+            Preview report
+            <ChevronRight className="size-4" />
+          </Button>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Report Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the &quot;{template.name}&quot; template? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowDeleteDialog(false);
+                onDeleteClick?.(template.id);
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

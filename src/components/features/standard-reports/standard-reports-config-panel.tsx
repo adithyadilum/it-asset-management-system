@@ -38,6 +38,7 @@ interface StandardReportsConfigPanelProps {
   templates: ReportTemplateData[];
   onFilterChange: (field: keyof FilterState, value: string) => void;
   onTemplatePreview: (templateId: number) => void;
+  onTemplateDelete: (templateId: number) => void;
   onManualPreview: () => void;
   onClearFilters: () => void;
   onTemplateCreated: () => void;
@@ -51,6 +52,7 @@ export function StandardReportsConfigPanel({
   templates,
   onFilterChange,
   onTemplatePreview,
+  onTemplateDelete,
   onManualPreview,
   onClearFilters,
   onTemplateCreated,
@@ -94,6 +96,7 @@ export function StandardReportsConfigPanel({
                 key={template.id}
                 template={template}
                 onPreviewClick={onTemplatePreview}
+                onDeleteClick={onTemplateDelete}
               />
             ))}
 
