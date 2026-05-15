@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -10,6 +10,7 @@ import { DataTable } from "@/components/shared/data-table"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
+import { DisposeAssetsRequestDialog, type SelectedAssetLite } from "@/components/features/disposals/dispose-assets-request-dialog"
 import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow } from "@/actions/dashboard"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,7 +87,11 @@ function useOverdueColumns(actionLabel: string): ColumnDef<OverdueReturnRow>[] {
       minSize: 120,
       meta: { noTruncate: true },
       cell: () => (
-        <Button variant="secondary" size="sm" className="h-7 text-xs px-3">
+        <Button 
+          variant="secondary" 
+          size="sm" 
+          className="h-7 text-xs px-3 transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-sm active:scale-95"
+        >
           {actionLabel}
         </Button>
       ),
@@ -142,21 +147,21 @@ function usePendingDisposalColumns(): ColumnDef<PendingDisposalRow>[] {
         <Button
           variant="secondary"
           size="sm"
-          className="h-7 text-xs px-3"
+          className="h-7 text-xs px-3 transition-all hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm active:scale-95"
           onClick={() =>
             router.push(
               `/operations/disposals?panel=review&id=${row.original.disposalId}`
             )
           }
         >
-          Initiate Disposal
+          Take Action
         </Button>
       ),
     },
   ], [router])
 }
 
-function useHighMaintenanceColumns(): ColumnDef<HighMaintenanceRow>[] {
+function useHighMaintenanceColumns(onFlag: (asset: HighMaintenanceRow) => void): ColumnDef<HighMaintenanceRow>[] {
   return useMemo(() => [
     {
       id: "asset",
@@ -199,13 +204,18 @@ function useHighMaintenanceColumns(): ColumnDef<HighMaintenanceRow>[] {
       size: 140,
       minSize: 120,
       meta: { noTruncate: true },
-      cell: () => (
-        <Button variant="secondary" size="sm" className="h-7 text-xs px-3">
+      cell: ({ row }) => (
+        <Button 
+          variant="secondary" 
+          size="sm" 
+          className="h-7 text-xs px-3 transition-all hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm active:scale-95"
+          onClick={() => onFlag(row.original)}
+        >
           Flag for Disposal
         </Button>
       ),
     },
-  ], [])
+  ], [onFlag])
 }
 
 // ─── Main client export ───────────────────────────────────────────────────────
@@ -217,9 +227,21 @@ interface Props {
 }
 
 export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets }: Props) {
+  const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
+  const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
+
+  const handleFlagClick = (asset: HighMaintenanceRow) => {
+    setFlaggedAsset({
+      id: asset.assetId,
+      assetTag: asset.assetTag,
+      assetName: asset.assetName,
+    })
+    setIsFlagDialogOpen(true)
+  }
+
   const overdueColumns = useOverdueColumns("Send Reminder")
   const pendingColumns = usePendingDisposalColumns()
-  const lemonsColumns = useHighMaintenanceColumns()
+  const lemonsColumns = useHighMaintenanceColumns(handleFlagClick)
 
   const tableProps: {
     enableRowSelection: boolean
@@ -316,6 +338,16 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
         />
       </div>
 
+      <DisposeAssetsRequestDialog
+        open={isFlagDialogOpen}
+        onOpenChange={setIsFlagDialogOpen}
+        selectedAssets={flaggedAsset ? [flaggedAsset] : []}
+        onSubmitted={() => {
+          setIsFlagDialogOpen(false)
+          setFlaggedAsset(null)
+          // Ideally we would revalidate the dashboard data here
+        }}
+      />
     </div>
   )
 }
