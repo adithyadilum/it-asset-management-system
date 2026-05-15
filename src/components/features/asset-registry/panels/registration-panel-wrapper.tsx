@@ -19,6 +19,7 @@ interface RegistrationOptions {
   models: { value: string; label: string; brandId: string; categoryId: string; imageUrl: string | null }[];
   vendors: { value: string; label: string }[];
   owners: { value: string; label: string }[];
+  locations?: { value: string; label: string }[];
 }
 
 export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: RegistrationPanelWrapperProps) {
@@ -92,6 +93,7 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
           modelOptions={data?.models ?? []}
           ownerOptions={data?.owners ?? []}
           vendorOptions={data?.vendors ?? []}
+          locationOptions={data?.locations ?? []}
         />
       )}
 

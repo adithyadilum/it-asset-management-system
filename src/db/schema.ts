@@ -15,8 +15,9 @@ import {
   uuid,
   foreignKey,
   index,
+  check,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 import { LOCATION_TYPES } from '@/types/master-data';
 
@@ -198,6 +199,10 @@ export const categories = pgTable(
   },
   (table) => ({
     pillarNameUnique: unique('pillar_name_idx').on(table.pillar, table.name),
+    pillarIsActiveIdx: index('categories_pillar_active_idx').on(
+      table.pillar,
+      table.isActive
+    ),
   })
 );
 
@@ -271,8 +276,10 @@ export const assets = pgTable(
     ownerIdIdx: index('assets_owner_id_idx').on(table.ownerId),
 
     isArchivedIdx: index('assets_is_archived_idx').on(table.isArchived),
-    statusArchivedIdx: index('assets_status_archived_idx').on(table.status, table.isArchived),
-  
+    statusArchivedIdx: index('assets_status_archived_idx').on(
+      table.status,
+      table.isArchived
+    ),
   })
 );
 
@@ -310,31 +317,43 @@ export const assetDocuments = pgTable('asset_documents', {
 // -----------------------------------------------------------------------------
 // 5. OPERATIONS & LIFECYCLE (Assignments, Maintenance, Disposals)
 // -----------------------------------------------------------------------------
-export const assetAssignments = pgTable('asset_assignments', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),
-  assignedToUserId: uuid('assigned_to_user_id').references(() => users.id),
-  assignedToLocationId: integer('assigned_to_location_id').references(
-    () => locations.id
-  ),
-  assignedById: uuid('assigned_by_id')
-    .notNull()
-    .references(() => users.id),
+export const assetAssignments = pgTable(
+  'asset_assignments',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'cascade' }),
+    assignedToUserId: uuid('assigned_to_user_id').references(() => users.id),
+    assignedToLocationId: integer('assigned_to_location_id').references(
+      () => locations.id
+    ),
+    assignedById: uuid('assigned_by_id')
+      .notNull()
+      .references(() => users.id),
 
-  assignedDate: timestamp('assigned_date').defaultNow().notNull(),
-  expectedReturnDate: date('expected_return_date'),
-  returnedDate: timestamp('returned_date'),
+    assignedDate: timestamp('assigned_date').defaultNow().notNull(),
+    expectedReturnDate: date('expected_return_date'),
+    returnedDate: timestamp('returned_date'),
 
-  returnCondition: conditionEnum('return_condition'),
-  notes: text('notes'),
+    returnCondition: conditionEnum('return_condition'),
+    notes: text('notes'),
 
-  acceptanceStatus: varchar('acceptance_status', { length: 50 }),
-  acceptedAt: timestamp('accepted_at'),
-  returnRequestedAt: timestamp('return_requested_at'),
-  state: assignmentStateEnum('state').default('pending approval').notNull(),
-});
+    acceptanceStatus: varchar('acceptance_status', { length: 50 }),
+    acceptedAt: timestamp('accepted_at'),
+    returnRequestedAt: timestamp('return_requested_at'),
+    state: assignmentStateEnum('state').default('pending approval').notNull(),
+  },
+  (table) => ({
+    assetIdReturnedIdx: index('asset_assignments_asset_returned_idx').on(
+      table.assetId,
+      table.returnedDate
+    ),
+    assignedToUserIdx: index('asset_assignments_user_idx').on(
+      table.assignedToUserId
+    ),
+  })
+);
 
 // Epic 15: New Maintenance Tickets System
 export const maintenanceTickets = pgTable('maintenance_tickets', {
@@ -366,7 +385,6 @@ export const maintenanceTickets = pgTable('maintenance_tickets', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-
 export const assetDisposals = pgTable(
   'asset_disposals',
   {
@@ -384,7 +402,6 @@ export const assetDisposals = pgTable(
     justification: text('justification'),
     rejectionReason: text('rejection_reason'),
 
-    
     disposalMethod: varchar('disposal_method', { length: 50 }),
     disposalReceiptUrl: varchar('disposal_receipt_url', { length: 500 }),
 
@@ -409,10 +426,14 @@ export const assetDisposals = pgTable(
     requestedByIdIdx: index('asset_disposals_requested_by_idx').on(
       table.requestedById
     ),
-    
+
     //  ADD THESE INDEXES
-    resolvedAtIdx: index('asset_disposals_resolved_at_idx').on(table.resolvedAt),
-    disposalMethodIdx: index('asset_disposals_method_idx').on(table.disposalMethod),
+    resolvedAtIdx: index('asset_disposals_resolved_at_idx').on(
+      table.resolvedAt
+    ),
+    disposalMethodIdx: index('asset_disposals_method_idx').on(
+      table.disposalMethod
+    ),
   })
 );
 
@@ -434,6 +455,129 @@ export const systemAuditLogs = pgTable('system_audit_logs', {
   performedAt: timestamp('performed_at').defaultNow().notNull(),
 });
 
+// =====================================================================
+// EPIC 23: NOTIFICATION SYSTEM TABLES
+// =====================================================================
+
+export const notificationEventTypeEnum = pgEnum('notification_event_type', [
+  'WARRANTY_EXPIRY',
+  'SOFTWARE_LICENSE_RENEWAL',
+  'RETURN_OVERDUE',
+  'MAINTENANCE_COMPLETED',
+  'DISPOSAL_REQUEST',
+  'DISPOSAL_APPROVED',
+  'DISPOSAL_REJECTED',
+  'ROLE_CHANGE',
+  'ASSIGNMENT_PENDING',
+  'ASSIGNMENT_ACCEPTED',
+  'ASSIGNMENT_DECLINED',
+  'ASSET_DEFECTIVE_REPORTED',
+]);
+
+export const notificationCategoryEnum = pgEnum('notification_category', [
+  'HARDWARE_LIFECYCLE',
+  'OPERATIONAL',
+  'SECURITY',
+  'FINANCIAL',
+]);
+
+export const notificationChannelEnum = pgEnum('notification_channel', [
+  'in_app',
+  'email',
+  'teams',
+]);
+export const notificationLogStatusEnum = pgEnum('notification_log_status', [
+  'sent',
+  'failed',
+  'pending',
+]);
+
+export const appNotifications = pgTable(
+  'app_notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: varchar('title', { length: 255 }).notNull(),
+    message: text('message').notNull(),
+    targetUrl: varchar('target_url', { length: 500 }), // Deep-link path
+    isRead: boolean('is_read').default(false).notNull(),
+    eventType: notificationEventTypeEnum('event_type').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('app_notifications_user_id_idx').on(table.userId),
+    isReadIdx: index('app_notifications_is_read_idx').on(table.isRead),
+    createdAtIdx: index('app_notifications_created_at_idx').on(table.createdAt),
+    userIsReadIdx: index('app_notifications_user_is_read_idx').on(
+      table.userId,
+      table.isRead
+    ),
+  })
+);
+
+export const notificationRules = pgTable(
+  'notification_rules',
+  {
+    id: serial('id').primaryKey(),
+    ruleKey: varchar('rule_key', { length: 100 }).notNull().unique(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    category: notificationCategoryEnum('category').notNull(),
+    isEnabled: boolean('is_enabled').default(true).notNull(),
+    thresholdDays: integer('threshold_days'), // e.g., warranty expiry in 30 days
+    channelInApp: boolean('channel_in_app').default(true).notNull(),
+    channelEmail: boolean('channel_email').default(true).notNull(),
+    channelTeams: boolean('channel_teams').default(false).notNull(),
+    updatedById: uuid('updated_by_id').references(() => users.id),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    categoryIdx: index('notification_rules_category_idx').on(table.category),
+  })
+);
+
+export const integrationSettings = pgTable(
+  'integration_settings',
+  {
+    id: integer('id').default(1).primaryKey(),
+    /** Encrypted via lib/crypto.ts */
+    resendApiKey: text('resend_api_key'),
+    /** Encrypted via lib/crypto.ts */
+    teamsWebhookUrl: text('teams_webhook_url'),
+    smtpHost: varchar('smtp_host', { length: 255 }),
+    smtpPort: integer('smtp_port'),
+    /** Encrypted via lib/crypto.ts */
+    smtpUser: text('smtp_user'),
+    /** Encrypted via lib/crypto.ts */
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    singleRowConstraint: check('single_row_check', sql`${table.id} = 1`),
+  })
+);
+
+export const notificationLogs = pgTable(
+  'notification_logs',
+  {
+    id: serial('id').primaryKey(),
+    notificationId: uuid('notification_id').references(
+      () => appNotifications.id,
+      { onDelete: 'cascade' }
+    ),
+    eventType: notificationEventTypeEnum('event_type').notNull(),
+    channel: notificationChannelEnum('channel').notNull(),
+    status: notificationLogStatusEnum('status').notNull(),
+    errorMessage: text('error_message'),
+    sentAt: timestamp('sent_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    eventTypeIdx: index('notification_logs_event_type_idx').on(table.eventType),
+    channelIdx: index('notification_logs_channel_idx').on(table.channel),
+    statusIdx: index('notification_logs_status_idx').on(table.status),
+  })
+);
+
 // -----------------------------------------------------------------------------
 // SOFTWARE ASSET MANAGEMENT (SAM)
 // -----------------------------------------------------------------------------
@@ -443,6 +587,9 @@ export const softwareLicenses = pgTable('software_licenses', {
   modelId: integer('model_id')
     .notNull()
     .references(() => models.id, { onDelete: 'restrict' }),
+  assetId: uuid('asset_id').references(() => assets.id, {
+    onDelete: 'cascade',
+  }),
 
   licenseKey: varchar('license_key', { length: 255 }),
   licenseType: licenseTypeEnum('license_type').notNull(),
@@ -491,6 +638,10 @@ export const assetRelations = relations(assets, ({ one, many }) => ({
   maintenanceTickets: many(maintenanceTickets), // Added Epic 15 relation
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
+  softwareLicense: one(softwareLicenses, {
+    fields: [assets.id],
+    references: [softwareLicenses.assetId],
+  }),
 }));
 
 export const ownersRelations = relations(owners, ({ many }) => ({
@@ -581,3 +732,61 @@ export const assetDisposalsRelations = relations(assetDisposals, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const appNotificationsRelations = relations(
+  appNotifications,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [appNotifications.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const notificationRulesRelations = relations(
+  notificationRules,
+  ({ one }) => ({
+    updatedBy: one(users, {
+      fields: [notificationRules.updatedById],
+      references: [users.id],
+    }),
+  })
+);
+
+export const notificationLogsRelations = relations(
+  notificationLogs,
+  ({ one }) => ({
+    notification: one(appNotifications, {
+      fields: [notificationLogs.notificationId],
+      references: [appNotifications.id],
+    }),
+  })
+);
+export const softwareLicensesRelations = relations(
+  softwareLicenses,
+  ({ one, many }) => ({
+    asset: one(assets, {
+      fields: [softwareLicenses.assetId],
+      references: [assets.id],
+    }),
+    model: one(models, {
+      fields: [softwareLicenses.modelId],
+      references: [models.id],
+    }),
+    allocations: many(softwareAllocations),
+  })
+);
+
+export const softwareAllocationsRelations = relations(
+  softwareAllocations,
+  ({ one }) => ({
+    license: one(softwareLicenses, {
+      fields: [softwareAllocations.licenseId],
+      references: [softwareLicenses.id],
+    }),
+    assignedToUser: one(users, {
+      fields: [softwareAllocations.assignedToUserId],
+      references: [users.id],
+    }),
+  })
+);
