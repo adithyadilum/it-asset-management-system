@@ -3,7 +3,11 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // Standard for GCM
 
+let cachedKey: Buffer | null = null;
+
 function getKey(): Buffer {
+  if (cachedKey) return cachedKey;
+
   const secret = process.env.ENCRYPTION_SECRET;
   if (!secret) {
     throw new Error('ENCRYPTION_SECRET not set in environment variables');
@@ -11,11 +15,14 @@ function getKey(): Buffer {
 
   // Directly decode the base64 secret into a 32-byte Buffer
   const key = Buffer.from(secret, 'base64');
-  
+
   if (key.length !== 32) {
-    throw new Error('ENCRYPTION_SECRET must be exactly 32 bytes (base64 encoded)');
+    throw new Error(
+      'ENCRYPTION_SECRET must be exactly 32 bytes (base64 encoded)'
+    );
   }
-  
+
+  cachedKey = key;
   return key;
 }
 
@@ -43,7 +50,7 @@ export function decrypt(encrypted: string): string {
   try {
     const key = getKey();
     const parts = encrypted.split(':');
-    
+
     if (parts.length !== 3) {
       throw new Error('Invalid encrypted data format');
     }
@@ -59,8 +66,7 @@ export function decrypt(encrypted: string): string {
     decrypted += decipher.final('utf8');
 
     return decrypted;
-  } catch (error) {
-    console.error('Decryption failed:', error);
+  } catch {
     throw new Error('Failed to decrypt data');
   }
 }

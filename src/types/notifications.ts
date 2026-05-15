@@ -55,6 +55,7 @@ export interface NotificationRule {
   channelInApp: boolean;
   channelEmail: boolean;
   channelTeams: boolean;
+  updatedById: string | null;
   updatedAt: Date;
 }
 
