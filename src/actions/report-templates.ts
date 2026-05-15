@@ -97,14 +97,14 @@ export async function createReportTemplate(
   try {
     // Generate report code: RPT-YYYY-NNN ---> Eg: RPT-2023-001 , RPT-2023-002
     const year = new Date().getFullYear();
-    const countResult = await db
+    const maxResult = await db
       .select({
-        count: sql<number>`coalesce(count(*), 0)::int`,
+        maxSequence: sql<number>`coalesce(max((right(${reportTemplates.reportCode}, 3))::int), 0)::int`,
       })
       .from(reportTemplates)
       .where(sql`${reportTemplates.reportCode} LIKE ${`RPT-${year}-%`}`);
 
-    const nextNum = (countResult[0]?.count ?? 0) + 1;
+    const nextNum = (maxResult[0]?.maxSequence ?? 0) + 1;
     const reportCode = `RPT-${year}-${String(nextNum).padStart(3, '0')}`;
 
     const inserted = await db
