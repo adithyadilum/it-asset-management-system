@@ -153,7 +153,11 @@ export function AssetAssignmentModal({
     }
 
     if (resolvedAssignmentMode === "user" && expectedReturn) {
-      const selectedDate = new Date(expectedReturn);
+      // Parse YYYY-MM-DD as local date to avoid timezone issues (new Date(str) parses as UTC)
+      const parts = expectedReturn.split("-").map((p) => Number(p));
+      const selectedDate = parts.length === 3
+        ? new Date(parts[0], (parts[1] || 1) - 1, parts[2])
+        : new Date(expectedReturn);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

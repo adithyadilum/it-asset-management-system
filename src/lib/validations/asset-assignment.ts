@@ -6,10 +6,9 @@ const expectedReturnDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((date) => {
-    const selectedDate = new Date(date);
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return selectedDate >= today;
+    const todayString = today.toISOString().split('T')[0];
+    return date >= todayString;
   }, {
     message: "Select a valid date",
   })

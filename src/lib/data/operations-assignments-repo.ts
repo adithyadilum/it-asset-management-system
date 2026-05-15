@@ -809,7 +809,18 @@ export async function markAssignmentsAsReceived(
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
-    .where(inArray(assetAssignments.id, assignmentIds));
+    .where(
+      and(
+        inArray(assetAssignments.id, assignmentIds),
+        isNull(assetAssignments.returnedDate)
+      )
+    );
+
+  if (assignments.length === 0) {
+    return;
+  }
+
+  const activeAssignmentIds = assignments.map((a) => a.id);
 
   const assetIds = assignments.map((a) => a.assetId);
 
@@ -821,7 +832,7 @@ export async function markAssignmentsAsReceived(
         state: 'returned',
         returnedDate: new Date()
       })
-      .where(inArray(assetAssignments.id, assignmentIds));
+      .where(inArray(assetAssignments.id, activeAssignmentIds));
 
     // Update assets status back to 'Available'
     if (assetIds.length > 0) {
