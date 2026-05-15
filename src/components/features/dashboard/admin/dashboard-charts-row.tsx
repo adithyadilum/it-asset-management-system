@@ -190,7 +190,55 @@ function InventoryStatusChart() {
 
 // ─── Widget 3: Recent Activities ─────────────────────────────────────────────
 
-function RecentActivitiesList() {
+import { RecentActivity } from "@/actions/dashboard"
+
+function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) {
+  const getActionStyles = (actionType: string) => {
+    const type = actionType.toUpperCase()
+    
+    if (type.includes("CREATE") || type.includes("ADD")) {
+      return { 
+        icon: Hash, 
+        className: "border-emerald-300 bg-emerald-50 text-emerald-700", 
+        iconColor: "text-emerald-500" 
+      }
+    }
+    if (type.includes("UPDATE") || type.includes("REPAIR") || type.includes("MAINTENANCE")) {
+      return { 
+        icon: Wrench, 
+        className: "border-sky-300 bg-sky-50 text-sky-700", 
+        iconColor: "text-sky-500" 
+      }
+    }
+    if (type.includes("DELETE") || type.includes("REMOVE") || type.includes("LOST") || type.includes("ACCESS_DENIED")) {
+      return { 
+        icon: AlertCircle, 
+        className: "border-rose-300 bg-rose-50 text-rose-700", 
+        iconColor: "text-rose-500" 
+      }
+    }
+    if (type.includes("DISPOSE")) {
+      return { 
+        icon: AlertCircle, 
+        className: "border-orange-300 bg-orange-50 text-orange-700", 
+        iconColor: "text-orange-500" 
+      }
+    }
+    if (type.includes("LOGIN")) {
+      return { 
+        icon: CheckCircle2, 
+        className: "border-violet-300 bg-violet-50 text-violet-700", 
+        iconColor: "text-violet-500" 
+      }
+    }
+    
+    return { 
+      icon: CheckCircle2, 
+      className: "border-slate-300 bg-slate-50 text-slate-700", 
+      iconColor: "text-slate-500" 
+    }
+  }
+
   return (
     <Card className="flex flex-col h-full shadow-sm border-border">
       <CardHeader className="p-3 pb-1 shrink-0">
@@ -204,19 +252,27 @@ function RecentActivitiesList() {
 
       <CardContent className="p-3 pt-1 flex-1 min-h-0 overflow-hidden">
         <div className="flex flex-col gap-2 h-full">
-          {activities.map((item, i) => (
-            <div
-              key={i}
-              className={cn(
-                "flex items-center gap-2 px-2.5 py-2 rounded-md border bg-card text-xs font-medium",
-                item.borderColor,
-                item.textColor
-              )}
-            >
-              <item.icon className={cn("w-3.5 h-3.5 shrink-0", item.iconColor)} />
-              <span className="leading-tight">{item.text}</span>
+          {activities.length > 0 ? (
+            activities.map((item) => {
+              const styles = getActionStyles(item.actionType)
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "flex items-center gap-2 px-2.5 py-2 rounded-md border text-xs font-medium",
+                    styles.className
+                  )}
+                >
+                  <styles.icon className={cn("w-3.5 h-3.5 shrink-0", styles.iconColor)} />
+                  <span className="leading-tight line-clamp-1">{item.text}</span>
+                </div>
+              )
+            })
+          ) : (
+            <div className="flex h-full items-center justify-center text-xs text-muted-foreground border border-dashed rounded-md">
+              No recent activity found.
             </div>
-          ))}
+          )}
         </div>
       </CardContent>
     </Card>
@@ -225,12 +281,12 @@ function RecentActivitiesList() {
 
 // ─── Row: Charts Grid ─────────────────────────────────────────────────────────
 
-export function DashboardChartsRow() {
+export function DashboardChartsRow({ activities }: { activities: RecentActivity[] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 min-h-[320px]">
       <AssetAllocationChart />
       <InventoryStatusChart />
-      <RecentActivitiesList />
+      <RecentActivitiesList activities={activities} />
     </div>
   )
 }

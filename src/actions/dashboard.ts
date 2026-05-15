@@ -11,7 +11,9 @@ import {
   maintenanceTickets,
   models,
   users,
+  systemAuditLogs,
 } from '@/db/schema';
+import { desc } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 
 // ============================================================================
@@ -207,4 +209,80 @@ export async function getDashboardHighMaintenanceAssets(): Promise<HighMaintenan
     repairCount: Number(row.repairCount),
     totalDowntimeDays: Number(row.totalDowntimeDays ?? 0),
   }));
+}
+
+// ============================================================================
+// READ: Recent Activities (Audit Log)
+// ============================================================================
+
+export interface RecentActivity {
+  id: number;
+  text: string;
+  actionType: string;
+  performedBy: string;
+  performedAt: string;
+}
+
+/**
+ * Returns the 5 most recent activities from the system audit logs.
+ *
+ * Access: GlobalAdmin, ITOperator, FinanceAuditor
+ */
+export async function getDashboardRecentActivities(): Promise<RecentActivity[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  
+  // Fetch top 5 recent logs with user info
+  const logs = await db
+    .select({
+      id: systemAuditLogs.id,
+      entityType: systemAuditLogs.entityType,
+      entityId: systemAuditLogs.entityId,
+      actionType: systemAuditLogs.actionType,
+      performedAt: systemAuditLogs.performedAt,
+      performedByName: users.name,
+    })
+    .from(systemAuditLogs)
+    .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+    .orderBy(desc(systemAuditLogs.performedAt))
+    .limit(5);
+
+  // For simplicity, we'll try to resolve Asset Tags for 'Asset' entities
+  const assetIds = logs
+    .filter(l => l.entityType === 'Asset')
+    .map(l => l.entityId);
+    
+  const assetMap = new Map<string, string>();
+  if (assetIds.length > 0) {
+    const assetDetails = await db
+      .select({ id: assets.id, assetTag: assets.assetTag })
+      .from(assets)
+      .where(sql`${assets.id}::text IN ${assetIds}`);
+    
+    assetDetails.forEach(a => assetMap.set(a.id, a.assetTag));
+  }
+
+  return logs.map((log) => {
+    const performer = log.performedByName || 'System';
+    const entityLabel = assetMap.get(log.entityId) || log.entityId.slice(0, 8);
+    
+    let text = `${performer} ${log.actionType.toLowerCase()} ${log.entityType.toLowerCase()}`;
+    
+    // Humanize common patterns
+    if (log.entityType === 'Asset') {
+      text = `${performer} ${log.actionType.toLowerCase()}ed asset ${entityLabel}`;
+    } else if (log.entityType === 'MaintenanceTicket') {
+      text = `${performer} updated maintenance for ${entityLabel}`;
+    } else if (log.actionType === 'LOGIN') {
+      text = `${performer} logged into the system`;
+    }
+
+    return {
+      id: log.id,
+      text,
+      actionType: log.actionType,
+      performedBy: performer,
+      performedAt: log.performedAt.toISOString(),
+    };
+  });
 }

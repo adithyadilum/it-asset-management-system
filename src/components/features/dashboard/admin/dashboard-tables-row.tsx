@@ -6,22 +6,23 @@
  */
 
 import {
-  getDashboardOverdueReturns,
-  getDashboardHighMaintenanceAssets,
-  getDashboardPendingDisposals,
   type OverdueReturnRow,
   type HighMaintenanceRow,
   type PendingDisposalRow,
 } from "@/actions/dashboard"
 import { DashboardTablesRowClient } from "./dashboard-tables-row-client"
 
-export async function DashboardTablesRow() {
-  const [overdueReturns, highMaintenanceAssets, pendingDisposals] = await Promise.all([
-    getDashboardOverdueReturns().catch(() => [] as OverdueReturnRow[]),
-    getDashboardHighMaintenanceAssets().catch(() => [] as HighMaintenanceRow[]),
-    getDashboardPendingDisposals().catch(() => [] as PendingDisposalRow[]),
-  ])
+interface DashboardTablesRowProps {
+  overdueReturns: OverdueReturnRow[];
+  highMaintenanceAssets: HighMaintenanceRow[];
+  pendingDisposals: PendingDisposalRow[];
+}
 
+export function DashboardTablesRow({ 
+  overdueReturns, 
+  highMaintenanceAssets, 
+  pendingDisposals 
+}: DashboardTablesRowProps) {
   return (
     <DashboardTablesRowClient
       overdueReturns={overdueReturns}
