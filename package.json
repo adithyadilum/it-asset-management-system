@@ -12,11 +12,13 @@
     "check": "npm run lint && tsc --noEmit",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:assets": "tsx src/db/seed.assets.ts",
+    "db:seed:notifications": "tsx src/db/seed.notifications.ts",
     "db:push": "drizzle-kit push"
+    
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
-    "@react-email/components": "^0.0.40",
+    "@react-email/components": "^0.0.17",
     "@react-pdf/renderer": "^4.5.1",
     "@tanstack/react-table": "^8.21.3",
     "@types/ws": "^8.18.1",
