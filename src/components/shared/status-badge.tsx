@@ -91,6 +91,8 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
     disposed: { label: "Disposed", className: "bg-slate-100 text-slate-600 border-slate-300 [&>svg]:text-green-600", icon: CheckCircle2 },
     rejected: { label: "Rejected", className: "bg-slate-100 text-slate-600 border-slate-300 [&>svg]:text-red-500", icon: XCircle },
     returned: { label: "Returned", className: "bg-teal-50 text-teal-700 border-teal-300", icon: CheckCircle2 },
+    expired: { label: "Expired", className: "bg-red-50 text-red-700 border-red-400", icon: XCircle },
+    full: { label: "Full", className: "bg-rose-50 text-rose-700 border-rose-300", icon: AlertTriangle },
 };
 
 // Fallback for unknown strings

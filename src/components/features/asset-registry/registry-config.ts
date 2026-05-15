@@ -4,14 +4,17 @@ export type RegistryView =
   | 'hardware'
   | 'software'
   | 'furniture'
-  | 'office-electronics';
+  | 'office-electronics'
+  | 'unified';
 
 export type RegistryFilterField =
   | 'Status'
   | 'Condition'
   | 'Location'
   | 'Model'
-  | 'Assigned To';
+  | 'Assigned To'
+  | 'Pillar'
+  | 'Category';
 
 export interface RegistryFilterFieldOption {
   value: RegistryFilterField;
@@ -20,7 +23,7 @@ export interface RegistryFilterFieldOption {
 
 export interface RegistryViewConfig {
   view: RegistryView;
-  pillar: RegistryPillar;
+  pillar: RegistryPillar | undefined;
   title: string;
   showAllCategoryOption: boolean;
   allCategoryLabel: string;
@@ -67,8 +70,10 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     rowsPerPageOptions: [9, 16, 24],
     filterFieldOptions: [
       { value: 'Status', label: 'Status' },
+      { value: 'Category', label: 'Category' },
       { value: 'Location', label: 'Location' },
       { value: 'Model', label: 'Model' },
+      { value: 'Assigned To', label: 'Assigned To' },
     ],
     categoryVisibilityMode: 'always',
     statusColumnLabel: 'Status',
@@ -114,5 +119,26 @@ export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
     statusColumnLabel: 'Condition',
     searchPlaceholder: 'Search...',
     addAssetLabel: 'Add Asset',
+  },
+  unified: {
+    view: 'unified',
+    pillar: undefined,
+    title: 'All Assets',
+    showAllCategoryOption: false,
+    allCategoryLabel: 'All Assets',
+    defaultCategoryLabel: 'All Assets',
+    defaultPageSize: 16,
+    rowsPerPageOptions: [9, 16, 24, 48],
+    filterFieldOptions: [
+      { value: 'Status', label: 'Status' },
+      { value: 'Pillar', label: 'Pillar' },
+      { value: 'Category', label: 'Category' },
+      { value: 'Location', label: 'Location' },
+      { value: 'Assigned To', label: 'Assigned To' },
+    ],
+    categoryVisibilityMode: 'always',
+    statusColumnLabel: 'Status',
+    searchPlaceholder: 'Search all assets...',
+    addAssetLabel: '',
   },
 };

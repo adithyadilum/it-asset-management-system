@@ -14,6 +14,7 @@ import { logout } from '@/actions/auth';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -23,7 +24,6 @@ import {
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -107,7 +107,7 @@ export function TopHeader({ user }: TopHeaderProps) {
 
     return (
         <header className="grid h-14 w-full grid-cols-3 items-center gap-4 rounded-none border-b border-slate-100 bg-white md:rounded-lg md:border-none md:bg-muted md:px-2">            {/* Left Column: Mobile Menu / Desktop Breadcrumb */}
-            <div className="flex md:hidden">
+            <div className="flex items-center md:hidden">
                 <button
                     type="button"
                     aria-label="Toggle menu"
@@ -180,16 +180,16 @@ export function TopHeader({ user }: TopHeaderProps) {
             </div>
 
             {/* Center Column: Mobile Logo / Desktop Search */}
-            <div className="flex justify-center md:hidden">
+            <div className="flex items-center justify-center md:hidden">
                 <BrandHeader collapsed={false} />
             </div>
 
-            <div className="hidden justify-self-center md:flex">
+            <div className="hidden items-center justify-self-center md:flex">
                 <OmniSearchTrigger userRole={user.role} />
             </div>
 
             {/* Right Column: Avatar & User Info */}
-            <div className="flex justify-end md:gap-4 md:p-2">
+            <div className="flex items-center justify-end md:gap-4 md:px-2">
                 {/* Desktop: Bell Icon & Separator */}
                 <div className="hidden w-13 items-center justify-between md:flex">
                     <button
@@ -235,48 +235,51 @@ export function TopHeader({ user }: TopHeaderProps) {
                     <DropdownMenuContent
                         align="end"
                         sideOffset={8}
-                        className="w-67.5 min-w-67.5 border-none bg-transparent p-0 shadow-none ring-0"
+                        className="w-72 overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-box-shadow-shadow-xl"
                     >
-                        <Card className="w-67.5 rounded-lg border border-solid border-slate-200 bg-white py-0 shadow-box-shadow-shadow-xl ring-0">
-                            <CardContent className="flex flex-col items-end gap-4 p-6">
-                                <div className="flex w-full justify-end">
-                                    <Ban className="h-4 w-4 text-slate-400" />
+                        <div className="flex flex-col">
+                            {/* User Profile Header */}
+                            <div className="flex items-center gap-4 border-b border-slate-100 bg-slate-50/50 p-4">
+                                <Avatar className="h-12 w-12 shrink-0 rounded-lg border border-white shadow-sm">
+                                    <AvatarImage
+                                        src=""
+                                        alt={user.name}
+                                        className="rounded-lg object-cover"
+                                    />
+                                    <AvatarFallback className="rounded-lg bg-slate-200 text-sm font-bold text-slate-600">
+                                        {initials}
+                                    </AvatarFallback>
+                                </Avatar>
+
+                                <div className="flex min-w-0 flex-1 flex-col items-start">
+                                    <span className="truncate self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
+                                        {user.name}
+                                    </span>
+                                    <span className="truncate self-stretch font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-500 [font-style:var(--text-xs-regular-font-style)]">
+                                        {user.email}
+                                    </span>
+                                    <Badge
+                                        variant="outline"
+                                        className="mt-1.5 border-[#7cc000]/30 bg-[#7cc000]/10 px-1.5 py-0 text-[10px] font-bold leading-4 tracking-wider text-[#7cc000] uppercase hover:bg-[#7cc000]/20"
+                                    >
+                                        {roleLabel}
+                                    </Badge>
                                 </div>
+                            </div>
 
-                                <div className="flex w-full flex-col items-start gap-2">
-                                    <div className="flex w-full items-center gap-4 p-2">
-                                        <Avatar className="h-8 w-8 shrink-0 rounded-lg">
-                                            <AvatarImage
-                                                src=""
-                                                alt={user.name}
-                                                className="rounded-lg object-cover"
-                                            />
-                                            <AvatarFallback className="rounded-lg bg-slate-200 text-xs text-slate-600">
-                                                {initials}
-                                            </AvatarFallback>
-                                        </Avatar>
-
-                                        <div className="flex min-w-0 flex-1 flex-col items-start">
-                                            <span className="self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
-                                                {user.name}
-                                            </span>
-                                            <span className="self-stretch overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
-                                                {user.email}
-                                            </span>
-                                            <span className="self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-[#7cc000] [font-style:var(--text-sm-semi-bold-font-style)]">
-                                                {roleLabel}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <form action={logout} className="w-full">
-                                        <Button className="h-8 w-full rounded-lg bg-red-500 text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-white shadow-box-shadow-shadow-xs hover:bg-red-600 [font-style:var(--text-sm-medium-font-style)]">
-                                            Logout
-                                        </Button>
-                                    </form>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            {/* Actions Area */}
+                            <div className="p-2">
+                                <form action={logout} className="w-full">
+                                    <Button
+                                        variant="ghost"
+                                        className="h-9 w-full justify-start rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    >
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        Logout Session
+                                    </Button>
+                                </form>
+                            </div>
+                        </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

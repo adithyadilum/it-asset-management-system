@@ -3,6 +3,7 @@ import { cache } from 'react';
 import {
   getAssetsByPillar,
   getCategoriesByPillar,
+  getAllAssetsUnified,
 } from '@/actions/asset-registry';
 import {
   REGISTRY_VIEW_CONFIGS,
@@ -30,11 +31,13 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
   const params = searchParams ? await searchParams : {};
   const currentPanel = Array.isArray(params.panel) ? params.panel[0] : params.panel;
   const recordId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const closePanelUrl = `/assets/${view}`;
+  const closePanelUrl = view === 'unified' ? '/assets' : `/assets/${view}`;
+
+  const fetchFn = config.view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
 
   const [categories, initialResult, manualStatuses] = await Promise.all([
-    getCachedCategoriesByPillar(config.pillar),
-    getAssetsByPillar({
+    config.pillar ? getCachedCategoriesByPillar(config.pillar) : Promise.resolve([]),
+    fetchFn({
       pillar: config.pillar,
       page: 1,
       pageSize: config.defaultPageSize,
@@ -50,7 +53,7 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
       currentPanel={currentPanel}
       recordId={recordId}
       closePanelUrl={closePanelUrl}
-      pillar={config.pillar}
+      pillar={config.pillar || ''}
       manualStatuses={manualStatuses}
     />
   );

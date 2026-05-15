@@ -20,6 +20,13 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Table,
   TableBody,
   TableCell,
@@ -34,19 +41,21 @@ type DataTableSelectionActionTone = "secondary" | "destructive" | "primary"
 const INTERACTIVE_SELECTOR =
   "button,a,input,textarea,select,[role='checkbox'],[data-row-panel-ignore='true']"
 
+const DEFAULT_PAGE_SIZE_OPTIONS = [16, 24, 32, 48]
+const DEFAULT_INITIAL_PAGE_SIZE = 16
+
 export type DataTableSelectionAction<TData> = {
   id: string
   label: string
   onClick?: (selectedRows: TData[]) => void
   tone?: DataTableSelectionActionTone
   disabled?: boolean | ((selectedRows: TData[]) => boolean)
+  hidden?: boolean | ((selectedRows: TData[]) => boolean)
 }
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  pageSizeOptions?: number[]
-  initialPageSize?: number
   defaultSorting?: SortingState
   enableRowScroll?: boolean
   enableRowSelection?: boolean
@@ -71,13 +80,13 @@ type DataTableProps<TData, TValue> = {
   // 1. ADDED THESE TWO OPTIONAL PROPS
   rowSelection?: RowSelectionState
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
+  pageSizeOptions?: number[]
+  initialPageSize?: number
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
-  pageSizeOptions = [16, 24, 32, 48],
-  initialPageSize = 16,
   defaultSorting = [],
   enableRowScroll = true,
   enableRowSelection = true,
@@ -98,6 +107,8 @@ export function DataTable<TData, TValue>({
   // 2. DESTRUCTURED THEM HERE
   rowSelection: externalRowSelection,
   onRowSelectionChange: externalOnRowSelectionChange,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
+  initialPageSize = DEFAULT_INITIAL_PAGE_SIZE,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -137,13 +148,13 @@ export function DataTable<TData, TValue>({
   )
 
   const sortedPageSizes = React.useMemo(() => {
-    const normalized = Array.from(new Set([...pageSizeOptions, initialPageSize])).filter(
-      (value) => value > 0
-    )
+    const normalized = Array.from(
+      new Set([...pageSizeOptions, initialPageSize])
+    ).filter((value) => value > 0)
     normalized.sort((a, b) => a - b)
 
     return normalized
-  }, [initialPageSize, pageSizeOptions])
+  }, [pageSizeOptions, initialPageSize])
 
   const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
 
@@ -259,13 +270,36 @@ export function DataTable<TData, TValue>({
   const currentPage = Math.min(table.getState().pagination.pageIndex + 1, computedPageCount)
 
   const tableContent = (
-    <Table className="table-fixed min-w-full" containerClassName="!overflow-visible">
+    <Table 
+      className={cn("table-fixed min-w-full", table.getRowModel().rows.length === 0 && "h-full")} 
+      containerClassName={cn("!overflow-visible", table.getRowModel().rows.length === 0 && "h-full")}
+    >
+      <colgroup>
+        {table.getAllLeafColumns().map((column) => {
+          const isSelect = column.id === "select"
+          const isId = isCompactIdColumn(column.id)
+
+          let width = column.getSize()
+          if (isSelect) width = 52
+          else if (isId) width = 112
+
+          return (
+            <col
+              key={column.id}
+              style={{
+                width: width,
+                minWidth: width,
+              }}
+            />
+          )
+        })}
+      </colgroup>
       <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
         {selectedRows > 0 ? (
-          <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500">
+          <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500 transition-all duration-200 ease-in-out">
             <TableHead
               colSpan={table.getAllLeafColumns().length}
-              className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6"
+              className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6 transition-all duration-200 ease-in-out"
             >
               <div className="flex h-13.25 w-full items-center justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-3" data-row-panel-ignore="true">
@@ -289,6 +323,13 @@ export function DataTable<TData, TValue>({
                       typeof action.disabled === "function"
                         ? action.disabled(selectedRowData)
                         : Boolean(action.disabled)
+
+                    const isHidden =
+                      typeof action.hidden === "function"
+                        ? action.hidden(selectedRowData)
+                        : Boolean(action.hidden)
+
+                    if (isHidden) return null
 
                     return (
                       <Button
@@ -323,7 +364,7 @@ export function DataTable<TData, TValue>({
           </TableRow>
         ) : (
           table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="h-13.25 border-border">
+            <TableRow key={headerGroup.id} className="h-13.25 border-border transition-all duration-200 ease-in-out">
               {headerGroup.headers.map((header) => {
                 const canSort = header.column.getCanSort()
                 const sortState = header.column.getIsSorted()
@@ -352,7 +393,7 @@ export function DataTable<TData, TValue>({
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
-                        className="inline-flex min-w-0 max-w-full items-center gap-2 text-left"
+                        className="inline-flex min-w-0 max-w-full items-center gap-2 text-left bg-transparent p-0 border-none appearance-none"
                       >
                         <span
                           className="truncate"
@@ -382,7 +423,7 @@ export function DataTable<TData, TValue>({
         )}
       </TableHeader>
 
-      <TableBody>
+      <TableBody className={cn(table.getRowModel().rows.length === 0 && "h-full")}>
         {table.getRowModel().rows.length > 0 ? (
           table.getRowModel().rows.map((row) => {
             const isActive =
@@ -439,16 +480,18 @@ export function DataTable<TData, TValue>({
             )
           })
         ) : (
-          <TableRow className="border-border">
+          <TableRow className="h-full border-border hover:bg-transparent">
             <TableCell
               colSpan={table.getAllLeafColumns().length}
-              className="py-8"
+              className="h-full p-0"
             >
-              <TableEmptyState
-                title={emptyState?.title}
-                description={emptyState?.description}
-                action={emptyState?.action}
-              />
+              <div className="flex h-full items-center justify-center py-12">
+                <TableEmptyState
+                  title={emptyState?.title}
+                  description={emptyState?.description}
+                  action={emptyState?.action}
+                />
+              </div>
             </TableCell>
           </TableRow>
         )}
@@ -459,7 +502,7 @@ export function DataTable<TData, TValue>({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card font-sans",
+        "flex flex-1 min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card font-sans",
         className
       )}
     >
@@ -490,18 +533,21 @@ export function DataTable<TData, TValue>({
             <label htmlFor="rows-per-page" className="whitespace-nowrap text-muted-foreground">
               Rows per page
             </label>
-            <select
-              id="rows-per-page"
-              value={table.getState().pagination.pageSize}
-              onChange={(event) => table.setPageSize(Number(event.target.value))}
-              className="h-8 rounded-md border border-border bg-card px-2 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            <Select
+              value={String(table.getState().pagination.pageSize)}
+              onValueChange={(value) => table.setPageSize(Number(value))}
             >
-              {sortedPageSizes.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="rows-per-page" className="h-8 w-fit min-w-[70px]">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedPageSizes.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center gap-2">

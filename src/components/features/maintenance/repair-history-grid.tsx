@@ -63,23 +63,19 @@ export function RepairHistoryGrid({
     return <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[20%]', 'w-[15%]', 'w-[30%]']} />;
   }
 
-  if (tickets.length === 0) {
   return (
-    <div className="flex h-32 items-center justify-center bg-muted/30">
-      <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>No repair history found</span>
-    </div>
+    <DataTable
+      columns={repairHistoryColumns}
+      data={tickets}
+      pageSizeOptions={[10, 20, 30, 50]}
+      initialPageSize={10}
+      enableRowSelection={false}
+      enableRowScroll={true}
+      className="border-0 flex-1 min-h-0"
+      emptyState={{
+        title: 'No repair history found',
+        description: 'Completed maintenance tickets will be archived here.',
+      }}
+    />
   );
-}
-
-  return (
-  <DataTable
-    columns={repairHistoryColumns}
-    data={tickets}
-    pageSizeOptions={[10, 20, 30, 50]}
-    initialPageSize={10}
-    enableRowSelection={false} 
-    enableRowScroll={true} 
-    className="border-0 h-full flex-1" 
-  />
-);
 }
