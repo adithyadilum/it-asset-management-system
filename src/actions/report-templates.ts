@@ -71,6 +71,7 @@ export async function createReportTemplate(
       category?: string;
       location?: string;
       status?: string;
+      masterDataType?: string;
     };
     fields: string[];
     sortDirection: string;

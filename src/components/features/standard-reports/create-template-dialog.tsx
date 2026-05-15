@@ -73,6 +73,7 @@ export function CreateTemplateDialog({
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState('');
+  const [masterDataType, setMasterDataType] = useState('');
 
   // Fields
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -92,6 +93,7 @@ export function CreateTemplateDialog({
     setCategory('');
     setLocation('');
     setStatus('');
+    setMasterDataType('');
     setSelectedFields([]);
     setSortDirection('asc');
     setError(null);
@@ -142,6 +144,7 @@ export function CreateTemplateDialog({
           category: category || undefined,
           location: location || undefined,
           status: status || undefined,
+          masterDataType: masterDataType || undefined,
         },
         fields: selectedFields,
         sortDirection,
@@ -164,6 +167,7 @@ export function CreateTemplateDialog({
     category,
     location,
     status,
+    masterDataType,
     selectedFields,
     sortDirection,
     resetForm,
@@ -275,68 +279,126 @@ export function CreateTemplateDialog({
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-4 p-4 pt-3">
-                <FilterRow label="Asset Type">
-                  <Select
-                    value={assetType}
-                    onValueChange={setAssetType}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="All Assets" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.assetTypes?.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FilterRow>
+                {dataSource === 'Master Data' ? (
+                  <>
+                    <FilterRow label="Asset Type">
+                      <Select
+                        value={assetType}
+                        onValueChange={setAssetType}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All Assets" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filterOptions.assetTypes?.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
 
-                <FilterRow label="Category">
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.categories.map((cat) => (
-                        <SelectItem key={cat.name} value={cat.name}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FilterRow>
+                    <FilterRow label="Record Type">
+                      <Select
+                        value={masterDataType}
+                        onValueChange={setMasterDataType}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Data Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="asset-categories">Asset Categories</SelectItem>
+                          <SelectItem value="locations">Locations</SelectItem>
+                          <SelectItem value="brands">Brands</SelectItem>
+                          <SelectItem value="device-models">Device Models</SelectItem>
+                          <SelectItem value="vendors">Vendors</SelectItem>
+                          <SelectItem value="owners">Owners</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
 
-                <FilterRow label="Location">
-                  <Select value={location} onValueChange={setLocation}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.locations.map((loc) => (
-                        <SelectItem key={loc} value={loc}>
-                          {loc}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FilterRow>
+                    <FilterRow label="Status">
+                      <Select
+                        value={status}
+                        onValueChange={setStatus}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Active">Active</SelectItem>
+                          <SelectItem value="Inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
+                  </>
+                ) : (
+                  <>
+                    <FilterRow label="Asset Type">
+                      <Select
+                        value={assetType}
+                        onValueChange={setAssetType}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All Assets" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filterOptions.assetTypes?.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
 
-                <FilterRow label="Status">
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.statuses.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FilterRow>
+                    <FilterRow label="Category">
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filterOptions.categories.map((cat) => (
+                            <SelectItem key={cat.name} value={cat.name}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
+
+                    <FilterRow label="Location">
+                      <Select value={location} onValueChange={setLocation}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a Location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filterOptions.locations.map((loc) => (
+                            <SelectItem key={loc} value={loc}>
+                              {loc}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
+
+                    <FilterRow label="Status">
+                      <Select value={status} onValueChange={setStatus}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filterOptions.statuses.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
+                  </>
+                )}
               </CardContent>
             </Card>
 

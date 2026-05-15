@@ -53,6 +53,7 @@ export interface ReportTemplateData {
     category?: string;
     location?: string;
     status?: string;
+    masterDataType?: string;
   } | null;
   fields: string[] | null;
   sortDirection: string;
@@ -91,10 +92,10 @@ export interface CreateReportTemplateResult {
 
 export const REPORT_DATA_SOURCES = [
   'Assets',
-  'Maintenance Records',
-  'Disposal Records',
-  'Software Licenses',
-  'Audit Logs',
+  //'Maintenance Records',    commented for later implementation
+  //'Disposal Records',
+  //'Software Licenses',
+  //'Audit Logs',
   'Master Data',
 ] as const;
 
