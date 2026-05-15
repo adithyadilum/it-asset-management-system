@@ -5,7 +5,7 @@ import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { cn } from "@/lib/utils"
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer,
-  PieChart, Pie,
+  PieChart, Pie, LabelList,
 } from "recharts"
 import {
   TrendingUp, CheckCircle2, AlertCircle, Wrench, Hash,
@@ -23,37 +23,41 @@ const departmentData = [
 ]
 
 const inventoryData = [
-  { name: "New",       value: 400, color: "hsl(226, 71%, 40%)" },
-  { name: "Assigned",  value: 300, color: "hsl(81, 100%, 38%)"  },
-  { name: "In Repair", value: 150, color: "hsl(273, 67%, 39%)"  },
-  { name: "Disposed",  value: 200, color: "hsl(0, 84%, 60%)"    },
-  { name: "Lost",      value: 100, color: "hsl(23, 82%, 50%)"   },
+  { name: "New",       value: 400, color: "#2563eb" },
+  { name: "Assigned",  value: 300, color: "#84cc16" },
+  { name: "In Repair", value: 150, color: "#9333ea" },
+  { name: "Disposed",  value: 200, color: "#e11d48" },
+  { name: "Lost",      value: 100, color: "#f97316" },
 ]
 
 const activities = [
   {
     text: "Laptop AST-1023 assigned to John Doe",
     icon: CheckCircle2,
-    borderColor: "border-slate-300",
+    borderColor: "border-slate-200",
     iconColor: "text-slate-500",
+    textColor: "text-foreground",
   },
   {
     text: "New Asset Created: AST-2026-0456 (MacBook Pro 14)",
     icon: Hash,
-    borderColor: "border-blue-300",
+    borderColor: "border-blue-200",
     iconColor: "text-blue-500",
+    textColor: "text-foreground",
   },
   {
     text: "Server AST-0008 marked as Lost",
     icon: AlertCircle,
-    borderColor: "border-red-300",
-    iconColor: "text-red-500",
+    borderColor: "border-orange-200",
+    iconColor: "text-orange-500",
+    textColor: "text-orange-700",
   },
   {
     text: "Projector AST-0912 marked as In Repair",
     icon: Wrench,
-    borderColor: "border-purple-300",
+    borderColor: "border-purple-200",
     iconColor: "text-purple-500",
+    textColor: "text-foreground",
   },
 ]
 
@@ -73,17 +77,17 @@ function AssetAllocationChart() {
 
       <CardContent className="p-3 pt-1 flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={departmentData} margin={{ top: 14, right: 4, left: -24, bottom: 0 }} barSize={26}>
+          <BarChart data={departmentData} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} barSize={40}>
             <XAxis
               dataKey="name"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tick={{ fontSize: 10, fill: "#64748b" }}
               dy={4}
             />
             <YAxis hide />
             <Tooltip
-              cursor={{ fill: "hsl(var(--muted))" }}
+              cursor={false}
               contentStyle={{
                 borderRadius: "6px",
                 fontSize: "11px",
@@ -91,10 +95,12 @@ function AssetAllocationChart() {
                 padding: "4px 8px",
               }}
             />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {departmentData.map((_, i) => (
-                <Cell key={i} fill="hsl(var(--primary))" />
-              ))}
+            <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="#040d5a">
+              <LabelList
+                dataKey="value"
+                position="top"
+                style={{ fontSize: "10px", fill: "#64748b", fontWeight: 500 }}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -135,8 +141,8 @@ function InventoryStatusChart() {
               <Pie
                 data={inventoryData}
                 dataKey="value"
-                innerRadius="58%"
-                outerRadius="82%"
+                innerRadius="45%"
+                outerRadius="80%"
                 paddingAngle={2}
                 stroke="none"
               >
@@ -202,8 +208,9 @@ function RecentActivitiesList() {
             <div
               key={i}
               className={cn(
-                "flex items-center gap-2 px-2.5 py-2 rounded-md border bg-card text-xs font-medium text-foreground",
-                item.borderColor
+                "flex items-center gap-2 px-2.5 py-2 rounded-md border bg-card text-xs font-medium",
+                item.borderColor,
+                item.textColor
               )}
             >
               <item.icon className={cn("w-3.5 h-3.5 shrink-0", item.iconColor)} />
