@@ -77,17 +77,17 @@ export function ReportTemplateCard({
   return (
     <>
       <Card size="sm" className="h-full justify-between border-border bg-background">
-        <CardHeader className="gap-3 p-4 pb-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle className="text-base font-medium text-card-foreground">
+        <CardHeader className="gap-3 p-4 pb-3 min-w-0">
+          <div className="flex items-start justify-between gap-3 min-w-0 w-full overflow-hidden">
+            <div className="space-y-1 flex-1 min-w-0 overflow-hidden">
+              <CardTitle className="text-base font-medium text-card-foreground truncate block w-full">
                 {template.name}
               </CardTitle>
-              <CardDescription className="text-sm leading-5 text-muted-foreground">
+              <CardDescription className="text-sm leading-5 text-muted-foreground truncate block w-full">
                 {template.description || template.dataSource}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <DataSourceIcon dataSource={template.dataSource} className="size-4 shrink-0 text-foreground" />
               
               <DropdownMenu>
