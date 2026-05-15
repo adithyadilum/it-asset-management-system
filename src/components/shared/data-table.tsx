@@ -301,18 +301,20 @@ export function DataTable<TData, TValue>({
               colSpan={table.getAllLeafColumns().length}
               className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6 transition-all duration-200 ease-in-out"
             >
-              <div className="flex h-13.25 w-full items-center justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3" data-row-panel-ignore="true">
-                  <Checkbox
-                    aria-label="Select all rows"
-                    checked={
-                      table.getIsAllRowsSelected() ||
-                      (table.getIsSomeRowsSelected() ? "indeterminate" : false)
-                    }
-                    onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
-                    className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
-                  />
-                  <p className="truncate text-sm font-medium text-white">
+              <div className="flex h-13.25 w-full items-center justify-between pr-6">
+                <div className="flex min-w-0 items-center">
+                  <div className="flex w-13 items-center justify-center" data-row-panel-ignore="true">
+                    <Checkbox
+                      aria-label="Select all rows"
+                      checked={
+                        table.getIsAllRowsSelected() ||
+                        (table.getIsSomeRowsSelected() ? "indeterminate" : false)
+                      }
+                      onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
+                      className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
+                    />
+                  </div>
+                  <p className="truncate text-sm font-medium text-white ml-3">
                     {actionHeaderLabel}
                   </p>
                 </div>
