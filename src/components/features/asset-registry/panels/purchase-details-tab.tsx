@@ -44,6 +44,7 @@ export interface PurchaseDetailsTabProps {
   onCurrencyChange?: (currency: string) => void;
   onInvoiceClick?: () => void;
   className?: string;
+  hideWarranty?: boolean;
 }
 
 export function PurchaseDetailsTab({
@@ -63,6 +64,7 @@ export function PurchaseDetailsTab({
   onCurrencyChange,
   onInvoiceClick,
   className = '',
+  hideWarranty = false,
 }: PurchaseDetailsTabProps) {
   const resolvedSourceCurrency = sourceCurrency ?? currency;
 
@@ -162,7 +164,7 @@ export function PurchaseDetailsTab({
         {renderField('Shipping Cost', formattedShippingCost, true)}
         {renderField('Tax', formattedTax, true)}
         {renderField('Total Cost', formattedTotalCost, true)}
-        {renderField('Warranty Period', warrantyPeriod)}
+        {!hideWarranty && renderField('Warranty Period', warrantyPeriod)}
         {formattedTotalRepairCost &&
           renderField('Total Repair Cost', formattedTotalRepairCost, true)}
         {formattedBookValue &&

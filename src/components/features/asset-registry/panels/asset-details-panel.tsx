@@ -16,6 +16,7 @@ import { InteractiveStatusBadge } from '@/components/shared/interactive-status-b
 // Epic 15: Imports for Maintenance Integration
 import { getAllAssetAuditHistory } from '@/actions/audit-log';
 import { format } from 'date-fns';
+import { CopyableField } from '@/components/shared/copyable-field';
 import { RecentMaintenance } from './recent-maintenance';
 
 export interface AssetDetailsPanelProps {
@@ -67,9 +68,12 @@ export interface AssetDetailsPanelProps {
   historyEvents?: HistoryEvent[];
   maintenanceEvents?: MaintenanceEvent[];
 
-  // Allocations (Software only)
+  // SAM Data
   allocations?: AllocationUser[];
   totalSeats?: number;
+  availableSeats?: number;
+  expiryDate?: string | null;
+  licenseType?: string | null;
 
   // Actions
   onEdit?: () => void;
@@ -96,24 +100,40 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
   // ======================================================
 
-  const getActionButtonLabel = useCallback(() => {
-    if (props.assetCategory === 'Office Furniture') return 'Transfer';
-    if (props.assetCategory === 'Software') return 'Return';
-    return 'Request Return';
-  }, [props.assetCategory]);
+  const isSoftware = props.assetCategory === 'Software';
+  const isFurniture = props.assetCategory === 'Office Furniture';
+
+  const actionState = useMemo(() => {
+    if (!isSoftware) {
+      return {
+        label: isFurniture ? 'Transfer' : 'Request Return',
+        disabled: false
+      };
+    }
+
+    if (props.status === 'Expired') {
+      return { label: 'License Expired', disabled: true };
+    }
+    if (props.status === 'Full') {
+      return { label: 'Seats Full', disabled: true };
+    }
+    return { label: 'Add User', disabled: false };
+  }, [isSoftware, isFurniture, props.status]);
 
   const tabs: TabbedPanelTab[] = useMemo(() => {
     const tabsList: TabbedPanelTab[] = [];
-    const isSoftware = props.assetCategory === 'Software';
-    const isFurniture = props.assetCategory === 'Office Furniture';
 
-    // SAM Data mapping from dev branch
-    const softwareLicenseKey = props.serialNumber || props.specs?.license_key?.toString() || '-';
-    const softwareLicenseType = props.specs?.license_type?.toString() || 'Subscription';
+    // SAM Data mapping from repo
+    const softwareLicenseKey = props.serialNumber || '-';
+    const softwareLicenseType = props.licenseType || props.specs?.license_type?.toString() || 'Subscription';
     const softwareVersion = props.specs?.version?.toString() || '-';
-    const softwareExpirationDate = props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || '-';
-    const softwareTotalSeats = props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-';
-    const softwareAvailableSeats = props.specs?.available_seats?.toString() || '-';
+    const rawExpiry = props.expiryDate || props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString();
+    const softwareExpirationDate = rawExpiry && rawExpiry !== '-' ? (
+      !Number.isNaN(new Date(rawExpiry).getTime()) 
+        ? format(new Date(rawExpiry), 'dd MMM yyyy') 
+        : rawExpiry
+    ) : '-';
+    const softwareTotalSeats = props.totalSeats?.toString() || props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-';
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
@@ -132,11 +152,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     } else if (isSoftware) {
       detailsFields.push(
         { label: 'Product', value: props.model || props.assetName || '-' },
-        { label: 'License Key', value: props.serialNumber || props.specs?.license_key?.toString() || '-' },
-        { label: 'License Type', value: props.specs?.license_type?.toString() || 'Subscription' },
-        { label: 'Version', value: props.specs?.version?.toString() || '-' },
-        { label: 'Total Seats', value: props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-' },
-        { label: 'Expiration Date', value: props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || '-' },
+        { label: 'License Key', value: softwareLicenseKey !== '-' ? <CopyableField value={softwareLicenseKey} label="License Key" /> : '-' },
+        { label: 'License Type', value: softwareLicenseType },
+        { label: 'Version', value: softwareVersion },
+        { label: 'Total Seats', value: softwareTotalSeats },
+        { label: 'Expiration Date', value: softwareExpirationDate },
         { label: 'Publisher', value: props.brand },
         { label: 'Assigned to', value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
@@ -176,30 +196,27 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             modelName={props.model}
             fields={detailsFields}
             mode={isSoftware ? 'software' : 'default'}
+            totalSeats={props.totalSeats}
+            allocatedCount={props.allocations?.length}
             softwareSections={isSoftware ? [
               {
                 title: 'License Details',
                 rows: [
                   { label: 'Product', value: props.model || props.assetName || '-' },
                   { label: 'Publisher', value: props.brand || '-' },
-                  { label: 'License Key', value: softwareLicenseKey },
+                  { 
+                    label: 'License Key', 
+                    value: softwareLicenseKey !== '-' ? (
+                      <CopyableField value={softwareLicenseKey} label="License Key" />
+                    ) : '-' 
+                  },
                   { label: 'License Type', value: softwareLicenseType },
                   { label: 'Version', value: softwareVersion },
                   { label: 'Expiration Date', value: softwareExpirationDate },
                 ],
               },
               {
-                title: 'Allocation & Ownership',
-                rows: [
-                  { label: 'Total Seats', value: softwareTotalSeats },
-                  { label: 'Available Seats', value: softwareAvailableSeats },
-                  { label: 'Assigned To', value: props.assignedTo || '-' },
-                  { label: 'Group', value: props.group || '-' },
-                  { label: 'Owner', value: props.owner || '-' },
-                ],
-              },
-              {
-                title: 'Record Metadata',
+                title: 'Asset Details',
                 rows: [
                   { label: 'Asset ID', value: props.assetTag || '-' },
                   { label: 'Purchase Date', value: props.purchaseDate || '-' },
@@ -256,6 +273,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             invoicePdf={props.invoiceUrl}
             vendor={props.vendorInfo || { vendorId: '', vendorName: 'N/A' }}
             onCurrencyChange={props.onCurrencyChange}
+            hideWarranty={isSoftware}
           />
         ),
       });
@@ -294,7 +312,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     }
 
     return tabsList;
-  }, [props]);
+  }, [props, isSoftware, isFurniture]);
 
   const handleExportCSV = useCallback(async () => {
     try {
@@ -375,11 +393,17 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     // Disposed and Pending Disposal assets cannot be assigned/returned
     if (!isDisposed && !isPendingDisposal) {
-      list.push({ id: 'action', label: getActionButtonLabel(), variant: 'default', onClick: props.onActionButtonClick });
+      list.push({
+        id: 'action',
+        label: actionState.label,
+        disabled: actionState.disabled,
+        variant: 'default',
+        onClick: props.onActionButtonClick
+      });
     }
 
     return list;
-  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, getActionButtonLabel, handleExportCSV, props.status, props.hideActions]);
+  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, actionState, handleExportCSV, props.status, props.hideActions]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
@@ -388,13 +412,17 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         variant="metadata"
         label={`ID: ${props.assetTag || '-'}`}
       />
-      <InteractiveStatusBadge
-        assetId={props.assetId}
-        currentStatus={props.status}
-        availableStatuses={props.manualStatuses ?? []}
-        hasActiveAssignment={Boolean(props.assignedTo && props.assignedTo !== '-')}
-        onStatusChanged={props.onStatusChanged}
-      />
+      {isSoftware ? (
+        <StatusBadge value={props.status} showIcon />
+      ) : (
+        <InteractiveStatusBadge
+          assetId={props.assetId}
+          currentStatus={props.status}
+          availableStatuses={props.manualStatuses ?? []}
+          hasActiveAssignment={Boolean(props.assignedTo && props.assignedTo !== '-')}
+          onStatusChanged={props.onStatusChanged}
+        />
+      )}
     </div>
   );
 

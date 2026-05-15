@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronsUpDown, Trash2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { ColumnDef } from '@tanstack/react-table';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { DataTable } from '@/components/shared/data-table';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { cn } from '@/lib/utils';
 
 import { RemoveUserModal } from './remove-user-modal';
 import type { RoleUser } from './user-role-assignment-modal';
@@ -16,10 +20,6 @@ type RolesManagementTableProps = {
 };
 
 const SSO_SYNC_STATUS_LABEL = 'Active - Azure AD';
-const textXsSemiBoldClass =
-  'font-text-xs-semi-bold text-(length:--text-xs-semi-bold-font-size) leading-(--text-xs-semi-bold-line-height) tracking-(--text-xs-semi-bold-letter-spacing) [font-style:var(--text-xs-semi-bold-font-style)]';
-const textSmRegularClass =
-  'font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]';
 
 function getInitials(name: string) {
   return name
@@ -49,98 +49,99 @@ export function RolesManagementTable({
     router.refresh();
   };
 
+  const columns = useMemo<ColumnDef<RoleUser>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: 'User',
+        cell: ({ row }) => {
+          const user = row.original;
+          return (
+            <div className="flex items-center gap-4 py-1">
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarFallback
+                  className={cn(
+                    'rounded-lg bg-slate-200 text-slate-700',
+                    TYPOGRAPHY_CLASSNAMES.textXsMedium
+                  )}
+                >
+                  {getInitials(user.name)}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="min-w-0">
+                <p className={cn('truncate text-slate-900', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
+                  {user.name}
+                </p>
+                <p className={cn('truncate text-slate-500', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
+                  {user.email}
+                </p>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'department',
+        header: 'Department',
+        cell: ({ row }) => (
+          <span className={cn('text-slate-900', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
+            {row.original.department}
+          </span>
+        ),
+      },
+      {
+        id: 'ssoStatus',
+        header: 'SSO Sync Status',
+        cell: () => (
+          <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-success bg-success/10 px-1.5 py-0.5">
+            <span className={cn('text-success', TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
+              {SSO_SYNC_STATUS_LABEL}
+            </span>
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => {
+          const user = row.original;
+          const isSelf = user.id === currentUserId;
+
+          return (
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => openRemoveModal(user)}
+              aria-label={`Remove ${user.name} from ${roleLabel}`}
+              disabled={isSelf}
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </button>
+          );
+        },
+        size: 80,
+      },
+    ],
+    [currentUserId, roleLabel]
+  );
+
   return (
     <>
-      <div className="self-stretch w-full overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="h-10 border-b border-slate-200 bg-slate-50">
-              <th className="px-4 text-left font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-slate-900 [font-style:var(--text-sm-medium-font-style)]">
-                User
-              </th>
-              <th className="px-2 text-center font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-slate-900 [font-style:var(--text-sm-medium-font-style)]">
-                Department
-              </th>
-              <th className="px-2 text-center font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-slate-900 [font-style:var(--text-sm-medium-font-style)]">
-                SSO Sync Status
-              </th>
-              <th className="w-18.75 px-2">
-                <ChevronsUpDown className="h-4 w-4 text-slate-900" />
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {users.map((user) => {
-              const isSelf = user.id === currentUserId;
-
-              return (
-                <tr
-                  key={user.id}
-                  className="h-12.25 border-b border-slate-200 last:border-b-0"
-                >
-                  <td className="pl-4 pr-2 py-2">
-                    <div className="flex items-center gap-4 p-2">
-                      <Avatar className="h-8 w-8 rounded-lg">
-                        <AvatarFallback
-                          className={`rounded-lg bg-slate-200 text-slate-700 ${textXsSemiBoldClass}`}
-                        >
-                          {getInitials(user.name)}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="min-w-0">
-                        <p className="truncate font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
-                          {user.name}
-                        </p>
-                        <p className="truncate font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [font-style:var(--text-xs-regular-font-style)]">
-                          {user.email}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="px-3.5 py-2 text-center">
-                    <span className="font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) text-slate-900 [font-style:var(--text-sm-regular-font-style)]">
-                      {user.department}
-                    </span>
-                  </td>
-
-                  <td className="px-3.5 py-2 text-center">
-                    <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-success bg-success/10 px-1.5 py-0.5">
-                      <span className="font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-success [font-style:var(--text-sm-medium-font-style)]">
-                        {SSO_SYNC_STATUS_LABEL}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="w-18.75 px-3.5 py-2">
-                    <button
-                      type="button"
-                      className="flex h-8 w-full items-center gap-2 rounded-lg px-2.5 py-0 disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => openRemoveModal(user)}
-                      aria-label={`Remove ${user.name} from ${roleLabel}`}
-                      disabled={isSelf}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-
-            {users.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className={`px-4 py-6 text-center text-slate-500 ${textSmRegularClass}`}
-                >
-                  No users found for this role.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={users}
+          enableRowScroll={true}
+          enableRowSelection={false}
+          initialPageSize={50}
+          pageSizeOptions={[10, 20, 50, 100]}
+          className="flex-1 border-slate-200"
+          emptyState={{
+            title: 'No users found',
+            description: 'No users have been assigned to this role yet.',
+          }}
+        />
       </div>
 
       <RemoveUserModal

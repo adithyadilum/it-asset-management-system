@@ -14,6 +14,7 @@ import {
   owners,
   vendors,
   assetAssignments,
+  softwareLicenses,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
@@ -200,6 +201,10 @@ export async function registerAsset(
       warrantyMonths: toFormValue(formData, 'warrantyMonths'),
       vendorId: toFormValue(formData, 'vendorId'),
       notes: toFormValue(formData, 'notes'),
+      licenseType: toFormValue(formData, 'licenseType'),
+      totalSeats: toFormValue(formData, 'totalSeats'),
+      licenseStartDate: toFormValue(formData, 'licenseStartDate'),
+      licenseExpiryDate: toFormValue(formData, 'licenseExpiryDate'),
     };
 
     // Parse instance attributes from form (dynamic fields from customSchema)
@@ -414,7 +419,9 @@ export async function registerAsset(
             modelId: input.modelId,
             locationId: input.locationId ?? null,
             ownerId: input.ownerId ?? null,
-            condition: input.condition ?? null,
+            condition: input.condition ?? (
+              ['Office Furniture', 'Office Electronics'].includes(input.pillar) ? 'New' : null
+            ),
             instanceAttributes:
               input.instanceAttributes &&
               Object.keys(input.instanceAttributes).length > 0
@@ -467,6 +474,27 @@ export async function registerAsset(
       throw purchaseError;
     }
 
+    if (input.pillar === 'Software' && input.licenseType) {
+      try {
+        await db.insert(softwareLicenses).values({
+          assetId: insertedAsset.id,
+          modelId: input.modelId,
+          licenseKey: input.serialNumber ?? null,
+          licenseType: input.licenseType as 'Perpetual' | 'Subscription' | 'Open Source / Free',
+          totalSeats: input.totalSeats ?? 1,
+          startDate: input.licenseStartDate ? toDateString(input.licenseStartDate) : null,
+          expiryDate: input.licenseExpiryDate ? toDateString(input.licenseExpiryDate) : null,
+        });
+      } catch (licenseError) {
+        try {
+          await db.delete(assets).where(eq(assets.id, insertedAsset.id));
+        } catch {
+          // Best effort
+        }
+        throw licenseError;
+      }
+    }
+
     await logAuditAction({
       entityType: 'Asset',
       entityId: insertedAsset.id,
@@ -475,6 +503,10 @@ export async function registerAsset(
       newData: {
         assetTag: insertedAsset.assetTag,
         modelId: input.modelId,
+        ...(input.pillar === 'Software' && input.licenseType ? {
+          licenseType: input.licenseType,
+          totalSeats: input.totalSeats ?? 1,
+        } : {}),
       },
     });
 
@@ -667,6 +699,13 @@ export async function manualStatusOverrideAction(
     // 3. Fetch current asset
     const currentAsset = await db.query.assets.findFirst({
       where: eq(assets.id, assetId),
+      with: {
+        model: {
+          with: {
+            category: true,
+          },
+        },
+      },
     });
 
     if (!currentAsset) {
@@ -675,6 +714,13 @@ export async function manualStatusOverrideAction(
 
     if (currentAsset.status === 'Disposed' || currentAsset.status === 'Pending Disposal') {
       return { success: false, message: `Assets in "${currentAsset.status}" status cannot have their status changed manually.` };
+    }
+
+    if (currentAsset.model.category.pillar === 'Software') {
+      return {
+        success: false,
+        message: 'Software asset status is automatically managed and cannot be changed manually.',
+      };
     }
 
     if (currentAsset.status === newStatus) {

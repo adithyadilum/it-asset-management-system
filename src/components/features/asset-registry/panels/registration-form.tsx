@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarDays, LoaderCircle, Paperclip, Plus, Upload } from 'lucide-react';
-import Image from 'next/image';
+import { LoaderCircle } from 'lucide-react';
 
 import { registerAsset } from '@/actions/assets';
 import {
@@ -10,62 +9,30 @@ import {
   type SlidePanelAction,
 } from '@/components/shared/slide-panel';
 import { tiqriToast } from '@/components/shared/sonner';
-import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  formatCurrencySymbol,
-  parseCurrencyAmount,
   SUPPORTED_CURRENCIES,
+  parseCurrencyAmount,
+  formatCurrencySymbol,
 } from '@/lib/currency';
 import {
-  INVOICE_ATTACHMENT_ACCEPT,
   isInvoiceAttachmentFile,
 } from '@/lib/file-types';
 import { cn } from '@/lib/utils';
-import { useOpenRegistrationPanel } from '@/components/features/asset-registry/panels/use-open-registration-panel';
 import {
-  DB_PILLAR_VALUES,
   initialRegisterAssetActionState,
-  type RegisterAssetActionState,
   type RegistrationPillarInput,
 } from '@/lib/validations/asset-registration';
-
-type RegistrationOption = React.ComponentProps<
-  typeof SearchableDropdown
->['options'][number];
-
-type CustomSchemaField = {
-  fieldName: string;
-  inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean';
-  required: boolean;
-};
-
-type CategoryRegistrationOption = RegistrationOption & {
-  pillar?: string;
-  customSchema?: {
-    modelSpecs: CustomSchemaField[];
-    assetTracking: CustomSchemaField[];
-  };
-};
-
-type ModelRegistrationOption = RegistrationOption & {
-  brandId: string;
-  categoryId: string;
-  imageUrl: string | null;
-};
+import { getPillarFormConfig } from '@/components/features/asset-registry/panels/pillar-form-config';
+import { ClassificationSection } from './sections/classification-section';
+import { SoftwareLicensingSection } from './sections/software-licensing-section';
+import { PhysicalAttributesSection } from './sections/physical-attributes-section';
+import { CustomFieldsSection } from './sections/custom-fields-section';
+import { PurchaseDetailsSection } from './sections/purchase-details-section';
+import {
+  type CategoryRegistrationOption,
+  type ModelRegistrationOption,
+  type RegistrationOption,
+} from './form-field-primitives';
 
 export type { RegistrationOption, ModelRegistrationOption };
 
@@ -80,25 +47,7 @@ type RegistrationFormProps = {
   modelOptions?: ModelRegistrationOption[];
   ownerOptions?: RegistrationOption[];
   vendorOptions?: RegistrationOption[];
-};
-
-type InlineFieldRowProps = {
-  label: string;
-  htmlFor?: string;
-  error?: string;
-  alignTop?: boolean;
-  children: React.ReactNode;
-};
-
-type SearchableFieldRowProps = {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: RegistrationOption[];
-  placeholder: string;
-  emptyMessage: string;
-  error?: string;
+  locationOptions?: RegistrationOption[];
 };
 
 const CURRENCY_OPTIONS: RegistrationOption[] = SUPPORTED_CURRENCIES.map(
@@ -107,6 +56,14 @@ const CURRENCY_OPTIONS: RegistrationOption[] = SUPPORTED_CURRENCIES.map(
     label: currencyCode,
   })
 );
+
+const LICENSE_TYPE_OPTIONS: RegistrationOption[] = [
+  { value: 'Perpetual', label: 'Perpetual' },
+  { value: 'Subscription', label: 'Subscription' },
+  { value: 'Open Source / Free', label: 'Open Source / Free' },
+];
+
+const CONDITION_OPTIONS = ['New', 'Excellent', 'Fair', 'Poor', 'Damaged'];
 
 const WARRANTY_MONTH_OPTIONS: RegistrationOption[] = [
   { value: '3', label: '3 Months' },
@@ -153,112 +110,10 @@ function formatPurchaseDateLabel(inputValue: string) {
   });
 }
 
-function sanitizeCurrencyInput(rawValue: string) {
-  const normalizedValue = rawValue.replace(/[^\d.]/g, '');
-  const [integerPart = '', ...fractionParts] = normalizedValue.split('.');
-  const fractionPart = fractionParts.join('');
-
-  if (normalizedValue.startsWith('.')) {
-    return `.${fractionPart.slice(0, 2)}`;
-  }
-
-  if (fractionParts.length === 0) {
-    return integerPart;
-  }
-
-  return `${integerPart}.${fractionPart.slice(0, 2)}`;
-}
-
 function resolveStartingPillar(
   initialPillar?: RegistrationPillarInput
 ): RegistrationPillarInput {
   return initialPillar ?? 'IT & Digital';
-}
-
-function resolvePanelDescription(initialPillar?: RegistrationPillarInput) {
-  if (initialPillar === 'IT & Digital') {
-    return 'Hardware';
-  }
-
-  if (initialPillar === 'Software') {
-    return 'Software';
-  }
-
-  return initialPillar ?? 'Register a new asset';
-}
-
-function getError(
-  state: RegisterAssetActionState,
-  key: keyof NonNullable<RegisterAssetActionState['errors']>
-) {
-  return state.errors?.[key]?.[0];
-}
-
-function ErrorText({ error }: { error?: string }) {
-  if (!error) {
-    return null;
-  }
-
-  return <p className="mt-1 text-xs text-destructive">{error}</p>;
-}
-
-function InlineFieldRow({
-  label,
-  htmlFor,
-  error,
-  alignTop = false,
-  children,
-}: InlineFieldRowProps) {
-  return (
-    <div className="space-y-1">
-      <div
-        className={cn(
-          'grid grid-cols-[132px_minmax(0,1fr)] gap-2',
-          alignTop ? 'items-start' : 'items-center'
-        )}
-      >
-        <Label
-          htmlFor={htmlFor}
-          className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} whitespace-nowrap text-foreground`}
-        >
-          {label}
-        </Label>
-        <div className="min-w-0">{children}</div>
-      </div>
-
-      {error ? (
-        <div className="pl-35">
-          <ErrorText error={error} />
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function SearchableFieldRow({
-  label,
-  name,
-  value,
-  onChange,
-  options,
-  placeholder,
-  emptyMessage,
-  error,
-}: SearchableFieldRowProps) {
-  return (
-    <InlineFieldRow label={label} error={error} alignTop>
-      <>
-        <SearchableDropdown
-          options={options}
-          placeholder={placeholder}
-          emptyMessage={emptyMessage}
-          onSelect={onChange}
-          defaultValue={value}
-        />
-        <input type="hidden" name={name} value={value} />
-      </>
-    </InlineFieldRow>
-  );
 }
 
 function RegistrationFormSkeleton() {
@@ -308,6 +163,7 @@ export function RegistrationForm({
   modelOptions = [],
   ownerOptions = [],
   vendorOptions = [],
+  locationOptions = [],
 }: RegistrationFormProps) {
   const formRef = React.useRef<HTMLFormElement>(null);
   const invoiceInputRef = React.useRef<HTMLInputElement>(null);
@@ -337,6 +193,14 @@ export function RegistrationForm({
   const [showInvoiceUploader, setShowInvoiceUploader] = React.useState(false);
   const [isInvoiceDragOver, setIsInvoiceDragOver] = React.useState(false);
   const [customFieldValues, setCustomFieldValues] = React.useState<Record<string, string>>({});
+
+  const [licenseType, setLicenseType] = React.useState('');
+  const [totalSeats, setTotalSeats] = React.useState('');
+  const [licenseStartDate, setLicenseStartDate] = React.useState('');
+  const [licenseExpiryDate, setLicenseExpiryDate] = React.useState('');
+  const [condition, setCondition] = React.useState('');
+  const [locationId, setLocationId] = React.useState('');
+
   const lastToastKeyRef = React.useRef<string>('');
 
   const handleInvoiceSelection = React.useCallback((files: FileList | null) => {
@@ -436,33 +300,37 @@ export function RegistrationForm({
     return payload;
   }, [assetTrackingFields, customFieldValues]);
 
+  const config = getPillarFormConfig(pillar);
   const isPillarLocked = Boolean(initialPillar);
-  const isSoftware = pillar === 'Software';
-  const softwareModelLabel = isSoftware ? 'Product' : 'Model';
+
   const formError = state.errors?.form?.[0];
   const modelEmptyMessage =
     brandId.length > 0 || categoryId.length > 0
-      ? isSoftware
-        ? 'No products found for selected category and brand.'
-        : 'No models found for selected category and brand.'
-      : isSoftware
-        ? 'No products found.'
-        : 'No models found.';
+      ? config.modelFilteredEmptyMessage
+      : config.modelEmptyMessage;
   const selectedModelLabel =
     modelOptions.find((option) => option.value === modelId)?.label ?? '';
   const selectedBrandLabel =
     brandOptions.find((option) => option.value === brandId)?.label ?? '';
-  const selectedModelImageUrl = selectedModel?.imageUrl ?? '';
   const derivedAssetName = (selectedBrandLabel && selectedModelLabel)
     ? `${selectedBrandLabel.trim()} - ${selectedModelLabel.trim()}`
     : 'New Asset';
-  const panelTitle = isSoftware ? 'Software Registry' : 'Asset Registry';
-  const panelDescription = resolvePanelDescription(initialPillar);
-  const serialLabel = isSoftware ? 'License Key :' : 'Serial Number :';
-  const submitLabel = isSoftware ? 'Add Software' : 'Add Asset';
-  const submittingLabel = isSoftware ? 'Adding software...' : 'Adding asset...';
   const purchaseDateLabel = formatPurchaseDateLabel(purchaseDate);
   const purchaseDateValue = parseInputDate(purchaseDate);
+
+  const licenseStartDateLabel = licenseStartDate ? formatPurchaseDateLabel(licenseStartDate) : 'Select start date';
+  const licenseStartDateValue = parseInputDate(licenseStartDate);
+
+  const licenseExpiryDateLabel = licenseExpiryDate ? formatPurchaseDateLabel(licenseExpiryDate) : 'Select expiry date';
+  const licenseExpiryDateValue = parseInputDate(licenseExpiryDate);
+
+  const [prevConfigCondition, setPrevConfigCondition] = React.useState(config.defaultCondition);
+  if (config.defaultCondition !== prevConfigCondition) {
+    setPrevConfigCondition(config.defaultCondition);
+    if (config.defaultCondition && condition === '') {
+      setCondition(config.defaultCondition);
+    }
+  }
   const currencySymbol = formatCurrencySymbol(currencyCode);
   const totalCost = React.useMemo(
     () =>
@@ -488,7 +356,7 @@ export function RegistrationForm({
     if (state.success) {
       tiqriToast.success(resolvedMessage);
 
-      if (state.assetId && !isSoftware) {
+      if (state.assetId && config.showSuccessTagDialog) {
         // Notify the parent to show the success dialog before closing the panel
         onRegistrationSuccess?.(state.assetId, selectedModelLabel);
       }
@@ -498,7 +366,7 @@ export function RegistrationForm({
     }
 
     lastToastKeyRef.current = toastKey;
-  }, [formError, state.message, state.success, state.assetId, isSoftware, onRegistrationSuccess, selectedModelLabel, onClose]);
+  }, [formError, state.message, state.success, state.assetId, config.showSuccessTagDialog, onRegistrationSuccess, selectedModelLabel, onClose]);
 
   const panelActions: SlidePanelAction[] = isLoading
     ? []
@@ -515,10 +383,10 @@ export function RegistrationForm({
         label: isPending ? (
           <span className="inline-flex items-center gap-2">
             <LoaderCircle className="h-4 w-4 animate-spin" />
-            <span>{submittingLabel}</span>
+            <span>{config.submittingLabel}</span>
           </span>
         ) : (
-          submitLabel
+          config.submitLabel
         ),
         onClick: () => formRef.current?.requestSubmit(),
         disabled: isPending,
@@ -533,480 +401,108 @@ export function RegistrationForm({
       action={formAction}
       className={cn('space-y-4', isPending && 'pointer-events-none opacity-70')}
     >
-      <input type="hidden" name="name" value={derivedAssetName} />
+      <ClassificationSection
+        config={config}
+        state={state}
+        pillar={pillar}
+        isPillarLocked={isPillarLocked}
+        onPillarChange={setPillar}
+        categoryId={categoryId}
+        onCategoryChange={setCategoryId}
+        brandId={brandId}
+        onBrandChange={setBrandId}
+        serialNumber={serialNumber}
+        onSerialNumberChange={setSerialNumber}
+        modelId={modelId}
+        onModelChange={setModelId}
+        categoryOptions={categoryOptions}
+        brandOptions={brandOptions}
+        filteredModelOptions={filteredModelOptions}
+        selectedModel={selectedModel}
+        selectedModelLabel={selectedModelLabel}
+        modelEmptyMessage={modelEmptyMessage}
+        derivedAssetName={derivedAssetName}
+      />
 
-      {isPillarLocked ? (
-        <input type="hidden" name="pillar" value={pillar} />
-      ) : (
-        <InlineFieldRow
-          label="Pillar :"
-          htmlFor="pillar"
-          error={getError(state, 'pillar')}
-        >
-          <select
-            id="pillar"
-            name="pillar"
-            value={pillar}
-            onChange={(event) =>
-              setPillar(event.target.value as RegistrationPillarInput)
-            }
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-            aria-invalid={Boolean(getError(state, 'pillar'))}
-          >
-            {DB_PILLAR_VALUES.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </InlineFieldRow>
-      )}
+      <PhysicalAttributesSection
+        config={config}
+        state={state}
+        condition={condition}
+        setCondition={setCondition}
+        CONDITION_OPTIONS={CONDITION_OPTIONS}
+        locationId={locationId}
+        setLocationId={setLocationId}
+        locationOptions={locationOptions}
+      />
 
-      <hr className="my-5 border-border" />
+      <CustomFieldsSection
+        config={config}
+        state={state}
+        assetTrackingFields={assetTrackingFields}
+        customFieldValues={customFieldValues}
+        setCustomFieldValues={setCustomFieldValues}
+        instanceAttributesPayload={instanceAttributesPayload}
+        ownerId={ownerId}
+        onOwnerChange={setOwnerId}
+        ownerOptions={ownerOptions}
+      />
 
-      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        <SearchableFieldRow
-          label="Category :"
-          name="categoryId"
-          value={categoryId}
-          onChange={setCategoryId}
-          options={categoryOptions}
-          placeholder="Select Category.."
-          emptyMessage="No categories found."
-          error={getError(state, 'categoryId')}
-        />
-
-        <SearchableFieldRow
-          label="Brand :"
-          name="brandId"
-          value={brandId}
-          onChange={setBrandId}
-          options={brandOptions}
-          placeholder="Select Brand.."
-          emptyMessage="No brands found."
-          error={getError(state, 'brandId')}
-        />
-
-        <InlineFieldRow
-          label={serialLabel}
-          htmlFor="serialNumber"
-          error={getError(state, 'serialNumber')}
-        >
-          <Input
-            id="serialNumber"
-            name="serialNumber"
-            type="text"
-            value={serialNumber}
-            onChange={(event) => setSerialNumber(event.target.value)}
-            aria-invalid={Boolean(getError(state, 'serialNumber'))}
-          />
-        </InlineFieldRow>
-
-        <SearchableFieldRow
-          label={`${softwareModelLabel} :`}
-          name="modelId"
-          value={modelId}
-          onChange={setModelId}
-          options={filteredModelOptions}
-          placeholder={`Select ${softwareModelLabel}..`}
-          emptyMessage={modelEmptyMessage}
-          error={getError(state, 'modelId')}
-        />
-
-        <div className="col-span-full rounded-lg border border-border bg-muted/30 p-4 sm:col-span-2">
-          <div className="flex items-start gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background">
-              {selectedModelImageUrl ? (
-                <Image
-                  src={selectedModelImageUrl}
-                  alt={selectedModelLabel || `Selected ${softwareModelLabel.toLowerCase()}`}
-                  width={80}
-                  height={80}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="text-xs text-muted-foreground">No image</span>
-              )}
-            </div>
-
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                {`Selected ${softwareModelLabel}`}
-              </div>
-              <p className="truncate text-sm text-muted-foreground">
-                {selectedModelLabel || `Select a ${softwareModelLabel.toLowerCase()} to load its image and custom inputs.`}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {assetTrackingFields.length > 0 ? (
-          <div className="col-span-full rounded-lg border border-border bg-background p-4 sm:col-span-2">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
-                  Custom Inputs
-                </h3>
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-                  {`Fields are driven by the selected ${softwareModelLabel.toLowerCase()}\'s category.`}
-                </p>
-              </div>
-            </div>
-
-            <input type="hidden" name="instanceAttributes" value={JSON.stringify(instanceAttributesPayload)} />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {assetTrackingFields.map((field) => {
-                const fieldValue = customFieldValues[field.fieldName] ?? '';
-
-                if (field.inputType === 'Boolean') {
-                  return (
-                    <div key={field.fieldName} className="space-y-2">
-                      <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                        {field.fieldName}
-                        {field.required ? <span className="text-red-500"> *</span> : null}
-                      </label>
-                      <Select
-                        value={fieldValue}
-                        onValueChange={(value) =>
-                          setCustomFieldValues((previous) => ({
-                            ...previous,
-                            [field.fieldName]: value,
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Select value" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="true">Yes</SelectItem>
-                          <SelectItem value="false">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div key={field.fieldName} className="space-y-2">
-                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
-                      {field.fieldName}
-                      {field.required ? <span className="text-red-500"> *</span> : null}
-                    </label>
-                    <Input
-                      type={field.inputType === 'Number' ? 'number' : field.inputType === 'Date' ? 'date' : 'text'}
-                      value={fieldValue}
-                      onChange={(event) =>
-                        setCustomFieldValues((previous) => ({
-                          ...previous,
-                          [field.fieldName]: event.target.value,
-                        }))
-                      }
-                      required={field.required}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-
-        <SearchableFieldRow
-          label="Owner :"
-          name="ownerId"
-          value={ownerId}
-          onChange={setOwnerId}
-          options={ownerOptions}
-          placeholder="Select Owner.."
-          emptyMessage="No owners found."
-          error={getError(state, 'ownerId')}
-        />
-
-        <div className="col-span-full">
-          <InlineFieldRow label="Note :" htmlFor="displayNote" alignTop>
-            <Textarea
-              id="displayNote"
-              name="displayNote"
-              rows={3}
-              placeholder="Add a note about this asset"
-              className="min-h-20 resize-y"
-            />
-          </InlineFieldRow>
-        </div>
-      </div>
+      <SoftwareLicensingSection
+        config={config}
+        state={state}
+        licenseType={licenseType}
+        setLicenseType={setLicenseType}
+        LICENSE_TYPE_OPTIONS={LICENSE_TYPE_OPTIONS}
+        totalSeats={totalSeats}
+        setTotalSeats={setTotalSeats}
+        licenseStartDate={licenseStartDate}
+        setLicenseStartDate={setLicenseStartDate}
+        licenseStartDateLabel={licenseStartDateLabel}
+        licenseStartDateValue={licenseStartDateValue}
+        licenseExpiryDate={licenseExpiryDate}
+        setLicenseExpiryDate={setLicenseExpiryDate}
+        licenseExpiryDateLabel={licenseExpiryDateLabel}
+        licenseExpiryDateValue={licenseExpiryDateValue}
+        formatDateForInput={formatDateForInput}
+      />
 
       <hr className="my-5 border-border" />
 
-      <section className="rounded-lg border border-border bg-muted/60 p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
-            Purchase Details
-          </h3>
-
-          <div className="w-24">
-            <SearchableDropdown
-              options={CURRENCY_OPTIONS}
-              placeholder="USD"
-              emptyMessage="No currencies found."
-              onSelect={setCurrencyCode}
-              defaultValue={currencyCode}
-            />
-            <input type="hidden" name="currencyCode" value={currencyCode} />
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 sm:gap-3">
-          <InlineFieldRow
-            label="Purchase Date :"
-            error={getError(state, 'purchaseDate')}
-            alignTop
-          >
-            <>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      'h-9 w-full justify-between rounded-lg px-3 text-left font-normal',
-                      !purchaseDate ? 'text-muted-foreground' : 'text-foreground'
-                    )}
-                    aria-invalid={Boolean(getError(state, 'purchaseDate'))}
-                  >
-                    <span>{purchaseDateLabel}</span>
-                    <CalendarDays className="size-4 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={purchaseDateValue}
-                    onSelect={(date) =>
-                      setPurchaseDate(date ? formatDateForInput(date) : '')
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <input type="hidden" id="purchaseDate" name="purchaseDate" value={purchaseDate} />
-            </>
-          </InlineFieldRow>
-
-          <SearchableFieldRow
-            label="Vendor :"
-            name="vendorId"
-            value={vendorId}
-            onChange={setVendorId}
-            options={vendorOptions}
-            placeholder="Select Vendor.."
-            emptyMessage="No vendors found."
-            error={getError(state, 'vendorId')}
-          />
-
-          <InlineFieldRow
-            label="Base Price :"
-            htmlFor="basePrice"
-            error={getError(state, 'basePrice')}
-          >
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                {currencySymbol}
-              </span>
-              <Input
-                id="basePrice"
-                name="basePrice"
-                value={basePrice}
-                onChange={(event) => setBasePrice(sanitizeCurrencyInput(event.target.value))}
-                onBlur={() => {
-                  if (basePrice.length > 0) {
-                    setBasePrice(parseCurrencyAmount(basePrice).toFixed(2));
-                  }
-                }}
-                inputMode="decimal"
-                placeholder="0.00"
-                className="pl-11"
-                aria-invalid={Boolean(getError(state, 'basePrice'))}
-              />
-            </div>
-          </InlineFieldRow>
-
-          <InlineFieldRow
-            label="Shipping Cost :"
-            htmlFor="shippingCost"
-            error={getError(state, 'shippingCost')}
-          >
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                {currencySymbol}
-              </span>
-              <Input
-                id="shippingCost"
-                name="shippingCost"
-                value={shippingCost}
-                onChange={(event) =>
-                  setShippingCost(sanitizeCurrencyInput(event.target.value))
-                }
-                onBlur={() => {
-                  if (shippingCost.length > 0) {
-                    setShippingCost(parseCurrencyAmount(shippingCost).toFixed(2));
-                  }
-                }}
-                inputMode="decimal"
-                placeholder="0.00"
-                className="pl-11"
-                aria-invalid={Boolean(getError(state, 'shippingCost'))}
-              />
-            </div>
-          </InlineFieldRow>
-
-          <InlineFieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                {currencySymbol}
-              </span>
-              <Input
-                id="tax"
-                name="tax"
-                value={tax}
-                onChange={(event) => setTax(sanitizeCurrencyInput(event.target.value))}
-                onBlur={() => {
-                  if (tax.length > 0) {
-                    setTax(parseCurrencyAmount(tax).toFixed(2));
-                  }
-                }}
-                inputMode="decimal"
-                placeholder="0.00"
-                className="pl-11"
-                aria-invalid={Boolean(getError(state, 'tax'))}
-              />
-            </div>
-          </InlineFieldRow>
-
-          <InlineFieldRow label="Total Cost :" htmlFor="totalCost" alignTop>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                {currencySymbol}
-              </span>
-              <Input
-                id="totalCost"
-                value={totalCost.toFixed(2)}
-                readOnly
-                aria-readonly="true"
-                className="bg-muted/40 pl-11"
-              />
-            </div>
-          </InlineFieldRow>
-
-          <InlineFieldRow
-            label="Warranty Period :"
-            error={getError(state, 'warrantyMonths')}
-            alignTop
-          >
-            <>
-              <SearchableDropdown
-                options={WARRANTY_MONTH_OPTIONS}
-                placeholder="Warranty Period.."
-                emptyMessage="No warranty periods found."
-                onSelect={setWarrantyMonths}
-                defaultValue={warrantyMonths}
-              />
-              <input type="hidden" name="warrantyMonths" value={warrantyMonths} />
-            </>
-          </InlineFieldRow>
-
-          <div className="col-span-full">
-            <InlineFieldRow
-              label="Note :"
-              htmlFor="notes"
-              error={getError(state, 'notes')}
-              alignTop
-            >
-              <Textarea
-                id="notes"
-                name="notes"
-                rows={3}
-                placeholder="Add purchase related notes"
-                className="min-h-20 resize-y"
-                aria-invalid={Boolean(getError(state, 'notes'))}
-              />
-            </InlineFieldRow>
-          </div>
-
-          <div className="col-span-full">
-            <InlineFieldRow
-              label="Invoice Attachment :"
-              htmlFor="invoiceFile"
-              error={getError(state, 'invoiceFile')}
-              alignTop
-            >
-              <div className="space-y-2 sm:max-w-72">
-                <input
-                  ref={invoiceInputRef}
-                  id="invoiceFile"
-                  name="invoiceFile"
-                  type="file"
-                  accept={INVOICE_ATTACHMENT_ACCEPT}
-                  className="sr-only"
-                  onChange={(event) => handleInvoiceSelection(event.target.files)}
-                />
-
-                {!showInvoiceUploader ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-center gap-2"
-                    onClick={() => {
-                      setShowInvoiceUploader(true);
-                      invoiceInputRef.current?.click();
-                    }}
-                  >
-                    <Paperclip className="h-4 w-4" />
-                    Add Invoice
-                  </Button>
-                ) : (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => invoiceInputRef.current?.click()}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        invoiceInputRef.current?.click();
-                      }
-                    }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      setIsInvoiceDragOver(true);
-                    }}
-                    onDragLeave={() => setIsInvoiceDragOver(false)}
-                    onDrop={handleInvoiceDrop}
-                    className={cn(
-                      'cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors',
-                      isInvoiceDragOver
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-background hover:border-primary/50'
-                    )}
-                  >
-                    <div className="flex flex-col items-center gap-2 text-center">
-                      <Upload className="h-5 w-5 text-muted-foreground" />
-                      <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                        Drag and drop invoice attachment, or click to browse
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Supports documents and images. Max 4.5MB.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {invoiceFileName ? (
-                  <p className="text-xs text-muted-foreground">{invoiceFileName}</p>
-                ) : null}
-              </div>
-            </InlineFieldRow>
-          </div>
-        </div>
-      </section>
+      <PurchaseDetailsSection
+        config={config}
+        state={state}
+        currencyCode={currencyCode}
+        setCurrencyCode={setCurrencyCode}
+        CURRENCY_OPTIONS={CURRENCY_OPTIONS}
+        currencySymbol={currencySymbol}
+        purchaseDate={purchaseDate}
+        setPurchaseDate={setPurchaseDate}
+        purchaseDateLabel={purchaseDateLabel}
+        purchaseDateValue={purchaseDateValue}
+        formatDateForInput={formatDateForInput}
+        vendorId={vendorId}
+        setVendorId={setVendorId}
+        vendorOptions={vendorOptions}
+        basePrice={basePrice}
+        setBasePrice={setBasePrice}
+        shippingCost={shippingCost}
+        setShippingCost={setShippingCost}
+        tax={tax}
+        setTax={setTax}
+        totalCost={totalCost}
+        totalSeats={totalSeats}
+        warrantyMonths={warrantyMonths}
+        setWarrantyMonths={setWarrantyMonths}
+        WARRANTY_MONTH_OPTIONS={WARRANTY_MONTH_OPTIONS}
+        invoiceInputRef={invoiceInputRef}
+        showInvoiceUploader={showInvoiceUploader}
+        setShowInvoiceUploader={setShowInvoiceUploader}
+        handleInvoiceSelection={handleInvoiceSelection}
+        isInvoiceDragOver={isInvoiceDragOver}
+        setIsInvoiceDragOver={setIsInvoiceDragOver}
+        handleInvoiceDrop={handleInvoiceDrop}
+        invoiceFileName={invoiceFileName}
+      />
 
     </form>
   );
@@ -1016,82 +512,12 @@ export function RegistrationForm({
       <SlidePanel
         isOpen={isOpen}
         onClose={onClose}
-        title={panelTitle}
-        description={panelDescription}
+        title={config.panelTitle}
+        description={config.panelDescription}
         content={panelContent}
         actions={panelActions}
         contentClassName="pt-0 pb-2 sm:pt-0"
       />
     </>
-  );
-}
-
-type HardwareRegistryPageClientProps = {
-  categoryOptions: RegistrationOption[];
-  brandOptions: RegistrationOption[];
-  modelOptions: ModelRegistrationOption[];
-  ownerOptions: RegistrationOption[];
-  vendorOptions: RegistrationOption[];
-};
-
-export function HardwareRegistryPageClient({
-  categoryOptions,
-  brandOptions,
-  modelOptions,
-  ownerOptions,
-  vendorOptions,
-}: HardwareRegistryPageClientProps) {
-  const [isPanelOpen, setIsPanelOpen] = React.useState(false);
-  const openRegistrationPanel = useOpenRegistrationPanel(setIsPanelOpen);
-
-  return (
-    <div className="flex min-h-0 flex-1 overflow-hidden p-4 md:p-6">
-      <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-background">
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border p-4">
-          <div>
-            <h1
-              className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
-            >
-              Hardware Registry
-            </h1>
-            <p
-              className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
-            >
-              Register and manage hardware assets.
-            </p>
-          </div>
-
-          <Button
-            type="button"
-            onClick={openRegistrationPanel}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Asset
-          </Button>
-        </div>
-
-        <div className="min-h-0 flex-1 p-6">
-          <div className="flex h-full min-h-0 flex-col rounded-xl border border-dashed border-border bg-background p-6">
-            <p
-              className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
-            >
-              Asset table integration can be mounted here.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <RegistrationForm
-        isOpen={isPanelOpen}
-        onClose={setIsPanelOpen}
-        initialPillar="IT & Digital"
-        categoryOptions={categoryOptions}
-        brandOptions={brandOptions}
-        modelOptions={modelOptions}
-        ownerOptions={ownerOptions}
-        vendorOptions={vendorOptions}
-      />
-    </div>
   );
 }
