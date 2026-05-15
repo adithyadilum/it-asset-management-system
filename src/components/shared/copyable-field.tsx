@@ -27,7 +27,7 @@ export function CopyableField({ value, label, isMasked = true, className }: Copy
     if (isVisible) {
       return formatInGroups(value);
     }
-    
+
     // Masked format: show only last 4 characters with dots
     const last4 = value.slice(-4);
     return `....${last4}`;
@@ -41,19 +41,14 @@ export function CopyableField({ value, label, isMasked = true, className }: Copy
       setIsCopied(true);
       tiqriToast.success(`${label || 'Value'} copied to clipboard`);
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
+    } catch {
       tiqriToast.error('Failed to copy to clipboard');
     }
   };
 
-  const maskedValue = React.useMemo(() => {
-    if (value.length <= 8) return '••••••••';
-    return `•••• •••• •••• ${value.slice(-4)}`;
-  }, [value]);
-
   return (
     <div className={cn('flex items-center gap-1.5 group min-w-0 max-w-full', className)}>
-      <code 
+      <code
         className={cn(
           "relative block rounded bg-muted/50 px-2 py-1 font-mono text-sm font-medium text-foreground transition-colors group-hover:bg-muted",
           "min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left [&::-webkit-scrollbar]:hidden"
@@ -62,7 +57,7 @@ export function CopyableField({ value, label, isMasked = true, className }: Copy
       >
         {displayValue}
       </code>
-      
+
       <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
@@ -73,7 +68,7 @@ export function CopyableField({ value, label, isMasked = true, className }: Copy
         >
           {isVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
         </Button>
-        
+
         <Button
           variant="ghost"
           size="icon-xs"

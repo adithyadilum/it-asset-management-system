@@ -7,7 +7,6 @@ import { eq, sql, and } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
-import { isValidUuid } from '@/lib/auth/uuid';
 
 /**
  * Reusable RBAC guard for financial data.

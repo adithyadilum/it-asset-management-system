@@ -7,8 +7,6 @@ import {
   systemAuditLogs,
   assetDisposals,
   assetDocuments,
-  softwareAllocations,
-  softwareLicenses,
 } from '@/db/schema';
 import { isValidUuid } from '@/lib/auth/uuid';
 
@@ -424,11 +422,16 @@ export async function getAssetDetailsById(
   };
 
   // Dynamic Status for Software
-  if (assetRecord.model.category.pillar === 'Software' && result.softwareLicense) {
+  if (
+    assetRecord.model.category.pillar === 'Software' &&
+    result.softwareLicense
+  ) {
     const { totalSeats, availableSeats, expiryDate } = result.softwareLicense;
     const expiry = expiryDate ? new Date(expiryDate) : null;
     const isExpired = expiry ? expiry < new Date() : false;
-    const isNearExpiry = expiry ? expiry < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
+    const isNearExpiry = expiry
+      ? expiry < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
     const isNearFull = totalSeats > 0 && availableSeats <= 2;
 
@@ -527,7 +530,9 @@ export async function getAssetAllocationsById(
         with: {
           allocations: {
             with: {
-              assignedToUser: { columns: { id: true, name: true, email: true } },
+              assignedToUser: {
+                columns: { id: true, name: true, email: true },
+              },
             },
           },
         },
