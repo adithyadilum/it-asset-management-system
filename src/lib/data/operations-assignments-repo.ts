@@ -1,4 +1,13 @@
-import { and, desc, eq, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  max,
+  sql,
+} from 'drizzle-orm';
 
 import { db } from '@/db';
 import {
@@ -342,7 +351,12 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
       eq(assetAssignments.id, latestActiveAssignments.latestAssignmentId)
     )
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-    .where(and(eq(assets.status, 'Assigned'), inArray(categories.pillar, DASHBOARD_PILLARS)))
+    .where(
+      and(
+        eq(assets.status, 'Assigned'),
+        inArray(categories.pillar, DASHBOARD_PILLARS)
+      )
+    )
     .orderBy(desc(assets.createdAt));
 
   return results.map((row) => ({
@@ -358,7 +372,9 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
     assignedTo: row.assignedToUser || null,
     assignedToEmail: row.assignedToEmail || null,
     assignedDate: row.assignedDate,
-    expectedReturnDate: row.expectedReturnDate ? new Date(row.expectedReturnDate) : null,
+    expectedReturnDate: row.expectedReturnDate
+      ? new Date(row.expectedReturnDate)
+      : null,
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
     returnedDate: null,
@@ -427,7 +443,9 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
   return [...returnedRowsByAssetId.values()];
 }
 
-export async function getAssignmentsDashboardData(tab?: AssignmentsDashboardTab): Promise<AssignmentsDashboardData> {
+export async function getAssignmentsDashboardData(
+  tab?: AssignmentsDashboardTab
+): Promise<AssignmentsDashboardData> {
   // Automatic refresh of overdue states on data load
   await refreshOverdueAssignments();
 
@@ -688,7 +706,12 @@ export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {
  */
 export async function updateAssignmentsState(
   assignmentIds: number[],
-  newState: 'pending approval' | 'assigned' | 'overdue' | 'requested' | 'returned'
+  newState:
+    | 'pending approval'
+    | 'assigned'
+    | 'overdue'
+    | 'requested'
+    | 'returned'
 ): Promise<void> {
   if (assignmentIds.length === 0) return;
 
@@ -764,22 +787,15 @@ export async function triggerReturnRequests(
     // Update state to 'requested'
     await tx
       .update(assetAssignments)
-      .set({ 
+      .set({
         state: 'requested',
-        returnRequestedAt: new Date()
+        returnRequestedAt: new Date(),
       })
       .where(inArray(assetAssignments.id, assignmentIds));
 
-    // Send notifications and log audit
+    // Log audit
     await Promise.all(
       assignments.map(async (a) => {
-        await sendAssetNotification({
-          type: 'return_request',
-          recipientEmail: a.userEmail,
-          assetTag: a.assetTag,
-          assetName: a.assetName || a.assetTag,
-        });
-
         await logAuditActionTx(tx, {
           entityType: 'Asset',
           entityId: a.assetId,
@@ -791,6 +807,22 @@ export async function triggerReturnRequests(
       })
     );
   });
+
+  // Send notifications outside transaction
+  await Promise.allSettled(
+    assignments.map(async (a) => {
+      try {
+        await sendAssetNotification({
+          type: 'return_request',
+          recipientEmail: a.userEmail,
+          assetTag: a.assetTag,
+          assetName: a.assetName || a.assetTag,
+        });
+      } catch (error) {
+        console.error('Failed to send return request notification:', error);
+      }
+    })
+  );
 }
 
 /**
@@ -809,19 +841,29 @@ export async function markAssignmentsAsReceived(
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
-    .where(inArray(assetAssignments.id, assignmentIds));
+    .where(
+      and(
+        inArray(assetAssignments.id, assignmentIds),
+        isNull(assetAssignments.returnedDate)
+      )
+    );
 
+  if (assignments.length === 0) {
+    return;
+  }
+
+  const activeAssignmentIds = assignments.map((a) => a.id);
   const assetIds = assignments.map((a) => a.assetId);
 
   await db.transaction(async (tx) => {
     // Update assignments state to 'returned' and set returnedDate
     await tx
       .update(assetAssignments)
-      .set({ 
+      .set({
         state: 'returned',
-        returnedDate: new Date()
+        returnedDate: new Date(),
       })
-      .where(inArray(assetAssignments.id, assignmentIds));
+      .where(inArray(assetAssignments.id, activeAssignmentIds));
 
     // Update assets status back to 'Available'
     if (assetIds.length > 0) {

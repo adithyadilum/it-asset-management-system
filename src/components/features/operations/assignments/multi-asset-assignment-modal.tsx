@@ -156,7 +156,8 @@ export function MultiAssetAssignmentModal({
     }
 
     if (resolvedAssignmentMode === "user" && expectedReturn) {
-      const selectedDate = new Date(expectedReturn);
+      const [year, month, day] = expectedReturn.split("-").map(Number);
+      const selectedDate = new Date(year, month - 1, day);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

@@ -5,14 +5,19 @@ const assignmentTypeSchema = z.enum(['user', 'location']);
 const expectedReturnDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((date) => {
-    const selectedDate = new Date(date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return selectedDate >= today;
-  }, {
-    message: "Select a valid date",
-  })
+  .refine(
+    (date) => {
+      // Keep date local by splitting YYYY-MM-DD
+      const [year, month, day] = date.split('-').map(Number);
+      const selectedDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return selectedDate >= today;
+    },
+    {
+      message: 'Select a valid date',
+    }
+  )
   .optional();
 
 const notesSchema = z.string().max(2000).optional();
@@ -42,4 +47,6 @@ export const operationsAssignmentsQuerySchema = z.object({
 });
 
 export type AssignAssetPayload = z.infer<typeof assignAssetPayloadSchema>;
-export type BulkAssignAssetsPayload = z.infer<typeof bulkAssignAssetsPayloadSchema>;
+export type BulkAssignAssetsPayload = z.infer<
+  typeof bulkAssignAssetsPayloadSchema
+>;
