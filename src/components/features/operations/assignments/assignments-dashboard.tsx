@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -63,8 +63,6 @@ const tabs = [
   { id: "returned-assets", label: "Returned Assets" },
 ];
 
-const ASSIGNED_STATUS_OPTIONS = ["pending approval", "assigned", "overdue", "requested", "returned"];
-
 // --- Helpers ---
 
 function formatDate(date: Date | string | null | undefined) {
@@ -89,12 +87,6 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-
-  // Assigned Assets Filter State
-  const [appliedAssignedFilters, setAppliedAssignedFilters] = useState<AssignedFilter[]>([]);
-  const [assignedDraftField, setAssignedDraftField] = useState<AssignedFilterField>("Status");
-  const [assignedDraftOperator, setAssignedDraftOperator] = useState<CategoryFilterOperator>("is");
-  const [assignedDraftValue, setAssignedDraftValue] = useState("");
 
   // 1. Panel State from URL (following the Registry Pattern)
   const activeAssetId = searchParams.get("id") || "";
@@ -204,23 +196,10 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     [availableRows, filteredAssetRows]
   );
 
-  const filteredAssignedRows = useMemo(() => {
-    let results = searchedAssetRows.filter((row) => assignedRows.some((assignedRow) => assignedRow.assetId === row.assetId));
-
-    if (appliedAssignedFilters.length === 0) {
-      return results;
-    }
-
-    for (const filter of appliedAssignedFilters) {
-      results = results.filter((row) => {
-        const val = filter.field === "Status" ? row.state : row.category;
-        const matches = val === filter.value;
-        return filter.operator === "is" ? matches : !matches;
-      });
-    }
-
-    return results;
-  }, [assignedRows, searchedAssetRows, appliedAssignedFilters]);
+  const filteredAssignedRows = useMemo(
+    () => filteredAssetRows.filter((row) => assignedRows.some((assignedRow) => assignedRow.assetId === row.assetId)),
+    [assignedRows, filteredAssetRows]
+  );
 
   const filteredReturnedRows = useMemo(
     () => filteredAssetRows.filter((row) => returnedRows.some((returnedRow) => returnedRow.assetId === row.assetId)),
@@ -443,8 +422,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const renderTable = (
     rows: AssetAssignmentRow[],
     actions?: DataTableSelectionAction<AssetAssignmentRow>[],
-    showStatusColumn = false,
-    filterType: "available" | "assigned" | "returned" = "available"
+    showStatusColumn = false
   ) => {
     const tableColumns = showStatusColumn
       ? columns

@@ -847,7 +847,6 @@ export async function markAssignmentsAsReceived(
         isNull(assetAssignments.returnedDate)
       )
     );
-
   if (assignments.length === 0) {
     return;
   }
