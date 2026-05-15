@@ -3,9 +3,14 @@ import {
   asc,
   desc,
   eq,
+  gt,
+  gte,
   ilike,
   inArray,
+  isNotNull,
   isNull,
+  lt,
+  lte,
   or,
   sql,
 } from 'drizzle-orm';
@@ -17,6 +22,8 @@ import {
   categories,
   locations,
   models,
+  softwareAllocations,
+  softwareLicenses,
   systemAuditLogs,
   users,
 } from '@/db/schema';
@@ -30,6 +37,14 @@ export interface AssetRegistryFilters {
   query?: string;
   categoryId?: number;
   status?: AssetStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface UnifiedRegistryFilters {
+  pillar?: RegistryPillar;
+  query?: string;
+  status?: string;
   page?: number;
   pageSize?: number;
 }
@@ -50,6 +65,11 @@ export interface AssetRegistryRow {
   assignedTo: string | null;
   instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date;
+  // SAM fields
+  totalSeats?: number | null;
+  availableSeats?: number | null;
+  expiryDate?: string | null;
+  licenseType?: string | null;
 }
 
 export interface PaginatedAssetsResult {
@@ -127,7 +147,250 @@ export async function getAssetsByPillar(
     typeof filters.categoryId === 'number'
       ? eq(categories.id, filters.categoryId)
       : undefined,
-    filters.status ? eq(assets.status, filters.status) : eq(assets.isArchived, false),
+    filters.status && filters.pillar !== 'Software' ? eq(assets.status, filters.status) : undefined,
+    !filters.status ? eq(assets.isArchived, false) : undefined,
+    normalizedQuery
+      ? or(
+          ilike(assets.assetTag, `%${normalizedQuery}%`),
+          ilike(assets.name, `%${normalizedQuery}%`),
+          ilike(assets.serialNumber, `%${normalizedQuery}%`),
+          ilike(categories.name, `%${normalizedQuery}%`),
+          ilike(models.name, `%${normalizedQuery}%`),
+          ilike(locations.name, `%${normalizedQuery}%`)
+        )
+      : undefined
+  );
+
+  const assignedSeatsSubquery = db
+    .select({
+      licenseId: softwareAllocations.licenseId,
+      count: sql<number>`count(*)::int`.as('count'),
+    })
+    .from(softwareAllocations)
+    .groupBy(softwareAllocations.licenseId)
+    .as('assigned_seats');
+
+  // Dynamic Status Filtering for Software
+  let softwareStatusCondition = undefined;
+  if (filters.status && filters.pillar === 'Software') {
+    const now = new Date().toISOString().split('T')[0];
+    const warningDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    if (filters.status === 'expired') {
+      softwareStatusCondition = lt(softwareLicenses.expiryDate, now);
+    } else if (filters.status === 'full') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
+        lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`)
+      );
+    } else if (filters.status === 'warning') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
+        or(
+          and(isNotNull(softwareLicenses.expiryDate), lt(softwareLicenses.expiryDate, warningDate)),
+          and(
+            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`), 
+            lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+          )
+        )
+      );
+    } else if (filters.status === 'available') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, warningDate)),
+        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+      );
+    }
+  }
+
+  const totalRows = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(assets)
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(categories, eq(models.categoryId, categories.id))
+    .leftJoin(locations, eq(assets.locationId, locations.id))
+    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
+    .leftJoin(assignedSeatsSubquery, eq(softwareLicenses.id, assignedSeatsSubquery.licenseId))
+    .where(and(whereCondition, softwareStatusCondition));
+
+  const total = totalRows[0]?.total ?? 0;
+
+  // Subquery already defined above
+
+  const rows = await db
+    .select({
+      id: assets.id,
+      assetTag: assets.assetTag,
+      name: assets.name,
+      serialNumber: assets.serialNumber,
+      status: assets.status,
+      condition: assets.condition,
+      categoryId: categories.id,
+      category: categories.name,
+      pillar: categories.pillar,
+      model: models.name,
+      locationId: assets.locationId,
+      location: locations.name,
+      instanceAttributes: assets.instanceAttributes,
+      updatedAt: assets.updatedAt,
+      // SAM fields
+      totalSeats: softwareLicenses.totalSeats,
+      expiryDate: softwareLicenses.expiryDate,
+      licenseType: softwareLicenses.licenseType,
+      assignedSeats: sql<number>`COALESCE(${assignedSeatsSubquery.count}, 0)`,
+    })
+    .from(assets)
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(categories, eq(models.categoryId, categories.id))
+    .leftJoin(locations, eq(assets.locationId, locations.id))
+    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
+    .leftJoin(
+      assignedSeatsSubquery,
+      eq(softwareLicenses.id, assignedSeatsSubquery.licenseId)
+    )
+    .where(and(whereCondition, softwareStatusCondition))
+    .orderBy(desc(assets.updatedAt), asc(assets.assetTag))
+    .limit(safePageSize)
+    .offset(offset);
+
+  const assetIds = rows.map((row) => row.id);
+
+  const assignedUserByAssetId = new Map<string, string>();
+  if (assetIds.length > 0) {
+    const activeAssignments = await db
+      .select({
+        assetId: assetAssignments.assetId,
+        assignedTo: users.name,
+      })
+      .from(assetAssignments)
+      .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+      .where(
+        and(
+          inArray(assetAssignments.assetId, assetIds),
+          isNull(assetAssignments.returnedDate)
+        )
+      )
+      .orderBy(desc(assetAssignments.assignedDate));
+
+    for (const activeAssignment of activeAssignments) {
+      if (
+        !assignedUserByAssetId.has(activeAssignment.assetId) &&
+        activeAssignment.assignedTo
+      ) {
+        assignedUserByAssetId.set(
+          activeAssignment.assetId,
+          activeAssignment.assignedTo
+        );
+      }
+    }
+  }
+
+  const data: AssetRegistryRow[] = rows.map((row) => {
+    const totalSeats = typeof row.totalSeats === 'number' ? row.totalSeats : 0;
+    const assignedSeats = typeof row.assignedSeats === 'number' ? row.assignedSeats : 0;
+    const availableSeats = Math.max(0, totalSeats - assignedSeats);
+    const expiryDate = row.expiryDate ? new Date(row.expiryDate) : null;
+    const isExpired = expiryDate ? expiryDate < new Date() : false;
+    const isNearExpiry = expiryDate ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
+    const isFull = totalSeats > 0 && availableSeats <= 0;
+    const isNearFull = totalSeats > 0 && availableSeats <= 2;
+
+    let calculatedStatus = row.status;
+    if (row.pillar === 'Software') {
+      if (isExpired) {
+        calculatedStatus = 'expired';
+      } else if (isFull) {
+        calculatedStatus = 'full';
+      } else if (isNearExpiry || isNearFull) {
+        calculatedStatus = 'warning';
+      } else {
+        calculatedStatus = 'available';
+      }
+    }
+
+    return {
+      ...row,
+      status: calculatedStatus,
+      instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
+      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
+    };
+  });
+
+  return {
+    data,
+    meta: {
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+    },
+  };
+}
+
+export async function getAllAssetsUnified(
+  filters: UnifiedRegistryFilters
+): Promise<PaginatedAssetsResult> {
+  const safePage =
+    typeof filters.page === 'number' && filters.page > 0
+      ? Math.floor(filters.page)
+      : 1;
+  const safePageSize =
+    typeof filters.pageSize === 'number' && filters.pageSize > 0
+      ? Math.floor(filters.pageSize)
+      : 16;
+  const normalizedQuery = filters.query?.trim();
+  const offset = (safePage - 1) * safePageSize;
+
+  const assignedSeatsSubquery = db
+    .select({
+      licenseId: softwareAllocations.licenseId,
+      count: sql<number>`count(*)::int`.as('count'),
+    })
+    .from(softwareAllocations)
+    .groupBy(softwareAllocations.licenseId)
+    .as('assigned_seats');
+
+  // Dynamic Status Filtering for Software
+  let softwareStatusCondition = undefined;
+  const now = new Date().toISOString().split('T')[0];
+  const warningDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  if (filters.status) {
+    if (filters.status === 'expired') {
+      softwareStatusCondition = lt(softwareLicenses.expiryDate, now);
+    } else if (filters.status === 'full') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
+        lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`)
+      );
+    } else if (filters.status === 'warning') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
+        or(
+          and(isNotNull(softwareLicenses.expiryDate), lt(softwareLicenses.expiryDate, warningDate)),
+          and(
+            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`), 
+            lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+          )
+        )
+      );
+    } else if (filters.status === 'available') {
+      softwareStatusCondition = and(
+        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, warningDate)),
+        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+      );
+    }
+  }
+
+  const whereCondition = and(
+    eq(categories.isActive, true),
+    filters.pillar ? eq(categories.pillar, filters.pillar) : undefined,
+    filters.status 
+      ? or(
+          eq(assets.status, filters.status as AssetStatus),
+          softwareStatusCondition
+        )
+      : eq(assets.isArchived, false),
     normalizedQuery
       ? or(
           ilike(assets.assetTag, `%${normalizedQuery}%`),
@@ -146,6 +409,8 @@ export async function getAssetsByPillar(
     .innerJoin(models, eq(assets.modelId, models.id))
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
+    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
+    .leftJoin(assignedSeatsSubquery, eq(softwareLicenses.id, assignedSeatsSubquery.licenseId))
     .where(whereCondition);
 
   const total = totalRows[0]?.total ?? 0;
@@ -166,11 +431,21 @@ export async function getAssetsByPillar(
       location: locations.name,
       instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
+      // SAM fields
+      totalSeats: softwareLicenses.totalSeats,
+      expiryDate: softwareLicenses.expiryDate,
+      licenseType: softwareLicenses.licenseType,
+      assignedSeats: sql<number>`COALESCE(${assignedSeatsSubquery.count}, 0)`,
     })
     .from(assets)
     .innerJoin(models, eq(assets.modelId, models.id))
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
+    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
+    .leftJoin(
+      assignedSeatsSubquery,
+      eq(softwareLicenses.id, assignedSeatsSubquery.licenseId)
+    )
     .where(whereCondition)
     .orderBy(desc(assets.updatedAt), asc(assets.assetTag))
     .limit(safePageSize)
@@ -208,11 +483,38 @@ export async function getAssetsByPillar(
     }
   }
 
-  const data: AssetRegistryRow[] = rows.map((row) => ({
-    ...row,
-    instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
-    assignedTo: assignedUserByAssetId.get(row.id) ?? null,
-  }));
+  const data: AssetRegistryRow[] = rows.map((row) => {
+    const totalSeats = typeof row.totalSeats === 'number' ? row.totalSeats : 0;
+    const assignedSeats = typeof row.assignedSeats === 'number' ? row.assignedSeats : 0;
+    const availableSeats = Math.max(0, totalSeats - assignedSeats);
+    const expiryDate = row.expiryDate ? new Date(row.expiryDate) : null;
+    const isExpired = expiryDate ? expiryDate < new Date() : false;
+    const isNearExpiry = expiryDate ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
+    const isFull = totalSeats > 0 && availableSeats <= 0;
+    const isNearFull = totalSeats > 0 && availableSeats <= 2;
+
+    let calculatedStatus = row.status;
+    if (row.pillar === 'Software') {
+      if (isExpired) {
+        calculatedStatus = 'expired';
+      } else if (isFull) {
+        calculatedStatus = 'full';
+      } else if (isNearExpiry || isNearFull) {
+        calculatedStatus = 'warning';
+      } else {
+        calculatedStatus = 'available';
+      }
+    }
+
+    return {
+      ...row,
+      status: calculatedStatus,
+      instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
+      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
+      assignedSeats: row.pillar === 'Software' ? assignedSeats : undefined,
+    };
+  });
 
   return {
     data,

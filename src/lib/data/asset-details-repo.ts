@@ -7,6 +7,8 @@ import {
   systemAuditLogs,
   assetDisposals,
   assetDocuments,
+  softwareAllocations,
+  softwareLicenses,
 } from '@/db/schema';
 import { isValidUuid } from '@/lib/auth/uuid';
 
@@ -82,6 +84,15 @@ export interface AssetDetailsData {
     assignedDate: string;
     expectedReturnDate: string | null;
     notes: string | null;
+  } | null;
+  softwareLicense?: {
+    id: string;
+    licenseKey: string | null;
+    licenseType: string;
+    totalSeats: number;
+    availableSeats: number;
+    startDate: string | null;
+    expiryDate: string | null;
   } | null;
 }
 
@@ -191,7 +202,7 @@ function formatSafeISO(val: unknown): string {
   }
 }
 
-async function resolveAssetPrimaryId(
+export async function resolveAssetPrimaryId(
   identifier: string
 ): Promise<string | null> {
   const normalizedIdentifier = identifier.trim();
@@ -248,6 +259,11 @@ export async function getAssetDetailsById(
         },
       },
       location: { columns: { id: true, name: true, type: true } },
+      softwareLicense: {
+        with: {
+          allocations: { columns: { id: true } },
+        },
+      },
       owner: { columns: { id: true, companyName: true } },
       purchases: {
         limit: 1,
@@ -297,7 +313,7 @@ export async function getAssetDetailsById(
   const purchaseRecord = assetRecord.purchases?.[0];
   const assignmentRecord = assetRecord.assignments?.[0];
 
-  return {
+  const result: AssetDetailsData = {
     asset: {
       id: assetRecord.id,
       assetTag: assetRecord.assetTag,
@@ -378,20 +394,56 @@ export async function getAssetDetailsById(
       : null,
     assignment: assignmentRecord
       ? {
-          assignedToUser: assignmentRecord.assignedToUser
-            ? {
-                id: assignmentRecord.assignedToUser.id,
-                name: assignmentRecord.assignedToUser.name,
-                email: assignmentRecord.assignedToUser.email,
-              }
+          assignedToUser: assignmentRecord.assignedToUser,
+          assignedDate: formatSafeISO(assignmentRecord.assignedDate),
+          expectedReturnDate: assignmentRecord.expectedReturnDate
+            ? formatSafeISO(assignmentRecord.expectedReturnDate)
             : null,
-          assignedDate: assignmentRecord.assignedDate.toISOString(),
-          expectedReturnDate:
-            assignmentRecord.expectedReturnDate?.toString() ?? null,
           notes: assignmentRecord.notes,
         }
       : null,
+    softwareLicense: assetRecord.softwareLicense
+      ? {
+          id: assetRecord.softwareLicense.id,
+          licenseKey: assetRecord.softwareLicense.licenseKey,
+          licenseType: assetRecord.softwareLicense.licenseType,
+          totalSeats: assetRecord.softwareLicense.totalSeats,
+          availableSeats: Math.max(
+            0,
+            assetRecord.softwareLicense.totalSeats -
+              (assetRecord.softwareLicense.allocations?.length ?? 0)
+          ),
+          startDate: assetRecord.softwareLicense.startDate
+            ? formatSafeISO(assetRecord.softwareLicense.startDate)
+            : null,
+          expiryDate: assetRecord.softwareLicense.expiryDate
+            ? formatSafeISO(assetRecord.softwareLicense.expiryDate)
+            : null,
+        }
+      : null,
   };
+
+  // Dynamic Status for Software
+  if (assetRecord.model.category.pillar === 'Software' && result.softwareLicense) {
+    const { totalSeats, availableSeats, expiryDate } = result.softwareLicense;
+    const expiry = expiryDate ? new Date(expiryDate) : null;
+    const isExpired = expiry ? expiry < new Date() : false;
+    const isNearExpiry = expiry ? expiry < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
+    const isFull = totalSeats > 0 && availableSeats <= 0;
+    const isNearFull = totalSeats > 0 && availableSeats <= 2;
+
+    if (isExpired) {
+      result.asset.status = 'expired';
+    } else if (isFull) {
+      result.asset.status = 'full';
+    } else if (isNearExpiry || isNearFull) {
+      result.asset.status = 'warning';
+    } else {
+      result.asset.status = 'available';
+    }
+  }
+
+  return result;
 }
 
 export async function getAssetHistoryById(id: string): Promise<HistoryEvent[]> {
@@ -461,7 +513,7 @@ export async function getAssetAllocationsById(
     return [];
   }
 
-  const allocations = await db.query.assets.findFirst({
+  const assetRecord = await db.query.assets.findFirst({
     where: eq(assets.id, resolvedAssetId),
     with: {
       assignments: {
@@ -471,21 +523,53 @@ export async function getAssetAllocationsById(
           assignedToUser: { columns: { id: true, name: true, email: true } },
         },
       },
+      softwareLicense: {
+        with: {
+          allocations: {
+            with: {
+              assignedToUser: { columns: { id: true, name: true, email: true } },
+            },
+          },
+        },
+      },
     },
   });
 
-  if (!allocations || !allocations.assignments) {
+  if (!assetRecord) {
     return [];
   }
 
-  return allocations.assignments
-    .filter((assignment) => assignment.assignedToUser)
-    .map((assignment) => ({
-      id: assignment.assignedToUser!.id,
-      name: assignment.assignedToUser!.name,
-      email: assignment.assignedToUser!.email,
-      assignedDate: assignment.assignedDate.toISOString(),
-    }));
+  const results: AllocationData[] = [];
+
+  // 1. Add Hardware Assignments
+  if (assetRecord.assignments) {
+    assetRecord.assignments
+      .filter((assignment) => assignment.assignedToUser)
+      .forEach((assignment) => {
+        results.push({
+          id: assignment.assignedToUser!.id,
+          name: assignment.assignedToUser!.name,
+          email: assignment.assignedToUser!.email,
+          assignedDate: assignment.assignedDate.toISOString(),
+        });
+      });
+  }
+
+  // 2. Add Software Allocations
+  if (assetRecord.softwareLicense?.allocations) {
+    assetRecord.softwareLicense.allocations
+      .filter((alloc) => alloc.assignedToUser)
+      .forEach((alloc) => {
+        results.push({
+          id: alloc.assignedToUser!.id,
+          name: alloc.assignedToUser!.name,
+          email: alloc.assignedToUser!.email,
+          assignedDate: alloc.allocatedAt.toISOString(),
+        });
+      });
+  }
+
+  return results;
 }
 
 export async function getAssetDisposalById(

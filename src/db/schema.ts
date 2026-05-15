@@ -198,6 +198,7 @@ export const categories = pgTable(
   },
   (table) => ({
     pillarNameUnique: unique('pillar_name_idx').on(table.pillar, table.name),
+    pillarIsActiveIdx: index('categories_pillar_active_idx').on(table.pillar, table.isActive),
   })
 );
 
@@ -334,7 +335,10 @@ export const assetAssignments = pgTable('asset_assignments', {
   acceptedAt: timestamp('accepted_at'),
   returnRequestedAt: timestamp('return_requested_at'),
   state: assignmentStateEnum('state').default('pending approval').notNull(),
-});
+}, (table) => ({
+  assetIdReturnedIdx: index('asset_assignments_asset_returned_idx').on(table.assetId, table.returnedDate),
+  assignedToUserIdx: index('asset_assignments_user_idx').on(table.assignedToUserId),
+}));
 
 // Epic 15: New Maintenance Tickets System
 export const maintenanceTickets = pgTable('maintenance_tickets', {
@@ -443,6 +447,8 @@ export const softwareLicenses = pgTable('software_licenses', {
   modelId: integer('model_id')
     .notNull()
     .references(() => models.id, { onDelete: 'restrict' }),
+  assetId: uuid('asset_id')
+    .references(() => assets.id, { onDelete: 'cascade' }),
 
   licenseKey: varchar('license_key', { length: 255 }),
   licenseType: licenseTypeEnum('license_type').notNull(),
@@ -491,6 +497,7 @@ export const assetRelations = relations(assets, ({ one, many }) => ({
   maintenanceTickets: many(maintenanceTickets), // Added Epic 15 relation
   documents: many(assetDocuments),
   disposals: many(assetDisposals),
+  softwareLicense: one(softwareLicenses, { fields: [assets.id], references: [softwareLicenses.assetId] }),
 }));
 
 export const ownersRelations = relations(owners, ({ many }) => ({
@@ -580,4 +587,15 @@ export const assetDisposalsRelations = relations(assetDisposals, ({ one }) => ({
     fields: [assetDisposals.approvedById],
     references: [users.id],
   }),
+}));
+
+export const softwareLicensesRelations = relations(softwareLicenses, ({ one, many }) => ({
+  asset: one(assets, { fields: [softwareLicenses.assetId], references: [assets.id] }),
+  model: one(models, { fields: [softwareLicenses.modelId], references: [models.id] }),
+  allocations: many(softwareAllocations),
+}));
+
+export const softwareAllocationsRelations = relations(softwareAllocations, ({ one }) => ({
+  license: one(softwareLicenses, { fields: [softwareAllocations.licenseId], references: [softwareLicenses.id] }),
+  assignedToUser: one(users, { fields: [softwareAllocations.assignedToUserId], references: [users.id] }),
 }));

@@ -501,6 +501,20 @@ _To be executed after the core Asset CRUD operations are finalized._
 - [ ] Ensure each individual asset change within the batch writes a separate entry to the Audit Log (Epic 4) for traceability.
 - [ ] Implement backend validation that mirrors the frontend pillar/status constraint rules to prevent bypassing via direct API calls.
 
+### US-6.9 — Unified Master Inventory Hub
+
+**Frontend**
+
+- [ ] Add the `getAllAssetsUnified` server action integration for server-side pagination.
+- [ ] Create `PillarBadge` and `SoftwareExpiryStatus` shared components.
+- [ ] Update `RegistryConfig` and `asset-registry-client` to support the unified view, hiding "Add Asset" and adjusting valid bulk operations.
+- [ ] Extend unified filter bar to include Category and Location.
+- [ ] Add transition animation to header swap.
+
+**Backend**
+
+- [ ] Implement `getAllAssetsUnified()` repository function merging data from physical assets and software allocations.
+
 ---
 
 ## Epic 7: Asset Registration

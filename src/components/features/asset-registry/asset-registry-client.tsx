@@ -5,9 +5,7 @@ import {
   CalendarDays,
   ChevronDown,
   Plus,
-  Search,
   Upload,
-  X,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
 import {
@@ -15,7 +13,7 @@ import {
 import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { bulkUpdateAssets, getAssetsByPillar } from '@/actions/asset-registry';
+import { bulkUpdateAssets, getAssetsByPillar, getAllAssetsUnified } from '@/actions/asset-registry';
 import { BulkImportWizard } from '@/components/features/bulk-import/bulk-import-wizard';
 import { PrintConfigurationModal } from '@/components/features/asset-registry/tags/print-configuration-modal';
 import { generateAndPrintTagPdf } from '@/lib/utils/tag-print';
@@ -29,20 +27,23 @@ import {
 } from '@/components/shared/data-table';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { PillarBadge } from '@/components/shared/pillar-badge';
+import { SoftwareExpiryStatus } from '@/components/shared/software-expiry-status';
+import { FilterBar, type AppliedFilter as FilterBarAppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
+import { CopyableField } from '@/components/shared/copyable-field';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import {
   Popover,
-  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
@@ -55,7 +56,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 type FilterField = RegistryFilterField;
-type FilterOperator = 'is' | 'is not';
 
 type AssetRegistryCategory = {
   id: number;
@@ -80,6 +80,11 @@ type AssetRegistryRow = {
   assignedTo: string | null;
   instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date | string;
+  // SAM fields
+  totalSeats?: number | null;
+  availableSeats?: number | null;
+  expiryDate?: string | null;
+  licenseType?: string | null;
 };
 
 type AssetRegistryResult = {
@@ -94,7 +99,7 @@ type AssetRegistryResult = {
 
 type AppliedFilter = {
   field: FilterField;
-  operator: FilterOperator;
+  operator: 'is' | 'is not';
   value: string;
 };
 
@@ -249,7 +254,7 @@ export function AssetRegistryClient({
   );
   const [isPending, startTransition] = useTransition();
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
-  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [transferSelectionRows, setTransferSelectionRows] = useState<AssetRegistryRow[]>([]);
@@ -281,9 +286,6 @@ export function AssetRegistryClient({
   const [disposalSelectionRows, setDisposalSelectionRows] = useState<AssetRegistryRow[]>([]);
 
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
-  const [draftField, setDraftField] = useState<FilterField>('Status');
-  const [draftOperator, setDraftOperator] = useState<FilterOperator>('is');
-  const [draftValue, setDraftValue] = useState('');
 
   const [destinationLocationId, setDestinationLocationId] = useState<number | null>(null);
   const [transferDate, setTransferDate] = useState('');
@@ -352,6 +354,8 @@ export function AssetRegistryClient({
   const locationFilter = appliedFilters.find((filter) => filter.field === 'Location');
   const modelFilter = appliedFilters.find((filter) => filter.field === 'Model');
   const assignedToFilter = appliedFilters.find((filter) => filter.field === 'Assigned To');
+  const pillarFilter = appliedFilters.find((filter) => filter.field === 'Pillar');
+  const categoryFilter = appliedFilters.find((filter) => filter.field === 'Category');
 
   const backendStatusFilter =
     statusFilter?.operator === 'is' ? statusFilter.value : undefined;
@@ -373,7 +377,9 @@ export function AssetRegistryClient({
           status: backendStatusFilter,
         };
 
-        const firstPage = await getAssetsByPillar({
+        const fetchFn = config.view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
+
+        const firstPage = await fetchFn({
           ...requestParams,
           page: 1,
           pageSize: BULK_FETCH_PAGE_SIZE,
@@ -386,7 +392,7 @@ export function AssetRegistryClient({
         let aggregatedRows = [...firstPage.data];
 
         for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
-          const nextPage = await getAssetsByPillar({
+          const nextPage = await fetchFn({
             ...requestParams,
             page,
             pageSize: BULK_FETCH_PAGE_SIZE,
@@ -420,6 +426,7 @@ export function AssetRegistryClient({
   }, [
     backendStatusFilter,
     config.pillar,
+    config.view,
     debouncedQuery,
     refreshNonce,
     selectedCategoryId,
@@ -481,6 +488,22 @@ export function AssetRegistryClient({
       });
     }
 
+    if (pillarFilter) {
+      nextRows = nextRows.filter((row) => {
+        return pillarFilter.operator === 'is not'
+          ? row.pillar !== pillarFilter.value
+          : row.pillar === pillarFilter.value;
+      });
+    }
+
+    if (categoryFilter) {
+      nextRows = nextRows.filter((row) => {
+        return categoryFilter.operator === 'is not'
+          ? row.category !== categoryFilter.value
+          : row.category === categoryFilter.value;
+      });
+    }
+
     return nextRows;
   }, [
     rows,
@@ -490,6 +513,8 @@ export function AssetRegistryClient({
     locationFilter,
     modelFilter,
     assignedToFilter,
+    pillarFilter,
+    categoryFilter,
     shouldHideDisposedByDefault,
   ]);
 
@@ -517,77 +542,72 @@ export function AssetRegistryClient({
     return [...merged];
   }, [transferSelectionRows]);
 
-  const filterValueOptions = useMemo(() => {
-    switch (draftField) {
-      case 'Status': {
-        const statuses = new Set<string>([...DEFAULT_STATUS_OPTIONS, ...customStatuses]);
-        for (const row of rows) {
-          statuses.add(row.status);
+  const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => {
+    return config.filterFieldOptions.map((opt) => {
+      let options: string[] = [];
+      switch (opt.value) {
+        case 'Status': {
+          const statuses = new Set<string>([...DEFAULT_STATUS_OPTIONS, ...customStatuses]);
+          for (const row of rows) statuses.add(row.status);
+          options = [...statuses];
+          break;
         }
-        return [...statuses];
-      }
-      case 'Condition': {
-        const conditions = new Set<string>();
-        for (const row of rows) {
-          conditions.add(row.condition ?? '-');
+        case 'Condition': {
+          const set = new Set<string>();
+          for (const row of rows) set.add(row.condition ?? '-');
+          options = [...set].sort((a, b) => a.localeCompare(b));
+          break;
         }
-        return [...conditions].sort((a, b) => a.localeCompare(b));
-      }
-      case 'Location': {
-        const locations = new Set<string>();
-        for (const row of rows) {
-          locations.add(row.location ?? '-');
+        case 'Location': {
+          const set = new Set<string>();
+          for (const row of rows) set.add(row.location ?? '-');
+          options = [...set].sort((a, b) => a.localeCompare(b));
+          break;
         }
-        return [...locations].sort((a, b) => a.localeCompare(b));
-      }
-      case 'Model': {
-        const models = new Set<string>();
-        for (const row of rows) {
-          models.add(row.model);
+        case 'Model': {
+          const set = new Set<string>();
+          for (const row of rows) set.add(row.model);
+          options = [...set].sort((a, b) => a.localeCompare(b));
+          break;
         }
-        return [...models].sort((a, b) => a.localeCompare(b));
-      }
-      case 'Assigned To': {
-        const users = new Set<string>();
-        for (const row of rows) {
-          users.add(row.assignedTo ?? '-');
+        case 'Assigned To': {
+          const set = new Set<string>();
+          for (const row of rows) set.add(row.assignedTo ?? '-');
+          options = [...set].sort((a, b) => a.localeCompare(b));
+          break;
         }
-        return [...users].sort((a, b) => a.localeCompare(b));
+        case 'Pillar': {
+          const set = new Set<string>();
+          for (const row of rows) set.add(row.pillar);
+          options = [...set].sort((a, b) => a.localeCompare(b));
+          break;
+        }
+        case 'Category': {
+          const set = new Set<string>();
+          for (const row of rows) set.add(row.category);
+          options = [...set].sort((a, b) => a.localeCompare(b));
+          break;
+        }
       }
-      default:
-        return [];
-    }
-  }, [draftField, rows, customStatuses]);
-
-  useEffect(() => {
-    if (filterValueOptions.length === 0) {
-      setDraftValue('');
-      return;
-    }
-
-    if (!filterValueOptions.includes(draftValue)) {
-      setDraftValue(filterValueOptions[0]);
-    }
-  }, [draftValue, filterValueOptions]);
+      return { value: opt.value, label: opt.label, options };
+    });
+  }, [config.filterFieldOptions, rows, customStatuses]);
 
   const handleCategorySelect = (categoryName: string) => {
     setSelectedCategoryName(categoryName);
     setIsCategoryPopoverOpen(false);
   };
 
-  const setOrReplaceFilter = (nextFilter: AppliedFilter) => {
+  const setOrReplaceFilter = (nextFilter: FilterBarAppliedFilter) => {
     setAppliedFilters((currentFilters) => {
       const withoutCurrentField = currentFilters.filter(
         (currentFilter) => currentFilter.field !== nextFilter.field
       );
-
-      return [...withoutCurrentField, nextFilter];
+      return [...withoutCurrentField, nextFilter as AppliedFilter];
     });
-
-    setIsFilterPopoverOpen(false);
   };
 
-  const clearFilter = (field: FilterField) => {
+  const clearFilter = (field: string) => {
     setAppliedFilters((currentFilters) =>
       currentFilters.filter((currentFilter) => currentFilter.field !== field)
     );
@@ -673,6 +693,55 @@ export function AssetRegistryClient({
   };
 
   const tableColumns = useMemo<ColumnDef<AssetRegistryRow>[]>(() => {
+    if (config.view === 'unified') {
+      return [
+        { accessorKey: 'assetTag', header: 'Asset ID' },
+        {
+          accessorKey: 'name',
+          header: 'Item Name',
+          cell: ({ row }) => toCellText(row.original.name),
+        },
+        {
+          accessorKey: 'category',
+          header: 'Category',
+          cell: ({ row }) => toCellText(row.original.category),
+        },
+        {
+          accessorKey: 'pillar',
+          header: 'Pillar',
+          cell: ({ row }) => <PillarBadge pillar={row.original.pillar} />,
+        },
+        {
+          accessorKey: 'status',
+          header: 'Status',
+          cell: ({ row }) => {
+            if (row.original.pillar === 'Software') {
+              return <SoftwareExpiryStatus status={row.original.status} expiryDate={row.original.expiryDate} />;
+            }
+            return <StatusBadge value={row.original.status} showIcon />;
+          },
+        },
+        {
+          id: 'assignment',
+          header: 'Assignment',
+          cell: ({ row }) => {
+            if (row.original.pillar === 'Software') {
+              const total = row.original.totalSeats ?? 0;
+              const available = row.original.availableSeats ?? 0;
+              const assigned = Math.max(0, total - available);
+              return (
+                <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-slate-50 text-slate-700 ring-slate-600/10 whitespace-nowrap">
+                  {assigned} / {total} Assigned
+                </span>
+              );
+            }
+            return toCellText(row.original.assignedTo || row.original.location);
+          },
+          enableSorting: false,
+        },
+      ];
+    }
+
     if (config.view === 'furniture') {
       return [
         { accessorKey: 'assetTag', header: 'Asset ID' },
@@ -740,31 +809,90 @@ export function AssetRegistryClient({
           accessorKey: 'serialNumber',
           header: 'License Key',
           cell: ({ row }) => {
-            const serialNumber =
-              row.original.serialNumber ??
+            const serialNumber = 
+              row.original.serialNumber || 
               String(row.original.instanceAttributes?.['license_key'] ?? row.original.instanceAttributes?.['License Key'] ?? '');
 
-            return serialNumber
-              ? `${serialNumber.slice(0, 4)}-${serialNumber.slice(-4)}`
-              : 'XXXX-XXXX';
+            if (!serialNumber || serialNumber === '-') return '-';
+            
+            return (
+              <div className="flex w-full pr-2">
+                <CopyableField 
+                  value={serialNumber} 
+                  label="License Key" 
+                  className="w-full"
+                />
+              </div>
+            );
           },
         },
         {
           id: 'licenseType',
           header: 'License Type',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['license_type'] ?? row.original.instanceAttributes?.['License Type'] ?? '-'),
+          cell: ({ row }) => row.original.licenseType ?? '-',
           enableSorting: false,
         },
         {
-          id: 'totalSeats',
-          header: 'Total Seats',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['max_seats'] ?? row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? '-'),
+          id: 'availability',
+          header: 'Availability',
+          cell: ({ row }) => {
+            const coreTotal = row.original.totalSeats;
+            const coreAvailable = row.original.availableSeats;
+            
+            // Fallbacks from instance attributes
+            const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
+            
+            const total = coreTotal ?? attrTotal;
+            const available = coreAvailable ?? (total > 0 ? total : 0); // Crude fallback for availability
+            
+            const isLow = total > 0 && available <= 2;
+            
+            if (row.original.pillar !== 'Software') return null;
+            
+            return (
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                  available === 0 
+                    ? "bg-red-50 text-red-700 ring-red-600/10" 
+                    : isLow 
+                      ? "bg-amber-50 text-amber-700 ring-amber-600/10"
+                      : "bg-green-50 text-green-700 ring-green-600/10"
+                }`}>
+                  {available} / {total} Available
+                </span>
+              </div>
+            );
+          },
           enableSorting: false,
         },
         {
           id: 'expirationDate',
           header: 'Expiration Date',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['expiration_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? '-'),
+          cell: ({ row }) => {
+            const coreExpiry = row.original.expiryDate;
+            const attrExpiry = String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? row.original.instanceAttributes?.['license_expiry'] ?? '');
+            
+            const expiryStr = coreExpiry || attrExpiry;
+            if (!expiryStr || expiryStr === 'null') return '-';
+            
+            const expiryDate = new Date(expiryStr);
+            const today = new Date();
+            const diffTime = expiryDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            let colorClass = "text-slate-600";
+            if (diffDays <= 0) {
+              colorClass = "text-red-600 font-medium";
+            } else if (diffDays <= 30) {
+              colorClass = "text-amber-600 font-medium";
+            }
+            
+            return (
+              <span className={colorClass}>
+                {expiryDate.toLocaleDateString()}
+              </span>
+            );
+          },
           enableSorting: false,
         },
       ];
@@ -842,6 +970,7 @@ export function AssetRegistryClient({
           id: 'bulk-transfer',
           label: 'Bulk Transfer',
           disabled: isMutating,
+          hidden: (selectedRows) => config.view === 'unified' && selectedRows.some(row => row.pillar === 'Software'),
           onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
             setTransferSelectionRows(selectedRowsForAction);
             setDestinationLocationId(null);
@@ -914,125 +1043,17 @@ export function AssetRegistryClient({
       </div>
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="relative w-full max-w-136.25">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder={config.searchPlaceholder}
-              className="h-9 pl-9"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-              <PopoverAnchor asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
-                  onClick={() => setIsFilterPopoverOpen((currentOpen) => !currentOpen)}
-                >
-                  Filters
-                  <ChevronDown className="size-4" />
-                </Button>
-              </PopoverAnchor>
-              <PopoverContent
-                align="end"
-                side="bottom"
-                sideOffset={10}
-                className="w-61.25 rounded-lg border border-slate-200 p-0 shadow-xl"
-              >
-                <div className="border-b border-slate-200 px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-slate-600"
-                      onClick={() => setIsFilterPopoverOpen(false)}
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3 px-3 py-3">
-                  <select
-                    value={draftField}
-                    onChange={(event) => setDraftField(event.target.value as FilterField)}
-                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-                  >
-                    {config.filterFieldOptions.map((filterFieldOption) => (
-                      <option key={filterFieldOption.value} value={filterFieldOption.value}>
-                        {filterFieldOption.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="space-y-2 text-sm text-slate-700">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        checked={draftOperator === 'is'}
-                        onChange={() => setDraftOperator('is')}
-                      />
-                      is
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        checked={draftOperator === 'is not'}
-                        onChange={() => setDraftOperator('is not')}
-                      />
-                      is not
-                    </label>
-                  </div>
-
-                  <select
-                    value={draftValue}
-                    onChange={(event) => setDraftValue(event.target.value)}
-                    className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-                  >
-                    {filterValueOptions.map((filterValueOption) => (
-                      <option key={filterValueOption} value={filterValueOption}>
-                        {filterValueOption}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-3 py-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-lg border-slate-200 px-3 text-sm"
-                    onClick={() => setIsFilterPopoverOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
-                    onClick={() => {
-                      if (draftValue) {
-                        setOrReplaceFilter({
-                          field: draftField,
-                          operator: draftOperator,
-                          value: draftValue,
-                        });
-                      }
-                    }}
-                  >
-                    Apply Filter
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-
+        <FilterBar
+          searchQuery={searchValue}
+          onSearchChange={setSearchValue}
+          searchPlaceholder={config.searchPlaceholder}
+          fields={filterFieldConfigs}
+          appliedFilters={appliedFilters}
+          onApplyFilter={setOrReplaceFilter}
+          onClearFilter={clearFilter}
+          onClearAllFilters={clearAllFilters}
+        >
+          {config.view !== 'unified' && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button type="button" size="sm">
@@ -1052,48 +1073,8 @@ export function AssetRegistryClient({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        </div>
-
-        {appliedFilters.length > 0 ? (
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {appliedFilters.map((appliedFilter) => (
-                <span
-                  key={appliedFilter.field}
-                  className="inline-flex h-8 items-center gap-2 rounded-lg bg-slate-100 px-3 text-sm text-slate-700"
-                >
-                  {`${appliedFilter.field} ${appliedFilter.operator} ${appliedFilter.value}`}
-                  <button
-                    type="button"
-                    className="text-slate-500 hover:text-slate-700"
-                    onClick={() => clearFilter(appliedFilter.field)}
-                  >
-                    <X className="size-4" />
-                  </button>
-                </span>
-              ))}
-
-              <button
-                type="button"
-                className="inline-flex size-8 items-center justify-center rounded-lg text-xl text-slate-600 hover:bg-slate-100"
-                onClick={() => setIsFilterPopoverOpen(true)}
-              >
-                +
-              </button>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700"
-              onClick={clearAllFilters}
-            >
-              Clear Filters
-            </Button>
-          </div>
-        ) : null}
+          )}
+        </FilterBar>
 
         {errorMessage ? (
           <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
