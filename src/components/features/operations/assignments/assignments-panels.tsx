@@ -4,6 +4,12 @@ import { useMemo, useState, useEffect } from "react";
 import { AssetAssignmentDetailsPanel } from "@/components/features/asset-registry/panels/asset-assignment-panel";
 import { AssetAssignmentModal } from "./asset-assignment-modal";
 import { getAssetDetailsByIdAction, getAssetMaintenanceByIdAction } from "@/actions/asset-registry-panels";
+import { 
+  sendAssignmentReminderAction, 
+  requestAssetReturnAction,
+  markAssetReceivedAction 
+} from "@/actions/assignments";
+import { toast } from "sonner";
 import { type AssetDetailsData, type MaintenanceEvent } from "@/lib/data/asset-details-repo";
 
 type AssignmentPanelAsset = {
@@ -26,6 +32,8 @@ type AssignmentPanelAsset = {
 	lastRepaired?: string;
 	note: string;
 	status: string;
+	state: string;
+	assignmentId?: number;
 };
 
 interface AssignmentsPanelsProps {
@@ -95,6 +103,37 @@ export function AssignmentsPanels({
 		return null;
 	}
 
+	const handleSendReminder = async () => {
+		if (!cachedAsset.assignmentId) return;
+		const result = await sendAssignmentReminderAction([cachedAsset.assignmentId]);
+		if (result.success) {
+			toast.success("Reminder sent successfully");
+		} else {
+			toast.error(result.error || "Failed to send reminder");
+		}
+	};
+
+	const handleRequestReturn = async () => {
+		if (!cachedAsset.assignmentId) return;
+		const result = await requestAssetReturnAction([cachedAsset.assignmentId]);
+		if (result.success) {
+			toast.success("Return requested successfully");
+		} else {
+			toast.error(result.error || "Failed to request return");
+		}
+	};
+
+	const handleMarkReceived = async () => {
+		if (!cachedAsset.assignmentId) return;
+		const result = await markAssetReceivedAction([cachedAsset.assignmentId]);
+		if (result.success) {
+			toast.success("Asset marked as received");
+			onClose();
+		} else {
+			toast.error(result.error || "Failed to mark as received");
+		}
+	};
+
 	return (
 		<>
 			<AssetAssignmentDetailsPanel 
@@ -129,9 +168,13 @@ export function AssignmentsPanels({
 				}
 				note={cachedAsset.note ?? ""}
 				status={cachedAsset.status ?? "Available"}
+				state={cachedAsset.state}
 				maintenanceEvents={fetchedData?.maintenance ?? []}
 				onEdit={() => { }}
 				onAssign={() => setIsAssignmentModalOpen(true)}
+				onSendReminder={handleSendReminder}
+				onRequestReturn={handleRequestReturn}
+				onMarkReceived={handleMarkReceived}
 			/>
 
 			<AssetAssignmentModal

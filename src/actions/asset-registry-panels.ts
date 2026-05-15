@@ -1,10 +1,11 @@
 'use server';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   brands,
   categories,
+  locations,
   models,
   owners,
   pillarEnum,
@@ -68,7 +69,7 @@ export async function getRegistrationOptionsAction(pillar: string) {
 
   const pillarValue = pillar as (typeof pillarEnum.enumValues)[number];
 
-  const [categoriesList, brandsList, modelsList, vendorsList, ownersList] =
+  const [categoriesList, brandsList, modelsList, vendorsList, ownersList, locationsList] =
     await Promise.all([
       db.query.categories.findMany({
         where: and(
@@ -82,7 +83,13 @@ export async function getRegistrationOptionsAction(pillar: string) {
         columns: { id: true, name: true },
       }),
       db.query.models.findMany({
-        where: and(eq(models.isActive, true)), // No pillar column on models table
+        where: and(
+          eq(models.isActive, true),
+          inArray(
+            models.categoryId,
+            db.select({ id: categories.id }).from(categories).where(eq(categories.pillar, pillarValue))
+          )
+        ),
         columns: {
           id: true,
           name: true,
@@ -99,6 +106,12 @@ export async function getRegistrationOptionsAction(pillar: string) {
         where: eq(owners.isActive, true),
         columns: { id: true, companyName: true },
       }),
+      ['Office Furniture', 'Office Electronics'].includes(pillarValue)
+        ? db.query.locations.findMany({
+            where: eq(locations.isActive, true),
+            columns: { id: true, name: true },
+          })
+        : Promise.resolve([]),
     ]);
 
   return {
@@ -143,6 +156,10 @@ export async function getRegistrationOptionsAction(pillar: string) {
       owners: ownersList.map((o: { id: number; companyName: string }) => ({
         value: String(o.id),
         label: o.companyName,
+      })),
+      locations: locationsList.map((l: { id: number; name: string }) => ({
+        value: String(l.id),
+        label: l.name,
       })),
     },
   };

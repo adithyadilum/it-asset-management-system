@@ -39,12 +39,12 @@ export function TimelineItem({
   };
 
   return (
-    <div className="flex gap-[16px] w-full">
+    <div className="flex gap-4 w-full">
       {/* Icon & Line Column */}
-      <div className="flex flex-col items-center gap-[4px]">
+      <div className="flex flex-col items-center gap-1">
         <div
           className={cn(
-            'flex items-center justify-center w-[32px] h-[32px] rounded-full shrink-0',
+            'flex items-center justify-center w-8 h-8 rounded-full shrink-0',
             iconColorClasses[iconColor]
           )}
         >
@@ -54,7 +54,7 @@ export function TimelineItem({
         {!isLast && (
           <div
             className={cn(
-              'w-[2px] flex-grow',
+              'w-0.5 grow',
               lineColorClasses[iconColor]
             )}
           />
@@ -62,30 +62,30 @@ export function TimelineItem({
       </div>
 
       {/* Content Column */}
-      <div className="flex-1 pb-[32px] flex flex-col mt-[4px]">
+      <div className="flex-1 pb-8 flex flex-col mt-1">
         <div className="flex justify-between items-start w-full">
-          <div className="text-[14px] font-medium text-slate-900 leading-[20px]">
+          <div className="text-[14px] font-medium text-slate-900 leading-5">
             {title}
           </div>
-          <div className="text-[12px] font-light text-slate-500 leading-[20px]">
+          <div className="text-[12px] font-light text-slate-500 leading-5">
             {timestamp}
           </div>
         </div>
 
         {performedBy && (
-          <div className="text-[14px] font-light text-slate-500 mt-[2px] leading-[20px]">
+          <div className="text-[14px] font-light text-slate-500 mt-0.5 leading-5">
             Performed by {performedBy}
           </div>
         )}
 
         {description && (
-          <div className="text-[14px] font-light text-slate-500 mt-[6px] leading-[20px]">
+          <div className="text-[14px] font-light text-slate-500 mt-1.5 leading-5">
             {description}
           </div>
         )}
 
         {details && (
-          <div className="text-[14px] font-light text-slate-500 mt-[2px] leading-[20px]">
+          <div className="text-[14px] font-light text-slate-500 mt-0.5 leading-5">
             {details}
           </div>
         )}

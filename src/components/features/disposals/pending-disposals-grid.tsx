@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { ColumnDef,RowSelectionState } from '@tanstack/react-table';
-import { Search } from 'lucide-react';
+import type { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 
-import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { FilterBar, type AppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
 
 // Import our new unified dialogs
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
@@ -37,7 +36,7 @@ function toCellText(value: string | null | undefined) {
 function calculateDaysPending(requestedAt: Date): number {
   return Math.floor(
     Math.abs(new Date().getTime() - new Date(requestedAt).getTime()) /
-      (1000 * 60 * 60 * 24)
+    (1000 * 60 * 60 * 24)
   );
 }
 
@@ -58,30 +57,71 @@ export function PendingDisposalsGrid({
   onRowClick,
 }: PendingDisposalsGridProps) {
   const [searchValue, setSearchValue] = useState('');
-  
-  
+  const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkExecuteModalOpen, setIsBulkExecuteModalOpen] = useState(false);
   const [isBulkRejectModalOpen, setIsBulkRejectModalOpen] = useState(false);
 
-  const filteredData = useMemo(() => {
-    if (!searchValue.trim()) return initialData;
-    const lowerQuery = searchValue.toLowerCase();
+  const filterFieldConfigs: FilterFieldConfig[] = [
+    { value: 'assetTag', label: 'Asset ID' },
+    { value: 'assetName', label: 'Asset Name' },
+    { value: 'flaggedBy', label: 'Flagged By' },
+    { value: 'reason', label: 'Reason' },
+  ];
 
-    return initialData.filter(
-      (row) =>
-        row.assetTag.toLowerCase().includes(lowerQuery) ||
-        (row.assetName?.toLowerCase() || '').includes(lowerQuery) ||
-        row.flaggedBy.toLowerCase().includes(lowerQuery) ||
-        row.reason.toLowerCase().includes(lowerQuery)
-    );
-  }, [initialData, searchValue]);
+  const applyFilter = (filter: AppliedFilter) => {
+    setAppliedFilters((prev) => {
+      const filtered = prev.filter((f) => f.field !== filter.field);
+      return [...filtered, filter];
+    });
+  };
+
+  const clearFilter = (field: string) => {
+    setAppliedFilters((prev) => prev.filter((f) => f.field !== field));
+  };
+
+  const clearAllFilters = () => setAppliedFilters([]);
+
+  const filteredData = useMemo(() => {
+    let result = [...initialData];
+
+    // 1. Search
+    if (searchValue.trim()) {
+      const lowerQuery = searchValue.toLowerCase();
+      result = result.filter(
+        (row) =>
+          row.assetTag.toLowerCase().includes(lowerQuery) ||
+          (row.assetName?.toLowerCase() || '').includes(lowerQuery) ||
+          row.flaggedBy.toLowerCase().includes(lowerQuery) ||
+          row.reason.toLowerCase().includes(lowerQuery)
+      );
+    }
+
+    // 2. Filters
+    appliedFilters.forEach((filter) => {
+      const { field, operator, value } = filter;
+      const lowerValue = value.toLowerCase();
+
+      result = result.filter((row) => {
+        let fieldValue = '';
+        if (field === 'assetTag') fieldValue = row.assetTag;
+        else if (field === 'assetName') fieldValue = row.assetName || '';
+        else if (field === 'flaggedBy') fieldValue = row.flaggedBy;
+        else if (field === 'reason') fieldValue = row.reason;
+
+        const isMatch = fieldValue.toLowerCase().includes(lowerValue);
+        return operator === 'is' ? isMatch : !isMatch;
+      });
+    });
+
+    return result;
+  }, [initialData, searchValue, appliedFilters]);
 
   // Derive the actual selected row objects based on the rowSelection state
   const selectedRows = useMemo(() => {
     // Extract the selected keys (TanStack stores selection state as {"0": true, "2": true})
     const selectedKeys = Object.keys(rowSelection).filter((key) => rowSelection[key]);
-    
+
     //Map those stringified keys back to the original filteredData array
     return selectedKeys
       .map((key) => filteredData[parseInt(key, 10)])
@@ -131,8 +171,8 @@ export function PendingDisposalsGrid({
 
           return (
             <StatusBadge
-              value={status} 
-              label={`${days} ${days === 1 ? 'Day' : 'Days'}`} 
+              value={status}
+              label={`${days} ${days === 1 ? 'Day' : 'Days'}`}
             />
           );
         },
@@ -142,34 +182,34 @@ export function PendingDisposalsGrid({
   );
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 gap-4">
-      {/* Toolbar (Search Only) */}
-      <div className="flex items-center justify-between w-full">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Search assets..."
-            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm text-slate-900 placeholder:text-slate-500"
-          />
-        </div>
-      </div>
+    <div className="flex flex-1 flex-col min-h-0 gap-4">
+      {/* Toolbar (Standardized) */}
+      <FilterBar
+        searchQuery={searchValue}
+        onSearchChange={setSearchValue}
+        searchPlaceholder="Search pending disposals..."
+        fields={filterFieldConfigs}
+        appliedFilters={appliedFilters}
+        onApplyFilter={applyFilter}
+        onClearFilter={clearFilter}
+        onClearAllFilters={clearAllFilters}
+      />
 
       {/* Data Table Container */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-white">
         <DataTable<PendingDisposalRow, unknown>
           columns={columns}
           data={filteredData}
           initialPageSize={10}
           pageSizeOptions={[10, 20, 50]}
+          className="rounded-lg border-slate-200"
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
-          
+
           selectionLabel={(count) => `${count} Assets Selected`}
-          
+
           selectionActions={[
-            
+
             {
               id: 'cancel',
               label: 'Cancel',
@@ -179,13 +219,13 @@ export function PendingDisposalsGrid({
             {
               id: 'reject',
               label: 'Reject Selected',
-              tone: 'secondary', 
+              tone: 'secondary',
               onClick: () => setIsBulkRejectModalOpen(true),
             },
             {
               id: 'dispose',
               label: 'Dispose Selected',
-              tone: 'destructive', 
+              tone: 'destructive',
               onClick: () => setIsBulkExecuteModalOpen(true),
             },
           ]}

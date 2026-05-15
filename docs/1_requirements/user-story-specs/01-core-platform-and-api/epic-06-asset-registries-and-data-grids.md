@@ -31,6 +31,7 @@ This epic builds the central command center for all asset tracking. It implement
 - [US-6.6 — Office Electronics Grid](https://app.clickup.com/t/86ewvf73h)
 - [US-6.7 — Advanced Grid Controls (Filtering, Sorting, & Pagination)](https://app.clickup.com/t/86ewvf73m)
 - [US-6.8 — Bulk Operations](https://app.clickup.com/t/86ewvfa18)
+- [US-6.9 — Unified Master Inventory Hub](#user-story-us-69--unified-master-inventory-hub)
 
 ---
 
@@ -351,3 +352,23 @@ This epic builds the central command center for all asset tracking. It implement
 - [ ] Implement atomic transaction logic: all updates succeed or the entire batch rolls back if any single item fails business logic validation (e.g., assigning an already-assigned asset).
 - [ ] Ensure each individual asset change within the batch writes a separate entry to the Audit Log (Epic 4) for traceability.
 - [ ] Implement backend validation that mirrors the frontend pillar/status constraint rules to prevent bypassing via direct API calls.
+
+---
+
+## User Story: US-6.9 — Unified Master Inventory Hub
+
+- As a Corporate IT Admin,
+- I want a centralized dashboard that aggregates assets across all four pillars (IT & Digital, Software, Office Furniture, Office Electronics),
+- So that I can view and manage all inventory in one place.
+
+### Acceptance Criteria (Gherkin)
+
+- Scenario: Viewing the Unified Master Table
+  - Given I navigate to the "All Assets" view
+  - Then the grid displays a unified 6-column layout: `Asset Tag / ID`, `Item Name`, `Category`, `Pillar`, `Status`, and `Assignment`.
+  - And the Pillar column uses canonical names (`IT & Digital`, `Software`, `Office Furniture`, `Office Electronics`).
+  - And the Status column uses a hybrid status for software (e.g., Status Badge + "X days left" countdown).
+  - And the Assignment column displays "X / Y Assigned" for software seats.
+  - And the table uses server-side pagination with a default page size of 16.
+  - And the "+ Add Asset" button is hidden.
+

@@ -60,13 +60,15 @@ export function SearchableDropdown({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between font-normal",
+            "w-full justify-between font-normal min-w-0",
             value ? "text-foreground" : "text-muted-foreground"
           )}
         >
-          {value
-            ? options.find((option) => option.value === value)?.label
-            : placeholder}
+          <span className="truncate text-left flex-1">
+            {value
+              ? options.find((option) => option.value === value)?.label
+              : placeholder}
+          </span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
         </Button>
       </PopoverTrigger>

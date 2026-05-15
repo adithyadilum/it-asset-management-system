@@ -12,6 +12,9 @@ import {
   assignMultipleAssets,
   assignSingleAsset,
   getAssignmentsDashboardData,
+  triggerAssignmentReminders,
+  triggerReturnRequests,
+  markAssignmentsAsReceived,
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
@@ -80,7 +83,7 @@ export async function assignAssetAction(
       if (err instanceof ZodError) {
         return {
           success: false,
-          error: 'Invalid input for assignAssetAction.',
+          error: err.issues[0]?.message || 'Invalid input for assignAssetAction.',
           code: 'VALIDATION_ERROR',
         };
       }
@@ -141,7 +144,7 @@ export async function bulkAssignAssetsAction(
       if (err instanceof ZodError) {
         return {
           success: false,
-          error: 'Invalid input for bulkAssignAssetsAction.',
+          error: err.issues[0]?.message || 'Invalid input for bulkAssignAssetsAction.',
           code: 'VALIDATION_ERROR',
         };
       }
@@ -198,3 +201,99 @@ export async function getOperationsAssignmentsDataAction() {
     });
   }
 }
+
+export async function sendAssignmentReminderAction(
+  assignmentIds: number[]
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult('Forbidden: You do not have permission to send reminders.');
+  }
+
+  try {
+    await triggerAssignmentReminders(assignmentIds, currentUser.id);
+    revalidatePath('/operations/assignments');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.sendAssignmentReminderAction',
+      error,
+      metadata: { count: assignmentIds.length },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.sendAssignmentReminderAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function requestAssetReturnAction(
+  assignmentIds: number[]
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult('Forbidden: You do not have permission to request returns.');
+  }
+
+  try {
+    await triggerReturnRequests(assignmentIds, currentUser.id);
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.requestAssetReturnAction',
+      error,
+      metadata: { count: assignmentIds.length },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.requestAssetReturnAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function markAssetReceivedAction(
+  assignmentIds: number[]
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult('Forbidden: You do not have permission to mark assets as received.');
+  }
+
+  try {
+    await markAssignmentsAsReceived(assignmentIds, currentUser.id);
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.markAssetReceivedAction',
+      error,
+      metadata: { count: assignmentIds.length },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.markAssetReceivedAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
