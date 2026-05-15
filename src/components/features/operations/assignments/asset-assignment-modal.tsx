@@ -152,6 +152,18 @@ export function AssetAssignmentModal({
       return;
     }
 
+    if (resolvedAssignmentMode === "user" && expectedReturn) {
+      const [year, month, day] = expectedReturn.split("-").map(Number);
+      const selectedDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        tiqriToast.error("Select a valid date");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;

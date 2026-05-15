@@ -1,4 +1,13 @@
-import { and, desc, eq, inArray, isNotNull, isNull, max, sql } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  max,
+  sql,
+} from 'drizzle-orm';
 
 import { db } from '@/db';
 import {
@@ -10,7 +19,7 @@ import {
   models,
   users,
 } from '@/db/schema';
-import { logAuditActionTx } from '@/lib/audit';
+import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 import { sendAssetNotification } from '../notifications';
 
@@ -342,7 +351,12 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
       eq(assetAssignments.id, latestActiveAssignments.latestAssignmentId)
     )
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-    .where(and(eq(assets.status, 'Assigned'), inArray(categories.pillar, DASHBOARD_PILLARS)))
+    .where(
+      and(
+        eq(assets.status, 'Assigned'),
+        inArray(categories.pillar, DASHBOARD_PILLARS)
+      )
+    )
     .orderBy(desc(assets.createdAt));
 
   return results.map((row) => ({
@@ -358,7 +372,9 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
     assignedTo: row.assignedToUser || null,
     assignedToEmail: row.assignedToEmail || null,
     assignedDate: row.assignedDate,
-    expectedReturnDate: row.expectedReturnDate ? new Date(row.expectedReturnDate) : null,
+    expectedReturnDate: row.expectedReturnDate
+      ? new Date(row.expectedReturnDate)
+      : null,
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
     returnedDate: null,
@@ -427,7 +443,9 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
   return [...returnedRowsByAssetId.values()];
 }
 
-export async function getAssignmentsDashboardData(tab?: AssignmentsDashboardTab): Promise<AssignmentsDashboardData> {
+export async function getAssignmentsDashboardData(
+  tab?: AssignmentsDashboardTab
+): Promise<AssignmentsDashboardData> {
   // Automatic refresh of overdue states on data load
   await refreshOverdueAssignments();
 
@@ -539,6 +557,7 @@ export async function assignSingleAsset(
         assignedToUserId: target.assignedToUserId,
         assignedToLocationId: target.assignedToLocationId,
         expectedReturnDate,
+        state: 'pending approval',
       },
     });
 
@@ -642,6 +661,7 @@ export async function assignMultipleAssets(
             assignedToUserId: target.assignedToUserId,
             assignedToLocationId: target.assignedToLocationId,
             expectedReturnDate,
+            state: 'pending approval',
           },
         })
       )
@@ -686,7 +706,12 @@ export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {
  */
 export async function updateAssignmentsState(
   assignmentIds: number[],
-  newState: 'pending approval' | 'assigned' | 'overdue' | 'requested' | 'returned'
+  newState:
+    | 'pending approval'
+    | 'assigned'
+    | 'overdue'
+    | 'requested'
+    | 'returned'
 ): Promise<void> {
   if (assignmentIds.length === 0) return;
 
@@ -699,10 +724,14 @@ export async function updateAssignmentsState(
 /**
  * Triggers a reminder notification for pending assignments.
  */
-export async function triggerAssignmentReminders(assignmentIds: number[]): Promise<void> {
+export async function triggerAssignmentReminders(
+  assignmentIds: number[],
+  performedById: string
+): Promise<void> {
   const assignments = await db
     .select({
       id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
       assetTag: assets.assetTag,
       assetName: assets.name,
       userEmail: users.email,
@@ -713,24 +742,38 @@ export async function triggerAssignmentReminders(assignmentIds: number[]): Promi
     .where(inArray(assetAssignments.id, assignmentIds));
 
   await Promise.all(
-    assignments.map((a) =>
-      sendAssetNotification({
+    assignments.map(async (a) => {
+      // Send notification
+      await sendAssetNotification({
         type: 'assignment_reminder',
         recipientEmail: a.userEmail,
         assetTag: a.assetTag,
         assetName: a.assetName || a.assetTag,
-      })
-    )
+      });
+
+      // Log reminder action
+      await logAuditAction({
+        entityType: 'Asset',
+        entityId: a.assetId,
+        actionType: 'UPDATE',
+        performedById,
+        newData: { notificationSent: 'assignment_reminder' },
+      });
+    })
   );
 }
 
 /**
  * Triggers a return request and updates state to 'requested'.
  */
-export async function triggerReturnRequests(assignmentIds: number[]): Promise<void> {
+export async function triggerReturnRequests(
+  assignmentIds: number[],
+  performedById: string
+): Promise<void> {
   const assignments = await db
     .select({
       id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
       assetTag: assets.assetTag,
       assetName: assets.name,
       userEmail: users.email,
@@ -744,55 +787,104 @@ export async function triggerReturnRequests(assignmentIds: number[]): Promise<vo
     // Update state to 'requested'
     await tx
       .update(assetAssignments)
-      .set({ state: 'requested' })
+      .set({
+        state: 'requested',
+        returnRequestedAt: new Date(),
+      })
       .where(inArray(assetAssignments.id, assignmentIds));
 
-    // Send notifications
+    // Log audit
     await Promise.all(
-      assignments.map((a) =>
-        sendAssetNotification({
+      assignments.map(async (a) => {
+        await logAuditActionTx(tx, {
+          entityType: 'Asset',
+          entityId: a.assetId,
+          actionType: 'UPDATE',
+          performedById,
+          oldData: { state: 'assigned' },
+          newData: { state: 'requested' },
+        });
+      })
+    );
+  });
+
+  // Send notifications outside transaction
+  await Promise.allSettled(
+    assignments.map(async (a) => {
+      try {
+        await sendAssetNotification({
           type: 'return_request',
           recipientEmail: a.userEmail,
           assetTag: a.assetTag,
           assetName: a.assetName || a.assetTag,
-        })
-      )
-    );
-  });
+        });
+      } catch (error) {
+        console.error('Failed to send return request notification:', error);
+      }
+    })
+  );
 }
 
 /**
  * Marks assets as received and updates state to 'returned'.
  * This also updates the asset status back to 'Available'.
  */
-export async function markAssignmentsAsReceived(assignmentIds: number[]): Promise<void> {
+export async function markAssignmentsAsReceived(
+  assignmentIds: number[],
+  performedById: string
+): Promise<void> {
   const assignments = await db
     .select({
       id: assetAssignments.id,
       assetId: assetAssignments.assetId,
+      assetTag: assets.assetTag,
     })
     .from(assetAssignments)
-    .where(inArray(assetAssignments.id, assignmentIds));
+    .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
+    .where(
+      and(
+        inArray(assetAssignments.id, assignmentIds),
+        isNull(assetAssignments.returnedDate)
+      )
+    );
+  if (assignments.length === 0) {
+    return;
+  }
 
+  const activeAssignmentIds = assignments.map((a) => a.id);
   const assetIds = assignments.map((a) => a.assetId);
 
   await db.transaction(async (tx) => {
     // Update assignments state to 'returned' and set returnedDate
     await tx
       .update(assetAssignments)
-      .set({ 
+      .set({
         state: 'returned',
-        returnedDate: new Date()
+        returnedDate: new Date(),
       })
-      .where(inArray(assetAssignments.id, assignmentIds));
+      .where(inArray(assetAssignments.id, activeAssignmentIds));
 
     // Update assets status back to 'Available'
     if (assetIds.length > 0) {
       await tx
         .update(assets)
-        .set({ status: 'Available' })
+        .set({ status: 'Available', updatedAt: new Date() })
         .where(inArray(assets.id, assetIds));
     }
+
+    // Log audit for each asset
+    await Promise.all(
+      assignments.map((a) =>
+        logAuditActionTx(tx, {
+          entityType: 'Asset',
+          entityId: a.assetId,
+          actionType: 'RETURN',
+          performedById,
+          oldData: { status: 'Assigned' },
+          newData: { status: 'Available' },
+        })
+      )
+    );
   });
 }
 

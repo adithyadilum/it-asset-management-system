@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -94,7 +94,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const isPanelOpen = currentPanel === "record" && activeAssetId !== "";
 
   // 2. Data Mapping
-  const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
+  const mapRow = useCallback((asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
     assetId: asset.id,
     assetName: asset.name ?? asset.assetTag,
     serialNumber: asset.serialNumber ?? "-",
@@ -116,21 +116,21 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     assetTag: asset.assetTag,
     state: asset.state,
     assignmentId: asset.assignmentId ?? undefined,
-  });
+  }), []);
 
   const availableRows = useMemo<AssetAssignmentRow[]>(
     () => data.available.map(mapRow),
-    [data.available]
+    [data.available, mapRow]
   );
 
   const assignedRows = useMemo<AssetAssignmentRow[]>(
     () => data.assigned.map(mapRow),
-    [data.assigned]
+    [data.assigned, mapRow]
   );
 
   const returnedRows = useMemo<AssetAssignmentRow[]>(
     () => data.returned.map(mapRow),
-    [data.returned]
+    [data.returned, mapRow]
   );
 
   const assetRows = useMemo(

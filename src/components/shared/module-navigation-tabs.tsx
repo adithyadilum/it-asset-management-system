@@ -107,7 +107,7 @@ export const ModuleNavigationTabs = React.forwardRef<
         </TabsList>
 
         {/* ===== TAB CONTENT ===== */}
-        <div className="mt-4">
+        <div className="mt-4 flex flex-1 flex-col min-h-0">
           {/* If children provided, render them */}
           {children}
 
