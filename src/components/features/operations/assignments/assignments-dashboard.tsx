@@ -14,6 +14,10 @@ import {
   MultiAssetAssignmentModal,
   type MultiAssetAssignmentItem,
 } from "./multi-asset-assignment-modal";
+import {
+  ProcessReturnModal,
+  type ReturnAssetItem,
+} from "./process-return-modal";
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -84,6 +88,10 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const searchParams = useSearchParams();
   const [isMultiAssignModalOpen, setIsMultiAssignModalOpen] = useState(false);
   const [multiAssignAssets, setMultiAssignAssets] = useState<MultiAssetAssignmentItem[]>([]);
+  
+  const [isProcessReturnModalOpen, setIsProcessReturnModalOpen] = useState(false);
+  const [processReturnAsset, setProcessReturnAsset] = useState<ReturnAssetItem | null>(null);
+  
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -409,7 +417,20 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-
+  const handleReturnedAssetClick = (row: AssetAssignmentRow, rowIndex: number) => {
+    // 1. Check the checkbox of the clicked row exclusively
+    setRowSelection({ [rowIndex]: true });
+    
+    // 2. Open the process return modal
+    setProcessReturnAsset({
+      assetId: row.assetId,
+      assetTag: row.assetTag,
+      assetName: row.assetName,
+      assignee: row.assignedTo,
+      assignmentId: row.assignmentId,
+    });
+    setIsProcessReturnModalOpen(true);
+  };
 
   const handleMultiAssignModalOpenChange = (open: boolean) => {
     setIsMultiAssignModalOpen(open);
@@ -422,7 +443,9 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const renderTable = (
     rows: AssetAssignmentRow[],
     actions?: DataTableSelectionAction<AssetAssignmentRow>[],
-    showStatusColumn = false
+    showStatusColumn = false,
+    customRowClick?: (row: AssetAssignmentRow, rowIndex: number) => void,
+    disableSelectionHeader = false
   ) => {
     const tableColumns = showStatusColumn
       ? columns
@@ -444,13 +467,14 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         <DataTable<AssetAssignmentRow, unknown>
           columns={tableColumns}
           data={rows}
-          onRowClick={handleRowClick}
+          onRowClick={customRowClick ?? handleRowClick}
           initialPageSize={10}
           className="rounded-lg border-slate-200"
           selectionActions={actions}
           selectionLabel={(count) => `${count} Assets Selected`}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
+          disableSelectionHeader={disableSelectionHeader}
         />
       </div>
     );
@@ -487,7 +511,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
               </TabsContent>
 
               <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredReturnedRows, undefined, false)}
+                {renderTable(filteredReturnedRows, undefined, false, handleReturnedAssetClick, true)}
               </TabsContent>
             </ModuleNavigationTabs>
           </div>
@@ -499,6 +523,18 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         disableTransition={searchParams.get("animate") === "0"}
         selectedAsset={selectedAsset}
         onClose={handleClosePanel}
+      />
+
+      <ProcessReturnModal
+        isOpen={isProcessReturnModalOpen}
+        asset={processReturnAsset}
+        onOpenChange={(open) => {
+          setIsProcessReturnModalOpen(open);
+          if (!open) {
+            setProcessReturnAsset(null);
+            setRowSelection({}); // Clear selection when modal closes
+          }
+        }}
       />
 
       <MultiAssetAssignmentModal
