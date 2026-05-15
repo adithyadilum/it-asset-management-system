@@ -237,29 +237,29 @@ export function DashboardChartsRow() {
 
 // ─── Row: Tabs Header (above the table) ──────────────────────────────────────
 
-export function DashboardTableTabsHeader() {
-  return (
-    <div className="shrink-0 flex items-center justify-between px-0.5">
-      {/* Left: Tabs */}
-      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-        <button className="flex items-center gap-1.5 rounded-md bg-white shadow-sm border border-border px-3 py-1 text-xs font-medium text-foreground">
-          Overdue Returns
-          <span className="ml-0.5 bg-primary text-primary-foreground text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none">
-            8
-          </span>
-        </button>
-        <button className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-muted-foreground rounded-md">
-          Pending Approvals
-          <span className="ml-0.5 border border-muted-foreground/40 text-muted-foreground text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none">
-            8
-          </span>
-        </button>
-      </div>
+// export function DashboardTableTabsHeader() {
+//   return (
+//     <div className="shrink-0 flex items-center justify-between px-0.5">
+//       {/* Left: Tabs */}
+//       <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+//         <button className="flex items-center gap-1.5 rounded-md bg-white shadow-sm border border-border px-3 py-1 text-xs font-medium text-foreground">
+//           Overdue Returns
+//           <span className="ml-0.5 bg-primary text-primary-foreground text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none">
+//             8
+//           </span>
+//         </button>
+//         <button className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-muted-foreground rounded-md">
+//           Pending Approvals
+//           <span className="ml-0.5 border border-muted-foreground/40 text-muted-foreground text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none">
+//             8
+//           </span>
+//         </button>
+//       </div>
 
-      {/* Right: Table title */}
-      <p className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-        High-Maintenance Assets (Lemons)
-      </p>
-    </div>
-  )
-}
+//       {/* Right: Table title */}
+//       <p className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
+//         High-Maintenance Assets (Lemons)
+//       </p>
+//     </div>
+//   )
+// }

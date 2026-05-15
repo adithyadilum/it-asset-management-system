@@ -2,7 +2,8 @@ import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
 import { KpiMetricsRow } from "@/components/features/dashboard/admin/kpi-metrics-row"
-import { DashboardChartsRow, DashboardTableTabsHeader } from "@/components/features/dashboard/admin/dashboard-charts-row"
+import { DashboardChartsRow } from "@/components/features/dashboard/admin/dashboard-charts-row"
+import { DashboardTablesRow } from "@/components/features/dashboard/admin/dashboard-tables-row"
 import { AssetCard } from "@/components/shared/asset-card"
 import {
     Empty,
@@ -109,9 +110,7 @@ export default async function DashboardPage() {
 
                 <div className="flex flex-col gap-4">
                     <DashboardChartsRow />
-                    <DashboardTableTabsHeader />
-                    {/* Table component will go here */}
-                    <div className="min-h-[400px] rounded-md bg-muted/30 border border-border" />
+                    <DashboardTablesRow />
                 </div>
             </div>
         </div>
