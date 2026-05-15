@@ -35,6 +35,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+
   // Fetch report data using the current filter state
   const loadPreview = useCallback(async (filters: FilterState) => {
     setIsLoading(true);
@@ -72,13 +74,15 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
       // Map template filters to FilterState
       const nextFilterState: FilterState = {
         ...DEFAULT_FILTER_STATE,
-        source: 'Asset Registry', // Default source for preview
+        source: template.dataSource,
         category: template.filters?.category ?? DEFAULT_FILTER_STATE.category,
         location: template.filters?.location ?? DEFAULT_FILTER_STATE.location,
         status: template.filters?.status ?? DEFAULT_FILTER_STATE.status,
         assetType: template.filters?.assetType ?? DEFAULT_FILTER_STATE.assetType,
+        masterDataType: template.filters?.masterDataType ?? DEFAULT_FILTER_STATE.masterDataType,
       };
 
+      setSelectedFields(template.fields || []);
       setFilterState(nextFilterState);
       void loadPreview(nextFilterState);
     },
@@ -87,6 +91,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
   // Called when the sidebar's "Preview report" footer button is clicked
   const handleManualPreview = useCallback(() => {
+    setSelectedFields([]); // Clear template-specific fields for manual preview
     void loadPreview(filterState);
   }, [filterState, loadPreview]);
 
@@ -169,6 +174,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           previewData={previewData}
           isLoading={isLoading}
           errorMessage={errorMessage}
+          selectedFields={selectedFields}
+          source={filterState.source}
         />
       </div>
     </div>

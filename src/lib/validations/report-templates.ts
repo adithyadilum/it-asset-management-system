@@ -16,6 +16,8 @@ export const reportTemplateSchema = z.object({
     category: z.string().optional(),
     location: z.string().optional(),
     status: z.string().optional(),
+    assetType: z.string().optional(),
+    masterDataType: z.string().optional(),
   }),
   fields: z
     .array(z.string())

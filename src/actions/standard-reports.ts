@@ -13,6 +13,7 @@ import {
   brands,
   vendors,
   owners,
+  assetPurchases,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
@@ -162,7 +163,16 @@ export async function fetchReportPreview(
           if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
           
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'CAT', name: r.name, category: r.pillar, assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Category', 
+            'Name': r.name, 
+            'Description': r.categoryCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'locations': {
@@ -170,7 +180,16 @@ export async function fetchReportPreview(
           if (statusEq !== undefined) q = q.where(eq(locations.isActive, statusEq));
           
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'LOC', name: r.name, category: r.type || 'Location', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': r.type || 'Location', 
+            'Name': r.name, 
+            'Description': r.locationCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'brands': {
@@ -178,16 +197,40 @@ export async function fetchReportPreview(
           if (statusEq !== undefined) q = q.where(eq(brands.isActive, statusEq));
           
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'BRD', name: r.name, category: 'Brand', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Brand', 
+            'Name': r.name, 
+            'Description': r.brandCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'device-models': {
-          let q = db.select({ id: models.id, name: models.name, categoryName: categories.name, isActive: models.isActive }).from(models).leftJoin(categories, eq(models.categoryId, categories.id)).$dynamic();
+          let q = db.select({ 
+            id: models.id, 
+            name: models.name, 
+            categoryName: categories.name, 
+            isActive: models.isActive,
+            modelCode: models.modelCode
+          }).from(models).leftJoin(categories, eq(models.categoryId, categories.id)).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(models.isActive, statusEq));
           if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
           
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'MDL', name: r.name, category: r.categoryName || 'Model', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': r.categoryName || 'Model', 
+            'Name': r.name, 
+            'Description': r.modelCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'vendors': {
@@ -195,7 +238,16 @@ export async function fetchReportPreview(
           if (statusEq !== undefined) q = q.where(eq(vendors.isActive, statusEq));
           
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'VND', name: r.companyName, category: 'Vendor', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Vendor', 
+            'Name': r.companyName, 
+            'Description': r.email || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'owners': {
@@ -203,7 +255,16 @@ export async function fetchReportPreview(
           if (statusEq !== undefined) q = q.where(eq(owners.isActive, statusEq));
           
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'OWN', name: r.companyName, category: 'Owner', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Owner', 
+            'Name': r.companyName, 
+            'Description': r.ownerCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
       }
@@ -258,13 +319,21 @@ export async function fetchReportPreview(
         assetTag: assets.assetTag,
         name: assets.name,
         category: categories.name,
-        locationId: assets.locationId,
+        brand: brands.name,
+        model: models.name,
+        serialNumber: assets.serialNumber,
         status: assets.status,
+        location: locations.name,
+        purchaseDate: assetPurchases.purchaseDate,
+        purchaseCost: assetPurchases.totalCost,
+        warrantyExpiry: assetPurchases.warrantyExpiry,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(brands, eq(models.brandId, brands.id))
       .leftJoin(locations, eq(assets.locationId, locations.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .where(whereCondition)
       .orderBy(desc(assets.updatedAt), asc(assets.assetTag))
       .limit(pageSize)
@@ -308,11 +377,18 @@ export async function fetchReportPreview(
 
     const data: ReportPreviewRow[] = rows.map((row) => ({
       id: row.id,
-      assetTag: row.assetTag,
-      name: row.name,
-      category: row.category,
-      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
-      status: row.status,
+      'Asset ID': row.assetTag,
+      'Asset Name': row.name,
+      'Category': row.category,
+      'Brand': row.brand || '-',
+      'Model': row.model || '-',
+      'Serial Number': row.serialNumber || '-',
+      'Status': row.status,
+      'Location': row.location || '-',
+      'Assigned To': assignedUserByAssetId.get(row.id) ?? '-',
+      'Purchase Date': row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString() : '-',
+      'Purchase Cost': row.purchaseCost ? String(row.purchaseCost) : '-',
+      'Warranty Expiry': row.warrantyExpiry ? new Date(row.warrantyExpiry).toLocaleDateString() : '-',
     }));
 
     return data;

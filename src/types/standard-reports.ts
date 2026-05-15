@@ -30,11 +30,7 @@ export const DEFAULT_FILTER_STATE: FilterState = {
 
 export interface ReportPreviewRow {
   id: string;
-  assetTag: string;
-  name: string | null;
-  category: string;
-  assignedTo: string | null;
-  status: string;
+  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------
