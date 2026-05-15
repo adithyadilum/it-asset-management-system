@@ -82,6 +82,7 @@ type DataTableProps<TData, TValue> = {
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
   pageSizeOptions?: number[]
   initialPageSize?: number
+  hideFooter?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -109,6 +110,7 @@ export function DataTable<TData, TValue>({
   onRowSelectionChange: externalOnRowSelectionChange,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   initialPageSize = DEFAULT_INITIAL_PAGE_SIZE,
+  hideFooter = false,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -517,6 +519,7 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
+      {!hideFooter && (
       <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-4 py-3 text-sm">
         <div className="flex-1 whitespace-nowrap text-muted-foreground">
           {footerText !== undefined ? (
@@ -603,6 +606,7 @@ export function DataTable<TData, TValue>({
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
