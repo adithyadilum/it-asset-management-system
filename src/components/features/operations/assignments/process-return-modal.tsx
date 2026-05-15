@@ -4,6 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { tiqriToast } from "@/components/shared/sonner";
+import { processAssetReturnAction } from "@/actions/assignments";
+import type { ProcessReturnPayload } from "@/lib/validations/asset-assignment";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -65,12 +67,23 @@ export function ProcessReturnModal({
     setIsSubmitting(true);
 
     try {
-      // Stub for actual return processing
+      const payload: ProcessReturnPayload = {
+        assetId: asset.assetId,
+        condition: condition as ProcessReturnPayload["condition"],
+        notes: notes.trim(),
+      };
+      
+      const result = await processAssetReturnAction(payload);
+      
+      if (!result.success) {
+        throw new Error(result.error ?? "Failed to process return.");
+      }
+
       tiqriToast.success("Asset returned successfully.");
       handleOpenChange(false);
       router.refresh();
-    } catch {
-      tiqriToast.error("Failed to process return.");
+    } catch (error) {
+      tiqriToast.error(error instanceof Error ? error.message : "Failed to process return.");
     } finally {
       setIsSubmitting(false);
     }

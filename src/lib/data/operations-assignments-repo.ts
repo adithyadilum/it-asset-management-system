@@ -75,6 +75,10 @@ export interface BulkAssignAssetsInput {
   notes?: string;
 }
 
+import {
+  type ProcessReturnPayload
+} from '@/lib/validations/asset-assignment';
+
 export interface AssignmentMutationResult {
   assignedAssetIds: string[];
   assignedCount: number;
@@ -919,4 +923,65 @@ export async function acceptAssignment(assignmentId: number): Promise<void> {
         eq(assetAssignments.state, 'pending approval')
       )
     );
+}
+
+/**
+ * Processes a returned asset with physical condition check.
+ */
+export async function processAssetReturn(
+  input: ProcessReturnPayload,
+  performedById: string
+): Promise<void> {
+  const asset = await db
+    .select({
+      id: assets.id,
+      assetTag: assets.assetTag,
+      status: assets.status,
+    })
+    .from(assets)
+    .where(eq(assets.id, input.assetId))
+    .limit(1)
+    .then((res) => res[0]);
+
+  if (!asset) {
+    throw new AssignmentServiceError('Asset not found', 404, 'ASSET_NOT_FOUND');
+  }
+
+  let newStatus: string;
+  switch (input.condition) {
+    case 'Good Working Condition':
+      newStatus = 'Available';
+      break;
+    case 'Minor Issues':
+    case 'Needs Repair':
+      newStatus = 'In Repair';
+      break;
+    case 'Beyond Repair':
+      newStatus = 'Pending Disposal';
+      break;
+    default:
+      newStatus = 'Available';
+  }
+
+  await db.transaction(async (tx) => {
+    // 1. Update asset status
+    await tx
+      .update(assets)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(assets.id, input.assetId));
+
+    // 2. We assume the asset assignment is already in 'returned' state, or we update it here.
+    // If we need to mark it returned, we could do it. However, the user story implies it's ALREADY in 
+    // the "Returned Assets" pool, which means `state = returned`, `returnedDate` is NOT NULL. 
+
+    // 3. Log Audit Action with condition notes
+    await logAuditActionTx(tx, {
+      entityType: 'Asset',
+      entityId: input.assetId,
+      actionType: 'STATUS_CHANGE',
+      performedById,
+      oldData: { status: asset.status },
+      newData: { status: newStatus, notes: input.notes, condition: input.condition },
+    });
+  });
 }
