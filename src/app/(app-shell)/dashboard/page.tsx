@@ -96,16 +96,15 @@ export default async function DashboardPage() {
     }
 
     return (
-        // 1. Lock the outer screen height
-        <div className="h-screen w-full flex flex-col overflow-hidden bg-background">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white overflow-hidden">
 
-            {/* 2. Pin the header to the top */}
-            <div className="shrink-0 p-4 pb-2 border-b border-border">
+            {/* Pinned header */}
+            <div className="shrink-0 px-6 pt-5 pb-3 border-b border-border">
                 <DashboardHeader />
             </div>
 
-            {/* 3. Let the inner content scroll ONLY if needed */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
                 <KpiMetricsRow />
 
                 <div className="flex flex-col gap-4">
@@ -113,6 +112,6 @@ export default async function DashboardPage() {
                     <DashboardTablesRow />
                 </div>
             </div>
-        </div>
+        </main>
     )
 }
