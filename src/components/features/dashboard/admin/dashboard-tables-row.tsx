@@ -84,7 +84,7 @@ const rowClass = "border-b border-border/50 last:border-0"
 
 // ─── Left: Overdue Returns table ──────────────────────────────────────────────
 
-function OverdueTable({ rows }: { rows: typeof overdueRows }) {
+function OverdueTable({ rows, actionLabel = "Send Reminder" }: { rows: typeof overdueRows; actionLabel?: string }) {
   return (
     <TableWrapper>
       <TableHeader>
@@ -121,7 +121,7 @@ function OverdueTable({ rows }: { rows: typeof overdueRows }) {
             {/* Actions */}
             <TableCell className={cellClass}>
               <Button variant="secondary" size="sm" className="h-7 text-xs px-3">
-                Send Reminder
+                {actionLabel}
               </Button>
             </TableCell>
           </TableRow>
@@ -191,7 +191,7 @@ export function DashboardTablesRow() {
             value="pending"
             className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
           >
-            Pending Approvals
+            Pending Disposals
             <span className={cn(
               "text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors",
               "group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground",
@@ -203,11 +203,11 @@ export function DashboardTablesRow() {
         </TabsList>
 
         <TabsContent value="overdue">
-          <OverdueTable rows={overdueRows} />
+          <OverdueTable rows={overdueRows} actionLabel="Send Reminder" />
         </TabsContent>
 
         <TabsContent value="pending">
-          <OverdueTable rows={pendingRows} />
+          <OverdueTable rows={pendingRows} actionLabel="Initiate Disposal" />
         </TabsContent>
       </Tabs>
 
