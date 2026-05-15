@@ -1,14 +1,16 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { fetchReportPreview } from '@/actions/standard-reports';
+import { deleteReportTemplate } from '@/actions/report-templates';
 import {
   DEFAULT_FILTER_STATE,
-  TEMPLATE_PRESETS,
   type FilterState,
   type ReportPreviewRow,
-} from './standard-reports-types';
+  type ReportTemplateData,
+} from '@/types/standard-reports';
 import { StandardReportsConfigPanel } from './standard-reports-config-panel';
 import { StandardReportsPreviewPanel } from './standard-reports-preview-panel';
 
@@ -19,10 +21,14 @@ interface StandardReportsShellProps {
     locations: string[];
     statuses: string[];
   };
+  templates: ReportTemplateData[];
 }
 
-export function StandardReportsShell({ filterOptions }: StandardReportsShellProps) {
+export function StandardReportsShell({ filterOptions, templates }: StandardReportsShellProps) {
+  const router = useRouter();
+
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
+  const [resetKey, setResetKey] = useState(0);
   const [showDataGrid, setShowDataGrid] = useState(false);
   const [previewData, setPreviewData] = useState<ReportPreviewRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +46,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
         category: filters.category,
         location: filters.location,
         status: filters.status,
+        masterDataType: filters.masterDataType,
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
       });
@@ -58,23 +65,24 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
 
   // Called when a template card's "Preview report" button is clicked
   const handleTemplatePreview = useCallback(
-    (templateTitle: string) => {
-      const preset = TEMPLATE_PRESETS[templateTitle];
-      if (!preset) return;
+    (templateId: number) => {
+      const template = templates.find((t) => t.id === templateId);
+      if (!template) return;
 
+      // Map template filters to FilterState
       const nextFilterState: FilterState = {
         ...DEFAULT_FILTER_STATE,
-        source: preset.source ?? DEFAULT_FILTER_STATE.source,
-        assetType: preset.category ?? DEFAULT_FILTER_STATE.assetType,
-        category: DEFAULT_FILTER_STATE.category,
-        location: preset.location ?? DEFAULT_FILTER_STATE.location,
-        status: preset.status ?? DEFAULT_FILTER_STATE.status,
+        source: 'Asset Registry', // Default source for preview
+        category: template.filters?.category ?? DEFAULT_FILTER_STATE.category,
+        location: template.filters?.location ?? DEFAULT_FILTER_STATE.location,
+        status: template.filters?.status ?? DEFAULT_FILTER_STATE.status,
+        assetType: template.filters?.assetType ?? DEFAULT_FILTER_STATE.assetType,
       };
 
       setFilterState(nextFilterState);
       void loadPreview(nextFilterState);
     },
-    [loadPreview]
+    [loadPreview, templates]
   );
 
   // Called when the sidebar's "Preview report" footer button is clicked
@@ -85,6 +93,7 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
   // Called when the "Clear filters" button is clicked
   const handleClearFilters = useCallback(() => {
     setFilterState(DEFAULT_FILTER_STATE);
+    setResetKey((prev) => prev + 1);
     setShowDataGrid(false);
     setPreviewData([]);
     setErrorMessage(null);
@@ -100,6 +109,15 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
         if (field === 'assetType') {
           next.category = '';
         }
+
+        // Reset filters when source changes
+        if (field === 'source') {
+          next.assetType = '';
+          next.category = '';
+          next.location = '';
+          next.status = '';
+          next.masterDataType = '';
+        }
         
         return next;
       });
@@ -107,16 +125,43 @@ export function StandardReportsShell({ filterOptions }: StandardReportsShellProp
     []
   );
 
+  // Called when a template is deleted
+  const handleTemplateDelete = useCallback(
+    async (templateId: number) => {
+      try {
+        const result = await deleteReportTemplate(templateId);
+        if (result.success) {
+          // Re-fetch triggers implicitly due to revalidatePath in action
+          router.refresh();
+        } else {
+          setErrorMessage(result.message || 'Failed to delete template');
+        }
+      } catch {
+        setErrorMessage('An unexpected error occurred while deleting the template.');
+      }
+    },
+    [router]
+  );
+
+  // Called after a new template is created — refresh server data
+  const handleTemplateCreated = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
   return (
     <div className="flex h-full flex-1 flex-col gap-6 overflow-hidden bg-muted p-1">
       <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[524px_minmax(0,1fr)]">
         <StandardReportsConfigPanel
+          resetKey={resetKey}
           filterState={filterState}
           filterOptions={filterOptions}
+          templates={templates}
           onFilterChange={handleFilterChange}
           onTemplatePreview={handleTemplatePreview}
+          onTemplateDelete={handleTemplateDelete}
           onManualPreview={handleManualPreview}
           onClearFilters={handleClearFilters}
+          onTemplateCreated={handleTemplateCreated}
           isLoading={isLoading}
         />
         <StandardReportsPreviewPanel
