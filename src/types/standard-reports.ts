@@ -95,11 +95,34 @@ export const REPORT_DATA_SOURCES = [
   'Disposal Records',
   'Software Licenses',
   'Audit Logs',
+  'Master Data',
 ] as const;
 
 // ---------------------------------------------------------------------------
 // Available report fields for template configuration
 // ---------------------------------------------------------------------------
+
+export const REPORT_FIELD_OPTIONS_BY_SOURCE: Record<string, string[]> = {
+  'Assets': [
+    'Asset ID', 'Asset Name', 'Category', 'Brand', 'Model', 'Serial Number',
+    'Status', 'Location', 'Assigned To', 'Purchase Date', 'Purchase Cost', 'Warranty Expiry'
+  ],
+  'Maintenance Records': [
+    'Record ID', 'Asset Tag', 'Maintenance Type', 'Scheduled Date', 'Completed Date', 'Cost', 'Technician', 'Status'
+  ],
+  'Disposal Records': [
+    'Disposal ID', 'Asset Tag', 'Disposal Type', 'Date', 'Method', 'Salvage Value', 'Certificate'
+  ],
+  'Software Licenses': [
+    'License ID', 'Software Name', 'Publisher', 'Total Seats', 'Used Seats', 'Expiry Date', 'Cost'
+  ],
+  'Audit Logs': [
+    'Log ID', 'Timestamp', 'User', 'Action', 'Entity Type', 'Entity ID', 'Details'
+  ],
+  'Master Data': [
+    'Record ID', 'Type', 'Name', 'Description', 'Status', 'CreatedAt', 'UpdatedAt'
+  ]
+};
 
 export const REPORT_FIELD_OPTIONS = [
   'Asset ID',

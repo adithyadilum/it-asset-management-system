@@ -36,6 +36,7 @@ import { createReportTemplate } from '@/actions/report-templates';
 import {
   REPORT_DATA_SOURCES,
   REPORT_FIELD_OPTIONS,
+  REPORT_FIELD_OPTIONS_BY_SOURCE,
 } from '@/types/standard-reports';
 import { FilterRow } from './standard-reports-page';
 
@@ -171,9 +172,10 @@ export function CreateTemplateDialog({
   ]);
 
   // Split fields into two columns for the checkbox grid
-  const midpoint = Math.ceil(REPORT_FIELD_OPTIONS.length / 2);
-  const leftFields = REPORT_FIELD_OPTIONS.slice(0, midpoint);
-  const rightFields = REPORT_FIELD_OPTIONS.slice(midpoint);
+  const currentOptions = dataSource && REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] ? REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] : REPORT_FIELD_OPTIONS;
+  const midpoint = Math.ceil(currentOptions.length / 2);
+  const leftFields = currentOptions.slice(0, midpoint);
+  const rightFields = currentOptions.slice(midpoint);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -245,7 +247,10 @@ export function CreateTemplateDialog({
               <Label className="text-sm font-medium">
                 Primary Data Source:
               </Label>
-              <Select value={dataSource} onValueChange={setDataSource}>
+              <Select value={dataSource} onValueChange={(val) => {
+                setDataSource(val);
+                setSelectedFields([]); // Clear fields when source changes
+              }}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Choose source" />
                 </SelectTrigger>
