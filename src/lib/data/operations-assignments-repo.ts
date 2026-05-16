@@ -416,7 +416,7 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-    .where(isNotNull(assetAssignments.returnedDate))
+    .where(and(isNotNull(assetAssignments.returnedDate), eq(assets.status, 'Returned')))
     .orderBy(
       desc(assetAssignments.returnedDate),
       desc(assetAssignments.assignedDate)
@@ -831,7 +831,7 @@ export async function triggerReturnRequests(
 
 /**
  * Marks assets as received and updates state to 'returned'.
- * This also updates the asset status back to 'Available'.
+ * This also updates the asset status to 'Returned' (pending inspection).
  */
 export async function markAssignmentsAsReceived(
   assignmentIds: number[],
@@ -868,11 +868,11 @@ export async function markAssignmentsAsReceived(
       })
       .where(inArray(assetAssignments.id, activeAssignmentIds));
 
-    // Update assets status back to 'Available'
+    // Update assets status to 'Returned' (pending condition check)
     if (assetIds.length > 0) {
       await tx
         .update(assets)
-        .set({ status: 'Available', updatedAt: new Date() })
+        .set({ status: 'Returned', updatedAt: new Date() })
         .where(inArray(assets.id, assetIds));
     }
 
@@ -885,7 +885,7 @@ export async function markAssignmentsAsReceived(
           actionType: 'RETURN',
           performedById,
           oldData: { status: 'Assigned' },
-          newData: { status: 'Available' },
+          newData: { status: 'Returned' },
         })
       )
     );
