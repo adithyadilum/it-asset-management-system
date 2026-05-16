@@ -19,11 +19,8 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import {
-  FilterRow,
-  ReportTemplateCard,
-  SOURCE_OPTIONS,
-} from '@/components/features/standard-reports/standard-reports-page';
+import { FilterRow, SOURCE_OPTIONS } from '@/components/features/standard-reports/standard-reports-page';
+import { ReportTemplateCard } from '@/components/features/standard-reports/report-template-card';
 import type { FilterState, ReportTemplateData } from '@/types/standard-reports';
 import { CreateTemplateDialog } from './create-template-dialog';
 
