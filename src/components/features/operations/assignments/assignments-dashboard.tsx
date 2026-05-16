@@ -469,7 +469,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
 
     return (
-      <div className="flex flex-1 flex-col min-h-0 gap-4">
+      <div className="flex flex-col gap-4 flex-1 overflow-hidden min-h-0 mt-1">
         <FilterBar
           searchQuery={searchValue}
           onSearchChange={setSearchValue}
@@ -486,7 +486,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
           data={rows}
           onRowClick={customRowClick ?? handleRowClick}
           initialPageSize={10}
-          className="rounded-lg border-slate-200"
+          className="flex-1 min-h-0 rounded-lg border border-slate-200"
           selectionActions={actions}
           selectionLabel={(count) => `${count} Assets Selected`}
           rowSelection={rowSelection}
@@ -507,7 +507,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
             </h1>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
+            <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
             <ModuleNavigationTabs
               tabs={tabs}
               defaultTab="available-assets"
@@ -519,15 +519,15 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
               }}
               containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
             >
-              <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
-              </TabsContent>
+                <TabsContent value="available-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
+                  {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
+                </TabsContent>
 
-              <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
-              </TabsContent>
+                <TabsContent value="assigned-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
+                  {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
+                </TabsContent>
 
-              <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
+                <TabsContent value="returned-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
                 {renderTable(filteredReturnedRows, undefined, false, handleReturnedAssetClick, true)}
               </TabsContent>
             </ModuleNavigationTabs>
