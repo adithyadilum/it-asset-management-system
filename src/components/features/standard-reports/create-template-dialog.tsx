@@ -19,7 +19,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -480,7 +479,7 @@ export function CreateTemplateDialog({
           </div>
         )}
 
-        <DialogFooter className="px-6 py-4 gap-2 sm:gap-2">
+        <div className="flex items-center justify-end gap-2 border-t bg-muted/50 px-6 py-4">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
@@ -491,7 +490,7 @@ export function CreateTemplateDialog({
           <Button onClick={handleSubmit} disabled={isPending}>
             {isPending ? 'Saving...' : 'Save Template'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
