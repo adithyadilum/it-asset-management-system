@@ -99,7 +99,8 @@ export function ReportTemplateCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
                   <DropdownMenuItem
-                    className="text-destructive focus:text-destructive cursor-pointer"
+                    variant="destructive"
+                    className="group cursor-pointer transition-colors hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 [&>svg]:text-red-600 hover:[&>svg]:text-red-700 focus:[&>svg]:text-red-700"
                     onClick={() => setShowDeleteDialog(true)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
