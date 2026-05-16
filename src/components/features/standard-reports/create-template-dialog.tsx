@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Card,
   CardContent,
@@ -183,7 +184,7 @@ export function CreateTemplateDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[660px] max-h-[90vh] flex flex-col gap-0 p-0">
+      <DialogContent className="sm:max-w-[660px] h-[90vh] max-h-[90vh] flex flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-xl font-semibold">
             Add New Template
@@ -193,8 +194,9 @@ export function CreateTemplateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6">
-          <div className="flex flex-col gap-6 py-4">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="flex-1 min-h-0 h-full overflow-hidden px-6">
+            <div className="flex flex-col gap-6 py-4 pr-4">
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className={TYPOGRAPHY_CLASSNAMES.textSmSemiBold}>
@@ -439,35 +441,36 @@ export function CreateTemplateDialog({
               </div>
             </div>
 
-            {/* Sort */}
-            <div className="space-y-3">
-              <h3 className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Sort:</h3>
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2.5 text-sm cursor-pointer">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    value="asc"
-                    checked={sortDirection === 'asc'}
-                    onChange={() => setSortDirection('asc')}
-                    className="accent-primary h-4 w-4"
-                  />
-                  Ascending
-                </label>
-                <label className="flex items-center gap-2.5 text-sm cursor-pointer">
-                  <input
-                    type="radio"
-                    name="sortDirection"
-                    value="desc"
-                    checked={sortDirection === 'desc'}
-                    onChange={() => setSortDirection('desc')}
-                    className="accent-primary h-4 w-4"
-                  />
-                  Descending
-                </label>
+              {/* Sort */}
+              <div className="space-y-3">
+                <h3 className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Sort:</h3>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="sortDirection"
+                      value="asc"
+                      checked={sortDirection === 'asc'}
+                      onChange={() => setSortDirection('asc')}
+                      className="accent-primary h-4 w-4"
+                    />
+                    Ascending
+                  </label>
+                  <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="sortDirection"
+                      value="desc"
+                      checked={sortDirection === 'desc'}
+                      onChange={() => setSortDirection('desc')}
+                      className="accent-primary h-4 w-4"
+                    />
+                    Descending
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
+          </ScrollArea>
         </div>
 
         {/* Error display */}
