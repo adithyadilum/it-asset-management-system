@@ -158,9 +158,22 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     return [...categories].sort((left, right) => left.localeCompare(right));
   }, [assetRows]);
 
+  const statusOptions = useMemo(() => {
+    const statuses = new Set<string>();
+
+    for (const row of assetRows) {
+      if (row.state && row.state.trim().length > 0) {
+        statuses.add(row.state);
+      }
+    }
+
+    return [...statuses].sort((left, right) => left.localeCompare(right));
+  }, [assetRows]);
+
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => [
     { value: 'Category', label: 'Category', options: categoryOptions },
-  ], [categoryOptions]);
+    { value: 'Status', label: 'Status', options: statusOptions },
+  ], [categoryOptions, statusOptions]);
 
   const searchedAssetRows = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -192,6 +205,10 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       return appliedFilters.every((filter) => {
         if (filter.field === 'Category') {
           const matches = row.category === filter.value;
+          return filter.operator === "is" ? matches : !matches;
+        }
+        if (filter.field === 'Status') {
+          const matches = row.state === filter.value;
           return filter.operator === "is" ? matches : !matches;
         }
         return true;
