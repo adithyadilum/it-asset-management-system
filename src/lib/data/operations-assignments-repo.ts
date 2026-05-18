@@ -75,6 +75,10 @@ export interface BulkAssignAssetsInput {
   notes?: string;
 }
 
+import {
+  type ProcessReturnPayload
+} from '@/lib/validations/asset-assignment';
+
 export interface AssignmentMutationResult {
   assignedAssetIds: string[];
   assignedCount: number;
@@ -412,7 +416,7 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-    .where(isNotNull(assetAssignments.returnedDate))
+    .where(and(isNotNull(assetAssignments.returnedDate), eq(assets.status, 'Returned')))
     .orderBy(
       desc(assetAssignments.returnedDate),
       desc(assetAssignments.assignedDate)
@@ -827,7 +831,7 @@ export async function triggerReturnRequests(
 
 /**
  * Marks assets as received and updates state to 'returned'.
- * This also updates the asset status back to 'Available'.
+ * This also updates the asset status to 'Returned' (pending inspection).
  */
 export async function markAssignmentsAsReceived(
   assignmentIds: number[],
@@ -864,11 +868,11 @@ export async function markAssignmentsAsReceived(
       })
       .where(inArray(assetAssignments.id, activeAssignmentIds));
 
-    // Update assets status back to 'Available'
+    // Update assets status to 'Returned' (pending condition check)
     if (assetIds.length > 0) {
       await tx
         .update(assets)
-        .set({ status: 'Available', updatedAt: new Date() })
+        .set({ status: 'Returned', updatedAt: new Date() })
         .where(inArray(assets.id, assetIds));
     }
 
@@ -881,7 +885,7 @@ export async function markAssignmentsAsReceived(
           actionType: 'RETURN',
           performedById,
           oldData: { status: 'Assigned' },
-          newData: { status: 'Available' },
+          newData: { status: 'Returned' },
         })
       )
     );
@@ -919,4 +923,65 @@ export async function acceptAssignment(assignmentId: number): Promise<void> {
         eq(assetAssignments.state, 'pending approval')
       )
     );
+}
+
+/**
+ * Processes a returned asset with physical condition check.
+ */
+export async function processAssetReturn(
+  input: ProcessReturnPayload,
+  performedById: string
+): Promise<void> {
+  const asset = await db
+    .select({
+      id: assets.id,
+      assetTag: assets.assetTag,
+      status: assets.status,
+    })
+    .from(assets)
+    .where(eq(assets.id, input.assetId))
+    .limit(1)
+    .then((res) => res[0]);
+
+  if (!asset) {
+    throw new AssignmentServiceError('Asset not found', 404, 'ASSET_NOT_FOUND');
+  }
+
+  let newStatus: string;
+  switch (input.condition) {
+    case 'Good Working Condition':
+      newStatus = 'Available';
+      break;
+    case 'Minor Issues':
+    case 'Needs Repair':
+      newStatus = 'In Repair';
+      break;
+    case 'Beyond Repair':
+      newStatus = 'Pending Disposal';
+      break;
+    default:
+      newStatus = 'Available';
+  }
+
+  await db.transaction(async (tx) => {
+    // 1. Update asset status
+    await tx
+      .update(assets)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(eq(assets.id, input.assetId));
+
+    // 2. We assume the asset assignment is already in 'returned' state, or we update it here.
+    // If we need to mark it returned, we could do it. However, the user story implies it's ALREADY in 
+    // the "Returned Assets" pool, which means `state = returned`, `returnedDate` is NOT NULL. 
+
+    // 3. Log Audit Action with condition notes
+    await logAuditActionTx(tx, {
+      entityType: 'Asset',
+      entityId: input.assetId,
+      actionType: 'STATUS_CHANGE',
+      performedById,
+      oldData: { status: asset.status },
+      newData: { status: newStatus, notes: input.notes, condition: input.condition },
+    });
+  });
 }
