@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import {
   Card,
   CardContent,
@@ -83,6 +84,18 @@ export function CreateTemplateDialog({
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+
+  const typeToPillarMap: Record<string, string> = {
+    Hardware: 'IT & Digital',
+    Software: 'Software',
+    Electronics: 'Office Electronics',
+    Furniture: 'Office Furniture',
+  };
+
+  const selectedPillar = typeToPillarMap[assetType];
+  const filteredCategories = filterOptions.categories.filter(
+    (categoryOption) => !selectedPillar || categoryOption.pillar === selectedPillar
+  );
 
   const resetForm = useCallback(() => {
     setName('');
@@ -285,7 +298,10 @@ export function CreateTemplateDialog({
                     <FilterRow label="Asset Type">
                       <Select
                         value={assetType}
-                        onValueChange={setAssetType}
+                        onValueChange={(value) => {
+                          setAssetType(value);
+                          setCategory('');
+                        }}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="All Assets" />
@@ -355,18 +371,16 @@ export function CreateTemplateDialog({
                     </FilterRow>
 
                     <FilterRow label="Category">
-                      <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filterOptions.categories.map((cat) => (
-                            <SelectItem key={cat.name} value={cat.name}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableDropdown
+                        defaultValue={category}
+                        onSelect={setCategory}
+                        placeholder={assetType ? 'Select a Category' : 'Choose an asset type first'}
+                        emptyMessage={assetType ? 'No category found.' : 'Select an asset type first.'}
+                        options={filteredCategories.map((cat) => ({
+                          value: cat.name,
+                          label: cat.name,
+                        }))}
+                      />
                     </FilterRow>
 
                     <FilterRow label="Location">
