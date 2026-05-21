@@ -127,7 +127,7 @@ export function StandardReportsConfigPanel({
               className="h-full cursor-pointer items-center justify-center border-dashed border-border bg-background text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
               onClick={() => setDialogOpen(true)}
             >
-              <CardContent className="flex min-h-44 flex-col items-center justify-center gap-4 p-4 text-center">
+              <CardContent className="flex flex-col items-center justify-center gap-4 p-4 text-center">
                 <Plus className="size-6 text-foreground" />
                 <div className="space-y-1.5">
                   <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
