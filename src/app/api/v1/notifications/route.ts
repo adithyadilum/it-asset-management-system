@@ -1,11 +1,9 @@
-//src/app/api/v1/notifications/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 import { getUserNotifications } from '@/lib/notifications/services';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated user
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
@@ -15,12 +13,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100);
     const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
 
-    // Fetch notifications
     const notifications = await getUserNotifications(
       user.id,
       limit,

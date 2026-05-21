@@ -2,7 +2,6 @@
 
 import {
     Ban,
-    Bell,
     Menu,
     PanelLeftClose,
     PanelLeftOpen,
@@ -32,6 +31,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useSidebar } from '@/components/ui/sidebar';
 import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
+import { NotificationBell } from '@/components/features/notifications/notification-bell';
 
 const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
     '/dashboard': 'Dashboard',
@@ -191,20 +191,12 @@ export function TopHeader({ user }: TopHeaderProps) {
             {/* Right Column: Avatar & User Info */}
             <div className="flex items-center justify-end md:gap-4 md:px-2">
                 {/* Desktop: Bell Icon & Separator */}
-                <div className="hidden w-13 items-center justify-between md:flex">
-                    <button
-                        type="button"
-                        aria-label="Notifications"
-                        className="flex h-7 w-7 items-center justify-center"
-                    >
-                        <Bell className="h-4 w-4 text-slate-500" />
-                    </button>
-                    <div className="flex items-center px-2">
-                        <Separator
-                            orientation="vertical"
-                            className="h-4.25 w-px bg-slate-200"
-                        />
-                    </div>
+                <NotificationBell />
+                <div className="flex items-center px-2">
+                    <Separator
+                        orientation="vertical"
+                        className="h-4.25 w-px bg-slate-200"
+                    />
                 </div>
 
                 <DropdownMenu>

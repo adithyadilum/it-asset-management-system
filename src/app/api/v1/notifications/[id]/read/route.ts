@@ -1,14 +1,12 @@
-//src/app/api/v1/notifications/[id]/read/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 import { markNotificationAsRead } from '@/lib/notifications/services';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get authenticated user
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
@@ -18,7 +16,7 @@ export async function PATCH(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -27,7 +25,6 @@ export async function PATCH(
       );
     }
 
-    // Mark notification as read
     await markNotificationAsRead(id);
 
     return NextResponse.json(
