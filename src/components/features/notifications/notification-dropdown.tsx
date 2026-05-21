@@ -15,9 +15,9 @@ interface NotificationDropdownProps {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
-  onFetchNotifications: (limit: number, offset: number) => void;
-  onMarkAsRead: (id: string) => void;
-  onMarkAllAsRead: () => void;
+  onFetchNotifications: (limit: number, offset: number) => Promise<void>;
+  onMarkAsRead: (id: string) => Promise<void>;
+  onMarkAllAsRead: () => Promise<void>;
 }
 
 export function NotificationDropdown({
