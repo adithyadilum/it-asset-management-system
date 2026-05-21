@@ -1,9 +1,6 @@
 'use client';
 
-import { Database, FileText, HardDrive, Monitor, ScrollText, Wrench } from 'lucide-react';
 import { type ReactNode } from 'react';
-import { ReportTemplateCard } from './report-template-card';
-import type { ReportTemplateData } from '@/types/standard-reports';
 
 export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
 

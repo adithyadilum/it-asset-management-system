@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useState, useTransition, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,11 +33,12 @@ import {
 import { ListFilter } from 'lucide-react';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
-import { createReportTemplate } from '@/actions/report-templates';
+import { createReportTemplate, updateReportTemplate } from '@/actions/report-templates';
 import {
   REPORT_DATA_SOURCES,
   REPORT_FIELD_OPTIONS,
   REPORT_FIELD_OPTIONS_BY_SOURCE,
+  type ReportTemplateData,
 } from '@/types/standard-reports';
 import { FilterRow } from './standard-reports-page';
 
@@ -51,6 +52,7 @@ interface CreateTemplateDialogProps {
     locations: string[];
     statuses: string[];
   };
+  editingTemplate?: ReportTemplateData;
 }
 
 export function CreateTemplateDialog({
@@ -58,6 +60,7 @@ export function CreateTemplateDialog({
   onOpenChange,
   onCreated,
   filterOptions,
+  editingTemplate,
 }: CreateTemplateDialogProps) {
   const [isPending, startTransition] = useTransition();
 
@@ -84,6 +87,40 @@ export function CreateTemplateDialog({
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+
+  const resetForm = useCallback(() => {
+    setName('');
+    setDescription('');
+    setIsActive(true);
+    setDataSource('');
+    setAssetType('');
+    setCategory('');
+    setLocation('');
+    setStatus('');
+    setMasterDataType('');
+    setSelectedFields([]);
+    setSortDirection('asc');
+    setError(null);
+  }, []);
+
+  useEffect(() => {
+    if (open && editingTemplate) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setName(editingTemplate.name);
+      setDescription(editingTemplate.description || '');
+      setIsActive(editingTemplate.isActive);
+      setDataSource(editingTemplate.dataSource);
+      setAssetType(editingTemplate.filters?.assetType || '');
+      setCategory(editingTemplate.filters?.category || '');
+      setLocation(editingTemplate.filters?.location || '');
+      setStatus(editingTemplate.filters?.status || '');
+      setMasterDataType(editingTemplate.filters?.masterDataType || '');
+      setSelectedFields(editingTemplate.fields || []);
+      setSortDirection((editingTemplate.sortDirection as 'asc' | 'desc') || 'asc');
+    } else if (open && !editingTemplate) {
+      resetForm();
+    }
+  }, [open, editingTemplate, resetForm]);
 
   const typeToPillarMap: Record<string, string> = {
     Hardware: 'IT & Digital',
@@ -115,21 +152,6 @@ export function CreateTemplateDialog({
     { value: 'vendors', label: 'Vendors' },
     { value: 'owners', label: 'Owners' },
   ];
-
-  const resetForm = useCallback(() => {
-    setName('');
-    setDescription('');
-    setIsActive(true);
-    setDataSource('');
-    setAssetType('');
-    setCategory('');
-    setLocation('');
-    setStatus('');
-    setMasterDataType('');
-    setSelectedFields([]);
-    setSortDirection('asc');
-    setError(null);
-  }, []);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -166,7 +188,7 @@ export function CreateTemplateDialog({
     }
 
     startTransition(async () => {
-      const result = await createReportTemplate({
+      const templateData = {
         name: name.trim(),
         description: description.trim() || undefined,
         isActive,
@@ -180,7 +202,11 @@ export function CreateTemplateDialog({
         },
         fields: selectedFields,
         sortDirection,
-      });
+      };
+
+      const result = editingTemplate
+        ? await updateReportTemplate(editingTemplate.id, templateData)
+        : await createReportTemplate(templateData);
 
       if (result.success) {
         resetForm();
@@ -202,9 +228,10 @@ export function CreateTemplateDialog({
     masterDataType,
     selectedFields,
     sortDirection,
-    resetForm,
     onOpenChange,
     onCreated,
+    editingTemplate,
+    resetForm,
   ]);
 
   // Split fields into two columns for the checkbox grid
@@ -218,10 +245,10 @@ export function CreateTemplateDialog({
       <DialogContent className="sm:max-w-[660px] h-[90vh] max-h-[90vh] flex flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-xl font-semibold">
-            Add New Template
+            {editingTemplate ? 'Update Report Template' : 'Add New Template'}
           </DialogTitle>
           <DialogDescription>
-            Create and configure reusable report templates with custom filters.
+            {editingTemplate ? 'Update the details for this report template.' : 'Create and configure reusable report templates with custom filters.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -497,7 +524,7 @@ export function CreateTemplateDialog({
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? 'Saving...' : 'Save Template'}
+            {isPending ? 'Saving...' : editingTemplate ? 'Update Template' : 'Save Template'}
           </Button>
         </div>
       </DialogContent>

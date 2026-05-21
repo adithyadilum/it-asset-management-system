@@ -58,6 +58,7 @@ export function StandardReportsConfigPanel({
   resetKey,
 }: StandardReportsConfigPanelProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<ReportTemplateData | undefined>();
 
   // Map UI Asset Types to DB Pillars for filtering category options
   const typeToPillarMap: Record<string, string> = {
@@ -118,6 +119,10 @@ export function StandardReportsConfigPanel({
                 key={template.id}
                 template={template}
                 onPreviewClick={onTemplatePreview}
+                onEditClick={(template) => {
+                  setEditingTemplate(template);
+                  setDialogOpen(true);
+                }}
                 onDeleteClick={onTemplateDelete}
               />
             ))}
@@ -125,7 +130,10 @@ export function StandardReportsConfigPanel({
             <Card
               size="sm"
               className="h-full cursor-pointer items-center justify-center border-dashed border-border bg-background text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
-              onClick={() => setDialogOpen(true)}
+              onClick={() => {
+                setEditingTemplate(undefined);
+                setDialogOpen(true);
+              }}
             >
               <CardContent className="flex flex-col items-center justify-center gap-4 p-4 text-center">
                 <Plus className="size-6 text-foreground" />
@@ -296,6 +304,7 @@ export function StandardReportsConfigPanel({
         onOpenChange={setDialogOpen}
         onCreated={onTemplateCreated}
         filterOptions={filterOptions}
+        editingTemplate={editingTemplate}
       />
     </div>
   );

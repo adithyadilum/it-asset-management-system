@@ -164,6 +164,99 @@ export async function createReportTemplate(
 }
 
 // ---------------------------------------------------------------------------
+// Update a report template
+// ---------------------------------------------------------------------------
+export async function updateReportTemplate(
+  id: number,
+  data: {
+    name: string;
+    description?: string;
+    isActive: boolean;
+    dataSource: string;
+    filters: {
+      assetType?: string;
+      category?: string;
+      location?: string;
+      status?: string;
+      masterDataType?: string;
+    };
+    fields: string[];
+    sortDirection: string;
+  }
+): Promise<CreateReportTemplateResult> {
+  const actionTimer = startLatencyTimer();
+
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return {
+      success: false,
+      message: 'Forbidden: You do not have permission to update report templates.',
+    };
+  }
+
+  // Validate input
+  const parsed = reportTemplateSchema.safeParse(data);
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]?.message ?? 'Invalid input.';
+    return { success: false, message: firstError };
+  }
+
+  try {
+    const updated = await db
+      .update(reportTemplates)
+      .set({
+        name: parsed.data.name,
+        description: parsed.data.description || null,
+        isActive: parsed.data.isActive,
+        dataSource: parsed.data.dataSource,
+        filters: parsed.data.filters,
+        fields: parsed.data.fields,
+        sortDirection: parsed.data.sortDirection,
+      })
+      .where(sql`${reportTemplates.id} = ${id}`)
+      .returning({
+        id: reportTemplates.id,
+        name: reportTemplates.name,
+      });
+
+    if (updated.length === 0) {
+      return { success: false, message: 'Failed to update report template.' };
+    }
+
+    await logAuditAction({
+      entityType: 'report-template',
+      entityId: updated[0].id.toString(),
+      actionType: 'UPDATE',
+      performedById: currentUser.id,
+      newData: updated[0] as unknown as Record<string, unknown>,
+    });
+
+    revalidatePath('/reports/standard-reports');
+
+    return {
+      success: true,
+      message: 'Report template updated successfully.',
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'reportTemplates.updateReportTemplate',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Database error: failed to update report template.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'reportTemplates.updateReportTemplate',
+      startTime: actionTimer,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Delete a report template
 // ---------------------------------------------------------------------------
 export async function deleteReportTemplate(id: number): Promise<{ success: boolean; message: string }> {
