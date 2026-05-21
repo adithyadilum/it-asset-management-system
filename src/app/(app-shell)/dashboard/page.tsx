@@ -1,5 +1,9 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
+import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
+import { KpiMetricsRow } from "@/components/features/dashboard/admin/kpi-metrics-row"
+import { DashboardChartsRow } from "@/components/features/dashboard/admin/dashboard-charts-row"
+import { DashboardTablesRow } from "@/components/features/dashboard/admin/dashboard-tables-row"
 import { AssetCard } from "@/components/shared/asset-card"
 import {
     Empty,
@@ -92,14 +96,22 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <div className="grid gap-4 md:grid-cols-3">
-                <div className="h-49.5 rounded-md bg-muted" />
-                <div className="h-49.5 rounded-md bg-muted" />
-                <div className="h-49.5 rounded-md bg-muted" />
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white overflow-hidden">
+
+            {/* Pinned header */}
+            <div className="shrink-0 px-6 pt-5 pb-3 border-b border-border">
+                <DashboardHeader />
             </div>
 
-            <div className="min-h-0 flex-1 rounded-md bg-muted" />
-        </div>
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
+                <KpiMetricsRow />
+
+                <div className="flex flex-col gap-4">
+                    <DashboardChartsRow />
+                    <DashboardTablesRow />
+                </div>
+            </div>
+        </main>
     )
 }

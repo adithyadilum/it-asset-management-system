@@ -15,12 +15,14 @@ import {
   triggerAssignmentReminders,
   triggerReturnRequests,
   markAssignmentsAsReceived,
+  processAssetReturn,
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import { processReturnPayloadSchema, type ProcessReturnPayload } from '@/lib/validations/asset-assignment';
 
 export interface AssignmentActionResult {
   success: boolean;
@@ -292,6 +294,42 @@ export async function markAssetReceivedAction(
     logLatency({
       scope: 'ACTION',
       label: 'assignments.markAssetReceivedAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function processAssetReturnAction(
+  input: ProcessReturnPayload
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult('Forbidden: You do not have permission to process asset returns.');
+  }
+
+  try {
+    processReturnPayloadSchema.parse(input);
+    
+    await processAssetReturn(input, currentUser.id);
+
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.processAssetReturnAction',
+      error,
+      metadata: { assetId: input.assetId },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.processAssetReturnAction',
       startTime: actionTimer,
     });
   }

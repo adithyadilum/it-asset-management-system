@@ -42,6 +42,17 @@ export const bulkAssignAssetsPayloadSchema = z.object({
   notes: notesSchema,
 });
 
+export const processReturnPayloadSchema = z.object({
+  assetId: z.string().uuid(),
+  condition: z.enum([
+    'Good Working Condition',
+    'Minor Issues',
+    'Needs Repair',
+    'Beyond Repair'
+  ]),
+  notes: z.string().optional(),
+});
+
 export const operationsAssignmentsQuerySchema = z.object({
   tab: z.enum(['available', 'assigned', 'returned']).optional(),
 });
@@ -50,3 +61,4 @@ export type AssignAssetPayload = z.infer<typeof assignAssetPayloadSchema>;
 export type BulkAssignAssetsPayload = z.infer<
   typeof bulkAssignAssetsPayloadSchema
 >;
+export type ProcessReturnPayload = z.infer<typeof processReturnPayloadSchema>;
