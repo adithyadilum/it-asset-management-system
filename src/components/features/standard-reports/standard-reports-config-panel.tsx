@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import {
   Select,
   SelectContent,
@@ -72,6 +73,30 @@ export function StandardReportsConfigPanel({
     .filter((cat) => !selectedPillar || cat.pillar === selectedPillar)
     .map((cat) => cat.name)
     .sort();
+
+  const categoryOptions = filteredCategories.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const locationOptions = filterOptions.locations.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const statusOptions = filterOptions.statuses.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const masterDataTypeOptions = [
+    { value: 'asset-categories', label: 'Asset Categories' },
+    { value: 'locations', label: 'Locations' },
+    { value: 'brands', label: 'Brands' },
+    { value: 'device-models', label: 'Device Models' },
+    { value: 'vendors', label: 'Vendors' },
+    { value: 'owners', label: 'Owners' },
+  ];
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl gap-0 bg-background">
@@ -169,37 +194,23 @@ export function StandardReportsConfigPanel({
                 </FilterRow>
 
                 <FilterRow label="Record Type">
-                  <Select
-                    value={filterState.masterDataType || undefined}
-                    onValueChange={(value) => onFilterChange('masterDataType', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select Data Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="asset-categories">Asset Categories</SelectItem>
-                      <SelectItem value="locations">Locations</SelectItem>
-                      <SelectItem value="brands">Brands</SelectItem>
-                      <SelectItem value="device-models">Device Models</SelectItem>
-                      <SelectItem value="vendors">Vendors</SelectItem>
-                      <SelectItem value="owners">Owners</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    defaultValue={filterState.masterDataType}
+                    onSelect={(value) => onFilterChange('masterDataType', value)}
+                    placeholder="Select Data Type"
+                    emptyMessage="No record type found."
+                    options={masterDataTypeOptions}
+                  />
                 </FilterRow>
 
                 <FilterRow label="Status">
-                  <Select
-                    value={filterState.status || undefined}
-                    onValueChange={(value) => onFilterChange('status', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    defaultValue={filterState.status}
+                    onSelect={(value) => onFilterChange('status', value)}
+                    placeholder="Select a Status"
+                    emptyMessage="No status found."
+                    options={statusOptions}
+                  />
                 </FilterRow>
               </>
             ) : (
@@ -223,59 +234,41 @@ export function StandardReportsConfigPanel({
                 </FilterRow>
 
                 <FilterRow label="Category">
-                  <Select
-                    value={filterState.category || undefined}
-                    onValueChange={(value) => onFilterChange('category', value)}
-                    disabled={!filterState.assetType || filterState.assetType === 'All Assets'}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={!filterState.assetType || filterState.assetType === 'All Assets' ? 'Select Asset Type first' : 'All categories'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All categories">All categories</SelectItem>
-                      {filteredCategories.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    defaultValue={filterState.category}
+                    onSelect={(value) => onFilterChange('category', value)}
+                    placeholder={
+                      !filterState.assetType || filterState.assetType === 'All Assets'
+                        ? 'Select Asset Type first'
+                        : 'All categories'
+                    }
+                    emptyMessage={
+                      !filterState.assetType || filterState.assetType === 'All Assets'
+                        ? 'Select an asset type first.'
+                        : 'No category found.'
+                    }
+                    options={categoryOptions}
+                  />
                 </FilterRow>
 
                 <FilterRow label="Location">
-                  <Select
-                    value={filterState.location || undefined}
-                    onValueChange={(value) => onFilterChange('location', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.locations.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    defaultValue={filterState.location}
+                    onSelect={(value) => onFilterChange('location', value)}
+                    placeholder="Select a Location"
+                    emptyMessage="No location found."
+                    options={locationOptions}
+                  />
                 </FilterRow>
 
                 <FilterRow label="Status">
-                  <Select
-                    value={filterState.status || undefined}
-                    onValueChange={(value) => onFilterChange('status', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.statuses.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    defaultValue={filterState.status}
+                    onSelect={(value) => onFilterChange('status', value)}
+                    placeholder="Select a Status"
+                    emptyMessage="No status found."
+                    options={statusOptions}
+                  />
                 </FilterRow>
               </>
             )}
