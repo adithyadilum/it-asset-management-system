@@ -6,7 +6,7 @@ import type { Notification } from '@/hooks/use-notifications';
 
 interface NotificationItemProps {
   notification: Notification;
-  onMarkAsRead: (id: string) => void;
+  onMarkAsRead: (id: string) => Promise<void>;
 }
 
 export function NotificationItem({
@@ -28,12 +28,13 @@ export function NotificationItem({
   };
 
   return (
-    <div
+    <button
+      type="button"
       onClick={handleClick}
-      className={`border-b border-slate-100 px-4 py-3 cursor-pointer transition-colors ${
+      className={`w-full text-left border-b border-slate-100 px-4 py-3 transition-colors focus:outline-none ${
         !notification.isRead
-          ? 'bg-blue-50 hover:bg-blue-100'
-          : 'bg-white hover:bg-slate-50'
+          ? 'bg-blue-50 hover:bg-blue-100 focus:bg-blue-100/80'
+          : 'bg-white hover:bg-slate-50 focus:bg-slate-50'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -45,7 +46,7 @@ export function NotificationItem({
             {notification.message}
           </p>
           <span className="font-text-xs-regular text-xs text-slate-500 mt-2 inline-block">
-            {formatDistanceToNow(notification.createdAt, { addSuffix: true })}
+            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
           </span>
         </div>
 
@@ -55,6 +56,6 @@ export function NotificationItem({
           </div>
         )}
       </div>
-    </div>
+    </button>
   );
 }

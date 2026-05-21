@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
-import { getUserNotifications } from '@/lib/notifications/services';
+import { getUserNotifications, getUserNotificationsCount } from '@/lib/notifications/services';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,14 +14,16 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100);
-    const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
+    const rawLimit = parseInt(searchParams.get('limit') || '10', 10);
+    const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
+    
+    const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 10, 100);
+    const offset = Math.max(Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0, 0);
 
-    const notifications = await getUserNotifications(
-      user.id,
-      limit,
-      offset
-    );
+    const [notifications, total] = await Promise.all([
+      getUserNotifications(user.id, limit, offset),
+      getUserNotificationsCount(user.id),
+    ]);
 
     return NextResponse.json(
       {
@@ -30,7 +32,8 @@ export async function GET(request: NextRequest) {
         pagination: {
           limit,
           offset,
-          total: notifications.length,
+          total,
+          returned: notifications.length,
         },
       },
       { status: 200 }

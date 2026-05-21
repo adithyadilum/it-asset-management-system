@@ -25,12 +25,20 @@ export async function PATCH(
       );
     }
 
-    await markNotificationAsRead(id);
+    const updatedNotification = await markNotificationAsRead(id, user.id);
+
+    if (!updatedNotification) {
+      return NextResponse.json(
+        { error: 'Notification not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
       {
         success: true,
         message: 'Notification marked as read',
+        data: updatedNotification,
       },
       { status: 200 }
     );

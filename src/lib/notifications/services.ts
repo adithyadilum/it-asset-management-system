@@ -1,7 +1,7 @@
 //src/lib/notifications/services/index.ts
 import { db } from '@/db';
 import { appNotifications } from '@/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, count } from 'drizzle-orm';
 
 /**
  * Get all notifications for a user with pagination
@@ -28,12 +28,29 @@ export async function getUserNotifications(
 }
 
 /**
+ * Get total count of notifications for a user (for pagination)
+ */
+export async function getUserNotificationsCount(userId: string) {
+  try {
+    const [result] = await db
+      .select({ value: count() })
+      .from(appNotifications)
+      .where(eq(appNotifications.userId, userId));
+
+    return result?.value ?? 0;
+  } catch (error) {
+    console.error('Error fetching notifications count:', error);
+    throw new Error('Failed to fetch notifications count');
+  }
+}
+
+/**
  * Get count of unread notifications for a user
  */
 export async function getUnreadCount(userId: string) {
   try {
-    const result = await db
-      .select({ count: appNotifications.id })
+    const [result] = await db
+      .select({ value: count() })
       .from(appNotifications)
       .where(
         and(
@@ -42,7 +59,7 @@ export async function getUnreadCount(userId: string) {
         )
       );
 
-    return result.length;
+    return result?.value ?? 0;
   } catch (error) {
     console.error('Error fetching unread count:', error);
     throw new Error('Failed to fetch unread count');
@@ -50,16 +67,22 @@ export async function getUnreadCount(userId: string) {
 }
 
 /**
- * Mark a single notification as read
+ * Mark a single notification as read, scoped to the user for security
  */
-export async function markNotificationAsRead(notificationId: string) {
+export async function markNotificationAsRead(notificationId: string, userId: string) {
   try {
-    await db
+    const result = await db
       .update(appNotifications)
       .set({ isRead: true })
-      .where(eq(appNotifications.id, notificationId));
+      .where(
+        and(
+          eq(appNotifications.id, notificationId),
+          eq(appNotifications.userId, userId)
+        )
+      )
+      .returning();
 
-    return { success: true };
+    return result.length > 0 ? result[0] : null;
   } catch (error) {
     console.error('Error marking notification as read:', error);
     throw new Error('Failed to mark notification as read');
@@ -86,4 +109,4 @@ export async function markAllNotificationsAsRead(userId: string) {
     console.error('Error marking all notifications as read:', error);
     throw new Error('Failed to mark all notifications as read');
   }
-}
+}
