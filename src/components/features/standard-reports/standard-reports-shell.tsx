@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { PaginationState } from '@tanstack/react-table';
 
 import { fetchReportPreview } from '@/actions/standard-reports';
 import { deleteReportTemplate } from '@/actions/report-templates';
@@ -37,33 +38,49 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
 
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 16,
+  });
+
   // Fetch report data using the current filter state
-  const loadPreview = useCallback(async (filters: FilterState) => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await fetchReportPreview({
-        source: filters.source,
-        assetType: filters.assetType,
-        category: filters.category,
-        location: filters.location,
-        status: filters.status,
-        masterDataType: filters.masterDataType,
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-      });
-      setPreviewData(data);
-      setShowDataGrid(true);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to fetch report preview';
-      setErrorMessage(message);
-      console.error('Failed to fetch report preview:', error);
-      setPreviewData([]);
-      setShowDataGrid(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // loadPreview requires an explicit pagination context to avoid
+  // triggering server actions during render (see useEffect below).
+  const loadPreview = useCallback(
+    async (filters: FilterState, pageCtx: PaginationState) => {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      const pIndex = pageCtx?.pageIndex ?? 0;
+      const pSize = pageCtx?.pageSize ?? 16;
+
+      try {
+        const data = await fetchReportPreview({
+          source: filters.source,
+          assetType: filters.assetType,
+          category: filters.category,
+          location: filters.location,
+          status: filters.status,
+          masterDataType: filters.masterDataType,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+          page: pIndex,
+          pageSize: pSize,
+        });
+        setPreviewData(data);
+        setShowDataGrid(true);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to fetch report preview';
+        setErrorMessage(message);
+        console.error('Failed to fetch report preview:', error);
+        setPreviewData([]);
+        setShowDataGrid(true);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   // Called when a template card's "Preview report" button is clicked
   const handleTemplatePreview = useCallback(
@@ -84,16 +101,16 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
       setSelectedFields(template.fields || []);
       setFilterState(nextFilterState);
-      void loadPreview(nextFilterState);
+      void loadPreview(nextFilterState, pagination);
     },
-    [loadPreview, templates]
+    [loadPreview, templates, pagination]
   );
 
   // Called when the sidebar's "Preview report" footer button is clicked
   const handleManualPreview = useCallback(() => {
     setSelectedFields([]); // Clear template-specific fields for manual preview
-    void loadPreview(filterState);
-  }, [filterState, loadPreview]);
+    void loadPreview(filterState, pagination);
+  }, [filterState, loadPreview, pagination]);
 
   // Called when the "Clear filters" button is clicked
   const handleClearFilters = useCallback(() => {
@@ -153,6 +170,21 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
     router.refresh();
   }, [router]);
 
+  const handlePaginationChange = useCallback(
+    (updaterOrValue: PaginationState | ((old: PaginationState) => PaginationState)) => {
+      setPagination((old) => (typeof updaterOrValue === 'function' ? updaterOrValue(old) : updaterOrValue));
+    },
+    []
+  );
+
+  // Fetch when pagination or filters change, but only if preview panel is visible
+  // This avoids invoking server actions during render.
+  useEffect(() => {
+    if (!showDataGrid) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: fetch and set state when pagination/filters change
+    void loadPreview(filterState, pagination);
+  }, [filterState, pagination, showDataGrid, loadPreview]);
+
   return (
     <div className="flex h-full flex-1 flex-col gap-6 overflow-hidden bg-muted p-1">
       <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[524px_minmax(0,1fr)]">
@@ -176,6 +208,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           errorMessage={errorMessage}
           selectedFields={selectedFields}
           source={filterState.source}
+          pagination={pagination}
+          setPagination={handlePaginationChange}
         />
       </div>
     </div>

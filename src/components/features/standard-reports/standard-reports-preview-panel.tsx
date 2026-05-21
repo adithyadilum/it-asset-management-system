@@ -12,6 +12,8 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ReportPreviewRow } from '@/types/standard-reports';
 
+import type { PaginationState, OnChangeFn } from '@tanstack/react-table';
+
 interface StandardReportsPreviewPanelProps {
   showDataGrid: boolean;
   previewData: ReportPreviewRow[];
@@ -19,6 +21,8 @@ interface StandardReportsPreviewPanelProps {
   errorMessage?: string | null;
   selectedFields: string[];
   source: string;
+  pagination: PaginationState;
+  setPagination: OnChangeFn<PaginationState>;
 }
 
 function toCellText(value: unknown) {
@@ -35,6 +39,8 @@ export function StandardReportsPreviewPanel({
   errorMessage,
   selectedFields,
   source,
+  pagination,
+  setPagination,
 }: StandardReportsPreviewPanelProps) {
   const columns = useMemo<ColumnDef<ReportPreviewRow>[]>(() => {
     // If we have specific fields from a template, use them
@@ -163,6 +169,10 @@ export function StandardReportsPreviewPanel({
             initialPageSize={16}
             pageSizeOptions={[16, 24, 32, 48]}
             enableRowSelection={false}
+            paginationState={pagination}
+            onPaginationChange={setPagination}
+            manualPagination={true}
+            pageCount={1}
             emptyState={{
               title: 'No matching assets',
               description:
