@@ -263,7 +263,7 @@ export function CreateTemplateDialog({
 
               <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
                 <Label htmlFor="template-name" className="text-sm font-medium">
-                  <span className="text-destructive">*</span>Report Name:
+                  Report Name<span className="text-destructive">*</span>:
                 </Label>
                 <Input
                   id="template-name"
@@ -333,7 +333,7 @@ export function CreateTemplateDialog({
               <CardHeader className="flex flex-col items-start gap-4 p-4">
                 <div className="flex w-full items-center justify-between gap-2.5">
                   <CardTitle className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
-                    <span className="text-destructive">*</span>Filters
+                    Filters<span className="text-destructive">*</span>
                   </CardTitle>
                   <ListFilter className="size-5 text-foreground" />
                 </div>
