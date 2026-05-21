@@ -97,6 +97,25 @@ export function CreateTemplateDialog({
     (categoryOption) => !selectedPillar || categoryOption.pillar === selectedPillar
   );
 
+  const locationOptions = filterOptions.locations.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const statusOptions = filterOptions.statuses.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const masterDataTypeOptions = [
+    { value: 'asset-categories', label: 'Asset Categories' },
+    { value: 'locations', label: 'Locations' },
+    { value: 'brands', label: 'Brands' },
+    { value: 'device-models', label: 'Device Models' },
+    { value: 'vendors', label: 'Vendors' },
+    { value: 'owners', label: 'Owners' },
+  ];
+
   const resetForm = useCallback(() => {
     setName('');
     setDescription('');
@@ -317,37 +336,23 @@ export function CreateTemplateDialog({
                     </FilterRow>
 
                     <FilterRow label="Record Type">
-                      <Select
-                        value={masterDataType}
-                        onValueChange={setMasterDataType}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select Data Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="asset-categories">Asset Categories</SelectItem>
-                          <SelectItem value="locations">Locations</SelectItem>
-                          <SelectItem value="brands">Brands</SelectItem>
-                          <SelectItem value="device-models">Device Models</SelectItem>
-                          <SelectItem value="vendors">Vendors</SelectItem>
-                          <SelectItem value="owners">Owners</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <SearchableDropdown
+                        defaultValue={masterDataType}
+                        onSelect={setMasterDataType}
+                        placeholder="Select Data Type"
+                        emptyMessage="No record type found."
+                        options={masterDataTypeOptions}
+                      />
                     </FilterRow>
 
                     <FilterRow label="Status">
-                      <Select
-                        value={status}
-                        onValueChange={setStatus}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Active">Active</SelectItem>
-                          <SelectItem value="Inactive">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <SearchableDropdown
+                        defaultValue={status}
+                        onSelect={setStatus}
+                        placeholder="Select a Status"
+                        emptyMessage="No status found."
+                        options={statusOptions}
+                      />
                     </FilterRow>
                   </>
                 ) : (
@@ -384,33 +389,23 @@ export function CreateTemplateDialog({
                     </FilterRow>
 
                     <FilterRow label="Location">
-                      <Select value={location} onValueChange={setLocation}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a Location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filterOptions.locations.map((loc) => (
-                            <SelectItem key={loc} value={loc}>
-                              {loc}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableDropdown
+                        defaultValue={location}
+                        onSelect={setLocation}
+                        placeholder="Select a Location"
+                        emptyMessage="No location found."
+                        options={locationOptions}
+                      />
                     </FilterRow>
 
                     <FilterRow label="Status">
-                      <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filterOptions.statuses.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableDropdown
+                        defaultValue={status}
+                        onSelect={setStatus}
+                        placeholder="Select a Status"
+                        emptyMessage="No status found."
+                        options={statusOptions}
+                      />
                     </FilterRow>
                   </>
                 )}
