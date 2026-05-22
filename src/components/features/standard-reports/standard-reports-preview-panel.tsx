@@ -3,6 +3,8 @@
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
+import Papa from 'papaparse';
+import { pdf, Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -107,6 +109,93 @@ export function StandardReportsPreviewPanel({
 
   const rowCount = previewData.length;
 
+  // Build headers array matching the table columns order
+  const headers = useMemo(
+    () =>
+      columns
+        .map((column) => {
+          if (typeof column.header === 'string') {
+            return column.header;
+          }
+          if ('accessorKey' in column && typeof column.accessorKey === 'string') {
+            return column.accessorKey;
+          }
+          return '';
+        })
+        .filter((header): header is string => header.length > 0),
+    [columns]
+  );
+
+  const generateCsv = () => {
+    const rows = previewData.map((r) => {
+      const obj: Record<string, unknown> = {};
+      for (const h of headers) {
+        obj[h] = r[h as keyof typeof r] ?? '';
+      }
+      return obj;
+    });
+
+    const csv = Papa.unparse({ fields: headers, data: rows });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `report-preview-${new Date().toISOString()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const styles = StyleSheet.create({
+    page: { padding: 12, fontSize: 10 },
+    headerRow: { flexDirection: 'row', borderBottomWidth: 1, marginBottom: 6 },
+    row: { flexDirection: 'row', borderBottomWidth: 0.3, paddingVertical: 4 },
+    cell: { flex: 1, paddingRight: 6 },
+    title: { fontSize: 12, marginBottom: 8 },
+  });
+
+  const ReportPdfDocument = ({ title, headers, data }: { title: string; headers: string[]; data: ReportPreviewRow[] }) => (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.title}>{title}</Text>
+        <View style={styles.headerRow}>
+          {headers.map((h, i) => (
+            // approximate equal widths
+            <Text key={String(i)} style={[styles.cell, { flex: 1 }]}>
+              {h}
+            </Text>
+          ))}
+        </View>
+        {data.map((row, ri) => (
+          <View style={styles.row} key={String(ri)}>
+            {headers.map((h, ci) => (
+              <Text key={String(ci)} style={[styles.cell, { flex: 1 }]}>
+                {String(row[h] ?? '-')}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </Page>
+    </Document>
+  );
+
+  const generatePdf = async () => {
+    try {
+      const blob = await pdf(<ReportPdfDocument title="Report Preview" headers={headers} data={previewData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-preview-${new Date().toISOString()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to generate PDF', err);
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-col rounded-xl gap-6 bg-background">
       <CardHeader className="p-4">
@@ -122,6 +211,7 @@ export function StandardReportsPreviewPanel({
               className="bg-success text-success-foreground hover:bg-success/80"
               size="sm"
               disabled={!showDataGrid || rowCount === 0}
+              onClick={generateCsv}
             >
               <Download className="size-4" />
               Export CSV
@@ -130,6 +220,7 @@ export function StandardReportsPreviewPanel({
               variant="default"
               size="sm"
               disabled={!showDataGrid || rowCount === 0}
+              onClick={generatePdf}
             >
               Generate PDF
               <ChevronRight className="size-4" />
