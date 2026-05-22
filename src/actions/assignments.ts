@@ -22,7 +22,10 @@ import {
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { processReturnPayloadSchema, type ProcessReturnPayload } from '@/lib/validations/asset-assignment';
+import {
+  processReturnPayloadSchema,
+  type ProcessReturnPayload,
+} from '@/lib/validations/asset-assignment';
 
 export interface AssignmentActionResult {
   success: boolean;
@@ -30,6 +33,7 @@ export interface AssignmentActionResult {
   assignedCount?: number;
   error?: string;
   code?: string;
+  statusCode?: number;
 }
 
 function forbiddenResult(message: string): AssignmentActionResult {
@@ -37,6 +41,7 @@ function forbiddenResult(message: string): AssignmentActionResult {
     success: false,
     error: message,
     code: 'FORBIDDEN',
+    statusCode: 403,
   };
 }
 
@@ -46,6 +51,7 @@ function normalizeActionError(error: unknown): AssignmentActionResult {
       success: false,
       error: error.message,
       code: error.code,
+      statusCode: error.statusCode,
     };
   }
 
@@ -53,6 +59,7 @@ function normalizeActionError(error: unknown): AssignmentActionResult {
     success: false,
     error: 'Unexpected error while processing assignment.',
     code: 'INTERNAL_ERROR',
+    statusCode: 500,
   };
 }
 
@@ -85,7 +92,8 @@ export async function assignAssetAction(
       if (err instanceof ZodError) {
         return {
           success: false,
-          error: err.issues[0]?.message || 'Invalid input for assignAssetAction.',
+          error:
+            err.issues[0]?.message || 'Invalid input for assignAssetAction.',
           code: 'VALIDATION_ERROR',
         };
       }
@@ -146,7 +154,9 @@ export async function bulkAssignAssetsAction(
       if (err instanceof ZodError) {
         return {
           success: false,
-          error: err.issues[0]?.message || 'Invalid input for bulkAssignAssetsAction.',
+          error:
+            err.issues[0]?.message ||
+            'Invalid input for bulkAssignAssetsAction.',
           code: 'VALIDATION_ERROR',
         };
       }
@@ -211,7 +221,9 @@ export async function sendAssignmentReminderAction(
   const currentUser = await getAuthenticatedUser();
 
   if (!currentUser || !canManageAssets(currentUser.role)) {
-    return forbiddenResult('Forbidden: You do not have permission to send reminders.');
+    return forbiddenResult(
+      'Forbidden: You do not have permission to send reminders.'
+    );
   }
 
   try {
@@ -242,7 +254,9 @@ export async function requestAssetReturnAction(
   const currentUser = await getAuthenticatedUser();
 
   if (!currentUser || !canManageAssets(currentUser.role)) {
-    return forbiddenResult('Forbidden: You do not have permission to request returns.');
+    return forbiddenResult(
+      'Forbidden: You do not have permission to request returns.'
+    );
   }
 
   try {
@@ -274,7 +288,9 @@ export async function markAssetReceivedAction(
   const currentUser = await getAuthenticatedUser();
 
   if (!currentUser || !canManageAssets(currentUser.role)) {
-    return forbiddenResult('Forbidden: You do not have permission to mark assets as received.');
+    return forbiddenResult(
+      'Forbidden: You do not have permission to mark assets as received.'
+    );
   }
 
   try {
@@ -306,12 +322,14 @@ export async function processAssetReturnAction(
   const currentUser = await getAuthenticatedUser();
 
   if (!currentUser || !canManageAssets(currentUser.role)) {
-    return forbiddenResult('Forbidden: You do not have permission to process asset returns.');
+    return forbiddenResult(
+      'Forbidden: You do not have permission to process asset returns.'
+    );
   }
 
   try {
     processReturnPayloadSchema.parse(input);
-    
+
     await processAssetReturn(input, currentUser.id);
 
     revalidatePath('/operations/assignments');
@@ -334,4 +352,3 @@ export async function processAssetReturnAction(
     });
   }
 }
-

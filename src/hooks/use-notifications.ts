@@ -21,12 +21,13 @@ export interface Notification {
 }
 
 export function useNotifications() {
-  const {
-    data: unreadCount = 0,
-    mutate: mutateUnreadCount,
-  } = useSWR('notifications-unread-count', getUnreadCount, {
-    refreshInterval: 30000, // Poll every 30s
-  });
+  const { data: unreadCount = 0, mutate: mutateUnreadCount } = useSWR(
+    'notifications-unread-count',
+    getUnreadCount,
+    {
+      refreshInterval: 30000, // Poll every 30s
+    }
+  );
 
   const {
     data: notifications = [],
@@ -34,32 +35,38 @@ export function useNotifications() {
     error,
     mutate: mutateNotifications,
   } = useSWR('notifications-list', () => getNotifications(10, 0), {
-    refreshInterval: 30000,
+    revalidateOnFocus: false, // Prevents hammering the DB when tabbing back
   });
 
-  const fetchNotifications = useCallback(async (limit = 10, offset = 0) => {
-    const data = await getNotifications(limit, offset);
-    mutateNotifications(data, false);
-  }, [mutateNotifications]);
+  const fetchNotifications = useCallback(
+    async (limit = 10, offset = 0) => {
+      const data = await getNotifications(limit, offset);
+      mutateNotifications(data, false);
+    },
+    [mutateNotifications]
+  );
 
-  const handleMarkAsRead = useCallback(async (notificationId: string) => {
-    // Optimistic update
-    mutateNotifications(
-      (prev = []) =>
-        prev.map((notif) =>
-          notif.id === notificationId ? { ...notif, isRead: true } : notif
-        ),
-      false
-    );
-    mutateUnreadCount((prev = 0) => Math.max(0, prev - 1), false);
-    
-    // Server Action
-    await markAsRead(notificationId);
-    
-    // Re-validate
-    mutateNotifications();
-    mutateUnreadCount();
-  }, [mutateNotifications, mutateUnreadCount]);
+  const handleMarkAsRead = useCallback(
+    async (notificationId: string) => {
+      // Optimistic update
+      mutateNotifications(
+        (prev = []) =>
+          prev.map((notif) =>
+            notif.id === notificationId ? { ...notif, isRead: true } : notif
+          ),
+        false
+      );
+      mutateUnreadCount((prev = 0) => Math.max(0, prev - 1), false);
+
+      // Server Action
+      await markAsRead(notificationId);
+
+      // Re-validate
+      mutateNotifications();
+      mutateUnreadCount();
+    },
+    [mutateNotifications, mutateUnreadCount]
+  );
 
   const handleMarkAllAsRead = useCallback(async () => {
     // Optimistic update
@@ -68,10 +75,10 @@ export function useNotifications() {
       false
     );
     mutateUnreadCount(0, false);
-    
+
     // Server Action
     await markAllAsRead();
-    
+
     // Re-validate
     mutateNotifications();
     mutateUnreadCount();
