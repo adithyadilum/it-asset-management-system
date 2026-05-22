@@ -82,6 +82,9 @@ type DataTableProps<TData, TValue> = {
   onRowSelectionChange?: OnChangeFn<RowSelectionState>
   pageSizeOptions?: number[]
   initialPageSize?: number
+
+  // Prevent selection header replacement
+  disableSelectionHeader?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -109,6 +112,7 @@ export function DataTable<TData, TValue>({
   onRowSelectionChange: externalOnRowSelectionChange,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   initialPageSize = DEFAULT_INITIAL_PAGE_SIZE,
+  disableSelectionHeader = false,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -295,7 +299,7 @@ export function DataTable<TData, TValue>({
         })}
       </colgroup>
       <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
-        {selectedRows > 0 ? (
+        {(selectedRows > 0 && !disableSelectionHeader) ? (
           <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500 transition-all duration-200 ease-in-out">
             <TableHead
               colSpan={table.getAllLeafColumns().length}

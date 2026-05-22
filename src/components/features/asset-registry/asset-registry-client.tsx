@@ -1082,7 +1082,7 @@ export function AssetRegistryClient({
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col">
           {isPending ? (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
               <TableSkeleton rowCount={8} columnWidths={tableSkeletonColumnWidths} />
