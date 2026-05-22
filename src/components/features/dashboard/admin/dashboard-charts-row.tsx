@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/date"
@@ -52,7 +53,7 @@ function AssetAllocationChart({ allocationData }: AssetAllocationChartProps) {
                   padding: "4px 8px",
                 }}
               />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]} fill="#040d5a">
+              <Bar name="Assets" dataKey="value" radius={[4, 4, 0, 0]} fill="#040d5a">
                 <LabelList
                   dataKey="value"
                   position="top"
@@ -336,35 +337,37 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
         </p>
       </CardHeader>
 
-      <CardContent className="p-3 pt-1 flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-col gap-2 h-full">
-          {activities.length > 0 ? (
-            activities.map((item) => {
-              const styles = getActionStyles(item.actionType)
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "flex items-start gap-2.5 px-2.5 py-2 rounded-md border text-xs font-medium",
-                    styles.className
-                  )}
-                >
-                  <styles.icon className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", styles.iconColor)} />
-                  <div className="flex flex-col min-w-0">
-                    <span className="leading-tight line-clamp-1">{item.text}</span>
-                    <span className="text-[10px] font-normal opacity-70 mt-0.5">
-                      {formatDate(item.performedAt, "MMM dd, yyyy h:mm a")}
-                    </span>
+      <CardContent className="p-3 pt-1 flex-1 min-h-0">
+        <ScrollArea className="h-full">
+          <div className="flex flex-col gap-2 pr-1">
+            {activities.length > 0 ? (
+              activities.map((item) => {
+                const styles = getActionStyles(item.actionType)
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "flex items-start gap-2.5 px-2.5 py-2 rounded-md border text-xs font-medium",
+                      styles.className
+                    )}
+                  >
+                    <styles.icon className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", styles.iconColor)} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="leading-tight line-clamp-1">{item.text}</span>
+                      <span className="text-[10px] font-normal opacity-70 mt-0.5">
+                        {formatDate(item.performedAt, "MMM dd, yyyy h:mm a")}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )
-            })
-          ) : (
-            <div className="flex h-full items-center justify-center text-xs text-muted-foreground border border-dashed rounded-md">
-              No recent activity found.
-            </div>
-          )}
-        </div>
+                )
+              })
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground border border-dashed rounded-md py-8">
+                No recent activity found.
+              </div>
+            )}
+          </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   )

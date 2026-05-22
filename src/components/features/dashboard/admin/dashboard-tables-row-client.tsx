@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { DisposeAssetsRequestDialog, type SelectedAssetLite } from "@/components/features/disposals/dispose-assets-request-dialog"
 import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow } from "@/actions/dashboard"
+import { toast } from "sonner"
+import { sendAssignmentReminderAction } from "@/actions/assignments"
+import { tiqriToast } from "@/components/shared/sonner"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +46,11 @@ function EmployeeCell({ name, email }: { name: string; email: string }) {
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
-function useOverdueColumns(actionLabel: string): ColumnDef<OverdueReturnRow>[] {
+function useOverdueColumns(
+  actionLabel: string,
+  onSendReminder: (row: OverdueReturnRow) => void,
+  sendingReminderIds: Set<number>
+): ColumnDef<OverdueReturnRow>[] {
   return useMemo(() => [
     {
       id: "employee",
@@ -86,17 +93,22 @@ function useOverdueColumns(actionLabel: string): ColumnDef<OverdueReturnRow>[] {
       size: 140,
       minSize: 120,
       meta: { noTruncate: true },
-      cell: () => (
-        <Button 
-          variant="secondary" 
-          size="sm" 
-          className="h-7 text-xs px-3 transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-sm active:scale-95"
-        >
-          {actionLabel}
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const isSending = sendingReminderIds.has(row.original.assignmentId)
+        return (
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="h-7 text-xs px-3 transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-sm active:scale-95"
+            onClick={() => onSendReminder(row.original)}
+            disabled={isSending}
+          >
+            {isSending ? "Sending..." : actionLabel}
+          </Button>
+        )
+      },
     },
-  ], [actionLabel])
+  ], [actionLabel, onSendReminder, sendingReminderIds])
 }
 
 function usePendingDisposalColumns(): ColumnDef<PendingDisposalRow>[] {
@@ -229,6 +241,7 @@ interface Props {
 export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets }: Props) {
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
+  const [sendingReminderIds, setSendingReminderIds] = useState<Set<number>>(new Set())
 
   const handleFlagClick = (asset: HighMaintenanceRow) => {
     setFlaggedAsset({
@@ -239,7 +252,31 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
     setIsFlagDialogOpen(true)
   }
 
-  const overdueColumns = useOverdueColumns("Send Reminder")
+  const handleSendReminder = async (row: OverdueReturnRow) => {
+    setSendingReminderIds((prev) => {
+      const next = new Set(prev)
+      next.add(row.assignmentId)
+      return next
+    })
+    try {
+      const result = await sendAssignmentReminderAction([row.assignmentId])
+      if (result.success) {
+        toast.success("Reminder sent successfully")
+      } else {
+        toast.error(result.error || "Failed to send reminder")
+      }
+    } catch {
+      toast.error("Failed to send reminder due to an unexpected error")
+    } finally {
+      setSendingReminderIds((prev) => {
+        const next = new Set(prev)
+        next.delete(row.assignmentId)
+        return next
+      })
+    }
+  }
+
+  const overdueColumns = useOverdueColumns("Send Reminder", handleSendReminder, sendingReminderIds)
   const pendingColumns = usePendingDisposalColumns()
   const lemonsColumns = useHighMaintenanceColumns(handleFlagClick)
 
@@ -342,10 +379,14 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
         open={isFlagDialogOpen}
         onOpenChange={setIsFlagDialogOpen}
         selectedAssets={flaggedAsset ? [flaggedAsset] : []}
-        onSubmitted={() => {
+        onSubmitted={(result) => {
           setIsFlagDialogOpen(false)
           setFlaggedAsset(null)
-          // Ideally we would revalidate the dashboard data here
+          if (result.inserted > 0) {
+            tiqriToast.success("Asset Flagged: The asset has been successfully flagged for disposal and is awaiting admin approval.")
+          } else if (result.skipped > 0) {
+            tiqriToast.info("Disposal Request: This asset is already pending disposal or retired.")
+          }
         }}
       />
     </div>

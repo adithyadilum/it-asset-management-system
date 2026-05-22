@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { KpiMetricsRow } from "@/components/features/dashboard/admin/kpi-metrics-row"
 import { DashboardChartsRow } from "@/components/features/dashboard/admin/dashboard-charts-row"
 import { DashboardTablesRow } from "@/components/features/dashboard/admin/dashboard-tables-row"
@@ -121,27 +122,29 @@ export default async function DashboardPage() {
     return (
         <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white overflow-hidden">
             {/* Pinned header */}
-            <div className="shrink-0 px-6 pt-5 pb-3 border-b border-border">
+            <div className="shrink-0 px-6 pt-5 pb-3">
                 <DashboardHeader />
             </div>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
-                <KpiMetricsRow />
+            <ScrollArea className="flex-1 min-h-0">
+                <div className="px-6 py-5 flex flex-col gap-6">
+                    <KpiMetricsRow />
 
-                <div className="flex flex-col gap-4">
-                    <DashboardChartsRow 
-                        activities={recentActivities} 
-                        inventoryStatus={inventoryStatus}
-                        departmentAllocation={departmentAllocation}
-                    />
-                    <DashboardTablesRow 
-                        overdueReturns={overdueReturns}
-                        pendingDisposals={pendingDisposals}
-                        highMaintenanceAssets={highMaintenanceAssets}
-                    />
+                    <div className="flex flex-col gap-4">
+                        <DashboardChartsRow 
+                            activities={recentActivities} 
+                            inventoryStatus={inventoryStatus}
+                            departmentAllocation={departmentAllocation}
+                        />
+                        <DashboardTablesRow 
+                            overdueReturns={overdueReturns}
+                            pendingDisposals={pendingDisposals}
+                            highMaintenanceAssets={highMaintenanceAssets}
+                        />
+                    </div>
                 </div>
-            </div>
+            </ScrollArea>
         </main>
     )
 }

@@ -223,6 +223,23 @@ export interface RecentActivity {
   performedAt: string;
 }
 
+function formatActionType(actionType: string): string {
+  const act = actionType.toLowerCase().replace(/_/g, ' ');
+
+  if (act.endsWith('ed') || act.endsWith('d')) {
+    return act;
+  }
+
+  if (act === 'login') return 'logged in';
+  if (act === 'logout') return 'logged out';
+
+  if (act.endsWith('e')) {
+    return `${act}d`;
+  }
+
+  return `${act}ed`;
+}
+
 /**
  * Returns the 5 most recent activities from the system audit logs.
  *
@@ -266,11 +283,12 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
     const performer = log.performedByName || 'System';
     const entityLabel = assetMap.get(log.entityId) || log.entityId.slice(0, 8);
     
-    let text = `${performer} ${log.actionType.toLowerCase()} ${log.entityType.toLowerCase()}`;
+    const actionPhrase = formatActionType(log.actionType);
+    let text = `${performer} ${actionPhrase} ${log.entityType.toLowerCase()}`;
     
     // Humanize common patterns
     if (log.entityType === 'Asset') {
-      text = `${performer} ${log.actionType.toLowerCase()}ed asset ${entityLabel}`;
+      text = `${performer} ${actionPhrase} asset ${entityLabel}`;
     } else if (log.entityType === 'MaintenanceTicket') {
       text = `${performer} updated maintenance for ${entityLabel}`;
     } else if (log.actionType === 'LOGIN') {
