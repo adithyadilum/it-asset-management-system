@@ -109,7 +109,7 @@ export function PurchaseDetailsSection({
             placeholder="USD"
             emptyMessage="No currencies found."
             onSelect={setCurrencyCode}
-            defaultValue={currencyCode}
+            value={currencyCode}
           />
           <input type="hidden" name="currencyCode" value={currencyCode} />
         </div>
@@ -250,7 +250,7 @@ export function PurchaseDetailsSection({
                 placeholder="Warranty Period.."
                 emptyMessage="No warranty periods found."
                 onSelect={setWarrantyMonths}
-                defaultValue={warrantyMonths}
+                value={warrantyMonths}
               />
               <input type="hidden" name="warrantyMonths" value={warrantyMonths} />
             </>

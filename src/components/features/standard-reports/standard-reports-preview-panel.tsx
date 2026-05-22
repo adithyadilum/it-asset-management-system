@@ -12,18 +12,25 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ReportPreviewRow } from '@/types/standard-reports';
 
+import type { PaginationState, OnChangeFn } from '@tanstack/react-table';
+
 interface StandardReportsPreviewPanelProps {
   showDataGrid: boolean;
   previewData: ReportPreviewRow[];
   isLoading: boolean;
   errorMessage?: string | null;
+  selectedFields: string[];
+  source: string;
+  pagination: PaginationState;
+  setPagination: OnChangeFn<PaginationState>;
+  pageCount: number;
 }
 
-function toCellText(value: string | null | undefined) {
-  if (!value || value.trim().length === 0) {
+function toCellText(value: unknown) {
+  if (value === null || value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
     return '-';
   }
-  return value;
+  return String(value);
 }
 
 export function StandardReportsPreviewPanel({
@@ -31,31 +38,72 @@ export function StandardReportsPreviewPanel({
   previewData,
   isLoading,
   errorMessage,
+  selectedFields,
+  source,
+  pagination,
+  setPagination,
+  pageCount,
 }: StandardReportsPreviewPanelProps) {
-  const columns = useMemo<ColumnDef<ReportPreviewRow>[]>(
-    () => [
-      { accessorKey: 'assetTag', header: 'Asset ID' },
-      {
-        accessorKey: 'name',
-        header: 'Asset Name',
-        cell: ({ row }) => toCellText(row.original.name),
-      },
-      { accessorKey: 'category', header: 'Category' },
-      {
-        accessorKey: 'assignedTo',
-        header: 'Assigned to',
-        cell: ({ row }) => toCellText(row.original.assignedTo),
-      },
-      {
-        accessorKey: 'status',
-        header: 'Status',
-        cell: ({ row }) => (
-          <StatusBadge value={row.original.status} showIcon />
-        ),
-      },
-    ],
-    []
-  );
+  const columns = useMemo<ColumnDef<ReportPreviewRow>[]>(() => {
+    // If we have specific fields from a template, use them
+    if (selectedFields && selectedFields.length > 0) {
+      return selectedFields.map((field) => ({
+        accessorKey: field,
+        header: field,
+        cell: ({ row }) => {
+          const value = row.original[field];
+          if (field === 'Status') {
+            return <StatusBadge value={typeof value === 'string' ? value : undefined} showIcon />;
+          }
+          return toCellText(value);
+        },
+      }));
+    }
+
+    // Default columns for Asset Registry
+    if (source === 'Asset Registry' || source === 'Assets' || !source) {
+      return [
+        { accessorKey: 'Asset ID', header: 'Asset ID' },
+        {
+          accessorKey: 'Asset Name',
+          header: 'Asset Name',
+          cell: ({ row }) => toCellText(row.original['Asset Name']),
+        },
+        { accessorKey: 'Category', header: 'Category' },
+        {
+          accessorKey: 'Assigned To',
+          header: 'Assigned to',
+          cell: ({ row }) => toCellText(row.original['Assigned To']),
+        },
+        {
+          accessorKey: 'Status',
+          header: 'Status',
+          cell: ({ row }) => (
+            <StatusBadge value={row.original['Status'] as string} showIcon />
+          ),
+        },
+      ];
+    }
+
+    // Default columns for Master Data
+    if (source === 'Master Data') {
+      return [
+        { accessorKey: 'Record ID', header: 'Record ID' },
+        { accessorKey: 'Type', header: 'Type' },
+        { accessorKey: 'Name', header: 'Name' },
+        { accessorKey: 'Description', header: 'Description' },
+        {
+          accessorKey: 'Status',
+          header: 'Status',
+          cell: ({ row }) => (
+            <StatusBadge value={row.original['Status'] as string} showIcon />
+          ),
+        },
+      ];
+    }
+
+    return [];
+  }, [selectedFields, source]);
 
   const rowCount = previewData.length;
 
@@ -123,6 +171,10 @@ export function StandardReportsPreviewPanel({
             initialPageSize={16}
             pageSizeOptions={[16, 24, 32, 48]}
             enableRowSelection={false}
+            paginationState={pagination}
+            onPaginationChange={setPagination}
+            manualPagination={true}
+            pageCount={pageCount}
             emptyState={{
               title: 'No matching assets',
               description:

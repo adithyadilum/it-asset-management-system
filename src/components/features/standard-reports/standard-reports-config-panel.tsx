@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import {
   Select,
   SelectContent,
@@ -19,11 +20,8 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import {
-  FilterRow,
-  ReportTemplateCard,
-  SOURCE_OPTIONS,
-} from '@/components/features/standard-reports/standard-reports-page';
+import { FilterRow, SOURCE_OPTIONS } from '@/components/features/standard-reports/standard-reports-page';
+import { ReportTemplateCard } from '@/components/features/standard-reports/report-template-card';
 import type { FilterState, ReportTemplateData } from '@/types/standard-reports';
 import { CreateTemplateDialog } from './create-template-dialog';
 
@@ -60,6 +58,7 @@ export function StandardReportsConfigPanel({
   resetKey,
 }: StandardReportsConfigPanelProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<ReportTemplateData | undefined>();
 
   // Map UI Asset Types to DB Pillars for filtering category options
   const typeToPillarMap: Record<string, string> = {
@@ -75,6 +74,30 @@ export function StandardReportsConfigPanel({
     .filter((cat) => !selectedPillar || cat.pillar === selectedPillar)
     .map((cat) => cat.name)
     .sort();
+
+  const categoryOptions = filteredCategories.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const locationOptions = filterOptions.locations.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const statusOptions = filterOptions.statuses.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
+  const masterDataTypeOptions = [
+    { value: 'asset-categories', label: 'Asset Categories' },
+    { value: 'locations', label: 'Locations' },
+    { value: 'brands', label: 'Brands' },
+    { value: 'device-models', label: 'Device Models' },
+    { value: 'vendors', label: 'Vendors' },
+    { value: 'owners', label: 'Owners' },
+  ];
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl gap-0 bg-background">
@@ -96,6 +119,10 @@ export function StandardReportsConfigPanel({
                 key={template.id}
                 template={template}
                 onPreviewClick={onTemplatePreview}
+                onEditClick={(template) => {
+                  setEditingTemplate(template);
+                  setDialogOpen(true);
+                }}
                 onDeleteClick={onTemplateDelete}
               />
             ))}
@@ -103,9 +130,12 @@ export function StandardReportsConfigPanel({
             <Card
               size="sm"
               className="h-full cursor-pointer items-center justify-center border-dashed border-border bg-background text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
-              onClick={() => setDialogOpen(true)}
+              onClick={() => {
+                setEditingTemplate(undefined);
+                setDialogOpen(true);
+              }}
             >
-              <CardContent className="flex min-h-44 flex-col items-center justify-center gap-4 p-4 text-center">
+              <CardContent className="flex flex-col items-center justify-center gap-4 p-4 text-center">
                 <Plus className="size-6 text-foreground" />
                 <div className="space-y-1.5">
                   <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
@@ -172,37 +202,23 @@ export function StandardReportsConfigPanel({
                 </FilterRow>
 
                 <FilterRow label="Record Type">
-                  <Select
-                    value={filterState.masterDataType || undefined}
-                    onValueChange={(value) => onFilterChange('masterDataType', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select Data Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="asset-categories">Asset Categories</SelectItem>
-                      <SelectItem value="locations">Locations</SelectItem>
-                      <SelectItem value="brands">Brands</SelectItem>
-                      <SelectItem value="device-models">Device Models</SelectItem>
-                      <SelectItem value="vendors">Vendors</SelectItem>
-                      <SelectItem value="owners">Owners</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    value={filterState.masterDataType}
+                    onSelect={(value) => onFilterChange('masterDataType', value)}
+                    placeholder="Select Data Type"
+                    emptyMessage="No record type found."
+                    options={masterDataTypeOptions}
+                  />
                 </FilterRow>
 
                 <FilterRow label="Status">
-                  <Select
-                    value={filterState.status || undefined}
-                    onValueChange={(value) => onFilterChange('status', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    value={filterState.status}
+                    onSelect={(value) => onFilterChange('status', value)}
+                    placeholder="Select a Status"
+                    emptyMessage="No status found."
+                    options={statusOptions}
+                  />
                 </FilterRow>
               </>
             ) : (
@@ -226,59 +242,41 @@ export function StandardReportsConfigPanel({
                 </FilterRow>
 
                 <FilterRow label="Category">
-                  <Select
-                    value={filterState.category || undefined}
-                    onValueChange={(value) => onFilterChange('category', value)}
-                    disabled={!filterState.assetType || filterState.assetType === 'All Assets'}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={!filterState.assetType || filterState.assetType === 'All Assets' ? 'Select Asset Type first' : 'All categories'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All categories">All categories</SelectItem>
-                      {filteredCategories.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    value={filterState.category}
+                    onSelect={(value) => onFilterChange('category', value)}
+                    placeholder={
+                      !filterState.assetType || filterState.assetType === 'All Assets'
+                        ? 'Select Asset Type first'
+                        : 'All categories'
+                    }
+                    emptyMessage={
+                      !filterState.assetType || filterState.assetType === 'All Assets'
+                        ? 'Select an asset type first.'
+                        : 'No category found.'
+                    }
+                    options={categoryOptions}
+                  />
                 </FilterRow>
 
                 <FilterRow label="Location">
-                  <Select
-                    value={filterState.location || undefined}
-                    onValueChange={(value) => onFilterChange('location', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.locations.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    value={filterState.location}
+                    onSelect={(value) => onFilterChange('location', value)}
+                    placeholder="Select a Location"
+                    emptyMessage="No location found."
+                    options={locationOptions}
+                  />
                 </FilterRow>
 
                 <FilterRow label="Status">
-                  <Select
-                    value={filterState.status || undefined}
-                    onValueChange={(value) => onFilterChange('status', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.statuses.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableDropdown
+                    value={filterState.status}
+                    onSelect={(value) => onFilterChange('status', value)}
+                    placeholder="Select a Status"
+                    emptyMessage="No status found."
+                    options={statusOptions}
+                  />
                 </FilterRow>
               </>
             )}
@@ -306,6 +304,7 @@ export function StandardReportsConfigPanel({
         onOpenChange={setDialogOpen}
         onCreated={onTemplateCreated}
         filterOptions={filterOptions}
+        editingTemplate={editingTemplate}
       />
     </div>
   );

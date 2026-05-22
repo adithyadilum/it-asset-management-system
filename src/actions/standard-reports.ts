@@ -13,6 +13,7 @@ import {
   brands,
   vendors,
   owners,
+  assetPurchases,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
@@ -116,7 +117,7 @@ export async function getStandardReportsFilterOptions() {
 
 export async function fetchReportPreview(
   filters: ReportPreviewFilters
-): Promise<ReportPreviewRow[]> {
+): Promise<{ data: ReportPreviewRow[]; pageCount: number; totalRows: number }> {
   const actionTimer = startLatencyTimer();
 
   const currentUser = await getAuthenticatedUser();
@@ -143,6 +144,7 @@ export async function fetchReportPreview(
     if (filters.source === 'Master Data') {
       const queryTimer = startLatencyTimer();
       let data: ReportPreviewRow[] = [];
+      let totalRows = 0;
       
       const statusEq = filters.status === 'Active' ? true : filters.status === 'Inactive' ? false : undefined;
 
@@ -155,55 +157,127 @@ export async function fetchReportPreview(
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const getCount = async (q: any) => {
+        const rows = await q.execute();
+        return rows.length;
+      };
+
       switch (filters.masterDataType) {
         case 'asset-categories': {
           let q = db.select().from(categories).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(categories.isActive, statusEq));
           if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'CAT', name: r.name, category: r.pillar, assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Category', 
+            'Name': r.name, 
+            'Description': r.categoryCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'locations': {
           let q = db.select().from(locations).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(locations.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'LOC', name: r.name, category: r.type || 'Location', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': r.type || 'Location', 
+            'Name': r.name, 
+            'Description': r.locationCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'brands': {
           let q = db.select().from(brands).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(brands.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'BRD', name: r.name, category: 'Brand', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Brand', 
+            'Name': r.name, 
+            'Description': r.brandCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'device-models': {
-          let q = db.select({ id: models.id, name: models.name, categoryName: categories.name, isActive: models.isActive }).from(models).leftJoin(categories, eq(models.categoryId, categories.id)).$dynamic();
+          let q = db.select({ 
+            id: models.id, 
+            name: models.name, 
+            categoryName: categories.name, 
+            isActive: models.isActive,
+            modelCode: models.modelCode
+          }).from(models).leftJoin(categories, eq(models.categoryId, categories.id)).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(models.isActive, statusEq));
           if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'MDL', name: r.name, category: r.categoryName || 'Model', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': r.categoryName || 'Model', 
+            'Name': r.name, 
+            'Description': r.modelCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'vendors': {
           let q = db.select().from(vendors).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(vendors.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'VND', name: r.companyName, category: 'Vendor', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Vendor', 
+            'Name': r.companyName, 
+            'Description': r.email || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
         case 'owners': {
           let q = db.select().from(owners).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(owners.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
-          data = rows.map(r => ({ id: String(r.id), assetTag: 'OWN', name: r.companyName, category: 'Owner', assignedTo: '-', status: r.isActive ? 'Active' : 'Inactive' }));
+          data = rows.map(r => ({ 
+            id: String(r.id), 
+            'Record ID': String(r.id), 
+            'Type': 'Owner', 
+            'Name': r.companyName, 
+            'Description': r.ownerCode || '-', 
+            'Status': r.isActive ? 'Active' : 'Inactive',
+            'CreatedAt': '-',
+            'UpdatedAt': '-'
+          }));
           break;
         }
       }
@@ -214,7 +288,11 @@ export async function fetchReportPreview(
         startTime: queryTimer,
       });
 
-      return data;
+      return {
+        data,
+        totalRows,
+        pageCount: Math.ceil(totalRows / pageSize),
+      };
     }
 
     // -------------------------------------------------------------------------
@@ -252,20 +330,35 @@ export async function fetchReportPreview(
 
     const queryTimer = startLatencyTimer();
 
-    const rows = await db
+    const baseQuery = db
       .select({
         id: assets.id,
         assetTag: assets.assetTag,
         name: assets.name,
         category: categories.name,
-        locationId: assets.locationId,
+        brand: brands.name,
+        model: models.name,
+        serialNumber: assets.serialNumber,
         status: assets.status,
+        location: locations.name,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(brands, eq(models.brandId, brands.id))
       .leftJoin(locations, eq(assets.locationId, locations.id))
-      .where(whereCondition)
+      .where(whereCondition);
+
+    // Get total rows for pagination
+    const totalRowsCount = await db.select({ count: db.$count(assets, whereCondition) }).from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(brands, eq(models.brandId, brands.id))
+      .leftJoin(locations, eq(assets.locationId, locations.id));
+    
+    const totalRows = totalRowsCount[0]?.count ?? 0;
+
+    const rows = await baseQuery
       .orderBy(desc(assets.updatedAt), asc(assets.assetTag))
       .limit(pageSize)
       .offset(offset);
@@ -279,6 +372,7 @@ export async function fetchReportPreview(
     // Resolve assigned users for each asset (same pattern as asset-registry-repo)
     const assetIds = rows.map((row) => row.id);
     const assignedUserByAssetId = new Map<string, string>();
+    const purchasedDataByAssetId = new Map<string, { purchaseDate: Date | null; cost: number | null; warrantyExpiry: Date | null }>();
 
     if (assetIds.length > 0) {
       const activeAssignments = await db
@@ -304,18 +398,54 @@ export async function fetchReportPreview(
           assignedUserByAssetId.set(assignment.assetId, assignment.assignedTo);
         }
       }
+
+      // Fetch purchase data separately to avoid duplicate rows in main query
+      const purchases = await db
+        .select({
+          assetId: assetPurchases.assetId,
+          purchaseDate: assetPurchases.purchaseDate,
+          totalCost: assetPurchases.totalCost,
+          warrantyExpiry: assetPurchases.warrantyExpiry,
+        })
+        .from(assetPurchases)
+        .where(inArray(assetPurchases.assetId, assetIds))
+        .orderBy(desc(assetPurchases.updatedAt));
+
+      for (const purchase of purchases) {
+        if (!purchasedDataByAssetId.has(purchase.assetId)) {
+          purchasedDataByAssetId.set(purchase.assetId, {
+            purchaseDate: purchase.purchaseDate as Date | null,
+            cost: purchase.totalCost as number | null,
+            warrantyExpiry: purchase.warrantyExpiry as Date | null,
+          });
+        }
+      }
     }
 
-    const data: ReportPreviewRow[] = rows.map((row) => ({
-      id: row.id,
-      assetTag: row.assetTag,
-      name: row.name,
-      category: row.category,
-      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
-      status: row.status,
-    }));
+    const data: ReportPreviewRow[] = rows.map((row) => {
+      const pData = purchasedDataByAssetId.get(row.id);
+      return {
+        id: row.id,
+        'Asset ID': row.assetTag,
+        'Asset Name': row.name,
+        'Category': row.category,
+        'Brand': row.brand || '-',
+        'Model': row.model || '-',
+        'Serial Number': row.serialNumber || '-',
+        'Status': row.status,
+        'Location': row.location || '-',
+        'Assigned To': assignedUserByAssetId.get(row.id) ?? '-',
+        'Purchase Date': pData?.purchaseDate ? new Date(pData.purchaseDate).toLocaleDateString() : '-',
+        'Purchase Cost': pData?.cost ? String(pData.cost) : '-',
+        'Warranty Expiry': pData?.warrantyExpiry ? new Date(pData.warrantyExpiry).toLocaleDateString() : '-',
+      };
+    });
 
-    return data;
+    return {
+      data,
+      totalRows,
+      pageCount: Math.ceil(totalRows / pageSize),
+    };
   } catch (error) {
     logError({
       scope: 'ACTION',
