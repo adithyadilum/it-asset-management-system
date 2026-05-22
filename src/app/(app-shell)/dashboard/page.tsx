@@ -17,7 +17,8 @@ import {
     getDashboardPendingDisposals, 
     getDashboardHighMaintenanceAssets,
     getDashboardRecentActivities,
-    getDashboardInventoryStatus
+    getDashboardInventoryStatus,
+    getDashboardDepartmentAllocation
 } from "@/actions/dashboard"
 
 function getAssetPresentation(modelName: string) {
@@ -106,13 +107,15 @@ export default async function DashboardPage() {
         pendingDisposals, 
         highMaintenanceAssets,
         recentActivities,
-        inventoryStatus
+        inventoryStatus,
+        departmentAllocation
     ] = await Promise.all([
         getDashboardOverdueReturns(),
         getDashboardPendingDisposals(),
         getDashboardHighMaintenanceAssets(),
         getDashboardRecentActivities(),
         getDashboardInventoryStatus(),
+        getDashboardDepartmentAllocation(),
     ])
 
     return (
@@ -130,6 +133,7 @@ export default async function DashboardPage() {
                     <DashboardChartsRow 
                         activities={recentActivities} 
                         inventoryStatus={inventoryStatus}
+                        departmentAllocation={departmentAllocation}
                     />
                     <DashboardTablesRow 
                         overdueReturns={overdueReturns}

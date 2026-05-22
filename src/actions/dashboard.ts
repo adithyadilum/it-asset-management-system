@@ -380,3 +380,41 @@ export async function getDashboardInventoryStatus(): Promise<InventoryStatusResp
     utilizationRate,
   };
 }
+
+export interface DepartmentAllocationItem {
+  name: string;
+  value: number;
+}
+
+/**
+ * Returns the count of active assigned assets grouped by department name.
+ *
+ * Access: GlobalAdmin, ITOperator, FinanceAuditor
+ */
+export async function getDashboardDepartmentAllocation(): Promise<DepartmentAllocationItem[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const results = await db
+    .select({
+      name: departments.name,
+      value: count(assets.id),
+    })
+    .from(assets)
+    .innerJoin(assetAssignments, eq(assets.id, assetAssignments.assetId))
+    .innerJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .innerJoin(departments, eq(users.departmentId, departments.id))
+    .where(
+      and(
+        eq(assets.isArchived, false),
+        isNull(assetAssignments.returnedDate)
+      )
+    )
+    .groupBy(departments.name);
+
+  return results.map((r) => ({
+    name: r.name,
+    value: Number(r.value),
+  }));
+}
+
