@@ -23,44 +23,9 @@ const departmentData = [
   { name: "R&D",        value: 214 },
 ]
 
-const inventoryData = [
-  { name: "New",       value: 400, color: "#2563eb" },
-  { name: "Assigned",  value: 300, color: "#84cc16" },
-  { name: "In Repair", value: 150, color: "#9333ea" },
-  { name: "Disposed",  value: 200, color: "#e11d48" },
-  { name: "Lost",      value: 100, color: "#f97316" },
-]
 
-const activities = [
-  {
-    text: "Laptop AST-1023 assigned to John Doe",
-    icon: CheckCircle2,
-    borderColor: "border-slate-200",
-    iconColor: "text-slate-500",
-    textColor: "text-foreground",
-  },
-  {
-    text: "New Asset Created: AST-2026-0456 (MacBook Pro 14)",
-    icon: Hash,
-    borderColor: "border-blue-200",
-    iconColor: "text-blue-500",
-    textColor: "text-foreground",
-  },
-  {
-    text: "Server AST-0008 marked as Lost",
-    icon: AlertCircle,
-    borderColor: "border-orange-200",
-    iconColor: "text-orange-500",
-    textColor: "text-orange-700",
-  },
-  {
-    text: "Projector AST-0912 marked as In Repair",
-    icon: Wrench,
-    borderColor: "border-purple-200",
-    iconColor: "text-purple-500",
-    textColor: "text-foreground",
-  },
-]
+
+
 
 // ─── Widget 1: Bar Chart ─────────────────────────────────────────────────────
 
@@ -122,7 +87,20 @@ function AssetAllocationChart() {
 
 // ─── Widget 2: Donut Chart ───────────────────────────────────────────────────
 
-function InventoryStatusChart() {
+function InventoryStatusChart({
+  inventoryData,
+  utilizationRate,
+}: {
+  inventoryData: InventoryStatusItem[]
+  utilizationRate: number
+}) {
+  const isHealthy = utilizationRate >= 70
+  const utilizationTitle = utilizationRate === 0
+    ? "No active assignments"
+    : isHealthy
+      ? "Healthy utilization rate"
+      : "Sub-optimal utilization rate"
+
   return (
     <Card className="flex flex-col h-full shadow-sm border-border">
       <CardHeader className="p-3 pb-1 shrink-0">
@@ -135,54 +113,62 @@ function InventoryStatusChart() {
       </CardHeader>
 
       <CardContent className="p-3 pt-1 flex-1 min-h-0 flex items-center">
-        {/* Donut */}
-        <div className="h-full w-[55%]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-              <Pie
-                data={inventoryData}
-                dataKey="value"
-                innerRadius="45%"
-                outerRadius="80%"
-                paddingAngle={2}
-                stroke="none"
-              >
-                {inventoryData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "6px",
-                  fontSize: "11px",
-                  border: "1px solid hsl(var(--border))",
-                  padding: "4px 8px",
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Legend */}
-        <div className="w-[45%] flex flex-col gap-2 pl-2">
-          {inventoryData.map((entry, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-              <span className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground leading-none")}>
-                {entry.name}
-              </span>
+        {inventoryData.length > 0 ? (
+          <>
+            {/* Donut */}
+            <div className="h-full w-[55%]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <Pie
+                    data={inventoryData}
+                    dataKey="value"
+                    innerRadius="45%"
+                    outerRadius="80%"
+                    paddingAngle={2}
+                    stroke="none"
+                  >
+                    {inventoryData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      border: "1px solid hsl(var(--border))",
+                      padding: "4px 8px",
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          ))}
-        </div>
+
+            {/* Legend */}
+            <div className="w-[45%] flex flex-col gap-2 pl-2">
+              {inventoryData.map((entry, i) => (
+                <div key={i} className="flex items-center gap-1.5 min-w-0">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                  <span className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground leading-none truncate")}>
+                    {entry.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex h-full items-center justify-center text-xs text-muted-foreground border border-dashed rounded-md py-8">
+            No active asset inventory found.
+          </div>
+        )}
       </CardContent>
 
       <div className="px-3 pb-2 shrink-0">
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsMedium, "text-foreground flex items-center gap-1")}>
-          <TrendingUp className="w-3 h-3 text-[#7cc000]" />
-          Healthy utilization rate
+          <TrendingUp className={cn("w-3 h-3", isHealthy ? "text-[#7cc000]" : "text-orange-500")} />
+          {utilizationTitle}
         </p>
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground")}>
-          89% of inventory is currently active and assigned.
+          {utilizationRate}% of active inventory is currently assigned.
         </p>
       </div>
     </Card>
@@ -191,7 +177,7 @@ function InventoryStatusChart() {
 
 // ─── Widget 3: Recent Activities ─────────────────────────────────────────────
 
-import { RecentActivity } from "@/actions/dashboard"
+import { RecentActivity, InventoryStatusItem, InventoryStatusResponse } from "@/actions/dashboard"
 
 function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) {
   const getActionStyles = (actionType: string) => {
@@ -287,11 +273,20 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
 
 // ─── Row: Charts Grid ─────────────────────────────────────────────────────────
 
-export function DashboardChartsRow({ activities }: { activities: RecentActivity[] }) {
+export function DashboardChartsRow({ 
+  activities,
+  inventoryStatus,
+}: { 
+  activities: RecentActivity[] 
+  inventoryStatus: InventoryStatusResponse
+}) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 min-h-[320px]">
       <AssetAllocationChart />
-      <InventoryStatusChart />
+      <InventoryStatusChart 
+        inventoryData={inventoryStatus.inventoryData}
+        utilizationRate={inventoryStatus.utilizationRate}
+      />
       <RecentActivitiesList activities={activities} />
     </div>
   )

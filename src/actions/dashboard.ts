@@ -286,3 +286,97 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
     };
   });
 }
+
+// ============================================================================
+// READ: Current Inventory Status Donut Chart
+// ============================================================================
+
+export interface InventoryStatusItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
+export interface InventoryStatusResponse {
+  inventoryData: InventoryStatusItem[];
+  utilizationRate: number;
+}
+
+/**
+ * Returns dynamic inventory distribution counts grouped by status,
+ * along with the calculated asset utilization rate.
+ *
+ * Access: GlobalAdmin, ITOperator, FinanceAuditor
+ */
+export async function getDashboardInventoryStatus(): Promise<InventoryStatusResponse> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const results = await db
+    .select({
+      status: assets.status,
+      count: count(assets.id),
+    })
+    .from(assets)
+    .where(eq(assets.isArchived, false))
+    .groupBy(assets.status);
+
+  const statusColorMap: Record<string, { label: string; color: string }> = {
+    'Available': { label: 'New / Available', color: '#2563eb' },
+    'Assigned': { label: 'Assigned', color: '#84cc16' },
+    'In Repair': { label: 'In Repair', color: '#9333ea' },
+    'Defective': { label: 'Defective', color: '#ef4444' },
+    'Lost': { label: 'Lost', color: '#f97316' },
+    'Retired': { label: 'Retired', color: '#64748b' },
+    'Pending Disposal': { label: 'Pending Disposal', color: '#94a3b8' },
+    'Disposed': { label: 'Disposed', color: '#e11d48' },
+  };
+
+  const dataMap = new Map<string, number>();
+  let totalActive = 0;
+  let assignedCount = 0;
+
+  results.forEach(r => {
+    const val = Number(r.count);
+    dataMap.set(r.status, val);
+    
+    if (r.status !== 'Retired' && r.status !== 'Disposed') {
+      totalActive += val;
+    }
+    if (r.status === 'Assigned') {
+      assignedCount = val;
+    }
+  });
+
+  const inventoryData: InventoryStatusItem[] = [];
+
+  Object.entries(statusColorMap).forEach(([status, meta]) => {
+    const val = dataMap.get(status) || 0;
+    if (val > 0) {
+      inventoryData.push({
+        name: meta.label,
+        value: val,
+        color: meta.color,
+      });
+    }
+  });
+
+  results.forEach(r => {
+    if (!statusColorMap[r.status] && Number(r.count) > 0) {
+      const val = Number(r.count);
+      inventoryData.push({
+        name: r.status,
+        value: val,
+        color: '#6b7280',
+      });
+      totalActive += val;
+    }
+  });
+
+  const utilizationRate = totalActive > 0 ? Math.round((assignedCount / totalActive) * 100) : 0;
+
+  return {
+    inventoryData,
+    utilizationRate,
+  };
+}
