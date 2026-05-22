@@ -1,8 +1,9 @@
 'use client';
 
 import { type ReactNode } from 'react';
+import { REPORT_DATA_SOURCES } from '@/types/standard-reports';
 
-export const SOURCE_OPTIONS = ['Asset Registry', 'Operations Ledger', 'Master Data'];
+export const SOURCE_OPTIONS = [...REPORT_DATA_SOURCES];
 
 /**
  * Renders the appropriate Lucide icon for the given data source.

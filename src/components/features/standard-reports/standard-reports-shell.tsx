@@ -37,6 +37,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [pageCount, setPageCount] = useState<number>(1);
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -55,7 +56,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
       const pSize = pageCtx?.pageSize ?? 16;
 
       try {
-        const data = await fetchReportPreview({
+        const result = await fetchReportPreview({
           source: filters.source,
           assetType: filters.assetType,
           category: filters.category,
@@ -67,7 +68,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           page: pIndex,
           pageSize: pSize,
         });
-        setPreviewData(data);
+        setPreviewData(result.data);
+        setPageCount(result.pageCount);
         setShowDataGrid(true);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to fetch report preview';
@@ -101,16 +103,16 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
       setSelectedFields(template.fields || []);
       setFilterState(nextFilterState);
-      void loadPreview(nextFilterState, pagination);
+      setShowDataGrid(true);
     },
-    [loadPreview, templates, pagination]
+    [templates]
   );
 
   // Called when the sidebar's "Preview report" footer button is clicked
   const handleManualPreview = useCallback(() => {
     setSelectedFields([]); // Clear template-specific fields for manual preview
-    void loadPreview(filterState, pagination);
-  }, [filterState, loadPreview, pagination]);
+    setShowDataGrid(true);
+  }, []);
 
   // Called when the "Clear filters" button is clicked
   const handleClearFilters = useCallback(() => {
@@ -210,6 +212,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           source={filterState.source}
           pagination={pagination}
           setPagination={handlePaginationChange}
+          pageCount={pageCount}
         />
       </div>
     </div>

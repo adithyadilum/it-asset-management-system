@@ -117,7 +117,7 @@ export async function getStandardReportsFilterOptions() {
 
 export async function fetchReportPreview(
   filters: ReportPreviewFilters
-): Promise<ReportPreviewRow[]> {
+): Promise<{ data: ReportPreviewRow[]; pageCount: number; totalRows: number }> {
   const actionTimer = startLatencyTimer();
 
   const currentUser = await getAuthenticatedUser();
@@ -144,6 +144,7 @@ export async function fetchReportPreview(
     if (filters.source === 'Master Data') {
       const queryTimer = startLatencyTimer();
       let data: ReportPreviewRow[] = [];
+      let totalRows = 0;
       
       const statusEq = filters.status === 'Active' ? true : filters.status === 'Inactive' ? false : undefined;
 
@@ -156,12 +157,19 @@ export async function fetchReportPreview(
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const getCount = async (q: any) => {
+        const rows = await q.execute();
+        return rows.length;
+      };
+
       switch (filters.masterDataType) {
         case 'asset-categories': {
           let q = db.select().from(categories).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(categories.isActive, statusEq));
           if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
           data = rows.map(r => ({ 
             id: String(r.id), 
@@ -179,6 +187,7 @@ export async function fetchReportPreview(
           let q = db.select().from(locations).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(locations.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
           data = rows.map(r => ({ 
             id: String(r.id), 
@@ -196,6 +205,7 @@ export async function fetchReportPreview(
           let q = db.select().from(brands).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(brands.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
           data = rows.map(r => ({ 
             id: String(r.id), 
@@ -220,6 +230,7 @@ export async function fetchReportPreview(
           if (statusEq !== undefined) q = q.where(eq(models.isActive, statusEq));
           if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
           data = rows.map(r => ({ 
             id: String(r.id), 
@@ -237,6 +248,7 @@ export async function fetchReportPreview(
           let q = db.select().from(vendors).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(vendors.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
           data = rows.map(r => ({ 
             id: String(r.id), 
@@ -254,6 +266,7 @@ export async function fetchReportPreview(
           let q = db.select().from(owners).$dynamic();
           if (statusEq !== undefined) q = q.where(eq(owners.isActive, statusEq));
           
+          totalRows = await getCount(q);
           const rows = await q.limit(pageSize).offset(offset);
           data = rows.map(r => ({ 
             id: String(r.id), 
@@ -275,7 +288,11 @@ export async function fetchReportPreview(
         startTime: queryTimer,
       });
 
-      return data;
+      return {
+        data,
+        totalRows,
+        pageCount: Math.ceil(totalRows / pageSize),
+      };
     }
 
     // -------------------------------------------------------------------------
@@ -313,7 +330,7 @@ export async function fetchReportPreview(
 
     const queryTimer = startLatencyTimer();
 
-    const rows = await db
+    const baseQuery = db
       .select({
         id: assets.id,
         assetTag: assets.assetTag,
@@ -324,17 +341,24 @@ export async function fetchReportPreview(
         serialNumber: assets.serialNumber,
         status: assets.status,
         location: locations.name,
-        purchaseDate: assetPurchases.purchaseDate,
-        purchaseCost: assetPurchases.totalCost,
-        warrantyExpiry: assetPurchases.warrantyExpiry,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(brands, eq(models.brandId, brands.id))
       .leftJoin(locations, eq(assets.locationId, locations.id))
-      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .where(whereCondition)
+      .where(whereCondition);
+
+    // Get total rows for pagination
+    const totalRowsCount = await db.select({ count: db.$count(assets, whereCondition) }).from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(brands, eq(models.brandId, brands.id))
+      .leftJoin(locations, eq(assets.locationId, locations.id));
+    
+    const totalRows = totalRowsCount[0]?.count ?? 0;
+
+    const rows = await baseQuery
       .orderBy(desc(assets.updatedAt), asc(assets.assetTag))
       .limit(pageSize)
       .offset(offset);
@@ -348,6 +372,7 @@ export async function fetchReportPreview(
     // Resolve assigned users for each asset (same pattern as asset-registry-repo)
     const assetIds = rows.map((row) => row.id);
     const assignedUserByAssetId = new Map<string, string>();
+    const purchasedDataByAssetId = new Map<string, { purchaseDate: Date | null; cost: number | null; warrantyExpiry: Date | null }>();
 
     if (assetIds.length > 0) {
       const activeAssignments = await db
@@ -373,25 +398,54 @@ export async function fetchReportPreview(
           assignedUserByAssetId.set(assignment.assetId, assignment.assignedTo);
         }
       }
+
+      // Fetch purchase data separately to avoid duplicate rows in main query
+      const purchases = await db
+        .select({
+          assetId: assetPurchases.assetId,
+          purchaseDate: assetPurchases.purchaseDate,
+          totalCost: assetPurchases.totalCost,
+          warrantyExpiry: assetPurchases.warrantyExpiry,
+        })
+        .from(assetPurchases)
+        .where(inArray(assetPurchases.assetId, assetIds))
+        .orderBy(desc(assetPurchases.updatedAt));
+
+      for (const purchase of purchases) {
+        if (!purchasedDataByAssetId.has(purchase.assetId)) {
+          purchasedDataByAssetId.set(purchase.assetId, {
+            purchaseDate: purchase.purchaseDate as Date | null,
+            cost: purchase.totalCost as number | null,
+            warrantyExpiry: purchase.warrantyExpiry as Date | null,
+          });
+        }
+      }
     }
 
-    const data: ReportPreviewRow[] = rows.map((row) => ({
-      id: row.id,
-      'Asset ID': row.assetTag,
-      'Asset Name': row.name,
-      'Category': row.category,
-      'Brand': row.brand || '-',
-      'Model': row.model || '-',
-      'Serial Number': row.serialNumber || '-',
-      'Status': row.status,
-      'Location': row.location || '-',
-      'Assigned To': assignedUserByAssetId.get(row.id) ?? '-',
-      'Purchase Date': row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString() : '-',
-      'Purchase Cost': row.purchaseCost ? String(row.purchaseCost) : '-',
-      'Warranty Expiry': row.warrantyExpiry ? new Date(row.warrantyExpiry).toLocaleDateString() : '-',
-    }));
+    const data: ReportPreviewRow[] = rows.map((row) => {
+      const pData = purchasedDataByAssetId.get(row.id);
+      return {
+        id: row.id,
+        'Asset ID': row.assetTag,
+        'Asset Name': row.name,
+        'Category': row.category,
+        'Brand': row.brand || '-',
+        'Model': row.model || '-',
+        'Serial Number': row.serialNumber || '-',
+        'Status': row.status,
+        'Location': row.location || '-',
+        'Assigned To': assignedUserByAssetId.get(row.id) ?? '-',
+        'Purchase Date': pData?.purchaseDate ? new Date(pData.purchaseDate).toLocaleDateString() : '-',
+        'Purchase Cost': pData?.cost ? String(pData.cost) : '-',
+        'Warranty Expiry': pData?.warrantyExpiry ? new Date(pData.warrantyExpiry).toLocaleDateString() : '-',
+      };
+    });
 
-    return data;
+    return {
+      data,
+      totalRows,
+      pageCount: Math.ceil(totalRows / pageSize),
+    };
   } catch (error) {
     logError({
       scope: 'ACTION',

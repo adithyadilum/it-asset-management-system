@@ -23,6 +23,7 @@ interface StandardReportsPreviewPanelProps {
   source: string;
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
+  pageCount: number;
 }
 
 function toCellText(value: unknown) {
@@ -41,6 +42,7 @@ export function StandardReportsPreviewPanel({
   source,
   pagination,
   setPagination,
+  pageCount,
 }: StandardReportsPreviewPanelProps) {
   const columns = useMemo<ColumnDef<ReportPreviewRow>[]>(() => {
     // If we have specific fields from a template, use them
@@ -172,7 +174,7 @@ export function StandardReportsPreviewPanel({
             paginationState={pagination}
             onPaginationChange={setPagination}
             manualPagination={true}
-            pageCount={1}
+            pageCount={pageCount}
             emptyState={{
               title: 'No matching assets',
               description:

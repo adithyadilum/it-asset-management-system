@@ -242,7 +242,7 @@ export function CreateTemplateDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[660px] h-[90vh] max-h-[90vh] flex flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="sm:max-w-165 h-[90vh] max-h-[90vh] flex flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-xl font-semibold">
             {editingTemplate ? 'Update Report Template' : 'Add New Template'}
@@ -255,226 +255,226 @@ export function CreateTemplateDialog({
         <div className="flex min-h-0 flex-1 flex-col">
           <ScrollArea className="flex-1 min-h-0 h-full overflow-hidden px-6">
             <div className="flex flex-col gap-6 py-4 pr-4">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className={TYPOGRAPHY_CLASSNAMES.textSmSemiBold}>
-                Basic Information
-              </h3>
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className={TYPOGRAPHY_CLASSNAMES.textSmSemiBold}>
+                  Basic Information
+                </h3>
 
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
-                <Label htmlFor="template-name" className="text-sm font-medium">
-                  Report Name<span className="text-destructive">*</span>:
-                </Label>
-                <Input
-                  id="template-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Assets by Department - Q1"
-                />
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
+                  <Label htmlFor="template-name" className="text-sm font-medium">
+                    Report Name<span className="text-destructive">*</span>:
+                  </Label>
+                  <Input
+                    id="template-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Assets by Department - Q1"
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
+                  <Label className="text-sm font-medium">
+                    Report Code:
+                  </Label>
+                  <Input
+                    value="Auto-generated"
+                    disabled
+                    className="text-muted-foreground"
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-start">
+                  <Label htmlFor="template-description" className="text-sm font-medium pt-2">
+                    Description:
+                  </Label>
+                  <Textarea
+                    id="template-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe briefly about the report"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
+                  <Label className="text-sm font-medium">Is Active:</Label>
+                  <Switch
+                    checked={isActive}
+                    onCheckedChange={setIsActive}
+                  />
+                </div>
               </div>
 
+              {/* Primary Data Source */}
               <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
                 <Label className="text-sm font-medium">
-                  Report Code:
+                  Primary Data Source:
                 </Label>
-                <Input
-                  value="Auto-generated"
-                  disabled
-                  className="text-muted-foreground"
-                />
+                <Select value={dataSource} onValueChange={(val) => {
+                  setDataSource(val);
+                  setSelectedFields([]); // Clear fields when source changes
+                }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REPORT_DATA_SOURCES.map((source) => (
+                      <SelectItem key={source} value={source}>
+                        {source}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-start">
-                <Label htmlFor="template-description" className="text-sm font-medium pt-2">
-                  Description:
-                </Label>
-                <Textarea
-                  id="template-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe briefly about the report"
-                  rows={3}
-                />
-              </div>
+              {/* Filters */}
+              <Card className="gap-0 border-border bg-card">
+                <CardHeader className="flex flex-col items-start gap-4 p-4">
+                  <div className="flex w-full items-center justify-between gap-2.5">
+                    <CardTitle className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                      Filters<span className="text-destructive">*</span>
+                    </CardTitle>
+                    <ListFilter className="size-5 text-foreground" />
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4 p-4 pt-3">
+                  {dataSource === 'Master Data' ? (
+                    <>
+                      <FilterRow label="Asset Type">
+                        <Select
+                          value={assetType}
+                          onValueChange={(value) => {
+                            setAssetType(value);
+                            setCategory('');
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="All Assets" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filterOptions.assetTypes?.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FilterRow>
 
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
-                <Label className="text-sm font-medium">Is Active:</Label>
-                <Switch
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-              </div>
-            </div>
+                      <FilterRow label="Record Type">
+                        <SearchableDropdown
+                          value={masterDataType}
+                          onSelect={setMasterDataType}
+                          placeholder="Select Data Type"
+                          emptyMessage="No record type found."
+                          options={masterDataTypeOptions}
+                        />
+                      </FilterRow>
 
-            {/* Primary Data Source */}
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
-              <Label className="text-sm font-medium">
-                Primary Data Source:
-              </Label>
-              <Select value={dataSource} onValueChange={(val) => {
-                setDataSource(val);
-                setSelectedFields([]); // Clear fields when source changes
-              }}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Choose source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {REPORT_DATA_SOURCES.map((source) => (
-                    <SelectItem key={source} value={source}>
-                      {source}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                      <FilterRow label="Status">
+                        <SearchableDropdown
+                          value={status}
+                          onSelect={setStatus}
+                          placeholder="Select a Status"
+                          emptyMessage="No status found."
+                          options={statusOptions}
+                        />
+                      </FilterRow>
+                    </>
+                  ) : (
+                    <>
+                      <FilterRow label="Asset Type">
+                        <Select
+                          value={assetType}
+                          onValueChange={setAssetType}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="All Assets" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filterOptions.assetTypes?.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FilterRow>
 
-            {/* Filters */}
-            <Card className="gap-0 border-border bg-card">
-              <CardHeader className="flex flex-col items-start gap-4 p-4">
-                <div className="flex w-full items-center justify-between gap-2.5">
-                  <CardTitle className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
-                    Filters<span className="text-destructive">*</span>
-                  </CardTitle>
-                  <ListFilter className="size-5 text-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4 p-4 pt-3">
-                {dataSource === 'Master Data' ? (
-                  <>
-                    <FilterRow label="Asset Type">
-                      <Select
-                        value={assetType}
-                        onValueChange={(value) => {
-                          setAssetType(value);
-                          setCategory('');
-                        }}
+                      <FilterRow label="Category">
+                        <SearchableDropdown
+                          value={category}
+                          onSelect={setCategory}
+                          placeholder={assetType && assetType !== 'All Assets' ? 'Select a Category' : 'Choose an asset type first'}
+                          emptyMessage={assetType && assetType !== 'All Assets' ? 'No category found.' : 'Select an asset type first'}
+                          options={assetType && assetType !== 'All Assets' ? filteredCategories.map((cat) => ({
+                            value: cat.name,
+                            label: cat.name,
+                          })) : []}
+                        />
+                      </FilterRow>
+
+                      <FilterRow label="Location">
+                        <SearchableDropdown
+                          value={location}
+                          onSelect={setLocation}
+                          placeholder="Select a Location"
+                          emptyMessage="No location found."
+                          options={locationOptions}
+                        />
+                      </FilterRow>
+
+                      <FilterRow label="Status">
+                        <SearchableDropdown
+                          value={status}
+                          onSelect={setStatus}
+                          placeholder="Select a Status"
+                          emptyMessage="No status found."
+                          options={statusOptions}
+                        />
+                      </FilterRow>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Report Fields */}
+              <div className="space-y-3">
+                <h3 className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                  Report Fields:
+                </h3>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                  <div className="flex flex-col gap-3">
+                    {leftFields.map((field) => (
+                      <label
+                        key={field}
+                        className="flex items-center gap-2.5 text-sm cursor-pointer"
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="All Assets" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filterOptions.assetTypes?.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FilterRow>
-
-                    <FilterRow label="Record Type">
-                      <SearchableDropdown
-                        defaultValue={masterDataType}
-                        onSelect={setMasterDataType}
-                        placeholder="Select Data Type"
-                        emptyMessage="No record type found."
-                        options={masterDataTypeOptions}
-                      />
-                    </FilterRow>
-
-                    <FilterRow label="Status">
-                      <SearchableDropdown
-                        defaultValue={status}
-                        onSelect={setStatus}
-                        placeholder="Select a Status"
-                        emptyMessage="No status found."
-                        options={statusOptions}
-                      />
-                    </FilterRow>
-                  </>
-                ) : (
-                  <>
-                    <FilterRow label="Asset Type">
-                      <Select
-                        value={assetType}
-                        onValueChange={setAssetType}
+                        <Checkbox
+                          checked={selectedFields.includes(field)}
+                          onCheckedChange={() => toggleField(field)}
+                        />
+                        {field}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {rightFields.map((field) => (
+                      <label
+                        key={field}
+                        className="flex items-center gap-2.5 text-sm cursor-pointer"
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="All Assets" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filterOptions.assetTypes?.map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FilterRow>
-
-                    <FilterRow label="Category">
-                      <SearchableDropdown
-                        defaultValue={category}
-                        onSelect={setCategory}
-                        placeholder={assetType ? 'Select a Category' : 'Choose an asset type first'}
-                        emptyMessage={assetType ? 'No category found.' : 'Select an asset type first.'}
-                        options={filteredCategories.map((cat) => ({
-                          value: cat.name,
-                          label: cat.name,
-                        }))}
-                      />
-                    </FilterRow>
-
-                    <FilterRow label="Location">
-                      <SearchableDropdown
-                        defaultValue={location}
-                        onSelect={setLocation}
-                        placeholder="Select a Location"
-                        emptyMessage="No location found."
-                        options={locationOptions}
-                      />
-                    </FilterRow>
-
-                    <FilterRow label="Status">
-                      <SearchableDropdown
-                        defaultValue={status}
-                        onSelect={setStatus}
-                        placeholder="Select a Status"
-                        emptyMessage="No status found."
-                        options={statusOptions}
-                      />
-                    </FilterRow>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Report Fields */}
-            <div className="space-y-3">
-              <h3 className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
-                Report Fields:
-              </h3>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                <div className="flex flex-col gap-3">
-                  {leftFields.map((field) => (
-                    <label
-                      key={field}
-                      className="flex items-center gap-2.5 text-sm cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={selectedFields.includes(field)}
-                        onCheckedChange={() => toggleField(field)}
-                      />
-                      {field}
-                    </label>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-3">
-                  {rightFields.map((field) => (
-                    <label
-                      key={field}
-                      className="flex items-center gap-2.5 text-sm cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={selectedFields.includes(field)}
-                        onCheckedChange={() => toggleField(field)}
-                      />
-                      {field}
-                    </label>
-                  ))}
+                        <Checkbox
+                          checked={selectedFields.includes(field)}
+                          onCheckedChange={() => toggleField(field)}
+                        />
+                        {field}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
               {/* Sort */}
               <div className="space-y-3">

@@ -945,7 +945,7 @@ export function MasterDataCreatePanel({
                                 <SearchableDropdown
                                     options={LOCATION_TYPE_OPTIONS}
                                     placeholder="Select a location type"
-                                    defaultValue={selectedLocationType}
+                                    value={selectedLocationType}
                                     onSelect={(value) =>
                                         setSelectedLocationType(value as LocationType)
                                     }
@@ -971,7 +971,7 @@ export function MasterDataCreatePanel({
                                     })),
                                 ]}
                                 placeholder="Select a location"
-                                defaultValue={selectedParentLocationId}
+                                value={selectedParentLocationId}
                                 onSelect={setSelectedParentLocationId}
                             />
                             <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
@@ -1007,7 +1007,7 @@ export function MasterDataCreatePanel({
                                 <SearchableDropdown
                                     options={PILLAR_OPTIONS}
                                     placeholder="Select a type"
-                                    defaultValue={categoryPillar}
+                                    value={categoryPillar}
                                     onSelect={handleCategoryPillarChange}
                                 />
                                 {getFieldError("pillar") && (
@@ -1119,7 +1119,7 @@ export function MasterDataCreatePanel({
                             <SearchableDropdown
                                 options={PILLAR_OPTIONS}
                                 placeholder="Select a type"
-                                defaultValue={modelPillar}
+                                value={modelPillar}
                                 onSelect={handleModelPillarChange}
                             />
                         </div>
@@ -1135,7 +1135,7 @@ export function MasterDataCreatePanel({
                                         label: brand.name,
                                     }))}
                                     placeholder="Select a brand"
-                                    defaultValue={selectedBrandId}
+                                    value={selectedBrandId}
                                     onSelect={setSelectedBrandId}
                                 />
                                 {getFieldError("brandId") && (
@@ -1155,7 +1155,7 @@ export function MasterDataCreatePanel({
                                         label: category.name,
                                     }))}
                                     placeholder="Select a category"
-                                    defaultValue={normalizedSelectedCategoryId}
+                                    value={normalizedSelectedCategoryId}
                                     onSelect={handleModelCategoryChange}
                                 />
                                 {getFieldError("categoryId") && (

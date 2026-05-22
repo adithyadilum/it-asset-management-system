@@ -203,7 +203,7 @@ export function StandardReportsConfigPanel({
 
                 <FilterRow label="Record Type">
                   <SearchableDropdown
-                    defaultValue={filterState.masterDataType}
+                    value={filterState.masterDataType}
                     onSelect={(value) => onFilterChange('masterDataType', value)}
                     placeholder="Select Data Type"
                     emptyMessage="No record type found."
@@ -213,7 +213,7 @@ export function StandardReportsConfigPanel({
 
                 <FilterRow label="Status">
                   <SearchableDropdown
-                    defaultValue={filterState.status}
+                    value={filterState.status}
                     onSelect={(value) => onFilterChange('status', value)}
                     placeholder="Select a Status"
                     emptyMessage="No status found."
@@ -243,7 +243,7 @@ export function StandardReportsConfigPanel({
 
                 <FilterRow label="Category">
                   <SearchableDropdown
-                    defaultValue={filterState.category}
+                    value={filterState.category}
                     onSelect={(value) => onFilterChange('category', value)}
                     placeholder={
                       !filterState.assetType || filterState.assetType === 'All Assets'
@@ -261,7 +261,7 @@ export function StandardReportsConfigPanel({
 
                 <FilterRow label="Location">
                   <SearchableDropdown
-                    defaultValue={filterState.location}
+                    value={filterState.location}
                     onSelect={(value) => onFilterChange('location', value)}
                     placeholder="Select a Location"
                     emptyMessage="No location found."
@@ -271,7 +271,7 @@ export function StandardReportsConfigPanel({
 
                 <FilterRow label="Status">
                   <SearchableDropdown
-                    defaultValue={filterState.status}
+                    value={filterState.status}
                     onSelect={(value) => onFilterChange('status', value)}
                     placeholder="Select a Status"
                     emptyMessage="No status found."
