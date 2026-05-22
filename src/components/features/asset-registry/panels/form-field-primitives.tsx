@@ -116,7 +116,7 @@ export function SearchableFieldRow({
           placeholder={placeholder}
           emptyMessage={emptyMessage}
           onSelect={onChange}
-          defaultValue={value}
+          value={value}
         />
         <input type="hidden" name={name} value={value} />
       </>

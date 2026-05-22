@@ -39,7 +39,7 @@ export function StepCategorySelect({ categories, state, dispatch }: StepCategory
               value: String(c.id),
               label: `${c.name} (${c.pillar})`,
             }))}
-            defaultValue={selectedCategoryId ? String(selectedCategoryId) : ""}
+            value={selectedCategoryId ? String(selectedCategoryId) : ""}
             onSelect={(val) => setSelectedCategoryId(Number(val))}
             placeholder="Select a category..."
             emptyMessage="No category found."

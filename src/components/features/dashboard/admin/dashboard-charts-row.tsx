@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { cn } from "@/lib/utils"
+import { formatDate } from "@/lib/date"
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer,
   PieChart, Pie, LabelList,
@@ -259,12 +260,17 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
                 <div
                   key={item.id}
                   className={cn(
-                    "flex items-center gap-2 px-2.5 py-2 rounded-md border text-xs font-medium",
+                    "flex items-start gap-2.5 px-2.5 py-2 rounded-md border text-xs font-medium",
                     styles.className
                   )}
                 >
-                  <styles.icon className={cn("w-3.5 h-3.5 shrink-0", styles.iconColor)} />
-                  <span className="leading-tight line-clamp-1">{item.text}</span>
+                  <styles.icon className={cn("w-3.5 h-3.5 shrink-0 mt-0.5", styles.iconColor)} />
+                  <div className="flex flex-col min-w-0">
+                    <span className="leading-tight line-clamp-1">{item.text}</span>
+                    <span className="text-[10px] font-normal opacity-70 mt-0.5">
+                      {formatDate(item.performedAt, "MMM dd, yyyy h:mm a")}
+                    </span>
+                  </div>
                 </div>
               )
             })

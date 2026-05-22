@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -14,6 +14,10 @@ import {
   MultiAssetAssignmentModal,
   type MultiAssetAssignmentItem,
 } from "./multi-asset-assignment-modal";
+import {
+  ProcessReturnModal,
+  type ReturnAssetItem,
+} from "./process-return-modal";
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -84,6 +88,10 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const searchParams = useSearchParams();
   const [isMultiAssignModalOpen, setIsMultiAssignModalOpen] = useState(false);
   const [multiAssignAssets, setMultiAssignAssets] = useState<MultiAssetAssignmentItem[]>([]);
+  
+  const [isProcessReturnModalOpen, setIsProcessReturnModalOpen] = useState(false);
+  const [processReturnAsset, setProcessReturnAsset] = useState<ReturnAssetItem | null>(null);
+  
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const [searchValue, setSearchValue] = useState("");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -94,7 +102,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const isPanelOpen = currentPanel === "record" && activeAssetId !== "";
 
   // 2. Data Mapping
-  const mapRow = (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
+  const mapRow = useCallback((asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
     assetId: asset.id,
     assetName: asset.name ?? asset.assetTag,
     serialNumber: asset.serialNumber ?? "-",
@@ -116,21 +124,21 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     assetTag: asset.assetTag,
     state: asset.state,
     assignmentId: asset.assignmentId ?? undefined,
-  });
+  }), []);
 
   const availableRows = useMemo<AssetAssignmentRow[]>(
     () => data.available.map(mapRow),
-    [data.available]
+    [data.available, mapRow]
   );
 
   const assignedRows = useMemo<AssetAssignmentRow[]>(
     () => data.assigned.map(mapRow),
-    [data.assigned]
+    [data.assigned, mapRow]
   );
 
   const returnedRows = useMemo<AssetAssignmentRow[]>(
     () => data.returned.map(mapRow),
-    [data.returned]
+    [data.returned, mapRow]
   );
 
   const assetRows = useMemo(
@@ -150,9 +158,22 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     return [...categories].sort((left, right) => left.localeCompare(right));
   }, [assetRows]);
 
+  const statusOptions = useMemo(() => {
+    const statuses = new Set<string>();
+
+    for (const row of assetRows) {
+      if (row.state && row.state.trim().length > 0) {
+        statuses.add(row.state);
+      }
+    }
+
+    return [...statuses].sort((left, right) => left.localeCompare(right));
+  }, [assetRows]);
+
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => [
     { value: 'Category', label: 'Category', options: categoryOptions },
-  ], [categoryOptions]);
+    { value: 'Status', label: 'Status', options: statusOptions },
+  ], [categoryOptions, statusOptions]);
 
   const searchedAssetRows = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -184,6 +205,10 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       return appliedFilters.every((filter) => {
         if (filter.field === 'Category') {
           const matches = row.category === filter.value;
+          return filter.operator === "is" ? matches : !matches;
+        }
+        if (filter.field === 'Status') {
+          const matches = row.state === filter.value;
           return filter.operator === "is" ? matches : !matches;
         }
         return true;
@@ -409,7 +434,20 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-
+  const handleReturnedAssetClick = (row: AssetAssignmentRow, rowIndex: number) => {
+    // 1. Check the checkbox of the clicked row exclusively
+    setRowSelection({ [rowIndex]: true });
+    
+    // 2. Open the process return modal
+    setProcessReturnAsset({
+      assetId: row.assetId,
+      assetTag: row.assetTag,
+      assetName: row.assetName,
+      assignee: row.assignedTo,
+      assignmentId: row.assignmentId,
+    });
+    setIsProcessReturnModalOpen(true);
+  };
 
   const handleMultiAssignModalOpenChange = (open: boolean) => {
     setIsMultiAssignModalOpen(open);
@@ -422,14 +460,16 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const renderTable = (
     rows: AssetAssignmentRow[],
     actions?: DataTableSelectionAction<AssetAssignmentRow>[],
-    showStatusColumn = false
+    showStatusColumn = false,
+    customRowClick?: (row: AssetAssignmentRow, rowIndex: number) => void,
+    disableSelectionHeader = false
   ) => {
     const tableColumns = showStatusColumn
       ? columns
       : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
 
     return (
-      <div className="flex flex-1 flex-col min-h-0 gap-4">
+      <div className="flex flex-col gap-4 flex-1 overflow-hidden min-h-0 mt-1">
         <FilterBar
           searchQuery={searchValue}
           onSearchChange={setSearchValue}
@@ -444,13 +484,14 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         <DataTable<AssetAssignmentRow, unknown>
           columns={tableColumns}
           data={rows}
-          onRowClick={handleRowClick}
+          onRowClick={customRowClick ?? handleRowClick}
           initialPageSize={10}
-          className="rounded-lg border-slate-200"
+          className="flex-1 min-h-0 rounded-lg border border-slate-200"
           selectionActions={actions}
           selectionLabel={(count) => `${count} Assets Selected`}
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
+          disableSelectionHeader={disableSelectionHeader}
         />
       </div>
     );
@@ -466,7 +507,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
             </h1>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
+            <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
             <ModuleNavigationTabs
               tabs={tabs}
               defaultTab="available-assets"
@@ -478,16 +519,16 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
               }}
               containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
             >
-              <TabsContent value="available-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
-              </TabsContent>
+                <TabsContent value="available-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
+                  {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
+                </TabsContent>
 
-              <TabsContent value="assigned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
-              </TabsContent>
+                <TabsContent value="assigned-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
+                  {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
+                </TabsContent>
 
-              <TabsContent value="returned-assets" className="flex min-h-0 flex-1 flex-col outline-none data-[state=inactive]:hidden">
-                {renderTable(filteredReturnedRows, undefined, false)}
+                <TabsContent value="returned-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
+                {renderTable(filteredReturnedRows, undefined, false, handleReturnedAssetClick, true)}
               </TabsContent>
             </ModuleNavigationTabs>
           </div>
@@ -499,6 +540,18 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         disableTransition={searchParams.get("animate") === "0"}
         selectedAsset={selectedAsset}
         onClose={handleClosePanel}
+      />
+
+      <ProcessReturnModal
+        isOpen={isProcessReturnModalOpen}
+        asset={processReturnAsset}
+        onOpenChange={(open) => {
+          setIsProcessReturnModalOpen(open);
+          if (!open) {
+            setProcessReturnAsset(null);
+            setRowSelection({}); // Clear selection when modal closes
+          }
+        }}
       />
 
       <MultiAssetAssignmentModal
