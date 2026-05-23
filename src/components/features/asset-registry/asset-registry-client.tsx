@@ -1093,7 +1093,11 @@ export function AssetRegistryClient({
               data={visibleRows}
               pageSizeOptions={config.rowsPerPageOptions}
               initialPageSize={config.defaultPageSize}
-              defaultSorting={[{ id: 'assetTag', desc: true }]}
+              defaultSorting={
+                searchParams.get('sort')
+                  ? [{ id: searchParams.get('sort')!, desc: searchParams.get('desc') === 'true' }]
+                  : [{ id: 'assetTag', desc: true }]
+              }
               selectionActions={selectionActions}
               selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
               emptyState={{

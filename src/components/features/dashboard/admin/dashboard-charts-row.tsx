@@ -10,8 +10,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer,
   PieChart, Pie, LabelList,
 } from "recharts"
+import Link from "next/link"
 import {
-  TrendingUp, CheckCircle2, AlertCircle, Wrench, Hash,
+  TrendingUp, CheckCircle2, AlertCircle, Wrench, Hash, ArrowUpRight,
 } from "lucide-react"
 
 // ─── Widget 1: Bar Chart ─────────────────────────────────────────────────────
@@ -164,7 +165,13 @@ function InventoryStatusChart({
     <Card className="flex flex-col h-full shadow-sm border-border">
       <CardHeader className="p-3 pb-1 shrink-0">
         <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-          Current Inventory Status
+          <Link 
+            href="/assets?sort=status" 
+            className="group inline-flex items-center gap-1 hover:text-primary transition-colors duration-200 cursor-pointer"
+          >
+            Current Inventory Status
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 -translate-y-0.5 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:translate-y-0 transition-all duration-200 text-primary shrink-0" />
+          </Link>
         </CardTitle>
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground")}>
           Real time distribution across all categories.
@@ -330,7 +337,13 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
     <Card className="flex flex-col h-full shadow-sm border-border">
       <CardHeader className="p-3 pb-1 shrink-0">
         <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-          Recent Activities
+          <Link 
+            href="/reports/audit-log" 
+            className="group inline-flex items-center gap-1 hover:text-primary transition-colors duration-200 cursor-pointer"
+          >
+            Recent Activities
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 -translate-y-0.5 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:translate-y-0 transition-all duration-200 text-primary shrink-0" />
+          </Link>
         </CardTitle>
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground")}>
           latest actions, updates, and system events

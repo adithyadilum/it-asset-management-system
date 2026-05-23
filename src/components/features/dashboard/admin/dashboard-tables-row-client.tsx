@@ -15,6 +15,7 @@ import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow } from "@
 import { toast } from "sonner"
 import { sendAssignmentReminderAction } from "@/actions/assignments"
 import { tiqriToast } from "@/components/shared/sonner"
+import { ArrowUpRight } from "lucide-react"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -159,7 +160,7 @@ function usePendingDisposalColumns(): ColumnDef<PendingDisposalRow>[] {
         <Button
           variant="secondary"
           size="sm"
-          className="h-7 text-xs px-3 transition-all hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm active:scale-95"
+          className="group h-7 text-xs px-3 transition-all hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm active:scale-95 inline-flex items-center gap-1"
           onClick={() =>
             router.push(
               `/operations/disposals?panel=review&id=${row.original.disposalId}`
@@ -167,6 +168,7 @@ function usePendingDisposalColumns(): ColumnDef<PendingDisposalRow>[] {
           }
         >
           Take Action
+          <ArrowUpRight className="w-3.5 h-3.5 opacity-0 -translate-y-0.5 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:translate-y-0 transition-all duration-200" />
         </Button>
       ),
     },
