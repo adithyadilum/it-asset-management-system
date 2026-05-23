@@ -284,7 +284,7 @@ function InventoryStatusChart({
 
 // ─── Widget 3: Recent Activities ─────────────────────────────────────────────
 
-import { RecentActivity, InventoryStatusItem, InventoryStatusResponse, DepartmentAllocationItem } from "@/actions/dashboard"
+import type { RecentActivity, InventoryStatusItem, InventoryStatusResponse, DepartmentAllocationItem } from "@/actions/dashboard"
 
 function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) {
   const getActionStyles = (actionType: string) => {
