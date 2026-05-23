@@ -154,6 +154,25 @@ export function CreateTemplateDialog({
     { value: 'owners', label: 'Owners' },
   ];
 
+  const hasSelectedFieldChanges =
+    !editingTemplate ||
+    selectedFields.length !== (editingTemplate.fields?.length ?? 0) ||
+    selectedFields.some((field, index) => field !== editingTemplate.fields?.[index]);
+
+  const hasTemplateChanges =
+    !editingTemplate ||
+    name !== editingTemplate.name ||
+    description !== (editingTemplate.description || '') ||
+    isActive !== editingTemplate.isActive ||
+    dataSource !== editingTemplate.dataSource ||
+    assetType !== (editingTemplate.filters?.assetType || '') ||
+    category !== (editingTemplate.filters?.category || '') ||
+    location !== (editingTemplate.filters?.location || '') ||
+    status !== (editingTemplate.filters?.status || '') ||
+    masterDataType !== (editingTemplate.filters?.masterDataType || '') ||
+    sortDirection !== (editingTemplate.sortDirection as 'asc' | 'desc') ||
+    hasSelectedFieldChanges;
+
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (!nextOpen) {
@@ -532,7 +551,7 @@ export function CreateTemplateDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
+          <Button onClick={handleSubmit} disabled={isPending || (editingTemplate ? !hasTemplateChanges : false)}>
             {isPending ? 'Saving...' : editingTemplate ? 'Update Template' : 'Save Template'}
           </Button>
         </div>
