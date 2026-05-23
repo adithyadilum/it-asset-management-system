@@ -54,14 +54,14 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         href="/financials/depreciation"
       />
       <KpiCard 
-        title="Inactive Software Seats"
-        value={`${formatNumber(metrics.inactiveSoftwareSeats)} Seats`}
-        badgeText={`-${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
-        badgeType="negative"
-        valueColor="destructive"
-        subText1={`${formatCurrency(metrics.inactiveSoftwareCostLeak)} monthly in idle seat waste`}
-        subText2="Target for license subscription downgrade."
-        href="/assets/software"
+        title="Cumulative Repair Spend"
+        value={formatCurrency(metrics.cumulativeRepairSpend)}
+        badgeText="-4.5%"
+        badgeType="positive"
+        valueColor="default"
+        subText1="Actual maintenance expenditures"
+        subText2="Target limit: Under $20K/annum."
+        href="/operations/maintenance"
       />
       <KpiCard 
         title="Warranty Expiry (30 Days)"
@@ -74,14 +74,14 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         href="/assets/hardware"
       />
       <KpiCard 
-        title="Cumulative Repair Spend"
-        value={formatCurrency(metrics.cumulativeRepairSpend)}
-        badgeText="-4.5%"
-        badgeType="positive"
-        valueColor="default"
-        subText1="Actual maintenance expenditures"
-        subText2="Target limit: Under $20K/annum."
-        href="/operations/maintenance"
+        title="Inactive Software Seats"
+        value={`${formatNumber(metrics.inactiveSoftwareSeats)} Seats`}
+        badgeText={`-${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
+        badgeType="negative"
+        valueColor="destructive"
+        subText1={`${formatCurrency(metrics.inactiveSoftwareCostLeak)} monthly in idle seat waste`}
+        subText2="Target for license subscription downgrade."
+        href="/assets/software"
       />
       <KpiCard 
         title="Software Renewals (30 Days)"

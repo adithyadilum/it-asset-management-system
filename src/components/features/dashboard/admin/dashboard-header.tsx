@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { cn } from "@/lib/utils"
-import { Calendar, Clock } from "lucide-react"
 
 export function DashboardHeader() {
   const [time, setTime] = useState<Date | null>(null)
@@ -52,16 +51,10 @@ export function DashboardHeader() {
         Overview
       </h1>
       
-      <div className="flex items-center h-8 gap-3 bg-slate-50 border border-slate-200/80 rounded-lg px-3 shadow-sm text-xs text-slate-600 font-medium -translate-y-[1px]">
-        <div className="flex items-center gap-1.5">
-          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <span>{time ? formatDate(time) : "Loading date..."}</span>
-        </div>
+      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+        <span>{time ? formatDate(time) : "Loading date..."}</span>
         <div className="w-px h-3 bg-slate-200" />
-        <div className="flex items-center gap-1.5 min-w-[85px]">
-          <Clock className="w-3.5 h-3.5 text-[#7cc000] animate-pulse" />
-          <span>{time ? formatTime(time) : "Loading time..."}</span>
-        </div>
+        <span className="tabular-nums">{time ? formatTime(time) : "Loading time..."}</span>
       </div>
     </div>
   )
