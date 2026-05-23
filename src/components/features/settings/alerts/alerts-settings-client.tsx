@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { tiqriToast } from '@/components/shared/sonner';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -161,9 +162,70 @@ export function AlertsSettingsClient() {
 
   if (loading) {
     return (
-      <div className="flex h-[400px] w-full flex-col items-center justify-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-[#040d5a]" />
-        <p className="text-sm font-medium text-slate-500 animate-pulse">Loading alert settings...</p>
+      <div className="flex-1 overflow-y-auto px-6 py-8 space-y-10 bg-slate-50/50">
+        <div className="max-w-6xl mx-auto space-y-8">
+          
+          {/* Header Summary Skeleton */}
+          <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-5">
+            <Skeleton className="h-8 w-64 rounded-md" />
+            <Skeleton className="h-4 w-96 mt-2 rounded-md" />
+          </div>
+
+          {/* Pulsing Category Skeletons */}
+          {[1, 2, 3].map((catId) => (
+            <section key={catId} className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="h-8 w-8 rounded-lg" />
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-40 rounded-md" />
+                  <Skeleton className="h-3 w-60 rounded-md" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5">
+                {[1, 2].map((cardId) => (
+                  <div
+                    key={cardId}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border border-slate-150 bg-white p-6 shadow-xs"
+                  >
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="h-7 w-7 rounded-md shrink-0" />
+                        <div className="space-y-2 flex-1">
+                          <Skeleton className="h-5 w-72 rounded-md" />
+                          <Skeleton className="h-3.5 w-24 rounded-md" />
+                        </div>
+                      </div>
+                      {/* Placeholder for threshold select if applicable */}
+                      {catId === 1 && (
+                        <div className="flex items-center gap-2 pl-10">
+                          <Skeleton className="h-8 w-24 rounded-lg" />
+                          <Skeleton className="h-4 w-20 rounded-md" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-6 self-start md:self-center shrink-0">
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-16 rounded-md" />
+                        <div className="flex items-center gap-5">
+                          <Skeleton className="h-4 w-12 rounded-md" />
+                          <Skeleton className="h-4 w-12 rounded-md" />
+                          <Skeleton className="h-4 w-16 rounded-md" />
+                        </div>
+                      </div>
+                      <div className="hidden sm:block h-10 w-px bg-slate-100" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-12 rounded-md" />
+                        <Skeleton className="h-7 w-24 rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
     );
   }
