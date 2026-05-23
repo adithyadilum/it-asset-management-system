@@ -6,7 +6,7 @@ export function PwaRegistration() {
   React.useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.ts")
         .then((reg) => {
           console.log("Service Worker registered.", reg)
         })
