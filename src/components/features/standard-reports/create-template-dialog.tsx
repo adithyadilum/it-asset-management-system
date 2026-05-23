@@ -543,7 +543,7 @@ export function CreateTemplateDialog({
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 border-t bg-muted/50 px-6 py-4">
+        <div className="flex items-center justify-end gap-2 px-6 py-4">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
