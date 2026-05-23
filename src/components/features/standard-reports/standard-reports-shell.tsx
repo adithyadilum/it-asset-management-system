@@ -12,6 +12,7 @@ import {
   type ReportPreviewRow,
   type ReportTemplateData,
 } from '@/types/standard-reports';
+import { tiqriToast } from '@/components/shared/sonner';
 import { StandardReportsConfigPanel } from './standard-reports-config-panel';
 import { StandardReportsPreviewPanel } from './standard-reports-preview-panel';
 
@@ -162,13 +163,17 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
       try {
         const result = await deleteReportTemplate(templateId);
         if (result.success) {
+          tiqriToast.success(result.message);
           // Re-fetch triggers implicitly due to revalidatePath in action
           router.refresh();
         } else {
+          tiqriToast.error(result.message);
           setErrorMessage(result.message || 'Failed to delete template');
         }
       } catch {
-        setErrorMessage('An unexpected error occurred while deleting the template.');
+        const message = 'An unexpected error occurred while deleting the template.';
+        tiqriToast.error(message);
+        setErrorMessage(message);
       }
     },
     [router]

@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/card';
 import { ListFilter } from 'lucide-react';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { tiqriToast } from '@/components/shared/sonner';
 
 import { createReportTemplate, updateReportTemplate } from '@/actions/report-templates';
 import {
@@ -188,32 +189,40 @@ export function CreateTemplateDialog({
     }
 
     startTransition(async () => {
-      const templateData = {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        isActive,
-        dataSource,
-        filters: {
-          assetType: assetType || undefined,
-          category: category || undefined,
-          location: location || undefined,
-          status: status || undefined,
-          masterDataType: masterDataType || undefined,
-        },
-        fields: selectedFields,
-        sortDirection,
-      };
+      try {
+        const templateData = {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          isActive,
+          dataSource,
+          filters: {
+            assetType: assetType || undefined,
+            category: category || undefined,
+            location: location || undefined,
+            status: status || undefined,
+            masterDataType: masterDataType || undefined,
+          },
+          fields: selectedFields,
+          sortDirection,
+        };
 
-      const result = editingTemplate
-        ? await updateReportTemplate(editingTemplate.id, templateData)
-        : await createReportTemplate(templateData);
+        const result = editingTemplate
+          ? await updateReportTemplate(editingTemplate.id, templateData)
+          : await createReportTemplate(templateData);
 
-      if (result.success) {
-        resetForm();
-        onOpenChange(false);
-        onCreated();
-      } else {
-        setError(result.message);
+        if (result.success) {
+          tiqriToast.success(result.message);
+          resetForm();
+          onOpenChange(false);
+          onCreated();
+        } else {
+          tiqriToast.error(result.message);
+          setError(result.message);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        tiqriToast.error(message);
+        setError(message);
       }
     });
   }, [
