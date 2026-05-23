@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
 import Papa from 'papaparse';
@@ -12,7 +12,9 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
-import type { ReportPreviewRow } from '@/types/standard-reports';
+import { StandardModal } from '@/components/ui/standard-modal';
+import type { ReportPreviewRow, FilterState } from '@/types/standard-reports';
+import { fetchReportPreview } from '@/actions/standard-reports';
 
 import type { PaginationState, OnChangeFn } from '@tanstack/react-table';
 
@@ -23,6 +25,7 @@ interface StandardReportsPreviewPanelProps {
   errorMessage?: string | null;
   selectedFields: string[];
   source: string;
+  filterState: FilterState;
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
   pageCount: number;
@@ -42,10 +45,16 @@ export function StandardReportsPreviewPanel({
   errorMessage,
   selectedFields,
   source,
+  filterState,
   pagination,
   setPagination,
   pageCount,
 }: StandardReportsPreviewPanelProps) {
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
+  const [exportScope, setExportScope] = useState<'preview' | 'all'>('preview');
+  const [isExporting, setIsExporting] = useState(false);
+
   const columns = useMemo<ColumnDef<ReportPreviewRow>[]>(() => {
     // If we have specific fields from a template, use them
     if (selectedFields && selectedFields.length > 0) {
@@ -126,8 +135,8 @@ export function StandardReportsPreviewPanel({
     [columns]
   );
 
-  const generateCsv = () => {
-    const rows = previewData.map((r) => {
+  const generateCsv = (dataToExport: ReportPreviewRow[]) => {
+    const rows = dataToExport.map((r) => {
       const obj: Record<string, unknown> = {};
       for (const h of headers) {
         obj[h] = r[h as keyof typeof r] ?? '';
@@ -161,7 +170,6 @@ export function StandardReportsPreviewPanel({
         <Text style={styles.title}>{title}</Text>
         <View style={styles.headerRow}>
           {headers.map((h, i) => (
-            // approximate equal widths
             <Text key={String(i)} style={[styles.cell, { flex: 1 }]}>
               {h}
             </Text>
@@ -180,9 +188,9 @@ export function StandardReportsPreviewPanel({
     </Document>
   );
 
-  const generatePdf = async () => {
+  const generatePdf = async (dataToExport: ReportPreviewRow[]) => {
     try {
-      const blob = await pdf(<ReportPdfDocument title="Report Preview" headers={headers} data={previewData} />).toBlob();
+      const blob = await pdf(<ReportPdfDocument title="Report Preview" headers={headers} data={dataToExport} />).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -193,6 +201,40 @@ export function StandardReportsPreviewPanel({
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to generate PDF', err);
+    }
+  };
+
+  const handleExportClick = (format: 'csv' | 'pdf') => {
+    setExportFormat(format);
+    setExportScope('preview');
+    setExportModalOpen(true);
+  };
+
+  const handleExportSubmit = async () => {
+    setIsExporting(true);
+    try {
+      let dataToExport = previewData;
+
+      if (exportScope === 'all') {
+        const result = await fetchReportPreview({
+          ...filterState,
+          page: 0,
+          pageSize: 100000, // Large number to fetch all records
+        });
+        dataToExport = result.data;
+      }
+
+      if (exportFormat === 'csv') {
+        generateCsv(dataToExport);
+      } else {
+        await generatePdf(dataToExport);
+      }
+      setExportModalOpen(false);
+    } catch (err) {
+      console.error('Failed to export data:', err);
+      // Optional: add a toast notification here
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -211,7 +253,7 @@ export function StandardReportsPreviewPanel({
               className="bg-success text-success-foreground hover:bg-success/80"
               size="sm"
               disabled={!showDataGrid || rowCount === 0}
-              onClick={generateCsv}
+              onClick={() => handleExportClick('csv')}
             >
               <Download className="size-4" />
               Export CSV
@@ -220,7 +262,7 @@ export function StandardReportsPreviewPanel({
               variant="default"
               size="sm"
               disabled={!showDataGrid || rowCount === 0}
-              onClick={generatePdf}
+              onClick={() => handleExportClick('pdf')}
             >
               Generate PDF
               <ChevronRight className="size-4" />
@@ -287,6 +329,52 @@ export function StandardReportsPreviewPanel({
           </Card>
         )}
       </div>
+
+      <StandardModal
+        isOpen={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        title={`Export to ${exportFormat.toUpperCase()}`}
+        description="Choose whether to export just the current page or all matching records."
+        footer={
+          <Button onClick={handleExportSubmit} disabled={isExporting}>
+            {isExporting ? 'Exporting...' : 'Export'}
+          </Button>
+        }
+      >
+        <div className="space-y-4 py-4">
+          <div className="flex items-start space-x-3">
+            <input
+              type="radio"
+              id="export-preview"
+              checked={exportScope === 'preview'}
+              onChange={() => setExportScope('preview')}
+              className="mt-1 size-4 accent-primary"
+            />
+            <div>
+              <label htmlFor="export-preview" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Current Page (Preview)
+              </label>
+              <p className="text-sm text-muted-foreground">Export just the {rowCount} rows visible on this page.</p>
+            </div>
+          </div>
+
+          <div className="flex items-start space-x-3">
+            <input
+              type="radio"
+              id="export-all"
+              checked={exportScope === 'all'}
+              onChange={() => setExportScope('all')}
+              className="mt-1 size-4 accent-primary"
+            />
+            <div>
+              <label htmlFor="export-all" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                All Records
+              </label>
+              <p className="text-sm text-muted-foreground">Export all matching records using the current filters.</p>
+            </div>
+          </div>
+        </div>
+      </StandardModal>
     </div>
   );
 }

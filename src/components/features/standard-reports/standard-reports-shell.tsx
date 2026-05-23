@@ -221,6 +221,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           errorMessage={errorMessage}
           selectedFields={selectedFields}
           source={filterState.source}
+          filterState={filterState}
           pagination={pagination}
           setPagination={handlePaginationChange}
           pageCount={pageCount}
