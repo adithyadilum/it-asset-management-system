@@ -254,7 +254,7 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
   
-  // Fetch top 5 recent logs with user info
+  // Fetch top 4 recent logs with user info
   const logs = await db
     .select({
       id: systemAuditLogs.id,
@@ -267,7 +267,7 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
     .from(systemAuditLogs)
     .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
     .orderBy(desc(systemAuditLogs.performedAt))
-    .limit(5);
+    .limit(4);
 
   // For simplicity, we'll try to resolve Asset Tags for 'Asset' entities
   const assetIds = logs

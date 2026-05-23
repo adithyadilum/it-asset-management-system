@@ -149,7 +149,7 @@ function InventoryStatusChart({
   utilizationRate: number
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  
+
   const isHealthy = utilizationRate >= 70
   const utilizationTitle = utilizationRate === 0
     ? "No active assignments"
@@ -165,8 +165,8 @@ function InventoryStatusChart({
     <Card className="flex flex-col h-full shadow-sm border-border">
       <CardHeader className="p-3 pb-1 shrink-0">
         <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-          <Link 
-            href="/assets?sort=status" 
+          <Link
+            href="/assets?sort=status"
             className="group inline-flex items-center gap-1 hover:text-primary transition-colors duration-200 cursor-pointer"
           >
             Current Inventory Status
@@ -182,7 +182,7 @@ function InventoryStatusChart({
         {inventoryData.length > 0 ? (
           <>
             {/* Donut Column (Left) */}
-            <div className="h-full w-[55%] min-h-[200px] relative flex items-center justify-center">
+            <div className="h-full w-[55%] min-h-[210px] relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                   <Pie
@@ -194,12 +194,12 @@ function InventoryStatusChart({
                     stroke="none"
                   >
                     {inventoryData.map((entry, i) => (
-                      <Cell 
-                        key={i} 
-                        fill={entry.color} 
+                      <Cell
+                        key={i}
+                        fill={entry.color}
                         opacity={hoveredIndex === null || hoveredIndex === i ? 1 : 0.45}
-                        style={{ 
-                          transition: 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)', 
+                        style={{
+                          transition: 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)',
                         }}
                       />
                     ))}
@@ -245,8 +245,8 @@ function InventoryStatusChart({
             {/* Legend (Right) */}
             <div className="w-[45%] flex flex-col gap-2 pl-3 border-l border-border/30">
               {inventoryData.map((entry, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className={cn(
                     "flex items-center gap-1.5 min-w-0 py-0.5 cursor-pointer hover:bg-muted/30 px-1 rounded-sm transition-colors",
                     hoveredIndex === i ? "bg-muted/40 font-medium text-foreground" : ""
@@ -289,47 +289,47 @@ import { RecentActivity, InventoryStatusItem, InventoryStatusResponse, Departmen
 function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) {
   const getActionStyles = (actionType: string) => {
     const type = actionType.toUpperCase()
-    
+
     if (type.includes("CREATE") || type.includes("ADD")) {
-      return { 
-        icon: Hash, 
-        className: "border-emerald-300 bg-emerald-50 text-emerald-700", 
-        iconColor: "text-emerald-500" 
+      return {
+        icon: Hash,
+        className: "border-emerald-300 bg-emerald-50 text-emerald-700",
+        iconColor: "text-emerald-500"
       }
     }
     if (type.includes("UPDATE") || type.includes("REPAIR") || type.includes("MAINTENANCE")) {
-      return { 
-        icon: Wrench, 
-        className: "border-sky-300 bg-sky-50 text-sky-700", 
-        iconColor: "text-sky-500" 
+      return {
+        icon: Wrench,
+        className: "border-sky-300 bg-sky-50 text-sky-700",
+        iconColor: "text-sky-500"
       }
     }
     if (type.includes("DELETE") || type.includes("REMOVE") || type.includes("LOST") || type.includes("ACCESS_DENIED")) {
-      return { 
-        icon: AlertCircle, 
-        className: "border-rose-300 bg-rose-50 text-rose-700", 
-        iconColor: "text-rose-500" 
+      return {
+        icon: AlertCircle,
+        className: "border-rose-300 bg-rose-50 text-rose-700",
+        iconColor: "text-rose-500"
       }
     }
     if (type.includes("DISPOSE")) {
-      return { 
-        icon: AlertCircle, 
-        className: "border-orange-300 bg-orange-50 text-orange-700", 
-        iconColor: "text-orange-500" 
+      return {
+        icon: AlertCircle,
+        className: "border-orange-300 bg-orange-50 text-orange-700",
+        iconColor: "text-orange-500"
       }
     }
     if (type.includes("LOGIN")) {
-      return { 
-        icon: CheckCircle2, 
-        className: "border-violet-300 bg-violet-50 text-violet-700", 
-        iconColor: "text-violet-500" 
+      return {
+        icon: CheckCircle2,
+        className: "border-violet-300 bg-violet-50 text-violet-700",
+        iconColor: "text-violet-500"
       }
     }
-    
-    return { 
-      icon: CheckCircle2, 
-      className: "border-slate-300 bg-slate-50 text-slate-700", 
-      iconColor: "text-slate-500" 
+
+    return {
+      icon: CheckCircle2,
+      className: "border-slate-300 bg-slate-50 text-slate-700",
+      iconColor: "text-slate-500"
     }
   }
 
@@ -337,8 +337,8 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
     <Card className="flex flex-col h-full shadow-sm border-border">
       <CardHeader className="p-3 pb-1 shrink-0">
         <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-          <Link 
-            href="/reports/audit-log" 
+          <Link
+            href="/reports/audit-log"
             className="group inline-flex items-center gap-1 hover:text-primary transition-colors duration-200 cursor-pointer"
           >
             Recent Activities
@@ -388,19 +388,19 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
 
 // ─── Row: Charts Grid ─────────────────────────────────────────────────────────
 
-export function DashboardChartsRow({ 
+export function DashboardChartsRow({
   activities,
   inventoryStatus,
   departmentAllocation,
-}: { 
-  activities: RecentActivity[] 
+}: {
+  activities: RecentActivity[]
   inventoryStatus: InventoryStatusResponse
   departmentAllocation: DepartmentAllocationItem[]
 }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 min-h-[320px]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 h-[340px]">
       <AssetAllocationChart allocationData={departmentAllocation} />
-      <InventoryStatusChart 
+      <InventoryStatusChart
         inventoryData={inventoryStatus.inventoryData}
         utilizationRate={inventoryStatus.utilizationRate}
       />
