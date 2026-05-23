@@ -96,9 +96,9 @@ function useOverdueColumns(
       cell: ({ row }) => {
         const isSending = sendingReminderIds.has(row.original.assignmentId)
         return (
-          <Button 
-            variant="secondary" 
-            size="sm" 
+          <Button
+            variant="secondary"
+            size="sm"
             className="h-7 text-xs px-3 transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-sm active:scale-95"
             onClick={() => onSendReminder(row.original)}
             disabled={isSending}
@@ -217,9 +217,9 @@ function useHighMaintenanceColumns(onFlag: (asset: HighMaintenanceRow) => void):
       minSize: 120,
       meta: { noTruncate: true },
       cell: ({ row }) => (
-        <Button 
-          variant="secondary" 
-          size="sm" 
+        <Button
+          variant="secondary"
+          size="sm"
           className="h-7 text-xs px-3 transition-all hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm active:scale-95"
           onClick={() => onFlag(row.original)}
         >
@@ -361,7 +361,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
       <div className="flex flex-col w-full">
         <div className="h-10 mb-4 flex items-center">
           <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-            High-Maintenance Assets (Lemons)
+            High-Maintenance Assets
           </h3>
         </div>
         <DataTable
