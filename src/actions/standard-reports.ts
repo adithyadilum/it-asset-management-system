@@ -1,6 +1,6 @@
 'use server';
 
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
 import {
@@ -350,13 +350,14 @@ export async function fetchReportPreview(
       .where(whereCondition);
 
     // Get total rows for pagination
-    const totalRowsCount = await db.select({ count: db.$count(assets, whereCondition) }).from(assets)
+    const totalRowsCount = await db.select({ count: sql<number>`count(*)::int` }).from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(brands, eq(models.brandId, brands.id))
-      .leftJoin(locations, eq(assets.locationId, locations.id));
+      .leftJoin(locations, eq(assets.locationId, locations.id))
+      .where(whereCondition);
     
-    const totalRows = totalRowsCount[0]?.count ?? 0;
+    const totalRows = Number(totalRowsCount[0]?.count || 0);
 
     const rows = await baseQuery
       .orderBy(desc(assets.updatedAt), asc(assets.assetTag))

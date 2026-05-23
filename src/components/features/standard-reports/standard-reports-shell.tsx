@@ -49,6 +49,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   // triggering server actions during render (see useEffect below).
   const loadPreview = useCallback(
     async (filters: FilterState, pageCtx: PaginationState) => {
+      // debug: log when fetching preview
+      console.debug('loadPreview called', { filters, pageCtx });
       setIsLoading(true);
       setErrorMessage(null);
 
@@ -103,6 +105,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
       setSelectedFields(template.fields || []);
       setFilterState(nextFilterState);
+      setPagination((old) => ({ ...old, pageIndex: 0 }));
       setShowDataGrid(true);
     },
     [templates]
@@ -111,6 +114,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   // Called when the sidebar's "Preview report" footer button is clicked
   const handleManualPreview = useCallback(() => {
     setSelectedFields([]); // Clear template-specific fields for manual preview
+    setPagination((old) => ({ ...old, pageIndex: 0 }));
     setShowDataGrid(true);
   }, []);
 
@@ -118,6 +122,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   const handleClearFilters = useCallback(() => {
     setFilterState(DEFAULT_FILTER_STATE);
     setResetKey((prev) => prev + 1);
+    setPagination({ pageIndex: 0, pageSize: 16 });
     setShowDataGrid(false);
     setPreviewData([]);
     setErrorMessage(null);
@@ -142,9 +147,11 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           next.status = '';
           next.masterDataType = '';
         }
-        
+
         return next;
       });
+
+      setPagination((old) => ({ ...old, pageIndex: 0 }));
     },
     []
   );
@@ -174,7 +181,11 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
   const handlePaginationChange = useCallback(
     (updaterOrValue: PaginationState | ((old: PaginationState) => PaginationState)) => {
-      setPagination((old) => (typeof updaterOrValue === 'function' ? updaterOrValue(old) : updaterOrValue));
+      setPagination((old) => {
+        const next = typeof updaterOrValue === 'function' ? updaterOrValue(old) : updaterOrValue;
+        console.debug('pagination change', { old, next });
+        return next;
+      });
     },
     []
   );
