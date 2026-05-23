@@ -1,21 +1,21 @@
+/// <reference lib="webworker" />
+
 // Minimal Service Worker for PWA installation requirement
 // It uses a standard online-passthrough fallback strategy.
 
-declare const self: ServiceWorkerGlobalScope;
+const sw = self as unknown as ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'it-asset-management-v1';
-
-self.addEventListener('install', (event: ExtendableEvent) => {
+sw.addEventListener('install', () => {
   // Skip waiting to activate immediately
-  self.skipWaiting();
+  sw.skipWaiting();
 });
 
-self.addEventListener('activate', (event: ExtendableEvent) => {
+sw.addEventListener('activate', (event) => {
   // Claim clients immediately
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(sw.clients.claim());
 });
 
-self.addEventListener('fetch', (event: FetchEvent) => {
+sw.addEventListener('fetch', (event) => {
   // We only intercept GET requests
   if (event.request.method !== 'GET') return;
   

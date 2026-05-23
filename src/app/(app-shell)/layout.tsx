@@ -5,6 +5,8 @@ import { getAuthenticatedUser } from "@/actions/auth"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { TopHeader } from "@/components/layout/top-header"
 import { SidebarProvider } from "@/components/ui/sidebar"
+import { OfflineBanner } from "@/components/shared/offline-banner"
+import { PwaRegistration } from "@/components/shared/pwa-registration"
 
 export default async function AppShellLayout({
   children,
@@ -16,10 +18,13 @@ export default async function AppShellLayout({
   }
 
   return (
-    <SidebarProvider
-      defaultOpen
-      style={{ "--sidebar-width": "260px" } as CSSProperties}
-    >
+    <>
+      <PwaRegistration />
+      <OfflineBanner />
+      <SidebarProvider
+        defaultOpen
+        style={{ "--sidebar-width": "260px" } as CSSProperties}
+      >
       <div className="flex h-screen w-full items-center bg-muted p-3.5">
         <AppSidebar userRole={user.role} />
 
@@ -34,5 +39,6 @@ export default async function AppShellLayout({
         </div>
       </div>
     </SidebarProvider>
+    </>
   )
 }
