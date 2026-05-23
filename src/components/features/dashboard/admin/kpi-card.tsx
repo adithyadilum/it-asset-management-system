@@ -1,9 +1,31 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowUpRight, ArrowDownRight, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import Link from "next/link"
+
+function DoubleArrow({ direction = "up" }: { direction?: "up" | "down" }) {
+  return (
+    <svg 
+      className={cn(
+        "w-3.5 h-3.5 shrink-0 transition-transform duration-200", 
+        direction === "down" && "rotate-180"
+      )}
+      viewBox="0 0 16 16" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path 
+        d="M11.4316 11.1279L11.1963 11.3643L8.00098 8.16895L7.64746 8.52246L4.80566 11.3633L4.56934 11.1279L8.00098 7.69629L11.4316 11.1279ZM11.4316 7.36133L11.1963 7.59766L8.00098 4.40234L7.64746 4.75586L4.80566 7.59668L4.56934 7.36133L8.00098 3.92969L11.4316 7.36133Z" 
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 interface KpiCardProps {
   title: string
@@ -47,15 +69,13 @@ export function KpiCard({
         <Badge 
           variant="outline"
           className={cn(
-            "rounded px-1.5 py-0.5 flex items-center gap-0.5",
+            "rounded px-1.5 py-0.5 flex items-center gap-0.5 border-border",
             "text-xs font-semibold leading-none",
-            isPositive && "border-border text-[#7cc000] dark:text-[#a3e635]",
-            isNegative && "border-border text-muted-foreground",
-            !isPositive && !isNegative && "border-border text-muted-foreground"
+            isPositive ? "text-[#7cc000] dark:text-[#a3e635]" : "text-black dark:text-white"
           )}
         >
-          {isPositive && <ArrowUpRight className="w-3 h-3" />}
-          {isNegative && <ArrowDownRight className="w-3 h-3" />}
+          {isPositive && <DoubleArrow direction="up" />}
+          {isNegative && <DoubleArrow direction="down" />}
           {badgeText}
         </Badge>
       </CardHeader>

@@ -253,6 +253,7 @@ function formatActionType(actionType: string): string {
 export async function getDashboardRecentActivities(): Promise<RecentActivity[]> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
+  if (user.role === 'Employee') throw new Error('Forbidden');
   
   // Fetch top 4 recent logs with user info
   const logs = await db
@@ -279,7 +280,7 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
     const assetDetails = await db
       .select({ id: assets.id, assetTag: assets.assetTag })
       .from(assets)
-      .where(sql`${assets.id}::text IN ${assetIds}`);
+      .where(inArray(assets.id, assetIds));
     
     assetDetails.forEach(a => assetMap.set(a.id, a.assetTag));
   }
@@ -334,6 +335,7 @@ export interface InventoryStatusResponse {
 export async function getDashboardInventoryStatus(): Promise<InventoryStatusResponse> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
+  if (user.role === 'Employee') throw new Error('Forbidden');
 
   const results = await db
     .select({
@@ -417,6 +419,7 @@ export interface DepartmentAllocationItem {
 export async function getDashboardDepartmentAllocation(): Promise<DepartmentAllocationItem[]> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
+  if (user.role === 'Employee') throw new Error('Forbidden');
 
   const results = await db
     .select({
