@@ -56,7 +56,7 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
       <KpiCard 
         title="Inactive Software Seats"
         value={`${formatNumber(metrics.inactiveSoftwareSeats)} Seats`}
-        badgeText={`-$${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
+        badgeText={`-${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
         badgeType="negative"
         valueColor="destructive"
         subText1={`${formatCurrency(metrics.inactiveSoftwareCostLeak)} monthly in idle seat waste`}
