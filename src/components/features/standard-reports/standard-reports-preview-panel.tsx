@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
 import Papa from 'papaparse';
-import { pdf, Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -13,8 +12,9 @@ import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { StandardModal } from '@/components/ui/standard-modal';
-import type { ReportPreviewRow, FilterState } from '@/types/standard-reports';
+import type { FilterState, ReportPreviewRow } from '@/types/standard-reports';
 import { fetchReportPreview } from '@/actions/standard-reports';
+import { GenerateReportPdfModal } from './generate-report-pdf-modal';
 
 import type { PaginationState, OnChangeFn } from '@tanstack/react-table';
 
@@ -26,6 +26,8 @@ interface StandardReportsPreviewPanelProps {
   selectedFields: string[];
   source: string;
   filterState: FilterState;
+  generatedBy: string;
+  templateName?: string;
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
   pageCount: number;
@@ -46,12 +48,14 @@ export function StandardReportsPreviewPanel({
   selectedFields,
   source,
   filterState,
+  generatedBy,
+  templateName,
   pagination,
   setPagination,
   pageCount,
 }: StandardReportsPreviewPanelProps) {
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [exportScope, setExportScope] = useState<'preview' | 'all'>('preview');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -156,56 +160,7 @@ export function StandardReportsPreviewPanel({
     URL.revokeObjectURL(url);
   };
 
-  const styles = StyleSheet.create({
-    page: { padding: 12, fontSize: 10 },
-    headerRow: { flexDirection: 'row', borderBottomWidth: 1, marginBottom: 6 },
-    row: { flexDirection: 'row', borderBottomWidth: 0.3, paddingVertical: 4 },
-    cell: { flex: 1, paddingRight: 6 },
-    title: { fontSize: 12, marginBottom: 8 },
-  });
-
-  const ReportPdfDocument = ({ title, headers, data }: { title: string; headers: string[]; data: ReportPreviewRow[] }) => (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.headerRow}>
-          {headers.map((h, i) => (
-            <Text key={String(i)} style={[styles.cell, { flex: 1 }]}>
-              {h}
-            </Text>
-          ))}
-        </View>
-        {data.map((row, ri) => (
-          <View style={styles.row} key={String(ri)}>
-            {headers.map((h, ci) => (
-              <Text key={String(ci)} style={[styles.cell, { flex: 1 }]}>
-                {String(row[h] ?? '-')}
-              </Text>
-            ))}
-          </View>
-        ))}
-      </Page>
-    </Document>
-  );
-
-  const generatePdf = async (dataToExport: ReportPreviewRow[]) => {
-    try {
-      const blob = await pdf(<ReportPdfDocument title="Report Preview" headers={headers} data={dataToExport} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report-preview-${new Date().toISOString()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Failed to generate PDF', err);
-    }
-  };
-
-  const handleExportClick = (format: 'csv' | 'pdf') => {
-    setExportFormat(format);
+  const handleExportClick = () => {
     setExportScope('preview');
     setExportModalOpen(true);
   };
@@ -224,11 +179,7 @@ export function StandardReportsPreviewPanel({
         dataToExport = result.data;
       }
 
-      if (exportFormat === 'csv') {
-        generateCsv(dataToExport);
-      } else {
-        await generatePdf(dataToExport);
-      }
+      generateCsv(dataToExport);
       setExportModalOpen(false);
     } catch (err) {
       console.error('Failed to export data:', err);
@@ -253,7 +204,7 @@ export function StandardReportsPreviewPanel({
               className="bg-success text-success-foreground hover:bg-success/80"
               size="sm"
               disabled={!showDataGrid || rowCount === 0}
-              onClick={() => handleExportClick('csv')}
+              onClick={handleExportClick}
             >
               <Download className="size-4" />
               Export CSV
@@ -262,7 +213,7 @@ export function StandardReportsPreviewPanel({
               variant="default"
               size="sm"
               disabled={!showDataGrid || rowCount === 0}
-              onClick={() => handleExportClick('pdf')}
+              onClick={() => setPdfModalOpen(true)}
             >
               Generate PDF
               <ChevronRight className="size-4" />
@@ -333,7 +284,7 @@ export function StandardReportsPreviewPanel({
       <StandardModal
         isOpen={exportModalOpen}
         onOpenChange={setExportModalOpen}
-        title={`Export to ${exportFormat.toUpperCase()}`}
+        title="Export CSV"
         description="Choose whether to export just the current page or all matching records."
         footer={
           <Button onClick={handleExportSubmit} disabled={isExporting}>
@@ -375,6 +326,17 @@ export function StandardReportsPreviewPanel({
           </div>
         </div>
       </StandardModal>
+
+      <GenerateReportPdfModal
+        isOpen={pdfModalOpen}
+        onOpenChange={setPdfModalOpen}
+        previewData={previewData}
+        headers={headers}
+        filterState={filterState}
+        source={source}
+        generatedBy={generatedBy}
+        templateName={templateName}
+      />
     </div>
   );
 }

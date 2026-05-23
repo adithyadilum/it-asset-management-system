@@ -24,9 +24,10 @@ interface StandardReportsShellProps {
     statuses: string[];
   };
   templates: ReportTemplateData[];
+  generatedBy: string;
 }
 
-export function StandardReportsShell({ filterOptions, templates }: StandardReportsShellProps) {
+export function StandardReportsShell({ filterOptions, templates, generatedBy }: StandardReportsShellProps) {
   const router = useRouter();
 
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
@@ -38,6 +39,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [templateName, setTemplateName] = useState<string | undefined>(undefined);
   const [pageCount, setPageCount] = useState<number>(1);
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -105,6 +107,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
       };
 
       setSelectedFields(template.fields || []);
+      setTemplateName(template.name);
       setFilterState(nextFilterState);
       setPagination((old) => ({ ...old, pageIndex: 0 }));
       setShowDataGrid(true);
@@ -115,6 +118,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   // Called when the sidebar's "Preview report" footer button is clicked
   const handleManualPreview = useCallback(() => {
     setSelectedFields([]); // Clear template-specific fields for manual preview
+    setTemplateName(undefined);
     setPagination((old) => ({ ...old, pageIndex: 0 }));
     setShowDataGrid(true);
   }, []);
@@ -227,6 +231,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           selectedFields={selectedFields}
           source={filterState.source}
           filterState={filterState}
+          generatedBy={generatedBy}
+          templateName={templateName}
           pagination={pagination}
           setPagination={handlePaginationChange}
           pageCount={pageCount}
