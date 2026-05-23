@@ -1,9 +1,17 @@
 import { StandardReportsShell } from '@/components/features/standard-reports/standard-reports-shell';
 import { getStandardReportsFilterOptions } from '@/actions/standard-reports';
 import { getReportTemplates } from '@/actions/report-templates';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { redirect } from 'next/navigation';
 import type { ReportTemplateData } from '@/types/standard-reports';
 
 export default async function Page() {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    redirect('/login');
+  }
+
   const [filterOptions, rawTemplates] = await Promise.all([
     getStandardReportsFilterOptions(),
     getReportTemplates(),
@@ -23,5 +31,11 @@ export default async function Page() {
     createdAt: t.createdAt,
   }));
 
-  return <StandardReportsShell filterOptions={filterOptions} templates={templates} />;
+  return (
+    <StandardReportsShell
+      filterOptions={filterOptions}
+      templates={templates}
+      generatedBy={currentUser.name}
+    />
+  );
 }

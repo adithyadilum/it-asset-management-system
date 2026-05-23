@@ -33,6 +33,21 @@ export interface ReportPreviewRow {
   [key: string]: unknown;
 }
 
+/** Data contract for the report PDF generator */
+export interface ReportPdfData {
+  title: string;    /** Report title (e.g., "Asset Inventory Report" or template name) */
+  generatedBy: string;    /** Who generated this report */
+  generatedAt: string;    /** ISO date string of generation time */
+  filtersApplied: string;   /** Human-readable summary of applied filters */
+  dataSource: string;   /** Data source name (e.g., "Assets", "Master Data") */
+  summary: {    /** Summary metrics shown in the executive summary block */
+    totalRecords: number;     /** Optional additional KPIs — keeps it extensible */
+    [key: string]: string | number;
+  };
+  headers: string[];    /** Column headers in display order */
+  rows: ReportPreviewRow[];     /** Row data — each row is a flat key/value object keyed by header name */
+}
+
 // ---------------------------------------------------------------------------
 // Report Template 
 // ---------------------------------------------------------------------------
