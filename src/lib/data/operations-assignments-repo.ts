@@ -7,6 +7,7 @@ import {
   isNull,
   max,
   sql,
+  lt,
 } from 'drizzle-orm';
 
 import { db } from '@/db';
@@ -75,9 +76,7 @@ export interface BulkAssignAssetsInput {
   notes?: string;
 }
 
-import {
-  type ProcessReturnPayload
-} from '@/lib/validations/asset-assignment';
+import { type ProcessReturnPayload } from '@/lib/validations/asset-assignment';
 
 export interface AssignmentMutationResult {
   assignedAssetIds: string[];
@@ -416,7 +415,12 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-    .where(and(isNotNull(assetAssignments.returnedDate), eq(assets.status, 'Returned')))
+    .where(
+      and(
+        isNotNull(assetAssignments.returnedDate),
+        eq(assets.status, 'Returned')
+      )
+    )
     .orderBy(
       desc(assetAssignments.returnedDate),
       desc(assetAssignments.assignedDate)
@@ -719,10 +723,19 @@ export async function updateAssignmentsState(
 ): Promise<void> {
   if (assignmentIds.length === 0) return;
 
-  await db
+  const updated = await db
     .update(assetAssignments)
     .set({ state: newState })
-    .where(inArray(assetAssignments.id, assignmentIds));
+    .where(inArray(assetAssignments.id, assignmentIds))
+    .returning({ id: assetAssignments.id });
+
+  if (updated.length === 0) {
+    throw new AssignmentServiceError(
+      'Failed to update assignments state.',
+      500,
+      'UPDATE_FAILED'
+    );
+  }
 }
 
 /**
@@ -789,13 +802,22 @@ export async function triggerReturnRequests(
 
   await db.transaction(async (tx) => {
     // Update state to 'requested'
-    await tx
+    const updated = await tx
       .update(assetAssignments)
       .set({
         state: 'requested',
         returnRequestedAt: new Date(),
       })
-      .where(inArray(assetAssignments.id, assignmentIds));
+      .where(inArray(assetAssignments.id, assignmentIds))
+      .returning({ id: assetAssignments.id });
+
+    if (updated.length === 0) {
+      throw new AssignmentServiceError(
+        'Failed to trigger return requests.',
+        500,
+        'UPDATE_FAILED'
+      );
+    }
 
     // Log audit
     await Promise.all(
@@ -860,20 +882,38 @@ export async function markAssignmentsAsReceived(
 
   await db.transaction(async (tx) => {
     // Update assignments state to 'returned' and set returnedDate
-    await tx
+    const updatedAssignments = await tx
       .update(assetAssignments)
       .set({
         state: 'returned',
         returnedDate: new Date(),
       })
-      .where(inArray(assetAssignments.id, activeAssignmentIds));
+      .where(inArray(assetAssignments.id, activeAssignmentIds))
+      .returning({ id: assetAssignments.id });
+
+    if (updatedAssignments.length === 0) {
+      throw new AssignmentServiceError(
+        'Failed to mark assignments as received.',
+        500,
+        'UPDATE_FAILED'
+      );
+    }
 
     // Update assets status to 'Returned' (pending condition check)
     if (assetIds.length > 0) {
-      await tx
+      const updatedAssets = await tx
         .update(assets)
         .set({ status: 'Returned', updatedAt: new Date() })
-        .where(inArray(assets.id, assetIds));
+        .where(inArray(assets.id, assetIds))
+        .returning({ id: assets.id });
+
+      if (updatedAssets.length === 0) {
+        throw new AssignmentServiceError(
+          'Failed to update asset status to returned.',
+          500,
+          'UPDATE_FAILED'
+        );
+      }
     }
 
     // Log audit for each asset
@@ -897,16 +937,20 @@ export async function markAssignmentsAsReceived(
  */
 export async function refreshOverdueAssignments(): Promise<void> {
   const now = new Date();
-  await db
+  const updated = await db
     .update(assetAssignments)
     .set({ state: 'overdue' })
     .where(
       and(
         eq(assetAssignments.state, 'assigned'),
         isNotNull(assetAssignments.expectedReturnDate),
-        sql`${assetAssignments.expectedReturnDate} < ${now.toISOString()}`
+        lt(assetAssignments.expectedReturnDate, now.toISOString())
       )
-    );
+    )
+    .returning({ id: assetAssignments.id });
+
+  // Optional: We can log how many were overdue, but for now we just satisfy the returning rule.
+  // We do not throw if 0 rows are updated, as that is expected if none are overdue.
 }
 
 /**
@@ -914,7 +958,7 @@ export async function refreshOverdueAssignments(): Promise<void> {
  * Typically called when a user accepts an asset.
  */
 export async function acceptAssignment(assignmentId: number): Promise<void> {
-  await db
+  const updated = await db
     .update(assetAssignments)
     .set({ state: 'assigned' })
     .where(
@@ -922,7 +966,16 @@ export async function acceptAssignment(assignmentId: number): Promise<void> {
         eq(assetAssignments.id, assignmentId),
         eq(assetAssignments.state, 'pending approval')
       )
+    )
+    .returning({ id: assetAssignments.id });
+
+  if (updated.length === 0) {
+    throw new AssignmentServiceError(
+      'Failed to accept assignment. Assignment not found or invalid state.',
+      404,
+      'ASSIGNMENT_NOT_FOUND'
     );
+  }
 }
 
 /**
@@ -965,14 +1018,23 @@ export async function processAssetReturn(
 
   await db.transaction(async (tx) => {
     // 1. Update asset status
-    await tx
+    const updated = await tx
       .update(assets)
       .set({ status: newStatus, updatedAt: new Date() })
-      .where(eq(assets.id, input.assetId));
+      .where(and(eq(assets.id, input.assetId), eq(assets.status, 'Returned')))
+      .returning({ id: assets.id });
+
+    if (updated.length === 0) {
+      throw new AssignmentServiceError(
+        'Failed to process return. Asset not found or not in Returned status.',
+        400,
+        'UPDATE_FAILED'
+      );
+    }
 
     // 2. We assume the asset assignment is already in 'returned' state, or we update it here.
-    // If we need to mark it returned, we could do it. However, the user story implies it's ALREADY in 
-    // the "Returned Assets" pool, which means `state = returned`, `returnedDate` is NOT NULL. 
+    // If we need to mark it returned, we could do it. However, the user story implies it's ALREADY in
+    // the "Returned Assets" pool, which means `state = returned`, `returnedDate` is NOT NULL.
 
     // 3. Log Audit Action with condition notes
     await logAuditActionTx(tx, {
@@ -981,7 +1043,11 @@ export async function processAssetReturn(
       actionType: 'STATUS_CHANGE',
       performedById,
       oldData: { status: asset.status },
-      newData: { status: newStatus, notes: input.notes, condition: input.condition },
+      newData: {
+        status: newStatus,
+        notes: input.notes,
+        condition: input.condition,
+      },
     });
   });
 }

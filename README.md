@@ -10,21 +10,25 @@ EITAMS is a centralized, enterprise-grade platform designed for TIQRI Corporatio
 ## Key Features
 
 ### Core Platform
+
 - **Role-Based Access Control (RBAC)**: Integrated with Azure AD / Entra ID for secure enterprise identity management.
 - **Immutable Audit Logging**: Every change is tracked with actor, timestamp, and data diffs for full compliance.
 - **Dynamic Category Schemas**: Flexible JSONB-based modeling to handle diverse asset types.
 
 ### Asset Management
+
 - **Intelligent Registry**: Multi-step registration wizard with dynamic validation based on asset category.
 - **Lifecycle Tracking**: State-machine driven transitions (Available <-> Assigned <-> In Repair <-> Retired).
 - **Digital Asset Tags**: Automated generation of QR codes and printable PDF tags for physical identification.
 
 ### Financial Intelligence
+
 - **TCO Analysis**: Comprehensive Total Cost of Ownership tracking including taxes, shipping, and maintenance.
 - **Automated Depreciation**: Real-time financial valuation and depreciation modeling.
 - **Renewal Alerts**: Proactive notifications for warranty and license expirations.
 
 ### Operations & Compliance
+
 - **Maintenance Ledger**: Track RMA numbers, vendor interactions, and repair costs.
 - **Disposal Workflow**: Formal request and approval process with secure document storage for E-Waste certificates.
 - **Employee Portal**: Self-service view for employees to manage their assigned hardware and software.
@@ -49,17 +53,20 @@ EITAMS is a centralized, enterprise-grade platform designed for TIQRI Corporatio
 ### Installation & Setup
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/adithyadilum/it-asset-management-system.git
    cd it-asset-management-system
    ```
 
 2. **Install dependencies**:
+
    ```bash
    npm install
    ```
 
 3. **Initialize the database**:
+
    ```bash
    npm run db:push
    npm run db:seed
@@ -96,11 +103,23 @@ Maintain high code quality with our integrated test suite:
 
 ## Documentation
 
-For detailed technical specifications, please refer to:
-- [Software Requirements Specification (SRS)](docs/1_requirements/SRS.md)
-- [System Architecture (C4 Model)](docs/2_design/01_architecture/c4-02-container-diagram.md)
-- [Data Model (ERD)](docs/2_design/02_data_model/erd-diagram.md)
-- [Asset Lifecycle Logic](docs/2_design/05_business_logic/asset-lifecycle.md)
+The main entry point for all project documentation is the [**Documentation Index**](docs/README.md).
+
+### Quick Links
+
+- **Overview & Scope**
+  - [Project Scope Statement](docs/0_project-overview/project-scope.md)
+- **Requirements**
+  - [Software Requirements Specification (SRS)](docs/1_requirements/SRS.md)
+  - [Functional Requirements](docs/1_requirements/functional-requirements.md)
+  - [Non-Functional Requirements](docs/1_requirements/non-functional-requirements.md)
+  - [User Journeys](docs/1_requirements/user-journeys.md)
+- **Design & Architecture**
+  - [Design Hub Directory](docs/2_design/README.md)
+  - [System Context (C4-L1)](docs/2_design/01_architecture/c4-01-system-context.md)
+  - [Core Database ERD](docs/2_design/02_data_model/erd-diagram.md)
+  - [Asset Lifecycle State Machine](docs/2_design/05_business_logic/asset-lifecycle.md)
 
 ---
+
 Developed for **TIQRI Corporation**. All rights reserved.
