@@ -225,7 +225,6 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
             {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image does not support alt text props */}
             <Image src="/tiqri-logo.png" style={styles.logo} />
             <View style={styles.headerTitleBlock}>
-              <Text style={styles.title}>Assets</Text>
               <Text style={styles.subTitle}>{data.title}</Text>
               <Text style={styles.metadataBlock}>
                 Generated: {new Date(data.generatedAt).toLocaleString()}
