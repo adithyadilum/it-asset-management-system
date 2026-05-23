@@ -40,6 +40,7 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
 
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [templateName, setTemplateName] = useState<string | undefined>(undefined);
+  const [templateDescription, setTemplateDescription] = useState<string | undefined>(undefined);
   const [pageCount, setPageCount] = useState<number>(1);
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -108,6 +109,7 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
 
       setSelectedFields(template.fields || []);
       setTemplateName(template.name);
+      setTemplateDescription(template.description || undefined);
       setFilterState(nextFilterState);
       setPagination((old) => ({ ...old, pageIndex: 0 }));
       setShowDataGrid(true);
@@ -119,6 +121,7 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
   const handleManualPreview = useCallback(() => {
     setSelectedFields([]); // Clear template-specific fields for manual preview
     setTemplateName(undefined);
+    setTemplateDescription(undefined);
     setPagination((old) => ({ ...old, pageIndex: 0 }));
     setShowDataGrid(true);
   }, []);
@@ -233,6 +236,7 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
           filterState={filterState}
           generatedBy={generatedBy}
           templateName={templateName}
+          reportDescription={templateDescription}
           pagination={pagination}
           setPagination={handlePaginationChange}
           pageCount={pageCount}

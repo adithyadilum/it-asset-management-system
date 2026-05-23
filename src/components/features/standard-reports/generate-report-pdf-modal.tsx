@@ -20,6 +20,7 @@ interface GenerateReportPdfModalProps {
   source: string;
   generatedBy: string;
   templateName?: string;
+  reportDescription?: string;
 }
 
 type ExportScope = 'preview' | 'all';
@@ -48,12 +49,44 @@ function buildFiltersApplied(filterState: FilterState) {
   return parts.join(' | ');
 }
 
+function buildFilterDetails(filterState: FilterState) {
+  const details = [
+    { label: 'Source', value: formatFilterValue(filterState.source) },
+    { label: 'Asset Type', value: formatFilterValue(filterState.assetType) },
+    { label: 'Category', value: formatFilterValue(filterState.category) },
+    { label: 'Location', value: formatFilterValue(filterState.location) },
+    { label: 'Status', value: formatFilterValue(filterState.status) },
+    { label: 'Record Type', value: formatFilterValue(filterState.masterDataType) },
+  ];
+
+  if (filterState.dateFrom || filterState.dateTo) {
+    details.push({
+      label: 'Date Range',
+      value: `${formatFilterValue(filterState.dateFrom)} to ${formatFilterValue(filterState.dateTo)}`,
+    });
+  }
+
+  return details;
+}
+
 function buildReportTitle(source: string, templateName?: string) {
   if (templateName && templateName.trim().length > 0) {
     return templateName;
   }
 
   return source ? `${source} Report` : 'Report';
+}
+
+function buildReportDescription(reportDescription?: string, source?: string, templateName?: string) {
+  if (reportDescription && reportDescription.trim().length > 0) {
+    return reportDescription.trim();
+  }
+
+  if (templateName && templateName.trim().length > 0) {
+    return `Generated from the ${templateName} report template for ${source || 'the selected'} data set.`;
+  }
+
+  return `Generated for ${source || 'the selected'} data set using the current filters.`;
 }
 
 export function GenerateReportPdfModal({
@@ -65,6 +98,7 @@ export function GenerateReportPdfModal({
   source,
   generatedBy,
   templateName,
+  reportDescription,
 }: GenerateReportPdfModalProps) {
   const [exportScope, setExportScope] = useState<ExportScope>('preview');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -96,9 +130,11 @@ export function GenerateReportPdfModal({
     async (rows: ReportPreviewRow[]) => {
       const reportData: ReportPdfData = {
         title: buildReportTitle(source, templateName),
+        description: buildReportDescription(reportDescription, source, templateName),
         generatedBy,
         generatedAt: new Date().toISOString(),
         filtersApplied: buildFiltersApplied(filterState),
+        filterDetails: buildFilterDetails(filterState),
         dataSource: source || 'Report',
         summary: {
           totalRecords: rows.length,
@@ -110,7 +146,7 @@ export function GenerateReportPdfModal({
       await generateAndOpenReportPdf(reportData);
       handleOpenChange(false);
     },
-    [filterState, generatedBy, handleOpenChange, headers, source, templateName]
+    [filterState, generatedBy, handleOpenChange, headers, reportDescription, source, templateName]
   );
 
   const handleGenerate = useCallback(

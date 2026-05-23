@@ -28,6 +28,7 @@ interface StandardReportsPreviewPanelProps {
   filterState: FilterState;
   generatedBy: string;
   templateName?: string;
+  reportDescription?: string;
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
   pageCount: number;
@@ -50,6 +51,7 @@ export function StandardReportsPreviewPanel({
   filterState,
   generatedBy,
   templateName,
+  reportDescription,
   pagination,
   setPagination,
   pageCount,
@@ -336,6 +338,7 @@ export function StandardReportsPreviewPanel({
         source={source}
         generatedBy={generatedBy}
         templateName={templateName}
+        reportDescription={reportDescription}
       />
     </div>
   );

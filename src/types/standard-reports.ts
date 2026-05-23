@@ -36,9 +36,11 @@ export interface ReportPreviewRow {
 /** Data contract for the report PDF generator */
 export interface ReportPdfData {
   title: string;    /** Report title (e.g., "Asset Inventory Report" or template name) */
+  description?: string;    /** Optional report description shown on the first page */
   generatedBy: string;    /** Who generated this report */
   generatedAt: string;    /** ISO date string of generation time */
   filtersApplied: string;   /** Human-readable summary of applied filters */
+  filterDetails?: Array<{ label: string; value: string }>;   /** Structured filters for the cover page */
   dataSource: string;   /** Data source name (e.g., "Assets", "Master Data") */
   summary: {    /** Summary metrics shown in the executive summary block */
     totalRecords: number;     /** Optional additional KPIs — keeps it extensible */
