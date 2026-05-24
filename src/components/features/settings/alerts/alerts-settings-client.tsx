@@ -10,12 +10,19 @@ import {
   Loader2,
   Calendar,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tiqriToast } from '@/components/shared/sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
@@ -176,9 +183,9 @@ export function AlertsSettingsClient() {
             <section key={catId} className="space-y-4">
               <div className="flex items-center gap-2.5">
                 <Skeleton className="h-8 w-8 rounded-lg" />
-                <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
                   <Skeleton className="h-5 w-40 rounded-md" />
-                  <Skeleton className="h-3 w-60 rounded-md" />
+                  <Skeleton className="h-4.5 w-4.5 rounded-full" />
                 </div>
               </div>
 
@@ -259,11 +266,29 @@ export function AlertsSettingsClient() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#040d5a]/10 text-[#040d5a]">
                   <CategoryIcon className="h-4.5 w-4.5" />
                 </div>
-                <div>
+                <div className="flex items-center gap-1.5">
                   <h2 className="text-lg font-semibold text-[#040d5a]">
                     {category.title}
                   </h2>
-                  <p className="text-xs text-slate-500">{category.description}</p>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button 
+                          type="button" 
+                          aria-label={`About ${category.title}`}
+                          className="flex h-5 w-5 items-center justify-center text-slate-400 hover:text-[#040d5a] rounded-full transition-colors cursor-pointer"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent 
+                        side="right" 
+                        className="max-w-xs border border-slate-700 bg-slate-900 text-white p-3 rounded-lg shadow-md"
+                      >
+                        <p className="text-xs leading-normal font-normal">{category.description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
 
