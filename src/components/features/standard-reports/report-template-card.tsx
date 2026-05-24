@@ -116,10 +116,10 @@ export function ReportTemplateCard({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex px-4 pb-4">
+        <CardContent className="flex justify-end px-4 pb-4">
           <Button
             size="sm"
-            className="mx-auto w-auto px-3"
+            className="w-auto px-3"
             onClick={() => onPreviewClick?.(template.id)}
           >
             Preview report
