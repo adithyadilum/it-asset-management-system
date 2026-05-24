@@ -73,10 +73,11 @@ export async function POST(req: NextRequest) {
     await runOverdueRepairCheck();
 
     return NextResponse.json({ success: true, message: 'All checks processed successfully' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('CRON job execution failed:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error', details: error.message || String(error) },
+      { error: 'Internal Server Error', details: errMsg },
       { status: 500 }
     );
   }

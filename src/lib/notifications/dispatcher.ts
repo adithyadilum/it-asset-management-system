@@ -68,13 +68,14 @@ export async function dispatchAlert(payload: NotificationPayload) {
           status: 'sent',
           sentAt: new Date(),
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to dispatch In-App notification:', err);
+        const errMsg = err instanceof Error ? err.message : String(err);
         await db.insert(notificationLogs).values({
           eventType,
           channel: 'in_app',
           status: 'failed',
-          errorMessage: err.message || String(err),
+          errorMessage: errMsg,
           sentAt: new Date(),
         });
       }
@@ -101,14 +102,15 @@ export async function dispatchAlert(payload: NotificationPayload) {
             status: 'sent',
             sentAt: new Date(),
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Failed to queue Email via QStash:', err);
+          const errMsg = err instanceof Error ? err.message : String(err);
           await db.insert(notificationLogs).values({
             notificationId,
             eventType,
             channel: 'email',
             status: 'failed',
-            errorMessage: err.message || String(err),
+            errorMessage: errMsg,
             sentAt: new Date(),
           });
         }
@@ -142,14 +144,15 @@ export async function dispatchAlert(payload: NotificationPayload) {
             status: 'sent',
             sentAt: new Date(),
           });
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Failed to queue Teams via QStash:', err);
+          const errMsg = err instanceof Error ? err.message : String(err);
           await db.insert(notificationLogs).values({
             notificationId,
             eventType,
             channel: 'teams',
             status: 'failed',
-            errorMessage: err.message || String(err),
+            errorMessage: errMsg,
             sentAt: new Date(),
           });
         }
@@ -167,8 +170,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Critical failure in dispatchAlert:', error);
-    return { success: false, error: error.message || String(error) };
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
   }
 }

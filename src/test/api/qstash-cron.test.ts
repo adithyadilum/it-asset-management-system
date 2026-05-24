@@ -2,9 +2,10 @@
  * @vitest-environment node
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '@/db';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
 import { POST as cronHandler } from '@/app/api/qstash/cron/route';
 
