@@ -169,14 +169,11 @@ export function AlertsSettingsClient() {
 
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto px-6 py-8 space-y-10 bg-slate-50/50">
-        <div className="max-w-6xl mx-auto space-y-8">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+        <div className="max-w-6xl mx-auto space-y-6">
           
           {/* Header Summary Skeleton */}
-          <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-5">
-            <Skeleton className="h-8 w-64 rounded-md" />
-            <Skeleton className="h-4 w-96 mt-2 rounded-md" />
-          </div>
+          <Skeleton className="h-8 w-64 rounded-md" />
 
           {/* Pulsing Category Skeletons */}
           {[1, 2, 3].map((catId) => (
@@ -238,16 +235,11 @@ export function AlertsSettingsClient() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-8 space-y-10 bg-slate-50/50">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+      <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header Summary */}
-        <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-5">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Alerts & Notifications</h1>
-          <p className="text-sm text-slate-500">
-            Define system-wide threshold metrics and channel routing rules for automated alerts.
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Alerts & Notifications</h1>
 
         {/* Categories rendering */}
         {UI_CATEGORIES.map((category) => {
