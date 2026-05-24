@@ -2,10 +2,10 @@
 
 ## for Integrated Digital Asset Management System
 
-**Version 1.1**  
+**Version 1.2**  
 **Prepared by ITM07 - NovaSoft**  
 **University of Moratuwa, Sri Lanka**  
-**26/02/2026**
+**23/05/2026**
 
 ---
 
@@ -15,6 +15,7 @@
 | :--- | :--------- | :---------------------------------------- | :------ |
 | Team | 12/02/2026 | Initial draft                             | 1.0     |
 | Team | 02/26/2026 | Aligned with updated FRs/NFRs (Epics 1–5) | 1.1     |
+| Team | 05/23/2026 | Added Report Engine and Dashboards Epics (6-7) and supporting requirements | 1.2 |
 
 ---
 

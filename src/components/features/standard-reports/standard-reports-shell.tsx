@@ -11,18 +11,14 @@ import {
   type FilterState,
   type ReportPreviewRow,
   type ReportTemplateData,
+  type FilterOptions,
 } from '@/types/standard-reports';
 import { tiqriToast } from '@/components/shared/sonner';
 import { StandardReportsConfigPanel } from './standard-reports-config-panel';
 import { StandardReportsPreviewPanel } from './standard-reports-preview-panel';
 
 interface StandardReportsShellProps {
-  filterOptions: {
-    assetTypes: string[];
-    categories: { name: string; pillar: string }[];
-    locations: string[];
-    statuses: string[];
-  };
+  filterOptions: FilterOptions;
   templates: ReportTemplateData[];
   generatedBy: string;
 }
