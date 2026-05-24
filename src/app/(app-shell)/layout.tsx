@@ -7,6 +7,8 @@ import { TopHeader } from "@/components/layout/top-header"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { OfflineBanner } from "@/components/shared/offline-banner"
 import { PwaRegistration } from "@/components/shared/pwa-registration"
+import { MobileRouteHandler } from "@/components/features/mobile/mobile-route-handler"
+import { BottomNavigation } from "@/components/layout/bottom-navigation"
 
 export default async function AppShellLayout({
   children,
@@ -21,6 +23,7 @@ export default async function AppShellLayout({
     <>
       <PwaRegistration />
       <OfflineBanner />
+      <MobileRouteHandler role={user.role} />
       <SidebarProvider
         defaultOpen
         style={{ "--sidebar-width": "260px" } as CSSProperties}
@@ -32,8 +35,9 @@ export default async function AppShellLayout({
           <TopHeader user={{ name: user.name, email: user.email, role: user.role }} />
 
           <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-background">
-            <div className="flex min-h-0 flex-1 flex-col rounded-md bg-background">
+            <div className="flex min-h-0 flex-1 flex-col rounded-md bg-background relative">
               <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+              <BottomNavigation />
             </div>
           </div>
         </div>
