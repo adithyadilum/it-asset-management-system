@@ -23,6 +23,7 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { MASTER_DATA_RECORD_ENTITIES } from '@/lib/master-data/shared';
 import { uploadFileToStorage } from '@/lib/storage';
 import { logAuditAction } from '@/lib/audit';
+import { logError } from '@/lib/latency';
 import type {
   BrandFormState,
   CategoryFormState,
@@ -1107,12 +1108,11 @@ export async function createMasterDataRecord(
       message: 'Record created successfully.',
     };
   } catch (error) {
-    if (error instanceof Error && error.message.length > 0) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+    logError({
+      scope: 'ACTION',
+      label: 'masterData.createMasterDataRecord',
+      error,
+    });
 
     return {
       success: false,
