@@ -19,6 +19,9 @@ export interface ModuleNavigationTabsProps {
   tabs: ModuleTab[];
   defaultTab?: string; // ID of the tab to show by default (defaults to first tab)
 
+  // Optional header rendered above the tabs
+  header?: React.ReactNode;
+
   // Callbacks
   onTabChange?: (tabId: string) => void;
 
@@ -44,6 +47,7 @@ export const ModuleNavigationTabs = React.forwardRef<
       tabs,
       defaultTab,
       onTabChange,
+      header,
       containerClassName = "",
       listClassName = "",
       triggerClassName = "",
@@ -65,6 +69,9 @@ export const ModuleNavigationTabs = React.forwardRef<
         onValueChange={handleTabChange}
         className={cn("w-full", containerClassName)} // Keeps the overall container full width
       >
+        {/* Optional header above the tabs */}
+        {header ? <div className="mb-3">{header}</div> : null}
+
         {/* ===== TAB LIST (Navigation) ===== */}
         <TabsList
           className={cn(

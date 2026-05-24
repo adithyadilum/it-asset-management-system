@@ -17,9 +17,15 @@ export default async function IntegrationsPage() {
     { id: 'webhooks', label: 'Webhooks', content: <div className="p-6">Webhooks coming soon.</div> },
   ]
 
+  const header = (
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold">API Keys</h3>
+    </div>
+  )
+
   return (
     <div className="p-6">
-      <ModuleNavigationTabs tabs={tabs} defaultTab="api-keys" />
+      <ModuleNavigationTabs tabs={tabs} defaultTab="api-keys" header={header} />
     </div>
   )
 }
