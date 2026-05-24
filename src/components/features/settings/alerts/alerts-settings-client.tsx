@@ -18,6 +18,7 @@ import { tiqriToast } from '@/components/shared/sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { StatusBadge } from '@/components/shared/status-badge';
 import {
   Tooltip,
   TooltipContent,
@@ -321,16 +322,12 @@ export function AlertsSettingsClient() {
                             <span className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
                               {displayName}
                             </span>
-                            <div className="flex items-center gap-1.5">
-                              <span className={cn(
-                                "px-1.5 py-0.25 rounded uppercase tracking-wider",
-                                TYPOGRAPHY_CLASSNAMES.textXsMedium,
-                                rule.isEnabled 
-                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
-                                  : "bg-slate-100 text-slate-500 border border-slate-200"
-                              )}>
-                                {rule.isEnabled ? 'Active' : 'Disabled'}
-                              </span>
+                            <div className="flex items-center gap-2">
+                              <StatusBadge 
+                                value={rule.isEnabled ? 'active' : 'inactive'} 
+                                label={rule.isEnabled ? 'Active' : 'Disabled'} 
+                                showIcon={true} 
+                              />
                               {isRuleUpdating && (
                                 <span className="flex items-center gap-1 text-[10px] text-slate-400">
                                   <Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving...
