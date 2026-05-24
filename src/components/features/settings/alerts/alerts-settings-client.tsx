@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import {
-  Bell,
-  Mail,
-  MessageSquare,
-  ShieldCheck,
-  Activity,
+import { 
+  Bell, 
+  Mail, 
+  MessageSquare, 
+  ShieldCheck, 
+  Activity, 
   Loader2,
   Calendar,
   CheckCircle,
@@ -173,7 +173,7 @@ export function AlertsSettingsClient() {
     return (
       <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
         <div className="max-w-6xl mx-auto space-y-6">
-
+          
           {/* Header Summary Skeleton */}
           <Skeleton className="h-8 w-64 rounded-md" />
 
@@ -197,7 +197,7 @@ export function AlertsSettingsClient() {
                     <div className="flex-1 space-y-3">
                       <div className="flex items-start gap-3">
                         <Skeleton className="h-7 w-7 rounded-md shrink-0" />
-                        <div className="space-y-2 flex-1">
+                        <div className="space-y-3 flex-1">
                           <Skeleton className="h-5 w-72 rounded-md" />
                           <Skeleton className="h-3.5 w-24 rounded-md" />
                         </div>
@@ -210,7 +210,7 @@ export function AlertsSettingsClient() {
                         </div>
                       )}
                     </div>
-
+                    
                     <div className="flex flex-col sm:flex-row sm:items-center gap-6 self-start md:self-center shrink-0">
                       <div className="space-y-2">
                         <Skeleton className="h-3 w-16 rounded-md" />
@@ -239,7 +239,7 @@ export function AlertsSettingsClient() {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
       <div className="max-w-6xl mx-auto space-y-6">
-
+        
         {/* Header Summary */}
         <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>Alerts & Notifications</h1>
 
@@ -267,16 +267,16 @@ export function AlertsSettingsClient() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button
-                          type="button"
+                        <button 
+                          type="button" 
                           aria-label={`About ${category.title}`}
                           className="flex h-5 w-5 items-center justify-center text-slate-400 hover:text-[#040d5a] rounded-full transition-colors cursor-pointer"
                         >
                           <Info className="h-4 w-4" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent
-                        side="right"
+                      <TooltipContent 
+                        side="right" 
                         className="max-w-xs border border-slate-700 bg-slate-900 text-white p-3 rounded-lg shadow-md"
                       >
                         <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} leading-normal`}>{category.description}</p>
@@ -298,7 +298,7 @@ export function AlertsSettingsClient() {
                       key={rule.id}
                       className={cn(
                         "relative flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border bg-white p-6 transition-all duration-200",
-                        rule.isEnabled
+                        rule.isEnabled 
                           ? "border-slate-200 hover:border-slate-300"
                           : "border-slate-200 bg-slate-50/40 opacity-70"
                       )}
@@ -307,7 +307,7 @@ export function AlertsSettingsClient() {
                       <div className="flex-1 space-y-4">
                         <div className="flex items-start gap-3">
                           <div className={cn(
-                            "mt-0.5 flex h-7 w-7 items-center justify-center rounded-md border",
+                            "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border",
                             rule.isEnabled
                               ? "bg-slate-50 border-slate-200 text-[#040d5a]"
                               : "bg-slate-100 border-slate-150 text-slate-400"
@@ -318,15 +318,15 @@ export function AlertsSettingsClient() {
                               <AlertTriangle className="h-4 w-4 text-slate-400" />
                             )}
                           </div>
-                          <div className="space-y-1">
-                            <span className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                          <div className="space-y-3">
+                            <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900 block`}>
                               {displayName}
-                            </span>
+                            </h3>
                             <div className="flex items-center gap-2">
-                              <StatusBadge
-                                value={rule.isEnabled ? 'active' : 'inactive'}
-                                label={rule.isEnabled ? 'Active' : 'Disabled'}
-                                showIcon={true}
+                              <StatusBadge 
+                                value={rule.isEnabled ? 'active' : 'inactive'} 
+                                label={rule.isEnabled ? 'Active' : 'Disabled'} 
+                                showIcon={true} 
                               />
                               {isRuleUpdating && (
                                 <span className="flex items-center gap-1 text-[10px] text-slate-400">
@@ -349,7 +349,7 @@ export function AlertsSettingsClient() {
                                 })
                               }
                             >
-                              <SelectTrigger className="h-8 min-w-25 border-slate-200 bg-white hover:border-slate-300 font-medium">
+                              <SelectTrigger className={cn("h-8 min-w-[100px] border-slate-200 bg-white hover:border-slate-300", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
                                 <SelectValue placeholder="Select period" />
                               </SelectTrigger>
                               <SelectContent>
@@ -382,7 +382,7 @@ export function AlertsSettingsClient() {
                                 checked={rule.channelInApp}
                                 onCheckedChange={(checked) =>
                                   handleUpdateRule(rule.id, {
-                                    channelInApp: checked === true,
+                                    channelInApp: !!checked,
                                   })
                                 }
                               />
@@ -399,7 +399,7 @@ export function AlertsSettingsClient() {
                                 checked={rule.channelEmail}
                                 onCheckedChange={(checked) =>
                                   handleUpdateRule(rule.id, {
-                                    channelEmail: checked === true,
+                                    channelEmail: !!checked,
                                   })
                                 }
                               />
@@ -416,7 +416,7 @@ export function AlertsSettingsClient() {
                                 checked={rule.channelTeams}
                                 onCheckedChange={(checked) =>
                                   handleUpdateRule(rule.id, {
-                                    channelTeams: checked === true,
+                                    channelTeams: !!checked,
                                   })
                                 }
                               />
