@@ -2,15 +2,20 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { notificationRules } from '@/db/schema';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { canManageAssets } from '@/lib/auth/roles';
 
 export async function GET() {
   try {
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!canManageAssets(user.role)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'Forbidden: Insufficient permissions' },
+        { status: 403 }
       );
     }
 

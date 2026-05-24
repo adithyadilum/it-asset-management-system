@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -52,10 +52,6 @@ vi.mock('@/db', () => ({
   },
 }));
 
-function createGetRequest(url: string = 'http://localhost/api/v1/settings/notification-rules'): NextRequest {
-  return new NextRequest(url, { method: 'GET' });
-}
-
 function createPutRequest(
   url: string = 'http://localhost/api/v1/settings/notification-rules/1',
   body: Record<string, unknown>
@@ -75,7 +71,6 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
     it('returns 401 Unauthorized if user session is invalid', async () => {
       vi.mocked(getAuthenticatedUser).mockResolvedValue(null);
 
-      const req = createGetRequest();
       const response = await getHandler();
 
       expect(response.status).toBe(401);
@@ -99,7 +94,6 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
       ];
       mockOrderBy.mockResolvedValue(mockRules);
 
-      const req = createGetRequest();
       const response = await getHandler();
 
       expect(response.status).toBe(200);
@@ -114,12 +108,15 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
     it('returns 401 Unauthorized if user session is invalid', async () => {
       vi.mocked(getAuthenticatedUser).mockResolvedValue(null);
 
-      const req = createPutRequest('http://localhost/api/v1/settings/notification-rules/1', {
-        isEnabled: false,
-        channelInApp: true,
-        channelEmail: true,
-        channelTeams: false,
-      });
+      const req = createPutRequest(
+        'http://localhost/api/v1/settings/notification-rules/1',
+        {
+          isEnabled: false,
+          channelInApp: true,
+          channelEmail: true,
+          channelTeams: false,
+        }
+      );
 
       const response = await putHandler(req, {
         params: Promise.resolve({ id: '1' }),
@@ -140,12 +137,15 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
         createdAt: new Date(),
       } as any);
 
-      const req = createPutRequest('http://localhost/api/v1/settings/notification-rules/abc', {
-        isEnabled: false,
-        channelInApp: true,
-        channelEmail: true,
-        channelTeams: false,
-      });
+      const req = createPutRequest(
+        'http://localhost/api/v1/settings/notification-rules/abc',
+        {
+          isEnabled: false,
+          channelInApp: true,
+          channelEmail: true,
+          channelTeams: false,
+        }
+      );
 
       const response = await putHandler(req, {
         params: Promise.resolve({ id: 'abc' }),
@@ -167,10 +167,13 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
       } as any);
 
       // missing channelEmail and channelTeams
-      const req = createPutRequest('http://localhost/api/v1/settings/notification-rules/1', {
-        isEnabled: true,
-        channelInApp: true,
-      });
+      const req = createPutRequest(
+        'http://localhost/api/v1/settings/notification-rules/1',
+        {
+          isEnabled: true,
+          channelInApp: true,
+        }
+      );
 
       const response = await putHandler(req, {
         params: Promise.resolve({ id: '1' }),
@@ -193,12 +196,15 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
 
       mockLimit.mockResolvedValue([]); // Rule not found
 
-      const req = createPutRequest('http://localhost/api/v1/settings/notification-rules/999', {
-        isEnabled: false,
-        channelInApp: true,
-        channelEmail: true,
-        channelTeams: false,
-      });
+      const req = createPutRequest(
+        'http://localhost/api/v1/settings/notification-rules/999',
+        {
+          isEnabled: false,
+          channelInApp: true,
+          channelEmail: true,
+          channelTeams: false,
+        }
+      );
 
       const response = await putHandler(req, {
         params: Promise.resolve({ id: '999' }),
@@ -242,13 +248,16 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
       mockLimit.mockResolvedValue([existingRule]);
       mockReturning.mockResolvedValue([updatedRule]);
 
-      const req = createPutRequest('http://localhost/api/v1/settings/notification-rules/1', {
-        isEnabled: false,
-        thresholdDays: 15,
-        channelInApp: true,
-        channelEmail: true,
-        channelTeams: true,
-      });
+      const req = createPutRequest(
+        'http://localhost/api/v1/settings/notification-rules/1',
+        {
+          isEnabled: false,
+          thresholdDays: 15,
+          channelInApp: true,
+          channelEmail: true,
+          channelTeams: true,
+        }
+      );
 
       const response = await putHandler(req, {
         params: Promise.resolve({ id: '1' }),
@@ -263,14 +272,16 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
       expect(db.update).toHaveBeenCalled();
 
       // Verify audit logging was called
-      expect(logAuditAction).toHaveBeenCalledWith(expect.objectContaining({
-        entityType: 'NotificationRule',
-        entityId: '1',
-        actionType: 'UPDATE',
-        performedById: user.id,
-        oldData: existingRule,
-        newData: updatedRule,
-      }));
+      expect(logAuditAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: 'NotificationRule',
+          entityId: '1',
+          actionType: 'UPDATE',
+          performedById: user.id,
+          oldData: existingRule,
+          newData: updatedRule,
+        })
+      );
     });
   });
 });

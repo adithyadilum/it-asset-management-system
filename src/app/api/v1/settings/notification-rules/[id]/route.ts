@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { notificationRules } from '@/db/schema';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { canManageAssets } from '@/lib/auth/roles';
 import { logAuditAction } from '@/lib/audit';
 import { updateNotificationRuleSchema } from '@/lib/validations/settings';
 
@@ -14,9 +15,13 @@ export async function PUT(
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!canManageAssets(user.role)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'Forbidden: Insufficient permissions' },
+        { status: 403 }
       );
     }
 
@@ -34,10 +39,7 @@ export async function PUT(
     try {
       bodyJson = JSON.parse(bodyText);
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
     const parsed = updateNotificationRuleSchema.safeParse(bodyJson);
@@ -48,7 +50,13 @@ export async function PUT(
       );
     }
 
-    const { isEnabled, thresholdDays, channelInApp, channelEmail, channelTeams } = parsed.data;
+    const {
+      isEnabled,
+      thresholdDays,
+      channelInApp,
+      channelEmail,
+      channelTeams,
+    } = parsed.data;
 
     // Check if the rule exists and capture its current state for audit logs
     const existingRules = await db
@@ -79,6 +87,13 @@ export async function PUT(
       })
       .where(eq(notificationRules.id, ruleId))
       .returning();
+
+    if (!updatedRule) {
+      return NextResponse.json(
+        { error: 'Notification rule could not be updated or was removed' },
+        { status: 409 }
+      );
+    }
 
     // Log the update action in the system audit logs
     await logAuditAction({
