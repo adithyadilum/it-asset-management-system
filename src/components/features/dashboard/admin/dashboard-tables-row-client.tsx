@@ -292,10 +292,10 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
   } = {
     enableRowSelection: false,
     enableRowScroll: true,
-    // 53px header + 53px × 2 rows = 159px — shows exactly 2 rows, rest scroll
+    // 53px header + 53px × 3 rows = 212px — shows exactly 3 rows, rest scroll
     initialPageSize: 50,
     pageSizeOptions: [50],
-    className: "h-[159px] text-xs",
+    className: "h-[212px] text-xs",
     hideFooter: true,
   }
 

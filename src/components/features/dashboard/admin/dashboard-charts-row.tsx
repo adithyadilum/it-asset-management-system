@@ -178,7 +178,7 @@ function InventoryStatusChart({
         </p>
       </CardHeader>
 
-      <CardContent className="p-3 pt-1 flex-1 min-h-0 flex items-center">
+      <CardContent className="p-3 pt-1 flex-1 min-h-0 flex items-center justify-between">
         {inventoryData.length > 0 ? (
           <>
             {/* Donut Column (Left) */}
