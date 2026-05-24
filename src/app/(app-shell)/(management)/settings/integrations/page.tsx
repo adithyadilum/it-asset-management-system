@@ -19,7 +19,7 @@ export default async function IntegrationsPage() {
 
   const header = (
     <div className="flex items-center justify-between">
-      <h3 className="text-lg font-semibold">API Keys</h3>
+      <h3 className="text-lg font-semibold">Integrations & APIs</h3>
     </div>
   )
 
