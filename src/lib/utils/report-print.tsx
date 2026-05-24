@@ -58,7 +58,7 @@ export async function generateAndOpenReportPdf(
       a.remove();
       // revoke after a short delay to ensure download starts
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
-    } catch (err) {
+    } catch {
       // fallback: show toast that download failed
       tiqriToast.error('Unable to start download for the PDF.');
       URL.revokeObjectURL(blobUrl);
