@@ -1,9 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Add your ngrok URL and local IP here (DO NOT include https://)
+  allowedDevOrigins: [
+    'sector-undertow-shame.ngrok-free.dev',
+    '192.168.8.140',
+    'localhost:3000',
+  ],
   reactCompiler: true,
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
+      allowedOrigins: ['localhost:3000', '*.ngrok-free.app'],
     },
   },
   images: {
@@ -21,23 +28,6 @@ const nextConfig = {
         pathname: '/**', // This allows all folders (like /models, /invoices)
       },
     ],
-  },
-  async headers() {
-    return [
-      {
-        source: '/sw.ts',
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'application/javascript; charset=utf-8',
-          },
-          {
-            key: 'Service-Worker-Allowed',
-            value: '/',
-          }
-        ],
-      },
-    ];
   },
 };
 
