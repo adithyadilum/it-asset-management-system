@@ -4,8 +4,9 @@ import { db } from '@/db';
 import { customStatuses } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
-import { logLatency, startLatencyTimer } from '@/lib/latency';
+import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { MANUAL_OVERRIDE_STATUSES } from '@/lib/constants';
+import { customStatusSchema } from '@/lib/validations/master-data';
 
 export interface CustomStatusRow {
   id: number;
@@ -19,6 +20,9 @@ export interface CustomStatusRow {
 export async function getCustomStatuses(): Promise<CustomStatusRow[]> {
   const timer = startLatencyTimer();
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('UNAUTHENTICATED');
+
     const rows = await db
       .select({
         id: customStatuses.id,
@@ -47,16 +51,19 @@ export async function createCustomStatus(name: string, colorTheme: string, iconN
   if (!user) throw new Error('UNAUTHENTICATED');
   if (user.role !== 'GlobalAdmin') throw new Error('FORBIDDEN');
 
-  const normalized = name?.trim();
-  if (!normalized) throw new Error('Name is required');
+  // Validate inputs with Zod
+  const parsed = customStatusSchema.safeParse({ name, colorTheme, iconName, isActive: true });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
+  }
 
   try {
     const inserted = await db
       .insert(customStatuses)
       .values({
-        name: normalized,
-        colorTheme: colorTheme || 'gray',
-        iconName: iconName || 'CircleDot',
+        name: parsed.data.name,
+        colorTheme: parsed.data.colorTheme,
+        iconName: parsed.data.iconName,
         createdById: user.id,
       })
       .returning({
@@ -69,6 +76,18 @@ export async function createCustomStatus(name: string, colorTheme: string, iconN
       });
 
     return inserted[0];
+  } catch (error) {
+    logError({ scope: 'ACTION', label: 'statuses.createCustomStatus', error });
+    // Check for unique constraint violation (Postgres code 23505)
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code: unknown }).code === '23505'
+    ) {
+      throw new Error('A status with this name already exists.');
+    }
+    throw new Error('Failed to create custom status.');
   } finally {
     logLatency({
       scope: 'ACTION',
@@ -87,6 +106,9 @@ export async function deleteCustomStatus(id: number) {
   try {
     await db.delete(customStatuses).where(eq(customStatuses.id, id));
     return { success: true } as const;
+  } catch (error) {
+    logError({ scope: 'ACTION', label: 'statuses.deleteCustomStatus', error });
+    throw new Error('Failed to delete custom status.');
   } finally {
     logLatency({
       scope: 'ACTION',
@@ -99,6 +121,9 @@ export async function deleteCustomStatus(id: number) {
 export async function getManualOverrideStatuses() {
   const timer = startLatencyTimer();
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) throw new Error('UNAUTHENTICATED');
+
     // Fetch active custom statuses from master data
     const customRows = await db
       .select({ 

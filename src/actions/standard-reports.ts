@@ -28,6 +28,7 @@ import type { ReportPreviewRow } from '@/types/standard-reports';
 import { resolveTargetEntityLabels, resolveAuditValueLabels } from '@/actions/audit-log';
 import { extractLabelFromValues } from '@/lib/audit';
 import { customStatuses } from '@/db/schema';
+import { reportPreviewFiltersSchema } from '@/lib/validations/standard-reports';
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -229,8 +230,20 @@ export async function fetchReportPreview(
   }
 
   try {
-    const pageSize = filters.pageSize ?? 16;
-    const page = filters.page ?? 0;
+    // Validate and coerce filter params with Zod
+    const parsedFilters = reportPreviewFiltersSchema.safeParse(filters);
+    if (!parsedFilters.success) {
+      throw new Error(
+        parsedFilters.error.issues[0]?.message ?? 'Invalid report filters.'
+      );
+    }
+    const validatedFilters = parsedFilters.data;
+    // Shadow the parameter so all downstream references use the validated data
+    // eslint-disable-next-line no-param-reassign
+    filters = validatedFilters;
+
+    const pageSize = validatedFilters.pageSize;
+    const page = validatedFilters.page;
     const offset = page * pageSize;
 
     // -------------------------------------------------------------------------

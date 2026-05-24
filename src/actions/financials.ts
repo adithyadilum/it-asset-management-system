@@ -166,7 +166,10 @@ export async function getDepreciationLedger(
     };
   } catch (error) {
     console.error('[getDepreciationLedger] Error:', error);
-    throw error;
+    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+      throw error;
+    }
+    throw new Error('Failed to load depreciation ledger.');
   }
 }
 
@@ -289,7 +292,10 @@ export async function getTCOLedger(
     };
   } catch (error) {
     console.error('[getTCOLedger] Error:', error);
-    throw error;
+    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+      throw error;
+    }
+    throw new Error('Failed to load TCO ledger.');
   }
 }
 
@@ -401,6 +407,9 @@ export async function getWriteOffsLedger(
     };
   } catch (error) {
     console.error('[getWriteOffsLedger] Error:', error);
-    throw error;
+    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+      throw error;
+    }
+    throw new Error('Failed to load write-offs ledger.');
   }
 }

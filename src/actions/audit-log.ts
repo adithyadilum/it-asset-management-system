@@ -20,6 +20,7 @@ import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { extractLabelFromValues } from '@/lib/audit';
+import { auditLogQuerySchema } from '@/lib/validations/audit-log';
 
 export interface AuditLogFilter {
   field: string;
@@ -198,6 +199,16 @@ function buildTargetEntitySearchCondition(searchValue: string) {
 export async function resolveAuditValueLabels(
   records: Array<{ oldValue: unknown; newValue: unknown }>
 ) {
+  const currentUser = await getAuthenticatedUser();
+  if (
+    !currentUser ||
+    (currentUser.role !== 'GlobalAdmin' &&
+      currentUser.role !== 'FinanceAuditor' &&
+      !canManageAssets(currentUser.role))
+  ) {
+    throw new Error('Unauthorized access to audit metadata.');
+  }
+
   const labels = new Map<string, string>();
   
   // 1. Identify all ID fields we want to resolve
@@ -366,6 +377,16 @@ export async function resolveAuditValueLabels(
 export async function resolveTargetEntityLabels(
   records: Array<{ entityType: string; entityId: string }>
 ) {
+  const currentUser = await getAuthenticatedUser();
+  if (
+    !currentUser ||
+    (currentUser.role !== 'GlobalAdmin' &&
+      currentUser.role !== 'FinanceAuditor' &&
+      !canManageAssets(currentUser.role))
+  ) {
+    throw new Error('Unauthorized access to audit metadata.');
+  }
+
   const labels = new Map<string, string>();
   const addLabel = (entityType: string, entityId: string, label: string) => {
     if (label.trim().length > 0) {
@@ -648,8 +669,14 @@ export async function getAuditLogs(
       throw new Error('Unauthorized access to audit logs.');
     }
 
-    const page = Math.max(1, params.page || 1);
-    const pageSize = Math.min(100, Math.max(1, params.pageSize || 16));
+    // Validate and coerce params through schema
+    const parsedParams = auditLogQuerySchema.safeParse(params);
+    if (!parsedParams.success) {
+      throw new Error('Invalid query parameters.');
+    }
+
+    const page = parsedParams.data.page;
+    const pageSize = parsedParams.data.pageSize;
     const offset = (page - 1) * pageSize;
 
     const baseWhere = [];

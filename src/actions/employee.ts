@@ -68,6 +68,6 @@ export async function getCurrentEmployeeAssets(): Promise<
       durationMs: Date.now() - startTime,
       error,
     });
-    throw error;
+    throw new Error('Failed to load your assigned assets.');
   }
 }
