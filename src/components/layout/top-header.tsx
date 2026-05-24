@@ -2,7 +2,6 @@
 
 import {
     Ban,
-    Menu,
     PanelLeftClose,
     PanelLeftOpen,
 } from 'lucide-react';
@@ -106,16 +105,9 @@ export function TopHeader({ user }: TopHeaderProps) {
     const roleLabel = roleLabelMap[user.role];
 
     return (
-        <header className="grid h-14 w-full grid-cols-3 items-center gap-4 rounded-none border-b border-slate-100 bg-white md:rounded-lg md:border-none md:bg-muted md:px-2">            {/* Left Column: Mobile Menu / Desktop Breadcrumb */}
-            <div className="flex items-center md:hidden">
-                <button
-                    type="button"
-                    aria-label="Toggle menu"
-                    onClick={toggleSidebar}
-                    className="flex h-7 w-7 items-center justify-center"
-                >
-                    <Menu className="h-5 w-5 text-slate-900" />
-                </button>
+        <header className="grid h-14 w-full grid-cols-2 md:grid-cols-3 items-center gap-4 rounded-none border-none bg-white md:rounded-lg md:bg-muted md:px-2">            {/* Left Column: Mobile Logo / Desktop Breadcrumb */}
+            <div className="flex items-center md:hidden pl-2">
+                <BrandHeader collapsed={false} />
             </div>
 
             <div className="hidden min-w-0 items-center gap-2 px-2 md:flex">
@@ -179,24 +171,22 @@ export function TopHeader({ user }: TopHeaderProps) {
                 </Breadcrumb>
             </div>
 
-            {/* Center Column: Mobile Logo / Desktop Search */}
-            <div className="flex items-center justify-center md:hidden">
-                <BrandHeader collapsed={false} />
-            </div>
-
+            {/* Center Column: Desktop Search */}
             <div className="hidden items-center justify-self-center md:flex">
                 <OmniSearchTrigger userRole={user.role} />
             </div>
 
             {/* Right Column: Avatar & User Info */}
-            <div className="flex items-center justify-end md:gap-4 md:px-2">
+            <div className="flex items-center justify-end md:gap-4 md:px-2 pr-2">
                 {/* Desktop: Bell Icon & Separator */}
-                <NotificationBell />
-                <div className="flex items-center px-2">
-                    <Separator
-                        orientation="vertical"
-                        className="h-4.25 w-px bg-slate-200"
-                    />
+                <div className="hidden md:flex items-center">
+                    <NotificationBell />
+                    <div className="flex items-center px-2">
+                        <Separator
+                            orientation="vertical"
+                            className="h-4.25 w-px bg-slate-200"
+                        />
+                    </div>
                 </div>
 
                 <DropdownMenu>
