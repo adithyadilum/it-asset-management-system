@@ -1,11 +1,15 @@
 "use client"
 
-import { QrCode, Package, ClipboardCheck, Clock } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Camera, BadgeAlert, Contact } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 import type { AdminMobileMetrics } from "@/actions/mobile"
-import { formatDistanceToNow } from "date-fns"
+
+function getActionColor(action: string) {
+  const normalized = action.toLowerCase()
+  if (normalized.includes("lost")) return "border-[#a36040] text-slate-800"
+  if (normalized.includes("repair")) return "border-[#643494] text-slate-800"
+  return "border-slate-800 text-slate-800"
+}
 
 export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics }) {
   const handleLaunchScanner = () => {
@@ -14,75 +18,69 @@ export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics 
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4 pb-24 md:hidden">
+    <div className="flex flex-col gap-6 p-4 pb-24 md:hidden bg-white min-h-screen font-sans">
       {/* Hero Section */}
-      <section className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Scanner Dashboard</h1>
-        <Button 
+      <section>
+        <button 
           onClick={handleLaunchScanner}
-          size="lg" 
-          className="w-full bg-blue-900 hover:bg-blue-800 text-primary-foreground h-32 rounded-xl flex flex-col gap-3 shadow-lg"
+          className="w-full bg-[#0a1142] hover:bg-[#111956] text-white py-10 px-6 rounded-[24px] flex flex-col items-center justify-center gap-4 shadow-md transition-colors"
         >
-          <QrCode className="h-10 w-10" />
-          <span className="text-xl font-semibold">Launch Scanner</span>
-        </Button>
+          <div className="bg-white/10 p-4 rounded-full">
+            <Camera className="h-8 w-8 text-white" strokeWidth={1.5} />
+          </div>
+          <h2 className="text-2xl font-bold mt-2">Launch Scanner</h2>
+          <p className="text-center text-[15px] text-blue-100/70 mx-4 leading-snug">
+            Instantly scan asset barcodes to<br/>update records or verify<br/>assignments
+          </p>
+        </button>
       </section>
 
       {/* Quick Metrics Grid */}
-      <section className="grid grid-cols-2 gap-4">
-        <Card className="shadow-sm border-blue-100 dark:border-blue-900">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Assets</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.assignedAssetCount}</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-sm border-orange-100 dark:border-orange-900">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Apps</CardTitle>
-            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.pendingApprovalsCount}</div>
-          </CardContent>
-        </Card>
+      <section className="flex flex-col gap-3">
+        <h3 className="text-[17px] font-bold text-slate-800">Quick Metrics</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="shadow-none border border-slate-200 rounded-[16px]">
+            <CardContent className="p-4 flex flex-col gap-3">
+              <Contact className="h-6 w-6 text-[#0a1142]" strokeWidth={1.5} />
+              <div className="flex flex-col">
+                <span className="text-[13px] font-bold text-slate-600">My Assigned Assets</span>
+                <span className="text-3xl font-extrabold text-[#0a1142] mt-1">{metrics.assignedAssetCount}</span>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-none border border-slate-200 rounded-[16px]">
+            <CardContent className="p-4 flex flex-col gap-3">
+              <BadgeAlert className="h-6 w-6 text-[#d34242]" strokeWidth={1.5} />
+              <div className="flex flex-col">
+                <span className="text-[13px] font-bold text-slate-600">Pending Approvals</span>
+                <span className="text-3xl font-extrabold text-[#0a1142] mt-1">{metrics.pendingApprovalsCount}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       {/* Recent Activities */}
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold tracking-tight">Recent Activities</h2>
+      <section className="flex flex-col gap-2">
+        <div className="flex flex-col mb-2">
+          <h3 className="text-[17px] font-bold text-slate-800">Recent Activities</h3>
+          <p className="text-[14px] text-slate-500">latest actions, updates, and system events</p>
         </div>
         
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {metrics.recentActivities.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No recent activities</p>
           ) : (
-            metrics.recentActivities.map((activity) => (
-              <Card key={activity.id} className="shadow-sm">
-                <CardContent className="p-4 flex justify-between items-center gap-4">
-                  <div className="flex flex-col gap-1 overflow-hidden">
-                    <span className="text-sm font-medium truncate">
-                      {activity.action}
-                    </span>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {activity.assetId && <span>Asset #{activity.assetId}</span>}
-                      <span>•</span>
-                      <span>{formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}</span>
-                    </div>
-                  </div>
-                  {activity.status && (
-                    <Badge variant={activity.status === 'Completed' || activity.status === 'Success' ? 'secondary' : 'outline'} className="shrink-0">
-                      {activity.status}
-                    </Badge>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+            metrics.recentActivities.map((activity) => {
+              const text = activity.action;
+              const borderColor = getActionColor(text);
+              return (
+                <div key={activity.id} className={`border rounded-[10px] px-4 py-3 bg-white ${borderColor}`}>
+                  <p className="text-[14px] font-medium text-slate-700 leading-tight">{text}</p>
+                </div>
+              )
+            })
           )}
         </div>
       </section>

@@ -12,12 +12,12 @@ export function BottomNavigation() {
   const tabs = [
     { name: "Home", href: "/mobile", icon: Home },
     { name: "My Assets", href: "/mobile/my-assets", icon: Package },
-    { name: "Notifications", href: "/mobile/notifications", icon: Bell },
+    { name: "Notifications", href: "/mobile/notifications", icon: Bell, hasNotif: true },
   ]
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
-      <nav className="flex h-16 items-center justify-around px-4">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a1142] text-white pb-[env(safe-area-inset-bottom)] md:hidden rounded-t-[20px]">
+      <nav className="flex h-[76px] items-center justify-around px-4">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href || pathname?.startsWith(`${tab.href}/`);
           return (
@@ -25,12 +25,19 @@ export function BottomNavigation() {
               key={tab.name}
               href={tab.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-full h-full text-muted-foreground transition-colors",
-                isActive && "text-primary font-medium"
+                "flex flex-col items-center justify-center gap-1.5 w-full h-full transition-colors relative",
+                isActive ? "text-white" : "text-slate-400"
               )}
             >
-              <tab.icon className={cn("h-6 w-6", isActive && "fill-primary/20")} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px]">{tab.name}</span>
+              <div className="relative">
+                <tab.icon className={cn("h-[26px] w-[26px]")} strokeWidth={isActive ? 2.5 : 1.5} />
+                {tab.hasNotif && (
+                  <div className="absolute -top-1 -right-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-white">
+                    <div className="h-1.5 w-1.5 rounded-full bg-red-600" />
+                  </div>
+                )}
+              </div>
+              <span className="text-[11px] font-medium">{tab.name}</span>
             </Link>
           )
         })}
