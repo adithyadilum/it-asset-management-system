@@ -144,3 +144,55 @@ export async function logAuditActionTx(tx: any, payload: AuditPayload) {
     console.error('CRITICAL: Failed to write to audit ledger via tx', error);
   }
 }
+
+export function extractLabelFromValues(
+  oldValue: Record<string, unknown> | null,
+  newValue: Record<string, unknown> | null
+): string | null {
+  const parse = (obj: Record<string, unknown> | null): string | null => {
+    if (!obj) return null;
+
+    const codeKeys = [
+      'assetTag', 'asset_tag',
+      'reportCode', 'report_code',
+      'locationCode', 'location_code',
+      'categoryCode', 'category_code',
+      'brandCode', 'brand_code',
+      'modelCode', 'model_code',
+      'vendorCode', 'vendor_code',
+      'ownerCode', 'owner_code',
+      'departmentCode', 'department_code',
+      'code'
+    ];
+    let code: string | null = null;
+    for (const key of codeKeys) {
+      if (typeof obj[key] === 'string' && (obj[key] as string).trim().length > 0) {
+        code = (obj[key] as string).trim();
+        break;
+      }
+    }
+
+    const nameKeys = ['name', 'companyName', 'company_name', 'email'];
+    let name: string | null = null;
+    for (const key of nameKeys) {
+      if (typeof obj[key] === 'string' && (obj[key] as string).trim().length > 0) {
+        name = (obj[key] as string).trim();
+        break;
+      }
+    }
+
+    if (code && name) {
+      return `${code} · ${name}`;
+    }
+    return name || code || null;
+  };
+
+  const labelFromNew = parse(newValue);
+  if (labelFromNew) return labelFromNew;
+
+  const labelFromOld = parse(oldValue);
+  if (labelFromOld) return labelFromOld;
+
+  return null;
+}
+

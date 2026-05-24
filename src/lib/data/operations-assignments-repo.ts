@@ -6,7 +6,6 @@ import {
   isNotNull,
   isNull,
   max,
-  sql,
   lt,
 } from 'drizzle-orm';
 
@@ -937,7 +936,7 @@ export async function markAssignmentsAsReceived(
  */
 export async function refreshOverdueAssignments(): Promise<void> {
   const now = new Date();
-  const updated = await db
+  await db
     .update(assetAssignments)
     .set({ state: 'overdue' })
     .where(

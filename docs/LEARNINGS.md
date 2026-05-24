@@ -269,5 +269,3 @@
   2. A Surrogate Key (an integer like `98` or a UUID) is for machines: it is hidden, mathematically unique, and entirely immutable.
   3. Audit logs must always use the Surrogate Key. If an audit log relies on a mutable business key, and a user later corrects a typo in that asset tag, the historical link to all previous audit records is permanently severed.
 - **Impact:** By strictly enforcing Surrogate Keys in the `systemAuditLogs` table, our compliance ledger is completely tamper-proof and resilient to user edits. To make this data human-readable for compliance officers, the frontend UI will simply perform a SQL `JOIN` to map the immutable machine ID back to the current Business Key or category name, ensuring the UI always displays an accurate, unbroken historical trail.
-
-  
