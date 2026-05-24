@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { tiqriToast } from '@/components/shared/sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   Tooltip,
   TooltipContent,
@@ -239,7 +240,7 @@ export function AlertsSettingsClient() {
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header Summary */}
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Alerts & Notifications</h1>
+        <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>Alerts & Notifications</h1>
 
         {/* Categories rendering */}
         {UI_CATEGORIES.map((category) => {
@@ -259,7 +260,7 @@ export function AlertsSettingsClient() {
                   <CategoryIcon className="h-4.5 w-4.5" />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-lg font-semibold text-[#040d5a]">
+                  <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-[#040d5a]`}>
                     {category.title}
                   </h2>
                   <TooltipProvider>
@@ -277,7 +278,7 @@ export function AlertsSettingsClient() {
                         side="right" 
                         className="max-w-xs border border-slate-700 bg-slate-900 text-white p-3 rounded-lg shadow-md"
                       >
-                        <p className="text-xs leading-normal font-normal">{category.description}</p>
+                        <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} leading-normal`}>{category.description}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -317,12 +318,13 @@ export function AlertsSettingsClient() {
                             )}
                           </div>
                           <div className="space-y-1">
-                            <span className="font-text-sm-semi-bold text-sm font-semibold leading-5 text-slate-900">
+                            <span className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
                               {displayName}
                             </span>
                             <div className="flex items-center gap-1.5">
                               <span className={cn(
-                                "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.25 rounded",
+                                "px-1.5 py-0.25 rounded uppercase tracking-wider",
+                                TYPOGRAPHY_CLASSNAMES.textXsMedium,
                                 rule.isEnabled 
                                   ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
                                   : "bg-slate-100 text-slate-500 border border-slate-200"
@@ -361,7 +363,7 @@ export function AlertsSettingsClient() {
                                 <SelectItem value="90">90 days</SelectItem>
                               </SelectContent>
                             </Select>
-                            <span className="text-xs font-medium text-slate-500">
+                            <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
                               Before Expiry
                             </span>
                           </div>
@@ -372,7 +374,7 @@ export function AlertsSettingsClient() {
                       <div className="flex flex-col sm:flex-row sm:items-center gap-6 self-start md:self-center shrink-0">
                         {/* Channels Checklist */}
                         <div className="space-y-2.5">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                          <span className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} uppercase tracking-wider text-slate-400`}>
                             Channels
                           </span>
                           <div className="flex items-center gap-5">
@@ -389,7 +391,7 @@ export function AlertsSettingsClient() {
                               />
                               <div className="flex items-center gap-1 text-slate-600 group-hover:text-slate-900 transition-colors">
                                 <Bell className="h-3.5 w-3.5" />
-                                <span className="text-xs font-medium">In-App</span>
+                                <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>In-App</span>
                               </div>
                             </label>
 
@@ -406,7 +408,7 @@ export function AlertsSettingsClient() {
                               />
                               <div className="flex items-center gap-1 text-slate-600 group-hover:text-slate-900 transition-colors">
                                 <Mail className="h-3.5 w-3.5" />
-                                <span className="text-xs font-medium">Email</span>
+                                <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>Email</span>
                               </div>
                             </label>
 
@@ -423,7 +425,7 @@ export function AlertsSettingsClient() {
                               />
                               <div className="flex items-center gap-1 text-slate-600 group-hover:text-slate-900 transition-colors">
                                 <MessageSquare className="h-3.5 w-3.5" />
-                                <span className="text-xs font-medium">MS Teams</span>
+                                <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>MS Teams</span>
                               </div>
                             </label>
                           </div>
@@ -434,7 +436,7 @@ export function AlertsSettingsClient() {
 
                         {/* Master Segmented Toggle Pill (On / Off) */}
                         <div className="space-y-2">
-                          <span className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                          <span className={`block ${TYPOGRAPHY_CLASSNAMES.textXsMedium} uppercase tracking-wider text-slate-400`}>
                             Status
                           </span>
                           <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/80 p-0.5 shadow-inner">
@@ -443,7 +445,8 @@ export function AlertsSettingsClient() {
                               disabled={isRuleUpdating}
                               onClick={() => handleUpdateRule(rule.id, { isEnabled: true })}
                               className={cn(
-                                "rounded-md px-3.5 py-1 text-xs font-semibold transition-all duration-200",
+                                "rounded-md px-3.5 py-1 transition-all duration-200",
+                                TYPOGRAPHY_CLASSNAMES.textXsMedium,
                                 rule.isEnabled
                                   ? "bg-white text-[#040d5a] shadow-xs"
                                   : "text-slate-400 hover:text-slate-600"
@@ -456,7 +459,8 @@ export function AlertsSettingsClient() {
                               disabled={isRuleUpdating}
                               onClick={() => handleUpdateRule(rule.id, { isEnabled: false })}
                               className={cn(
-                                "rounded-md px-3.5 py-1 text-xs font-semibold transition-all duration-200",
+                                "rounded-md px-3.5 py-1 transition-all duration-200",
+                                TYPOGRAPHY_CLASSNAMES.textXsMedium,
                                 !rule.isEnabled
                                   ? "bg-white text-slate-900 shadow-xs"
                                   : "text-slate-400 hover:text-slate-600"
