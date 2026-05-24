@@ -192,7 +192,7 @@ export function AlertsSettingsClient() {
                 {[1, 2].map((cardId) => (
                   <div
                     key={cardId}
-                    className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border border-slate-150 bg-white p-6 shadow-xs"
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border border-slate-200 bg-white p-6"
                   >
                     <div className="flex-1 space-y-3">
                       <div className="flex items-start gap-3">
@@ -297,10 +297,10 @@ export function AlertsSettingsClient() {
                     <div
                       key={rule.id}
                       className={cn(
-                        "relative flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border bg-white p-6 shadow-xs transition-all duration-200",
+                        "relative flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border bg-white p-6 transition-all duration-200",
                         rule.isEnabled 
-                          ? "border-slate-200 hover:border-slate-300 shadow-sm"
-                          : "border-slate-100 bg-slate-50/40 opacity-70"
+                          ? "border-slate-200 hover:border-slate-300"
+                          : "border-slate-200 bg-slate-50/40 opacity-70"
                       )}
                     >
                       {/* Left Block: Icon, Title & Optional Threshold Selector */}
@@ -342,7 +342,7 @@ export function AlertsSettingsClient() {
                           <div className="flex items-center gap-2 pl-10">
                             <Select
                               disabled={!rule.isEnabled || isRuleUpdating}
-                              value={String(rule.thresholdDays)}
+                              value={String(rule.thresholdDays ?? 30)}
                               onValueChange={(val) =>
                                 handleUpdateRule(rule.id, {
                                   thresholdDays: parseInt(val, 10),
