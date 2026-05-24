@@ -33,132 +33,138 @@ This document defines the detailed schema design for the **Immutable System Audi
 
 ### `system_audit_logs`
 
-| Column         | Type          | Constraints                            | Description                                                                                                                                         |
-| :------------- | :------------ | :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `log_id`       | `BIGINT`      | `PK`, `GENERATED ALWAYS AS IDENTITY`   | Auto-incrementing primary key. Uses `BIGINT` to accommodate high-volume, long-term data accumulation.                                               |
-| `entity_type`  | `VARCHAR(50)` | `NOT NULL`, `INDEXED`                  | The type of entity affected (e.g., `ASSET`, `CATEGORY`, `LOCATION`, `VENDOR`, `USER_ROLE`, `ASSIGNMENT`, `MAINTENANCE`, `DISPOSAL`, `API_KEY`).     |
-| `entity_id`    | `UUID`        | `NOT NULL`, `INDEXED`                  | The primary key of the affected entity record. For non-UUID PKs (e.g., integer-based master data), the value is cast to UUID format for uniformity. |
-| `action_type`  | `VARCHAR(20)` | `NOT NULL`, `INDEXED`                  | The CRUD operation performed. Enumerated values: `CREATE`, `UPDATE`, `DELETE`, `ARCHIVE`, `ASSIGN`, `RETURN`, `DISPOSE`, `STATUS_CHANGE`, `IMPORT`. |
-| `old_value`    | `JSONB`       | `NULLABLE`                             | The complete entity state **before** the mutation, serialized as a JSON object. `NULL` for `CREATE` actions (no prior state).                       |
-| `new_value`    | `JSONB`       | `NULLABLE`                             | The complete entity state **after** the mutation, serialized as a JSON object. `NULL` for `DELETE` actions (entity removed).                        |
-| `performed_by` | `UUID`        | `NOT NULL`, `FK → users.user_id`       | The `user_id` of the authenticated actor who triggered the event. For CRON/system-initiated events, a reserved system service account UUID is used. |
-| `ip_address`   | `VARCHAR(45)` | `NOT NULL`                             | The true client IP address, extracted from the `X-Forwarded-For` header. Supports both IPv4 (max 15 chars) and IPv6 (max 45 chars).                 |
-| `performed_at` | `TIMESTAMPTZ` | `NOT NULL`, `DEFAULT NOW()`, `INDEXED` | The server-side UTC timestamp of when the event was recorded.                                                                                       |
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `SERIAL` | `PK` | Auto-incrementing primary key. |
+| `entity_type` | `VARCHAR(100)` | `NOT NULL` | The type of entity affected (case-sensitive string, e.g., `'Asset'`, `'brands'`, `'asset-categories'`, `'locations'`, `'vendors'`, `'owners'`, `'departments'`, `'statuses'`, `'report-template'`, `'users'`, `'sessions'`, `'URL'`). |
+| `entity_id` | `VARCHAR(255)` | `NOT NULL` | The primary key of the affected entity record. Defined as `VARCHAR` to support both UUIDs (e.g., assets, users) and standard integer IDs (e.g., master data brands/locations). |
+| `action_type` | `VARCHAR(100)` | `NOT NULL` | The operation performed. Controlled by the `AuditActionType` TypeScript enum. |
+| `old_value` | `JSONB` | `NULLABLE` | The entity state **before** the mutation. On `UPDATE` actions, a smart delta-diff calculates and stores only modified fields to optimize database space. `NULL` for `CREATE` actions. |
+| `new_value` | `JSONB` | `NULLABLE` | The entity state **after** the mutation. On `UPDATE` actions, it contains only the modified fields. `NULL` for `DELETE` actions. |
+| `performed_by_id` | `UUID` | `NOT NULL`, `FK → users.id` | The `id` of the authenticated user who triggered the event. |
+| `ip_address` | `VARCHAR(45)` | `NULLABLE` | The true client IP address, extracted from the `X-Forwarded-For` header. Supports both IPv4 and IPv6. Nullable to handle background processes and system tasks. |
+| `performed_at` | `TIMESTAMP` | `NOT NULL`, `DEFAULT NOW()` | The server-side UTC timestamp of when the event was recorded. |
 
 ## 3. Indexes
 
-| Index Name               | Columns                  | Type               | Purpose                                                                                                     |
-| :----------------------- | :----------------------- | :----------------- | :---------------------------------------------------------------------------------------------------------- |
-| `idx_audit_performed_at` | `performed_at DESC`      | B-Tree             | Optimizes the default chronological sort for the Audit Log Viewer (REQ-FND-1.14).                           |
-| `idx_audit_entity`       | `entity_type, entity_id` | B-Tree (Composite) | Enables fast lookup of the full audit trail for a specific entity (e.g., "show all changes for Asset `X`"). |
-| `idx_audit_actor`        | `performed_by`           | B-Tree             | Supports filtering by Actor in the Audit Log Viewer.                                                        |
-| `idx_audit_action_type`  | `action_type`            | B-Tree             | Supports filtering by Action Type (e.g., show only `DELETE` or `DISPOSE` events).                           |
+The system utilizes standard Drizzle relational mapping, but for high-volume production databases, database-level indexes are highly recommended to optimize query times in the Audit Log Viewer. 
+
+*Note: While not explicitly declared in `schema.ts`, these indexes should be provisioned at the PostgreSQL database level for scalability:*
+
+| Recommended Index | Columns | Type | Purpose |
+| :--- | :--- | :--- | :--- |
+| `idx_audit_performed_at` | `performed_at DESC` | B-Tree | Optimizes the default chronological sort for the Audit Log Viewer (REQ-FND-1.14). |
+| `idx_audit_entity` | `entity_type, entity_id` | B-Tree (Composite) | Enables fast lookup of the full audit trail for a specific entity (e.g., "show all changes for Asset `X`"). |
+| `idx_audit_actor` | `performed_by_id` | B-Tree | Supports filtering by Actor in the Audit Log Viewer. |
+| `idx_audit_action_type` | `action_type` | B-Tree | Supports filtering by Action Type (e.g., show only `DELETE` or `ACCESS_DENIED` events). |
 
 ## 4. Action Type Enumeration
 
-The `action_type` column uses a controlled vocabulary to ensure consistency and enable UI badge rendering:
+The `action_type` column uses a controlled set of values defined in `src/lib/audit.ts` under the `AuditActionType` type to ensure consistency:
 
-| Action Type     | Description                                                                                 | Example Trigger                                                        |
-| :-------------- | :------------------------------------------------------------------------------------------ | :--------------------------------------------------------------------- |
-| `CREATE`        | A new entity record is inserted.                                                            | Registering a new asset (REQ-REG-2.1).                                 |
-| `UPDATE`        | One or more fields on an existing entity are modified.                                      | Editing a Vendor's contact info (REQ-FND-1.9).                         |
-| `DELETE`        | A master data entity is permanently removed (if no relational safeguard blocks it).         | Deleting an unused Brand (REQ-FND-1.10).                               |
-| `ARCHIVE`       | An entity is soft-archived or soft-deleted via `is_active = false` or `is_archived = true`. | Archiving a Location (REQ-FND-1.17), disposing an asset (REQ-DSP-4.8). |
-| `ASSIGN`        | An asset is assigned to a user or location.                                                 | Check-out assignment (REQ-OPS-3.3).                                    |
-| `RETURN`        | An asset assignment is closed (returned).                                                   | Asset returned with condition check (REQ-OPS-3.4).                     |
-| `DISPOSE`       | An asset completes the compliance disposal workflow.                                        | Final disposal execution (REQ-DSP-4.4).                                |
-| `STATUS_CHANGE` | An asset's lifecycle status is manually overridden.                                         | Marking an asset as Lost/Found (REQ-OPS-3.13).                         |
-| `IMPORT`        | Records created via bulk CSV/Excel import.                                                  | Bulk asset import (REQ-REG-2.9).                                       |
+| Action Type | Description | Example Trigger |
+| :--- | :--- | :--- |
+| `CREATE` | A new entity record is inserted. | Registering a new asset (REQ-REG-2.1). |
+| `UPDATE` | Fields on an existing entity are modified (delta logged). | Editing a Vendor's contact info (REQ-FND-1.9). |
+| `DELETE` | An entity is permanently removed from the system. | Deleting an unused Brand (REQ-FND-1.10). |
+| `ASSIGN` | An asset is assigned to a user or location. | Check-out assignment (REQ-OPS-3.3). |
+| `RETURN` | An asset assignment is closed (returned). | Asset returned with condition check (REQ-OPS-3.4). |
+| `STATUS_CHANGE` | An asset's lifecycle status is manually overridden. | Marking an asset as Lost/Found (REQ-OPS-3.13). |
+| `REPAIR_INITIATED` | A maintenance ticket is created and set to ACTIVE. | Asset dispatched for vendor/internal repair (REQ-OPS-3.7). |
+| `REPAIR_COMPLETED` | An active maintenance ticket is closed (COMPLETED). | Asset successfully returned from repair. |
+| `RESOLVED_INTERNALLY`| Internal maintenance issues marked resolved. | Minor repairs completed by in-house IT team. |
+| `LOGIN` | A successful user session is authenticated. | Admin or user successfully logging into the dashboard. |
+| `LOGOUT` | An active user session is terminated. | User explicitly logging out or session expiring. |
+| `ACCESS_DENIED` | A blocked security or compliance boundary violation. | A non-admin trying to approve a disposal request. |
+| `IMPORT` | Records created via bulk CSV/Excel import. | Bulk asset import (REQ-REG-2.9). |
 
 ## 5. Entity Type Enumeration
 
-The `entity_type` column identifies which domain entity was affected:
+The `entity_type` column stores the case-sensitive string representation of the affected domain model:
 
-| Entity Type   | Table(s) Tracked                               | Key Epics |
-| :------------ | :--------------------------------------------- | :-------- |
-| `ASSET`       | `assets`, `asset_costs`, `asset_custom_values` | Epic 2    |
-| `CATEGORY`    | `categories`, `category_custom_fields`         | Epic 1    |
-| `LOCATION`    | `locations`                                    | Epic 1    |
-| `VENDOR`      | `vendors`                                      | Epic 1    |
-| `BRAND`       | `brands`                                       | Epic 1    |
-| `MODEL`       | `models`                                       | Epic 1    |
-| `DEPARTMENT`  | `departments`                                  | Epic 1    |
-| `USER_ROLE`   | `user_roles`, `ad_group_role_mappings`         | Epic 1    |
-| `ASSIGNMENT`  | `asset_assignments`                            | Epic 3    |
-| `MAINTENANCE` | `maintenance_records`, `issue_reports`         | Epic 3    |
-| `DISPOSAL`    | `asset_disposals`                              | Epic 4    |
-| `API_KEY`     | `api_keys`                                     | Epic 1    |
-| `WEBHOOK`     | `webhooks`                                     | Epic 1    |
+| Entity Type | Table(s) Tracked | Description / Key Epics |
+| :--- | :--- | :--- |
+| `'Asset'` | `assets`, `asset_purchases`, `asset_documents` | Core hardware assets lifecycle (Epic 2, 3, 4) |
+| `'users'` | `users` | User accounts and permissions changes (Epic 1) |
+| `'sessions'` | `sessions` | Auth tokens and session lifetimes (Epic 1) |
+| `'brands'` | `brands` | Brand master data (Epic 1) |
+| `'asset-categories'`| `categories` | Custom-schema categorizations (Epic 1) |
+| `'device-models'` | `models` | Brand and category-specific product models (Epic 1) |
+| `'locations'` | `locations` | Geographical master locations (Epic 1) |
+| `'vendors'` | `vendors` | Procurement and supplier registry (Epic 1) |
+| `'owners'` | `owners` | Financial asset owners (Epic 1) |
+| `'departments'` | `departments` | Corporate cost centers and user departments (Epic 1) |
+| `'statuses'` | `custom_statuses` | Visual metadata configurations for custom status options (Epic 1) |
+| `'report-template'` | `report_templates` | Custom report templates for financial analytics (Epic 22) |
+| `'URL'` | *None (Middleware level)* | Endpoint access logged by routing or security middleware |
 
 ## 6. JSONB Payload Examples
 
 ### 6.1 Asset Status Change (`UPDATE`)
 
+*Notice the delta diff mechanism: only the modified properties are stored in `oldValue` and `newValue`.*
+
 ```json
 {
-  "log_id": 48291,
-  "entity_type": "ASSET",
-  "entity_id": "a3f1c2d4-5678-9abc-def0-1234567890ab",
-  "action_type": "STATUS_CHANGE",
-  "old_value": {
-    "status_id": 1,
-    "status_name": "Assigned"
+  "id": 48291,
+  "entityType": "Asset",
+  "entityId": "a3f1c2d4-5678-9abc-def0-1234567890ab",
+  "actionType": "STATUS_CHANGE",
+  "oldValue": {
+    "status": "Available"
   },
-  "new_value": {
-    "status_id": 5,
-    "status_name": "Lost",
-    "justification": "Asset reported missing during Q1 inventory audit."
+  "newValue": {
+    "status": "Lost"
   },
-  "performed_by": "b2e1d3c4-1234-5678-9abc-def012345678",
-  "ip_address": "192.168.1.42",
-  "performed_at": "2026-02-26T14:32:00Z"
+  "performedById": "b2e1d3c4-1234-5678-9abc-def012345678",
+  "ipAddress": "192.168.1.42",
+  "performedAt": "2026-02-26T14:32:00.000Z"
 }
 ```
 
 ### 6.2 Category Creation (`CREATE`)
 
+*On creation, `oldValue` is `null` and the complete state is stored in `newValue`.*
+
 ```json
 {
-  "log_id": 48292,
-  "entity_type": "CATEGORY",
-  "entity_id": "00000000-0000-0000-0000-000000000012",
-  "action_type": "CREATE",
-  "old_value": null,
-  "new_value": {
-    "category_name": "Standing Desks",
-    "prefix_code": "STD",
-    "asset_type": "Furniture",
-    "is_consumable": false,
-    "requires_serial": false
+  "id": 48292,
+  "entityType": "asset-categories",
+  "entityId": "12",
+  "actionType": "CREATE",
+  "oldValue": null,
+  "newValue": {
+    "id": 12,
+    "name": "Standing Desks",
+    "prefix": "STD",
+    "pillar": "Office Furniture",
+    "requiresSerial": true,
+    "isConsumable": false
   },
-  "performed_by": "b2e1d3c4-1234-5678-9abc-def012345678",
-  "ip_address": "10.0.0.5",
-  "performed_at": "2026-02-26T09:15:00Z"
+  "performedById": "b2e1d3c4-1234-5678-9abc-def012345678",
+  "ipAddress": "10.0.0.5",
+  "performedAt": "2026-02-26T09:15:00.000Z"
 }
 ```
 
-### 6.3 Asset Disposal (`DISPOSE`)
+### 6.3 Security Access Denied (`ACCESS_DENIED`)
+
+*Captures blocked actions, logging the target resource and actor information for immediate forensic traceability.*
 
 ```json
 {
-  "log_id": 48293,
-  "entity_type": "DISPOSAL",
-  "entity_id": "00000000-0000-0000-0000-000000000045",
-  "action_type": "DISPOSE",
-  "old_value": {
-    "status": "Pending Approval",
-    "asset_tag": "LAP-0142"
+  "id": 48293,
+  "entityType": "Asset",
+  "entityId": "a3f1c2d4-5678-9abc-def0-1234567890ab",
+  "actionType": "ACCESS_DENIED",
+  "oldValue": null,
+  "newValue": {
+    "path": "/api/disposal/approve",
+    "reason": "Required role GlobalAdmin, got ITOperator"
   },
-  "new_value": {
-    "status": "Disposed",
-    "disposal_reason": "E-waste",
-    "data_wiped": true,
-    "tags_removed": true,
-    "approved_by": "c3d2e1f0-9876-5432-1abc-def098765432"
-  },
-  "performed_by": "c3d2e1f0-9876-5432-1abc-def098765432",
-  "ip_address": "172.16.0.22",
-  "performed_at": "2026-02-26T16:45:00Z"
+  "performedById": "c3d2e1f0-9876-5432-1abc-def098765432",
+  "ipAddress": "172.16.0.22",
+  "performedAt": "2026-02-26T16:45:00.000Z"
 }
 ```
 
@@ -178,36 +184,48 @@ REVOKE UPDATE, DELETE ON system_audit_logs FROM idams_app_role;
 
 ### 7.2 Additional Constraints
 
-| Constraint               | Implementation                                                                                                                                                           | Requirement             |
-| :----------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------- |
-| **No Cascading Deletes** | No `ON DELETE CASCADE` foreign keys reference this table. If the performing user is deleted, audit entries remain intact with the original `performed_by` UUID.          | NFR-SEC-05              |
-| **No Triggers**          | No `BEFORE UPDATE` or `BEFORE DELETE` triggers are permitted on this table to prevent circumventing WORM protections.                                                    | NFR-SEC-05              |
-| **Retention Policy**     | Audit data must be retained for a minimum of **7 years** to satisfy tax and compliance audit obligations. Partitioning by year is recommended for long-term performance. | REQ-DSP-4.8, NFR-REL-06 |
-| **Partition Strategy**   | Table is partitioned by `performed_at` (range, yearly) to maintain query performance as volume grows while keeping older partitions on cheaper storage tiers.            | NFR-PERF-04             |
+| Constraint | Implementation | Requirement |
+| :--- | :--- | :--- |
+| **No Cascading Deletes** | No `ON DELETE CASCADE` foreign keys reference this table. If the performing user is deleted, audit entries remain intact with the original `performed_by_id` UUID. | NFR-SEC-05 |
+| **No Triggers** | No `BEFORE UPDATE` or `BEFORE DELETE` triggers are permitted on this table to prevent circumventing WORM protections. | NFR-SEC-05 |
+| **Retention Policy** | Audit data must be retained for a minimum of **7 years** to satisfy tax and compliance audit obligations. Partitioning by year is recommended for long-term performance. | REQ-DSP-4.8, NFR-REL-06 |
+| **Partition Strategy** | Table is partitioned by `performed_at` (range, yearly) to maintain query performance as volume grows while keeping older partitions on cheaper storage tiers. | NFR-PERF-04 |
 
 ## 8. Filterable Audit Log Viewer (REQ-FND-1.14)
 
-The Audit Log Viewer is a high-density UI table that queries this schema. The following filter dimensions are supported:
+The Audit Log Viewer is a high-density, real-time UI table that queries `system_audit_logs` using Next.js Server Actions. It supports highly optimized full-text search and precise filtering:
 
-| Filter                    | Column Mapped                         | UI Control               |
-| :------------------------ | :------------------------------------ | :----------------------- |
-| **Actor**                 | `performed_by` → `users.display_name` | Searchable dropdown      |
-| **Action Type**           | `action_type`                         | Multi-select badge pills |
-| **Entity Type**           | `entity_type`                         | Multi-select dropdown    |
-| **Date Range**            | `performed_at`                        | Date range picker        |
-| **Entity ID / Asset Tag** | `entity_id`                           | Free-text search         |
+### 8.1 Global Search
+The global search parameter performs a case-insensitive `ILIKE` search across:
+- `action_type`, `entity_type`, `entity_id`, and `ip_address`.
+- JSON stringified representations of `old_value` and `new_value`.
+- Performed-by user's `name` or `email`.
+- **Target Entity Metadata**: Dynamically joins and searches resolved fields (e.g., Asset Tags, Brand names, Location codes, Vendor names, Department names) rather than searching just raw database primary keys.
 
-**Export:** The filtered result set is exportable to CSV (REQ-FND-1.14), with columns: `Timestamp`, `Actor`, `Action`, `Entity Type`, `Entity ID`, `IP Address`, `Changes Summary`.
+### 8.2 High-Density Filter Dimensions
+The following structured filters are mapped in `src/actions/audit-log.ts` to allow complex queries with operators like `is` or `is not`:
+
+| Filter Name | Column Mapped / Resolution | Operator | UI Control |
+| :--- | :--- | :--- | :--- |
+| **Action Taken** | `actionType` | `is` \| `is not` | Controlled dropdown |
+| **User** | `users.name` \| `users.email` (performed by) | `is` \| `is not` | Searchable select input |
+| **Target Entity** | `entityType` \| `entityId` \| metadata search | `is` \| `is not` | Category/Entity dropdown |
+| **IP Address** | `ipAddress` | `is` \| `is not` | Text search input |
+| **Event Details** | `oldValue` \| `newValue` | `is` \| `is not` | Custom text keyword filter |
+
+**Export:** The filtered result set is exportable to CSV format, preserving columns: `Timestamp`, `Actor`, `Action`, `Entity Type`, `Entity ID`, `IP Address`, and `Changes Summary`.
 
 ## 9. Traceability Matrix
 
-| Requirement                         | Schema Element                                                                                                      |
-| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------ |
-| REQ-FND-1.11 (Immutable Audit Log)  | Table design, WORM permissions, `old_value`/`new_value` JSONB columns, `ip_address`, `performed_by`, `performed_at` |
-| REQ-FND-1.14 (Audit Log Viewer)     | Indexes on `performed_at`, `performed_by`, `action_type`, `entity_type`; CSV export specification                   |
-| NFR-SEC-05 (Audit Log Immutability) | `REVOKE UPDATE, DELETE`; no cascading deletes; no mutation triggers; WORM enforcement                               |
-| NFR-SEC-06 (Client IP Tracking)     | `ip_address` column populated from `X-Forwarded-For` header                                                         |
-| NFR-PERF-04 (Report Generation)     | Yearly partitioning; composite indexes for filtered queries up to 50,000 rows                                       |
-| REQ-DSP-4.8 (7-Year Retention)      | Partition-based retention policy; minimum 7-year data preservation                                                  |
+| Requirement | Schema Element |
+| :--- | :--- |
+| REQ-FND-1.11 (Immutable Audit Log) | Table design, WORM permissions, `oldValue`/`newValue` JSONB columns, `ipAddress`, `performedById`, `performedAt` |
+| REQ-FND-1.14 (Audit Log Viewer) | Full-text search on details and users; dynamic target metadata lookups; pagination and structured query filtering. |
+| NFR-SEC-05 (Audit Log Immutability) | `REVOKE UPDATE, DELETE`; no cascading deletes; no mutation triggers; WORM enforcement |
+| NFR-SEC-06 (Client IP Tracking) | `ipAddress` column populated from `X-Forwarded-For` header with silent try-catch fallback. |
+| NFR-PERF-04 (Report Generation) | Dynamic bulk label resolution after query slicing to prevent expensive joins on entire tables. |
+| REQ-DSP-4.8 (7-Year Retention) | Partition-based retention policy; minimum 7-year data preservation |
+
+---
 
 [< Back to Requirements](../README.md)

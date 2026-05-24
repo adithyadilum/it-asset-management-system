@@ -1,337 +1,384 @@
-﻿# Entity Relationship Diagram
+# Entity Relationship Diagram
 
-This diagram defines the complete data model for the Integrated Digital Asset Management System (IDAMS), covering all five architectural Epics: Core Platform & API Gateway (Epic 1), Asset Registry (Epic 2), IT Operations & Maintenance (Epic 3), Secure Disposal & Compliance (Epic 4), and Financial Analytics & Automation (Epic 5). Each entity is annotated with the primary requirement(s) it fulfills.
+This diagram defines the complete data model for the Integrated Digital Asset Management System (IDAMS), covering all five functional modules: Core Platform & API Gateway (Module 1), Asset Registry & Onboarding (Module 2), IT Operations & Lifecycle (Module 3), Secure Disposal & Compliance (Module 4), and Financial Analytics & Automation (Module 5).
+
+The data model is implemented on Neon Serverless Postgres using the Drizzle TypeScript ORM. All entities represent the exact table columns, keys, and relational cardinality established in the actual codebase (`src/db/schema.ts`).
 
 ```mermaid
 erDiagram
 
     %% ═══════════════════════════════════════════
-    %% EPIC 1: Core Platform & API Gateway
+    %% MODULE 01: Core Platform & API Gateway
     %% ═══════════════════════════════════════════
 
-    USERS {
-        UUID user_id PK
-        STRING azure_ad_object_id UK
-        STRING email UK
-        STRING display_name
-        INT department_id FK
-        BOOLEAN is_active
-        TIMESTAMP created_at
-    }
-
-    ROLES {
-        INT role_id PK
-        STRING role_name UK
-        STRING description
-    }
-
-    USER_ROLES {
-        INT user_role_id PK
-        UUID user_id FK
-        INT role_id FK
-        TIMESTAMP assigned_at
-    }
-
-    AD_GROUP_ROLE_MAPPINGS {
-        INT mapping_id PK
-        STRING azure_ad_group_id UK
-        STRING azure_ad_group_name
-        INT role_id FK
-        BOOLEAN is_active
-        TIMESTAMP created_at
-    }
-
     DEPARTMENTS {
-        INT department_id PK
-        STRING department_name UK
-        BOOLEAN is_active
+        serial id PK
+        uuid uuid UK
+        varchar department_code UK
+        varchar name UK
+        varchar short_code UK
+        varchar cost_center_id UK
+        boolean is_active
     }
 
-    BRANDS {
-        INT brand_id PK
-        STRING brand_name UK
-        BOOLEAN is_active
+    USERS {
+        uuid id PK
+        varchar email UK
+        text name
+        text password
+        integer department_id FK
+        role_enum role
+        boolean is_active
+        timestamp created_at
     }
 
-    MODELS {
-        INT model_id PK
-        INT brand_id FK
-        STRING model_name
-        BOOLEAN is_active
-    }
-
-    CATEGORIES {
-        INT category_id PK
-        STRING category_name UK
-        STRING prefix_code UK
-        STRING asset_type
-        BOOLEAN is_consumable
-        BOOLEAN requires_serial
-        BOOLEAN is_active
-    }
-
-    CATEGORY_CUSTOM_FIELDS {
-        INT field_id PK
-        INT category_id FK
-        STRING field_label
-        STRING field_type
-        STRING dropdown_options
-        INT display_order
-        BOOLEAN is_required
-        BOOLEAN is_active
-    }
-
-    VENDORS {
-        INT vendor_id PK
-        STRING vendor_name UK
-        STRING contact_info
-        BOOLEAN is_active
+    SESSIONS {
+        serial id PK
+        uuid user_id FK
+        text token_id UK
+        timestamp expires_at
+        timestamp created_at
+        timestamp revoked_at
     }
 
     LOCATIONS {
-        INT location_id PK
-        INT parent_location_id FK
-        STRING location_type
-        STRING location_name
-        BOOLEAN is_active
+        serial id PK
+        uuid uuid UK
+        varchar location_code UK
+        varchar name
+        location_type_enum type
+        integer parent_id FK
+        boolean is_active
     }
 
-    ASSET_STATUSES {
-        INT status_id PK
-        STRING status_name UK
-        BOOLEAN is_terminal
-        BOOLEAN is_custom
+    VENDORS {
+        serial id PK
+        uuid uuid UK
+        varchar vendor_code UK
+        varchar company_name UK
+        varchar email
+        varchar phone
+        varchar website
+        boolean is_active
+    }
+
+    OWNERS {
+        serial id PK
+        uuid uuid UK
+        varchar owner_code UK
+        varchar company_name UK
+        boolean is_active
+    }
+
+    CATEGORIES {
+        serial id PK
+        uuid uuid UK
+        varchar category_code UK
+        varchar name
+        pillar_enum pillar
+        varchar prefix UK
+        boolean requires_serial
+        boolean is_consumable
+        jsonb custom_schema
+        boolean is_active
+    }
+
+    BRANDS {
+        serial id PK
+        uuid uuid UK
+        varchar brand_code UK
+        varchar name UK
+        boolean is_active
+    }
+
+    MODELS {
+        serial id PK
+        uuid uuid UK
+        varchar model_code UK
+        integer brand_id FK
+        integer category_id FK
+        varchar name
+        varchar image_url
+        jsonb technical_details
+        boolean is_active
+    }
+
+    CUSTOM_STATUSES {
+        serial id PK
+        varchar name
+        varchar icon_name
+        varchar color_theme
+        uuid created_by_id FK
+        boolean is_active
+        timestamp created_at
     }
 
     SYSTEM_AUDIT_LOGS {
-        BIGINT log_id PK
-        STRING entity_type
-        UUID entity_id
-        STRING action_type
-        JSONB old_value
-        JSONB new_value
-        UUID performed_by FK
-        STRING ip_address
-        TIMESTAMP performed_at
-    }
-
-    API_KEYS {
-        INT api_key_id PK
-        STRING key_hash UK
-        STRING label
-        UUID created_by FK
-        BOOLEAN is_revoked
-        TIMESTAMP created_at
-        TIMESTAMP revoked_at
-    }
-
-    WEBHOOKS {
-        INT webhook_id PK
-        STRING target_url
-        STRING event_type
-        UUID created_by FK
-        BOOLEAN is_active
-        TIMESTAMP created_at
+        serial id PK
+        varchar entity_type
+        varchar entity_id
+        varchar action_type
+        uuid performed_by_id FK
+        jsonb old_value
+        jsonb new_value
+        varchar ip_address
+        timestamp performed_at
     }
 
     %% ═══════════════════════════════════════════
-    %% EPIC 2: Asset Registry & Onboarding
+    %% MODULE 02: Asset Registry & Onboarding
     %% ═══════════════════════════════════════════
 
     ASSETS {
-        UUID asset_id PK
-        STRING asset_tag UK
-        INT category_id FK
-        INT brand_id FK
-        INT model_id FK
-        STRING serial_number UK
-        STRING asset_name
-        DATE purchase_date
-        DATE warranty_expiry_date
-        INT vendor_id FK
-        INT status_id FK
-        INT location_id FK
-        INT useful_life_months
-        DECIMAL salvage_value
-        BOOLEAN is_quantity_only
-        INT quantity
-        STRING qr_code_url
-        BOOLEAN is_archived
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        uuid id PK
+        varchar asset_tag UK
+        varchar serial_number
+        varchar name
+        integer model_id FK
+        integer location_id FK
+        integer owner_id FK
+        varchar status
+        condition_enum condition
+        jsonb instance_attributes
+        boolean is_archived
+        integer useful_life_months
+        decimal salvage_value
+        timestamp created_at
+        timestamp updated_at
     }
 
-    ASSET_CUSTOM_VALUES {
-        INT value_id PK
-        UUID asset_id FK
-        INT field_id FK
-        STRING field_value
-    }
-
-    CURRENCIES {
-        STRING currency_code PK
-        STRING currency_name
-    }
-
-    ASSET_COSTS {
-        INT asset_cost_id PK
-        UUID asset_id FK
-        DECIMAL base_price
-        DECIMAL tax_amount
-        DECIMAL shipping_cost
-        DECIMAL total_cost
-        STRING currency_code FK
-        DECIMAL conversion_rate_to_base
-        TIMESTAMP recorded_at
+    ASSET_PURCHASES {
+        serial id PK
+        uuid asset_id FK
+        integer vendor_id FK
+        date purchase_date
+        decimal base_price
+        decimal tax
+        decimal shipping_cost
+        decimal total_cost
+        varchar currency_code
+        date warranty_expiry
+        varchar invoice_url
+        timestamp created_at
+        timestamp updated_at
     }
 
     ASSET_DOCUMENTS {
-        INT document_id PK
-        UUID asset_id FK
-        STRING document_type
-        STRING file_path
-        STRING file_name
-        TIMESTAMP uploaded_at
-        UUID uploaded_by FK
+        serial id PK
+        uuid asset_id FK
+        varchar document_type
+        varchar file_url
+        uuid uploaded_by_id FK
+        timestamp uploaded_at
     }
 
     %% ═══════════════════════════════════════════
-    %% EPIC 3: Operations & Lifecycle Management
+    %% MODULE 03: IT Operations & Lifecycle
     %% ═══════════════════════════════════════════
 
     ASSET_ASSIGNMENTS {
-        INT assignment_id PK
-        UUID asset_id FK
-        UUID assigned_to_user_id FK
-        INT assigned_to_location_id FK
-        UUID assigned_by FK
-        DATE assigned_date
-        DATE expected_return_date
-        DATE returned_date
-        STRING return_condition
-        STRING acceptance_status
-        TIMESTAMP accepted_at
-        TIMESTAMP return_requested_at
+        serial id PK
+        uuid asset_id FK
+        uuid assigned_to_user_id FK
+        integer assigned_to_location_id FK
+        uuid assigned_by_id FK
+        timestamp assigned_date
+        date expected_return_date
+        timestamp returned_date
+        condition_enum return_condition
+        text notes
+        varchar acceptance_status
+        timestamp accepted_at
+        timestamp return_requested_at
+        assignment_state_enum state
     }
 
-    MAINTENANCE_RECORDS {
-        INT maintenance_id PK
-        UUID asset_id FK
-        STRING status
-        INT vendor_id FK
-        STRING rma_ticket_number
-        STRING description
-        DECIMAL estimated_cost
-        DECIMAL actual_cost
-        DECIMAL repair_cost
-        STRING currency_code FK
-        DATE service_date
-        DATE expected_return_date
-        TIMESTAMP closed_at
-        UUID created_by FK
-    }
-
-    ISSUE_REPORTS {
-        INT issue_id PK
-        UUID asset_id FK
-        UUID reported_by FK
-        STRING issue_description
-        STRING severity
-        INT maintenance_id FK
-        TIMESTAMP created_at
+    MAINTENANCE_TICKETS {
+        serial id PK
+        uuid asset_id FK
+        maintenance_ticket_type_enum ticket_type
+        varchar vendor_name
+        varchar rma_number
+        text reported_issue
+        text resolution_notes
+        decimal estimated_cost
+        decimal actual_cost
+        date estimated_return_date
+        timestamp actual_completion_date
+        maintenance_ticket_status_enum status
+        uuid dispatched_by_id FK
+        timestamp created_at
+        timestamp updated_at
     }
 
     %% ═══════════════════════════════════════════
-    %% EPIC 4: Secure Disposal & Compliance
+    %% MODULE 04: Secure Disposal & Compliance
     %% ═══════════════════════════════════════════
 
     ASSET_DISPOSALS {
-        INT disposal_id PK
-        UUID asset_id FK
-        STRING status
-        STRING disposal_reason
-        STRING justification
-        UUID requested_by FK
-        TIMESTAMP requested_at
-        UUID approved_by FK
-        TIMESTAMP approved_at
-        BOOLEAN data_wiped
-        BOOLEAN tags_removed
-        DECIMAL salvage_value
-        STRING disposal_batch_id
-        STRING rejection_notes
-        STRING notes
+        serial id PK
+        uuid asset_id FK
+        uuid requested_by_id FK
+        uuid approved_by_id FK
+        disposal_status_enum status
+        varchar reason
+        text justification
+        text rejection_reason
+        varchar disposal_method
+        varchar disposal_receipt_url
+        boolean data_wiped
+        boolean tags_removed
+        decimal actual_salvage_value
+        decimal book_value_at_disposal
+        timestamp requested_at
+        timestamp resolved_at
+        text notes
     }
 
     %% ═══════════════════════════════════════════
-    %% EPIC 5: Financial Intelligence & Alerts
+    %% Cross-Cutting: Software Asset Management (SAM)
     %% ═══════════════════════════════════════════
 
-    NOTIFICATIONS {
-        INT notification_id PK
-        UUID user_id FK
-        STRING title
-        STRING message
-        STRING link_url
-        BOOLEAN is_read
-        TIMESTAMP created_at
-        TIMESTAMP read_at
+    SOFTWARE_LICENSES {
+        uuid id PK
+        integer model_id FK
+        uuid asset_id FK
+        varchar license_key
+        license_type_enum license_type
+        integer total_seats
+        date start_date
+        date expiry_date
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    SOFTWARE_ALLOCATIONS {
+        serial id PK
+        uuid license_id FK
+        uuid assigned_to_user_id FK
+        timestamp allocated_at
+        timestamp revoked_at
+    }
+
+    %% ═══════════════════════════════════════════
+    %% MODULE 05: Notification & Alerts System (Epic 23)
+    %% ═══════════════════════════════════════════
+
+    APP_NOTIFICATIONS {
+        uuid id PK
+        uuid user_id FK
+        varchar title
+        text message
+        varchar target_url
+        boolean is_read
+        notification_event_type_enum event_type
+        timestamp created_at
+    }
+
+    NOTIFICATION_RULES {
+        serial id PK
+        varchar rule_key UK
+        varchar display_name
+        notification_category_enum category
+        boolean is_enabled
+        integer threshold_days
+        boolean channel_in_app
+        boolean channel_email
+        boolean channel_teams
+        uuid updated_by_id FK
+        timestamp updated_at
+    }
+
+    NOTIFICATION_LOGS {
+        serial id PK
+        uuid notification_id FK
+        notification_event_type_enum event_type
+        notification_channel_enum channel
+        notification_log_status_enum status
+        text error_message
+        timestamp sent_at
+    }
+
+    INTEGRATION_SETTINGS {
+        integer id PK
+        text resend_api_key
+        text teams_webhook_url
+        varchar smtp_host
+        integer smtp_port
+        text smtp_user
+        timestamp updated_at
+    }
+
+    %% ═══════════════════════════════════════════
+    %% MODULE 05: Custom Report Templates (Epic 22)
+    %% ═══════════════════════════════════════════
+
+    REPORT_TEMPLATES {
+        serial id PK
+        varchar name
+        varchar report_code UK
+        text description
+        boolean is_active
+        varchar data_source
+        jsonb filters
+        jsonb fields
+        varchar sort_direction
+        uuid created_by_id FK
+        timestamp created_at
+        timestamp updated_at
     }
 
     %% ═══════════════════════════════════════════
     %% RELATIONSHIPS
     %% ═══════════════════════════════════════════
 
-    %% Epic 1: Platform Foundation
+    %% Module 01: Platform Foundation
     DEPARTMENTS ||--o{ USERS : employs
-    USERS ||--o{ USER_ROLES : has
-    ROLES ||--o{ USER_ROLES : assigned
-    ROLES ||--o{ AD_GROUP_ROLE_MAPPINGS : maps
-    USERS ||--o{ API_KEYS : creates
-    USERS ||--o{ WEBHOOKS : registers
+    USERS ||--o{ SESSIONS : establishes
     USERS ||--o{ SYSTEM_AUDIT_LOGS : performs
+    USERS ||--o{ REPORT_TEMPLATES : configures
 
-    %% Epic 1: Master Data
+    %% Module 01: Master Data
     BRANDS ||--o{ MODELS : produces
-    CATEGORIES ||--o{ CATEGORY_CUSTOM_FIELDS : defines
-    LOCATIONS ||--o{ LOCATIONS : contains
+    CATEGORIES ||--o{ MODELS : classifies
+    LOCATIONS ||--o{ LOCATIONS : contains (self-referential)
 
-    %% Epic 2: Asset Registry
-    CATEGORIES ||--o{ ASSETS : classifies
-    BRANDS ||--o{ ASSETS : categorizes
+    %% Module 02: Asset Registry
     MODELS ||--o{ ASSETS : specifies
-    VENDORS ||--o{ ASSETS : supplies
-    ASSET_STATUSES ||--o{ ASSETS : determines
     LOCATIONS ||--o{ ASSETS : houses
-    ASSETS ||--o{ ASSET_CUSTOM_VALUES : stores
-    CATEGORY_CUSTOM_FIELDS ||--o{ ASSET_CUSTOM_VALUES : defines
-    ASSETS ||--o{ ASSET_COSTS : has
-    CURRENCIES ||--o{ ASSET_COSTS : prices
-    ASSETS ||--o{ ASSET_DOCUMENTS : has
+    OWNERS ||--o{ ASSETS : owns
+    ASSETS ||--o{ ASSET_PURCHASES : has
+    VENDORS ||--o{ ASSET_PURCHASES : supplies
+    ASSETS ||--o{ ASSET_DOCUMENTS : stores
     USERS ||--o{ ASSET_DOCUMENTS : uploads
+    USERS ||--o{ CUSTOM_STATUSES : configures
 
-    %% Epic 3: Operations & Maintenance
-    USERS ||--o{ ASSET_ASSIGNMENTS : assigned
-    ASSETS ||--o{ ASSET_ASSIGNMENTS : gets
-    LOCATIONS ||--o{ ASSET_ASSIGNMENTS : contains
-    ASSETS ||--o{ MAINTENANCE_RECORDS : serviced
-    VENDORS ||--o{ MAINTENANCE_RECORDS : performs
-    CURRENCIES ||--o{ MAINTENANCE_RECORDS : charges
-    ASSETS ||--o{ ISSUE_REPORTS : reported
-    USERS ||--o{ ISSUE_REPORTS : submits
-    MAINTENANCE_RECORDS ||--o{ ISSUE_REPORTS : escalates
+    %% Module 03: Operations & Maintenance
+    ASSETS ||--o{ ASSET_ASSIGNMENTS : assigns
+    USERS ||--o{ ASSET_ASSIGNMENTS : assigned-to
+    LOCATIONS ||--o{ ASSET_ASSIGNMENTS : assigned-to
+    USERS ||--o{ ASSET_ASSIGNMENTS : assigned-by
+    ASSETS ||--o{ MAINTENANCE_TICKETS : services
+    USERS ||--o{ MAINTENANCE_TICKETS : dispatches
 
-    %% Epic 4: Disposals
-    ASSETS ||--o{ ASSET_DISPOSALS : disposes
+    %% Module 04: Disposals
+    ASSETS ||--o{ ASSET_DISPOSALS : requests-disposal
+    USERS ||--o{ ASSET_DISPOSALS : requests
     USERS ||--o{ ASSET_DISPOSALS : approves
 
-    %% Epic 5: Notifications
-    USERS ||--o{ NOTIFICATIONS : receives
+    %% Cross-Cutting: Software Asset Management (SAM)
+    MODELS ||--o{ SOFTWARE_LICENSES : licenses
+    ASSETS ||--o{ SOFTWARE_LICENSES : hosts (optional)
+    SOFTWARE_LICENSES ||--o{ SOFTWARE_ALLOCATIONS : allocates
+    USERS ||--o{ SOFTWARE_ALLOCATIONS : receives-seat
 
-    %% Cross-cutting: Audit
-    ASSETS ||--o{ SYSTEM_AUDIT_LOGS : logs
+    %% Module 05: Notification & Alerts (Epic 23)
+    USERS ||--o{ APP_NOTIFICATIONS : receives
+    APP_NOTIFICATIONS ||--o{ NOTIFICATION_LOGS : triggers
+    USERS ||--o{ NOTIFICATION_RULES : updates
 ```
 
-[< Back to Requirements](../README.md)
+---
 
-
+[< Back to Design Docs](../README.md)

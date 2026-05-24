@@ -73,7 +73,7 @@ The system uses a single type family for maximum readability on data-dense scree
 
 | Property         | Value                                                               |
 | :--------------- | :------------------------------------------------------------------ |
-| **Font Family**  | `Inter` (Google Fonts), fallback: `system-ui, -apple-system, sans-serif` |
+| **Font Family**  | `Noto Sans` (Google Fonts), fallback: `system-ui, -apple-system, sans-serif` |
 | **Base Size**    | `14px` (`0.875rem`) — optimised for data-heavy admin interfaces     |
 | **Scale**        | Minor Third (1.200)                                                 |
 

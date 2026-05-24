@@ -1,4 +1,4 @@
-﻿# Software Requirements Specification
+# Software Requirements Specification
 
 ## for Integrated Digital Asset Management System
 
@@ -160,7 +160,7 @@ IDAMS is designed to replace the existing manual processes and scattered trackin
 
 While IDAMS is a self-contained application, it must operate peacefully within TIQRI's existing enterprise ecosystem. It interfaces with the following external components:
 
-- **Identity Provider (Microsoft Entra ID / Azure AD):** IDAMS relies entirely on the organization's existing Azure Active Directory for user authentication and Role-Based Access Control (RBAC). It does not maintain its own password database.
+- **Identity Provider (NextAuth.js & Microsoft Entra ID / Azure AD):** IDAMS utilizes NextAuth.js for session management, supporting both secure local credentials (email/password) storing salted password hashes (`bcryptjs`), and enterprise SSO integration via Microsoft Entra ID (Azure AD) for OIDC-compliant authentication and Role-Based Access Control (RBAC).
 - **External Business Systems (HR & Finance):** The system exposes secure REST API endpoints to allow external systems, such as HR and Finance software, to fetch asset details and financial data.
 - **Mobile/Web Clients:** The system interfaces with standard web browsers and includes a mobile-web scanner interface for physical inventory audits using QR codes.
 
@@ -174,7 +174,7 @@ As outlined in the proposed solution architecture, the system consists of:
 1.  **Frontend/UI Layer:** Next.js application with ShadCN/UI for user interaction and dashboards.
 2.  **Backend/API Layer:** Processes business logic, workflows, and API requests.
 3.  **Database Layer:** PostgreSQL database storing the "Unified Truth" of asset data.
-4.  **Automation Engine:** Background services (using Trigger.dev) for license renewals and warranty alerts.
+4.  **Automation Engine:** Background services and scheduling (using Upstash QStash and Redis) for license renewals and warranty alerts.
 
 ## 2.2 Product Functions
 
@@ -183,13 +183,13 @@ The Integrated Digital Asset Management System (IDAMS) automates the tracking an
 **Core Asset Registry & Identification**
 
 - **Unified Registry:** Consolidates diverse asset types (Hardware, Software Licenses, Office Equipment, Furniture & Facilities) into a single, centralized database.
-- **Dynamic Data Schema:** Adapts data entry fields based on the asset category (e.g., capturing "License Keys" for software vs. "CPU/RAM" for hardware vs. "Dimensions/Material" for furniture) using an EAV schema builder with drag-and-drop field ordering.
+- **Dynamic Data Schema:** Adapts data entry fields based on the asset category (e.g., capturing "License Keys" for software vs. "CPU/RAM" for hardware vs. "Dimensions/Material" for furniture) using dynamic JSONB metadata schemas configured per category, with drag-and-drop field ordering.
 - **Unique Identification:** Auto-generates unique Asset IDs (with category Prefix Codes and collision handling) and corresponding QR codes with print layouts (Zebra/Dymo thermal and A4 PDF grid) to prevent duplication and facilitate physical tracking.
 - **Serial Number Validation:** Enforces unique Serial Number constraints during registration, blocking duplicates with descriptive errors.
 - **Financial Data Capture:** Mandates Initial Cost breakdown (Base Price, Tax, Shipping) with multi-currency support (NOK, USD, LKR) and secure invoice PDF uploads to cloud storage.
 - **Bulk Import:** Supports CSV and Excel (.xlsx) uploads with Partial Success processing for mass asset registration.
 - **Mobile Audit:** Provides a Progressive Web App (PWA) mobile scanner interface using HTML5 camera APIs for scanning QR codes and 1D barcodes.
-- **Tethered Companion Scanning:** Enables real-time WebSocket auto-linking between mobile devices and desktop browsers — when both are logged in under the same Azure AD identity, scanned serial numbers are injected directly into active form fields without manual pairing.
+- **Tethered Companion Scanning:** Enables real-time WebSocket auto-linking between mobile devices and desktop browsers — when both are logged in under the same user identity, scanned serial numbers are injected directly into active form fields without manual pairing.
 
 **Lifecycle Operations & Workflow**
 
@@ -219,7 +219,7 @@ The Integrated Digital Asset Management System (IDAMS) automates the tracking an
 
 **Security & Administration**
 
-- **Single Sign-On (SSO):** Authenticates users exclusively via Microsoft Azure AD (OIDC/SAML), eliminating local passwords.
+- **Authentication & Single Sign-On (SSO):** Supports secure local credential authentication (email/password) and integrates with Microsoft Azure AD (OIDC/SAML) for enterprise SSO, minimizing cleartext password risks.
 - **Role-Based Access Control (RBAC):** Automatically maps Azure AD group attributes to system permissions (e.g., Admin, Viewer).
 - **Immutable Audit Log:** Maintains a chronological, read-only ledger of every system change (assignments, status updates) capturing Actor, IP address (`X-Forwarded-For`), and Before/After JSON state diffs for security and historical traceability, with a filterable viewer and CSV export.
 - **Open API Gateway:** Exposes rate-limited REST API endpoints with hashed API key authentication for external systems to fetch asset data or trigger assignment workflows, plus configurable outbound Webhooks for real-time push notifications on system events.
@@ -301,7 +301,7 @@ The Integrated Digital Asset Management System (IDAMS) is a cloud-native web app
 **Coexistence & Integrations**
 The software must peacefully coexist and interface with the following external components:
 
-- **Identity Provider:** Microsoft Entra ID (Azure AD). The system does not store passwords; it relies entirely on the corporate tenant for authentication tokens.
+- **Identity Provider:** NextAuth.js with Microsoft Entra ID (Azure AD) SSO. The system supports local credential storage via hashed passwords and integrates with the corporate tenant for SSO.
 - **Communication Channels:** The system integrates with Microsoft Teams (via Webhooks) and SMTP Email Servers to send alerts without interfering with corporate communication policies.
 
 ## 2.5 Design and Implementation Constraints
@@ -310,16 +310,16 @@ The design and implementation of the Integrated Digital Asset Management System 
 
 **1. Regulatory & Compliance Policies**
 
-- **GDPR & Data Privacy:** The system processes Personally Identifiable Information (PII) of employees (e.g., Names, Email Addresses). All PII must be handled in accordance with GDPR principles. Specifically, the system must not store sensitive authentication data (passwords) locally.
+- **GDPR & Data Privacy:** The system processes Personally Identifiable Information (PII) of employees (e.g., Names, Email Addresses). All PII must be handled in accordance with GDPR principles. Specifically, local user accounts must be secured with high-entropy salting and hashing (e.g. via `bcryptjs`).
 - **WEEE Directive (Environmental Compliance):** To support corporate sustainability goals, the system must enforce specific workflows for electronic waste disposal, requiring reasons (e.g., "E-Waste") to be logged before an asset is archived.
 
 **2. Technology Stack Constraints**
 The development team is restricted to the following pre-approved technology stack to ensure maintainability and alignment with the client's mentorship:
 
-- **Frontend Framework:** Must be built using Next.js 14+ (App Router) with TypeScript.
-- **UI Component Library:** Must use ShadCN/UI and Tailwind CSS to maintain a consistent, modern, and accessible design language.
-- **Database Engine:** PostgreSQL is the mandatory relational database system.
-- **Authentication:** The system must strictly use Microsoft Entra ID (Azure AD) via OpenID Connect (OIDC). Building a custom username/password authentication system is strictly prohibited.
+- **Frontend Framework:** Must be built using Next.js 16+ (App Router) with React 19 and TypeScript.
+- **UI Component Library:** Must use ShadCN/UI and Tailwind CSS v4 to maintain a consistent, modern, and accessible design language with rich aesthetics.
+- **Database Engine:** Neon Serverless Postgres hosted on cloud infrastructure, with Drizzle ORM for schema definition, relationships, and migration management.
+- **Authentication:** The system relies on NextAuth.js for session management, supporting secure local credentials (using `bcryptjs` for secure hashing) alongside enterprise Single Sign-On (SSO) integration via Microsoft Entra ID (Azure AD) via OpenID Connect (OIDC).
 
 **3. Infrastructure & Scope Limitations**
 
@@ -381,7 +381,7 @@ The feasibility and success of the IDAMS project rely on the following assumptio
 
 **1. Technological Assumptions**
 
-- **Azure AD Tenant Availability:** It is assumed that TIQRI Corporation will provide a valid Microsoft Entra ID (Azure AD) tenant and the necessary API credentials (Client ID, Client Secret) to configure Single Sign-On (SSO).
+- **SSO Tenant Availability:** It is assumed that TIQRI Corporation will provide a Microsoft Entra ID (Azure AD) tenant and credentials (Client ID, Client Secret) for SSO integration, with local credentials acting as the active development fallback.
 - **Modern Browser Usage:** It is assumed that all end-users will access the system using modern, HTML5-compliant web browsers (Chrome, Edge, Safari). Backward compatibility for Internet Explorer (IE11) is not a requirement.
 - **Stable Internet Connectivity:** As a cloud-native web application, the system assumes a continuous, stable internet connection. Offline capabilities are limited strictly to the mobile scanning interface (for temporary data caching) and are not supported for the main administrative dashboard.
 
@@ -393,9 +393,8 @@ The feasibility and success of the IDAMS project rely on the following assumptio
 **3. External Dependencies**
 
 - **Third-Party Cloud Services:** The system depends on the continued availability of the following free-tier/low-cost services for the duration of the project:
-  - Vercel / Azure App Service: For frontend and API hosting.
-  - Supabase / Neon / Azure SQL: For the PostgreSQL database.
-  - Trigger.dev / Inngest: For background job processing (e.g., scheduling warranty emails).
+  - Upstash QStash / Redis: For background cron schedule and alert processing.
+  - Vercel Blob: For secure purchase invoice and Certificate of Destruction storage.
 - **Client Collaboration:** The project schedule depends on the Product Owner available for bi-weekly feedback sessions to validate UI wireframes and clarify ambiguous requirements, as agreed in the project plan.
 - **Notification Gateways:** The system depends on the client's internal network policies allowing outbound traffic to:
   - Microsoft Teams Webhooks (for channel alerts).
@@ -487,15 +486,14 @@ The IDAMS application is a software-only solution that runs on standard commodit
 
 The IDAMS platform interacts with several external software components to handle authentication, data storage, and communications. These interfaces are critical for the system's operation within the TIQRI enterprise environment.
 
-**1. Microsoft Entra ID (Azure AD)**
+**1. Identity & Session Provider (NextAuth.js & Microsoft Entra ID / Azure AD)**
 
-- **Purpose:** The exclusive Identity Provider (IdP) for the system. It handles user authentication and provides group claims for Role-Based Access Control (RBAC).
-- **Version:** Microsoft Graph API v1.0.
-- **Interface Mechanism:** OpenID Connect (OIDC) and OAuth 2.0 protocols over HTTPS.
+- **Purpose:** Provides user authentication and session management. Supports local credential authentication with secure password hashing (`bcryptjs`), and integrates with Microsoft Entra ID (Azure AD) for enterprise Single Sign-On (SSO) and Role-Based Access Control (RBAC).
+- **Interface Mechanism:** NextAuth.js framework, utilizing OpenID Connect (OIDC) and OAuth 2.0 protocols over HTTPS for Azure AD integration.
 - **Data Exchange:**
-  - **Incoming:** Authentication Tokens (JWT), User Profile Data (Name, Email, Job Title, Department), and Group Memberships (e.g., "IT-Admins").
-  - **Outgoing:** Authentication Requests (Redirect URIs).
-- **Constraint:** The system must not store passwords locally. It must strictly validate the signature of incoming JWT tokens against the Azure AD tenant's public keys.
+  - **Incoming:** Hashed local credentials, or Azure AD Authentication Tokens (JWT), User Profile Data (Name, Email), and Group/Role claims.
+  - **Outgoing:** Cryptographically signed session cookies, or Authentication Requests (Redirect URIs).
+- **Constraint:** Local passwords must be securely salted and hashed. Incoming Entra ID JWT tokens must have signatures strictly validated against the public keys of the tenant.
 
 **2. PostgreSQL Database System**
 
@@ -523,21 +521,21 @@ The IDAMS platform interacts with several external software components to handle
   - **Outgoing:** JSON-formatted responses containing Asset Lists, Current Valuations, Depreciation schedules, and assignment confirmations.
 - **Schema Definition:** The API specification follows the OpenAPI 3.0 standard.
 
-**5. Cloud Storage (AWS S3 / Azure Blob Storage)**
+**5. Cloud Storage (Vercel Blob Storage)**
 
-- **Purpose:** Secure storage for uploaded documents, specifically Purchase Invoice PDFs (during registration) and E-Waste Certificates of Destruction (during disposal).
-- **Interface Mechanism:** HTTPS API calls to the cloud storage provider's SDK.
+- **Purpose:** Secure, scalable storage for uploaded files and documents, specifically Purchase Invoice PDFs, E-Waste Certificates of Destruction, and manufacturer model images.
+- **Interface Mechanism:** HTTPS API calls via the `@vercel/blob` SDK.
 - **Data Exchange:**
-  - **Outgoing:** Binary file uploads (PDF) with metadata tags (Asset ID, Document Type).
-  - **Incoming:** Signed URL references for secure download/retrieval.
-- **Constraint:** E-Waste certificate storage buckets must be configured with retention policies preventing file deletion for a minimum of 7 years.
+  - **Outgoing:** Binary file uploads (PDF/images) with metadata tags.
+  - **Incoming:** Secure direct CDN URLs for file download and UI rendering.
+- **Constraint:** Storage containers hosting compliance documents must be protected against delete operations to comply with the 7-year data retention regulations.
 
 **6. WebSocket Server (Real-Time Communication)**
 
-- **Purpose:** Enabling the Tethered Companion Scanning feature, where a mobile device authenticated under the same Azure AD user identity automatically links to an active desktop browser session and injects scanned barcode data in real-time.
-- **Interface Mechanism:** WebSocket protocol (via Socket.io or native WS) over a secure WSS connection.
+- **Purpose:** Enabling the Tethered Companion Scanning feature, where a mobile device authenticated under the same user account identity automatically links to an active desktop browser session and injects scanned barcode data in real-time.
+- **Interface Mechanism:** WebSocket protocol (via standard secure WSS connection).
 - **Data Exchange:**
-  - **Incoming (from mobile client):** JSON payloads containing the decoded barcode string and the user's Azure AD identity (JWT).
+  - **Incoming (from mobile client):** JSON payloads containing the decoded barcode string and the user's authenticated session identifier.
   - **Outgoing (to desktop client):** JSON payloads injecting the scanned value into the targeted form field, routed by matching `user_id`.
 - **Constraint:** Scan-to-display latency must be under 500ms.
 
@@ -601,7 +599,7 @@ The IDAMS system relies on standard network communication protocols to ensure se
 
 ### 4.1.1 Description and Priority
 
-The Platform Foundation is the architectural bedrock of the IDAMS system. It establishes enterprise-grade security via Azure AD SSO and Role-Based Access Control (RBAC), provides a Dynamic Schema Engine (EAV architecture) allowing admins to build custom asset categories with specific attributes, maintains an Immutable System Audit Log for SOC2 compliance, and exposes an Open API Gateway for third-party integrations. This epic also governs all organizational Master Data (Locations, Departments, Vendors, Brands, Models) and the relational safeguards protecting them.
+The Platform Foundation is the architectural bedrock of the IDAMS system. It establishes enterprise-grade security via secure local logins and Microsoft Entra ID (Azure AD) SSO, managed under NextAuth.js and Role-Based Access Control (RBAC). It provides a Dynamic Schema Engine using Postgres JSONB metadata configuration allowing admins to build custom asset categories with specific attributes on categories and assets without alter-table operations, maintains an Immutable System Audit Log for compliance, and exposes an Open API Gateway for third-party integrations. This module also governs all organizational Master Data (Locations, Departments, Vendors, Brands, Models) and the relational safeguards protecting them.
 
 - **Priority:** High (Critical for Security & Compliance).
 - **Reasoning:** Without a functioning foundation — authentication, authorization, master data, and audit trails — no other feature (registry, assignment, reporting, automation) can operate securely.
@@ -609,9 +607,9 @@ The Platform Foundation is the architectural bedrock of the IDAMS system. It est
 ### 4.1.2 Stimulus/Response Sequences
 
 - **Stimulus:** Unauthenticated user attempts to access the application URL.
-  - **Response:** The system automatically redirects the user to the Microsoft Online Login page (Azure AD).
-- **Stimulus:** User successfully authenticates with valid TIQRI credentials.
-  - **Response:** Microsoft redirects the user back to the application with a valid ID Token. The system parses the token, automatically maps Azure AD Group attributes to baseline system permissions (e.g., "Finance Team" group → "Finance Read-Only" role), and loads the appropriate Dashboard view.
+  - **Response:** The system displays the NextAuth.js powered login screen, supporting both secure local credentials and Microsoft Entra ID (Azure AD) Single Sign-On (SSO).
+- **Stimulus:** User successfully authenticates using secure local credentials or Microsoft Entra ID.
+  - **Response:** The system establishes a secure session using cryptographically signed tokens. Baseline system permissions and specific application roles (GlobalAdmin, ITOperator, FinanceAuditor, Employee) are mapped from the database user profile, loading the appropriate Dashboard view.
 - **Stimulus:** A "Standard Employee" attempts to manually navigate to an Admin-only API route (e.g., `/api/v1/master-data/categories`).
   - **Response:** The RBAC middleware blocks the request, returns a `403 Forbidden` error, and logs the unauthorized access attempt in the Audit Log.
 - **Stimulus:** Global Admin navigates to the Role Assignment screen and searches for an employee.
@@ -633,27 +631,27 @@ The Platform Foundation is the architectural bedrock of the IDAMS system. It est
 - **Stimulus:** Global Admin registers an external webhook URL for the "Asset_Assigned" event.
   - **Response:** Upon any future asset assignment, the backend automatically dispatches an asynchronous HTTPS POST payload containing the assignment details to the registered URL.
 - **Stimulus:** User clicks "Logout."
-  - **Response:** The system destroys the local session token and redirects the user to the Azure AD "End Session" endpoint.
+  - **Response:** The system destroys the local session token and redirects the user to the application's login screen.
 
 ### 4.1.3 Functional Requirements
 
-- **REQ-FND-1.1:** The system shall authenticate users exclusively via Azure Active Directory (Entra ID) using OAuth 2.0. Local credential storage and external guest users are strictly prohibited.
-- **REQ-FND-1.2:** The system shall enforce strict HTTPS (TLS 1.2+) for all system connections.
-- **REQ-FND-1.3:** The system shall encrypt sensitive financial fields and software license keys at rest using AES-256.
-- **REQ-FND-1.4:** The system shall provide a master-detail split-view interface for Global Admins to map active directory users to specific system roles.
-- **REQ-FND-1.5:** The system shall automatically assign baseline system permissions (e.g., Finance Read-Only, General Employee) based on Azure AD Group attributes.
-- **REQ-FND-1.6:** The system shall allow admins to create custom asset categories and automatically generate a locked, unique 3-letter Prefix Code (e.g., `LAP` for Laptops) to standardize future Asset IDs.
-- **REQ-FND-1.7:** The system shall provide a custom panel allowing admins to define category-specific custom inputs (Text, Number, Dropdown) that dynamically render on forms.
-- **REQ-FND-1.8:** The system shall support asset categories for Furniture and Facilities, allowing for physical attributes (Dimensions, Material) rather than technical specs.
-- **REQ-FND-1.9:** The system shall provide interfaces to manage organizational Master Data, explicitly including Brands, Models, Locations (Building > Floor > Room hierarchy), Departments, and authorized Vendors.
-- **REQ-FND-1.10:** The system shall enforce database constraints that physically prevent the deletion of any Master Data entity if active assets are currently assigned to it.
-- **REQ-FND-1.11:** The system shall maintain an append-only, chronological system ledger of every CRUD event, automatically capturing the Actor, Timestamp, `X-Forwarded-For` IP Address, and a Before/After JSON state diff.
-- **REQ-FND-1.12:** The system shall expose secure, rate-limited REST API endpoints (JSON) for external third-party systems to fetch read-only asset data or trigger assignment workflows.
-- **REQ-FND-1.13:** The system shall allow Admins to generate/revoke hashed API keys and register external target URLs for outbound Webhook payloads triggered by system events.
-- **REQ-FND-1.14:** The system shall provide a high-density, filterable log viewer allowing authorized users to search the immutable audit ledger by Actor, Action Type, and Date Range, and export the filtered results to CSV.
-- **REQ-FND-1.15:** The system shall automatically detect and resolve duplicate Prefix Codes during category creation by appending a numeric suffix (e.g., `LAP2`) to ensure uniqueness.
-- **REQ-FND-1.16:** The system shall support drag-and-drop re-ordering of category-specific custom fields, persisting the display sequence for dynamic form rendering.
-- **REQ-FND-1.17:** The system shall allow admins to soft-archive unused Master Data entities by setting an `IsActive` flag to false, hiding them from active dropdowns while preserving historical references.
+- **REQ-FND-1.1 (Authentication & SSO):** Support user authentication via secure local credentials (email/password) and integrate with Azure Active Directory (Entra ID) using OAuth 2.0 / NextAuth.js.
+- **REQ-FND-1.2 (Web Security):** Enforce strict HTTPS (TLS 1.2+) for all system connections.
+- **REQ-FND-1.3 (Data Encryption):** Encrypt sensitive financial fields and software license keys at rest using AES-256.
+- **REQ-FND-1.4 (Role Mapping):** Maintain role-based access mapping for roles (GlobalAdmin, ITOperator, FinanceAuditor, Employee) dynamically linked to authenticated user sessions.
+- **REQ-FND-1.5 (Automated Access Control):** Automatically assign baseline system permissions (e.g., Finance Auditor, Employee) based on user directory group configurations.
+- **REQ-FND-1.6 (Dynamic Categories):** Allow admins to create custom asset categories and automatically generate a locked, unique 3-letter Prefix Code (e.g., `LAP` for Laptops) to standardize future Asset IDs.
+- **REQ-FND-1.7 (JSONB Schema Builder):** Provide a schema configuration interface allowing admins to define category-specific dynamic fields (specs/tracking) stored as JSONB metadata on categories.
+- **REQ-FND-1.8 (Non-IT Asset Support):** Support asset categories for Furniture and Facilities, allowing for physical attributes (Dimensions, Material) rather than technical specs.
+- **REQ-FND-1.9 (Master Data CRUD):** Provide interfaces to manage organizational Master Data, explicitly including Brands, Models, Locations (Building > Floor > Room hierarchy), Departments, and authorized Vendors.
+- **REQ-FND-1.10 (Relational Safeguards):** Enforce database constraints that physically prevent the deletion of any Master Data entity if active assets are currently assigned to it.
+- **REQ-FND-1.11 (Immutable Audit Log):** Maintain an append-only, chronological system ledger of every CRUD event, automatically capturing the Actor, Timestamp, `X-Forwarded-For` IP Address, and a Before/After JSON state diff.
+- **REQ-FND-1.12 (Open API Gateway):** Expose secure, rate-limited REST API endpoints (JSON) for external third-party systems to fetch read-only asset data or trigger assignment workflows.
+- **REQ-FND-1.13 (SSO & Security Logs):** Ensure unsuccessful access attempts, blocked boundary actions, and session logins/logouts are securely caught and written to the audit log.
+- **REQ-FND-1.14 (Audit Log Viewer):** Provide a high-density, filterable log viewer allowing authorized users to search the immutable audit ledger by Actor, Action Type, IP, and Date Range, and export the filtered results to CSV.
+- **REQ-FND-1.15 (Prefix Collision Handling):** Automatically detect and resolve duplicate Prefix Codes during category creation by appending a numeric suffix (e.g., `LAP2`) to ensure uniqueness.
+- **REQ-FND-1.16 (Custom Field Ordering):** Support drag-and-drop re-ordering of category-specific custom fields, persisting the display sequence for dynamic form rendering.
+- **REQ-FND-1.17 (Master Data Archival):** Allow admins to soft-archive unused Master Data entities by setting an `IsActive` flag to false, hiding them from active dropdowns while preserving historical references.
 
 ---
 
@@ -695,22 +693,22 @@ The Asset Registry is the "Single Source of Truth" for the organization's IT inf
 
 ### 4.2.3 Functional Requirements
 
-- **REQ-REG-2.1:** The system shall provide a registration form that automatically generates a unique Asset ID and dynamically renders custom fields based on the selected Epic 1 category.
-- **REQ-REG-2.2:** The system shall mandate the capture of Initial Cost, including base price, tax, and shipping.
-- **REQ-REG-2.3:** The system shall support the entry of financial data in multiple currencies, explicitly including NOK, USD, and LKR.
-- **REQ-REG-2.4:** The system shall allow the secure upload of digital Purchase Invoices (PDF) to cloud storage during asset registration.
-- **REQ-REG-2.5:** The system shall bypass unique serialization for categories flagged as "Consumables" (e.g., HDMI cables), tracking them strictly via a centralized Quantity Stock integer.
-- **REQ-REG-2.6:** The system shall display the inventory in a data table supporting sticky multi-column filtering by Serial Number, ID, Employee, and Status.
-- **REQ-REG-2.7:** The system shall enable column visibility toggles and bulk-select checkboxes for batch actions within the main registry grid.
-- **REQ-REG-2.8:** The system shall display a comprehensive read-only view of a single asset's vitals, assignments, and lifecycle history in a right-side panel when an asset row is clicked.
-- **REQ-REG-2.9:** The system shall support CSV and Excel format uploads for mass asset registration.
-- **REQ-REG-2.10:** The system shall ensure the bulk import script skips invalid rows, imports valid ones, and generates a downloadable error report without failing the entire batch.
-- **REQ-REG-2.11:** The system shall automatically generate a unique URL routing endpoint (e.g., `assets.tiqri.com/asset/AST-0142`) and convert it into a downloadable 2D QR code upon asset creation.
-- **REQ-REG-2.12:** The system shall provide a formatting engine to export selected QR codes as single-tag thermal print files (Zebra/Dymo) or bulk A4 PDF grid layouts for standard sticker paper.
-- **REQ-REG-2.13:** The system shall provide a mobile-responsive browser interface utilizing HTML5 `getUserMedia` APIs to scan 1D barcodes and 2D QR codes.
-- **REQ-REG-2.14:** The system shall establish a real-time WebSocket connection allowing the mobile camera to inject scanned manufacturer serial numbers directly into active desktop input fields.
-- **REQ-REG-2.15:** The system shall display a bottom-sheet UI with asset vitals when a QR is scanned via mobile, and block users from accessing complex desktop-only data grids on mobile devices.
-- **REQ-REG-2.16:** The system shall enforce unique Serial Number validation during asset registration, blocking submission and displaying a descriptive error if a duplicate is detected.
+- **REQ-REG-2.1 (Dynamic Registration):** Provide a registration form that automatically generates a unique Asset ID and dynamically renders custom fields based on category JSONB schemas.
+- **REQ-REG-2.2 (Financial Data):** Mandate the capture of Initial Cost, including base price, tax, and shipping, stored in a linked purchase record.
+- **REQ-REG-2.3 (Multi-Currency Support):** Support the entry of purchase costs in multiple currencies (e.g., USD, NOK, LKR) linked with standard default ISO currency codes.
+- **REQ-REG-2.4 (Invoice Uploads):** Allow the secure upload of digital Purchase Invoices (PDF) to Vercel Blob storage during asset registration.
+- **REQ-REG-2.5 (Consumables Mode):** Bypass unique serialization for categories flagged as "Consumables" (e.g., HDMI cables), tracking stock via simple quantity counts.
+- **REQ-REG-2.6 (High-Density Grid):** Display the inventory in a data table supporting sticky multi-column filtering by Serial Number, ID, Employee, and Status.
+- **REQ-REG-2.7 (Grid Operations):** Enable column visibility toggles and bulk-select checkboxes for batch actions within the main registry grid.
+- **REQ-REG-2.8 (Slide-Out Vitals):** Display a comprehensive read-only view of a single asset's vitals, assignments, and lifecycle history in a right-side panel when an asset row is clicked.
+- **REQ-REG-2.9 (Bulk Import):** Support CSV format uploads for mass asset registration.
+- **REQ-REG-2.10 (Partial Success Import):** Ensure the bulk import script skips invalid rows, imports valid ones, and generates a detailed error report without failing the entire batch.
+- **REQ-REG-2.11 (QR Routing Engine):** Automatically generate a unique URL routing endpoint (e.g., `/assets/{id}`) and convert it into a downloadable 2D QR code upon asset creation.
+- **REQ-REG-2.12 (Print Layouts):** Provide a formatting engine to export selected QR codes as print files or A4 PDF grid layouts for standard sticker paper.
+- **REQ-REG-2.13 (PWA Mobile Scanner):** Provide a mobile-responsive browser interface utilizing HTML5 scanner APIs to scan 1D barcodes and 2D QR codes.
+- **REQ-REG-2.14 (Tethered WebSockets):** Establish a real-time WebSocket connection allowing the mobile camera to inject scanned manufacturer serial numbers directly into active desktop input fields.
+- **REQ-REG-2.15 (Mobile Fallbacks):** Display a bottom-sheet UI with asset vitals when a QR is scanned via mobile, and block users from accessing complex desktop-only data grids on mobile devices.
+- **REQ-REG-2.16 (Serial Number Uniqueness):** Enforce unique Serial Number validation during asset registration, blocking submission and displaying a descriptive error if a duplicate is detected.
 
 ---
 
@@ -756,21 +754,21 @@ This feature manages the dynamic lifecycle of assets, transforming the system fr
 
 ### 4.3.3 Functional Requirements
 
-- **REQ-OPS-3.1:** The system shall provide a "My Assets" self-service portal for standard employees to view equipment assigned strictly to their Azure AD profile.
-- **REQ-OPS-3.2:** The system shall dispatch automated notifications via Email and Microsoft Teams to employees upon new hardware assignment, requiring them to digitally confirm custody.
-- **REQ-OPS-3.3:** The system shall provide modal interfaces to assign available hardware strictly to a User or a Location. Assignment to generic "Teams" must be blocked.
-- **REQ-OPS-3.4:** The system shall process returns with a mandatory condition check (Working vs. Defective) to dictate the asset's next lifecycle state.
-- **REQ-OPS-3.5:** The system shall support the bulk update of Asset Locations (e.g., moving 50 chairs from Room A to Room B) in a single transaction.
-- **REQ-OPS-3.6:** The system shall track specific asset statuses (Available, Assigned, Defective, In Repair, Disposed, Donated, Lost, Missing) and allow admins to configure additional custom statuses.
-- **REQ-OPS-3.7:** The system shall provide a tabbed data grid separating triage tickets ("Pending Review"), dispatched hardware ("Active Repairs"), and historical maintenance logs.
-- **REQ-OPS-3.8:** The system shall display a slide-out panel allowing IT Admins to assess user-reported damage alongside the asset's current financial book value and warranty status.
-- **REQ-OPS-3.9:** The system shall provide an "Initiate Repair" modal to route an asset to a Vendor, capturing the RMA Ticket Number, Estimated Cost, and Expected Return Date.
-- **REQ-OPS-3.10:** The system shall provide a "Close Repair" modal requiring the input of the Actual Final Cost upon the asset's return, automatically updating the system's financial engine.
-- **REQ-OPS-3.11:** The system shall allow admins to send automated return-request notifications to current custodians via Email and Microsoft Teams, transitioning the asset status to "Requested" pending physical return.
-- **REQ-OPS-3.12:** The system shall provide a chronological timeline view of all assignments, returns, and status changes for a single asset, accessible from the Asset Details panel, with CSV export capability.
-- **REQ-OPS-3.13:** The system shall enforce state-machine rules for manual status changes (e.g., Lost, Stolen, Found), requiring mandatory justification notes and preventing invalid transitions.
-- **REQ-OPS-3.14:** The system shall support the batch editing of Location or Status for multiple selected assets directly from the main registry grid in a single database transaction.
-- **REQ-OPS-3.15:** The system shall provide a self-service "Report Issue" interface within the Employee Portal for standard employees to submit damage tickets for assigned assets, routing to the Maintenance Ledger.
+- **REQ-OPS-3.1 (Employee Portal):** Provide a "My Assets" self-service portal for standard employees to view equipment assigned strictly to their Azure AD profile.
+- **REQ-OPS-3.2 (Digital Acceptance):** Dispatch automated notifications via Email to employees upon new hardware assignment, requiring them to digitally confirm custody.
+- **REQ-OPS-3.3 (Asset Assignments):** Provide modal interfaces to assign available hardware strictly to a User or a Location. Assignment to generic "Teams" must be blocked.
+- **REQ-OPS-3.4 (Asset Returns):** Process returns with a mandatory condition check (New, Excellent, Fair, Poor, Damaged) to dictate the asset's next lifecycle state.
+- **REQ-OPS-3.5 (Bulk Location Transfer):** Support the bulk update of Asset Locations (e.g., moving 50 chairs from Room A to Room B) in a single transaction.
+- **REQ-OPS-3.6 (Lifecycle Status):** Track specific asset statuses (Available, Assigned, Defective, In Repair, Lost, Retired, Pending Disposal, Disposed) and allow admins to configure additional custom statuses.
+- **REQ-OPS-3.7 (Maintenance Ledger):** Provide a tabbed data grid separating triage tickets, active repair dispatches, and historical maintenance logs.
+- **REQ-OPS-3.8 (Triage Review):** Display a slide-out panel allowing IT Admins to assess user-reported damage alongside the asset's current status and details.
+- **REQ-OPS-3.9 (Vendor Dispatch):** Provide an "Initiate Repair" modal to route an asset to a Vendor or internal repairs, capturing the RMA Number, Ticket Type, and Estimated Cost.
+- **REQ-OPS-3.10 (Close Repair):** Provide a "Close Repair" modal requiring the input of the Actual Final Cost and resolution notes upon completion, automatically updating the system's financial engine.
+- **REQ-OPS-3.11 (Request Asset Return):** Allow admins to send automated return-request notifications to current custodians via Email and Microsoft Teams, transitioning the asset status to "Requested" pending physical return.
+- **REQ-OPS-3.12 (Asset Chain of Custody):** Provide a chronological timeline view of all assignments, returns, and status changes for a single asset, accessible from the Asset Details panel, with CSV export capability.
+- **REQ-OPS-3.13 (Status Override Rules):** Enforce state-machine rules for manual status changes (e.g., Lost, Stolen, Found), requiring mandatory justification notes and preventing invalid transitions.
+- **REQ-OPS-3.14 (Bulk Registry Operations):** Support the batch editing of Location or Status for multiple selected assets directly from the main registry grid in a single database transaction.
+- **REQ-OPS-3.15 (Employee Issue Reporting):** Provide a self-service "Report Issue" interface within the Employee Portal for standard employees to submit damage tickets for assigned assets, routing to the Maintenance Ledger.
 
 ---
 
@@ -802,14 +800,14 @@ This feature governs the secure, multi-step workflow for permanently retiring ha
 
 ### 4.4.3 Functional Requirements
 
-- **REQ-DSP-4.1:** The system shall allow IT Admins to flag defective assets for retirement, removing them from active circulation and routing them to a dedicated "Pending Disposals" queue.
-- **REQ-DSP-4.2:** The system shall provide a slide-out panel for Finance/Global Admins detailing the technical justification, original purchase cost, and depreciated book value of a pending disposal request.
-- **REQ-DSP-4.3:** The system shall provide a modal to reject a disposal request, requiring a mandatory justification note and forcing the re-routing of the asset to an active lifecycle status.
-- **REQ-DSP-4.4:** The system shall enforce a final execution modal requiring exact Asset ID text confirmation and physical security checkboxes (Data Wiped, Tags Removed) to unlock the submit button.
-- **REQ-DSP-4.5:** The system shall require the approving admin to capture the specific disposal reason (e.g., Sold, Stolen, E-waste, Donated) during the final execution.
-- **REQ-DSP-4.6:** The system shall mandate a Drag-and-Drop file upload of the PDF Certificate of Destruction (E-Waste Receipt) during the Hard Stop execution, storing it in AWS S3 / Azure Blob.
-- **REQ-DSP-4.7:** The system shall allow the batch selection of identical assets to be processed through the Compliance Modal simultaneously, linking all retired assets to a single shared E-Waste PDF upload.
-- **REQ-DSP-4.8:** The system shall ensure disposed assets are Soft Deleted (Archived), locking all fields from future edits and hiding them from active registry endpoints while preserving the data for 7-year historical audits.
+- **REQ-DSP-4.1 (Disposal Intake):** Allow IT Admins to flag defective assets for retirement, removing them from active circulation and routing them to a dedicated "Pending Disposals" queue.
+- **REQ-DSP-4.2 (Executive Review):** Provide a slide-out panel for Finance/Global Admins detailing the technical justification, original purchase cost, and depreciated book value of a pending disposal request.
+- **REQ-DSP-4.3 (Reject & Re-route):** Provide a modal to reject a disposal request, requiring a mandatory justification note and forcing the re-routing of the asset to an active lifecycle status.
+- **REQ-DSP-4.4 (Compliance Hard Stop):** Enforce a final execution modal requiring exact Asset Tag text confirmation and physical security checkboxes (Data Wiped, Tags Removed) to unlock the submit button.
+- **REQ-DSP-4.5 (Disposal Method):** Require the approving admin to capture the specific disposal reason (e.g., Sold, Stolen, E-waste, Donated) and disposal method during the final execution.
+- **REQ-DSP-4.6 (E-Waste Uploads):** Mandate a file upload of the PDF Certificate of Destruction (E-Waste Receipt) during the execution, storing it securely in Vercel Blob.
+- **REQ-DSP-4.7 (Bulk Disposal):** Allow the batch selection of identical assets to be processed through the Compliance Modal simultaneously, linking all retired assets to a single shared E-Waste PDF upload.
+- **REQ-DSP-4.8 (Soft Delete Finality):** Ensure disposed assets are Soft Archived (`isArchived = true` and Status set to `'Disposed'`), locking all fields from future edits and hiding them from active registry endpoints.
 
 ---
 
@@ -849,17 +847,18 @@ This feature unlocks the value of the collected data by providing visibility thr
 
 ### 4.5.3 Functional Requirements
 
-- **REQ-FIN-5.1:** The system shall provide an admin landing page featuring real-time aggregate metric cards designed to stack natively on mobile and desktop.
-- **REQ-FIN-5.2:** The system shall explicitly include a "Recent Activity Log" and a "Frequently Failing Assets / Problem Asset Counts" widget on the main dashboard.
-- **REQ-FIN-5.3:** The system shall restrict access to the dedicated Financials sidebar module strictly to Global Admins and Finance roles.
-- **REQ-FIN-5.4:** The system shall calculate and display the real-time "Current Book Value" of all active hardware in a dedicated ledger using straight-line depreciation math.
-- **REQ-FIN-5.5:** The system shall aggregate the original purchase price with all historical maintenance costs (from Epic 3) to calculate the Total Cost of Ownership.
-- **REQ-FIN-5.6:** The system shall maintain a "Write-Offs & Salvage" ledger combining historical disposal records with any manually inputted monetary salvage values recouped from e-waste recycling.
-- **REQ-FIN-5.7:** The system shall allow admins to generate HTML inventory reports (Inventory by Dept, Assets by Status) and export them to PDF, CSV, and Excel formats.
-- **REQ-FIN-5.8:** The system shall send automated notifications via Email and Microsoft Teams to IT Staff for upcoming Warranty Expirations, Software License Renewals, and overdue asset returns.
-- **REQ-FIN-5.9:** The system shall run scheduled background tasks (nightly) to scan the database for threshold breaches to trigger the alert system.
-- **REQ-FIN-5.10:** The system shall display a user-facing Bell Icon containing unread system alerts, featuring deep-links that route the user directly to the affected asset's details panel.
-- **REQ-FIN-5.11:** _(Optional)_ The system shall periodically query external Vendor APIs (e.g., Dell, HP, Lenovo) using the Serial Number to automatically fetch and update Warranty Expiry dates.
+- **REQ-FIN-5.1 (KPI Dashboard):** Provide an admin landing page featuring real-time aggregate metric cards designed to stack natively on mobile and desktop.
+- **REQ-FIN-5.2 (Dashboard Widgets):** Explicitly include a "Recent Activity Log" and a "Frequently Failing Assets / Problem Asset Counts" widget on the main dashboard.
+- **REQ-FIN-5.3 (Financials RBAC):** Restrict access to the dedicated Financials sidebar module strictly to Global Admins and Finance roles.
+- **REQ-FIN-5.4 (Automated Depreciation):** Calculate and display the real-time "Current Book Value" of active hardware using straight-line depreciation math.
+- **REQ-FIN-5.5 (TCO Engine):** Aggregate the original purchase price with all historical maintenance costs to calculate the Total Cost of Ownership.
+- **REQ-FIN-5.6 (Salvage Ledger):** Maintain a ledger combining historical disposal records with actual salvage values recouped from recycling.
+- **REQ-FIN-5.7 (Standard Reports):** Allow admins to generate report templates and export compiled data to PDF, CSV, and Excel formats.
+- **REQ-FIN-5.8 (Proactive Alerts):** Send automated notifications via Email and Teams Webhooks to IT Staff for upcoming Warranty Expirations, Software License Renewals, and overdue asset returns.
+- **REQ-FIN-5.9 (CRON Engine):** Run scheduled background tasks to scan the database for threshold breaches to trigger the alert system.
+- **REQ-FIN-5.10 (Notification Inbox):** Display a user-facing Bell Icon containing unread system alerts, featuring deep-links that route the user directly to the affected asset's details panel.
+- **REQ-FIN-5.11 (Software Asset Management - SAM):** Provide comprehensive software seat allocation, tracking license keys, seating limits, and seat assignment events linked to users.
+- **REQ-FIN-5.12:** _(Optional)_ The system shall periodically query external Vendor APIs (e.g., Dell, HP, Lenovo) using the Serial Number to automatically fetch and update Warranty Expiry dates.
 
 ---
 
@@ -889,7 +888,7 @@ Safety requirements in this context refer to the prevention of accidental data l
 
 Security requirements define the specific controls required to protect data confidentiality and integrity, complementing the features in Section 4.2.
 
-- **NFR-SEC-01 (Session Management):** User sessions must rely exclusively on Azure AD OAuth 2.0 tokens; local session timeouts must align strictly with Azure AD policies (typically 1 hour).
+- **NFR-SEC-01 (Session Management):** User sessions must rely on cryptographically signed NextAuth.js JWT tokens with standard OIDC session flows for Azure AD integration.
 - **NFR-SEC-02 (Role-Based Access):** Enforce strict endpoint routing security. Users attempting to access an unauthorized API route via tools like Postman or direct browser navigation must receive a `403 Forbidden` response.
 - **NFR-SEC-03 (Data Encryption — At Rest):** Encrypt Financial Fields (Purchase Cost), Software License Keys, and API Auth Tokens in the database using AES-256 via a secure Key Vault.
 - **NFR-SEC-04 (Data Encryption — In Transit):** Secure all system traffic, especially login and external API calls, enforcing HTTPS/TLS 1.2+ minimum. Unencrypted HTTP traffic must be rejected.
@@ -911,7 +910,7 @@ These attributes define the overall quality characteristics expected by the deve
 - **Robustness — Bulk Import (NFR-REL-03):** The system must support "Partial Success" for bulk imports. Valid CSV/Excel rows must be imported while invalid rows are skipped and reported; the entire transaction must not fail due to a single row error.
 - **Robustness — Currency Precision (NFR-REL-04):** Financial calculations must store original currency values and precise floating points/decimals to prevent rounding errors in the Straight-Line Depreciation math.
 - **Robustness — Network Retry (NFR-REL-05):** CRON jobs, Outbound Webhooks, and SMTP Email dispatchers must implement Exponential Backoff retry logic to automatically retry failed requests if the target server is temporarily unavailable.
-- **Data Retention (NFR-REL-06):** AWS S3/Azure Blob storage buckets hosting E-Waste Certificates of Destruction must be configured with retention policies to prevent file deletion for a minimum of 7 years to satisfy tax compliance.
+- **Data Retention (NFR-REL-06):** Vercel Blob storage containers hosting E-Waste Certificates of Destruction must be protected with append-only compliance policies to prevent file deletion for a minimum of 7 years.
 
 ## 5.5 Business Rules
 
@@ -939,7 +938,7 @@ While the user interface language is restricted to English (US) for this version
 ## 6.2 Legal & Compliance Requirements
 
 - **REQ-LEG-6.1 (GDPR - Right to Erasure):** To comply with General Data Protection Regulation (GDPR), the system must allow for the anonymization of user data in the event of an employee leaving the company. Historic asset assignments must remain, but the PII (Name, Email) associated with the User record should be replaceable with a placeholder (e.g., "Former Employee 123").
-- **REQ-LEG-6.2 (WEEE Directive):** To comply with the Waste Electrical and Electronic Equipment (WEEE) directive, the system must force the selection of a valid Disposal Reason (e.g., "Recycled via Certified Vendor") and allow the upload of a "Certificate of Destruction" (PDF) for all retired electronic hardware, stored in cloud storage (AWS S3/Azure Blob) with a 7-year retention policy per NFR-REL-06.
+- **REQ-LEG-6.2 (WEEE Directive):** To comply with the Waste Electrical and Electronic Equipment (WEEE) directive, the system must force the selection of a valid Disposal Reason (e.g., "Recycled via Certified Vendor") and require the upload of a "Certificate of Destruction" (PDF) for all retired electronic hardware, stored securely in Vercel Blob storage with a 7-year retention policy per NFR-REL-06.
 
 ## 6.3 Database & Data Integrity
 
@@ -1108,168 +1107,376 @@ stateDiagram-v2
 ```mermaid
 erDiagram
 
+    %% ═══════════════════════════════════════════
+    %% MODULE 01: Core Platform & API Gateway
+    %% ═══════════════════════════════════════════
+
+    DEPARTMENTS {
+        serial id PK
+        uuid uuid UK
+        varchar department_code UK
+        varchar name UK
+        varchar short_code UK
+        varchar cost_center_id UK
+        boolean is_active
+    }
+
     USERS {
-        UUID user_id PK
-        STRING azure_ad_object_id UK
-        STRING email
-        STRING display_name
-        STRING department
-        BOOLEAN is_active
-        TIMESTAMP created_at
+        uuid id PK
+        varchar email UK
+        text name
+        text password
+        integer department_id FK
+        role_enum role
+        boolean is_active
+        timestamp created_at
     }
 
-    ROLES {
-        INT role_id PK
-        STRING role_name UK
-        STRING description
-    }
-
-    USER_ROLES {
-        UUID user_id FK
-        INT role_id FK
-    }
-
-    BRANDS {
-        INT brand_id PK
-        STRING brand_name UK
-        BOOLEAN is_active
-    }
-
-    MODELS {
-        INT model_id PK
-        INT brand_id FK
-        STRING model_name
-    }
-
-    CATEGORIES {
-        INT category_id PK
-        STRING category_name UK
-        STRING asset_type
-        BOOLEAN requires_serial
-    }
-
-    VENDORS {
-        INT vendor_id PK
-        STRING vendor_name UK
-        STRING contact_info
+    SESSIONS {
+        serial id PK
+        uuid user_id FK
+        text token_id UK
+        timestamp expires_at
+        timestamp created_at
+        timestamp revoked_at
     }
 
     LOCATIONS {
-        INT location_id PK
-        INT parent_location_id FK
-        STRING location_type
-        STRING location_name
+        serial id PK
+        uuid uuid UK
+        varchar location_code UK
+        varchar name
+        location_type_enum type
+        integer parent_id FK
+        boolean is_active
     }
 
-    ASSET_STATUSES {
-        INT status_id PK
-        STRING status_name UK
-        BOOLEAN is_terminal
+    VENDORS {
+        serial id PK
+        uuid uuid UK
+        varchar vendor_code UK
+        varchar company_name UK
+        varchar email
+        varchar phone
+        varchar website
+        boolean is_active
     }
+
+    OWNERS {
+        serial id PK
+        uuid uuid UK
+        varchar owner_code UK
+        varchar company_name UK
+        boolean is_active
+    }
+
+    CATEGORIES {
+        serial id PK
+        uuid uuid UK
+        varchar category_code UK
+        varchar name
+        pillar_enum pillar
+        varchar prefix UK
+        boolean requires_serial
+        boolean is_consumable
+        jsonb custom_schema
+        boolean is_active
+    }
+
+    BRANDS {
+        serial id PK
+        uuid uuid UK
+        varchar brand_code UK
+        varchar name UK
+        boolean is_active
+    }
+
+    MODELS {
+        serial id PK
+        uuid uuid UK
+        varchar model_code UK
+        integer brand_id FK
+        integer category_id FK
+        varchar name
+        varchar image_url
+        jsonb technical_details
+        boolean is_active
+    }
+
+    CUSTOM_STATUSES {
+        serial id PK
+        varchar name
+        varchar icon_name
+        varchar color_theme
+        uuid created_by_id FK
+        boolean is_active
+        timestamp created_at
+    }
+
+    SYSTEM_AUDIT_LOGS {
+        serial id PK
+        varchar entity_type
+        varchar entity_id
+        varchar action_type
+        uuid performed_by_id FK
+        jsonb old_value
+        jsonb new_value
+        varchar ip_address
+        timestamp performed_at
+    }
+
+    %% ═══════════════════════════════════════════
+    %% MODULE 02: Asset Registry & Onboarding
+    %% ═══════════════════════════════════════════
 
     ASSETS {
-        UUID asset_id PK
-        STRING asset_tag UK
-        INT category_id FK
-        INT brand_id FK
-        INT model_id FK
-        STRING serial_number UK
-        STRING asset_name
-        DATE purchase_date
-        INT vendor_id FK
-        INT status_id FK
-        BOOLEAN is_quantity_only
-        INT quantity
-        BOOLEAN is_archived
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        uuid id PK
+        varchar asset_tag UK
+        varchar serial_number
+        varchar name
+        integer model_id FK
+        integer location_id FK
+        integer owner_id FK
+        varchar status
+        condition_enum condition
+        jsonb instance_attributes
+        boolean is_archived
+        integer useful_life_months
+        decimal salvage_value
+        timestamp created_at
+        timestamp updated_at
     }
 
-    CURRENCIES {
-        STRING currency_code PK
-        STRING currency_name
-    }
-
-    ASSET_COSTS {
-        INT asset_cost_id PK
-        UUID asset_id FK
-        DECIMAL base_price
-        DECIMAL tax_amount
-        DECIMAL shipping_cost
-        DECIMAL total_cost
-        STRING currency_code FK
-        DECIMAL conversion_rate_to_base
-        TIMESTAMP recorded_at
-    }
-
-    ASSET_ASSIGNMENTS {
-        INT assignment_id PK
-        UUID asset_id FK
-        UUID assigned_to_user_id FK
-        INT assigned_to_location_id FK
-        DATE assigned_date
-        DATE expected_return_date
-        DATE returned_date
-    }
-
-    ASSET_AUDIT_LOGS {
-        INT log_id PK
-        UUID asset_id FK
-        STRING action_type
-        STRING old_value
-        STRING new_value
-        UUID performed_by FK
-        TIMESTAMP performed_at
-    }
-
-    MAINTENANCE_RECORDS {
-        INT maintenance_id PK
-        UUID asset_id FK
-        DATE service_date
-        INT vendor_id FK
-        STRING description
-        DECIMAL repair_cost
-        STRING currency_code FK
-    }
-
-    ASSET_DISPOSALS {
-        INT disposal_id PK
-        UUID asset_id FK
-        STRING disposal_reason
-        UUID approved_by FK
-        TIMESTAMP approved_at
-        STRING notes
+    ASSET_PURCHASES {
+        serial id PK
+        uuid asset_id FK
+        integer vendor_id FK
+        date purchase_date
+        decimal base_price
+        decimal tax
+        decimal shipping_cost
+        decimal total_cost
+        varchar currency_code
+        date warranty_expiry
+        varchar invoice_url
+        timestamp created_at
+        timestamp updated_at
     }
 
     ASSET_DOCUMENTS {
-        INT document_id PK
-        UUID asset_id FK
-        STRING document_type
-        STRING file_path
-        TIMESTAMP uploaded_at
+        serial id PK
+        uuid asset_id FK
+        varchar document_type
+        varchar file_url
+        uuid uploaded_by_id FK
+        timestamp uploaded_at
     }
 
-    %% Relationships
-    USERS ||--o{ USER_ROLES : has
-    ROLES ||--o{ USER_ROLES : assigned
-    USERS ||--o{ ASSET_ASSIGNMENTS : assigned
-    ASSETS ||--o{ ASSET_ASSIGNMENTS : gets
-    LOCATIONS ||--o{ ASSET_ASSIGNMENTS : contains
+    %% ═══════════════════════════════════════════
+    %% MODULE 03: IT Operations & Lifecycle
+    %% ═══════════════════════════════════════════
+
+    ASSET_ASSIGNMENTS {
+        serial id PK
+        uuid asset_id FK
+        uuid assigned_to_user_id FK
+        integer assigned_to_location_id FK
+        uuid assigned_by_id FK
+        timestamp assigned_date
+        date expected_return_date
+        timestamp returned_date
+        condition_enum return_condition
+        text notes
+        varchar acceptance_status
+        timestamp accepted_at
+        timestamp return_requested_at
+        assignment_state_enum state
+    }
+
+    MAINTENANCE_TICKETS {
+        serial id PK
+        uuid asset_id FK
+        maintenance_ticket_type_enum ticket_type
+        varchar vendor_name
+        varchar rma_number
+        text reported_issue
+        text resolution_notes
+        decimal estimated_cost
+        decimal actual_cost
+        date estimated_return_date
+        timestamp actual_completion_date
+        maintenance_ticket_status_enum status
+        uuid dispatched_by_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ═══════════════════════════════════════════
+    %% MODULE 04: Secure Disposal & Compliance
+    %% ═══════════════════════════════════════════
+
+    ASSET_DISPOSALS {
+        serial id PK
+        uuid asset_id FK
+        uuid requested_by_id FK
+        uuid approved_by_id FK
+        disposal_status_enum status
+        varchar reason
+        text justification
+        text rejection_reason
+        varchar disposal_method
+        varchar disposal_receipt_url
+        boolean data_wiped
+        boolean tags_removed
+        decimal actual_salvage_value
+        decimal book_value_at_disposal
+        timestamp requested_at
+        timestamp resolved_at
+        text notes
+    }
+
+    %% ═══════════════════════════════════════════
+    %% Cross-Cutting: Software Asset Management (SAM)
+    %% ═══════════════════════════════════════════
+
+    SOFTWARE_LICENSES {
+        uuid id PK
+        integer model_id FK
+        uuid asset_id FK
+        varchar license_key
+        license_type_enum license_type
+        integer total_seats
+        date start_date
+        date expiry_date
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    SOFTWARE_ALLOCATIONS {
+        serial id PK
+        uuid license_id FK
+        uuid assigned_to_user_id FK
+        timestamp allocated_at
+        timestamp revoked_at
+    }
+
+    %% ═══════════════════════════════════════════
+    %% MODULE 05: Notification & Alerts System (Epic 23)
+    %% ═══════════════════════════════════════════
+
+    APP_NOTIFICATIONS {
+        uuid id PK
+        uuid user_id FK
+        varchar title
+        text message
+        varchar target_url
+        boolean is_read
+        notification_event_type_enum event_type
+        timestamp created_at
+    }
+
+    NOTIFICATION_RULES {
+        serial id PK
+        varchar rule_key UK
+        varchar display_name
+        notification_category_enum category
+        boolean is_enabled
+        integer threshold_days
+        boolean channel_in_app
+        boolean channel_email
+        boolean channel_teams
+        uuid updated_by_id FK
+        timestamp updated_at
+    }
+
+    NOTIFICATION_LOGS {
+        serial id PK
+        uuid notification_id FK
+        notification_event_type_enum event_type
+        notification_channel_enum channel
+        notification_log_status_enum status
+        text error_message
+        timestamp sent_at
+    }
+
+    INTEGRATION_SETTINGS {
+        integer id PK
+        text resend_api_key
+        text teams_webhook_url
+        varchar smtp_host
+        integer smtp_port
+        text smtp_user
+        timestamp updated_at
+    }
+
+    %% ═══════════════════════════════════════════
+    %% MODULE 05: Custom Report Templates (Epic 22)
+    %% ═══════════════════════════════════════════
+
+    REPORT_TEMPLATES {
+        serial id PK
+        varchar name
+        varchar report_code UK
+        text description
+        boolean is_active
+        varchar data_source
+        jsonb filters
+        jsonb fields
+        varchar sort_direction
+        uuid created_by_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ═══════════════════════════════════════════
+    %% RELATIONSHIPS
+    %% ═══════════════════════════════════════════
+
+    %% Module 01: Platform Foundation
+    DEPARTMENTS ||--o{ USERS : employs
+    USERS ||--o{ SESSIONS : establishes
+    USERS ||--o{ SYSTEM_AUDIT_LOGS : performs
+    USERS ||--o{ REPORT_TEMPLATES : configures
+
+    %% Module 01: Master Data
     BRANDS ||--o{ MODELS : produces
-    BRANDS ||--o{ ASSETS : categorizes
+    CATEGORIES ||--o{ MODELS : classifies
+    LOCATIONS ||--o{ LOCATIONS : contains (self-referential)
+
+    %% Module 02: Asset Registry
     MODELS ||--o{ ASSETS : specifies
-    CATEGORIES ||--o{ ASSETS : classifies
-    VENDORS ||--o{ ASSETS : supplies
-    VENDORS ||--o{ MAINTENANCE_RECORDS : performs
-    ASSET_STATUSES ||--o{ ASSETS : determines
-    ASSETS ||--o{ ASSET_COSTS : has
-    CURRENCIES ||--o{ ASSET_COSTS : prices
-    CURRENCIES ||--o{ MAINTENANCE_RECORDS : charges
-    ASSETS ||--o{ ASSET_AUDIT_LOGS : logs
-    USERS ||--o{ ASSET_AUDIT_LOGS : performs
-    ASSETS ||--o{ ASSET_DISPOSALS : disposes
+    LOCATIONS ||--o{ ASSETS : houses
+    OWNERS ||--o{ ASSETS : owns
+    ASSETS ||--o{ ASSET_PURCHASES : has
+    VENDORS ||--o{ ASSET_PURCHASES : supplies
+    ASSETS ||--o{ ASSET_DOCUMENTS : stores
+    USERS ||--o{ ASSET_DOCUMENTS : uploads
+    USERS ||--o{ CUSTOM_STATUSES : configures
+
+    %% Module 03: Operations & Maintenance
+    ASSETS ||--o{ ASSET_ASSIGNMENTS : assigns
+    USERS ||--o{ ASSET_ASSIGNMENTS : assigned-to
+    LOCATIONS ||--o{ ASSET_ASSIGNMENTS : assigned-to
+    USERS ||--o{ ASSET_ASSIGNMENTS : assigned-by
+    ASSETS ||--o{ MAINTENANCE_TICKETS : services
+    USERS ||--o{ MAINTENANCE_TICKETS : dispatches
+
+    %% Module 04: Disposals
+    ASSETS ||--o{ ASSET_DISPOSALS : requests-disposal
+    USERS ||--o{ ASSET_DISPOSALS : requests
     USERS ||--o{ ASSET_DISPOSALS : approves
-    ASSETS ||--o{ ASSET_DOCUMENTS : has
+
+    %% Cross-Cutting: Software Asset Management (SAM)
+    MODELS ||--o{ SOFTWARE_LICENSES : licenses
+    ASSETS ||--o{ SOFTWARE_LICENSES : hosts (optional)
+    SOFTWARE_LICENSES ||--o{ SOFTWARE_ALLOCATIONS : allocates
+    USERS ||--o{ SOFTWARE_ALLOCATIONS : receives-seat
+
+    %% Module 05: Notification & Alerts (Epic 23)
+    USERS ||--o{ APP_NOTIFICATIONS : receives
+    APP_NOTIFICATIONS ||--o{ NOTIFICATION_LOGS : triggers
+    USERS ||--o{ NOTIFICATION_RULES : updates
 ```
 
 **Figure 6: Class Diagram**
@@ -1282,13 +1489,13 @@ erDiagram
 
 The following items have been identified as To Be Determined (TBD). These values or definitions are not currently available but are required prior to the Deployment/Release phase.
 
-| TBD ID     | Section | Description                                                                                                                                              | Responsibility       |
-| :--------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- |
-| **TBD-01** | 2.4     | **Production Hosting URL:** The final public-facing domain name (e.g., assets.tiqri.com) for the production environment has not yet been assigned.       | TIQRI IT Ops         |
-| **TBD-02** | 3.3     | **Azure AD Tenant Credentials:** The specific Tenant ID, Client ID, and Client Secret for the production identity provider are pending provision.        | TIQRI Security       |
-| **TBD-03** | 3.4     | **SMTP Relay Configuration:** The exact Hostname, Port, and Allow-list configurations for the corporate SMTP email relay are pending.                    | TIQRI Infrastructure |
-| **TBD-04** | 4.5     | **Disposal Reason Codes:** The finalized list of legally compliant "Disposal Reasons" (e.g., WEEE-Category-A) is pending review by the Legal department. | TIQRI Compliance     |
-| **TBD-05** | 6.1     | **Exchange Rate Source:** The specific API source or fixed monthly rate policy for converting NOK/USD to LKR is to be decided by Finance.                | TIQRI Finance        |
+| TBD ID     | Section | Description                                                                                                                                              | Responsibility       | Status / Resolution |
+| :--------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- | :------------------ |
+| **TBD-01** | 2.4     | **Production Hosting URL:** The final public-facing domain name (e.g., assets.tiqri.com) for the production environment has not yet been assigned.       | TIQRI IT Ops         | **Pending:** Awaiting final production domain from TIQRI IT Ops; Vercel deployment server actively functions. |
+| **TBD-02** | 3.3     | **Azure AD Tenant Credentials:** The specific Tenant ID, Client ID, and Client Secret for the production identity provider are pending provision.        | TIQRI Security       | **Resolved:** NextAuth.js uses standard Entra ID environment variables (`AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID`) in production, with bcryptjs local credentials serving as development/admin fallbacks. |
+| **TBD-03** | 3.4     | **SMTP Relay Configuration:** The exact Hostname, Port, and Allow-list configurations for the corporate SMTP email relay are pending.                    | TIQRI Infrastructure | **Resolved:** The system supports both **Resend API keys** and direct **SMTP servers** (host, port, user) dynamically managed in the `integration_settings` database table and encrypted at rest via AES-256 (`lib/crypto.ts`). |
+| **TBD-04** | 4.5     | **Disposal Reason Codes:** The finalized list of legally compliant "Disposal Reasons" (e.g., WEEE-Category-A) is pending review by the Legal department. | TIQRI Compliance     | **Resolved:** The `disposal_status` enum ('Pending Approval', 'Approved', 'Rejected', 'Completed') and disposal method string capture specific compliance reasons (E-waste, Sold, Donated, Stolen) on final transaction. |
+| **TBD-05** | 6.1     | **Exchange Rate Source:** The specific API source or fixed monthly rate policy for converting NOK/USD to LKR is to be decided by Finance.                | TIQRI Finance        | **Resolved:** Cost tracking maps acquisition values in NOK, USD, and LKR using precise decimals, with transaction-level conversion rate storage mapping baseline values. |
 
 ---
 
