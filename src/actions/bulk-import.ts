@@ -28,10 +28,7 @@ function formatSequence(value: number) {
   return String(value).padStart(3, '0');
 }
 
-function buildAssetTag(
-  categoryPrefix: string,
-  sequence: number
-) {
+function buildAssetTag(categoryPrefix: string, sequence: number) {
   return `${categoryPrefix}-${formatSequence(sequence)}`;
 }
 
@@ -297,13 +294,15 @@ export async function executeBulkImport(
         successCount++;
         importedAssetTags.push(assetTag);
         nextSequence++;
-      } catch (error) {
+      } catch (_error) {
+        console.error('Row import failed:', _error);
         failedCount++;
         failedRows.push({
           'Row Number': row.rowNumber,
           'Asset Name': row.name,
           'Serial Number': row.serialNumber || '',
-          'Error Message': 'Failed to import row — check the data and try again.',
+          'Error Message':
+            'Failed to import row — check the data and try again.',
         });
       }
     }
@@ -334,4 +333,3 @@ export async function executeBulkImport(
     await db.execute(sql`SELECT pg_advisory_unlock(${BULK_IMPORT_LOCK_ID})`);
   }
 }
-
