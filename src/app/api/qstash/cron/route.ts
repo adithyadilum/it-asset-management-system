@@ -9,7 +9,6 @@ import {
   maintenanceTickets,
   users,
   notificationRules,
-  appNotifications,
   notificationLogs,
 } from '@/db/schema';
 import {

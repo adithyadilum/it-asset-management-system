@@ -21,7 +21,7 @@ export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics 
     <div className="flex flex-col gap-6 p-4 pb-24 md:hidden bg-white min-h-screen font-sans">
       {/* Hero Section */}
       <section>
-        <button 
+        <button
           onClick={handleLaunchScanner}
           className="w-full bg-[#0a1142] hover:bg-[#111956] text-white py-10 px-6 rounded-[24px] flex flex-col items-center justify-center gap-4 shadow-md transition-colors"
         >
@@ -30,7 +30,7 @@ export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics 
           </div>
           <h2 className="text-2xl font-bold mt-2">Launch Scanner</h2>
           <p className="text-center text-[15px] text-blue-100/70 mx-4 leading-snug">
-            Instantly scan asset barcodes to<br/>update records or verify<br/>assignments
+            Instantly scan asset barcodes to<br />update records or verify<br />assignments
           </p>
         </button>
       </section>
@@ -48,7 +48,7 @@ export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics 
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="shadow-none border border-slate-200 rounded-[16px]">
             <CardContent className="p-4 flex flex-col gap-3">
               <BadgeAlert className="h-6 w-6 text-[#d34242]" strokeWidth={1.5} />
@@ -67,7 +67,7 @@ export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics 
           <h3 className="text-[17px] font-bold text-slate-800">Recent Activities</h3>
           <p className="text-[14px] text-slate-500">latest actions, updates, and system events</p>
         </div>
-        
+
         <div className="flex flex-col gap-2">
           {metrics.recentActivities.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No recent activities</p>
@@ -76,7 +76,7 @@ export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics 
               const text = activity.action;
               const borderColor = getActionColor(text);
               return (
-                <div key={activity.id} className={`border rounded-[10px] px-4 py-3 bg-white ${borderColor}`}>
+                <div key={activity.id} className={`border rounded-lg px-4 py-3 bg-white ${borderColor}`}>
                   <p className="text-[14px] font-medium text-slate-700 leading-tight">{text}</p>
                 </div>
               )

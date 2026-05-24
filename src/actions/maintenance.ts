@@ -35,17 +35,9 @@ const MAX_QUERY_LIMIT = 100;
 const DEFAULT_HISTORY_LIMIT = 3;
 
 /**
- * Strips HTML tags and enforces a maximum length to prevent XSS and buffer overflow.
- * Enforces input sanitization before saving to the database or audit logs.
+ * Input sanitization utilities are intentionally removed if unused.
+ * Reintroduce a focused sanitizer when needed.
  */
-function sanitizeText(
-  input: string | null | undefined,
-  maxLength: number
-): string {
-  if (!input) return '';
-  const stripped = input.replace(/<[^>]*>?/gm, '');
-  return stripped.trim().substring(0, maxLength);
-}
 
 // ============================================================================
 // READ OPERATIONS
@@ -458,7 +450,11 @@ export async function resolveIssueInternally(
     const isKnown =
       error instanceof Error &&
       knownMessages.some((m) => error.message.startsWith(m));
-    throw new Error(isKnown && error instanceof Error ? error.message : 'Failed to resolve maintenance ticket.');
+    throw new Error(
+      isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to resolve maintenance ticket.'
+    );
   }
 }
 
@@ -539,9 +535,10 @@ export async function initiateVendorRepair(
         vendorName: vendor.companyName,
         rmaNumber: parsed.data.rmaNumber ?? null,
         reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-        estimatedCost: parsed.data.estimatedCost != null
-          ? parsed.data.estimatedCost.toString()
-          : null,
+        estimatedCost:
+          parsed.data.estimatedCost != null
+            ? parsed.data.estimatedCost.toString()
+            : null,
         estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
         status: 'ACTIVE' as const,
         dispatchedById: user.id,
@@ -591,7 +588,11 @@ export async function initiateVendorRepair(
     const isKnown =
       error instanceof Error &&
       knownMessages.some((m) => error.message.startsWith(m));
-    throw new Error(isKnown && error instanceof Error ? error.message : 'Failed to initiate vendor repair.');
+    throw new Error(
+      isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to initiate vendor repair.'
+    );
   }
 }
 
@@ -697,6 +698,10 @@ export async function completeRepairTicket(
     const isKnown =
       error instanceof Error &&
       knownMessages.some((m) => error.message.startsWith(m));
-    throw new Error(isKnown && error instanceof Error ? error.message : 'Failed to complete repair ticket.');
+    throw new Error(
+      isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to complete repair ticket.'
+    );
   }
 }
