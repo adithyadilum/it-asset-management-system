@@ -565,6 +565,9 @@ export const notificationLogs = pgTable(
       () => appNotifications.id,
       { onDelete: 'cascade' }
     ),
+    // Optional user reference and deep-link to support deduplication
+    userId: uuid('user_id').references(() => users.id),
+    targetUrl: varchar('target_url', { length: 500 }),
     eventType: notificationEventTypeEnum('event_type').notNull(),
     channel: notificationChannelEnum('channel').notNull(),
     status: notificationLogStatusEnum('status').notNull(),
@@ -621,7 +624,7 @@ export const softwareAllocations = pgTable('software_allocations', {
 });
 
 // -----------------------------------------------------------------------------
-// 7. CUSTOM REPORT TEMPLATES 
+// 7. CUSTOM REPORT TEMPLATES
 // -----------------------------------------------------------------------------
 export const reportTemplates = pgTable('report_templates', {
   id: serial('id').primaryKey(),
@@ -632,7 +635,9 @@ export const reportTemplates = pgTable('report_templates', {
   dataSource: varchar('data_source', { length: 100 }).notNull(),
   filters: jsonb('filters'),
   fields: jsonb('fields'),
-  sortDirection: varchar('sort_direction', { length: 10 }).default('asc').notNull(),
+  sortDirection: varchar('sort_direction', { length: 10 })
+    .default('asc')
+    .notNull(),
   createdById: uuid('created_by_id')
     .notNull()
     .references(() => users.id),

@@ -10,8 +10,18 @@ import {
   users,
   notificationRules,
   appNotifications,
+  notificationLogs,
 } from '@/db/schema';
-import { eq, and, or, isNull, isNotNull, inArray, notInArray, sql } from 'drizzle-orm';
+import {
+  eq,
+  and,
+  or,
+  isNull,
+  isNotNull,
+  inArray,
+  notInArray,
+  sql,
+} from 'drizzle-orm';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
 
 /**
@@ -45,14 +55,16 @@ export async function POST(req: NextRequest) {
       nextSigningKey: nextKey,
     });
 
-    const isValid = await receiver.verify({
-      signature,
-      body: bodyText,
-      url: req.url,
-    }).catch((err) => {
-      console.error('Signature verification threw error:', err);
-      return false;
-    });
+    const isValid = await receiver
+      .verify({
+        signature,
+        body: bodyText,
+        url: req.url,
+      })
+      .catch((err) => {
+        console.error('Signature verification threw error:', err);
+        return false;
+      });
 
     if (!isValid) {
       return NextResponse.json(
@@ -61,7 +73,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('CRON job signature verified successfully. Running alert checks...');
+    console.log(
+      'CRON job signature verified successfully. Running alert checks...'
+    );
 
     // 2. Run warrantyExpiryCheck
     await runWarrantyExpiryCheck();
@@ -72,7 +86,10 @@ export async function POST(req: NextRequest) {
     // 4. Run overdueRepairCheck
     await runOverdueRepairCheck();
 
-    return NextResponse.json({ success: true, message: 'All checks processed successfully' });
+    return NextResponse.json({
+      success: true,
+      message: 'All checks processed successfully',
+    });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('CRON job execution failed:', error);
@@ -125,7 +142,9 @@ async function runWarrantyExpiryCheck() {
       )
     );
 
-  console.log(`Found ${expiringAssets.length} assets with expiring warranties within ${thresholdDays} days.`);
+  console.log(
+    `Found ${expiringAssets.length} assets with expiring warranties within ${thresholdDays} days.`
+  );
 
   // Get active IT administrators and operators to notify
   const recipients = await db
@@ -142,15 +161,15 @@ async function runWarrantyExpiryCheck() {
     const targetUrl = `/assets/${asset.id}`;
 
     for (const recipient of recipients) {
-      // Check if a notification already exists (deduplication)
+      // Check if a notification already exists in notification_logs (deduplication independent of channel)
       const [existing] = await db
         .select()
-        .from(appNotifications)
+        .from(notificationLogs)
         .where(
           and(
-            eq(appNotifications.userId, recipient.id),
-            eq(appNotifications.eventType, 'WARRANTY_EXPIRY'),
-            eq(appNotifications.targetUrl, targetUrl)
+            eq(notificationLogs.userId, recipient.id),
+            eq(notificationLogs.eventType, 'WARRANTY_EXPIRY'),
+            eq(notificationLogs.targetUrl, targetUrl)
           )
         )
         .limit(1);
@@ -209,18 +228,18 @@ async function runOverdueReturnCheck() {
   console.log(`Found ${overdueAssignments.length} overdue assignments.`);
 
   for (const assignment of overdueAssignments) {
-    const targetUrl = `/operations/assignments/${assignment.assignmentId}`;
+    const targetUrl = `/operations/assignments?assignmentId=${assignment.assignmentId}`;
     const recipientId = assignment.assignedById;
 
     // Deduplicate
     const [existing] = await db
       .select()
-      .from(appNotifications)
+      .from(notificationLogs)
       .where(
         and(
-          eq(appNotifications.userId, recipientId),
-          eq(appNotifications.eventType, 'RETURN_OVERDUE'),
-          eq(appNotifications.targetUrl, targetUrl)
+          eq(notificationLogs.userId, recipientId),
+          eq(notificationLogs.eventType, 'RETURN_OVERDUE'),
+          eq(notificationLogs.targetUrl, targetUrl)
         )
       )
       .limit(1);
@@ -251,7 +270,9 @@ async function runOverdueRepairCheck() {
     .limit(1);
 
   if (!rule || !rule.isEnabled) {
-    console.log('Return Overdue rule is disabled (used for Overdue Repair checks).');
+    console.log(
+      'Return Overdue rule is disabled (used for Overdue Repair checks).'
+    );
     return;
   }
 
@@ -277,18 +298,18 @@ async function runOverdueRepairCheck() {
   console.log(`Found ${overdueTickets.length} overdue maintenance tickets.`);
 
   for (const ticket of overdueTickets) {
-    const targetUrl = `/operations/maintenance/${ticket.ticketId}`;
+    const targetUrl = `/operations/maintenance?ticketId=${ticket.ticketId}`;
     const recipientId = ticket.dispatchedById;
 
     // Deduplicate
     const [existing] = await db
       .select()
-      .from(appNotifications)
+      .from(notificationLogs)
       .where(
         and(
-          eq(appNotifications.userId, recipientId),
-          eq(appNotifications.eventType, 'RETURN_OVERDUE'),
-          eq(appNotifications.targetUrl, targetUrl)
+          eq(notificationLogs.userId, recipientId),
+          eq(notificationLogs.eventType, 'RETURN_OVERDUE'),
+          eq(notificationLogs.targetUrl, targetUrl)
         )
       )
       .limit(1);

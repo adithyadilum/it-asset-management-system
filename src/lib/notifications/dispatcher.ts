@@ -1,6 +1,10 @@
 // src/lib/notifications/dispatcher.ts
 import { db } from '@/db';
-import { appNotifications, notificationRules, notificationLogs } from '@/db/schema';
+import {
+  appNotifications,
+  notificationRules,
+  notificationLogs,
+} from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { Client } from '@upstash/qstash';
 import { NotificationPayload } from '@/types/notifications';
@@ -12,7 +16,9 @@ function getQStashClient() {
   if (qstashClient) return qstashClient;
   const token = process.env.QSTASH_TOKEN;
   if (!token) {
-    console.warn('QSTASH_TOKEN is not configured. QStash queueing will be unavailable.');
+    console.warn(
+      'QSTASH_TOKEN is not configured. QStash queueing will be unavailable.'
+    );
     return null;
   }
   qstashClient = new Client({ token });
@@ -27,7 +33,8 @@ export async function dispatchAlert(payload: NotificationPayload) {
     const { eventType, userId, title, message, targetUrl } = payload;
 
     // 1. Map eventType to corresponding ruleKey in database
-    const ruleKey = eventType === 'WARRANTY_EXPIRY' ? 'WARRANTY_EXPIRY_WARNING' : eventType;
+    const ruleKey =
+      eventType === 'WARRANTY_EXPIRY' ? 'WARRANTY_EXPIRY_WARNING' : eventType;
 
     // 2. Query the rule settings from the database
     const [rule] = await db
@@ -38,7 +45,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
 
     // If the rule is not found or not enabled, skip dispatching
     if (!rule || !rule.isEnabled) {
-      console.log(`Notification rule '${ruleKey}' is disabled or not found. Skipping dispatch.`);
+      console.log(
+        `Notification rule '${ruleKey}' is disabled or not found. Skipping dispatch.`
+      );
       return { success: false, reason: 'Rule disabled or not found' };
     }
 
@@ -59,19 +68,43 @@ export async function dispatchAlert(payload: NotificationPayload) {
           })
           .returning();
 
-        notificationId = insertedNotification.id;
+        if (insertedNotification && insertedNotification.id) {
+          notificationId = insertedNotification.id;
 
-        await db.insert(notificationLogs).values({
-          notificationId,
-          eventType,
-          channel: 'in_app',
-          status: 'sent',
-          sentAt: new Date(),
-        });
+          await db.insert(notificationLogs).values({
+            notificationId,
+            userId,
+            targetUrl,
+            eventType,
+            channel: 'in_app',
+            status: 'sent',
+            sentAt: new Date(),
+          });
+        } else {
+          // Returning may legitimately be empty; record failure and continue
+          const msg = 'Insert returned no rows';
+          console.error(
+            'In-App insert succeeded but no row was returned:',
+            msg
+          );
+          await db.insert(notificationLogs).values({
+            notificationId: null,
+            userId,
+            targetUrl,
+            eventType,
+            channel: 'in_app',
+            status: 'failed',
+            errorMessage: msg,
+            sentAt: new Date(),
+          });
+        }
       } catch (err: unknown) {
         console.error('Failed to dispatch In-App notification:', err);
         const errMsg = err instanceof Error ? err.message : String(err);
         await db.insert(notificationLogs).values({
+          notificationId: null,
+          userId,
+          targetUrl,
           eventType,
           channel: 'in_app',
           status: 'failed',
@@ -96,7 +129,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
           });
 
           await db.insert(notificationLogs).values({
-            notificationId,
+            notificationId: notificationId ?? null,
+            userId,
+            targetUrl,
             eventType,
             channel: 'email',
             status: 'sent',
@@ -106,7 +141,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
           console.error('Failed to queue Email via QStash:', err);
           const errMsg = err instanceof Error ? err.message : String(err);
           await db.insert(notificationLogs).values({
-            notificationId,
+            notificationId: notificationId ?? null,
+            userId,
+            targetUrl,
             eventType,
             channel: 'email',
             status: 'failed',
@@ -117,7 +154,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
       } else {
         console.warn('Unable to queue Email: QStash client not initialized.');
         await db.insert(notificationLogs).values({
-          notificationId,
+          notificationId: notificationId ?? null,
+          userId,
+          targetUrl,
           eventType,
           channel: 'email',
           status: 'failed',
@@ -138,7 +177,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
           });
 
           await db.insert(notificationLogs).values({
-            notificationId,
+            notificationId: notificationId ?? null,
+            userId,
+            targetUrl,
             eventType,
             channel: 'teams',
             status: 'sent',
@@ -148,7 +189,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
           console.error('Failed to queue Teams via QStash:', err);
           const errMsg = err instanceof Error ? err.message : String(err);
           await db.insert(notificationLogs).values({
-            notificationId,
+            notificationId: notificationId ?? null,
+            userId,
+            targetUrl,
             eventType,
             channel: 'teams',
             status: 'failed',
@@ -159,7 +202,9 @@ export async function dispatchAlert(payload: NotificationPayload) {
       } else {
         console.warn('Unable to queue Teams: QStash client not initialized.');
         await db.insert(notificationLogs).values({
-          notificationId,
+          notificationId: notificationId ?? null,
+          userId,
+          targetUrl,
           eventType,
           channel: 'teams',
           status: 'failed',
