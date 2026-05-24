@@ -14,6 +14,11 @@ import {
   Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  getIntegrationStatus,
+  saveIntegrationSettings,
+  testIntegrationConnection,
+} from '@/actions/notifications';
 import { tiqriToast } from '@/components/shared/sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -97,6 +102,106 @@ export function AlertsSettingsClient() {
   const [rules, setRules] = useState<NotificationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  const [integrations, setIntegrations] = useState<{ resendConfigured: boolean; teamsConfigured: boolean } | null>(null);
+  const [resendKey, setResendKey] = useState('');
+  const [teamsUrl, setTeamsUrl] = useState('');
+  const [savingIntegrations, setSavingIntegrations] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testingTeams, setTestingTeams] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkIntegrations() {
+      try {
+        const res = await getIntegrationStatus();
+        if (res.success && res.data) {
+          setIsAdmin(true);
+          setIntegrations(res.data);
+          if (res.data.resendConfigured) setResendKey('••••••••');
+          if (res.data.teamsConfigured) setTeamsUrl('••••••••');
+        }
+      } catch {
+        console.warn('User does not have access to integration settings.');
+      }
+    }
+    checkIntegrations();
+  }, []);
+
+  const handleTestEmail = async () => {
+    if (!resendKey) {
+      tiqriToast.error('Please input or configure a Resend API key first');
+      return;
+    }
+    setTestingEmail(true);
+    try {
+      const res = await testIntegrationConnection('email', { resendApiKey: resendKey });
+      if (res.success) {
+        tiqriToast.success('Test connection email sent successfully! Please check your inbox.');
+      } else {
+        tiqriToast.error(res.error || 'Resend connection test failed');
+      }
+    } catch {
+      tiqriToast.error('Failed to contact diagnostic servers');
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
+  const handleTestTeams = async () => {
+    if (!teamsUrl) {
+      tiqriToast.error('Please input or configure an MS Teams Webhook URL first');
+      return;
+    }
+    setTestingTeams(true);
+    try {
+      const res = await testIntegrationConnection('teams', { teamsWebhookUrl: teamsUrl });
+      if (res.success) {
+        tiqriToast.success('Teams test card posted successfully! Please check your Teams channel.');
+      } else {
+        tiqriToast.error(res.error || 'Teams webhook connection test failed');
+      }
+    } catch {
+      tiqriToast.error('Failed to contact webhook diagnostic servers');
+    } finally {
+      setTestingTeams(false);
+    }
+  };
+
+  const handleSaveIntegrations = async () => {
+    setSavingIntegrations(true);
+    try {
+      const payload: Partial<{ resendApiKey: string; teamsWebhookUrl: string }> = {};
+      if (resendKey && resendKey !== '••••••••') payload.resendApiKey = resendKey;
+      if (teamsUrl && teamsUrl !== '••••••••') payload.teamsWebhookUrl = teamsUrl;
+
+      if (Object.keys(payload).length === 0) {
+        tiqriToast.info('No changes to save.');
+        setSavingIntegrations(false);
+        return;
+      }
+
+      const res = await saveIntegrationSettings(payload);
+      if (res.success) {
+        tiqriToast.success('External integrations saved successfully!');
+        setIntegrations((prev) => {
+          if (!prev) return prev;
+          return {
+            resendConfigured: payload.resendApiKey ? true : prev.resendConfigured,
+            teamsConfigured: payload.teamsWebhookUrl ? true : prev.teamsConfigured,
+          };
+        });
+        if (payload.resendApiKey) setResendKey('••••••••');
+        if (payload.teamsWebhookUrl) setTeamsUrl('••••••••');
+      } else {
+        tiqriToast.error(res.error || 'Failed to save integrations settings');
+      }
+    } catch {
+      tiqriToast.error('Connection failed. Integrations not saved.');
+    } finally {
+      setSavingIntegrations(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchRules() {
@@ -475,6 +580,109 @@ export function AlertsSettingsClient() {
             </section>
           );
         })}
+
+        {/* Integrations Configuration Section */}
+        {isAdmin && integrations && (
+          <section className="space-y-6 mt-8 border-t border-slate-200 pt-8">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#040d5a]/10 text-[#040d5a]">
+                <Info className="h-4.5 w-4.5" />
+              </div>
+              <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-[#040d5a]`}>
+                External Service Integrations
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Resend Card */}
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-[#040d5a]" />
+                  <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                    Resend Email Integration
+                  </h3>
+                </div>
+                <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-slate-500 leading-normal`}>
+                  Configure your Resend API Key to send automated alerts directly to users&apos; registered corporate email boxes.
+                </p>
+                <div className="space-y-1.5">
+                  <label htmlFor="resend-key-input" className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-slate-400 uppercase tracking-wider`}>
+                    Resend API Key
+                  </label>
+                  <input
+                    id="resend-key-input"
+                    type="password"
+                    placeholder={integrations.resendConfigured ? '••••••••' : 're_...'}
+                    value={resendKey === '••••••••' ? '••••••••' : resendKey}
+                    onChange={(e) => setResendKey(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-hidden focus:ring-1 focus:ring-[#040d5a] focus:border-[#040d5a]"
+                  />
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={testingEmail || savingIntegrations}
+                    onClick={handleTestEmail}
+                    className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 transition-all cursor-pointer"
+                  >
+                    {testingEmail ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Test Connection
+                  </button>
+                </div>
+              </div>
+
+              {/* Teams Card */}
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-[#040d5a]" />
+                  <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                    MS Teams Webhook
+                  </h3>
+                </div>
+                <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-slate-500 leading-normal`}>
+                  Configure the Incoming Webhook URL to deliver high-priority alerts directly to designated MS Teams channels.
+                </p>
+                <div className="space-y-1.5">
+                  <label htmlFor="teams-url-input" className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-slate-400 uppercase tracking-wider`}>
+                    Webhook URL
+                  </label>
+                  <input
+                    id="teams-url-input"
+                    type="text"
+                    placeholder={integrations.teamsConfigured ? '••••••••' : 'https://outlook.office.com/webhook/...'}
+                    value={teamsUrl === '••••••••' ? '••••••••' : teamsUrl}
+                    onChange={(e) => setTeamsUrl(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-hidden focus:ring-1 focus:ring-[#040d5a] focus:border-[#040d5a]"
+                  />
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={testingTeams || savingIntegrations}
+                    onClick={handleTestTeams}
+                    className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 transition-all cursor-pointer"
+                  >
+                    {testingTeams ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Test Webhook
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Master Action: Save Integrations Settings */}
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                disabled={savingIntegrations}
+                onClick={handleSaveIntegrations}
+                className="flex items-center justify-center gap-2 h-10 px-6 rounded-lg bg-[#040d5a] hover:bg-[#03093e] text-white text-sm font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
+              >
+                {savingIntegrations ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save Integration Settings
+              </button>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
