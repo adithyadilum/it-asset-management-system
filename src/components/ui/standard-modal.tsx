@@ -53,7 +53,7 @@ export function StandardModal({
         </div>
 
         {footer && (
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 bg-white px-4 py-3 rounded-b-xl">
             {footer}
           </DialogFooter>
         )}

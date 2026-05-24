@@ -13,11 +13,13 @@ import {
   systemAuditLogs,
   users,
   vendors,
+  reportTemplates,
 } from '@/db/schema';
 import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
+import { extractLabelFromValues } from '@/lib/audit';
 
 export interface AuditLogFilter {
   field: string;
@@ -82,6 +84,8 @@ function formatEntityLabel(
 
   return trimmedName || trimmedCode || '';
 }
+
+
 
 function buildTargetEntitySearchCondition(searchValue: string) {
   // Match audit rows against the resolved entity record, not just raw IDs.
@@ -191,7 +195,7 @@ function buildTargetEntitySearchCondition(searchValue: string) {
   );
 }
 
-async function resolveAuditValueLabels(
+export async function resolveAuditValueLabels(
   records: Array<{ oldValue: unknown; newValue: unknown }>
 ) {
   const labels = new Map<string, string>();
@@ -359,8 +363,8 @@ async function resolveAuditValueLabels(
   return { labels, idMappings };
 }
 
-async function resolveTargetEntityLabels(
-  records: Array<Pick<AuditLogRow, 'entityType' | 'entityId'>>
+export async function resolveTargetEntityLabels(
+  records: Array<{ entityType: string; entityId: string }>
 ) {
   const labels = new Map<string, string>();
   const addLabel = (entityType: string, entityId: string, label: string) => {
@@ -414,6 +418,10 @@ async function resolveTargetEntityLabels(
       .filter((record) => record.entityType === 'departments')
       .map((record) => Number(record.entityId))
       .filter((value) => Number.isFinite(value)),
+    'report-template': records
+      .filter((record) => record.entityType === 'report-template')
+      .map((record) => Number(record.entityId))
+      .filter((value) => Number.isFinite(value)),
   } as const;
 
   // Pull the human-readable labels once, then stitch them back onto the rows.
@@ -428,6 +436,7 @@ async function resolveTargetEntityLabels(
     vendorRows,
     ownerRows,
     departmentRows,
+    reportTemplateRows,
   ] = await Promise.all([
     assetIds.length > 0
       ? db
@@ -530,6 +539,16 @@ async function resolveTargetEntityLabels(
           .from(departments)
           .where(inArray(departments.id, numericEntityIds.departments))
       : Promise.resolve([]),
+    numericEntityIds['report-template'].length > 0
+      ? db
+          .select({
+            id: reportTemplates.id,
+            code: reportTemplates.reportCode,
+            name: reportTemplates.name,
+          })
+          .from(reportTemplates)
+          .where(inArray(reportTemplates.id, numericEntityIds['report-template']))
+      : Promise.resolve([]),
   ]);
 
   for (const row of assetRows) {
@@ -597,6 +616,14 @@ async function resolveTargetEntityLabels(
   for (const row of departmentRows) {
     addLabel(
       'departments',
+      String(row.id),
+      formatEntityLabel(row.code, row.name)
+    );
+  }
+
+  for (const row of reportTemplateRows) {
+    addLabel(
+      'report-template',
       String(row.id),
       formatEntityLabel(row.code, row.name)
     );
@@ -757,6 +784,7 @@ export async function getAuditLogs(
         ipAddress: record.ipAddress,
         entityLabel:
           targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+          extractLabelFromValues(oldValue, newValue) ??
           (record.entityType === 'URL'
             ? record.entityId
             : humanizeEntityType(record.entityType)),
@@ -875,6 +903,7 @@ export async function getAssetAuditHistory(
         ipAddress: record.ipAddress,
         entityLabel:
           targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+          extractLabelFromValues(oldValue, newValue) ??
           humanizeEntityType(record.entityType),
       };
     });
@@ -971,6 +1000,7 @@ export async function getAllAssetAuditHistory(
         ipAddress: record.ipAddress,
         entityLabel:
           targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+          extractLabelFromValues(oldValue, newValue) ??
           humanizeEntityType(record.entityType),
       };
     });

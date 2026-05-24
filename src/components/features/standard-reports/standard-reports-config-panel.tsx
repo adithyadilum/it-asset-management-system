@@ -18,21 +18,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { FilterRow, SOURCE_OPTIONS } from '@/components/features/standard-reports/standard-reports-page';
 import { ReportTemplateCard } from '@/components/features/standard-reports/report-template-card';
-import type { FilterState, ReportTemplateData } from '@/types/standard-reports';
+import {
+  type FilterState,
+  type ReportTemplateData,
+  type FilterOptions,
+  REPORT_FILTERS_BY_SOURCE,
+} from '@/types/standard-reports';
 import { CreateTemplateDialog } from './create-template-dialog';
 
 interface StandardReportsConfigPanelProps {
   filterState: FilterState;
-  filterOptions: {
-    assetTypes: string[];
-    categories: { name: string; pillar: string }[];
-    locations: string[];
-    statuses: string[];
-  };
+  filterOptions: FilterOptions;
   templates: ReportTemplateData[];
   onFilterChange: (field: keyof FilterState, value: string) => void;
   onTemplatePreview: (templateId: number) => void;
@@ -75,29 +76,71 @@ export function StandardReportsConfigPanel({
     .map((cat) => cat.name)
     .sort();
 
-  const categoryOptions = filteredCategories.map((option) => ({
-    value: option,
-    label: option,
-  }));
-
-  const locationOptions = filterOptions.locations.map((option) => ({
-    value: option,
-    label: option,
-  }));
-
-  const statusOptions = filterOptions.statuses.map((option) => ({
-    value: option,
-    label: option,
-  }));
-
-  const masterDataTypeOptions = [
-    { value: 'asset-categories', label: 'Asset Categories' },
-    { value: 'locations', label: 'Locations' },
-    { value: 'brands', label: 'Brands' },
-    { value: 'device-models', label: 'Device Models' },
-    { value: 'vendors', label: 'Vendors' },
-    { value: 'owners', label: 'Owners' },
+  const categoryOptions = [
+    { value: '', label: 'All Categories' },
+    ...filteredCategories.map((opt) => ({ value: opt, label: opt })),
   ];
+
+  const locationOptions = [
+    { value: '', label: 'All Locations' },
+    ...filterOptions.locations.filter((x) => x !== 'All locations').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    ...filterOptions.statuses.filter((x) => x !== 'All statuses').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const assignmentStateOptions = [
+    { value: '', label: 'All States' },
+    ...filterOptions.assignmentStates.filter((x) => x !== 'All States').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const returnConditionOptions = [
+    { value: '', label: 'All Conditions' },
+    ...filterOptions.returnConditions.filter((x) => x !== 'All Conditions').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const maintenanceStatusOptions = [
+    { value: '', label: 'All Statuses' },
+    ...filterOptions.maintenanceStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const disposalStatusOptions = [
+    { value: '', label: 'All Statuses' },
+    ...filterOptions.disposalStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const licenseTypeOptions = [
+    { value: '', label: 'All Types' },
+    ...filterOptions.licenseTypes.filter((x) => x !== 'All Types').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const auditActionOptions = [
+    { value: '', label: 'All Actions' },
+    ...filterOptions.auditActionTypes.filter((x) => x !== 'All Actions').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const vendorOptions = [
+    { value: '', label: 'All Vendors' },
+    ...filterOptions.vendors.filter((x) => x !== 'All Vendors').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const masterDataTypeOptions = filterOptions.masterDataTypes;
+
+  const optionsMap: Record<string, { value: string; label: string }[]> = {
+    categories: categoryOptions,
+    locations: locationOptions,
+    statuses: statusOptions,
+    assignmentStates: assignmentStateOptions,
+    returnConditions: returnConditionOptions,
+    maintenanceStatuses: maintenanceStatusOptions,
+    disposalStatuses: disposalStatusOptions,
+    licenseTypes: licenseTypeOptions,
+    auditActionTypes: auditActionOptions,
+    vendors: vendorOptions,
+    masterDataTypes: masterDataTypeOptions,
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl gap-0 bg-background">
@@ -181,104 +224,72 @@ export function StandardReportsConfigPanel({
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 p-4 pt-3">
-            {filterState.source === 'Master Data' ? (
-              <>
-                <FilterRow label="Asset Type">
-                  <Select
-                    value={filterState.assetType || undefined}
-                    onValueChange={(value) => onFilterChange('assetType', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="All Assets" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.assetTypes.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FilterRow>
+            {filterState.source && REPORT_FILTERS_BY_SOURCE[filterState.source] ? (
+              REPORT_FILTERS_BY_SOURCE[filterState.source].map((filter) => {
+                if (filter.type === 'select') {
+                  const opts = filter.optionsKey === 'ticketTypes'
+                    ? ['All Types', 'VENDOR', 'INTERNAL']
+                    : filterOptions.assetTypes;
 
-                <FilterRow label="Record Type">
-                  <SearchableDropdown
-                    value={filterState.masterDataType}
-                    onSelect={(value) => onFilterChange('masterDataType', value)}
-                    placeholder="Select Data Type"
-                    emptyMessage="No record type found."
-                    options={masterDataTypeOptions}
-                  />
-                </FilterRow>
+                  const placeholderVal = filter.optionsKey === 'ticketTypes' ? 'All Types' : 'All Assets';
 
-                <FilterRow label="Status">
-                  <SearchableDropdown
-                    value={filterState.status}
-                    onSelect={(value) => onFilterChange('status', value)}
-                    placeholder="Select a Status"
-                    emptyMessage="No status found."
-                    options={statusOptions}
-                  />
-                </FilterRow>
-              </>
+                  return (
+                    <FilterRow key={filter.key} label={filter.label}>
+                      <Select
+                        value={filterState[filter.key] || '__all__'}
+                        onValueChange={(value) => onFilterChange(filter.key, value === '__all__' ? '' : value)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={placeholderVal} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">{placeholderVal}</SelectItem>
+                          {opts.filter(x => x !== 'All Assets' && x !== 'All Types').map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FilterRow>
+                  );
+                }
+
+                if (filter.type === 'searchable') {
+                  const opts = filter.optionsKey ? optionsMap[filter.optionsKey] : [];
+                  const emptyMsg = `No ${filter.label.toLowerCase()} found.`;
+                  return (
+                    <FilterRow key={filter.key} label={filter.label}>
+                      <SearchableDropdown
+                        value={filterState[filter.key] || ''}
+                        onSelect={(value) => onFilterChange(filter.key, value)}
+                        placeholder={`Select ${filter.label}`}
+                        emptyMessage={emptyMsg}
+                        options={opts}
+                      />
+                    </FilterRow>
+                  );
+                }
+
+                if (filter.type === 'date') {
+                  return (
+                    <FilterRow key={filter.key} label={filter.label}>
+                      <Input
+                        type="date"
+                        value={filterState[filter.key] || ''}
+                        onChange={(e) => onFilterChange(filter.key, e.target.value)}
+                        className="w-full bg-background"
+                      />
+                    </FilterRow>
+                  );
+                }
+
+                return null;
+              })
             ) : (
-              <>
-                <FilterRow label="Asset Type">
-                  <Select
-                    value={filterState.assetType || undefined}
-                    onValueChange={(value) => onFilterChange('assetType', value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="All Assets" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterOptions.assetTypes.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FilterRow>
-
-                <FilterRow label="Category">
-                  <SearchableDropdown
-                    value={filterState.category}
-                    onSelect={(value) => onFilterChange('category', value)}
-                    placeholder={
-                      !filterState.assetType || filterState.assetType === 'All Assets'
-                        ? 'Select Asset Type first'
-                        : 'All categories'
-                    }
-                    emptyMessage={
-                      !filterState.assetType || filterState.assetType === 'All Assets'
-                        ? 'Select an asset type first.'
-                        : 'No category found.'
-                    }
-                    options={categoryOptions}
-                  />
-                </FilterRow>
-
-                <FilterRow label="Location">
-                  <SearchableDropdown
-                    value={filterState.location}
-                    onSelect={(value) => onFilterChange('location', value)}
-                    placeholder="Select a Location"
-                    emptyMessage="No location found."
-                    options={locationOptions}
-                  />
-                </FilterRow>
-
-                <FilterRow label="Status">
-                  <SearchableDropdown
-                    value={filterState.status}
-                    onSelect={(value) => onFilterChange('status', value)}
-                    placeholder="Select a Status"
-                    emptyMessage="No status found."
-                    options={statusOptions}
-                  />
-                </FilterRow>
-              </>
+              <div className="text-center text-sm py-4 text-muted-foreground">
+                Please select a primary data source first.
+              </div>
             )}
 
             <div className="flex flex-wrap justify-end gap-2.5">

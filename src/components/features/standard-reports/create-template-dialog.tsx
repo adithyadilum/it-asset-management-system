@@ -32,13 +32,16 @@ import {
 } from '@/components/ui/card';
 import { ListFilter } from 'lucide-react';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { tiqriToast } from '@/components/shared/sonner';
 
 import { createReportTemplate, updateReportTemplate } from '@/actions/report-templates';
 import {
   REPORT_DATA_SOURCES,
-  REPORT_FIELD_OPTIONS,
   REPORT_FIELD_OPTIONS_BY_SOURCE,
+  REPORT_FILTERS_BY_SOURCE,
+  getPrimaryIdColumn,
   type ReportTemplateData,
+  type FilterOptions,
 } from '@/types/standard-reports';
 import { FilterRow } from './standard-reports-page';
 
@@ -46,12 +49,7 @@ interface CreateTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
-  filterOptions: {
-    assetTypes: string[];
-    categories: { name: string; pillar: string }[];
-    locations: string[];
-    statuses: string[];
-  };
+  filterOptions: FilterOptions;
   editingTemplate?: ReportTemplateData;
 }
 
@@ -78,6 +76,8 @@ export function CreateTemplateDialog({
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState('');
   const [masterDataType, setMasterDataType] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // Fields
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -98,6 +98,8 @@ export function CreateTemplateDialog({
     setLocation('');
     setStatus('');
     setMasterDataType('');
+    setDateFrom('');
+    setDateTo('');
     setSelectedFields([]);
     setSortDirection('asc');
     setError(null);
@@ -115,7 +117,27 @@ export function CreateTemplateDialog({
       setLocation(editingTemplate.filters?.location || '');
       setStatus(editingTemplate.filters?.status || '');
       setMasterDataType(editingTemplate.filters?.masterDataType || '');
-      setSelectedFields(editingTemplate.fields || []);
+      setDateFrom(editingTemplate.filters?.dateFrom || '');
+      setDateTo(editingTemplate.filters?.dateTo || '');
+
+      const fields = editingTemplate.fields || [];
+      const primaryIdField = getPrimaryIdColumn(editingTemplate.dataSource);
+      const primaryIdFields = [
+        'Record ID', 'Business Key', 'Asset ID', 'Asset Tag', 'Record Code',
+        'Assignment ID', 'Return ID', 'Ticket ID', 'Disposal ID', 'Purchase ID',
+        'License ID', 'Log ID'
+      ];
+      const normalizedFields = Array.from(new Set(
+        fields.map(f =>
+          primaryIdFields.includes(f) ? primaryIdField : f
+        )
+      ));
+      if (normalizedFields.includes(primaryIdField)) {
+        normalizedFields.splice(normalizedFields.indexOf(primaryIdField), 1);
+        normalizedFields.unshift(primaryIdField);
+      }
+      setSelectedFields(normalizedFields);
+
       setSortDirection((editingTemplate.sortDirection as 'asc' | 'desc') || 'asc');
     } else if (open && !editingTemplate) {
       resetForm();
@@ -130,28 +152,113 @@ export function CreateTemplateDialog({
   };
 
   const selectedPillar = typeToPillarMap[assetType];
-  const filteredCategories = filterOptions.categories.filter(
-    (categoryOption) => !selectedPillar || categoryOption.pillar === selectedPillar
-  );
+  const filteredCategories = filterOptions.categories
+    .filter((cat) => !selectedPillar || cat.pillar === selectedPillar)
+    .map((cat) => cat.name)
+    .sort();
 
-  const locationOptions = filterOptions.locations.map((option) => ({
-    value: option,
-    label: option,
-  }));
-
-  const statusOptions = filterOptions.statuses.map((option) => ({
-    value: option,
-    label: option,
-  }));
-
-  const masterDataTypeOptions = [
-    { value: 'asset-categories', label: 'Asset Categories' },
-    { value: 'locations', label: 'Locations' },
-    { value: 'brands', label: 'Brands' },
-    { value: 'device-models', label: 'Device Models' },
-    { value: 'vendors', label: 'Vendors' },
-    { value: 'owners', label: 'Owners' },
+  const categoryOptions = [
+    { value: '', label: 'All Categories' },
+    ...filteredCategories.map((opt) => ({ value: opt, label: opt })),
   ];
+
+  const locationOptions = [
+    { value: '', label: 'All Locations' },
+    ...filterOptions.locations.filter((x) => x !== 'All locations').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    ...filterOptions.statuses.filter((x) => x !== 'All statuses').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const assignmentStateOptions = [
+    { value: '', label: 'All States' },
+    ...filterOptions.assignmentStates.filter((x) => x !== 'All States').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const returnConditionOptions = [
+    { value: '', label: 'All Conditions' },
+    ...filterOptions.returnConditions.filter((x) => x !== 'All Conditions').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const maintenanceStatusOptions = [
+    { value: '', label: 'All Statuses' },
+    ...filterOptions.maintenanceStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const disposalStatusOptions = [
+    { value: '', label: 'All Statuses' },
+    ...filterOptions.disposalStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const licenseTypeOptions = [
+    { value: '', label: 'All Types' },
+    ...filterOptions.licenseTypes.filter((x) => x !== 'All Types').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const auditActionOptions = [
+    { value: '', label: 'All Actions' },
+    ...filterOptions.auditActionTypes.filter((x) => x !== 'All Actions').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const vendorOptions = [
+    { value: '', label: 'All Vendors' },
+    ...filterOptions.vendors.filter((x) => x !== 'All Vendors').map((opt) => ({ value: opt, label: opt })),
+  ];
+
+  const masterDataTypeOptions = filterOptions.masterDataTypes;
+
+  const optionsMap: Record<string, { value: string; label: string }[]> = {
+    categories: categoryOptions,
+    locations: locationOptions,
+    statuses: statusOptions,
+    assignmentStates: assignmentStateOptions,
+    returnConditions: returnConditionOptions,
+    maintenanceStatuses: maintenanceStatusOptions,
+    disposalStatuses: disposalStatusOptions,
+    licenseTypes: licenseTypeOptions,
+    auditActionTypes: auditActionOptions,
+    vendors: vendorOptions,
+    masterDataTypes: masterDataTypeOptions,
+  };
+
+  const hasSelectedFieldChanges = (() => {
+    if (!editingTemplate) return true;
+    const oldFields = editingTemplate.fields || [];
+    const primaryIdField = getPrimaryIdColumn(editingTemplate.dataSource);
+    const primaryIdFields = [
+      'Record ID', 'Business Key', 'Asset ID', 'Asset Tag', 'Record Code',
+      'Assignment ID', 'Return ID', 'Ticket ID', 'Disposal ID', 'Purchase ID',
+      'License ID', 'Log ID'
+    ];
+    const normalizedOldFields = Array.from(new Set(
+      oldFields.map(f => primaryIdFields.includes(f) ? primaryIdField : f)
+    ));
+    if (normalizedOldFields.includes(primaryIdField)) {
+      normalizedOldFields.splice(normalizedOldFields.indexOf(primaryIdField), 1);
+      normalizedOldFields.unshift(primaryIdField);
+    }
+    
+    if (selectedFields.length !== normalizedOldFields.length) return true;
+    return selectedFields.some((field, index) => field !== normalizedOldFields[index]);
+  })();
+
+  const hasTemplateChanges =
+    !editingTemplate ||
+    name.trim() !== editingTemplate.name ||
+    description.trim() !== (editingTemplate.description || '') ||
+    isActive !== editingTemplate.isActive ||
+    dataSource !== editingTemplate.dataSource ||
+    (assetType || '') !== (editingTemplate.filters?.assetType || '') ||
+    (category || '') !== (editingTemplate.filters?.category || '') ||
+    (location || '') !== (editingTemplate.filters?.location || '') ||
+    (status || '') !== (editingTemplate.filters?.status || '') ||
+    (masterDataType || '') !== (editingTemplate.filters?.masterDataType || '') ||
+    (dateFrom || '') !== (editingTemplate.filters?.dateFrom || '') ||
+    (dateTo || '') !== (editingTemplate.filters?.dateTo || '') ||
+    sortDirection !== (editingTemplate.sortDirection as 'asc' | 'desc') ||
+    hasSelectedFieldChanges;
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -188,32 +295,42 @@ export function CreateTemplateDialog({
     }
 
     startTransition(async () => {
-      const templateData = {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        isActive,
-        dataSource,
-        filters: {
-          assetType: assetType || undefined,
-          category: category || undefined,
-          location: location || undefined,
-          status: status || undefined,
-          masterDataType: masterDataType || undefined,
-        },
-        fields: selectedFields,
-        sortDirection,
-      };
+      try {
+        const templateData = {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          isActive,
+          dataSource,
+          filters: {
+            assetType: assetType || undefined,
+            category: category || undefined,
+            location: location || undefined,
+            status: status || undefined,
+            masterDataType: masterDataType || undefined,
+            dateFrom: dateFrom || undefined,
+            dateTo: dateTo || undefined,
+          },
+          fields: selectedFields,
+          sortDirection,
+        };
 
-      const result = editingTemplate
-        ? await updateReportTemplate(editingTemplate.id, templateData)
-        : await createReportTemplate(templateData);
+        const result = editingTemplate
+          ? await updateReportTemplate(editingTemplate.id, templateData)
+          : await createReportTemplate(templateData);
 
-      if (result.success) {
-        resetForm();
-        onOpenChange(false);
-        onCreated();
-      } else {
-        setError(result.message);
+        if (result.success) {
+          tiqriToast.success(result.message);
+          resetForm();
+          onOpenChange(false);
+          onCreated();
+        } else {
+          tiqriToast.error(result.message);
+          setError(result.message);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        tiqriToast.error(message);
+        setError(message);
       }
     });
   }, [
@@ -226,6 +343,8 @@ export function CreateTemplateDialog({
     location,
     status,
     masterDataType,
+    dateFrom,
+    dateTo,
     selectedFields,
     sortDirection,
     onOpenChange,
@@ -235,7 +354,7 @@ export function CreateTemplateDialog({
   ]);
 
   // Split fields into two columns for the checkbox grid
-  const currentOptions = dataSource && REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] ? REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] : REPORT_FIELD_OPTIONS;
+  const currentOptions = dataSource && REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] ? REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] : [];
   const midpoint = Math.ceil(currentOptions.length / 2);
   const leftFields = currentOptions.slice(0, midpoint);
   const rightFields = currentOptions.slice(midpoint);
@@ -313,7 +432,8 @@ export function CreateTemplateDialog({
                 </Label>
                 <Select value={dataSource} onValueChange={(val) => {
                   setDataSource(val);
-                  setSelectedFields([]); // Clear fields when source changes
+                  const sourceFields = REPORT_FIELD_OPTIONS_BY_SOURCE[val];
+                  setSelectedFields(sourceFields ? [sourceFields[0]] : []);
                 }}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Choose source" />
@@ -339,102 +459,95 @@ export function CreateTemplateDialog({
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4 p-4 pt-3">
-                  {dataSource === 'Master Data' ? (
-                    <>
-                      <FilterRow label="Asset Type">
-                        <Select
-                          value={assetType}
-                          onValueChange={(value) => {
-                            setAssetType(value);
-                            setCategory('');
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="All Assets" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filterOptions.assetTypes?.map((option) => (
-                              <SelectItem key={option} value={option}>
-                                {option}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FilterRow>
+                  {dataSource && REPORT_FILTERS_BY_SOURCE[dataSource] ? (
+                    REPORT_FILTERS_BY_SOURCE[dataSource].map((filter) => {
+                      const valueMap: Record<string, string> = {
+                        assetType,
+                        category,
+                        location,
+                        status,
+                        masterDataType,
+                        dateFrom,
+                        dateTo,
+                      };
 
-                      <FilterRow label="Record Type">
-                        <SearchableDropdown
-                          value={masterDataType}
-                          onSelect={setMasterDataType}
-                          placeholder="Select Data Type"
-                          emptyMessage="No record type found."
-                          options={masterDataTypeOptions}
-                        />
-                      </FilterRow>
+                      const setterMap: Record<string, (val: string) => void> = {
+                        assetType: (val) => {
+                          setAssetType(val);
+                          if (filter.key === 'assetType') setCategory('');
+                        },
+                        category: setCategory,
+                        location: setLocation,
+                        status: setStatus,
+                        masterDataType: setMasterDataType,
+                        dateFrom: setDateFrom,
+                        dateTo: setDateTo,
+                      };
 
-                      <FilterRow label="Status">
-                        <SearchableDropdown
-                          value={status}
-                          onSelect={setStatus}
-                          placeholder="Select a Status"
-                          emptyMessage="No status found."
-                          options={statusOptions}
-                        />
-                      </FilterRow>
-                    </>
+                      if (filter.type === 'select') {
+                        const opts = filter.optionsKey === 'ticketTypes'
+                          ? ['All Types', 'VENDOR', 'INTERNAL']
+                          : filterOptions.assetTypes;
+
+                        const placeholderVal = filter.optionsKey === 'ticketTypes' ? 'All Types' : 'All Assets';
+
+                        return (
+                          <FilterRow key={filter.key} label={filter.label}>
+                            <Select
+                              value={valueMap[filter.key] || '__all__'}
+                              onValueChange={(value) => setterMap[filter.key](value === '__all__' ? '' : value)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder={placeholderVal} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__all__">{placeholderVal}</SelectItem>
+                                {opts.filter(x => x !== 'All Assets' && x !== 'All Types').map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FilterRow>
+                        );
+                      }
+
+                      if (filter.type === 'searchable') {
+                        const opts = filter.optionsKey ? optionsMap[filter.optionsKey] : [];
+                        const emptyMsg = `No ${filter.label.toLowerCase()} found.`;
+                        return (
+                          <FilterRow key={filter.key} label={filter.label}>
+                            <SearchableDropdown
+                              value={valueMap[filter.key] || ''}
+                              onSelect={setterMap[filter.key]}
+                              placeholder={`Select ${filter.label}`}
+                              emptyMessage={emptyMsg}
+                              options={opts}
+                            />
+                          </FilterRow>
+                        );
+                      }
+
+                      if (filter.type === 'date') {
+                        return (
+                          <FilterRow key={filter.key} label={filter.label}>
+                            <Input
+                              type="date"
+                              value={valueMap[filter.key] || ''}
+                              onChange={(e) => setterMap[filter.key](e.target.value)}
+                              className="w-full bg-background"
+                            />
+                          </FilterRow>
+                        );
+                      }
+
+                      return null;
+                    })
                   ) : (
-                    <>
-                      <FilterRow label="Asset Type">
-                        <Select
-                          value={assetType}
-                          onValueChange={setAssetType}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="All Assets" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filterOptions.assetTypes?.map((option) => (
-                              <SelectItem key={option} value={option}>
-                                {option}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FilterRow>
-
-                      <FilterRow label="Category">
-                        <SearchableDropdown
-                          value={category}
-                          onSelect={setCategory}
-                          placeholder={assetType && assetType !== 'All Assets' ? 'Select a Category' : 'Choose an asset type first'}
-                          emptyMessage={assetType && assetType !== 'All Assets' ? 'No category found.' : 'Select an asset type first'}
-                          options={assetType && assetType !== 'All Assets' ? filteredCategories.map((cat) => ({
-                            value: cat.name,
-                            label: cat.name,
-                          })) : []}
-                        />
-                      </FilterRow>
-
-                      <FilterRow label="Location">
-                        <SearchableDropdown
-                          value={location}
-                          onSelect={setLocation}
-                          placeholder="Select a Location"
-                          emptyMessage="No location found."
-                          options={locationOptions}
-                        />
-                      </FilterRow>
-
-                      <FilterRow label="Status">
-                        <SearchableDropdown
-                          value={status}
-                          onSelect={setStatus}
-                          placeholder="Select a Status"
-                          emptyMessage="No status found."
-                          options={statusOptions}
-                        />
-                      </FilterRow>
-                    </>
+                    <div className="text-center text-sm py-4 text-muted-foreground">
+                      Please select a primary data source first.
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -444,36 +557,44 @@ export function CreateTemplateDialog({
                 <h3 className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                   Report Fields:
                 </h3>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                  <div className="flex flex-col gap-3">
-                    {leftFields.map((field) => (
-                      <label
-                        key={field}
-                        className="flex items-center gap-2.5 text-sm cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={selectedFields.includes(field)}
-                          onCheckedChange={() => toggleField(field)}
-                        />
-                        {field}
-                      </label>
-                    ))}
+                {currentOptions.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                    <div className="flex flex-col gap-3">
+                      {leftFields.map((field) => (
+                        <label
+                          key={field}
+                          className="flex items-center gap-2.5 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedFields.includes(field)}
+                            onCheckedChange={() => toggleField(field)}
+                          />
+                          {field}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {rightFields.map((field) => (
+                        <label
+                          key={field}
+                          className="flex items-center gap-2.5 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedFields.includes(field)}
+                            onCheckedChange={() => toggleField(field)}
+                          />
+                          {field}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-3">
-                    {rightFields.map((field) => (
-                      <label
-                        key={field}
-                        className="flex items-center gap-2.5 text-sm cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={selectedFields.includes(field)}
-                          onCheckedChange={() => toggleField(field)}
-                        />
-                        {field}
-                      </label>
-                    ))}
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Please select a primary data source first to configure report fields.
+                    </p>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Sort */}
@@ -515,7 +636,7 @@ export function CreateTemplateDialog({
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 border-t bg-muted/50 px-6 py-4">
+        <div className="flex items-center justify-end gap-2 px-6 py-4">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
@@ -523,7 +644,7 @@ export function CreateTemplateDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
+          <Button onClick={handleSubmit} disabled={isPending || (editingTemplate ? !hasTemplateChanges : false)}>
             {isPending ? 'Saving...' : editingTemplate ? 'Update Template' : 'Save Template'}
           </Button>
         </div>

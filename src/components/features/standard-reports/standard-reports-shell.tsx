@@ -11,21 +11,19 @@ import {
   type FilterState,
   type ReportPreviewRow,
   type ReportTemplateData,
+  type FilterOptions,
 } from '@/types/standard-reports';
+import { tiqriToast } from '@/components/shared/sonner';
 import { StandardReportsConfigPanel } from './standard-reports-config-panel';
 import { StandardReportsPreviewPanel } from './standard-reports-preview-panel';
 
 interface StandardReportsShellProps {
-  filterOptions: {
-    assetTypes: string[];
-    categories: { name: string; pillar: string }[];
-    locations: string[];
-    statuses: string[];
-  };
+  filterOptions: FilterOptions;
   templates: ReportTemplateData[];
+  generatedBy: string;
 }
 
-export function StandardReportsShell({ filterOptions, templates }: StandardReportsShellProps) {
+export function StandardReportsShell({ filterOptions, templates, generatedBy }: StandardReportsShellProps) {
   const router = useRouter();
 
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
@@ -37,6 +35,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [templateName, setTemplateName] = useState<string | undefined>(undefined);
+  const [templateDescription, setTemplateDescription] = useState<string | undefined>(undefined);
   const [pageCount, setPageCount] = useState<number>(1);
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -49,6 +49,8 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   // triggering server actions during render (see useEffect below).
   const loadPreview = useCallback(
     async (filters: FilterState, pageCtx: PaginationState) => {
+      // debug: log when fetching preview
+      console.debug('loadPreview called', { filters, pageCtx });
       setIsLoading(true);
       setErrorMessage(null);
 
@@ -102,7 +104,10 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
       };
 
       setSelectedFields(template.fields || []);
+      setTemplateName(template.name);
+      setTemplateDescription(template.description || undefined);
       setFilterState(nextFilterState);
+      setPagination((old) => ({ ...old, pageIndex: 0 }));
       setShowDataGrid(true);
     },
     [templates]
@@ -111,6 +116,9 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   // Called when the sidebar's "Preview report" footer button is clicked
   const handleManualPreview = useCallback(() => {
     setSelectedFields([]); // Clear template-specific fields for manual preview
+    setTemplateName(undefined);
+    setTemplateDescription(undefined);
+    setPagination((old) => ({ ...old, pageIndex: 0 }));
     setShowDataGrid(true);
   }, []);
 
@@ -118,6 +126,7 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
   const handleClearFilters = useCallback(() => {
     setFilterState(DEFAULT_FILTER_STATE);
     setResetKey((prev) => prev + 1);
+    setPagination({ pageIndex: 0, pageSize: 16 });
     setShowDataGrid(false);
     setPreviewData([]);
     setErrorMessage(null);
@@ -142,9 +151,11 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           next.status = '';
           next.masterDataType = '';
         }
-        
+
         return next;
       });
+
+      setPagination((old) => ({ ...old, pageIndex: 0 }));
     },
     []
   );
@@ -155,13 +166,17 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
       try {
         const result = await deleteReportTemplate(templateId);
         if (result.success) {
+          tiqriToast.success(result.message);
           // Re-fetch triggers implicitly due to revalidatePath in action
           router.refresh();
         } else {
+          tiqriToast.error(result.message);
           setErrorMessage(result.message || 'Failed to delete template');
         }
       } catch {
-        setErrorMessage('An unexpected error occurred while deleting the template.');
+        const message = 'An unexpected error occurred while deleting the template.';
+        tiqriToast.error(message);
+        setErrorMessage(message);
       }
     },
     [router]
@@ -174,7 +189,11 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
 
   const handlePaginationChange = useCallback(
     (updaterOrValue: PaginationState | ((old: PaginationState) => PaginationState)) => {
-      setPagination((old) => (typeof updaterOrValue === 'function' ? updaterOrValue(old) : updaterOrValue));
+      setPagination((old) => {
+        const next = typeof updaterOrValue === 'function' ? updaterOrValue(old) : updaterOrValue;
+        console.debug('pagination change', { old, next });
+        return next;
+      });
     },
     []
   );
@@ -210,6 +229,10 @@ export function StandardReportsShell({ filterOptions, templates }: StandardRepor
           errorMessage={errorMessage}
           selectedFields={selectedFields}
           source={filterState.source}
+          filterState={filterState}
+          generatedBy={generatedBy}
+          templateName={templateName}
+          reportDescription={templateDescription}
           pagination={pagination}
           setPagination={handlePaginationChange}
           pageCount={pageCount}
