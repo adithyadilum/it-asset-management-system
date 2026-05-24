@@ -459,10 +459,7 @@ export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
 
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update selected assets.',
+      error: 'Failed to update selected assets.',
     };
   } finally {
     logLatency({

@@ -141,16 +141,18 @@ export async function getAssetFinancialVitals(
       error instanceof Error &&
       (error.message.includes('Unauthorized') ||
         error.message.includes('Forbidden'));
+    
     if (isAuthError) {
       console.debug(
         `[getAssetFinancialVitals] Authorization denied for asset ${assetId}`
       );
-    } else {
-      console.error(
-        `[getAssetFinancialVitals] Error for asset ${assetId}:`,
-        error
-      );
+      throw error;
     }
-    throw error;
+
+    console.error(
+      `[getAssetFinancialVitals] Error for asset ${assetId}:`,
+      error
+    );
+    throw new Error('Failed to load financial vitals.');
   }
 }

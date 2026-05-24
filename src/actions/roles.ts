@@ -224,7 +224,7 @@ export async function assignUsersRoleBulk(
     });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Database update failed.',
+      error: 'Database update failed.',
     };
   } finally {
     logLatency({

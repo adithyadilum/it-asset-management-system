@@ -2,8 +2,8 @@
 const nextConfig = {
   // Add your ngrok URL and local IP here (DO NOT include https://)
   allowedDevOrigins: [
-    'sector-undertow-shame.ngrok-free.dev',
-    '192.168.8.140',
+    '74d9-123-231-126-130.ngrok-free.app',
+    '192.168.8.101',
     'localhost:3000',
   ],
   reactCompiler: true,
