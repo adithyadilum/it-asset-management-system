@@ -28,15 +28,15 @@ export default async function AppShellLayout({
         defaultOpen
         style={{ "--sidebar-width": "260px" } as CSSProperties}
       >
-      <div className="flex h-screen w-full items-center bg-muted p-3.5">
+      <div className="flex h-screen w-full md:items-center bg-white md:bg-muted md:p-3.5">
         <AppSidebar userRole={user.role} />
 
-        <div className="flex h-full min-w-0 flex-1 flex-col gap-2">
+        <div className="flex h-full w-full min-w-0 flex-1 flex-col md:gap-2">
           <TopHeader user={{ name: user.name, email: user.email, role: user.role }} />
 
-          <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-background">
-            <div className="flex min-h-0 flex-1 flex-col rounded-md bg-background relative">
-              <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-lg bg-background">
+            <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-md bg-background relative">
+              <div className="flex min-h-0 w-full flex-1 flex-col overflow-auto">{children}</div>
               <BottomNavigation />
             </div>
           </div>
