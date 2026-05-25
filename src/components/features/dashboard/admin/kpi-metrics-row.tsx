@@ -28,8 +28,8 @@ function formatNumber(value: number) {
 }
 
 export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
-  const depreciationRate = metrics.totalAssetValue > 0
-    ? (1 - metrics.netBookValue / metrics.totalAssetValue) * 100
+  const depreciationRate = (metrics.totalAssetValue ?? 0) > 0
+    ? (1 - (metrics.netBookValue ?? 0) / (metrics.totalAssetValue ?? 1)) * 100
     : 0;
 
   return (
@@ -72,6 +72,7 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         subText2="Target limit: Under $20K/annum."
         href="/operations/maintenance"
       />
+      )}
       <KpiCard 
         title="Warranty Expiry (30 Days)"
         value={`${formatNumber(metrics.warrantyExpiries30Days)} Assets`}
