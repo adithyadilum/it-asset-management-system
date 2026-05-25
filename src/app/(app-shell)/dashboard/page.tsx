@@ -118,7 +118,7 @@ export default async function DashboardPage() {
         role === 'FinanceAuditor' ? Promise.resolve([]) : getDashboardOverdueReturns(),
         role === 'ITOperator' ? Promise.resolve([]) : getDashboardPendingDisposals(),
         role === 'FinanceAuditor' ? Promise.resolve([]) : getDashboardHighMaintenanceAssets(),
-        getDashboardRecentActivities(),
+        role === 'ITOperator' ? Promise.resolve([]) : getDashboardRecentActivities(),
         getDashboardInventoryStatus(),
         getDashboardDepartmentAllocation(),
         getDashboardKpiMetrics(),
@@ -141,6 +141,7 @@ export default async function DashboardPage() {
                             activities={recentActivities} 
                             inventoryStatus={inventoryStatus}
                             departmentAllocation={departmentAllocation}
+                            role={role}
                         />
                         <DashboardTablesRow 
                             overdueReturns={overdueReturns}

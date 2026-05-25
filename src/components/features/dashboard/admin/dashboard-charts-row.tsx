@@ -392,19 +392,26 @@ export function DashboardChartsRow({
   activities,
   inventoryStatus,
   departmentAllocation,
+  role,
 }: {
   activities: RecentActivity[]
   inventoryStatus: InventoryStatusResponse
   departmentAllocation: DepartmentAllocationItem[]
+  role?: string
 }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 shrink-0 h-[340px]">
+    <div className={cn(
+      "grid gap-4 shrink-0 h-[340px]",
+      role === 'ITOperator' ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1 lg:grid-cols-3"
+    )}>
       <AssetAllocationChart allocationData={departmentAllocation} />
       <InventoryStatusChart
         inventoryData={inventoryStatus.inventoryData}
         utilizationRate={inventoryStatus.utilizationRate}
       />
+      {role !== 'ITOperator' && (
       <RecentActivitiesList activities={activities} />
+      )}
     </div>
   )
 }
