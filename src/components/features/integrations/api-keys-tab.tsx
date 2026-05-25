@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { BookOpen } from "lucide-react"
 import { CreateApiKeyDialog } from "./create-api-key-dialog"
 import { ApiKeyTable } from "./api-key-table"
 import { SecretRevealDialog } from "./secret-reveal-dialog"
 import type { ApiKeyDisplay } from "@/types/integrations"
+import { Button } from "@/components/ui/button"
 
 interface ApiKeysTabProps {
   keys: ApiKeyDisplay[]
@@ -21,7 +23,13 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end items-center gap-2">
+        <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
+          <a href="https://docs.tiqri.com/api" target="_blank" rel="noopener noreferrer">
+            <BookOpen className="h-4 w-4" />
+            View API Documentation
+          </a>
+        </Button>
         <CreateApiKeyDialog onCreated={handleCreated} />
       </div>
 
