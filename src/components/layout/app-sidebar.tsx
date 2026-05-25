@@ -95,7 +95,7 @@ const managementItems: NavItem[] = [
         allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"],
         children: [
             { label: "Standard Reports", href: "/reports/standard-reports" },
-            { label: "System Audit Log", href: "/reports/audit-log" },
+            { label: "System Audit Log", href: "/reports/audit-log", allowedRoles: ["GlobalAdmin", "FinanceAuditor"] },
         ],
     },
     {

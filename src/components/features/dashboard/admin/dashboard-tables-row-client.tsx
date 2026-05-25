@@ -305,8 +305,9 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
       {/* ── Left: Tabbed Interface ── */}
-      <Tabs defaultValue="overdue" className="w-full">
+      <Tabs defaultValue={userRole === 'FinanceAuditor' ? "pending" : "overdue"} className="w-full">
         <TabsList className="h-10 mb-4 gap-1 bg-muted rounded-lg p-1 w-fit">
+          {userRole !== 'FinanceAuditor' && (
           <TabsTrigger
             value="overdue"
             className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
@@ -320,6 +321,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
               {overdueReturns.length}
             </span>
           </TabsTrigger>
+          )}
 
           {showPending && (
             <TabsTrigger
@@ -338,6 +340,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
           )}
         </TabsList>
 
+        {userRole !== 'FinanceAuditor' && (
         <TabsContent value="overdue">
           <DataTable
             {...tableProps}
@@ -349,6 +352,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
             }}
           />
         </TabsContent>
+        )}
 
         {showPending && (
           <TabsContent value="pending">
@@ -366,6 +370,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
       </Tabs>
 
       {/* ── Right: High-Maintenance Assets ── */}
+      {userRole !== 'FinanceAuditor' && (
       <div className="flex flex-col w-full">
         <div className="h-10 mb-4 flex items-center">
           <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
@@ -382,6 +387,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
           }}
         />
       </div>
+      )}
 
       <DisposeAssetsRequestDialog
         open={isFlagDialogOpen}
