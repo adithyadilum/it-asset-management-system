@@ -16,18 +16,21 @@ interface DashboardTablesRowProps {
   overdueReturns: OverdueReturnRow[];
   highMaintenanceAssets: HighMaintenanceRow[];
   pendingDisposals: PendingDisposalRow[];
+  userRole: string;
 }
 
 export function DashboardTablesRow({ 
   overdueReturns, 
   highMaintenanceAssets, 
-  pendingDisposals 
+  pendingDisposals,
+  userRole
 }: DashboardTablesRowProps) {
   return (
     <DashboardTablesRowClient
       overdueReturns={overdueReturns}
       highMaintenanceAssets={highMaintenanceAssets}
       pendingDisposals={pendingDisposals}
+      userRole={userRole}
     />
   )
 }

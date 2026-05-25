@@ -238,9 +238,11 @@ interface Props {
   overdueReturns: OverdueReturnRow[]
   pendingDisposals: PendingDisposalRow[]
   highMaintenanceAssets: HighMaintenanceRow[]
+  userRole: string
 }
 
-export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets }: Props) {
+export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, userRole }: Props) {
+  const showPending = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<Set<number>>(new Set())
@@ -319,19 +321,21 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
             </span>
           </TabsTrigger>
 
-          <TabsTrigger
-            value="pending"
-            className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
-          >
-            Pending Disposals
-            <span className={cn(
-              "text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors",
-              "group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground",
-              "group-data-[state=inactive]:bg-white group-data-[state=inactive]:text-primary border border-primary/30"
-            )}>
-              {pendingDisposals.length}
-            </span>
-          </TabsTrigger>
+          {showPending && (
+            <TabsTrigger
+              value="pending"
+              className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              Pending Disposals
+              <span className={cn(
+                "text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors",
+                "group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground",
+                "group-data-[state=inactive]:bg-white group-data-[state=inactive]:text-primary border border-primary/30"
+              )}>
+                {pendingDisposals.length}
+              </span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overdue">
@@ -346,17 +350,19 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
           />
         </TabsContent>
 
-        <TabsContent value="pending">
-          <DataTable
-            {...tableProps}
-            columns={pendingColumns}
-            data={pendingDisposals}
-            emptyState={{
-              title: "No pending disposals",
-              description: "There are no disposal requests awaiting review.",
-            }}
-          />
-        </TabsContent>
+        {showPending && (
+          <TabsContent value="pending">
+            <DataTable
+              {...tableProps}
+              columns={pendingColumns}
+              data={pendingDisposals}
+              emptyState={{
+                title: "No pending disposals",
+                description: "There are no disposal requests awaiting review.",
+              }}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* ── Right: High-Maintenance Assets ── */}

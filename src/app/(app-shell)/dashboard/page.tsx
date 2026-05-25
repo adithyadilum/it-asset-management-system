@@ -104,6 +104,11 @@ export default async function DashboardPage() {
     }
 
     // Admin/Auditor logic
+    const canSeeOverdue = user?.role === 'GlobalAdmin' || user?.role === 'ITOperator';
+    const canSeePending = user?.role === 'GlobalAdmin' || user?.role === 'FinanceAuditor';
+    const canSeeHighMaintenance = user?.role === 'GlobalAdmin' || user?.role === 'ITOperator';
+    const canSeeRecentActivities = user?.role === 'GlobalAdmin' || user?.role === 'FinanceAuditor';
+
     const [
         overdueReturns, 
         pendingDisposals, 
@@ -113,10 +118,10 @@ export default async function DashboardPage() {
         departmentAllocation,
         kpiMetrics
     ] = await Promise.all([
-        getDashboardOverdueReturns(),
-        getDashboardPendingDisposals(),
-        getDashboardHighMaintenanceAssets(),
-        getDashboardRecentActivities(),
+        canSeeOverdue ? getDashboardOverdueReturns() : Promise.resolve([]),
+        canSeePending ? getDashboardPendingDisposals() : Promise.resolve([]),
+        canSeeHighMaintenance ? getDashboardHighMaintenanceAssets() : Promise.resolve([]),
+        canSeeRecentActivities ? getDashboardRecentActivities() : Promise.resolve([]),
         getDashboardInventoryStatus(),
         getDashboardDepartmentAllocation(),
         getDashboardKpiMetrics(),
@@ -139,11 +144,13 @@ export default async function DashboardPage() {
                             activities={recentActivities} 
                             inventoryStatus={inventoryStatus}
                             departmentAllocation={departmentAllocation}
+                            userRole={user?.role || 'Employee'}
                         />
                         <DashboardTablesRow 
                             overdueReturns={overdueReturns}
                             pendingDisposals={pendingDisposals}
                             highMaintenanceAssets={highMaintenanceAssets}
+                            userRole={user?.role || 'Employee'}
                         />
                     </div>
                 </div>
