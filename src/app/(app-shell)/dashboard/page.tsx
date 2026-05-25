@@ -20,8 +20,10 @@ import {
     getDashboardRecentActivities,
     getDashboardInventoryStatus,
     getDashboardDepartmentAllocation,
-    getDashboardKpiMetrics
+    getDashboardKpiMetrics,
+    getDashboardRecentWriteOffs
 } from "@/actions/dashboard"
+import { canAccessOperations, canAccessFinancials, isEmployee } from "@/lib/auth/roles"
 
 function getAssetPresentation(modelName: string) {
     const normalized = modelName.trim().toLowerCase()
@@ -56,7 +58,7 @@ function getAssetPresentation(modelName: string) {
 export default async function DashboardPage() {
     const user = await getAuthenticatedUser()
 
-    if (user?.role === "Employee") {
+    if (user && isEmployee(user.role)) {
         const employeeAssets = await getCurrentEmployeeAssets()
 
         return (
@@ -104,10 +106,11 @@ export default async function DashboardPage() {
     }
 
     // Admin/Auditor logic
-    const canSeeOverdue = user?.role === 'GlobalAdmin' || user?.role === 'ITOperator';
-    const canSeePending = user?.role === 'GlobalAdmin' || user?.role === 'FinanceAuditor';
-    const canSeeHighMaintenance = user?.role === 'GlobalAdmin' || user?.role === 'ITOperator';
-    const canSeeRecentActivities = user?.role === 'GlobalAdmin' || user?.role === 'FinanceAuditor';
+    const canSeeOverdue = user ? canAccessOperations(user.role) : false;
+    const canSeePending = user ? canAccessFinancials(user.role) : false;
+    const canSeeHighMaintenance = user ? canAccessOperations(user.role) : false;
+    const canSeeRecentActivities = user ? canAccessFinancials(user.role) : false;
+    const canSeeWriteOffs = user ? canAccessFinancials(user.role) : false;
 
     const [
         overdueReturns, 
@@ -116,7 +119,8 @@ export default async function DashboardPage() {
         recentActivities,
         inventoryStatus,
         departmentAllocation,
-        kpiMetrics
+        kpiMetrics,
+        recentWriteOffs
     ] = await Promise.all([
         canSeeOverdue ? getDashboardOverdueReturns() : Promise.resolve([]),
         canSeePending ? getDashboardPendingDisposals() : Promise.resolve([]),
@@ -125,6 +129,7 @@ export default async function DashboardPage() {
         getDashboardInventoryStatus(),
         getDashboardDepartmentAllocation(),
         getDashboardKpiMetrics(),
+        canSeeWriteOffs ? getDashboardRecentWriteOffs() : Promise.resolve([]),
     ])
 
     return (
@@ -150,6 +155,7 @@ export default async function DashboardPage() {
                             overdueReturns={overdueReturns}
                             pendingDisposals={pendingDisposals}
                             highMaintenanceAssets={highMaintenanceAssets}
+                            recentWriteOffs={recentWriteOffs}
                             userRole={user?.role || 'Employee'}
                         />
                     </div>

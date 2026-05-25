@@ -19,6 +19,7 @@ import {
 import { desc } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { isEmployee, isITOperator, isFinanceAuditor } from '@/lib/auth/roles';
 import { unstable_cache } from 'next/cache';
 
 // ============================================================================
@@ -312,6 +313,55 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
 }
 
 // ============================================================================
+// READ: Recent Write-Offs Table (Completed Disposals)
+// ============================================================================
+
+export interface RecentWriteOffRow {
+  id: number;
+  assetTag: string;
+  assetName: string | null;
+  salvageValue: string | null;
+  bookValue: string | null;
+  resolvedAt: string | null;
+}
+
+/**
+ * Returns the 5 most recent completed disposals for financial audit.
+ *
+ * Access: GlobalAdmin, FinanceAuditor
+ */
+export async function getDashboardRecentWriteOffs(): Promise<RecentWriteOffRow[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor')
+    throw new Error('Forbidden');
+
+  const rows = await db
+    .select({
+      id: assetDisposals.id,
+      assetTag: assets.assetTag,
+      assetName: assets.name,
+      salvageValue: assetDisposals.actualSalvageValue,
+      bookValue: assetDisposals.bookValueAtDisposal,
+      resolvedAt: assetDisposals.resolvedAt,
+    })
+    .from(assetDisposals)
+    .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
+    .where(eq(assetDisposals.status, 'Completed'))
+    .orderBy(desc(assetDisposals.resolvedAt))
+    .limit(5);
+
+  return rows.map((r) => ({
+    id: r.id,
+    assetTag: r.assetTag,
+    assetName: r.assetName,
+    salvageValue: r.salvageValue ? `$${Number(r.salvageValue).toLocaleString()}` : null,
+    bookValue: r.bookValue ? `$${Number(r.bookValue).toLocaleString()}` : null,
+    resolvedAt: r.resolvedAt ? r.resolvedAt.toISOString() : null,
+  }));
+}
+
+// ============================================================================
 // READ: Current Inventory Status Donut Chart
 // ============================================================================
 
@@ -335,7 +385,7 @@ export interface InventoryStatusResponse {
 export async function getDashboardInventoryStatus(): Promise<InventoryStatusResponse> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role === 'Employee') throw new Error('Forbidden');
+  if (isEmployee(user.role)) throw new Error('Forbidden');
 
   const results = await db
     .select({
@@ -418,7 +468,7 @@ export interface DepartmentAllocationItem {
 export async function getDashboardDepartmentAllocation(): Promise<DepartmentAllocationItem[]> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role === 'Employee') throw new Error('Forbidden');
+  if (isEmployee(user.role)) throw new Error('Forbidden');
 
   const results = await db
     .select({
@@ -452,6 +502,7 @@ export interface DashboardKpiMetrics {
   cumulativeRepairSpend?: number;
   softwareRenewals30Days?: number;
   impactedSoftwareEmployees?: number;
+  cumulativeSalvageRecouped?: number;
 }
 
 /**
@@ -598,6 +649,13 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       impactedSoftwareEmployees = impactedRes[0]?.count || 0;
     }
 
+    // 7. Cumulative Salvage Recouped (actual salvage value of completed disposals)
+    const salvageRecoupedRes = await db
+      .select({ sum: sql<string | null>`SUM(${assetDisposals.actualSalvageValue})` })
+      .from(assetDisposals)
+      .where(eq(assetDisposals.status, 'Completed'));
+    const cumulativeSalvageRecouped = parseFloat(salvageRecoupedRes[0]?.sum || '0');
+
     return {
       totalAssetValue,
       netBookValue,
@@ -607,6 +665,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       cumulativeRepairSpend,
       softwareRenewals30Days,
       impactedSoftwareEmployees,
+      cumulativeSalvageRecouped,
     };
   },
   ['dashboard-kpis'],
@@ -625,11 +684,11 @@ const getCachedDashboardKpiMetrics = unstable_cache(
 export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role === 'Employee') throw new Error('Forbidden');
+  if (isEmployee(user.role)) throw new Error('Forbidden');
 
   const metrics = await getCachedDashboardKpiMetrics();
 
-  if (user.role === 'ITOperator') {
+  if (isITOperator(user.role)) {
     return {
       inactiveSoftwareSeats: metrics.inactiveSoftwareSeats,
       warrantyExpiries30Days: metrics.warrantyExpiries30Days,
@@ -638,10 +697,12 @@ export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
     };
   }
 
-  if (user.role === 'FinanceAuditor') {
+  if (isFinanceAuditor(user.role)) {
     return {
       totalAssetValue: metrics.totalAssetValue,
       netBookValue: metrics.netBookValue,
+      cumulativeSalvageRecouped: metrics.cumulativeSalvageRecouped,
+      inactiveSoftwareCostLeak: metrics.inactiveSoftwareCostLeak,
     };
   }
 
