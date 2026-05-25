@@ -936,7 +936,7 @@ export async function markAssignmentsAsReceived(
  */
 export async function refreshOverdueAssignments(): Promise<void> {
   const now = new Date();
-  await db
+  const updated = await db
     .update(assetAssignments)
     .set({ state: 'overdue' })
     .where(
