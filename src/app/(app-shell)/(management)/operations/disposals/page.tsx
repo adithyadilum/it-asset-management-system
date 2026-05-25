@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 import { assetDisposals, assets, users, models, categories, assetDocuments } from '@/db/schema';
 import { eq, desc, inArray, and, sql, or, ilike } from 'drizzle-orm';
@@ -9,10 +11,18 @@ export const metadata = {
 };
 
 interface DisposalsPageProps {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function DisposalsPage({ searchParams }: DisposalsPageProps) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    redirect('/login');
+  }
+  if (user.role !== 'GlobalAdmin') {
+    redirect('/403');
+  }
+
   // Aliases for users table since we join it twice for requester and approver
   const requester = alias(users, 'requester');
   const approver = alias(users, 'approver');

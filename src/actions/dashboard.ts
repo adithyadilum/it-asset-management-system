@@ -255,7 +255,7 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
   if (!user) throw new Error('Unauthorized');
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') throw new Error('Forbidden');
   
-  // Fetch top 4 recent logs with user info
+  // Fetch top 5 recent logs with user info
   const logs = await db
     .select({
       id: systemAuditLogs.id,
@@ -268,7 +268,7 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
     .from(systemAuditLogs)
     .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
     .orderBy(desc(systemAuditLogs.performedAt))
-    .limit(4);
+    .limit(5);
 
   // For simplicity, we'll try to resolve Asset Tags for 'Asset' entities
   const assetIds = logs
@@ -394,7 +394,6 @@ export async function getDashboardInventoryStatus(): Promise<InventoryStatusResp
         value: val,
         color: '#6b7280',
       });
-      totalActive += val;
     }
   });
 

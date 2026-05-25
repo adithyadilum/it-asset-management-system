@@ -47,7 +47,7 @@ async function seedDashboard() {
     throw new Error('Required users not found. Run npm run db:seed first.');
   }
 
-  // ── Pick 3 "Assigned" assets for overdue assignments ────────────────────────
+  // ── Pick 3 "Available" assets to assign and make overdue ────────────────────
   const assignedAssets = await db
     .select({ id: assets.id, assetTag: assets.assetTag })
     .from(assets)
@@ -160,7 +160,9 @@ async function seedDashboard() {
   console.log('\n✅ Dashboard seed completed.');
 }
 
-seedDashboard().catch((err) => {
-  console.error('❌ Dashboard seed failed:', err);
-  process.exitCode = 1;
-});
+if (process.argv[1]?.endsWith('seed.dashboard.ts')) {
+  seedDashboard().catch((err) => {
+    console.error('❌ Dashboard seed failed:', err);
+    process.exitCode = 1;
+  });
+}

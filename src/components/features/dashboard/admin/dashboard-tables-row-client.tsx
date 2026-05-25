@@ -242,7 +242,7 @@ interface Props {
 }
 
 export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, userRole }: Props) {
-  const showPending = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
+  const showPending = userRole === 'GlobalAdmin'
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<Set<number>>(new Set())
