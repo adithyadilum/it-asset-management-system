@@ -104,6 +104,8 @@ export default async function DashboardPage() {
     }
 
     // Admin/Auditor logic
+    const role = user?.role
+
     const [
         overdueReturns, 
         pendingDisposals, 
@@ -113,9 +115,9 @@ export default async function DashboardPage() {
         departmentAllocation,
         kpiMetrics
     ] = await Promise.all([
-        getDashboardOverdueReturns(),
-        getDashboardPendingDisposals(),
-        getDashboardHighMaintenanceAssets(),
+        role === 'FinanceAuditor' ? Promise.resolve([]) : getDashboardOverdueReturns(),
+        role === 'ITOperator' ? Promise.resolve([]) : getDashboardPendingDisposals(),
+        role === 'FinanceAuditor' ? Promise.resolve([]) : getDashboardHighMaintenanceAssets(),
         getDashboardRecentActivities(),
         getDashboardInventoryStatus(),
         getDashboardDepartmentAllocation(),
@@ -144,6 +146,7 @@ export default async function DashboardPage() {
                             overdueReturns={overdueReturns}
                             pendingDisposals={pendingDisposals}
                             highMaintenanceAssets={highMaintenanceAssets}
+                            role={role}
                         />
                     </div>
                 </div>
