@@ -1,8 +1,6 @@
-"use client"
-
-import { Camera, BadgeAlert, Contact } from "lucide-react"
+import { BadgeAlert, Contact } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import type { AdminMobileMetrics } from "@/actions/mobile"
+import { getAdminMobileMetrics } from "@/actions/mobile"
 
 function getActionColor(action: string) {
   const normalized = action.toLowerCase()
@@ -11,30 +9,11 @@ function getActionColor(action: string) {
   return "border-slate-800 text-slate-800"
 }
 
-export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics }) {
-  const handleLaunchScanner = () => {
-    // Placeholder click handler
-    console.log("Scanner launched")
-  }
+export async function AdminMobileMetrics() {
+  const metrics = await getAdminMobileMetrics()
 
   return (
-    <div className="flex flex-col gap-6 p-4 pb-24 md:hidden bg-white min-h-screen font-sans">
-      {/* Hero Section */}
-      <section>
-        <button
-          onClick={handleLaunchScanner}
-          className="w-full bg-[#0a1142] hover:bg-[#111956] text-white py-10 px-6 rounded-[24px] flex flex-col items-center justify-center gap-4 shadow-md transition-colors"
-        >
-          <div className="bg-white/10 p-4 rounded-full">
-            <Camera className="h-8 w-8 text-white" strokeWidth={1.5} />
-          </div>
-          <h2 className="text-2xl font-bold mt-2">Launch Scanner</h2>
-          <p className="text-center text-[15px] text-blue-100/70 mx-4 leading-snug">
-            Instantly scan asset barcodes to<br />update records or verify<br />assignments
-          </p>
-        </button>
-      </section>
-
+    <>
       {/* Quick Metrics Grid */}
       <section className="flex flex-col gap-3">
         <h3 className="text-[17px] font-bold text-slate-800">Quick Metrics</h3>
@@ -84,6 +63,6 @@ export function AdminMobileDashboard({ metrics }: { metrics: AdminMobileMetrics 
           )}
         </div>
       </section>
-    </div>
+    </>
   )
 }

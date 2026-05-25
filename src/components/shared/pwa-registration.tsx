@@ -4,9 +4,13 @@ import * as React from "react"
 
 export function PwaRegistration() {
   React.useEffect(() => {
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    if (
+      process.env.NODE_ENV !== "development" &&
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator
+    ) {
       navigator.serviceWorker
-        .register("/sw.ts")
+        .register("/sw.js")
         .then((reg) => {
           console.log("Service Worker registered.", reg)
         })

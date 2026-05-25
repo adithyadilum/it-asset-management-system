@@ -21,16 +21,16 @@ export function BrandHeader({ collapsed = false }: BrandHeaderProps) {
   }
 
   return (
-    <div className="inline-flex items-center justify-center gap-2">
+    <div className="inline-flex items-center justify-center gap-1.5 md:gap-2">
       <Image
         src="/tiqri-logo.png"
         alt="TIQRI Corporate Logo"
         width={89}
         height={50}
         priority
-        className="h-12.5 w-22.25 object-contain"
+        className="h-7 w-auto md:h-12.5 md:w-22.25 object-contain"
       />
-      <span className="text-4xl leading-12.5 font-semibold text-primary">Assets</span>
+      <span className="text-2xl md:text-4xl md:leading-12.5 font-semibold text-[#0a1142]">Assets</span>
     </div>
   )
 }
