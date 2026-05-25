@@ -80,6 +80,7 @@ import { type ProcessReturnPayload } from '@/lib/validations/asset-assignment';
 export interface AssignmentMutationResult {
   assignedAssetIds: string[];
   assignedCount: number;
+  assignedAssignmentIds: number[];
 }
 
 export class AssignmentServiceError extends Error {
@@ -571,6 +572,7 @@ export async function assignSingleAsset(
     return {
       assignedAssetIds: [asset.id],
       assignedCount: 1,
+      assignedAssignmentIds: [assignment.id],
     };
   });
 }
@@ -677,6 +679,7 @@ export async function assignMultipleAssets(
     return {
       assignedAssetIds: updatedAssets.map((a) => a.id),
       assignedCount: updatedAssets.length,
+      assignedAssignmentIds: insertedAssignments.map((assignment) => assignment.id),
     };
   });
 }
@@ -857,7 +860,9 @@ export async function triggerReturnRequests(
 export async function markAssignmentsAsReceived(
   assignmentIds: number[],
   performedById: string
-): Promise<void> {
+): Promise<{
+  assignments: Array<{ assignmentId: number; assetId: string }>;
+}> {
   const assignments = await db
     .select({
       id: assetAssignments.id,
@@ -873,7 +878,7 @@ export async function markAssignmentsAsReceived(
       )
     );
   if (assignments.length === 0) {
-    return;
+    return { assignments: [] };
   }
 
   const activeAssignmentIds = assignments.map((a) => a.id);
@@ -929,6 +934,13 @@ export async function markAssignmentsAsReceived(
       )
     );
   });
+
+  return {
+    assignments: assignments.map((assignment) => ({
+      assignmentId: assignment.id,
+      assetId: assignment.assetId,
+    })),
+  };
 }
 
 /**

@@ -15,6 +15,7 @@ import {
 import { eq, and, ilike, or, desc, sql } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import type {
   PendingReviewTicket,
   IssueReviewPanelData,
@@ -541,6 +542,13 @@ export async function initiateVendorRepair(
       performedAt: now,
     });
 
+    void dispatchWebhookEvent('maintenance.created', {
+      ticketId: newTickets[0].id,
+      assetId,
+      ticketType: newTicketValues.ticketType,
+      reportedIssue: newTicketValues.reportedIssue,
+    });
+
     return {
       success: true,
       message: 'Asset dispatched successfully',
@@ -633,6 +641,13 @@ export async function completeRepairTicket(
         actionContext: 'MAINTENANCE_REPAIR_COMPLETED',
       },
       performedAt: now,
+    });
+
+    void dispatchWebhookEvent('maintenance.completed', {
+      ticketId,
+      assetId,
+      resolutionNotes: safeResolutionNotes,
+      actualCost: actualCostNum,
     });
 
     return {

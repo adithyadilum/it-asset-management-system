@@ -20,6 +20,7 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import { isValidUuid } from '@/lib/auth/uuid';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import {
   WORKFLOW_GATED_STATUSES,
 } from '@/lib/constants';
@@ -510,6 +511,13 @@ export async function registerAsset(
       },
     });
 
+    void dispatchWebhookEvent('asset.created', {
+      assetTag: insertedAsset.assetTag,
+      assetId: insertedAsset.id,
+      modelId: input.modelId,
+      pillar: input.pillar,
+    });
+
     revalidatePath('/assets');
 
     return {
@@ -630,6 +638,15 @@ export async function updateAsset(
       oldData: currentAsset as unknown as Record<string, unknown>,
       newData: updatedAsset as unknown as Record<string, unknown>,
     });
+
+    if (data.status && data.status !== currentAsset.status) {
+      void dispatchWebhookEvent('asset.status_changed', {
+        assetId,
+        assetTag: currentAsset.assetTag,
+        oldStatus: currentAsset.status,
+        newStatus: data.status,
+      });
+    }
   }
 
   revalidatePath('/assets');
@@ -764,6 +781,14 @@ export async function manualStatusOverrideAction(
     revalidatePath('/assets/software');
     revalidatePath('/assets/furniture');
     revalidatePath('/assets/office-electronics');
+
+    void dispatchWebhookEvent('asset.status_changed', {
+      assetId,
+      assetTag: currentAsset.assetTag,
+      oldStatus: currentAsset.status,
+      newStatus,
+      trigger: 'manual_override',
+    });
 
     return {
       success: true,
