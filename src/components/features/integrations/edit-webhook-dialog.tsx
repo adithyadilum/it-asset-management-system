@@ -27,10 +27,19 @@ export function EditWebhookDialog({
   subscription,
   onChanged,
 }: EditWebhookDialogProps) {
+  const originalName = subscription?.name.trim() ?? ""
+  const originalUrl = subscription?.url.trim() ?? ""
+  const originalEvents = [...(subscription?.events ?? [])].sort()
+
   const [name, setName] = useState(subscription?.name ?? "")
   const [url, setUrl] = useState(subscription?.url ?? "")
   const [selectedEvents, setSelectedEvents] = useState<WebhookEventType[]>(subscription?.events ?? [])
   const [isPending, startTransition] = useTransition()
+
+  const hasChanges =
+    name.trim() !== originalName ||
+    url.trim() !== originalUrl ||
+    [...selectedEvents].sort().join("|") !== originalEvents.join("|")
 
   const handleSubmit = () => {
     if (!subscription) {
@@ -129,7 +138,7 @@ export function EditWebhookDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isPending}
+              disabled={isPending || !hasChanges}
               className="h-9 rounded-md bg-[#0b2b69] px-4 text-sm font-semibold text-white hover:bg-[#09224f]"
             >
               {isPending ? "Saving..." : "Save Webhook"}
