@@ -26,7 +26,6 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
       <div className="flex justify-end items-center gap-2">
         <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
           <a href="https://docs.tiqri.com/api" target="_blank" rel="noopener noreferrer">
-            <BookOpen className="h-4 w-4" />
             View API Documentation
           </a>
         </Button>

@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { CheckCircle2, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { DataTable } from "@/components/shared/data-table"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 
 import type { ApiKeyDisplay } from "@/types/integrations"
 import { RevokeKeyDialog } from "./revoke-key-dialog"
@@ -58,17 +58,12 @@ export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
       header: "Status",
       cell: (ctx) => {
         if (ctx.row.original.isRevoked) {
-          return <Badge variant="destructive">Revoked</Badge>
+          return <StatusBadge value="defective" label="Revoked" />
         }
         if (ctx.row.original.isExpired) {
-          return <Badge variant="secondary">Expired</Badge>
+          return <StatusBadge value="expired" />
         }
-        return (
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-            <CheckCircle2 className="h-4 w-4" />
-            Active
-          </span>
-        )
+        return <StatusBadge value="active" />
       },
     },
     {
