@@ -1,7 +1,8 @@
 ﻿import { getAuthenticatedUser } from '@/actions/auth'
-import { getApiKeys } from '@/lib/data/integrations-repo'
+import { getApiKeys, getWebhookSubscriptions } from '@/lib/data/integrations-repo'
 import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs'
 import { ApiKeysTab } from '@/components/features/integrations/api-keys-tab'
+import { WebhooksTab } from '@/components/features/integrations/webhooks-tab'
 
 export default async function IntegrationsPage() {
   const user = await getAuthenticatedUser()
@@ -11,10 +12,11 @@ export default async function IntegrationsPage() {
   }
 
   const apiKeys = await getApiKeys()
+  const webhookSubscriptions = await getWebhookSubscriptions()
 
   const tabs = [
     { id: 'api-keys', label: 'API Keys', content: <ApiKeysTab keys={apiKeys} /> },
-    { id: 'webhooks', label: 'Webhooks', content: <div className="p-6">Webhooks coming soon.</div> },
+    { id: 'webhooks', label: 'Webhooks', content: <WebhooksTab subscriptions={webhookSubscriptions} /> },
   ]
 
   const header = (
