@@ -32,7 +32,16 @@ export async function createApiKey(formData: FormData): Promise<CreateApiKeyResu
 
   try {
     const parsedScopes = JSON.parse(rawScopes);
-    const parsed = createApiKeySchema.parse({ name: rawName, scopes: parsedScopes, expiresAt: rawExpires });
+    const parsedResult = createApiKeySchema.safeParse({ name: rawName, scopes: parsedScopes, expiresAt: rawExpires });
+
+    if (!parsedResult.success) {
+      return {
+        success: false,
+        error: parsedResult.error.issues[0]?.message ?? 'Please check the API key details and try again.',
+      };
+    }
+
+    const parsed = parsedResult.data;
 
     const bytes = randomBytes(32);
     const plainText = `${API_KEY_PREFIX}${bytes.toString('hex')}`;
@@ -62,10 +71,11 @@ export async function createApiKey(formData: FormData): Promise<CreateApiKeyResu
 
     return { success: true, plainTextKey: plainText };
   } catch (err) {
-    if (err instanceof Error) {
-      return { success: false, error: err.message };
+    if (err instanceof SyntaxError) {
+      return { success: false, error: 'Please select valid API key scopes and try again.' };
     }
-    return { success: false, error: 'Validation failed' };
+
+    return { success: false, error: 'Failed to create API key. Please try again.' };
   }
 }
 

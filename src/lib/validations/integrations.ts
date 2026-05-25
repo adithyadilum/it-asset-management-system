@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { API_KEY_SCOPES, WEBHOOK_EVENT_TYPES } from '@/types/integrations';
 
 export const createApiKeySchema = z.object({
-  name: z.string().min(3).max(100),
+  name: z.string().min(3, 'API key name must be at least 3 characters long').max(100),
   scopes: z.array(z.enum([...API_KEY_SCOPES] as [string, ...string[]])).min(1, 'Select at least one scope'),
   expiresAt: z
     .string()
