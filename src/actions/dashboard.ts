@@ -446,12 +446,12 @@ export async function getDashboardDepartmentAllocation(): Promise<DepartmentAllo
 export interface DashboardKpiMetrics {
   totalAssetValue?: number;
   netBookValue?: number;
-  inactiveSoftwareSeats: number;
+  inactiveSoftwareSeats?: number;
   inactiveSoftwareCostLeak?: number;
-  warrantyExpiries30Days: number;
+  warrantyExpiries30Days?: number;
   cumulativeRepairSpend?: number;
-  softwareRenewals30Days: number;
-  impactedSoftwareEmployees: number;
+  softwareRenewals30Days?: number;
+  impactedSoftwareEmployees?: number;
 }
 
 /**
@@ -635,6 +635,14 @@ export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
       warrantyExpiries30Days: metrics.warrantyExpiries30Days,
       softwareRenewals30Days: metrics.softwareRenewals30Days,
       impactedSoftwareEmployees: metrics.impactedSoftwareEmployees,
+    };
+  }
+
+  if (user.role === 'FinanceAuditor') {
+    return {
+      totalAssetValue: metrics.totalAssetValue,
+      netBookValue: metrics.netBookValue,
+      cumulativeRepairSpend: metrics.cumulativeRepairSpend,
     };
   }
 
