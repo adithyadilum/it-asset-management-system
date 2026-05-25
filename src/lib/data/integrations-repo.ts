@@ -55,7 +55,7 @@ export async function getWebhookSubscriptions(): Promise<WebhookSubscriptionDisp
       updatedAt: webhookSubscriptions.updatedAt,
     })
     .from(webhookSubscriptions)
-    .leftJoin(users, eq(users.id, webhookSubscriptions.createdById))
+    .innerJoin(users, eq(users.id, webhookSubscriptions.createdById))
     .orderBy(desc(webhookSubscriptions.createdAt));
 
   return rows.map((r) => ({
