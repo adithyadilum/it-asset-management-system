@@ -5,43 +5,65 @@ import { apiKeys } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { logAuditAction } from '@/lib/audit'
 import { applyRateLimit, injectRateLimitHeaders } from '@/lib/api/rate-limiter'
+import type { ApiKeyScope } from '@/types/integrations'
 
-type ApiKeyRecord = {
+export type ApiKeyRecord = {
   id: string
   name: string
   keyHash: string
   isRevoked: boolean
   expiresAt: Date | null
-  scopes: string[]
+  scopes: ApiKeyScope[]
   createdById: string
 }
 
-export function withApiKey(
-  requiredScope: string,
-  handler: (req: NextRequest, ctx: { apiKey: ApiKeyRecord }) => Promise<NextResponse>
+type ExternalApiErrorCode =
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'RATE_LIMITED'
+  | 'INVALID_API_KEY'
+  | 'REVOKED_API_KEY'
+  | 'EXPIRED_API_KEY'
+
+function apiError(status: number, code: ExternalApiErrorCode, message: string) {
+  return NextResponse.json(
+    {
+      success: false,
+      error: { code, message },
+    },
+    { status }
+  )
+}
+
+export function withApiKey<TContext extends Record<string, unknown>>(
+  requiredScope: ApiKeyScope,
+  handler: (
+    req: NextRequest,
+    ctx: TContext & { apiKey: ApiKeyRecord }
+  ) => Promise<NextResponse>
 ) {
-  return async (req: NextRequest) => {
+  return async (req: NextRequest, ctx: TContext) => {
     try {
       const authHeader = req.headers.get('authorization')
       if (!authHeader?.startsWith('Bearer ')) {
-        return NextResponse.json({ error: 'Missing or invalid Authorization header' }, { status: 401 })
+        return apiError(401, 'UNAUTHORIZED', 'Missing or invalid Authorization header')
       }
 
       const token = authHeader.slice(7)
       const hash = createHash('sha256').update(token).digest('hex')
 
       const found = await db.query.apiKeys.findFirst({ where: eq(apiKeys.keyHash, hash) }) as ApiKeyRecord | undefined
-      if (!found) return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
-      if (found.isRevoked) return NextResponse.json({ error: 'API key has been revoked' }, { status: 401 })
-      if (found.expiresAt && new Date(found.expiresAt) < new Date()) return NextResponse.json({ error: 'API key has expired' }, { status: 401 })
+      if (!found) return apiError(401, 'INVALID_API_KEY', 'Invalid API key')
+      if (found.isRevoked) return apiError(401, 'REVOKED_API_KEY', 'API key has been revoked')
+      if (found.expiresAt && new Date(found.expiresAt) < new Date()) return apiError(401, 'EXPIRED_API_KEY', 'API key has expired')
 
       if (!Array.isArray(found.scopes) || !found.scopes.includes(requiredScope)) {
-        return NextResponse.json({ error: `Insufficient permissions. Required: ${requiredScope}` }, { status: 403 })
+        return apiError(403, 'FORBIDDEN', `Insufficient permissions. Required: ${requiredScope}`)
       }
 
       const rl = await applyRateLimit(found.id)
       if (!rl.success) {
-        const resp = NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+        const resp = apiError(429, 'RATE_LIMITED', 'Rate limit exceeded')
         injectRateLimitHeaders(resp, rl)
         return resp
       }
@@ -57,11 +79,11 @@ export function withApiKey(
         newData: { apiKeyName: found.name, scope: requiredScope, method: req.method },
       })
 
-      const response = await handler(req, { apiKey: found })
+      const response = await handler(req, { ...ctx, apiKey: found })
       injectRateLimitHeaders(response, rl)
       return response
     } catch {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return apiError(401, 'UNAUTHORIZED', 'Unauthorized')
     }
   }
 }
