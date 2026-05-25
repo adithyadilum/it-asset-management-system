@@ -445,12 +445,12 @@ export async function getDashboardDepartmentAllocation(): Promise<DepartmentAllo
 }
 
 export interface DashboardKpiMetrics {
-  totalAssetValue: number;
-  netBookValue: number;
+  totalAssetValue?: number;
+  netBookValue?: number;
   inactiveSoftwareSeats: number;
-  inactiveSoftwareCostLeak: number;
+  inactiveSoftwareCostLeak?: number;
   warrantyExpiries30Days: number;
-  cumulativeRepairSpend: number;
+  cumulativeRepairSpend?: number;
   softwareRenewals30Days: number;
   impactedSoftwareEmployees: number;
 }
@@ -628,6 +628,17 @@ export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
   if (!user) throw new Error('Unauthorized');
   if (user.role === 'Employee') throw new Error('Forbidden');
 
-  return getCachedDashboardKpiMetrics();
+  const metrics = await getCachedDashboardKpiMetrics();
+
+  if (user.role === 'ITOperator') {
+    return {
+      inactiveSoftwareSeats: metrics.inactiveSoftwareSeats,
+      warrantyExpiries30Days: metrics.warrantyExpiries30Days,
+      softwareRenewals30Days: metrics.softwareRenewals30Days,
+      impactedSoftwareEmployees: metrics.impactedSoftwareEmployees,
+    };
+  }
+
+  return metrics;
 }
 

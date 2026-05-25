@@ -1,5 +1,6 @@
 import { KpiCard } from "./kpi-card"
 import type { DashboardKpiMetrics } from "@/actions/dashboard"
+import { cn } from "@/lib/utils"
 
 export interface KpiMetricsRowProps {
   metrics: DashboardKpiMetrics;
@@ -32,9 +33,13 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
     : 0;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-      <KpiCard 
-        title="Total Asset Value"
+    <div className={cn(
+      "grid gap-3",
+      metrics.totalAssetValue !== undefined ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6" : "grid-cols-1 md:grid-cols-3"
+    )}>
+      {metrics.totalAssetValue !== undefined && (
+        <KpiCard 
+          title="Total Asset Value"
         value={formatCurrency(metrics.totalAssetValue)}
         badgeText="+2.4%"
         badgeType="positive"
@@ -43,6 +48,8 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         subText2="Includes hardware, software, and facilities."
         href="/financials/tco"
       />
+      )}
+      {metrics.netBookValue !== undefined && (
       <KpiCard 
         title="Net Book Value"
         value={formatCurrency(metrics.netBookValue)}
@@ -53,6 +60,8 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         subText2="Calculated via straight-line depreciation."
         href="/financials/depreciation"
       />
+      )}
+      {metrics.cumulativeRepairSpend !== undefined && (
       <KpiCard 
         title="Cumulative Repair Spend"
         value={formatCurrency(metrics.cumulativeRepairSpend)}
@@ -73,6 +82,7 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         subText2="Action needed to renew or retire."
         href="/assets/hardware"
       />
+      {metrics.inactiveSoftwareCostLeak !== undefined && (
       <KpiCard 
         title="Inactive Software Seats"
         value={`${formatNumber(metrics.inactiveSoftwareSeats)} Seats`}
@@ -83,6 +93,7 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         subText2="Target for license subscription downgrade."
         href="/assets/software"
       />
+      )}
       <KpiCard 
         title="Software Renewals (30 Days)"
         value={`${formatNumber(metrics.softwareRenewals30Days)} Licenses`}
