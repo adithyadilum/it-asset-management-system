@@ -253,7 +253,7 @@ function formatActionType(actionType: string): string {
 export async function getDashboardRecentActivities(): Promise<RecentActivity[]> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') throw new Error('Forbidden');
+  if (user.role !== 'GlobalAdmin') throw new Error('Forbidden');
   
   // Fetch top 5 recent logs with user info
   const logs = await db
@@ -642,7 +642,6 @@ export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
     return {
       totalAssetValue: metrics.totalAssetValue,
       netBookValue: metrics.netBookValue,
-      cumulativeRepairSpend: metrics.cumulativeRepairSpend,
     };
   }
 

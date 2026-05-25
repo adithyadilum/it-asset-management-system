@@ -399,7 +399,7 @@ export function DashboardChartsRow({
   departmentAllocation: DepartmentAllocationItem[]
   userRole: string
 }) {
-  const showRecentActivities = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
+  const showRecentActivities = userRole === 'GlobalAdmin'
 
   return (
     <div className={cn("grid gap-4 shrink-0 h-[340px]", showRecentActivities ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2")}>
