@@ -7,7 +7,7 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 import { assetAssignments, assetPurchases, assets, models } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
-import { canManageAssets } from '@/lib/auth/roles';
+import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import {
   getAssetDetailsById,
   getAssetHistoryById,
@@ -317,7 +317,7 @@ export async function registerAsset(
 
 export async function getAssetDetails(id: string) {
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) throw new Error('Unauthorized');
+  if (!currentUser || !canViewAssetRegistry(currentUser.role)) throw new Error('Unauthorized');
 
   return getAssetDetailsById(id);
 }
@@ -329,7 +329,7 @@ export async function getAssetDetails(id: string) {
  */
 export async function getAssetHistory(id: string) {
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role))
+  if (!currentUser || !canViewAssetRegistry(currentUser.role))
     throw new Error('Unauthorized');
 
   return getAssetHistoryById(id);
@@ -342,7 +342,7 @@ export async function getAssetHistory(id: string) {
  */
 export async function getAssetMaintenance(id: string) {
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role))
+  if (!currentUser || !canViewAssetRegistry(currentUser.role))
     throw new Error('Unauthorized');
 
   return getAssetMaintenanceById(id);

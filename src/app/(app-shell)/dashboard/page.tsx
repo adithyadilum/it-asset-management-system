@@ -107,7 +107,7 @@ export default async function DashboardPage() {
     const canSeeOverdue = user?.role === 'GlobalAdmin' || user?.role === 'ITOperator';
     const canSeePending = user?.role === 'GlobalAdmin' || user?.role === 'FinanceAuditor';
     const canSeeHighMaintenance = user?.role === 'GlobalAdmin' || user?.role === 'ITOperator';
-    const canSeeRecentActivities = user?.role === 'GlobalAdmin';
+    const canSeeRecentActivities = user?.role === 'GlobalAdmin' || user?.role === 'FinanceAuditor';
 
     const [
         overdueReturns, 

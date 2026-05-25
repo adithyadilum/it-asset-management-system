@@ -112,7 +112,7 @@ function useOverdueColumns(
   ], [actionLabel, onSendReminder, sendingReminderIds])
 }
 
-function usePendingDisposalColumns(): ColumnDef<PendingDisposalRow>[] {
+function usePendingDisposalColumns(userRole: string): ColumnDef<PendingDisposalRow>[] {
   const router = useRouter()
 
   return useMemo(() => [
@@ -156,23 +156,28 @@ function usePendingDisposalColumns(): ColumnDef<PendingDisposalRow>[] {
       size: 150,
       minSize: 130,
       meta: { noTruncate: true },
-      cell: ({ row }) => (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="group h-7 text-xs px-3 transition-all hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm active:scale-95 inline-flex items-center gap-1"
-          onClick={() =>
-            router.push(
-              `/operations/disposals?panel=review&id=${row.original.disposalId}`
-            )
-          }
-        >
-          Take Action
-          <ArrowUpRight className="w-3.5 h-3.5 opacity-0 -translate-y-0.5 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:translate-y-0 transition-all duration-200" />
-        </Button>
-      ),
+      cell: ({ row }) => {
+        if (userRole === 'FinanceAuditor') {
+          return <span className="text-xs text-muted-foreground italic">Awaiting Admin Sign-Off</span>
+        }
+        return (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="group h-7 text-xs px-3 transition-all hover:bg-destructive hover:text-destructive-foreground hover:shadow-sm active:scale-95 inline-flex items-center gap-1"
+            onClick={() =>
+              router.push(
+                `/operations/disposals?panel=review&id=${row.original.disposalId}`
+              )
+            }
+          >
+            Take Action
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 -translate-y-0.5 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:translate-y-0 transition-all duration-200" />
+          </Button>
+        )
+      },
     },
-  ], [router])
+  ], [router, userRole])
 }
 
 function useHighMaintenanceColumns(onFlag: (asset: HighMaintenanceRow) => void): ColumnDef<HighMaintenanceRow>[] {
@@ -242,7 +247,7 @@ interface Props {
 }
 
 export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, userRole }: Props) {
-  const showPending = userRole === 'GlobalAdmin'
+  const showPending = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<Set<number>>(new Set())
@@ -281,7 +286,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
   }
 
   const overdueColumns = useOverdueColumns("Send Reminder", handleSendReminder, sendingReminderIds)
-  const pendingColumns = usePendingDisposalColumns()
+  const pendingColumns = usePendingDisposalColumns(userRole)
   const lemonsColumns = useHighMaintenanceColumns(handleFlagClick)
 
   const tableProps: {
