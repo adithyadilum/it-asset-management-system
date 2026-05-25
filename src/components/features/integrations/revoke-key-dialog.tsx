@@ -98,7 +98,12 @@ export function RevokeKeyDialog({
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={isDeleteMode ? handleDelete : handleRevoke} disabled={isSubmitting} variant={isDeleteMode ? "destructive" : "default"}>
+            <Button
+              onClick={isDeleteMode ? handleDelete : handleRevoke}
+              disabled={isSubmitting}
+              variant={isDeleteMode ? "destructive" : "default"}
+              className={isDeleteMode ? undefined : "h-9 rounded-md bg-[#0b2b69] px-4 text-sm font-semibold text-white hover:bg-[#09224f]"}
+            >
               {isSubmitting ? (isDeleteMode ? "Deleting..." : "Revoking...") : (isDeleteMode ? "Delete Key" : "Revoke Key")}
             </Button>
           </div>

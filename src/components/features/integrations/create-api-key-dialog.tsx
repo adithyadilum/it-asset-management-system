@@ -113,7 +113,11 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                 <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending as unknown as boolean}>
                   Cancel
                 </Button>
-                <Button onClick={handleSubmit} disabled={isPending as unknown as boolean}>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isPending as unknown as boolean}
+                  className="h-9 rounded-md bg-[#0b2b69] px-4 text-sm font-semibold text-white hover:bg-[#09224f]"
+                >
                   {isPending ? "Creating..." : "Create"}
                 </Button>
               </div>
