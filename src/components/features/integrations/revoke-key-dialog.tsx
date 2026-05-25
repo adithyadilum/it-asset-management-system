@@ -13,11 +13,20 @@ interface RevokeKeyDialogProps {
   onOpenChange: (open: boolean) => void
   keyId: string | null
   keyName?: string | null
+  mode?: "revoke" | "delete"
   onChanged?: () => void
 }
 
-export function RevokeKeyDialog({ open, onOpenChange, keyId, keyName, onChanged }: RevokeKeyDialogProps) {
+export function RevokeKeyDialog({
+  open,
+  onOpenChange,
+  keyId,
+  keyName,
+  mode = "revoke",
+  onChanged,
+}: RevokeKeyDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const isDeleteMode = mode === "delete"
 
   const handleRevoke = async () => {
     if (!keyId) return
@@ -64,7 +73,9 @@ export function RevokeKeyDialog({ open, onOpenChange, keyId, keyName, onChanged 
           <div className="mb-6 flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <KeyRound className="mt-0.5 h-6 w-6 text-red-500" />
-              <DialogTitle className="text-xl font-semibold text-red-500">Revoke API Key</DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-red-500">
+                {isDeleteMode ? "Delete API Key" : "Revoke API Key"}
+              </DialogTitle>
             </div>
             <Button variant="ghost" size="icon" aria-label="Close" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="-mr-2 -mt-2 h-9 w-9 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
               <X className="h-5 w-5" />
@@ -77,16 +88,18 @@ export function RevokeKeyDialog({ open, onOpenChange, keyId, keyName, onChanged 
             </p>
           </div>
 
-          <DialogDescription className="mb-8 text-base font-semibold leading-7 text-slate-900">
-            Are you sure? Any external system using this key will immediately lose access and receive 401 Unauthorized errors.
+          <DialogDescription className="mb-8 text-base font-regular leading-7 text-slate-900">
+            {isDeleteMode
+              ? "This record was already revoked. Deleting it will permanently remove the API key from the system."
+              : "Are you sure? Any external system using this key will immediately lose access and receive 401 Unauthorized errors."}
           </DialogDescription>
 
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleRevoke} disabled={isSubmitting}>
-              {isSubmitting ? "Revoking..." : "Revoke Key"}
+            <Button onClick={isDeleteMode ? handleDelete : handleRevoke} disabled={isSubmitting} variant={isDeleteMode ? "destructive" : "default"}>
+              {isSubmitting ? (isDeleteMode ? "Deleting..." : "Revoking...") : (isDeleteMode ? "Delete Key" : "Revoke Key")}
             </Button>
           </div>
         </div>

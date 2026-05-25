@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Trash2 } from "lucide-react"
+import { KeyRound, Trash2 } from "lucide-react"
 import { DataTable } from "@/components/shared/data-table"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/shared/status-badge"
@@ -18,6 +18,7 @@ interface ApiKeyTableProps {
 export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
   const [revokingKey, setRevokingKey] = useState<string | null>(null)
   const [revokingKeyName, setRevokingKeyName] = useState<string | null>(null)
+  const [dialogMode, setDialogMode] = useState<"revoke" | "delete">("revoke")
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const columns = useMemo<ColumnDef<ApiKeyDisplay, unknown>[]>(() => [
@@ -80,11 +81,12 @@ export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
             onClick={() => {
               setRevokingKey(ctx.row.original.id)
               setRevokingKeyName(ctx.row.original.name)
+              setDialogMode(ctx.row.original.isRevoked ? "delete" : "revoke")
               setDialogOpen(true)
             }}
-            aria-label="Revoke key"
+            aria-label={ctx.row.original.isRevoked ? "Delete key" : "Revoke key"}
           >
-            <Trash2 className="h-4 w-4" />
+            {ctx.row.original.isRevoked ? <Trash2 className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
           </Button>
         </div>
       ),
@@ -104,6 +106,7 @@ export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
         onOpenChange={setDialogOpen}
         keyId={revokingKey}
         keyName={revokingKeyName}
+        mode={dialogMode}
         onChanged={onChanged}
       />
     </>
