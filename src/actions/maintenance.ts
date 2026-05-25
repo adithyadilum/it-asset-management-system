@@ -15,6 +15,11 @@ import {
 import { eq, and, ilike, or, desc, sql } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import {
+  resolveIssueSchema,
+  initiateVendorRepairSchema,
+  completeRepairSchema,
+} from '@/lib/validations/maintenance';
 import type {
   PendingReviewTicket,
   IssueReviewPanelData,
@@ -30,17 +35,9 @@ const MAX_QUERY_LIMIT = 100;
 const DEFAULT_HISTORY_LIMIT = 3;
 
 /**
- * Strips HTML tags and enforces a maximum length to prevent XSS and buffer overflow.
- * Enforces input sanitization before saving to the database or audit logs.
+ * Input sanitization utilities are intentionally removed if unused.
+ * Reintroduce a focused sanitizer when needed.
  */
-function sanitizeText(
-  input: string | null | undefined,
-  maxLength: number
-): string {
-  if (!input) return '';
-  const stripped = input.replace(/<[^>]*>?/gm, '');
-  return stripped.trim().substring(0, maxLength);
-}
 
 // ============================================================================
 // READ OPERATIONS
@@ -371,74 +368,94 @@ export async function resolveIssueInternally(
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
-  // 2. Input Sanitization
-  const safeResolutionNote = sanitizeText(resolutionNote, 1000);
-  if (!safeResolutionNote) throw new Error('Resolution note is required');
+  // 2. Zod Input Validation
+  const parsed = resolveIssueSchema.safeParse({ ticketId, resolutionNote });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
+  }
+  const safeResolutionNote = parsed.data.resolutionNote;
 
   // 3. Atomic Database Transaction
-  return await db.transaction(async (tx) => {
-    const ticketResult = await tx
-      .select()
-      .from(maintenanceTickets)
-      .where(eq(maintenanceTickets.id, ticketId))
-      .limit(1);
-    if (ticketResult.length === 0)
-      throw new Error(`Ticket with ID ${ticketId} not found`);
-    const ticket = ticketResult[0];
+  try {
+    return await db.transaction(async (tx) => {
+      const ticketResult = await tx
+        .select()
+        .from(maintenanceTickets)
+        .where(eq(maintenanceTickets.id, ticketId))
+        .limit(1);
+      if (ticketResult.length === 0)
+        throw new Error(`Ticket with ID ${ticketId} not found`);
+      const ticket = ticketResult[0];
 
-    const currentAssetResult = await tx
-      .select()
-      .from(assets)
-      .where(eq(assets.id, ticket.assetId))
-      .limit(1);
-    if (currentAssetResult.length === 0)
-      throw new Error(`Asset with ID ${ticket.assetId} not found`);
-    const currentAsset = currentAssetResult[0];
+      const currentAssetResult = await tx
+        .select()
+        .from(assets)
+        .where(eq(assets.id, ticket.assetId))
+        .limit(1);
+      if (currentAssetResult.length === 0)
+        throw new Error(`Asset with ID ${ticket.assetId} not found`);
+      const currentAsset = currentAssetResult[0];
 
-    const now = new Date();
+      const now = new Date();
 
-    const updatedAssets = await tx
-      .update(assets)
-      .set({ status: 'Available', updatedAt: now })
-      .where(eq(assets.id, ticket.assetId))
-      .returning({ id: assets.id });
-    if (updatedAssets.length === 0)
-      throw new Error('Failed to update asset status');
+      const updatedAssets = await tx
+        .update(assets)
+        .set({ status: 'Available', updatedAt: now })
+        .where(eq(assets.id, ticket.assetId))
+        .returning({ id: assets.id });
+      if (updatedAssets.length === 0)
+        throw new Error('Failed to update asset status');
 
-    const updatedTickets = await tx
-      .update(maintenanceTickets)
-      .set({
-        status: 'COMPLETED',
-        resolutionNotes: safeResolutionNote,
-        actualCompletionDate: now,
-        updatedAt: now,
-      })
-      .where(eq(maintenanceTickets.id, ticketId))
-      .returning({ id: maintenanceTickets.id });
-    if (updatedTickets.length === 0)
-      throw new Error('Failed to update maintenance ticket');
+      const updatedTickets = await tx
+        .update(maintenanceTickets)
+        .set({
+          status: 'COMPLETED',
+          resolutionNotes: safeResolutionNote,
+          actualCompletionDate: now,
+          updatedAt: now,
+        })
+        .where(eq(maintenanceTickets.id, ticketId))
+        .returning({ id: maintenanceTickets.id });
+      if (updatedTickets.length === 0)
+        throw new Error('Failed to update maintenance ticket');
 
-    // Audit Log complies with strict Enum ('UPDATE')
-    await tx.insert(systemAuditLogs).values({
-      entityType: 'Asset',
-      entityId: ticket.assetId,
-      actionType: 'UPDATE',
-      performedById: user.id,
-      oldValue: { status: currentAsset.status },
-      newValue: {
-        status: 'Available',
-        resolutionNote: safeResolutionNote,
-        actionContext: 'MAINTENANCE_RESOLVED_INTERNALLY',
-      },
-      performedAt: now,
+      // Audit Log complies with strict Enum ('UPDATE')
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: ticket.assetId,
+        actionType: 'UPDATE',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status },
+        newValue: {
+          status: 'Available',
+          resolutionNote: safeResolutionNote,
+          actionContext: 'MAINTENANCE_RESOLVED_INTERNALLY',
+        },
+        performedAt: now,
+      });
+
+      return {
+        success: true,
+        message: 'Issue resolved successfully',
+        assetId: ticket.assetId,
+      };
     });
-
-    return {
-      success: true,
-      message: 'Issue resolved successfully',
-      assetId: ticket.assetId,
-    };
-  });
+  } catch (error) {
+    const knownMessages = [
+      'Ticket with ID',
+      'Asset with ID',
+      'Failed to update asset status',
+      'Failed to update maintenance ticket',
+    ];
+    const isKnown =
+      error instanceof Error &&
+      knownMessages.some((m) => error.message.startsWith(m));
+    throw new Error(
+      isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to resolve maintenance ticket.'
+    );
+  }
 }
 
 export async function initiateVendorRepair(
@@ -455,99 +472,128 @@ export async function initiateVendorRepair(
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
-  // 2. Input Sanitization
-  const safeRmaNumber = sanitizeText(rmaNumber, 100);
+  // 2. Zod Input Validation
+  const parsed = initiateVendorRepairSchema.safeParse({
+    ticketId,
+    assetId,
+    vendorId,
+    rmaNumber: rmaNumber || undefined,
+    estimatedCost: estimatedCost || undefined,
+    expectedReturnDate: expectedReturnDate || undefined,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
+  }
 
   // 3. Atomic Database Transaction
-  return await db.transaction(async (tx) => {
-    const currentAssetResult = await tx
-      .select()
-      .from(assets)
-      .where(eq(assets.id, assetId))
-      .limit(1);
-    if (currentAssetResult.length === 0)
-      throw new Error(`Asset ${assetId} not found`);
-    const currentAsset = currentAssetResult[0];
+  try {
+    return await db.transaction(async (tx) => {
+      const currentAssetResult = await tx
+        .select()
+        .from(assets)
+        .where(eq(assets.id, parsed.data.assetId))
+        .limit(1);
+      if (currentAssetResult.length === 0)
+        throw new Error(`Asset ${parsed.data.assetId} not found`);
+      const currentAsset = currentAssetResult[0];
 
-    const vendorResult = await tx
-      .select()
-      .from(vendors)
-      .where(eq(vendors.id, parseInt(vendorId)))
-      .limit(1);
-    if (vendorResult.length === 0)
-      throw new Error(`Vendor ${vendorId} not found`);
-    const vendor = vendorResult[0];
+      const vendorResult = await tx
+        .select()
+        .from(vendors)
+        .where(eq(vendors.id, parsed.data.vendorId))
+        .limit(1);
+      if (vendorResult.length === 0)
+        throw new Error(`Vendor ${parsed.data.vendorId} not found`);
+      const vendor = vendorResult[0];
 
-    const now = new Date();
+      const now = new Date();
 
-    const closedTicket = await tx
-      .update(maintenanceTickets)
-      .set({
-        status: 'COMPLETED',
-        resolutionNotes: 'Dispatched to vendor repair',
-        actualCompletionDate: now,
+      const closedTicket = await tx
+        .update(maintenanceTickets)
+        .set({
+          status: 'COMPLETED',
+          resolutionNotes: 'Dispatched to vendor repair',
+          actualCompletionDate: now,
+          updatedAt: now,
+        })
+        .where(eq(maintenanceTickets.id, ticketId))
+        .returning({ id: maintenanceTickets.id });
+      if (closedTicket.length === 0)
+        throw new Error('Failed to close initial triage ticket');
+
+      const updatedAsset = await tx
+        .update(assets)
+        .set({ status: 'In Repair', updatedAt: now })
+        .where(eq(assets.id, parsed.data.assetId))
+        .returning({ id: assets.id });
+      if (updatedAsset.length === 0)
+        throw new Error('Failed to update asset status');
+
+      const newTicketValues = {
+        assetId: parsed.data.assetId,
+        ticketType: 'VENDOR' as const,
+        vendorName: vendor.companyName,
+        rmaNumber: parsed.data.rmaNumber ?? null,
+        reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
+        estimatedCost:
+          parsed.data.estimatedCost != null
+            ? parsed.data.estimatedCost.toString()
+            : null,
+        estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
+        status: 'ACTIVE' as const,
+        dispatchedById: user.id,
+        createdAt: now,
         updatedAt: now,
-      })
-      .where(eq(maintenanceTickets.id, ticketId))
-      .returning({ id: maintenanceTickets.id });
-    if (closedTicket.length === 0)
-      throw new Error('Failed to close initial triage ticket');
+      };
 
-    const updatedAsset = await tx
-      .update(assets)
-      .set({ status: 'In Repair', updatedAt: now })
-      .where(eq(assets.id, assetId))
-      .returning({ id: assets.id });
-    if (updatedAsset.length === 0)
-      throw new Error('Failed to update asset status');
+      const newTickets = await tx
+        .insert(maintenanceTickets)
+        .values(newTicketValues)
+        .returning();
+      if (!newTickets[0])
+        throw new Error('Failed to create vendor repair ticket');
 
-    const newTicketValues = {
-      assetId: assetId,
-      ticketType: 'VENDOR' as const,
-      vendorName: vendor.companyName,
-      rmaNumber: safeRmaNumber,
-      reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-      estimatedCost: estimatedCost
-        ? parseFloat(estimatedCost).toString()
-        : null,
-      estimatedReturnDate: expectedReturnDate ? expectedReturnDate : null,
-      status: 'ACTIVE' as const,
-      dispatchedById: user.id,
-      createdAt: now,
-      updatedAt: now,
-    };
+      // Audit Log complies with strict Enum ('UPDATE')
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: parsed.data.assetId,
+        actionType: 'UPDATE',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status },
+        newValue: {
+          status: 'In Repair',
+          vendor: vendor.companyName,
+          rmaNumber: parsed.data.rmaNumber ?? null,
+          estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
+          actionContext: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
+        },
+        performedAt: now,
+      });
 
-    const newTickets = await tx
-      .insert(maintenanceTickets)
-      .values(newTicketValues)
-      .returning();
-    if (!newTickets[0])
-      throw new Error('Failed to create vendor repair ticket');
-
-    // Audit Log complies with strict Enum ('UPDATE')
-    await tx.insert(systemAuditLogs).values({
-      entityType: 'Asset',
-      entityId: assetId,
-      actionType: 'UPDATE',
-      performedById: user.id,
-      oldValue: { status: currentAsset.status },
-      newValue: {
-        status: 'In Repair',
-        vendor: vendor.companyName,
-        rmaNumber: safeRmaNumber,
-        estimatedReturnDate: expectedReturnDate || null,
-        actionContext: 'MAINTENANCE_VENDOR_REPAIR_INITIATED',
-      },
-      performedAt: now,
+      return {
+        success: true,
+        message: 'Asset dispatched successfully',
+        ticketId: newTickets[0].id,
+        assetId: parsed.data.assetId,
+      };
     });
-
-    return {
-      success: true,
-      message: 'Asset dispatched successfully',
-      ticketId: newTickets[0].id,
-      assetId,
-    };
-  });
+  } catch (error) {
+    const knownMessages = [
+      'Asset ',
+      'Vendor ',
+      'Failed to close',
+      'Failed to update asset status',
+      'Failed to create vendor repair ticket',
+    ];
+    const isKnown =
+      error instanceof Error &&
+      knownMessages.some((m) => error.message.startsWith(m));
+    throw new Error(
+      isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to initiate vendor repair.'
+    );
+  }
 }
 
 export async function completeRepairTicket(
@@ -562,84 +608,100 @@ export async function completeRepairTicket(
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
-  // 2. Input Validation & Sanitization
-  if (!Number.isInteger(ticketId) || ticketId <= 0)
-    throw new Error('Invalid ticket ID');
-  const safeResolutionNotes = sanitizeText(resolutionNotes, 1000);
-  if (safeResolutionNotes.length === 0)
-    throw new Error('Resolution notes are required');
-  const actualCostNum = Number.parseFloat(actualCost);
-  if (!Number.isFinite(actualCostNum) || actualCostNum < 0)
-    throw new Error(
-      'Actual cost must be a finite number greater than or equal to 0'
-    );
+  // 2. Zod Input Validation
+  const parsed = completeRepairSchema.safeParse({
+    ticketId,
+    actualCost,
+    resolutionNotes,
+    updateStatusTo,
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
+  }
 
   // 3. Atomic Database Transaction
-  return await db.transaction(async (tx) => {
-    const ticketResult = await tx
-      .select()
-      .from(maintenanceTickets)
-      .where(eq(maintenanceTickets.id, ticketId))
-      .limit(1);
-    if (ticketResult.length === 0)
-      throw new Error(`Ticket ${ticketId} not found`);
-    const ticket = ticketResult[0];
-    const assetId = ticket.assetId;
+  try {
+    return await db.transaction(async (tx) => {
+      const ticketResult = await tx
+        .select()
+        .from(maintenanceTickets)
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
+        .limit(1);
+      if (ticketResult.length === 0)
+        throw new Error(`Ticket ${parsed.data.ticketId} not found`);
+      const ticket = ticketResult[0];
+      const assetId = ticket.assetId;
 
-    const currentAssetResult = await tx
-      .select()
-      .from(assets)
-      .where(eq(assets.id, assetId))
-      .limit(1);
-    if (currentAssetResult.length === 0)
-      throw new Error(`Asset ${assetId} not found`);
-    const currentAsset = currentAssetResult[0];
+      const currentAssetResult = await tx
+        .select()
+        .from(assets)
+        .where(eq(assets.id, assetId))
+        .limit(1);
+      if (currentAssetResult.length === 0)
+        throw new Error(`Asset ${assetId} not found`);
+      const currentAsset = currentAssetResult[0];
 
-    const now = new Date();
+      const now = new Date();
 
-    const updatedTickets = await tx
-      .update(maintenanceTickets)
-      .set({
-        status: 'COMPLETED',
-        actualCost: actualCostNum.toString(),
-        actualCompletionDate: now,
-        resolutionNotes: safeResolutionNotes,
-        updatedAt: now,
-      })
-      .where(eq(maintenanceTickets.id, ticketId))
-      .returning({ id: maintenanceTickets.id });
-    if (updatedTickets.length === 0)
-      throw new Error('Failed to update maintenance ticket');
+      const updatedTickets = await tx
+        .update(maintenanceTickets)
+        .set({
+          status: 'COMPLETED',
+          actualCost: parsed.data.actualCost.toString(),
+          actualCompletionDate: now,
+          resolutionNotes: parsed.data.resolutionNotes,
+          updatedAt: now,
+        })
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
+        .returning({ id: maintenanceTickets.id });
+      if (updatedTickets.length === 0)
+        throw new Error('Failed to update maintenance ticket');
 
-    const updatedAssets = await tx
-      .update(assets)
-      .set({ status: updateStatusTo, updatedAt: now })
-      .where(eq(assets.id, assetId))
-      .returning({ id: assets.id });
-    if (updatedAssets.length === 0) throw new Error('Failed to update asset');
+      const updatedAssets = await tx
+        .update(assets)
+        .set({ status: parsed.data.updateStatusTo, updatedAt: now })
+        .where(eq(assets.id, assetId))
+        .returning({ id: assets.id });
+      if (updatedAssets.length === 0) throw new Error('Failed to update asset');
 
-    // Audit Log complies with strict Enum ('UPDATE')
-    await tx.insert(systemAuditLogs).values({
-      entityType: 'Asset',
-      entityId: assetId,
-      actionType: 'UPDATE',
-      performedById: user.id,
-      oldValue: { status: currentAsset.status, ticketStatus: 'ACTIVE' },
-      newValue: {
-        status: updateStatusTo,
-        ticketStatus: 'COMPLETED',
-        actualCost: actualCostNum,
-        resolutionNotes: safeResolutionNotes,
-        actionContext: 'MAINTENANCE_REPAIR_COMPLETED',
-      },
-      performedAt: now,
+      // Audit Log complies with strict Enum ('UPDATE')
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: assetId,
+        actionType: 'UPDATE',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status, ticketStatus: 'ACTIVE' },
+        newValue: {
+          status: parsed.data.updateStatusTo,
+          ticketStatus: 'COMPLETED',
+          actualCost: parsed.data.actualCost,
+          resolutionNotes: parsed.data.resolutionNotes,
+          actionContext: 'MAINTENANCE_REPAIR_COMPLETED',
+        },
+        performedAt: now,
+      });
+
+      return {
+        success: true,
+        message: 'Repair completed successfully',
+        ticketId: parsed.data.ticketId,
+        assetId,
+      };
     });
-
-    return {
-      success: true,
-      message: 'Repair completed successfully',
-      ticketId,
-      assetId,
-    };
-  });
+  } catch (error) {
+    const knownMessages = [
+      'Ticket ',
+      'Asset ',
+      'Failed to update maintenance ticket',
+      'Failed to update asset',
+    ];
+    const isKnown =
+      error instanceof Error &&
+      knownMessages.some((m) => error.message.startsWith(m));
+    throw new Error(
+      isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to complete repair ticket.'
+    );
+  }
 }

@@ -252,3 +252,46 @@ export const PILLAR_PREFIX_MAP: Record<DbPillar, string> = {
   'Office Furniture': 'FUR',
   'Office Electronics': 'ELC',
 };
+
+// ---------------------------------------------------------------------------
+// updateAsset — partial update schema
+// ---------------------------------------------------------------------------
+
+export const updateAssetSchema = z.object({
+  status: z
+    .enum([
+      'Available',
+      'Assigned',
+      'In Repair',
+      'Defective',
+      'Lost',
+      'Retired',
+      'Disposed',
+    ])
+    .optional(),
+  condition: z
+    .enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged'])
+    .nullable()
+    .optional(),
+  name: z.string().trim().min(1).max(255).nullable().optional(),
+  locationId: z.number().int().positive().nullable().optional(),
+  instanceAttributes: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
+
+// ---------------------------------------------------------------------------
+// manualStatusOverrideAction — admin-only status override schema
+// ---------------------------------------------------------------------------
+
+export const manualStatusOverrideSchema = z.object({
+  assetId: z.string().uuid('Invalid asset ID.'),
+  newStatus: z.string().trim().min(1, 'Status is required.'),
+  reasonNote: z
+    .string()
+    .trim()
+    .min(10, 'Justification must be at least 10 characters.')
+    .max(1000, 'Justification must be 1000 characters or fewer.'),
+});
+
+export type ManualStatusOverrideInput = z.infer<typeof manualStatusOverrideSchema>;

@@ -5,10 +5,11 @@ import {
   getAssetDetails, 
   getAssetHistory, 
   getAssetMaintenance,
-  type AssetDetailsData,
-  type HistoryEvent,
-  type MaintenanceEvent
 } from '@/actions/assets';
+
+type AssetDetailsData = Awaited<ReturnType<typeof getAssetDetails>>;
+type HistoryEvent = Awaited<ReturnType<typeof getAssetHistory>>[number];
+type MaintenanceEvent = Awaited<ReturnType<typeof getAssetMaintenance>>[number];
 
 interface UseAssetSelectionReturn {
   selectedAssetId: string | null;

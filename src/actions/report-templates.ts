@@ -1,6 +1,6 @@
 'use server';
 
-import { desc, sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db';
@@ -124,6 +124,12 @@ export async function createReportTemplate(
         id: reportTemplates.id,
         name: reportTemplates.name,
         reportCode: reportTemplates.reportCode,
+        description: reportTemplates.description,
+        isActive: reportTemplates.isActive,
+        dataSource: reportTemplates.dataSource,
+        filters: reportTemplates.filters,
+        fields: reportTemplates.fields,
+        sortDirection: reportTemplates.sortDirection,
       });
 
     if (inserted.length === 0) {
@@ -202,6 +208,26 @@ export async function updateReportTemplate(
   }
 
   try {
+    const existing = await db
+      .select({
+        id: reportTemplates.id,
+        name: reportTemplates.name,
+        reportCode: reportTemplates.reportCode,
+        description: reportTemplates.description,
+        isActive: reportTemplates.isActive,
+        dataSource: reportTemplates.dataSource,
+        filters: reportTemplates.filters,
+        fields: reportTemplates.fields,
+        sortDirection: reportTemplates.sortDirection,
+      })
+      .from(reportTemplates)
+      .where(eq(reportTemplates.id, id));
+
+    if (existing.length === 0) {
+      return { success: false, message: 'Report template not found.' };
+    }
+    const oldRecord = existing[0];
+
     const updated = await db
       .update(reportTemplates)
       .set({
@@ -213,10 +239,17 @@ export async function updateReportTemplate(
         fields: parsed.data.fields,
         sortDirection: parsed.data.sortDirection,
       })
-      .where(sql`${reportTemplates.id} = ${id}`)
+      .where(eq(reportTemplates.id, id))
       .returning({
         id: reportTemplates.id,
         name: reportTemplates.name,
+        reportCode: reportTemplates.reportCode,
+        description: reportTemplates.description,
+        isActive: reportTemplates.isActive,
+        dataSource: reportTemplates.dataSource,
+        filters: reportTemplates.filters,
+        fields: reportTemplates.fields,
+        sortDirection: reportTemplates.sortDirection,
       });
 
     if (updated.length === 0) {
@@ -228,6 +261,7 @@ export async function updateReportTemplate(
       entityId: updated[0].id.toString(),
       actionType: 'UPDATE',
       performedById: currentUser.id,
+      oldData: oldRecord as unknown as Record<string, unknown>,
       newData: updated[0] as unknown as Record<string, unknown>,
     });
 
@@ -271,9 +305,19 @@ export async function deleteReportTemplate(id: number): Promise<{ success: boole
   }
 
   try {
+    const existing = await db
+      .select()
+      .from(reportTemplates)
+      .where(eq(reportTemplates.id, id));
+
+    if (existing.length === 0) {
+      return { success: false, message: 'Report template not found or already deleted.' };
+    }
+    const oldRecord = existing[0];
+
     const deleted = await db
       .delete(reportTemplates)
-      .where(sql`${reportTemplates.id} = ${id}`)
+      .where(eq(reportTemplates.id, id))
       .returning({ id: reportTemplates.id });
 
     if (deleted.length === 0) {
@@ -285,7 +329,7 @@ export async function deleteReportTemplate(id: number): Promise<{ success: boole
       entityId: id.toString(),
       actionType: 'DELETE',
       performedById: currentUser.id,
-      oldData: { id },
+      oldData: oldRecord as unknown as Record<string, unknown>,
     });
 
     revalidatePath('/reports/standard-reports');

@@ -18,7 +18,7 @@ import {
   assetDocuments,
   assetAssignments,
 } from '@/db/schema';
-import { logLatency, startLatencyTimer } from '@/lib/latency';
+import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { uploadFileToStorage } from '@/lib/storage';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
@@ -550,12 +550,21 @@ export async function rejectDisposalRequest(
       message: `${result.updatedCount} disposal request(s) rejected successfully.`,
     };
   } catch (error) {
+    logError({ scope: 'ACTION', label: 'disposals.reject', error });
+    const KNOWN_REJECT_ERRORS = [
+      'One or more disposal requests could not be found.',
+      'One or more requested disposals are not eligible for rejection.',
+      'Submitted assets do not match the selected disposal requests.',
+      'Failed to reject all disposal requests.',
+      'Failed to revert asset statuses.',
+    ];
+    const isKnown =
+      error instanceof Error && KNOWN_REJECT_ERRORS.includes(error.message);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Failed to reject disposal requests.',
+      message: isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to reject disposal requests.',
     };
   } finally {
     logLatency({
@@ -845,12 +854,21 @@ export async function executeAssetDisposal(
       message: `${result.disposedCount} asset(s) disposed successfully.`,
     };
   } catch (error) {
+    logError({ scope: 'ACTION', label: 'disposals.executeAssetDisposal', error });
+    const KNOWN_EXECUTE_ERRORS = [
+      'One or more disposal requests are not in an eligible status.',
+      'Failed to update all disposal requests.',
+      'Failed to update all assets.',
+      'One or more disposal requests could not be found.',
+      'Submitted assets do not match the selected disposal requests.',
+    ];
+    const isKnown =
+      error instanceof Error && KNOWN_EXECUTE_ERRORS.includes(error.message);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Database error: Failed to execute disposal.',
+      message: isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to execute asset disposal.',
     };
   } finally {
     logLatency({

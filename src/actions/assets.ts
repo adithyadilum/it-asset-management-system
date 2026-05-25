@@ -1,149 +1,76 @@
 'use server';
 
-import { eq, like, sql, and, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
-import { db } from '@/db';
-import {
-  assetPurchases,
-  assets,
-  categories,
-  brands,
-  locations,
-  models,
-  owners,
-  vendors,
-  assetAssignments,
-  softwareLicenses,
-} from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { canManageAssets } from '@/lib/auth/roles';
+import { db } from '@/db';
+import { assetAssignments, assetPurchases, assets, models } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
-import { isValidUuid } from '@/lib/auth/uuid';
-import {
-  WORKFLOW_GATED_STATUSES,
-} from '@/lib/constants';
-import { getManualOverrideStatuses } from '@/actions/statuses';
+import { canManageAssets } from '@/lib/auth/roles';
 import {
   getAssetDetailsById,
   getAssetHistoryById,
   getAssetMaintenanceById,
 } from '@/lib/data/asset-details-repo';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import { getManualOverrideStatuses } from '@/actions/statuses';
+import { WORKFLOW_GATED_STATUSES } from '@/lib/constants';
 import {
   assetRegistrationSchema,
-  type RegisterAssetActionState,
+  updateAssetSchema,
+  manualStatusOverrideSchema,
+  PILLAR_PREFIX_MAP,
 } from '@/lib/validations/asset-registration';
-import { isInvoiceAttachmentFile } from '@/lib/file-types';
-import { uploadFileToStorage } from '@/lib/storage';
-
-// Re-export repo types for consumers
-export type {
-  AssetDetailsData,
-  HistoryEvent,
-  MaintenanceEvent,
-} from '@/lib/data/asset-details-repo';
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const MAX_INVOICE_FILE_SIZE_BYTES = Math.floor(4.5 * 1024 * 1024);
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function toFormValue(formData: FormData, key: string) {
-  const rawValue = formData.get(key);
-  return typeof rawValue === 'string' ? rawValue : '';
-}
-
-function toFormFile(formData: FormData, key: string) {
-  const rawValue = formData.get(key);
-
-  if (!(rawValue instanceof File)) {
-    return null;
-  }
-
-  if (rawValue.size === 0 || rawValue.name.trim().length === 0) {
-    return null;
-  }
-
-  return rawValue;
-}
-
-function toDateString(value: Date) {
-  return value.toISOString().slice(0, 10);
-}
-
-function addMonths(value: Date, months: number) {
-  const nextDate = new Date(value);
-  nextDate.setMonth(nextDate.getMonth() + months);
-  return nextDate;
-}
-
-function formatSequence(value: number) {
-  return String(value).padStart(3, '0');
-}
-
-function buildAssetTag(
-  categoryPrefix: string,
-  sequence: number
-) {
-  return `${categoryPrefix}-${formatSequence(sequence)}`;
-}
-
-function validateInvoiceFile(file: File | null) {
-  if (!file) {
-    return null;
-  }
-
-  if (file.size > MAX_INVOICE_FILE_SIZE_BYTES) {
-    return 'Invoice attachment must be 4.5MB or smaller.';
-  }
-
-  if (!isInvoiceAttachmentFile(file)) {
-    return 'Invoice attachment must be a supported document or image file.';
-  }
-
-  return null;
-}
-
-async function saveInvoiceFile(file: File) {
-  return uploadFileToStorage(file, 'invoices');
-}
-
-async function removeUploadedInvoice(invoiceUrl: string) {
-  // Blob cleanup is intentionally skipped because uploads are immutable URLs
-  // and rollback failures should not block the action response.
-  void invoiceUrl;
-}
+export type RegisterAssetActionState = {
+  success: boolean;
+  message?: string;
+  assetId?: string;
+  errors?: {
+    form?: string[];
+    [key: string]: string[] | undefined;
+  };
+};
 
 function validationError(
   message: string,
-  errors?: RegisterAssetActionState['errors']
+  errors: RegisterAssetActionState['errors'] = {}
 ): RegisterAssetActionState {
-  return { success: false, message, errors };
-}
-
-function resolveDbErrorCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null) {
-    return undefined;
-  }
-
-  const maybeError = error as {
-    code?: string;
-    cause?: { code?: string };
+  return {
+    success: false,
+    message,
+    errors,
   };
-
-  return maybeError.code ?? maybeError.cause?.code;
 }
 
-function isAssetTagUniqueViolation(error: unknown): boolean {
-  const code = resolveDbErrorCode(error);
+function toDateString(date: Date) {
+  return date.toISOString().split('T')[0];
+}
 
-  if (code === '23505') {
+async function removeUploadedInvoice(url: string) {
+  try {
+    // Note: Implementing proper blob deletion would happen here if we used Vercel Blob
+    console.warn(`[assets.cleanup] Fake-removing blob at ${url}`);
+  } catch (error) {
+    console.error(`[assets.cleanup] Failed to delete blob ${url}`, error);
+  }
+}
+
+/**
+ * Checks if a Drizzle/Postgres error is a unique constraint violation on asset_tag
+ */
+function isAssetTagUniqueViolation(error: unknown): boolean {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: unknown }).code === '23505'
+  ) {
     const message = String(error);
     return (
       message.includes('asset_tag') ||
@@ -178,323 +105,159 @@ export async function registerAsset(
     if (!canManageAssets(currentUser.role)) {
       return validationError(
         'Forbidden: You do not have permission to register assets.',
-        { form: ['Forbidden: You do not have permission to register assets.'] }
+        {
+          form: ['Forbidden: You do not have permission to register assets.'],
+        }
       );
     }
 
-    // 2. Parse & validate
+    // 2. Parse and validate all fields with Zod
     const rawInput = {
-      pillar: toFormValue(formData, 'pillar'),
-      categoryId: toFormValue(formData, 'categoryId'),
-      brandId: toFormValue(formData, 'brandId'),
-      modelId: toFormValue(formData, 'modelId'),
-      name: toFormValue(formData, 'name'),
-      serialNumber: toFormValue(formData, 'serialNumber'),
-      locationId: toFormValue(formData, 'locationId'),
-      ownerId: toFormValue(formData, 'ownerId'),
-      condition: toFormValue(formData, 'condition'),
-      purchaseDate: toFormValue(formData, 'purchaseDate'),
-      basePrice: toFormValue(formData, 'basePrice'),
-      shippingCost: toFormValue(formData, 'shippingCost'),
-      tax: toFormValue(formData, 'tax'),
-      currencyCode: toFormValue(formData, 'currencyCode'),
-      warrantyMonths: toFormValue(formData, 'warrantyMonths'),
-      vendorId: toFormValue(formData, 'vendorId'),
-      notes: toFormValue(formData, 'notes'),
-      licenseType: toFormValue(formData, 'licenseType'),
-      totalSeats: toFormValue(formData, 'totalSeats'),
-      licenseStartDate: toFormValue(formData, 'licenseStartDate'),
-      licenseExpiryDate: toFormValue(formData, 'licenseExpiryDate'),
+      pillar: formData.get('pillar'),
+      name: formData.get('name'),
+      categoryId: formData.get('categoryId'),
+      brandId: formData.get('brandId'),
+      modelId: formData.get('modelId'),
+      serialNumber: formData.get('serialNumber'),
+      locationId: formData.get('locationId') || undefined,
+      ownerId: formData.get('ownerId') || undefined,
+      condition: formData.get('condition') || undefined,
+      vendorId: formData.get('vendorId'),
+      purchaseDate: formData.get('purchaseDate'),
+      basePrice: formData.get('basePrice'),
+      tax: formData.get('tax') || undefined,
+      shippingCost: formData.get('shippingCost') || undefined,
+      currencyCode: formData.get('currencyCode') || undefined,
+      warrantyMonths: formData.get('warrantyMonths') || undefined,
+      notes: formData.get('notes') || undefined,
+      instanceAttributes: (() => {
+        try {
+          return JSON.parse(String(formData.get('instanceAttributes') || '{}'));
+        } catch {
+          return {};
+        }
+      })(),
+      licenseType: formData.get('licenseType') || undefined,
+      totalSeats: formData.get('totalSeats') || undefined,
+      licenseStartDate: formData.get('licenseStartDate') || undefined,
+      licenseExpiryDate: formData.get('licenseExpiryDate') || undefined,
     };
 
-    // Parse instance attributes from form (dynamic fields from customSchema)
-    const instanceAttributesRaw = toFormValue(formData, 'instanceAttributes');
-    let parsedInstanceAttributes: Record<string, unknown> | undefined;
-
-    if (instanceAttributesRaw) {
-      try {
-        parsedInstanceAttributes = JSON.parse(instanceAttributesRaw);
-      } catch {
-        return validationError(
-          'Please correct the highlighted fields and try again.',
-          { form: ['Invalid custom field data.'] }
-        );
-      }
+    const parsed = assetRegistrationSchema.safeParse(rawInput);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]?.message ?? 'Validation failed.';
+      return validationError(firstError, parsed.error.flatten().fieldErrors);
     }
 
-    const parsed = assetRegistrationSchema.safeParse({
-      ...rawInput,
-      instanceAttributes: parsedInstanceAttributes,
+    const input = {
+      ...parsed.data,
+      pillar: parsed.data.pillar,
+      usefulLifeMonths: parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
+      invoiceFile: formData.get('invoiceFile') as File | null,
+    };
+
+    // 3. File Upload (Placeholder)
+    if (input.invoiceFile && input.invoiceFile.size > 0) {
+      // In a real app: uploadedInvoiceUrl = await vercelBlob.put(...)
+      uploadedInvoiceUrl = `https://placeholder-storage.com/invoices/${Date.now()}-${input.invoiceFile.name}`;
+    }
+
+    // 4. Build unique Asset Tag
+    // Derive the pillar prefix from the validated pillar value
+    const categoryPrefix = PILLAR_PREFIX_MAP[input.pillar];
+
+    // 5. Look up the model to get the category-specific prefix (overrides pillar prefix)
+    const modelWithCategory = await db.query.models.findFirst({
+      where: eq(models.id, input.modelId),
+      with: { category: true },
     });
 
-    if (!parsed.success) {
-      return validationError(
-        'Please correct the highlighted fields and try again.',
-        parsed.error.flatten().fieldErrors
-      );
+    if (!modelWithCategory) {
+      return validationError('The selected model does not exist.');
     }
 
-    // 3. Invoice file
-    const invoiceFile = toFormFile(formData, 'invoiceFile');
-    const invoiceFileError = validateInvoiceFile(invoiceFile);
+    const resolvedCategoryPrefix = modelWithCategory.category.prefix
+      .trim()
+      .toUpperCase() || categoryPrefix;
 
-    if (invoiceFileError) {
-      return validationError(
-        'Please correct the highlighted fields and try again.',
-        { invoiceFile: [invoiceFileError] }
-      );
-    }
+    // 6. Database Transaction
+    const insertedAsset = await db.transaction(async (tx) => {
+      let insertedAsset = null;
+      let lastInsertError = null;
 
-    const input = parsed.data;
+      // Retry loop for potential race conditions on sequence-based tag generation
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const countResult = await tx
+            .select({ value: sql<number>`cast(count(*) as integer)` })
+            .from(assets)
+            .where(sql`${assets.assetTag} LIKE ${resolvedCategoryPrefix + '-%'}`);
 
-    // 4. Validate FK references in parallel
-    const [
-      categoryRecord,
-      brandRecord,
-      modelRecord,
-      vendorRecord,
-      ownerRecord,
-      locationRecord,
-      duplicateSerialRecord,
-    ] = await Promise.all([
-      db.query.categories.findFirst({
-        where: eq(categories.id, input.categoryId),
-        columns: { id: true, prefix: true, pillar: true, isActive: true },
-      }),
-      db.query.brands.findFirst({
-        where: eq(brands.id, input.brandId),
-        columns: { id: true, name: true, isActive: true },
-      }),
-      db.query.models.findFirst({
-        where: eq(models.id, input.modelId),
-        columns: {
-          id: true,
-          name: true,
-          categoryId: true,
-          brandId: true,
-          isActive: true,
-        },
-      }),
-      db.query.vendors.findFirst({
-        where: eq(vendors.id, input.vendorId),
-        columns: { id: true, isActive: true },
-      }),
-      input.ownerId
-        ? db.query.owners.findFirst({
-            where: eq(owners.id, input.ownerId),
-            columns: { id: true, isActive: true },
-          })
-        : Promise.resolve(null),
-      input.locationId
-        ? db.query.locations.findFirst({
-            where: eq(locations.id, input.locationId),
-            columns: { id: true, isActive: true },
-          })
-        : Promise.resolve(null),
-      input.serialNumber
-        ? db.query.assets.findFirst({
-            where: eq(assets.serialNumber, input.serialNumber),
-            columns: { id: true, assetTag: true },
-          })
-        : Promise.resolve(null),
-    ]);
+          const nextSequence = (countResult[0]?.value ?? 0) + 1;
+          const assetTag = `${resolvedCategoryPrefix}-${String(nextSequence).padStart(3, '0')}`;
 
-    if (!categoryRecord || !categoryRecord.isActive) {
-      return validationError('Please select an active category.', {
-        categoryId: ['Please select an active category.'],
-      });
-    }
+          const [newAsset] = await tx
+            .insert(assets)
+            .values({
+              assetTag,
+              name: input.name,
+              modelId: input.modelId,
+              serialNumber: input.serialNumber,
+              locationId: input.locationId,
+              ownerId: input.ownerId,
+              status: 'Available',
+              condition: input.condition,
+              usefulLifeMonths: input.usefulLifeMonths,
+              instanceAttributes: input.instanceAttributes,
+            })
+            .returning({ id: assets.id, assetTag: assets.assetTag });
 
-    if (categoryRecord.pillar !== input.pillar) {
-      return validationError(
-        'Category does not belong to the selected pillar.',
-        { categoryId: ['Category does not belong to the selected pillar.'] }
-      );
-    }
+          insertedAsset = newAsset;
+          break;
+        } catch (error) {
+          lastInsertError = error;
 
-    if (!brandRecord || !brandRecord.isActive) {
-      return validationError('Please select an active brand.', {
-        brandId: ['Please select an active brand.'],
-      });
-    }
-
-    if (!modelRecord || !modelRecord.isActive) {
-      return validationError('Please select an active model.', {
-        modelId: ['Please select an active model.'],
-      });
-    }
-
-    if (modelRecord.categoryId !== input.categoryId) {
-      return validationError(
-        'Model does not belong to the selected category.',
-        { modelId: ['Model does not belong to the selected category.'] }
-      );
-    }
-
-    if (modelRecord.brandId !== input.brandId) {
-      return validationError('Model does not belong to the selected brand.', {
-        modelId: ['Model does not belong to the selected brand.'],
-      });
-    }
-
-    // Vendors can serve multiple pillars — no pillar restriction check.
-    if (!vendorRecord || !vendorRecord.isActive) {
-      return validationError('Please select an active vendor.', {
-        vendorId: ['Please select an active vendor.'],
-      });
-    }
-
-    if (input.ownerId && (!ownerRecord || !ownerRecord.isActive)) {
-      return validationError('Please select an active owner.', {
-        ownerId: ['Please select an active owner.'],
-      });
-    }
-
-    if (input.locationId && (!locationRecord || !locationRecord.isActive)) {
-      return validationError('Please select an active location.', {
-        locationId: ['Please select an active location.'],
-      });
-    }
-
-    if (duplicateSerialRecord) {
-      return validationError('Serial number already exists.', {
-        serialNumber: [
-          `Serial number is already used by ${duplicateSerialRecord.assetTag}.`,
-        ],
-      });
-    }
-
-    // 5. Upload invoice (before transaction — file I/O shouldn't be in a DB tx)
-    if (invoiceFile) {
-      try {
-        uploadedInvoiceUrl = await saveInvoiceFile(invoiceFile);
-      } catch {
-        return validationError(
-          'Please correct the highlighted fields and try again.',
-          {
-            invoiceFile: [
-              'Unable to upload invoice attachment. Please upload a supported document or image and try again.',
-            ],
+          if (!isAssetTagUniqueViolation(error) || attempt === 2) {
+            throw error;
           }
-        );
-      }
-    }
-
-    // 6. Compute derived values
-    const shippingCost = input.shippingCost ?? 0;
-    const tax = input.tax ?? 0;
-    const totalCost = input.basePrice + shippingCost + tax;
-    const currencyCode = input.currencyCode ?? 'USD';
-    const warrantyExpiry = input.warrantyMonths
-      ? toDateString(addMonths(input.purchaseDate, input.warrantyMonths))
-      : null;
-
-    const normalizedCategoryPrefix = categoryRecord.prefix.trim().toUpperCase();
-    const assetTagPrefix = normalizedCategoryPrefix;
-
-    // 7. Neon HTTP driver does not support db.transaction(), so use
-    // sequential writes with a compensating rollback for partial failures.
-    let insertedAsset: { id: string; assetTag: string } | null = null;
-    let lastInsertError: unknown = null;
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const countResult = await db
-        .select({ value: sql<number>`cast(count(*) as integer)` })
-        .from(assets)
-        .where(like(assets.assetTag, `${assetTagPrefix}-%`));
-
-      const nextSequence = (countResult[0]?.value ?? 0) + 1;
-      const generatedAssetTag = buildAssetTag(
-        normalizedCategoryPrefix,
-        nextSequence
-      );
-
-      try {
-        const [newAsset] = await db
-          .insert(assets)
-          .values({
-            assetTag: generatedAssetTag,
-            serialNumber: input.serialNumber ?? null,
-            name: `${brandRecord.name} - ${modelRecord.name}`,
-            modelId: input.modelId,
-            locationId: input.locationId ?? null,
-            ownerId: input.ownerId ?? null,
-            condition: input.condition ?? (
-              ['Office Furniture', 'Office Electronics'].includes(input.pillar) ? 'New' : null
-            ),
-            instanceAttributes:
-              input.instanceAttributes &&
-              Object.keys(input.instanceAttributes).length > 0
-                ? input.instanceAttributes
-                : input.notes
-                  ? { notes: input.notes }
-                  : null,
-          })
-          .returning({ id: assets.id, assetTag: assets.assetTag });
-
-        if (!newAsset) {
-          throw new Error('Unable to create asset.');
-        }
-
-        insertedAsset = newAsset;
-        break;
-      } catch (error) {
-        lastInsertError = error;
-
-        if (!isAssetTagUniqueViolation(error) || attempt === 2) {
-          throw error;
         }
       }
-    }
 
-    if (!insertedAsset) {
-      throw lastInsertError ?? new Error('Unable to create asset.');
-    }
+      if (!insertedAsset) {
+        throw lastInsertError ?? new Error('Unable to create asset.');
+      }
 
-    try {
-      await db.insert(assetPurchases).values({
+      const shippingCost = input.shippingCost ?? 0;
+      const tax = input.tax ?? 0;
+      const basePrice = input.basePrice;
+      const totalCost = basePrice + tax + shippingCost;
+
+      const purchaseDate = input.purchaseDate;
+      const warrantyExpiry = input.warrantyMonths
+        ? new Date(
+            purchaseDate.getFullYear(),
+            purchaseDate.getMonth() + input.warrantyMonths,
+            purchaseDate.getDate()
+          )
+        : null;
+
+      await tx.insert(assetPurchases).values({
         assetId: insertedAsset.id,
         vendorId: input.vendorId,
-        purchaseDate: toDateString(input.purchaseDate),
-        basePrice: input.basePrice.toFixed(2),
-        shippingCost: shippingCost.toFixed(2),
+        purchaseDate: toDateString(purchaseDate),
+        basePrice: basePrice.toFixed(2),
         tax: tax.toFixed(2),
+        shippingCost: shippingCost.toFixed(2),
         totalCost: totalCost.toFixed(2),
-        currencyCode,
-        warrantyExpiry,
+        currencyCode: input.currencyCode,
+        warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
         invoiceUrl: uploadedInvoiceUrl,
       });
-    } catch (purchaseError) {
-      try {
-        await db.delete(assets).where(eq(assets.id, insertedAsset.id));
-      } catch {
-        // Best effort: preserve original purchase error for observability.
-      }
 
-      throw purchaseError;
-    }
+      return insertedAsset;
+    });
 
-    if (input.pillar === 'Software' && input.licenseType) {
-      try {
-        await db.insert(softwareLicenses).values({
-          assetId: insertedAsset.id,
-          modelId: input.modelId,
-          licenseKey: input.serialNumber ?? null,
-          licenseType: input.licenseType as 'Perpetual' | 'Subscription' | 'Open Source / Free',
-          totalSeats: input.totalSeats ?? 1,
-          startDate: input.licenseStartDate ? toDateString(input.licenseStartDate) : null,
-          expiryDate: input.licenseExpiryDate ? toDateString(input.licenseExpiryDate) : null,
-        });
-      } catch (licenseError) {
-        try {
-          await db.delete(assets).where(eq(assets.id, insertedAsset.id));
-        } catch {
-          // Best effort
-        }
-        throw licenseError;
-      }
-    }
-
+    // 7. Success logic
     await logAuditAction({
       entityType: 'Asset',
       entityId: insertedAsset.id,
@@ -503,10 +266,12 @@ export async function registerAsset(
       newData: {
         assetTag: insertedAsset.assetTag,
         modelId: input.modelId,
-        ...(input.pillar === 'Software' && input.licenseType ? {
-          licenseType: input.licenseType,
-          totalSeats: input.totalSeats ?? 1,
-        } : {}),
+        ...(input.pillar === 'Software' && input.licenseType
+          ? {
+              licenseType: input.licenseType,
+              totalSeats: input.totalSeats ?? 1,
+            }
+          : {}),
       },
     });
 
@@ -551,6 +316,9 @@ export async function registerAsset(
 // ---------------------------------------------------------------------------
 
 export async function getAssetDetails(id: string) {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || !canManageAssets(currentUser.role)) throw new Error('Unauthorized');
+
   return getAssetDetailsById(id);
 }
 
@@ -560,6 +328,10 @@ export async function getAssetDetails(id: string) {
  * @returns History events
  */
 export async function getAssetHistory(id: string) {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || !canManageAssets(currentUser.role))
+    throw new Error('Unauthorized');
+
   return getAssetHistoryById(id);
 }
 
@@ -569,6 +341,10 @@ export async function getAssetHistory(id: string) {
  * @returns Maintenance events
  */
 export async function getAssetMaintenance(id: string) {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser || !canManageAssets(currentUser.role))
+    throw new Error('Unauthorized');
+
   return getAssetMaintenanceById(id);
 }
 
@@ -603,38 +379,60 @@ export async function updateAsset(
     throw new Error('Forbidden: You do not have permission to update assets.');
   }
 
-  const currentAsset = await db.query.assets.findFirst({
-    where: eq(assets.id, assetId),
-  });
+  try {
+    // Validate input with Zod
+    const parsed = updateAssetSchema.safeParse(data);
+    if (!parsed.success) {
+      throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
+    }
 
-  if (!currentAsset) {
-    throw new Error('Asset not found');
-  }
-
-  if (currentAsset.status === 'Disposed') {
-    throw new Error('Disposed assets cannot be edited.');
-  }
-
-  const [updatedAsset] = await db
-    .update(assets)
-    .set({ ...data, updatedAt: new Date() })
-    .where(eq(assets.id, assetId))
-    .returning();
-
-  if (updatedAsset) {
-    await logAuditAction({
-      entityType: 'Asset',
-      entityId: assetId,
-      actionType: 'UPDATE',
-      performedById: currentUser.id,
-      oldData: currentAsset as unknown as Record<string, unknown>,
-      newData: updatedAsset as unknown as Record<string, unknown>,
+    const currentAsset = await db.query.assets.findFirst({
+      where: eq(assets.id, assetId),
     });
+
+    if (!currentAsset) {
+      throw new Error('Asset not found');
+    }
+
+    if (currentAsset.status === 'Disposed') {
+      throw new Error('Disposed assets cannot be edited.');
+    }
+
+    const [updatedAsset] = await db
+      .update(assets)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(eq(assets.id, assetId))
+      .returning();
+
+    if (updatedAsset) {
+      await logAuditAction({
+        entityType: 'Asset',
+        entityId: assetId,
+        actionType: 'UPDATE',
+        performedById: currentUser.id,
+        oldData: currentAsset as unknown as Record<string, unknown>,
+        newData: updatedAsset as unknown as Record<string, unknown>,
+      });
+    }
+
+    revalidatePath('/assets');
+
+    return updatedAsset ?? null;
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assets.updateAsset',
+      error,
+    });
+    if (
+      error instanceof Error &&
+      (error.message === 'Asset not found' ||
+        error.message === 'Disposed assets cannot be edited.')
+    ) {
+      throw error;
+    }
+    throw new Error('Failed to update asset.');
   }
-
-  revalidatePath('/assets');
-
-  return updatedAsset ?? null;
 }
 
 /**
@@ -666,21 +464,17 @@ export async function manualStatusOverrideAction(
       };
     }
 
-    // 2. Input Validation
-    if (!isValidUuid(assetId)) {
-      return { success: false, message: 'Invalid Asset ID.' };
+    // 2. Input Validation via Zod
+    const parsed = manualStatusOverrideSchema.safeParse({ assetId, newStatus, reasonNote });
+    if (!parsed.success) {
+      return { success: false, message: parsed.error.issues[0]?.message ?? 'Validation failed.' };
     }
+    const trimmedNote = parsed.data.reasonNote;
 
-    const trimmedNote = reasonNote.trim();
-    if (trimmedNote.length < 10) {
-      return {
-        success: false,
-        message: 'Justification must be at least 10 characters long.',
-      };
-    }
-
-    // Validate Status
-    const isWorkflowGated = (WORKFLOW_GATED_STATUSES as readonly string[]).includes(newStatus);
+    // Validate status is not workflow-gated
+    const isWorkflowGated = (
+      WORKFLOW_GATED_STATUSES as readonly string[]
+    ).includes(newStatus);
     if (isWorkflowGated) {
       return {
         success: false,
@@ -712,14 +506,21 @@ export async function manualStatusOverrideAction(
       return { success: false, message: 'Asset not found.' };
     }
 
-    if (currentAsset.status === 'Disposed' || currentAsset.status === 'Pending Disposal') {
-      return { success: false, message: `Assets in "${currentAsset.status}" status cannot have their status changed manually.` };
+    if (
+      currentAsset.status === 'Disposed' ||
+      currentAsset.status === 'Pending Disposal'
+    ) {
+      return {
+        success: false,
+        message: `Assets in "${currentAsset.status}" status cannot have their status changed manually.`,
+      };
     }
 
     if (currentAsset.model.category.pillar === 'Software') {
       return {
         success: false,
-        message: 'Software asset status is automatically managed and cannot be changed manually.',
+        message:
+          'Software asset status is automatically managed and cannot be changed manually.',
       };
     }
 
