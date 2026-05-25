@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Plus } from "lucide-react"
+import { KeyRound, Plus } from "lucide-react"
 
 import { createApiKey } from "@/actions/integrations"
 import { API_KEY_SCOPE_GROUPS, type ApiKeyScope } from "@/types/integrations"
@@ -71,7 +71,10 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-120 p-0">
           <DialogHeader className="p-6">
-            <DialogTitle className="text-lg font-semibold">Create API Key</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+              <KeyRound className="h-4 w-4 text-slate-500" />
+              Create API Key
+            </DialogTitle>
           </DialogHeader>
 
           <div className="p-6 pt-0">

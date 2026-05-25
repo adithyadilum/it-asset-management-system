@@ -17,6 +17,7 @@ interface ApiKeyTableProps {
 
 export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
   const [revokingKey, setRevokingKey] = useState<string | null>(null)
+  const [revokingKeyName, setRevokingKeyName] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const columns = useMemo<ColumnDef<ApiKeyDisplay, unknown>[]>(() => [
@@ -76,7 +77,11 @@ export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
             size="icon"
             variant="ghost"
             className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => { setRevokingKey(ctx.row.original.id); setDialogOpen(true) }}
+            onClick={() => {
+              setRevokingKey(ctx.row.original.id)
+              setRevokingKeyName(ctx.row.original.name)
+              setDialogOpen(true)
+            }}
             aria-label="Revoke key"
           >
             <Trash2 className="h-4 w-4" />
@@ -94,7 +99,13 @@ export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
         enableRowSelection={false}
       />
 
-      <RevokeKeyDialog open={dialogOpen} onOpenChange={setDialogOpen} keyId={revokingKey} onChanged={onChanged} />
+      <RevokeKeyDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        keyId={revokingKey}
+        keyName={revokingKeyName}
+        onChanged={onChanged}
+      />
     </>
   )
 }
