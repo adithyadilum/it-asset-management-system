@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { CreateApiKeyDialog } from "./create-api-key-dialog"
 import { ApiKeyTable } from "./api-key-table"
 import { SecretRevealDialog } from "./secret-reveal-dialog"
@@ -44,11 +45,11 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
             placeholder="Search keys..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9 pl-9 placeholder:text-slate-400"
+            className={`h-9 pl-9 placeholder:text-slate-400 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" asChild className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
             <a href="https://docs.tiqri.com/api" target="_blank" rel="noopener noreferrer">
               View API Documentation
             </a>

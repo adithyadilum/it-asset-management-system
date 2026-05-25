@@ -3,6 +3,7 @@ import { getApiKeys, getWebhookSubscriptions } from '@/lib/data/integrations-rep
 import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs'
 import { ApiKeysTab } from '@/components/features/integrations/api-keys-tab'
 import { WebhooksTab } from '@/components/features/integrations/webhooks-tab'
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography'
 
 export default async function IntegrationsPage() {
   const user = await getAuthenticatedUser()
@@ -21,7 +22,7 @@ export default async function IntegrationsPage() {
 
   const header = (
     <div className="flex items-center justify-between">
-      <h3 className="text-lg font-semibold">Integrations & APIs</h3>
+      <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>Integrations & API</h1>
     </div>
   )
 

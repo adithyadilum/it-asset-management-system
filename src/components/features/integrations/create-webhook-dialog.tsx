@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { tiqriToast } from "@/components/shared/sonner"
 import type { WebhookEventType } from "@/types/integrations"
 
@@ -127,12 +128,12 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Slack IT Channel Alert"
-                className="h-10 rounded-md border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:border-[#0b2b69] focus-visible:ring-[#0b2b69]/20"
+                className={`h-10 rounded-md border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:border-[#0b2b69] focus-visible:ring-[#0b2b69]/20 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="webhook-url" className="text-sm font-medium text-slate-900">
+              <Label htmlFor="webhook-url" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
                 Endpoint URL <span className="text-rose-500">*</span>
               </Label>
               <Input
@@ -141,12 +142,12 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
                 value={url}
                 onChange={(event) => setUrl(event.target.value)}
                 placeholder="e.g. https://hooks.slack.com/services/T0000..."
-                className="h-10 rounded-md border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus-visible:border-[#0b2b69] focus-visible:ring-[#0b2b69]/20"
+                className={`h-10 rounded-md border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:border-[#0b2b69] focus-visible:ring-[#0b2b69]/20 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               />
             </div>
 
             <div className="grid gap-3 pt-1">
-              <div className="text-sm font-medium text-slate-900">Events</div>
+            <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>Events</div>
               <WebhookEventSelector
                 selectedEvents={selectedEvents}
                 onSelectedEventsChange={setSelectedEvents}
@@ -159,14 +160,14 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
                 variant="outline"
                 onClick={() => handleOpenChange(false)}
                 disabled={isPending}
-                className="h-9 rounded-md border-slate-200 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className={`h-9 rounded-md border-slate-200 px-4 text-slate-700 hover:bg-slate-50 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={isPending}
-                className="h-9 rounded-md bg-[#0b2b69] px-4 text-sm font-semibold text-white hover:bg-[#09224f]"
+                className={`h-9 rounded-md bg-[#0b2b69] px-4 text-white hover:bg-[#09224f] ${TYPOGRAPHY_CLASSNAMES.textSmSemiBold}`}
               >
                 {isPending ? "Saving..." : "Save Webhook"}
               </Button>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import type { WebhookSubscriptionDisplay } from "@/types/integrations"
 
 import { CreateWebhookDialog } from "./create-webhook-dialog"
@@ -52,14 +53,14 @@ export function WebhooksTabClient({ subscriptions }: WebhooksTabClientProps) {
             placeholder="Search Webhooks ..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal placeholder:text-slate-400"
+            className={`h-9 rounded-lg border-slate-200 bg-white pl-9 placeholder:text-slate-400 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
           />
         </div>
 
         <Button
           onClick={() => setCreateOpen(true)}
           size="sm"
-          className="flex items-center gap-2 bg-[#0b2b69] text-white hover:bg-[#09224f]"
+          className={`flex items-center gap-2 bg-[#0b2b69] text-white hover:bg-[#09224f] ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
         >
           <Plus className="h-4 w-4" />
           Add Webhook
@@ -68,8 +69,8 @@ export function WebhooksTabClient({ subscriptions }: WebhooksTabClientProps) {
 
       {filteredSubscriptions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
-          <h4 className="text-base font-semibold text-slate-900">No webhooks yet</h4>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <h4 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-slate-900`}>No webhooks yet</h4>
+          <p className={`mt-2 text-slate-600 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
             Create a webhook subscription to send EITAMS events to your external systems.
           </p>
         </div>

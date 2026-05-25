@@ -5,6 +5,7 @@ import { type ColumnDef } from "@tanstack/react-table"
 import { Edit3, Trash2 } from "lucide-react"
 
 import { DataTable } from "@/components/shared/data-table"
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { WebhookSubscriptionDisplay } from "@/types/integrations"
@@ -27,13 +28,13 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
       {
         accessorKey: "name",
         header: "Description",
-        cell: ({ row }) => <span className="font-medium text-slate-900">{row.original.name}</span>,
+        cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>{row.original.name}</span>,
       },
       {
         accessorKey: "url",
         header: "Target URL",
         cell: ({ row }) => (
-          <span className="block max-w-[320px] truncate text-sm text-slate-500">
+          <span className={`block max-w-[320px] truncate text-slate-500 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
             {row.original.url}
           </span>
         ),
@@ -47,7 +48,7 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
               <Badge
                 key={event}
                 variant="outline"
-                className="rounded-full border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500"
+                className={`rounded-full border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-500 ${TYPOGRAPHY_CLASSNAMES.textXsMedium}`}
               >
                 [{event}]
               </Badge>
@@ -63,7 +64,7 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
 
           return (
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${TYPOGRAPHY_CLASSNAMES.textXsMedium} ${
                 healthy
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-slate-200 bg-slate-50 text-slate-500"
@@ -92,7 +93,7 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
                   setSelectedSubscription(subscription)
                   setEditOpen(true)
                 }}
-                className="h-8 w-8 text-[#1e2b6d] hover:bg-[#1e2b6d]/10 hover:text-[#1e2b6d]"
+                className={`h-8 w-8 text-[#1e2b6d] hover:bg-[#1e2b6d]/10 hover:text-[#1e2b6d] ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
                 aria-label="Edit webhook"
               >
                 <Edit3 className="h-4 w-4" />
@@ -106,7 +107,7 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
                   setSelectedSubscription(subscription)
                   setDeleteOpen(true)
                 }}
-                className="h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                className={`h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
                 aria-label="Delete webhook"
               >
                 <Trash2 className="h-4 w-4" />

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -90,7 +91,7 @@ export const ModuleNavigationTabs = React.forwardRef<
               className={cn(
                 // Default state (inactive)
                 "relative h-7 rounded-md border border-transparent px-2 py-1",
-                "text-sm font-medium text-slate-500",
+                `${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-500`,
                 "bg-transparent hover:text-slate-600 transition-colors",
                 "cursor-pointer",
 

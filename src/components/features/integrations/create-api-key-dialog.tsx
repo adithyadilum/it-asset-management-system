@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { tiqriToast } from "@/components/shared/sonner"
 
 interface CreateApiKeyDialogProps {
@@ -71,7 +72,7 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-120 p-0">
           <DialogHeader className="p-6">
-            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
+            <DialogTitle className={`flex items-center gap-2 text-slate-900 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold}`}>
               <KeyRound className="h-4 w-4 text-slate-500" />
               Create API Key
             </DialogTitle>
@@ -80,16 +81,16 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
           <div className="p-6 pt-0">
             <div className="grid gap-3">
               <div className="grid gap-2">
-                <Label>Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
+                <Label className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} className={TYPOGRAPHY_CLASSNAMES.textSmRegular} />
               </div>
 
               <div>
-                <Label className="mb-2">Scopes</Label>
+                <Label className={`mb-2 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>Scopes</Label>
                 <div className="grid gap-2">
                   {Object.entries(API_KEY_SCOPE_GROUPS).map(([group, items]) => (
                     <div key={group} className="rounded-md border border-border p-3">
-                      <div className="mb-2 text-sm font-medium">{group}</div>
+                      <div className={`mb-2 text-slate-900 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>{group}</div>
                       <div className="grid gap-2">
                         {items.map((it) => (
                           <label key={it.scope} className="flex items-center gap-2">
@@ -98,8 +99,8 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                               onCheckedChange={() => toggleScope(it.scope)}
                             />
                             <div>
-                              <div className="text-sm font-medium">{it.label}</div>
-                              <div className="text-xs text-muted-foreground">{it.description}</div>
+                              <div className={`text-slate-900 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>{it.label}</div>
+                              <div className={`text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textXsRegular}`}>{it.description}</div>
                             </div>
                           </label>
                         ))}
@@ -110,13 +111,13 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
               </div>
 
               <div className="flex justify-end gap-3">
-                <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending as unknown as boolean}>
+                <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending as unknown as boolean} className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={isPending as unknown as boolean}
-                  className="h-9 rounded-md bg-[#0b2b69] px-4 text-sm font-semibold text-white hover:bg-[#09224f]"
+                  className={`h-9 rounded-md bg-[#0b2b69] px-4 text-white hover:bg-[#09224f] ${TYPOGRAPHY_CLASSNAMES.textSmSemiBold}`}
                 >
                   {isPending ? "Creating..." : "Create"}
                 </Button>

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { KeyRound, Trash2 } from "lucide-react"
 import { DataTable } from "@/components/shared/data-table"
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/shared/status-badge"
 
@@ -27,7 +28,7 @@ export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
       id: "token",
       header: "Token",
       cell: (ctx) => (
-        <span className="font-mono text-sm text-muted-foreground">
+        <span className={`font-mono text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
           {ctx.row.original.keyPrefix}****************{ctx.row.original.keySuffix}
         </span>
       ),
@@ -46,13 +47,13 @@ export function ApiKeyTable({ keys, onChanged }: ApiKeyTableProps) {
       header: "Last Accessed",
       cell: ({ row }) => {
         const date = row.original.lastUsedAt
-        if (!date) return <span className="text-muted-foreground">Never</span>
+        if (!date) return <span className={`text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>Never</span>
         const diffMs = Date.now() - date.getTime()
         const diffMins = Math.floor(diffMs / 60000)
-        if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? "s" : ""} ago`
+        if (diffMins < 60) return <span className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>{`${diffMins} min${diffMins !== 1 ? "s" : ""} ago`}</span>
         const diffHours = Math.floor(diffMins / 60)
-        if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`
-        return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })
+        if (diffHours < 24) return <span className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>{`${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`}</span>
+        return <span className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>{date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
       },
     },
     {

@@ -1,6 +1,7 @@
 "use client"
 
 import { Checkbox } from "@/components/ui/checkbox"
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { WEBHOOK_EVENT_GROUPS, type WebhookEventType } from "@/types/integrations"
 
 interface WebhookEventSelectorProps {
@@ -27,7 +28,7 @@ export function WebhookEventSelector({
       {Object.entries(WEBHOOK_EVENT_GROUPS).map(([groupName, items]) => {
         return (
           <div key={groupName} className="grid gap-3">
-            <div className="text-sm font-medium text-slate-900">{groupName}</div>
+            <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>{groupName}</div>
 
             <div className="grid gap-x-4 gap-y-3 [grid-template-columns:repeat(auto-fit,minmax(138px,1fr))]">
               {items.map((item) => (
@@ -38,7 +39,9 @@ export function WebhookEventSelector({
                     disabled={disabled}
                     className="mt-0.5 h-4 w-4 rounded-[4px] border-slate-300 data-[state=checked]:border-[#0b2b69] data-[state=checked]:bg-[#0b2b69]"
                   />
-                  <span className="text-sm leading-5 text-slate-700">{item.label}</span>
+                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} leading-5 text-slate-700`}>
+                    {item.label}
+                  </span>
                 </label>
               ))}
             </div>
