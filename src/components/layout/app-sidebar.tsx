@@ -74,7 +74,7 @@ const managementItems: NavItem[] = [
         children: [
             { label: "Assignments & Returns", href: "/operations/assignments" },
             { label: "Maintenance & Repairs", href: "/operations/maintenance" },
-            { label: "Disposals", href: "/operations/disposals" },
+            { label: "Disposals", href: "/operations/disposals", allowedRoles: ["GlobalAdmin"] },
         ],
     },
     {

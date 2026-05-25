@@ -177,7 +177,7 @@ export async function createBulkDisposalRequests(input: {
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAllowed(user.role, ['ITOperator', 'GlobalAdmin']);
+  assertAllowed(user.role, ['GlobalAdmin']);
 
   const normalizedAssetIds = normalizeAssetIds(input.assetIds);
   const reason = input.reason?.trim();
