@@ -7,6 +7,7 @@ import {
   assetAssignments,
   assetDisposals,
   assets,
+  categories,
   departments,
   maintenanceTickets,
   models,
@@ -17,9 +18,37 @@ import {
   softwareAllocations,
 } from '@/db/schema';
 import { desc } from 'drizzle-orm';
+import type { AuthenticatedUser } from '@/actions/auth';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 import { unstable_cache } from 'next/cache';
+import {
+  DEFAULT_SOFTWARE_SEAT_COST,
+  DEFAULT_USEFUL_LIFE_MONTHS,
+  DASHBOARD_KPI_CACHE_TTL,
+  DASHBOARD_CHART_CACHE_TTL,
+  DASHBOARD_TABLE_DEFAULT_LIMIT,
+  DASHBOARD_RECENT_ACTIVITIES_LIMIT,
+  HIGH_MAINTENANCE_TICKET_THRESHOLD,
+  FLEET_HEALTH_WEIGHTS,
+} from '@/lib/constants/dashboard';
+
+// ============================================================================
+// HELPER: Role Guards
+// ============================================================================
+
+function assertAdminOrOperator(user: AuthenticatedUser) {
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+}
+
+function assertAdminOrAuditor(user: AuthenticatedUser) {
+  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor')
+    throw new Error('Forbidden');
+}
+
+function assertNotEmployee(user: AuthenticatedUser) {
+  if (user.role === 'Employee') throw new Error('Forbidden');
+}
 
 // ============================================================================
 // READ: Overdue Returns Table
@@ -38,17 +67,11 @@ export interface OverdueReturnRow {
 }
 
 /**
- * Returns all active assignments where the expected_return_date has passed
- * and the asset has not yet been returned.
- *
- * Access: GlobalAdmin, ITOperator
+ * Internal: Fetches overdue returns without re-authenticating.
  */
-export async function getDashboardOverdueReturns(): Promise<OverdueReturnRow[]> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
-    throw new Error('Forbidden');
-
+async function _getOverdueReturnsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<OverdueReturnRow[]> {
   const rows = await db
     .select({
       assignmentId: assetAssignments.id,
@@ -59,6 +82,9 @@ export async function getDashboardOverdueReturns(): Promise<OverdueReturnRow[]> 
       employeeEmail: users.email,
       department: departments.name,
       expectedReturnDate: assetAssignments.expectedReturnDate,
+      daysOverdue: sql<number>`(CURRENT_DATE - ${assetAssignments.expectedReturnDate}::date)`.as(
+        'days_overdue'
+      ),
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -71,31 +97,33 @@ export async function getDashboardOverdueReturns(): Promise<OverdueReturnRow[]> 
         sql`${assetAssignments.expectedReturnDate}::date < CURRENT_DATE`
       )
     )
-    .orderBy(sql`${assetAssignments.expectedReturnDate}::date ASC`);
+    .orderBy(sql`${assetAssignments.expectedReturnDate}::date ASC`)
+    .limit(limit);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  return rows.map((row) => ({
+    assignmentId: row.assignmentId,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    assetName: row.assetName,
+    employeeName: row.employeeName,
+    employeeEmail: row.employeeEmail,
+    department: row.department ?? null,
+    expectedReturnDate: row.expectedReturnDate!,
+    daysOverdue: Math.max(0, Number(row.daysOverdue ?? 0)),
+  }));
+}
 
-  return rows.map((row) => {
-    const expectedDate = new Date(row.expectedReturnDate!);
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const daysOverdue = Math.max(
-      0,
-      Math.floor((today.getTime() - expectedDate.getTime()) / msPerDay)
-    );
-
-    return {
-      assignmentId: row.assignmentId,
-      assetId: row.assetId,
-      assetTag: row.assetTag,
-      assetName: row.assetName,
-      employeeName: row.employeeName,
-      employeeEmail: row.employeeEmail,
-      department: row.department ?? null,
-      expectedReturnDate: row.expectedReturnDate!,
-      daysOverdue,
-    };
-  });
+/**
+ * Returns all active assignments where the expected_return_date has passed.
+ * Access: GlobalAdmin, ITOperator
+ */
+export async function getDashboardOverdueReturns(
+  limit?: number
+): Promise<OverdueReturnRow[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  assertAdminOrOperator(user);
+  return _getOverdueReturnsInternal(limit);
 }
 
 // ============================================================================
@@ -113,16 +141,11 @@ export interface PendingDisposalRow {
 }
 
 /**
- * Returns all disposal requests with status 'Pending Approval'.
- *
- * Access: GlobalAdmin, FinanceAuditor
+ * Internal: Fetches pending disposals without re-authenticating.
  */
-export async function getDashboardPendingDisposals(): Promise<PendingDisposalRow[]> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor')
-    throw new Error('Forbidden');
-
+async function _getPendingDisposalsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<PendingDisposalRow[]> {
   const rows = await db
     .select({
       disposalId: assetDisposals.id,
@@ -131,19 +154,17 @@ export async function getDashboardPendingDisposals(): Promise<PendingDisposalRow
       assetName: models.name,
       requestedBy: users.name,
       requestedByEmail: users.email,
-      reason: assetDisposals.reason,
-      requestedAt: assetDisposals.requestedAt,
+      daysPending: sql<number>`GREATEST(0, CURRENT_DATE - ${assetDisposals.requestedAt}::date)`.as(
+        'days_pending'
+      ),
     })
     .from(assetDisposals)
     .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
     .innerJoin(models, eq(assets.modelId, models.id))
     .innerJoin(users, eq(assetDisposals.requestedById, users.id))
     .where(eq(assetDisposals.status, 'Pending Approval'))
-    .orderBy(assetDisposals.requestedAt);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const msPerDay = 1000 * 60 * 60 * 24;
+    .orderBy(assetDisposals.requestedAt)
+    .limit(limit);
 
   return rows.map((row) => ({
     disposalId: row.disposalId,
@@ -152,8 +173,21 @@ export async function getDashboardPendingDisposals(): Promise<PendingDisposalRow
     assetName: row.assetName,
     requestedBy: row.requestedBy,
     requestedByEmail: row.requestedByEmail,
-    daysPending: Math.max(0, Math.floor((today.getTime() - new Date(row.requestedAt).getTime()) / msPerDay)),
+    daysPending: Number(row.daysPending ?? 0),
   }));
+}
+
+/**
+ * Returns all disposal requests with status 'Pending Approval'.
+ * Access: GlobalAdmin, FinanceAuditor
+ */
+export async function getDashboardPendingDisposals(
+  limit?: number
+): Promise<PendingDisposalRow[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  assertAdminOrAuditor(user);
+  return _getPendingDisposalsInternal(limit);
 }
 
 // ============================================================================
@@ -170,17 +204,11 @@ export interface HighMaintenanceRow {
 }
 
 /**
- * Returns assets with 3 or more maintenance tickets.
- * Calculates total downtime from ticket created_at to completion (or now if still active).
- *
- * Access: GlobalAdmin, ITOperator
+ * Internal: Fetches high-maintenance assets without re-authenticating.
  */
-export async function getDashboardHighMaintenanceAssets(): Promise<HighMaintenanceRow[]> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
-    throw new Error('Forbidden');
-
+async function _getHighMaintenanceAssetsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<HighMaintenanceRow[]> {
   const rows = await db
     .select({
       assetId: assets.id,
@@ -203,8 +231,11 @@ export async function getDashboardHighMaintenanceAssets(): Promise<HighMaintenan
     .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
     .innerJoin(models, eq(assets.modelId, models.id))
     .groupBy(assets.id, assets.assetTag, models.name, assets.status)
-    .having(sql`COUNT(${maintenanceTickets.id}) >= 3`)
-    .orderBy(sql`repair_count DESC`);
+    .having(
+      sql`COUNT(${maintenanceTickets.id}) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`
+    )
+    .orderBy(sql`repair_count DESC`)
+    .limit(limit);
 
   return rows.map((row) => ({
     assetId: row.assetId,
@@ -214,6 +245,19 @@ export async function getDashboardHighMaintenanceAssets(): Promise<HighMaintenan
     repairCount: Number(row.repairCount),
     totalDowntimeDays: Number(row.totalDowntimeDays ?? 0),
   }));
+}
+
+/**
+ * Returns assets with 3+ maintenance tickets.
+ * Access: GlobalAdmin, ITOperator
+ */
+export async function getDashboardHighMaintenanceAssets(
+  limit?: number
+): Promise<HighMaintenanceRow[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  assertAdminOrOperator(user);
+  return _getHighMaintenanceAssetsInternal(limit);
 }
 
 // ============================================================================
@@ -231,31 +275,17 @@ export interface RecentActivity {
 function formatActionType(actionType: string): string {
   const act = actionType.toLowerCase().replace(/_/g, ' ');
 
-  if (act.endsWith('ed') || act.endsWith('d')) {
-    return act;
-  }
-
+  if (act.endsWith('ed') || act.endsWith('d')) return act;
   if (act === 'login') return 'logged in';
   if (act === 'logout') return 'logged out';
-
-  if (act.endsWith('e')) {
-    return `${act}d`;
-  }
-
+  if (act.endsWith('e')) return `${act}d`;
   return `${act}ed`;
 }
 
 /**
- * Returns the 5 most recent activities from the system audit logs.
- *
- * Access: GlobalAdmin, FinanceAuditor
+ * Internal: Fetches recent activities without re-authenticating.
  */
-export async function getDashboardRecentActivities(): Promise<RecentActivity[]> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') throw new Error('Forbidden');
-  
-  // Fetch top 5 recent logs with user info
+async function _getRecentActivitiesInternal(): Promise<RecentActivity[]> {
   const logs = await db
     .select({
       id: systemAuditLogs.id,
@@ -268,31 +298,31 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
     .from(systemAuditLogs)
     .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
     .orderBy(desc(systemAuditLogs.performedAt))
-    .limit(5);
+    .limit(DASHBOARD_RECENT_ACTIVITIES_LIMIT);
 
-  // For simplicity, we'll try to resolve Asset Tags for 'Asset' entities
+  // Resolve Asset Tags for 'Asset' entities
   const assetIds = logs
-    .filter(l => l.entityType === 'Asset')
-    .map(l => l.entityId);
-    
+    .filter((l) => l.entityType === 'Asset')
+    .map((l) => l.entityId);
+
   const assetMap = new Map<string, string>();
   if (assetIds.length > 0) {
     const assetDetails = await db
       .select({ id: assets.id, assetTag: assets.assetTag })
       .from(assets)
       .where(inArray(assets.id, assetIds));
-    
-    assetDetails.forEach(a => assetMap.set(a.id, a.assetTag));
+
+    assetDetails.forEach((a) => assetMap.set(a.id, a.assetTag));
   }
 
   return logs.map((log) => {
     const performer = log.performedByName || 'System';
-    const entityLabel = assetMap.get(log.entityId) || log.entityId.slice(0, 8);
-    
+    const entityLabel =
+      assetMap.get(log.entityId) || log.entityId.slice(0, 8);
+
     const actionPhrase = formatActionType(log.actionType);
     let text = `${performer} ${actionPhrase} ${log.entityType.toLowerCase()}`;
-    
-    // Humanize common patterns
+
     if (log.entityType === 'Asset') {
       text = `${performer} ${actionPhrase} asset ${entityLabel}`;
     } else if (log.entityType === 'MaintenanceTicket') {
@@ -311,8 +341,21 @@ export async function getDashboardRecentActivities(): Promise<RecentActivity[]> 
   });
 }
 
+/**
+ * Returns the 5 most recent activities from the system audit logs.
+ * Access: GlobalAdmin, FinanceAuditor
+ */
+export async function getDashboardRecentActivities(): Promise<
+  RecentActivity[]
+> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  assertAdminOrAuditor(user);
+  return _getRecentActivitiesInternal();
+}
+
 // ============================================================================
-// READ: Current Inventory Status Donut Chart
+// READ: Current Inventory Status Donut Chart (Cached)
 // ============================================================================
 
 export interface InventoryStatusItem {
@@ -326,194 +369,475 @@ export interface InventoryStatusResponse {
   utilizationRate: number;
 }
 
+const getCachedInventoryStatus = unstable_cache(
+  async (): Promise<InventoryStatusResponse> => {
+    const results = await db
+      .select({
+        status: assets.status,
+        count: count(assets.id),
+      })
+      .from(assets)
+      .where(eq(assets.isArchived, false))
+      .groupBy(assets.status);
+
+    const statusColorMap: Record<string, { label: string; color: string }> = {
+      Available: { label: 'New / Available', color: '#2563eb' },
+      Assigned: { label: 'Assigned', color: '#84cc16' },
+      'In Repair': { label: 'In Repair', color: '#9333ea' },
+      Defective: { label: 'Defective', color: '#ef4444' },
+      Lost: { label: 'Lost', color: '#f97316' },
+      Retired: { label: 'Retired', color: '#64748b' },
+      'Pending Disposal': { label: 'Pending Disposal', color: '#94a3b8' },
+      Disposed: { label: 'Disposed', color: '#e11d48' },
+    };
+
+    const dataMap = new Map<string, number>();
+    let totalActive = 0;
+    let assignedCount = 0;
+
+    results.forEach((r) => {
+      const val = Number(r.count);
+      dataMap.set(r.status, val);
+      if (r.status !== 'Retired' && r.status !== 'Disposed') {
+        totalActive += val;
+      }
+      if (r.status === 'Assigned') {
+        assignedCount = val;
+      }
+    });
+
+    const inventoryData: InventoryStatusItem[] = [];
+
+    Object.entries(statusColorMap).forEach(([status, meta]) => {
+      const val = dataMap.get(status) || 0;
+      if (val > 0) {
+        inventoryData.push({ name: meta.label, value: val, color: meta.color });
+      }
+    });
+
+    // Include any unknown statuses
+    results.forEach((r) => {
+      if (!statusColorMap[r.status] && Number(r.count) > 0) {
+        inventoryData.push({
+          name: r.status,
+          value: Number(r.count),
+          color: '#6b7280',
+        });
+      }
+    });
+
+    const utilizationRate =
+      totalActive > 0 ? Math.round((assignedCount / totalActive) * 100) : 0;
+
+    return { inventoryData, utilizationRate };
+  },
+  ['dashboard-inventory-status'],
+  { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-inventory'] }
+);
+
 /**
- * Returns dynamic inventory distribution counts grouped by status,
- * along with the calculated asset utilization rate.
- *
+ * Returns dynamic inventory distribution counts grouped by status.
  * Access: GlobalAdmin, ITOperator, FinanceAuditor
  */
 export async function getDashboardInventoryStatus(): Promise<InventoryStatusResponse> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role === 'Employee') throw new Error('Forbidden');
-
-  const results = await db
-    .select({
-      status: assets.status,
-      count: count(assets.id),
-    })
-    .from(assets)
-    .where(eq(assets.isArchived, false))
-    .groupBy(assets.status);
-
-  const statusColorMap: Record<string, { label: string; color: string }> = {
-    'Available': { label: 'New / Available', color: '#2563eb' },
-    'Assigned': { label: 'Assigned', color: '#84cc16' },
-    'In Repair': { label: 'In Repair', color: '#9333ea' },
-    'Defective': { label: 'Defective', color: '#ef4444' },
-    'Lost': { label: 'Lost', color: '#f97316' },
-    'Retired': { label: 'Retired', color: '#64748b' },
-    'Pending Disposal': { label: 'Pending Disposal', color: '#94a3b8' },
-    'Disposed': { label: 'Disposed', color: '#e11d48' },
-  };
-
-  const dataMap = new Map<string, number>();
-  let totalActive = 0;
-  let assignedCount = 0;
-
-  results.forEach(r => {
-    const val = Number(r.count);
-    dataMap.set(r.status, val);
-    
-    if (r.status !== 'Retired' && r.status !== 'Disposed') {
-      totalActive += val;
-    }
-    if (r.status === 'Assigned') {
-      assignedCount = val;
-    }
-  });
-
-  const inventoryData: InventoryStatusItem[] = [];
-
-  Object.entries(statusColorMap).forEach(([status, meta]) => {
-    const val = dataMap.get(status) || 0;
-    if (val > 0) {
-      inventoryData.push({
-        name: meta.label,
-        value: val,
-        color: meta.color,
-      });
-    }
-  });
-
-  results.forEach(r => {
-    if (!statusColorMap[r.status] && Number(r.count) > 0) {
-      const val = Number(r.count);
-      inventoryData.push({
-        name: r.status,
-        value: val,
-        color: '#6b7280',
-      });
-    }
-  });
-
-  const utilizationRate = totalActive > 0 ? Math.round((assignedCount / totalActive) * 100) : 0;
-
-  return {
-    inventoryData,
-    utilizationRate,
-  };
+  assertNotEmployee(user);
+  return getCachedInventoryStatus();
 }
+
+// ============================================================================
+// READ: Department Allocation Bar Chart (Cached)
+// ============================================================================
 
 export interface DepartmentAllocationItem {
   name: string;
   value: number;
 }
 
+const getCachedDepartmentAllocation = unstable_cache(
+  async (): Promise<DepartmentAllocationItem[]> => {
+    const results = await db
+      .select({
+        name: departments.name,
+        value: count(assets.id),
+      })
+      .from(assets)
+      .innerJoin(assetAssignments, eq(assets.id, assetAssignments.assetId))
+      .innerJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+      .innerJoin(departments, eq(users.departmentId, departments.id))
+      .where(
+        and(
+          eq(assets.isArchived, false),
+          isNull(assetAssignments.returnedDate)
+        )
+      )
+      .groupBy(departments.name);
+
+    return results.map((r) => ({
+      name: r.name,
+      value: Number(r.value),
+    }));
+  },
+  ['dashboard-department-allocation'],
+  { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-dept-allocation'] }
+);
+
 /**
- * Returns the count of active assigned assets grouped by department name.
- *
+ * Returns the count of active assigned assets grouped by department.
  * Access: GlobalAdmin, ITOperator, FinanceAuditor
  */
-export async function getDashboardDepartmentAllocation(): Promise<DepartmentAllocationItem[]> {
+export async function getDashboardDepartmentAllocation(): Promise<
+  DepartmentAllocationItem[]
+> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role === 'Employee') throw new Error('Forbidden');
-
-  const results = await db
-    .select({
-      name: departments.name,
-      value: count(assets.id),
-    })
-    .from(assets)
-    .innerJoin(assetAssignments, eq(assets.id, assetAssignments.assetId))
-    .innerJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-    .innerJoin(departments, eq(users.departmentId, departments.id))
-    .where(
-      and(
-        eq(assets.isArchived, false),
-        isNull(assetAssignments.returnedDate)
-      )
-    )
-    .groupBy(departments.name);
-
-  return results.map((r) => ({
-    name: r.name,
-    value: Number(r.value),
-  }));
+  assertNotEmployee(user);
+  return getCachedDepartmentAllocation();
 }
 
+// ============================================================================
+// READ: Assets by Category (NEW — Cached)
+// ============================================================================
+
+export interface AssetsByCategoryItem {
+  categoryName: string;
+  pillar: string;
+  count: number;
+}
+
+const getCachedAssetsByCategory = unstable_cache(
+  async (): Promise<AssetsByCategoryItem[]> => {
+    const results = await db
+      .select({
+        categoryName: categories.name,
+        pillar: categories.pillar,
+        count: count(assets.id),
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .where(eq(assets.isArchived, false))
+      .groupBy(categories.name, categories.pillar)
+      .orderBy(sql`count DESC`);
+
+    return results.map((r) => ({
+      categoryName: r.categoryName,
+      pillar: r.pillar,
+      count: Number(r.count),
+    }));
+  },
+  ['dashboard-assets-by-category'],
+  { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-categories'] }
+);
+
+/**
+ * Returns asset counts grouped by category.
+ * Access: GlobalAdmin, ITOperator, FinanceAuditor
+ */
+export async function getDashboardAssetsByCategory(): Promise<
+  AssetsByCategoryItem[]
+> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  assertNotEmployee(user);
+  return getCachedAssetsByCategory();
+}
+
+// ============================================================================
+// READ: KPI Metrics (Cached — all heavy queries parallelized)
+// ============================================================================
+
 export interface DashboardKpiMetrics {
+  // Hero KPIs
+  totalActiveAssets: number;
+  totalActiveAssetsChange: number;
   totalAssetValue?: number;
+  totalAssetValueTrend?: number;
   netBookValue?: number;
+  fleetHealthScore: number;
+  fleetHealthLabel: string;
+
+  // Secondary KPIs
   inactiveSoftwareSeats: number;
   inactiveSoftwareCostLeak?: number;
   warrantyExpiries30Days: number;
   cumulativeRepairSpend?: number;
+  repairSpendTrend?: number;
   softwareRenewals30Days: number;
   impactedSoftwareEmployees: number;
 }
 
+function getFleetHealthLabel(score: number): string {
+  if (score >= 85) return 'Excellent';
+  if (score >= 70) return 'Good';
+  if (score >= 50) return 'Fair';
+  return 'Poor';
+}
+
 /**
- * Internal cached helper to fetch the aggregated KPI metrics.
- * Leverages unstable_cache with revalidation tag 'dashboard-kpis' for sub-millisecond execution.
+ * Internal cached helper that runs all KPI queries in parallel.
  */
 const getCachedDashboardKpiMetrics = unstable_cache(
   async (): Promise<DashboardKpiMetrics> => {
+    // ── Run all independent queries in parallel ────────────────────────
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // 1. Total Asset Value (Acquisition cost of all active unarchived assets)
-    const totalValueRes = await db
-      .select({ sum: sql<string | null>`SUM(${assetPurchases.totalCost})` })
-      .from(assetPurchases)
-      .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
-      .where(eq(assets.isArchived, false));
+    const [
+      // 1. Total active assets + MTD change
+      totalAssetsRes,
+      assetsCreatedThisMonthRes,
+      // 2. Total asset value (current + 30-day-ago for trend)
+      totalValueRes,
+      totalValuePrevRes,
+      // 3. Net Book Value (SQL-side depreciation)
+      nbvRes,
+      // 4. Software seats & allocations
+      licensesRes,
+      allocationsCountRes,
+      // 5. Warranty expiries (30 days)
+      warrantyExpiryRes,
+      // 6. Cumulative repair spend (current + previous month)
+      repairSpendCurrentRes,
+      repairSpendPrevRes,
+      // 7. Software renewals
+      expiringLicensesRes,
+      // 8. Fleet health components
+      totalAssignedRes,
+      overdueCountRes,
+      highRepairCountRes,
+      warrantyCoverageRes,
+      totalSoftwareSeatsRes,
+      allocatedSoftwareSeatsRes,
+    ] = await Promise.all([
+      // 1a. Total active (non-archived, non-disposed) assets
+      db
+        .select({ count: count() })
+        .from(assets)
+        .where(and(eq(assets.isArchived, false), ne(assets.status, 'Disposed'))),
+
+      // 1b. Assets created this month (MTD change)
+      db
+        .select({ count: count() })
+        .from(assets)
+        .where(
+          and(
+            eq(assets.isArchived, false),
+            sql`${assets.createdAt} >= DATE_TRUNC('month', CURRENT_DATE)`
+          )
+        ),
+
+      // 2a. Total asset value (current)
+      db
+        .select({
+          sum: sql<string | null>`SUM(${assetPurchases.totalCost})`,
+        })
+        .from(assetPurchases)
+        .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        .where(eq(assets.isArchived, false)),
+
+      // 2b. Total asset value 30 days ago (assets that existed then)
+      db
+        .select({
+          sum: sql<string | null>`SUM(${assetPurchases.totalCost})`,
+        })
+        .from(assetPurchases)
+        .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        .where(
+          and(
+            eq(assets.isArchived, false),
+            sql`${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp`
+          )
+        ),
+
+      // 3. Net Book Value via SQL (straight-line depreciation)
+      db
+        .select({
+          nbv: sql<string | null>`
+            SUM(
+              GREATEST(0,
+                ${assetPurchases.totalCost}::numeric - (
+                  ${assetPurchases.totalCost}::numeric
+                  / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
+                  * GREATEST(0,
+                    EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
+                    + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
+                  )
+                )
+              )
+            )
+          `,
+        })
+        .from(assetPurchases)
+        .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        .where(
+          and(eq(assets.isArchived, false), ne(assets.status, 'Disposed'))
+        ),
+
+      // 4a. Active software licenses
+      db
+        .select({
+          id: softwareLicenses.id,
+          totalSeats: softwareLicenses.totalSeats,
+          assetId: softwareLicenses.assetId,
+        })
+        .from(softwareLicenses)
+        .where(eq(softwareLicenses.isActive, true)),
+
+      // 4b. Allocation counts per license
+      db
+        .select({
+          licenseId: softwareAllocations.licenseId,
+          count: count(),
+        })
+        .from(softwareAllocations)
+        .where(isNull(softwareAllocations.revokedAt))
+        .groupBy(softwareAllocations.licenseId),
+
+      // 5. Warranty expiries (next 30 days)
+      db
+        .select({ count: count() })
+        .from(assetPurchases)
+        .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        .where(
+          and(
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed'),
+            sql`${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE`,
+            sql`${assetPurchases.warrantyExpiry}::date <= CURRENT_DATE + INTERVAL '30 days'`
+          )
+        ),
+
+      // 6a. Repair spend this month
+      db
+        .select({
+          sum: sql<string | null>`SUM(${maintenanceTickets.actualCost})`,
+        })
+        .from(maintenanceTickets)
+        .where(
+          and(
+            eq(maintenanceTickets.status, 'COMPLETED'),
+            sql`${maintenanceTickets.actualCompletionDate} >= DATE_TRUNC('month', CURRENT_DATE)`
+          )
+        ),
+
+      // 6b. Repair spend previous month
+      db
+        .select({
+          sum: sql<string | null>`SUM(${maintenanceTickets.actualCost})`,
+        })
+        .from(maintenanceTickets)
+        .where(
+          and(
+            eq(maintenanceTickets.status, 'COMPLETED'),
+            sql`${maintenanceTickets.actualCompletionDate} >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'`,
+            sql`${maintenanceTickets.actualCompletionDate} < DATE_TRUNC('month', CURRENT_DATE)`
+          )
+        ),
+
+      // 7. Software renewals (next 30 days)
+      db
+        .select({ id: softwareLicenses.id })
+        .from(softwareLicenses)
+        .where(
+          and(
+            eq(softwareLicenses.isActive, true),
+            sql`${softwareLicenses.expiryDate}::date >= CURRENT_DATE`,
+            sql`${softwareLicenses.expiryDate}::date <= CURRENT_DATE + INTERVAL '30 days'`
+          )
+        ),
+
+      // 8a. Total assigned assets (for fleet health - utilization)
+      db
+        .select({ count: count() })
+        .from(assets)
+        .where(
+          and(
+            eq(assets.isArchived, false),
+            eq(assets.status, 'Assigned')
+          )
+        ),
+
+      // 8b. Overdue count (for fleet health)
+      db
+        .select({ count: count() })
+        .from(assetAssignments)
+        .where(
+          and(
+            isNull(assetAssignments.returnedDate),
+            sql`${assetAssignments.expectedReturnDate}::date < CURRENT_DATE`
+          )
+        ),
+
+      // 8c. High-repair assets count (for fleet health)
+      db
+        .select({ count: count() })
+        .from(
+          db
+            .select({ assetId: maintenanceTickets.assetId })
+            .from(maintenanceTickets)
+            .groupBy(maintenanceTickets.assetId)
+            .having(sql`COUNT(*) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`)
+            .as('high_repair_assets')
+        ),
+
+      // 8d. Warranty coverage (assets with active warranty)
+      db
+        .select({ count: count() })
+        .from(assetPurchases)
+        .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        .where(
+          and(
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed'),
+            sql`${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE`
+          )
+        ),
+
+      // 8e. Total software seats
+      db
+        .select({
+          sum: sql<string | null>`SUM(${softwareLicenses.totalSeats})`,
+        })
+        .from(softwareLicenses)
+        .where(eq(softwareLicenses.isActive, true)),
+
+      // 8f. Allocated software seats
+      db
+        .select({ count: count() })
+        .from(softwareAllocations)
+        .where(isNull(softwareAllocations.revokedAt)),
+    ]);
+
+    // ── Compute derived values ────────────────────────────────────────
+
+    const totalActiveAssets = totalAssetsRes[0]?.count || 0;
+    const totalActiveAssetsChange = assetsCreatedThisMonthRes[0]?.count || 0;
+
     const totalAssetValue = parseFloat(totalValueRes[0]?.sum || '0');
+    const totalAssetValuePrev = parseFloat(totalValuePrevRes[0]?.sum || '0');
+    const totalAssetValueTrend =
+      totalAssetValuePrev > 0
+        ? Math.round(
+            ((totalAssetValue - totalAssetValuePrev) / totalAssetValuePrev) *
+              1000
+          ) / 10
+        : 0;
 
-    // 2. Net Book Value (Depreciated value of all active unarchived assets)
-    const activeAssets = await db
-      .select({
-        usefulLifeMonths: assets.usefulLifeMonths,
-        purchaseDate: assetPurchases.purchaseDate,
-        totalCost: assetPurchases.totalCost,
-      })
-      .from(assets)
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .where(and(eq(assets.isArchived, false), ne(assets.status, 'Disposed')));
+    const netBookValue = parseFloat(nbvRes[0]?.nbv || '0');
 
-    let netBookValue = 0;
-    activeAssets.forEach((asset) => {
-      const price = parseFloat(asset.totalCost?.toString() || '0');
-      const bookValue = calculateStraightLineDepreciation(
-        price,
-        asset.usefulLifeMonths,
-        asset.purchaseDate
-      );
-      netBookValue += bookValue;
-    });
+    // ── Software seats ────────────────────────────────────────────────
 
-    // 3. Inactive Software Seats and Cost Leak (Dynamic seat pricing calculation)
-    const licenses = await db
-      .select({
-        id: softwareLicenses.id,
-        totalSeats: softwareLicenses.totalSeats,
-        assetId: softwareLicenses.assetId,
-      })
-      .from(softwareLicenses)
-      .where(eq(softwareLicenses.isActive, true));
+    const licenses = licensesRes;
+    const allocMap = new Map(
+      allocationsCountRes.map((a) => [a.licenseId, a.count])
+    );
 
-    const allocationsCount = await db
-      .select({
-        licenseId: softwareAllocations.licenseId,
-        count: count(),
-      })
-      .from(softwareAllocations)
-      .where(isNull(softwareAllocations.revokedAt))
-      .groupBy(softwareAllocations.licenseId);
-
-    const allocMap = new Map(allocationsCount.map((a) => [a.licenseId, a.count]));
-
-    // Fetch purchases for software assets to determine exact pricing per seat
-    const softwareAssetIds = licenses.map((l) => l.assetId).filter(Boolean) as string[];
+    // Fetch software purchase costs for per-seat pricing
+    const softwareAssetIds = licenses
+      .map((l) => l.assetId)
+      .filter(Boolean) as string[];
     let softwarePurchasesMap = new Map<string, number>();
 
     if (softwareAssetIds.length > 0) {
@@ -524,9 +848,12 @@ const getCachedDashboardKpiMetrics = unstable_cache(
         })
         .from(assetPurchases)
         .where(inArray(assetPurchases.assetId, softwareAssetIds));
-      
+
       softwarePurchasesMap = new Map(
-        purchases.map((p) => [p.assetId, parseFloat(p.totalCost?.toString() || '0')])
+        purchases.map((p) => [
+          p.assetId,
+          parseFloat(p.totalCost?.toString() || '0'),
+        ])
       );
     }
 
@@ -538,54 +865,45 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       const inactive = Math.max(0, lic.totalSeats - allocated);
       inactiveSoftwareSeats += inactive;
 
-      // Pricing dynamic calculation
-      const licenseCost = lic.assetId ? (softwarePurchasesMap.get(lic.assetId) || 0) : 0;
-      const costPerSeat = lic.totalSeats > 0 ? (licenseCost / lic.totalSeats) : 0;
-      
-      // Fallback price if no purchase is found
-      const activeCostPerSeat = costPerSeat > 0 ? costPerSeat : 50; 
+      const licenseCost = lic.assetId
+        ? softwarePurchasesMap.get(lic.assetId) || 0
+        : 0;
+      const costPerSeat =
+        lic.totalSeats > 0 ? licenseCost / lic.totalSeats : 0;
+      const activeCostPerSeat =
+        costPerSeat > 0 ? costPerSeat : DEFAULT_SOFTWARE_SEAT_COST;
       inactiveSoftwareCostLeak += inactive * activeCostPerSeat;
     });
 
-    // 4. Warranty Expiries (next 30 days)
-    const warrantyExpiryRes = await db
-      .select({ count: count() })
-      .from(assetPurchases)
-      .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
-      .where(
-        and(
-          eq(assets.isArchived, false),
-          ne(assets.status, 'Disposed'),
-          sql`${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE`,
-          sql`${assetPurchases.warrantyExpiry}::date <= CURRENT_DATE + INTERVAL '30 days'`
-        )
-      );
+    // ── Warranty & Repairs ────────────────────────────────────────────
+
     const warrantyExpiries30Days = warrantyExpiryRes[0]?.count || 0;
 
-    // 5. Cumulative Repair Spend (actual spent on completed tickets)
-    const repairSpendRes = await db
-      .select({ sum: sql<string | null>`SUM(${maintenanceTickets.actualCost})` })
+    // Cumulative repair spend (all time)
+    const allTimeRepairRes = await db
+      .select({
+        sum: sql<string | null>`SUM(${maintenanceTickets.actualCost})`,
+      })
       .from(maintenanceTickets)
       .where(eq(maintenanceTickets.status, 'COMPLETED'));
-    const cumulativeRepairSpend = parseFloat(repairSpendRes[0]?.sum || '0');
+    const cumulativeRepairSpend = parseFloat(allTimeRepairRes[0]?.sum || '0');
 
-    // 6. Software Renewals (next 30 days) and impacted employee custodians
-    const expiringLicensesList = await db
-      .select({ id: softwareLicenses.id })
-      .from(softwareLicenses)
-      .where(
-        and(
-          eq(softwareLicenses.isActive, true),
-          sql`${softwareLicenses.expiryDate}::date >= CURRENT_DATE`,
-          sql`${softwareLicenses.expiryDate}::date <= CURRENT_DATE + INTERVAL '30 days'`
-        )
-      );
+    const repairThisMonth = parseFloat(repairSpendCurrentRes[0]?.sum || '0');
+    const repairLastMonth = parseFloat(repairSpendPrevRes[0]?.sum || '0');
+    const repairSpendTrend =
+      repairLastMonth > 0
+        ? Math.round(
+            ((repairThisMonth - repairLastMonth) / repairLastMonth) * 1000
+          ) / 10
+        : 0;
 
-    const softwareRenewals30Days = expiringLicensesList.length;
+    // ── Software Renewals ─────────────────────────────────────────────
+
+    const softwareRenewals30Days = expiringLicensesRes.length;
 
     let impactedSoftwareEmployees = 0;
-    if (expiringLicensesList.length > 0) {
-      const licenseIds = expiringLicensesList.map((l) => l.id);
+    if (expiringLicensesRes.length > 0) {
+      const licenseIds = expiringLicensesRes.map((l) => l.id);
       const impactedRes = await db
         .select({ count: count() })
         .from(softwareAllocations)
@@ -598,39 +916,82 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       impactedSoftwareEmployees = impactedRes[0]?.count || 0;
     }
 
+    // ── Fleet Health Score ─────────────────────────────────────────────
+
+    const assignedCountHealth = totalAssignedRes[0]?.count || 0;
+    const overdueCountHealth = overdueCountRes[0]?.count || 0;
+    const highRepairCount = highRepairCountRes[0]?.count || 0;
+    const warrantyCovered = warrantyCoverageRes[0]?.count || 0;
+    const totalSWSeats = parseFloat(totalSoftwareSeatsRes[0]?.sum || '0');
+    const allocatedSWSeats = allocatedSoftwareSeatsRes[0]?.count || 0;
+
+    const utilizationRate =
+      totalActiveAssets > 0 ? assignedCountHealth / totalActiveAssets : 0;
+    const overdueRate =
+      assignedCountHealth > 0
+        ? 1 - overdueCountHealth / assignedCountHealth
+        : 1;
+    const repairRate =
+      totalActiveAssets > 0
+        ? 1 - highRepairCount / totalActiveAssets
+        : 1;
+    const warrantyRate =
+      totalActiveAssets > 0 ? warrantyCovered / totalActiveAssets : 0;
+    const softwareRate =
+      totalSWSeats > 0 ? allocatedSWSeats / totalSWSeats : 1;
+
+    const fleetHealthScore = Math.round(
+      (FLEET_HEALTH_WEIGHTS.utilization * Math.min(1, utilizationRate) +
+        FLEET_HEALTH_WEIGHTS.overdue * Math.max(0, overdueRate) +
+        FLEET_HEALTH_WEIGHTS.repairs * Math.max(0, repairRate) +
+        FLEET_HEALTH_WEIGHTS.warranty * Math.min(1, warrantyRate) +
+        FLEET_HEALTH_WEIGHTS.software * Math.min(1, softwareRate)) *
+        100
+    );
+
     return {
+      totalActiveAssets,
+      totalActiveAssetsChange,
       totalAssetValue,
+      totalAssetValueTrend,
       netBookValue,
+      fleetHealthScore,
+      fleetHealthLabel: getFleetHealthLabel(fleetHealthScore),
       inactiveSoftwareSeats,
       inactiveSoftwareCostLeak,
       warrantyExpiries30Days,
       cumulativeRepairSpend,
+      repairSpendTrend,
       softwareRenewals30Days,
       impactedSoftwareEmployees,
     };
   },
   ['dashboard-kpis'],
   {
-    revalidate: 300,
+    revalidate: DASHBOARD_KPI_CACHE_TTL,
     tags: ['dashboard-kpis'],
   }
 );
 
 /**
- * Returns the aggregated KPI metrics for the 6 dashboard widgets.
- * Access is verified prior to fetching/serving the cached metrics.
+ * Returns aggregated KPI metrics for the dashboard widgets.
+ * Role-filtered: ITOperator doesn't see financial values.
  *
  * Access: GlobalAdmin, ITOperator, FinanceAuditor
  */
 export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role === 'Employee') throw new Error('Forbidden');
+  assertNotEmployee(user);
 
   const metrics = await getCachedDashboardKpiMetrics();
 
   if (user.role === 'ITOperator') {
     return {
+      totalActiveAssets: metrics.totalActiveAssets,
+      totalActiveAssetsChange: metrics.totalActiveAssetsChange,
+      fleetHealthScore: metrics.fleetHealthScore,
+      fleetHealthLabel: metrics.fleetHealthLabel,
       inactiveSoftwareSeats: metrics.inactiveSoftwareSeats,
       warrantyExpiries30Days: metrics.warrantyExpiries30Days,
       softwareRenewals30Days: metrics.softwareRenewals30Days,
@@ -641,3 +1002,103 @@ export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
   return metrics;
 }
 
+// ============================================================================
+// BATCH: Fetch all dashboard data in a single page call
+// ============================================================================
+
+export interface DashboardBatchData {
+  kpiMetrics: DashboardKpiMetrics;
+  inventoryStatus: InventoryStatusResponse;
+  departmentAllocation: DepartmentAllocationItem[];
+  overdueReturns: OverdueReturnRow[];
+  pendingDisposals: PendingDisposalRow[];
+  highMaintenanceAssets: HighMaintenanceRow[];
+  recentActivities: RecentActivity[];
+}
+
+/**
+ * Fetches all dashboard data in a single call, performing auth once
+ * and running all queries in parallel.
+ *
+ * Each data source is resilient — if one fails, others still return.
+ */
+export async function getDashboardBatchData(): Promise<DashboardBatchData> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  assertNotEmployee(user);
+
+  const canSeeOverdue =
+    user.role === 'GlobalAdmin' || user.role === 'ITOperator';
+  const canSeePending =
+    user.role === 'GlobalAdmin' || user.role === 'FinanceAuditor';
+  const canSeeHighMaintenance =
+    user.role === 'GlobalAdmin' || user.role === 'ITOperator';
+  const canSeeRecentActivities =
+    user.role === 'GlobalAdmin' || user.role === 'FinanceAuditor';
+
+  const results = await Promise.allSettled([
+    getCachedDashboardKpiMetrics(),
+    getCachedInventoryStatus(),
+    getCachedDepartmentAllocation(),
+    canSeeOverdue
+      ? _getOverdueReturnsInternal()
+      : Promise.resolve([] as OverdueReturnRow[]),
+    canSeePending
+      ? _getPendingDisposalsInternal()
+      : Promise.resolve([] as PendingDisposalRow[]),
+    canSeeHighMaintenance
+      ? _getHighMaintenanceAssetsInternal()
+      : Promise.resolve([] as HighMaintenanceRow[]),
+    canSeeRecentActivities
+      ? _getRecentActivitiesInternal()
+      : Promise.resolve([] as RecentActivity[]),
+  ]);
+
+  // Extract values with fallbacks for any failed queries
+  const kpiMetrics: DashboardKpiMetrics =
+    results[0].status === 'fulfilled'
+      ? results[0].value
+      : {
+          totalActiveAssets: 0,
+          totalActiveAssetsChange: 0,
+          fleetHealthScore: 0,
+          fleetHealthLabel: 'Unknown',
+          inactiveSoftwareSeats: 0,
+          warrantyExpiries30Days: 0,
+          softwareRenewals30Days: 0,
+          impactedSoftwareEmployees: 0,
+        };
+
+  // Role-filter KPI metrics for ITOperator
+  const filteredKpiMetrics: DashboardKpiMetrics =
+    user.role === 'ITOperator'
+      ? {
+          totalActiveAssets: kpiMetrics.totalActiveAssets,
+          totalActiveAssetsChange: kpiMetrics.totalActiveAssetsChange,
+          fleetHealthScore: kpiMetrics.fleetHealthScore,
+          fleetHealthLabel: kpiMetrics.fleetHealthLabel,
+          inactiveSoftwareSeats: kpiMetrics.inactiveSoftwareSeats,
+          warrantyExpiries30Days: kpiMetrics.warrantyExpiries30Days,
+          softwareRenewals30Days: kpiMetrics.softwareRenewals30Days,
+          impactedSoftwareEmployees: kpiMetrics.impactedSoftwareEmployees,
+        }
+      : kpiMetrics;
+
+  return {
+    kpiMetrics: filteredKpiMetrics,
+    inventoryStatus:
+      results[1].status === 'fulfilled'
+        ? results[1].value
+        : { inventoryData: [], utilizationRate: 0 },
+    departmentAllocation:
+      results[2].status === 'fulfilled' ? results[2].value : [],
+    overdueReturns:
+      results[3].status === 'fulfilled' ? results[3].value : [],
+    pendingDisposals:
+      results[4].status === 'fulfilled' ? results[4].value : [],
+    highMaintenanceAssets:
+      results[5].status === 'fulfilled' ? results[5].value : [],
+    recentActivities:
+      results[6].status === 'fulfilled' ? results[6].value : [],
+  };
+}

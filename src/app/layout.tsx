@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Noto_Sans } from "next/font/google";
 import { Toaster } from "@/components/shared/sonner";
+import { ThemeProvider } from "@/components/shared/theme-provider";
 import "./globals.css";
 
 const notoSans = Noto_Sans({
@@ -28,11 +29,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${notoSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster position="bottom-center" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster position="bottom-center" />
+        </ThemeProvider>
       </body>
     </html>
   );
