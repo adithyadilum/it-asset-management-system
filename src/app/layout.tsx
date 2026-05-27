@@ -18,7 +18,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TIQRI Assets",
   description: "The asset management application for TIQRI corporation",
-  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
