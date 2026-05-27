@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -18,6 +19,9 @@ export interface ModuleNavigationTabsProps {
   // Tab Configuration
   tabs: ModuleTab[];
   defaultTab?: string; // ID of the tab to show by default (defaults to first tab)
+
+  // Optional header rendered above the tabs
+  header?: React.ReactNode;
 
   // Callbacks
   onTabChange?: (tabId: string) => void;
@@ -44,6 +48,7 @@ export const ModuleNavigationTabs = React.forwardRef<
       tabs,
       defaultTab,
       onTabChange,
+      header,
       containerClassName = "",
       listClassName = "",
       triggerClassName = "",
@@ -65,6 +70,9 @@ export const ModuleNavigationTabs = React.forwardRef<
         onValueChange={handleTabChange}
         className={cn("w-full", containerClassName)} // Keeps the overall container full width
       >
+        {/* Optional header above the tabs */}
+        {header ? <div className="mb-3">{header}</div> : null}
+
         {/* ===== TAB LIST (Navigation) ===== */}
         <TabsList
           className={cn(
@@ -83,7 +91,7 @@ export const ModuleNavigationTabs = React.forwardRef<
               className={cn(
                 // Default state (inactive)
                 "relative h-7 rounded-md border border-transparent px-2 py-1",
-                "text-sm font-medium text-slate-500",
+                `${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-500`,
                 "bg-transparent hover:text-slate-600 transition-colors",
                 "cursor-pointer",
 

@@ -33,7 +33,7 @@ export function DisposalsLayout({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { setOpen, open } = useSidebar();
+  const { setOpen } = useSidebar();
 
   const currentPanel = searchParams.get('panel');
   const recordId = searchParams.get('id');
@@ -92,19 +92,12 @@ export function DisposalsLayout({
     }
   };
 
+  // Ensure the app sidebar is closed when a review panel is active to provide more space
   useEffect(() => {
-
-    if (open && isReviewOpen) {
-
+    if (isReviewOpen || isRecordOpen) {
       setOpen(false);
-
-      closeReviewPanel();
-
-      setTimeout(() => {
-        setOpen(true);
-      }, 450);
     }
-  }, [open, isReviewOpen, closeReviewPanel, setOpen]);
+  }, [isReviewOpen, isRecordOpen, setOpen]);
 
   return (
     <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-slate-50">
