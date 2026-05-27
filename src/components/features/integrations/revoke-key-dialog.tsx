@@ -68,7 +68,7 @@ export function RevokeKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-[540px] [&>button]:hidden">
+      <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-135 [&>button]:hidden">
         <div className="p-6">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">

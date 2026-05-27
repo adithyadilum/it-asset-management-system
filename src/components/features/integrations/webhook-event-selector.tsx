@@ -30,7 +30,7 @@ export function WebhookEventSelector({
           <div key={groupName} className="grid gap-3">
             <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>{groupName}</div>
 
-            <div className="grid gap-x-4 gap-y-3 [grid-template-columns:repeat(auto-fit,minmax(138px,1fr))]">
+            <div className="grid gap-x-4 gap-y-3 grid-cols-[repeat(auto-fit,minmax(138px,1fr))]">
               {items.map((item) => (
                 <label key={item.event} className="flex min-w-0 items-start gap-3">
                   <Checkbox
