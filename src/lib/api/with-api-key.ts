@@ -24,6 +24,7 @@ type ExternalApiErrorCode =
   | 'INVALID_API_KEY'
   | 'REVOKED_API_KEY'
   | 'EXPIRED_API_KEY'
+  | 'INTERNAL_ERROR'
 
 function apiError(status: number, code: ExternalApiErrorCode, message: string) {
   return NextResponse.json(
@@ -49,7 +50,7 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         return apiError(401, 'UNAUTHORIZED', 'Missing or invalid Authorization header')
       }
 
-      const token = authHeader.slice(7)
+      const token = authHeader.slice(7).trim()
       const hash = createHash('sha256').update(token).digest('hex')
 
       const found = await db.query.apiKeys.findFirst({ where: eq(apiKeys.keyHash, hash) }) as ApiKeyRecord | undefined
@@ -61,7 +62,9 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         return apiError(403, 'FORBIDDEN', `Insufficient permissions. Required: ${requiredScope}`)
       }
 
-      const rl = await applyRateLimit(found.id)
+      const clientIp = req.headers.get('x-forwarded-for') ?? 'unknown'
+      const rlIdentifier = `${found.id}:${clientIp}`
+      const rl = await applyRateLimit(rlIdentifier)
       if (!rl.success) {
         const resp = apiError(429, 'RATE_LIMITED', 'Rate limit exceeded')
         injectRateLimitHeaders(resp, rl)
@@ -69,7 +72,10 @@ export function withApiKey<TContext extends Record<string, unknown>>(
       }
 
       // fire-and-forget updates
-      void db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, found.id))
+      void db.update(apiKeys)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(apiKeys.id, found.id))
+        .catch(err => console.error('Failed to update API key lastUsedAt:', err))
 
       void logAuditAction({
         entityType: 'ExternalApi',
@@ -77,13 +83,14 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         actionType: 'EXTERNAL_API_ACCESS',
         performedById: found.createdById,
         newData: { apiKeyName: found.name, scope: requiredScope, method: req.method },
-      })
+      }).catch(err => console.error('Failed to log audit action for external API access:', err))
 
       const response = await handler(req, { ...ctx, apiKey: found })
       injectRateLimitHeaders(response, rl)
       return response
-    } catch {
-      return apiError(401, 'UNAUTHORIZED', 'Unauthorized')
+    } catch (err) {
+      console.error('Unhandled fault in withApiKey middleware:', err)
+      return apiError(500, 'INTERNAL_ERROR', 'Internal server error')
     }
   }
 }

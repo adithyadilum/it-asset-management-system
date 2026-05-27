@@ -819,7 +819,7 @@ export const softwareAllocationsRelations = relations(
 export const apiKeys = pgTable('api_keys', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  keyHash: varchar('key_hash', { length: 64 }).notNull(),
+  keyHash: varchar('key_hash', { length: 64 }).notNull().unique(),
   keyPrefix: varchar('key_prefix', { length: 16 }).notNull(),
   keySuffix: varchar('key_suffix', { length: 4 }).notNull(),
   scopes: text('scopes').array().notNull().default(sql`ARRAY['read:assets']`),
@@ -849,6 +849,7 @@ export const webhookSubscriptions = pgTable('webhook_subscriptions', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   isActiveIdx: index('webhook_subscriptions_is_active_idx').on(table.isActive),
+  eventsIdx: index('webhook_subscriptions_events_gin_idx').using('gin', table.events),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({

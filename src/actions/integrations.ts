@@ -149,7 +149,14 @@ export async function revokeApiKey(keyId: string) {
   if (!existing) return { success: false, error: 'API key not found' };
   if (existing.isRevoked) return { success: false, error: 'API key already revoked' };
 
-  await db.update(apiKeys).set({ isRevoked: true }).where(eq(apiKeys.id, keyId));
+  const [updated] = await db.update(apiKeys)
+    .set({ isRevoked: true })
+    .where(eq(apiKeys.id, keyId))
+    .returning({ id: apiKeys.id });
+
+  if (!updated) {
+    return { success: false, error: 'API key not found or already deleted' };
+  }
 
   await logAuditAction({
     entityType: 'ApiKey',
@@ -177,7 +184,13 @@ export async function deleteApiKey(keyId: string) {
   if (!existing) return { success: false, error: 'API key not found' };
   if (!existing.isRevoked) return { success: false, error: 'API key must be revoked before deletion' };
 
-  await db.delete(apiKeys).where(eq(apiKeys.id, keyId));
+  const [deleted] = await db.delete(apiKeys)
+    .where(eq(apiKeys.id, keyId))
+    .returning({ id: apiKeys.id });
+
+  if (!deleted) {
+    return { success: false, error: 'API key not found or already deleted' };
+  }
 
   await logAuditAction({
     entityType: 'ApiKey',

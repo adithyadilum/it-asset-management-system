@@ -80,7 +80,7 @@ import { type ProcessReturnPayload } from '@/lib/validations/asset-assignment';
 export interface AssignmentMutationResult {
   assignedAssetIds: string[];
   assignedCount: number;
-  assignedAssignmentIds: number[];
+  assignments: { assignmentId: number; assetId: string }[];
 }
 
 export class AssignmentServiceError extends Error {
@@ -572,7 +572,7 @@ export async function assignSingleAsset(
     return {
       assignedAssetIds: [asset.id],
       assignedCount: 1,
-      assignedAssignmentIds: [assignment.id],
+      assignments: [{ assignmentId: assignment.id, assetId: asset.id }],
     };
   });
 }
@@ -679,7 +679,7 @@ export async function assignMultipleAssets(
     return {
       assignedAssetIds: updatedAssets.map((a) => a.id),
       assignedCount: updatedAssets.length,
-      assignedAssignmentIds: insertedAssignments.map((assignment) => assignment.id),
+      assignments: insertedAssignments.map((assignment) => ({ assignmentId: assignment.id, assetId: assignment.assetId })),
     };
   });
 }

@@ -2,14 +2,20 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { API_RATE_LIMIT_MAX, API_RATE_LIMIT_WINDOW_SECONDS } from '@/lib/constants'
 
-const redis = Redis.fromEnv()
+let ratelimitInstance: Ratelimit | null = null
 
-const ratelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(API_RATE_LIMIT_MAX, `${API_RATE_LIMIT_WINDOW_SECONDS} s`),
-  analytics: true,
-  prefix: 'eitams:ratelimit',
-})
+export function getRateLimiter(): Ratelimit {
+  if (!ratelimitInstance) {
+    const redis = Redis.fromEnv()
+    ratelimitInstance = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(API_RATE_LIMIT_MAX, `${API_RATE_LIMIT_WINDOW_SECONDS} s`),
+      analytics: true,
+      prefix: 'eitams:ratelimit',
+    })
+  }
+  return ratelimitInstance
+}
 
 export type RateLimitResult = {
   success: boolean
@@ -19,7 +25,8 @@ export type RateLimitResult = {
 }
 
 export async function applyRateLimit(identifier: string): Promise<RateLimitResult> {
-  const res = await ratelimit.limit(identifier)
+  const limiter = getRateLimiter()
+  const res = await limiter.limit(identifier)
 
   // upstash result fields vary; normalize to our shape
   const limit = Number(res.limit ?? API_RATE_LIMIT_MAX)
@@ -47,5 +54,3 @@ export function injectRateLimitHeaders(response: NextResponse, result: RateLimit
 
   return response
 }
-
-export default ratelimit

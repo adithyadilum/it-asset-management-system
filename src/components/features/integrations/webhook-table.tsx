@@ -58,20 +58,20 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
       },
       {
         id: "status",
-        header: "Health Status",
+        header: "Status",
         cell: ({ row }) => {
-          const healthy = row.original.isActive
+          const active = row.original.isActive
 
           return (
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${TYPOGRAPHY_CLASSNAMES.textXsMedium} ${
-                healthy
+                active
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-slate-200 bg-slate-50 text-slate-500"
               }`}
             >
-              <span className={`h-2 w-2 rounded-full ${healthy ? "bg-emerald-500" : "bg-slate-400"}`} />
-              {healthy ? "Healthy" : "Inactive"}
+              <span className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-slate-400"}`} />
+              {active ? "Active" : "Inactive"}
             </span>
           )
         },

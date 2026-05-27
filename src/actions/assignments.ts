@@ -66,13 +66,13 @@ function normalizeActionError(error: unknown): AssignmentActionResult {
 
 function dispatchAssignmentCreatedEvents(
   result:
-    | { assignedAssetIds: string[]; assignedAssignmentIds: number[] }
+    | { assignedAssetIds: string[]; assignments: { assignmentId: number; assetId: string }[] }
     | null
     | undefined,
   input: { assignmentType: string; targetId: string | number; notes?: string; expectedReturnDate?: string },
   performedById: string
 ) {
-  if (!result || result.assignedAssignmentIds.length === 0) {
+  if (!result || result.assignments.length === 0) {
     return;
   }
 
@@ -89,10 +89,10 @@ function dispatchAssignmentCreatedEvents(
           typeof input.targetId === 'number' ? input.targetId : Number(input.targetId),
       };
 
-  result.assignedAssignmentIds.forEach((assignmentId, index) => {
+  result.assignments.forEach(({ assignmentId, assetId }) => {
     void dispatchWebhookEvent('assignment.created', {
       assignmentId,
-      assetId: result.assignedAssetIds[index],
+      assetId,
       assignedById: performedById,
       assignmentType: input.assignmentType,
       expectedReturnDate: input.expectedReturnDate ?? null,

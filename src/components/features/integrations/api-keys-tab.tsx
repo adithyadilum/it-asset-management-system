@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Search } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
@@ -15,11 +16,17 @@ interface ApiKeysTabProps {
 }
 
 export function ApiKeysTab({ keys }: ApiKeysTabProps) {
+  const router = useRouter()
   const [secret, setSecret] = useState<string | null>(null)
   const [revealOpen, setRevealOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
+  const handleChanged = () => {
+    router.refresh()
+  }
+
   const handleCreated = (plain: string) => {
+    handleChanged()
     setSecret(plain)
     setRevealOpen(true)
   }
@@ -58,7 +65,7 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
         </div>
       </div>
 
-      <ApiKeyTable keys={filteredKeys} onChanged={() => { /* parent page will revalidate */ }} />
+      <ApiKeyTable keys={filteredKeys} onChanged={handleChanged} />
 
       <SecretRevealDialog
         open={revealOpen}

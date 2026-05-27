@@ -55,7 +55,6 @@ export type ApiKeyDisplay = {
 export const WEBHOOK_EVENT_TYPES = [
   'asset.created',
   'asset.status_changed',
-  'asset.disposed',
   'assignment.created',
   'assignment.returned',
   'maintenance.created',
@@ -72,7 +71,6 @@ export const WEBHOOK_EVENT_GROUPS: Record<string, { event: WebhookEventType; lab
   'Asset Lifecycle': [
     { event: 'asset.created', label: 'Asset Created' },
     { event: 'asset.status_changed', label: 'Asset Status Changed' },
-    { event: 'asset.disposed', label: 'Asset Disposed' },
   ],
   Assignments: [
     { event: 'assignment.created', label: 'Assignment Created' },
