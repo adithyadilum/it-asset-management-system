@@ -422,16 +422,25 @@ export async function sendTestWebhook(subscriptionId: string): Promise<TestWebho
   const payload = JSON.stringify(envelope);
   const signature = createHmac('sha256', secret).update(payload).digest('hex');
 
-  const qstash = getQStashClient();
-  await qstash.publishJSON({
-    url: subscription.url,
-    body: envelope,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-EITAMS-Signature': `sha256=${signature}`,
-      'X-EITAMS-Event': 'ping',
-    },
-  });
+  try {
+    const qstash = getQStashClient();
+    await qstash.publishJSON({
+      url: subscription.url,
+      body: envelope,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-EITAMS-Signature': `sha256=${signature}`,
+        'X-EITAMS-Event': 'ping',
+      },
+    });
 
-  return { success: true, message: 'Test event queued via QStash' };
+    return { success: true, message: 'Test event queued via QStash' };
+  } catch (error) {
+    console.error('Failed to send test webhook via QStash:', error);
+    let errorMessage = 'Failed to dispatch test event to QStash';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    return { success: false, error: errorMessage };
+  }
 }

@@ -62,7 +62,9 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         return apiError(403, 'FORBIDDEN', `Insufficient permissions. Required: ${requiredScope}`)
       }
 
-      const clientIp = req.headers.get('x-forwarded-for') ?? 'unknown'
+      const forwardedFor = req.headers.get('x-forwarded-for')
+      const firstIp = forwardedFor ? forwardedFor.split(',')[0].trim() : ''
+      const clientIp = firstIp || req.headers.get('x-real-ip') || 'unknown'
       const rlIdentifier = `${found.id}:${clientIp}`
       const rl = await applyRateLimit(rlIdentifier)
       if (!rl.success) {
