@@ -948,7 +948,7 @@ export async function markAssignmentsAsReceived(
  */
 export async function refreshOverdueAssignments(): Promise<void> {
   const now = new Date();
-  await db
+  const updated = await db
     .update(assetAssignments)
     .set({ state: 'overdue' })
     .where(
@@ -959,6 +959,10 @@ export async function refreshOverdueAssignments(): Promise<void> {
       )
     )
     .returning({ id: assetAssignments.id });
+
+  if (updated.length > 0) {
+    console.log(`Refreshed ${updated.length} overdue assignments.`);
+  }
 
   // Optional: We can log how many were overdue, but for now we just satisfy the returning rule.
   // We do not throw if 0 rows are updated, as that is expected if none are overdue.

@@ -28,10 +28,7 @@ function formatSequence(value: number) {
   return String(value).padStart(3, '0');
 }
 
-function buildAssetTag(
-  categoryPrefix: string,
-  sequence: number
-) {
+function buildAssetTag(categoryPrefix: string, sequence: number) {
   return `${categoryPrefix}-${formatSequence(sequence)}`;
 }
 
@@ -71,10 +68,7 @@ export async function generateImportTemplate(categoryId: number) {
     console.error('[generateImportTemplate] Error:', error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : 'An unexpected error occurred while generating the template.',
+      message: 'An unexpected error occurred while generating the template.',
     };
   }
 }
@@ -154,10 +148,7 @@ export async function parseAndValidateImport(
     console.error('[parseAndValidateImport] Error:', error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : 'An unexpected error occurred while processing the file.',
+      message: 'An unexpected error occurred while processing the file.',
     };
   }
 }
@@ -303,14 +294,15 @@ export async function executeBulkImport(
         successCount++;
         importedAssetTags.push(assetTag);
         nextSequence++;
-      } catch (error) {
+      } catch (_error) {
+        console.error('Row import failed:', _error);
         failedCount++;
         failedRows.push({
           'Row Number': row.rowNumber,
           'Asset Name': row.name,
           'Serial Number': row.serialNumber || '',
           'Error Message':
-            error instanceof Error ? error.message : String(error),
+            'Failed to import row — check the data and try again.',
         });
       }
     }
@@ -335,13 +327,9 @@ export async function executeBulkImport(
     console.error('[executeBulkImport] Error:', error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : 'An unexpected error occurred during import execution.',
+      message: 'An unexpected error occurred during import execution.',
     };
   } finally {
     await db.execute(sql`SELECT pg_advisory_unlock(${BULK_IMPORT_LOCK_ID})`);
   }
 }
-

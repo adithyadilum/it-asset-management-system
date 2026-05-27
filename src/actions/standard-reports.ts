@@ -1,6 +1,15 @@
 'use server';
 
-import { and, asc, desc, eq, inArray, isNull, isNotNull, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  isNotNull,
+  sql,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 import { db } from '@/db';
@@ -25,9 +34,13 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import type { ReportPreviewRow } from '@/types/standard-reports';
-import { resolveTargetEntityLabels, resolveAuditValueLabels } from '@/actions/audit-log';
+import {
+  resolveTargetEntityLabels,
+  resolveAuditValueLabels,
+} from '@/actions/audit-log';
 import { extractLabelFromValues } from '@/lib/audit';
 import { customStatuses } from '@/db/schema';
+import { reportPreviewFiltersSchema } from '@/lib/validations/standard-reports';
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -59,24 +72,25 @@ export async function getStandardReportsFilterOptions() {
   }
 
   try {
-    const [dbLocations, dbCustomStatuses, dbCategories, dbVendors] = await Promise.all([
-      db
-        .select({ name: locations.name })
-        .from(locations)
-        .where(eq(locations.isActive, true)),
-      db
-        .select({ name: customStatuses.name })
-        .from(customStatuses)
-        .where(eq(customStatuses.isActive, true)),
-      db
-        .select({ name: categories.name, pillar: categories.pillar })
-        .from(categories)
-        .where(eq(categories.isActive, true)),
-      db
-        .select({ name: vendors.companyName })
-        .from(vendors)
-        .where(eq(vendors.isActive, true)),
-    ]);
+    const [dbLocations, dbCustomStatuses, dbCategories, dbVendors] =
+      await Promise.all([
+        db
+          .select({ name: locations.name })
+          .from(locations)
+          .where(eq(locations.isActive, true)),
+        db
+          .select({ name: customStatuses.name })
+          .from(customStatuses)
+          .where(eq(customStatuses.isActive, true)),
+        db
+          .select({ name: categories.name, pillar: categories.pillar })
+          .from(categories)
+          .where(eq(categories.isActive, true)),
+        db
+          .select({ name: vendors.companyName })
+          .from(vendors)
+          .where(eq(vendors.isActive, true)),
+      ]);
 
     const defaultStatuses = [
       'Available',
@@ -110,12 +124,37 @@ export async function getStandardReportsFilterOptions() {
         ...defaultStatuses,
         ...Array.from(new Set(dbCustomStatuses.map((s) => s.name))).sort(),
       ],
-      assignmentStates: ['All States', 'pending approval', 'assigned', 'overdue', 'requested', 'returned'],
-      returnConditions: ['All Conditions', 'New', 'Excellent', 'Fair', 'Poor', 'Damaged'],
+      assignmentStates: [
+        'All States',
+        'pending approval',
+        'assigned',
+        'overdue',
+        'requested',
+        'returned',
+      ],
+      returnConditions: [
+        'All Conditions',
+        'New',
+        'Excellent',
+        'Fair',
+        'Poor',
+        'Damaged',
+      ],
       maintenanceStatuses: ['All Statuses', 'ACTIVE', 'COMPLETED', 'CANCELLED'],
       ticketTypes: ['All Types', 'VENDOR', 'INTERNAL'],
-      disposalStatuses: ['All Statuses', 'Pending Approval', 'Approved', 'Rejected', 'Completed'],
-      licenseTypes: ['All Types', 'Perpetual', 'Subscription', 'Open Source / Free'],
+      disposalStatuses: [
+        'All Statuses',
+        'Pending Approval',
+        'Approved',
+        'Rejected',
+        'Completed',
+      ],
+      licenseTypes: [
+        'All Types',
+        'Perpetual',
+        'Subscription',
+        'Open Source / Free',
+      ],
       auditActionTypes: ['All Actions', 'CREATE', 'UPDATE', 'DELETE'],
       vendors: [
         'All Vendors',
@@ -147,8 +186,6 @@ export async function getStandardReportsFilterOptions() {
   }
 }
 
-
-
 function humanizeFieldName(field: string): string {
   return field
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -159,7 +196,13 @@ function humanizeFieldName(field: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
-    .map((word) => (word.toUpperCase() === 'ID' || word.toUpperCase() === 'IP' || word.toUpperCase() === 'MAC' ? word.toUpperCase() : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
+    .map((word) =>
+      word.toUpperCase() === 'ID' ||
+      word.toUpperCase() === 'IP' ||
+      word.toUpperCase() === 'MAC'
+        ? word.toUpperCase()
+        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
     .join(' ');
 }
 
@@ -185,8 +228,10 @@ function buildEventDetailsSentence(
   if (act === 'LOGOUT') return 'User logged out';
 
   if (!oldValue || !newValue) {
-    if (act === 'CREATE') return `Created ${humanizeFieldName(entityType).toLowerCase()}`;
-    if (act === 'DELETE') return `Deleted ${humanizeFieldName(entityType).toLowerCase()}`;
+    if (act === 'CREATE')
+      return `Created ${humanizeFieldName(entityType).toLowerCase()}`;
+    if (act === 'DELETE')
+      return `Deleted ${humanizeFieldName(entityType).toLowerCase()}`;
     return 'Updated record';
   }
 
@@ -229,8 +274,19 @@ export async function fetchReportPreview(
   }
 
   try {
-    const pageSize = filters.pageSize ?? 16;
-    const page = filters.page ?? 0;
+    // Validate and coerce filter params with Zod
+    const parsedFilters = reportPreviewFiltersSchema.safeParse(filters);
+    if (!parsedFilters.success) {
+      throw new Error(
+        parsedFilters.error.issues[0]?.message ?? 'Invalid report filters.'
+      );
+    }
+    const validatedFilters = parsedFilters.data;
+    // Shadow the parameter so all downstream references use the validated data
+    filters = validatedFilters;
+
+    const pageSize = validatedFilters.pageSize;
+    const page = validatedFilters.page;
     const offset = page * pageSize;
 
     // -------------------------------------------------------------------------
@@ -412,16 +468,28 @@ export async function fetchReportPreview(
       const queryTimer = startLatencyTimer();
       const conditions = [isNull(assetAssignments.returnedDate)];
 
-      if (filters.status && filters.status !== 'All statuses' && filters.status !== 'All States') {
+      if (
+        filters.status &&
+        filters.status !== 'All statuses' &&
+        filters.status !== 'All States'
+      ) {
         conditions.push(eq(assetAssignments.state, filters.status as never));
       }
       if (filters.dateFrom) {
-        conditions.push(sql`${assetAssignments.assignedDate} >= ${filters.dateFrom}::timestamp`);
+        conditions.push(
+          sql`${assetAssignments.assignedDate} >= ${filters.dateFrom}::timestamp`
+        );
       }
       if (filters.dateTo) {
-        conditions.push(sql`${assetAssignments.assignedDate} <= ${filters.dateTo}::timestamp`);
+        conditions.push(
+          sql`${assetAssignments.assignedDate} <= ${filters.dateTo}::timestamp`
+        );
       }
-      if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      if (
+        filters.category &&
+        filters.category !== 'All categories' &&
+        filters.category !== ''
+      ) {
         conditions.push(eq(categories.name, filters.category));
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
@@ -432,7 +500,8 @@ export async function fetchReportPreview(
         conditions.push(eq(categories.pillar, dbPillar as never));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
       const assignedToUser = alias(users, 'assignedToUser');
       const assignedByUser = alias(users, 'assignedByUser');
 
@@ -453,8 +522,14 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(assignedToUser, eq(assetAssignments.assignedToUserId, assignedToUser.id))
-        .leftJoin(assignedByUser, eq(assetAssignments.assignedById, assignedByUser.id))
+        .leftJoin(
+          assignedToUser,
+          eq(assetAssignments.assignedToUserId, assignedToUser.id)
+        )
+        .leftJoin(
+          assignedByUser,
+          eq(assetAssignments.assignedById, assignedByUser.id)
+        )
         .where(whereCondition);
 
       const totalRowsCount = await db
@@ -463,8 +538,14 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(assignedToUser, eq(assetAssignments.assignedToUserId, assignedToUser.id))
-        .leftJoin(assignedByUser, eq(assetAssignments.assignedById, assignedByUser.id))
+        .leftJoin(
+          assignedToUser,
+          eq(assetAssignments.assignedToUserId, assignedToUser.id)
+        )
+        .leftJoin(
+          assignedByUser,
+          eq(assetAssignments.assignedById, assignedByUser.id)
+        )
         .where(whereCondition);
 
       const totalRows = Number(totalRowsCount[0]?.count || 0);
@@ -481,7 +562,10 @@ export async function fetchReportPreview(
       });
 
       const data: ReportPreviewRow[] = rows.map((row) => {
-        const daysSinceAssigned = Math.floor((Date.now() - new Date(row.assignedDate).getTime()) / (1000 * 60 * 60 * 24));
+        const daysSinceAssigned = Math.floor(
+          (Date.now() - new Date(row.assignedDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+        );
         return {
           id: String(row.id),
           'Assignment ID': String(row.id),
@@ -489,11 +573,16 @@ export async function fetchReportPreview(
           'Asset Name': row.assetName || '-',
           'Assigned To': row.assignedTo || '-',
           'Assigned By': row.assignedBy || '-',
-          'Assigned Date': row.assignedDate ? new Date(row.assignedDate).toLocaleDateString() : '-',
-          'Expected Return Date': row.expectedReturnDate ? new Date(row.expectedReturnDate).toLocaleDateString() : '-',
+          'Assigned Date': row.assignedDate
+            ? new Date(row.assignedDate).toLocaleDateString()
+            : '-',
+          'Expected Return Date': row.expectedReturnDate
+            ? new Date(row.expectedReturnDate).toLocaleDateString()
+            : '-',
           State: row.state,
           'Acceptance Status': row.acceptanceStatus || 'Pending',
-          'Days Since Assigned': daysSinceAssigned >= 0 ? String(daysSinceAssigned) : '0',
+          'Days Since Assigned':
+            daysSinceAssigned >= 0 ? String(daysSinceAssigned) : '0',
           Notes: row.notes || '-',
         };
       });
@@ -512,16 +601,30 @@ export async function fetchReportPreview(
       const queryTimer = startLatencyTimer();
       const conditions = [isNotNull(assetAssignments.returnedDate)];
 
-      if (filters.status && filters.status !== 'All statuses' && filters.status !== 'All Conditions') {
-        conditions.push(eq(assetAssignments.returnCondition, filters.status as never));
+      if (
+        filters.status &&
+        filters.status !== 'All statuses' &&
+        filters.status !== 'All Conditions'
+      ) {
+        conditions.push(
+          eq(assetAssignments.returnCondition, filters.status as never)
+        );
       }
       if (filters.dateFrom) {
-        conditions.push(sql`${assetAssignments.returnedDate} >= ${filters.dateFrom}::timestamp`);
+        conditions.push(
+          sql`${assetAssignments.returnedDate} >= ${filters.dateFrom}::timestamp`
+        );
       }
       if (filters.dateTo) {
-        conditions.push(sql`${assetAssignments.returnedDate} <= ${filters.dateTo}::timestamp`);
+        conditions.push(
+          sql`${assetAssignments.returnedDate} <= ${filters.dateTo}::timestamp`
+        );
       }
-      if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      if (
+        filters.category &&
+        filters.category !== 'All categories' &&
+        filters.category !== ''
+      ) {
         conditions.push(eq(categories.name, filters.category));
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
@@ -532,7 +635,8 @@ export async function fetchReportPreview(
         conditions.push(eq(categories.pillar, dbPillar as never));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
       const assignedToUser = alias(users, 'assignedToUser');
 
       const baseQuery = db
@@ -551,7 +655,10 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(assignedToUser, eq(assetAssignments.assignedToUserId, assignedToUser.id))
+        .leftJoin(
+          assignedToUser,
+          eq(assetAssignments.assignedToUserId, assignedToUser.id)
+        )
         .where(whereCondition);
 
       const totalRowsCount = await db
@@ -560,7 +667,10 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(assignedToUser, eq(assetAssignments.assignedToUserId, assignedToUser.id))
+        .leftJoin(
+          assignedToUser,
+          eq(assetAssignments.assignedToUserId, assignedToUser.id)
+        )
         .where(whereCondition);
 
       const totalRows = Number(totalRowsCount[0]?.count || 0);
@@ -577,9 +687,14 @@ export async function fetchReportPreview(
       });
 
       const data: ReportPreviewRow[] = rows.map((row) => {
-        const duration = row.returnedDate && row.assignedDate
-          ? Math.floor((new Date(row.returnedDate).getTime() - new Date(row.assignedDate).getTime()) / (1000 * 60 * 60 * 24))
-          : 0;
+        const duration =
+          row.returnedDate && row.assignedDate
+            ? Math.floor(
+                (new Date(row.returnedDate).getTime() -
+                  new Date(row.assignedDate).getTime()) /
+                  (1000 * 60 * 60 * 24)
+              )
+            : 0;
         return {
           id: String(row.id),
           'Return ID': String(row.id),
@@ -587,8 +702,12 @@ export async function fetchReportPreview(
           'Asset Name': row.assetName || '-',
           'Assigned To': row.assignedTo || '-',
           'Returned By': row.assignedTo || '-',
-          'Assigned Date': row.assignedDate ? new Date(row.assignedDate).toLocaleDateString() : '-',
-          'Returned Date': row.returnedDate ? new Date(row.returnedDate).toLocaleDateString() : '-',
+          'Assigned Date': row.assignedDate
+            ? new Date(row.assignedDate).toLocaleDateString()
+            : '-',
+          'Returned Date': row.returnedDate
+            ? new Date(row.returnedDate).toLocaleDateString()
+            : '-',
           'Duration (Days)': String(duration >= 0 ? duration : 0),
           'Return Condition': row.returnCondition || '-',
           State: row.state,
@@ -613,20 +732,35 @@ export async function fetchReportPreview(
       if (filters.status && filters.status !== 'All statuses') {
         conditions.push(eq(maintenanceTickets.status, filters.status as never));
       }
-      if (filters.assetType && filters.assetType !== 'All Assets' && filters.assetType !== 'All Types') {
-        conditions.push(eq(maintenanceTickets.ticketType, filters.assetType as never));
+      if (
+        filters.assetType &&
+        filters.assetType !== 'All Assets' &&
+        filters.assetType !== 'All Types'
+      ) {
+        conditions.push(
+          eq(maintenanceTickets.ticketType, filters.assetType as never)
+        );
       }
       if (filters.dateFrom) {
-        conditions.push(sql`${maintenanceTickets.createdAt} >= ${filters.dateFrom}::timestamp`);
+        conditions.push(
+          sql`${maintenanceTickets.createdAt} >= ${filters.dateFrom}::timestamp`
+        );
       }
       if (filters.dateTo) {
-        conditions.push(sql`${maintenanceTickets.createdAt} <= ${filters.dateTo}::timestamp`);
+        conditions.push(
+          sql`${maintenanceTickets.createdAt} <= ${filters.dateTo}::timestamp`
+        );
       }
-      if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      if (
+        filters.category &&
+        filters.category !== 'All categories' &&
+        filters.category !== ''
+      ) {
         conditions.push(eq(categories.name, filters.category));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
       const dispatchedByUser = alias(users, 'dispatchedByUser');
 
       const baseQuery = db
@@ -651,7 +785,10 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(dispatchedByUser, eq(maintenanceTickets.dispatchedById, dispatchedByUser.id))
+        .leftJoin(
+          dispatchedByUser,
+          eq(maintenanceTickets.dispatchedById, dispatchedByUser.id)
+        )
         .where(whereCondition);
 
       const totalRowsCount = await db
@@ -660,7 +797,10 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(dispatchedByUser, eq(maintenanceTickets.dispatchedById, dispatchedByUser.id))
+        .leftJoin(
+          dispatchedByUser,
+          eq(maintenanceTickets.dispatchedById, dispatchedByUser.id)
+        )
         .where(whereCondition);
 
       const totalRows = Number(totalRowsCount[0]?.count || 0);
@@ -677,10 +817,16 @@ export async function fetchReportPreview(
       });
 
       const data: ReportPreviewRow[] = rows.map((row) => {
-        const costVariance = Number(row.actualCost || 0) - Number(row.estimatedCost || 0);
-        const duration = row.actualCompletionDate && row.createdAt
-          ? Math.floor((new Date(row.actualCompletionDate).getTime() - new Date(row.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-          : '-';
+        const costVariance =
+          Number(row.actualCost || 0) - Number(row.estimatedCost || 0);
+        const duration =
+          row.actualCompletionDate && row.createdAt
+            ? Math.floor(
+                (new Date(row.actualCompletionDate).getTime() -
+                  new Date(row.createdAt).getTime()) /
+                  (1000 * 60 * 60 * 24)
+              )
+            : '-';
         return {
           id: String(row.id),
           'Ticket ID': String(row.id),
@@ -694,12 +840,18 @@ export async function fetchReportPreview(
           'Estimated Cost': row.estimatedCost ? String(row.estimatedCost) : '-',
           'Actual Cost': row.actualCost ? String(row.actualCost) : '-',
           'Cost Variance': String(costVariance.toFixed(2)),
-          'Estimated Return Date': row.estimatedReturnDate ? new Date(row.estimatedReturnDate).toLocaleDateString() : '-',
-          'Completion Date': row.actualCompletionDate ? new Date(row.actualCompletionDate).toLocaleDateString() : '-',
+          'Estimated Return Date': row.estimatedReturnDate
+            ? new Date(row.estimatedReturnDate).toLocaleDateString()
+            : '-',
+          'Completion Date': row.actualCompletionDate
+            ? new Date(row.actualCompletionDate).toLocaleDateString()
+            : '-',
           'Duration (Days)': String(duration),
           Status: row.status,
           'Dispatched By': row.dispatchedBy || '-',
-          'Created At': row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-',
+          'Created At': row.createdAt
+            ? new Date(row.createdAt).toLocaleDateString()
+            : '-',
         };
       });
 
@@ -721,12 +873,20 @@ export async function fetchReportPreview(
         conditions.push(eq(assetDisposals.status, filters.status as never));
       }
       if (filters.dateFrom) {
-        conditions.push(sql`${assetDisposals.requestedAt} >= ${filters.dateFrom}::timestamp`);
+        conditions.push(
+          sql`${assetDisposals.requestedAt} >= ${filters.dateFrom}::timestamp`
+        );
       }
       if (filters.dateTo) {
-        conditions.push(sql`${assetDisposals.requestedAt} <= ${filters.dateTo}::timestamp`);
+        conditions.push(
+          sql`${assetDisposals.requestedAt} <= ${filters.dateTo}::timestamp`
+        );
       }
-      if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      if (
+        filters.category &&
+        filters.category !== 'All categories' &&
+        filters.category !== ''
+      ) {
         conditions.push(eq(categories.name, filters.category));
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
@@ -737,7 +897,8 @@ export async function fetchReportPreview(
         conditions.push(eq(categories.pillar, dbPillar as never));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
       const requestedByUser = alias(users, 'requestedByUser');
       const approvedByUser = alias(users, 'approvedByUser');
 
@@ -763,8 +924,14 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(requestedByUser, eq(assetDisposals.requestedById, requestedByUser.id))
-        .leftJoin(approvedByUser, eq(assetDisposals.approvedById, approvedByUser.id))
+        .leftJoin(
+          requestedByUser,
+          eq(assetDisposals.requestedById, requestedByUser.id)
+        )
+        .leftJoin(
+          approvedByUser,
+          eq(assetDisposals.approvedById, approvedByUser.id)
+        )
         .where(whereCondition);
 
       const totalRowsCount = await db
@@ -773,8 +940,14 @@ export async function fetchReportPreview(
         .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
         .innerJoin(models, eq(assets.modelId, models.id))
         .innerJoin(categories, eq(models.categoryId, categories.id))
-        .leftJoin(requestedByUser, eq(assetDisposals.requestedById, requestedByUser.id))
-        .leftJoin(approvedByUser, eq(assetDisposals.approvedById, approvedByUser.id))
+        .leftJoin(
+          requestedByUser,
+          eq(assetDisposals.requestedById, requestedByUser.id)
+        )
+        .leftJoin(
+          approvedByUser,
+          eq(assetDisposals.approvedById, approvedByUser.id)
+        )
         .where(whereCondition);
 
       const totalRows = Number(totalRowsCount[0]?.count || 0);
@@ -791,10 +964,16 @@ export async function fetchReportPreview(
       });
 
       const data: ReportPreviewRow[] = rows.map((row) => {
-        const gainLoss = Number(row.salvageValue || 0) - Number(row.bookValue || 0);
-        const procTime = row.resolvedAt && row.requestedAt
-          ? Math.floor((new Date(row.resolvedAt).getTime() - new Date(row.requestedAt).getTime()) / (1000 * 60 * 60 * 24))
-          : '-';
+        const gainLoss =
+          Number(row.salvageValue || 0) - Number(row.bookValue || 0);
+        const procTime =
+          row.resolvedAt && row.requestedAt
+            ? Math.floor(
+                (new Date(row.resolvedAt).getTime() -
+                  new Date(row.requestedAt).getTime()) /
+                  (1000 * 60 * 60 * 24)
+              )
+            : '-';
         return {
           id: String(row.id),
           'Disposal ID': String(row.id),
@@ -811,8 +990,12 @@ export async function fetchReportPreview(
           'Salvage Value': row.salvageValue ? String(row.salvageValue) : '0',
           'Book Value': row.bookValue ? String(row.bookValue) : '0',
           'Gain/Loss': String(gainLoss.toFixed(2)),
-          'Requested At': row.requestedAt ? new Date(row.requestedAt).toLocaleDateString() : '-',
-          'Resolved At': row.resolvedAt ? new Date(row.resolvedAt).toLocaleDateString() : '-',
+          'Requested At': row.requestedAt
+            ? new Date(row.requestedAt).toLocaleDateString()
+            : '-',
+          'Resolved At': row.resolvedAt
+            ? new Date(row.resolvedAt).toLocaleDateString()
+            : '-',
           'Processing Time (Days)': String(procTime),
         };
       });
@@ -831,16 +1014,28 @@ export async function fetchReportPreview(
       const queryTimer = startLatencyTimer();
       const conditions = [];
 
-      if (filters.location && filters.location !== 'All locations' && filters.location !== 'All Vendors') {
+      if (
+        filters.location &&
+        filters.location !== 'All locations' &&
+        filters.location !== 'All Vendors'
+      ) {
         conditions.push(eq(vendors.companyName, filters.location));
       }
       if (filters.dateFrom) {
-        conditions.push(sql`${assetPurchases.purchaseDate} >= ${filters.dateFrom}`);
+        conditions.push(
+          sql`${assetPurchases.purchaseDate} >= ${filters.dateFrom}`
+        );
       }
       if (filters.dateTo) {
-        conditions.push(sql`${assetPurchases.purchaseDate} <= ${filters.dateTo}`);
+        conditions.push(
+          sql`${assetPurchases.purchaseDate} <= ${filters.dateTo}`
+        );
       }
-      if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      if (
+        filters.category &&
+        filters.category !== 'All categories' &&
+        filters.category !== ''
+      ) {
         conditions.push(eq(categories.name, filters.category));
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
@@ -851,7 +1046,8 @@ export async function fetchReportPreview(
         conditions.push(eq(categories.pillar, dbPillar as never));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
       const baseQuery = db
         .select({
@@ -898,7 +1094,10 @@ export async function fetchReportPreview(
 
       const data: ReportPreviewRow[] = rows.map((row) => {
         const wRemaining = row.warrantyExpiry
-          ? Math.floor((new Date(row.warrantyExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          ? Math.floor(
+              (new Date(row.warrantyExpiry).getTime() - Date.now()) /
+                (1000 * 60 * 60 * 24)
+            )
           : -1;
         return {
           id: String(row.id),
@@ -906,14 +1105,19 @@ export async function fetchReportPreview(
           'Asset Tag': row.assetTag,
           'Asset Name': row.assetName || '-',
           Vendor: row.vendor || '-',
-          'Purchase Date': row.purchaseDate ? new Date(row.purchaseDate).toLocaleDateString() : '-',
+          'Purchase Date': row.purchaseDate
+            ? new Date(row.purchaseDate).toLocaleDateString()
+            : '-',
           'Base Price': row.basePrice ? String(row.basePrice) : '-',
           Tax: row.tax ? String(row.tax) : '-',
           'Shipping Cost': row.shippingCost ? String(row.shippingCost) : '-',
           'Total Cost': row.totalCost ? String(row.totalCost) : '-',
           Currency: row.currency || 'USD',
-          'Warranty Expiry': row.warrantyExpiry ? new Date(row.warrantyExpiry).toLocaleDateString() : '-',
-          'Warranty Remaining (Days)': wRemaining >= 0 ? String(wRemaining) : 'Expired/Unknown',
+          'Warranty Expiry': row.warrantyExpiry
+            ? new Date(row.warrantyExpiry).toLocaleDateString()
+            : '-',
+          'Warranty Remaining (Days)':
+            wRemaining >= 0 ? String(wRemaining) : 'Expired/Unknown',
         };
       });
 
@@ -931,7 +1135,11 @@ export async function fetchReportPreview(
       const queryTimer = startLatencyTimer();
       const conditions = [];
 
-      if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      if (
+        filters.category &&
+        filters.category !== 'All categories' &&
+        filters.category !== ''
+      ) {
         conditions.push(eq(categories.name, filters.category));
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
@@ -942,7 +1150,8 @@ export async function fetchReportPreview(
         conditions.push(eq(categories.pillar, dbPillar as never));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
       const baseQuery = db
         .select({
@@ -988,8 +1197,20 @@ export async function fetchReportPreview(
         const salvage = Number(row.salvageValue || 0);
         const usefulLife = row.usefulLifeMonths || 36;
         const ageMonths = row.purchaseDate
-          ? Math.max(0, Math.floor((Date.now() - new Date(row.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4)))
-          : Math.max(0, Math.floor((Date.now() - new Date(row.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30.4)));
+          ? Math.max(
+              0,
+              Math.floor(
+                (Date.now() - new Date(row.purchaseDate).getTime()) /
+                  (1000 * 60 * 60 * 24 * 30.4)
+              )
+            )
+          : Math.max(
+              0,
+              Math.floor(
+                (Date.now() - new Date(row.createdAt).getTime()) /
+                  (1000 * 60 * 60 * 24 * 30.4)
+              )
+            );
 
         const monthlyDep = usefulLife > 0 ? (cost - salvage) / usefulLife : 0;
         const accDep = monthlyDep * Math.min(usefulLife, ageMonths);
@@ -1026,7 +1247,11 @@ export async function fetchReportPreview(
       const queryTimer = startLatencyTimer();
       const conditions = [];
 
-      if (filters.category && filters.category !== 'All categories' && filters.category !== '') {
+      if (
+        filters.category &&
+        filters.category !== 'All categories' &&
+        filters.category !== ''
+      ) {
         conditions.push(eq(categories.name, filters.category));
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
@@ -1037,7 +1262,8 @@ export async function fetchReportPreview(
         conditions.push(eq(categories.pillar, dbPillar as never));
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
       const baseQuery = db
         .select({
@@ -1079,7 +1305,10 @@ export async function fetchReportPreview(
       });
 
       const assetIds = rows.map((r) => r.id);
-      const maintenanceStats = new Map<string, { totalCost: number; count: number }>();
+      const maintenanceStats = new Map<
+        string,
+        { totalCost: number; count: number }
+      >();
       if (assetIds.length > 0) {
         const mt = await db
           .select({
@@ -1090,7 +1319,10 @@ export async function fetchReportPreview(
           .where(inArray(maintenanceTickets.assetId, assetIds));
 
         for (const ticket of mt) {
-          const stats = maintenanceStats.get(ticket.assetId) || { totalCost: 0, count: 0 };
+          const stats = maintenanceStats.get(ticket.assetId) || {
+            totalCost: 0,
+            count: 0,
+          };
           stats.count += 1;
           stats.totalCost += Number(ticket.actualCost || 0);
           maintenanceStats.set(ticket.assetId, stats);
@@ -1102,14 +1334,29 @@ export async function fetchReportPreview(
         const salvage = Number(row.salvageValue || 0);
         const usefulLife = row.usefulLifeMonths || 36;
         const ageMonths = row.purchaseDate
-          ? Math.max(0, Math.floor((Date.now() - new Date(row.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30.4)))
-          : Math.max(0, Math.floor((Date.now() - new Date(row.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30.4)));
+          ? Math.max(
+              0,
+              Math.floor(
+                (Date.now() - new Date(row.purchaseDate).getTime()) /
+                  (1000 * 60 * 60 * 24 * 30.4)
+              )
+            )
+          : Math.max(
+              0,
+              Math.floor(
+                (Date.now() - new Date(row.createdAt).getTime()) /
+                  (1000 * 60 * 60 * 24 * 30.4)
+              )
+            );
 
         const monthlyDep = usefulLife > 0 ? (cost - salvage) / usefulLife : 0;
         const accDep = monthlyDep * Math.min(usefulLife, ageMonths);
         const bookVal = cost - accDep;
 
-        const stats = maintenanceStats.get(row.id) || { totalCost: 0, count: 0 };
+        const stats = maintenanceStats.get(row.id) || {
+          totalCost: 0,
+          count: 0,
+        };
         const tco = cost + stats.totalCost;
 
         return {
@@ -1140,17 +1387,28 @@ export async function fetchReportPreview(
       const queryTimer = startLatencyTimer();
       const conditions = [];
 
-      if (filters.status && filters.status !== 'All statuses' && filters.status !== 'All Types') {
-        conditions.push(eq(softwareLicenses.licenseType, filters.status as never));
+      if (
+        filters.status &&
+        filters.status !== 'All statuses' &&
+        filters.status !== 'All Types'
+      ) {
+        conditions.push(
+          eq(softwareLicenses.licenseType, filters.status as never)
+        );
       }
       if (filters.dateFrom) {
-        conditions.push(sql`${softwareLicenses.expiryDate} >= ${filters.dateFrom}`);
+        conditions.push(
+          sql`${softwareLicenses.expiryDate} >= ${filters.dateFrom}`
+        );
       }
       if (filters.dateTo) {
-        conditions.push(sql`${softwareLicenses.expiryDate} <= ${filters.dateTo}`);
+        conditions.push(
+          sql`${softwareLicenses.expiryDate} <= ${filters.dateTo}`
+        );
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
       const baseQuery = db
         .select({
@@ -1198,10 +1456,12 @@ export async function fetchReportPreview(
             count: sql<number>`count(*)::int`,
           })
           .from(softwareAllocations)
-          .where(and(
-            inArray(softwareAllocations.licenseId, licenseIds),
-            isNull(softwareAllocations.revokedAt)
-          ))
+          .where(
+            and(
+              inArray(softwareAllocations.licenseId, licenseIds),
+              isNull(softwareAllocations.revokedAt)
+            )
+          )
           .groupBy(softwareAllocations.licenseId);
 
         for (const alloc of allocations) {
@@ -1215,7 +1475,10 @@ export async function fetchReportPreview(
         const available = Math.max(0, total - used);
         const utilization = total > 0 ? (used / total) * 100 : 0;
         const daysUntilExpiry = row.expiryDate
-          ? Math.floor((new Date(row.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          ? Math.floor(
+              (new Date(row.expiryDate).getTime() - Date.now()) /
+                (1000 * 60 * 60 * 24)
+            )
           : -1;
 
         return {
@@ -1229,9 +1492,14 @@ export async function fetchReportPreview(
           'Used Seats': String(used),
           'Available Seats': String(available),
           'Utilization %': utilization.toFixed(1) + '%',
-          'Start Date': row.startDate ? new Date(row.startDate).toLocaleDateString() : '-',
-          'Expiry Date': row.expiryDate ? new Date(row.expiryDate).toLocaleDateString() : '-',
-          'Days Until Expiry': daysUntilExpiry >= 0 ? String(daysUntilExpiry) : 'Expired/Unknown',
+          'Start Date': row.startDate
+            ? new Date(row.startDate).toLocaleDateString()
+            : '-',
+          'Expiry Date': row.expiryDate
+            ? new Date(row.expiryDate).toLocaleDateString()
+            : '-',
+          'Days Until Expiry':
+            daysUntilExpiry >= 0 ? String(daysUntilExpiry) : 'Expired/Unknown',
           Status: row.isActive ? 'Active' : 'Inactive',
         };
       });
@@ -1250,17 +1518,26 @@ export async function fetchReportPreview(
       const queryTimer = startLatencyTimer();
       const conditions = [];
 
-      if (filters.status && filters.status !== 'All statuses' && filters.status !== 'All Actions') {
+      if (
+        filters.status &&
+        filters.status !== 'All statuses' &&
+        filters.status !== 'All Actions'
+      ) {
         conditions.push(eq(systemAuditLogs.actionType, filters.status));
       }
       if (filters.dateFrom) {
-        conditions.push(sql`${systemAuditLogs.performedAt} >= ${filters.dateFrom}::timestamp`);
+        conditions.push(
+          sql`${systemAuditLogs.performedAt} >= ${filters.dateFrom}::timestamp`
+        );
       }
       if (filters.dateTo) {
-        conditions.push(sql`${systemAuditLogs.performedAt} <= ${filters.dateTo}::timestamp`);
+        conditions.push(
+          sql`${systemAuditLogs.performedAt} <= ${filters.dateTo}::timestamp`
+        );
       }
 
-      const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereCondition =
+        conditions.length > 0 ? and(...conditions) : undefined;
 
       const baseQuery = db
         .select({
@@ -1299,7 +1576,8 @@ export async function fetchReportPreview(
 
       // Resolve entity labels in bulk
       const targetEntityLabels = await resolveTargetEntityLabels(rows);
-      const { labels: valueLabels, idMappings } = await resolveAuditValueLabels(rows);
+      const { labels: valueLabels, idMappings } =
+        await resolveAuditValueLabels(rows);
 
       const data: ReportPreviewRow[] = rows.map((row) => {
         const oldVal = row.oldValue as Record<string, unknown> | null;
@@ -1321,8 +1599,9 @@ export async function fetchReportPreview(
         const humanizedOld = humanize(oldVal);
         const humanizedNew = humanize(newVal);
 
-        const resolvedLabel = targetEntityLabels.get(`${row.entityType}::${row.entityId}`) || 
-                              extractLabelFromValues(oldVal, newVal);
+        const resolvedLabel =
+          targetEntityLabels.get(`${row.entityType}::${row.entityId}`) ||
+          extractLabelFromValues(oldVal, newVal);
 
         const details = buildEventDetailsSentence(
           row.actionType,
@@ -1334,7 +1613,9 @@ export async function fetchReportPreview(
         return {
           id: String(row.id),
           'Log ID': String(row.id),
-          Timestamp: row.performedAt ? new Date(row.performedAt).toLocaleString() : '-',
+          Timestamp: row.performedAt
+            ? new Date(row.performedAt).toLocaleString()
+            : '-',
           User: row.user || 'System',
           Action: row.actionType,
           'Entity Type': row.entityType,
