@@ -1,43 +1,109 @@
 import { KpiCard } from "./kpi-card"
+import type { DashboardKpiMetrics } from "@/actions/dashboard"
+import { cn } from "@/lib/utils"
 
-export function KpiMetricsRow() {
+export interface KpiMetricsRowProps {
+  metrics: DashboardKpiMetrics;
+}
+
+function formatCurrency(value: number) {
+  if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(2)}M`;
+  }
+  if (value >= 1_000) {
+    return `$${(value / 1_000).toFixed(1)}K`;
+  }
+  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatCompactCurrency(value: number) {
+  if (value >= 1_000) {
+    return `$${(value / 1_000).toFixed(1)}K`;
+  }
+  return `$${value.toFixed(0)}`;
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString();
+}
+
+export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
+  const depreciationRate = (metrics.totalAssetValue ?? 0) > 0
+    ? (1 - (metrics.netBookValue ?? 0) / (metrics.totalAssetValue ?? 1)) * 100
+    : 0;
+
   return (
-    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-      <KpiCard 
-        title="Total Asset Value"
-        value="$1.24M"
+    <div className={cn(
+      "grid gap-3",
+      metrics.totalAssetValue !== undefined ? "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6" : "grid-cols-1 md:grid-cols-3"
+    )}>
+      {metrics.totalAssetValue !== undefined && (
+        <KpiCard 
+          title="Total Asset Value"
+        value={formatCurrency(metrics.totalAssetValue)}
         badgeText="+2.4%"
         badgeType="positive"
         valueColor="default"
-        subText1="+2.4% from last month"
+        subText1="Acquisition cost of active inventory"
         subText2="Includes hardware, software, and facilities."
+        href="/financials/tco"
       />
+      )}
+      {metrics.netBookValue !== undefined && (
       <KpiCard 
-        title="Total Active Assets"
-        value="4,821"
-        badgeText="-20%"
+        title="Net Book Value"
+        value={formatCurrency(metrics.netBookValue)}
+        badgeText={`-${depreciationRate.toFixed(1)}%`}
         badgeType="negative"
         valueColor="default"
-        subText1="+12 this week"
-        subText2="Across 4 global office locations."
+        subText1="Depreciated value of asset base"
+        subText2="Calculated via straight-line depreciation."
+        href="/financials/depreciation"
       />
+      )}
+      {metrics.cumulativeRepairSpend !== undefined && (
       <KpiCard 
-        title="Assets in Repair"
-        value="34"
-        badgeText="+12.5%"
+        title="Cumulative Repair Spend"
+        value={formatCurrency(metrics.cumulativeRepairSpend)}
+        badgeText="-4.5%"
         badgeType="positive"
+        valueColor="default"
+        subText1="Actual maintenance expenditures"
+        subText2="Target limit: Under $20K/annum."
+        href="/operations/maintenance"
+      />
+      )}
+      <KpiCard 
+        title="Warranty Expiry (30 Days)"
+        value={`${formatNumber(metrics.warrantyExpiries30Days)} Assets`}
+        badgeText="Risk"
+        badgeType="negative"
         valueColor="warning"
-        subText1="5 pending vendor return"
-        subText2="2 critical server components included."
+        subText1={`${formatNumber(metrics.warrantyExpiries30Days)} active devices near support end`}
+        subText2="Action needed to renew or retire."
+        href="/assets/hardware"
       />
+      {metrics.inactiveSoftwareCostLeak !== undefined && (
       <KpiCard 
-        title="Expiring Software (30 Days)"
-        value="12"
-        badgeText="+4.5%"
-        badgeType="positive"
+        title="Inactive Software Seats"
+        value={`${formatNumber(metrics.inactiveSoftwareSeats)} Seats`}
+        badgeText={`-${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
+        badgeType="negative"
         valueColor="destructive"
-        subText1="Requires immediate renewal"
-        subText2="Impacts 142 active employees."
+        subText1={`${formatCurrency(metrics.inactiveSoftwareCostLeak)} monthly in idle seat waste`}
+        subText2="Target for license subscription downgrade."
+        href="/assets/software"
+      />
+      )}
+      <KpiCard 
+        title="Software Renewals (30 Days)"
+        value={`${formatNumber(metrics.softwareRenewals30Days)} Licenses`}
+        badgeText="Risk"
+        badgeType="negative"
+        valueColor="warning"
+        subText1={`${formatNumber(metrics.softwareRenewals30Days)} critical subscriptions near expiry`}
+        subText2={`Affects ${formatNumber(metrics.impactedSoftwareEmployees)} employee custodians.`}
+        href="/assets/software"
       />
     </div>
   )

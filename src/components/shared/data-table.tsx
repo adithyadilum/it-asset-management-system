@@ -85,6 +85,7 @@ type DataTableProps<TData, TValue> = {
 
   // Prevent selection header replacement
   disableSelectionHeader?: boolean
+  hideFooter?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -113,6 +114,7 @@ export function DataTable<TData, TValue>({
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   initialPageSize = DEFAULT_INITIAL_PAGE_SIZE,
   disableSelectionHeader = false,
+  hideFooter = false,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -274,8 +276,8 @@ export function DataTable<TData, TValue>({
   const currentPage = Math.min(table.getState().pagination.pageIndex + 1, computedPageCount)
 
   const tableContent = (
-    <Table 
-      className={cn("table-fixed min-w-full", table.getRowModel().rows.length === 0 && "h-full")} 
+    <Table
+      className={cn("table-fixed min-w-full", table.getRowModel().rows.length === 0 && "h-full")}
       containerClassName={cn("!overflow-visible", table.getRowModel().rows.length === 0 && "h-full")}
     >
       <colgroup>
@@ -523,92 +525,94 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-4 py-3 text-sm">
-        <div className="flex-1 whitespace-nowrap text-muted-foreground">
-          {footerText !== undefined ? (
-            footerText
-          ) : enableRowSelection ? (
-            `${selectedRows} of ${totalRows} row(s) selected`
-          ) : (
-            `Showing ${totalRows} row(s)`
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <div className="flex items-center gap-2">
-            <label htmlFor="rows-per-page" className="whitespace-nowrap text-muted-foreground">
-              Rows per page
-            </label>
-            <Select
-              value={String(table.getState().pagination.pageSize)}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger id="rows-per-page" className="h-8 w-fit min-w-[70px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent>
-                {sortedPageSizes.map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {!hideFooter && (
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-4 py-3 text-sm">
+          <div className="flex-1 whitespace-nowrap text-muted-foreground">
+            {footerText !== undefined ? (
+              footerText
+            ) : enableRowSelection ? (
+              `${selectedRows} of ${totalRows} row(s) selected`
+            ) : (
+              `Showing ${totalRows} row(s)`
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <p className="whitespace-nowrap text-muted-foreground">
-              Page {currentPage} of {computedPageCount}
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-                aria-label="Go to first page"
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2">
+              <label htmlFor="rows-per-page" className="whitespace-nowrap text-muted-foreground">
+                Rows per page
+              </label>
+              <Select
+                value={String(table.getState().pagination.pageSize)}
+                onValueChange={(value) => table.setPageSize(Number(value))}
               >
-                {"<<"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                aria-label="Go to previous page"
-              >
-                {"<"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                aria-label="Go to next page"
-              >
-                {">"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.setPageIndex(computedPageCount - 1)}
-                disabled={!table.getCanNextPage()}
-                aria-label="Go to last page"
-              >
-                {">>"}
-              </Button>
+                <SelectTrigger id="rows-per-page" className="h-8 w-fit min-w-[70px]">
+                  <SelectValue placeholder={table.getState().pagination.pageSize} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedPageSizes.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="whitespace-nowrap text-muted-foreground">
+                Page {currentPage} of {computedPageCount}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
+                  aria-label="Go to first page"
+                >
+                  {"<<"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                  aria-label="Go to previous page"
+                >
+                  {"<"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                  aria-label="Go to next page"
+                >
+                  {">"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.setPageIndex(computedPageCount - 1)}
+                  disabled={!table.getCanNextPage()}
+                  aria-label="Go to last page"
+                >
+                  {">>"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
