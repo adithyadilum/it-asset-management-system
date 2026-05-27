@@ -10,7 +10,10 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { logAuditAction } from '@/lib/audit';
 import { API_KEY_PREFIX } from '@/lib/constants';
 import { decrypt, encrypt } from '@/lib/crypto';
-import { createWebhookSchema, updateWebhookSchema } from '@/lib/validations/integrations';
+import {
+  createWebhookSchema,
+  updateWebhookSchema,
+} from '@/lib/validations/integrations';
 import { createApiKeySchema } from '@/lib/validations/integrations';
 import { revalidatePath } from 'next/cache';
 import { isValidUuid } from '@/lib/auth/uuid';
@@ -40,7 +43,9 @@ function parseStringArrayField(value: FormDataEntryValue | null): string[] {
   try {
     const parsed = JSON.parse(trimmed);
     if (Array.isArray(parsed)) {
-      return parsed.map((item) => String(item)).filter((item) => item.length > 0);
+      return parsed
+        .map((item) => String(item))
+        .filter((item) => item.length > 0);
     }
   } catch {
     // fall through to treating the value as a single item
@@ -49,7 +54,9 @@ function parseStringArrayField(value: FormDataEntryValue | null): string[] {
   return [trimmed];
 }
 
-function parseOptionalBooleanField(value: FormDataEntryValue | null): boolean | undefined {
+function parseOptionalBooleanField(
+  value: FormDataEntryValue | null
+): boolean | undefined {
   if (typeof value !== 'string') {
     return undefined;
   }
@@ -70,15 +77,19 @@ function getQStashClient() {
   return new Client({ token });
 }
 
-type CreateApiKeyResult = {
-  success: true;
-  plainTextKey: string;
-} | {
-  success: false;
-  error: string;
-};
+type CreateApiKeyResult =
+  | {
+      success: true;
+      plainTextKey: string;
+    }
+  | {
+      success: false;
+      error: string;
+    };
 
-export async function createApiKey(formData: FormData): Promise<CreateApiKeyResult> {
+export async function createApiKey(
+  formData: FormData
+): Promise<CreateApiKeyResult> {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || currentUser.role !== 'GlobalAdmin') {
     return { success: false, error: 'Unauthorized' };
@@ -90,12 +101,18 @@ export async function createApiKey(formData: FormData): Promise<CreateApiKeyResu
 
   try {
     const parsedScopes = JSON.parse(rawScopes);
-    const parsedResult = createApiKeySchema.safeParse({ name: rawName, scopes: parsedScopes, expiresAt: rawExpires });
+    const parsedResult = createApiKeySchema.safeParse({
+      name: rawName,
+      scopes: parsedScopes,
+      expiresAt: rawExpires,
+    });
 
     if (!parsedResult.success) {
       return {
         success: false,
-        error: parsedResult.error.issues[0]?.message ?? 'Please check the API key details and try again.',
+        error:
+          parsedResult.error.issues[0]?.message ??
+          'Please check the API key details and try again.',
       };
     }
 
@@ -107,15 +124,18 @@ export async function createApiKey(formData: FormData): Promise<CreateApiKeyResu
     const keyPrefix = plainText.slice(0, API_KEY_PREFIX.length);
     const keySuffix = plainText.slice(-4);
 
-    const insertResult = await db.insert(apiKeys).values({
-      name: parsed.name,
-      keyHash,
-      keyPrefix,
-      keySuffix,
-      scopes: parsed.scopes,
-      createdById: currentUser.id,
-      expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
-    }).returning({ id: apiKeys.id });
+    const insertResult = await db
+      .insert(apiKeys)
+      .values({
+        name: parsed.name,
+        keyHash,
+        keyPrefix,
+        keySuffix,
+        scopes: parsed.scopes,
+        createdById: currentUser.id,
+        expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
+      })
+      .returning({ id: apiKeys.id });
 
     await logAuditAction({
       entityType: 'ApiKey',
@@ -125,15 +145,23 @@ export async function createApiKey(formData: FormData): Promise<CreateApiKeyResu
       newData: { name: parsed.name, scopes: parsed.scopes },
     });
 
-    try { revalidatePath('/settings/integrations'); } catch {}
+    try {
+      revalidatePath('/settings/integrations');
+    } catch {}
 
     return { success: true, plainTextKey: plainText };
   } catch (err) {
     if (err instanceof SyntaxError) {
-      return { success: false, error: 'Please select valid API key scopes and try again.' };
+      return {
+        success: false,
+        error: 'Please select valid API key scopes and try again.',
+      };
     }
 
-    return { success: false, error: 'Failed to create API key. Please try again.' };
+    return {
+      success: false,
+      error: 'Failed to create API key. Please try again.',
+    };
   }
 }
 
@@ -145,11 +173,15 @@ export async function revokeApiKey(keyId: string) {
 
   if (!isValidUuid(keyId)) return { success: false, error: 'Invalid id' };
 
-  const existing = await db.query.apiKeys.findFirst({ where: eq(apiKeys.id, keyId) });
+  const existing = await db.query.apiKeys.findFirst({
+    where: eq(apiKeys.id, keyId),
+  });
   if (!existing) return { success: false, error: 'API key not found' };
-  if (existing.isRevoked) return { success: false, error: 'API key already revoked' };
+  if (existing.isRevoked)
+    return { success: false, error: 'API key already revoked' };
 
-  const [updated] = await db.update(apiKeys)
+  const [updated] = await db
+    .update(apiKeys)
     .set({ isRevoked: true })
     .where(eq(apiKeys.id, keyId))
     .returning({ id: apiKeys.id });
@@ -167,7 +199,9 @@ export async function revokeApiKey(keyId: string) {
     newData: { isRevoked: true },
   });
 
-  try { revalidatePath('/settings/integrations'); } catch {}
+  try {
+    revalidatePath('/settings/integrations');
+  } catch {}
 
   return { success: true, message: 'API key revoked.' };
 }
@@ -180,11 +214,15 @@ export async function deleteApiKey(keyId: string) {
 
   if (!isValidUuid(keyId)) return { success: false, error: 'Invalid id' };
 
-  const existing = await db.query.apiKeys.findFirst({ where: eq(apiKeys.id, keyId) });
+  const existing = await db.query.apiKeys.findFirst({
+    where: eq(apiKeys.id, keyId),
+  });
   if (!existing) return { success: false, error: 'API key not found' };
-  if (!existing.isRevoked) return { success: false, error: 'API key must be revoked before deletion' };
+  if (!existing.isRevoked)
+    return { success: false, error: 'API key must be revoked before deletion' };
 
-  const [deleted] = await db.delete(apiKeys)
+  const [deleted] = await db
+    .delete(apiKeys)
     .where(eq(apiKeys.id, keyId))
     .returning({ id: apiKeys.id });
 
@@ -200,12 +238,16 @@ export async function deleteApiKey(keyId: string) {
     oldData: existing,
   });
 
-  try { revalidatePath('/settings/integrations'); } catch {}
+  try {
+    revalidatePath('/settings/integrations');
+  } catch {}
 
   return { success: true };
 }
 
-export async function createWebhookSubscription(formData: FormData): Promise<WebhookSubscriptionResult> {
+export async function createWebhookSubscription(
+  formData: FormData
+): Promise<WebhookSubscriptionResult> {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || currentUser.role !== 'GlobalAdmin') {
     return { success: false, error: 'Unauthorized' };
@@ -224,7 +266,9 @@ export async function createWebhookSubscription(formData: FormData): Promise<Web
   if (!parsedResult.success) {
     return {
       success: false,
-      error: parsedResult.error.issues[0]?.message ?? 'Please check the webhook details and try again.',
+      error:
+        parsedResult.error.issues[0]?.message ??
+        'Please check the webhook details and try again.',
     };
   }
 
@@ -316,24 +360,37 @@ export async function updateWebhookSubscription(
   if (!parsedResult.success) {
     return {
       success: false,
-      error: parsedResult.error.issues[0]?.message ?? 'Please check the webhook details and try again.',
+      error:
+        parsedResult.error.issues[0]?.message ??
+        'Please check the webhook details and try again.',
     };
   }
 
   const [updated] = await db
     .update(webhookSubscriptions)
     .set({
-      ...(parsedResult.data.name !== undefined ? { name: parsedResult.data.name } : {}),
-      ...(parsedResult.data.url !== undefined ? { url: parsedResult.data.url } : {}),
-      ...(parsedResult.data.events !== undefined ? { events: parsedResult.data.events } : {}),
-      ...(parsedResult.data.isActive !== undefined ? { isActive: parsedResult.data.isActive } : {}),
+      ...(parsedResult.data.name !== undefined
+        ? { name: parsedResult.data.name }
+        : {}),
+      ...(parsedResult.data.url !== undefined
+        ? { url: parsedResult.data.url }
+        : {}),
+      ...(parsedResult.data.events !== undefined
+        ? { events: parsedResult.data.events }
+        : {}),
+      ...(parsedResult.data.isActive !== undefined
+        ? { isActive: parsedResult.data.isActive }
+        : {}),
       updatedAt: new Date(),
     })
     .where(eq(webhookSubscriptions.id, id))
     .returning();
 
   if (!updated) {
-    return { success: false, error: 'Webhook subscription could not be updated' };
+    return {
+      success: false,
+      error: 'Webhook subscription could not be updated',
+    };
   }
 
   await logAuditAction({
@@ -352,7 +409,9 @@ export async function updateWebhookSubscription(
   return { success: true };
 }
 
-export async function deleteWebhookSubscription(id: string): Promise<WebhookMutationResult> {
+export async function deleteWebhookSubscription(
+  id: string
+): Promise<WebhookMutationResult> {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || currentUser.role !== 'GlobalAdmin') {
     return { success: false, error: 'Unauthorized' };
@@ -387,7 +446,9 @@ export async function deleteWebhookSubscription(id: string): Promise<WebhookMuta
   return { success: true };
 }
 
-export async function sendTestWebhook(subscriptionId: string): Promise<TestWebhookResult> {
+export async function sendTestWebhook(
+  subscriptionId: string
+): Promise<TestWebhookResult> {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || currentUser.role !== 'GlobalAdmin') {
     return { success: false, error: 'Unauthorized' };
