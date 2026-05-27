@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 interface DisposalsPageProps {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function DisposalsPage({ searchParams }: DisposalsPageProps) {
@@ -22,7 +22,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   const searchQuery = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search : '';
   const page = typeof resolvedSearchParams?.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
   const pageSize = typeof resolvedSearchParams?.pageSize === 'string' ? parseInt(resolvedSearchParams.pageSize, 10) : 10;
-  
+
   const validPage = isNaN(page) || page < 1 ? 1 : page;
   const validPageSize = isNaN(pageSize) || pageSize < 1 ? 10 : pageSize;
 
@@ -46,14 +46,14 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   // Base condition for disposal history
   const searchCondition = searchQuery
     ? or(
-        ilike(assets.assetTag, `%${searchQuery}%`),
-        ilike(categories.name, `%${searchQuery}%`),
-        ilike(assetDisposals.reason, `%${searchQuery}%`),
-        ilike(requester.name, `%${searchQuery}%`),
-        ilike(approver.name, `%${searchQuery}%`)
-      )
+      ilike(assets.assetTag, `%${searchQuery}%`),
+      ilike(categories.name, `%${searchQuery}%`),
+      ilike(assetDisposals.reason, `%${searchQuery}%`),
+      ilike(requester.name, `%${searchQuery}%`),
+      ilike(approver.name, `%${searchQuery}%`)
+    )
     : undefined;
-    
+
   const historyBaseCondition = and(
     inArray(assetDisposals.status, ['Completed', 'Rejected']),
     searchCondition
@@ -116,7 +116,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
     .orderBy(desc(assetDisposals.resolvedAt))
     .limit(validPageSize)
     .offset((validPage - 1) * validPageSize);
-    
+
   // Format the history data to match the expected props
   const historyData = historyDataRaw.map(row => ({
     ...row,
@@ -124,8 +124,8 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   }));
 
   return (
-    <DisposalsLayout 
-      pendingData={pendingData} 
+    <DisposalsLayout
+      pendingData={pendingData}
       historyData={historyData}
       historyPageCount={pageCount}
       historyCurrentPage={validPage}
