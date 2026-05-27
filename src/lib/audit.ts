@@ -15,7 +15,13 @@ export type AuditActionType =
   | 'LOGIN'
   | 'LOGOUT'
   | 'ACCESS_DENIED'
-  | 'IMPORT';
+  | 'IMPORT'
+  | 'API_KEY_CREATED'
+  | 'API_KEY_REVOKED'
+  | 'WEBHOOK_CREATED'
+  | 'WEBHOOK_UPDATED'
+  | 'WEBHOOK_DELETED'
+  | 'EXTERNAL_API_ACCESS';
 
 type AuditPayload = {
   entityType: string;

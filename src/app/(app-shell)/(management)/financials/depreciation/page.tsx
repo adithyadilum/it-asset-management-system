@@ -2,6 +2,8 @@ import { getDepreciationLedger } from "@/actions/financials";
 import { DepreciationLedger } from "@/components/features/financials/depreciation-ledger";
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Depreciation Ledger | Tiqri Assets",
 };

@@ -2,6 +2,8 @@
 import { TCOLedger } from "@/components/features/financials/tco-ledger";
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Total Cost of Ownership | Tiqri Assets",
 };
