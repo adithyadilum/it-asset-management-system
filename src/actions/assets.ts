@@ -7,7 +7,6 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 import { assetAssignments, assetPurchases, assets, models } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
-import { isValidUuid } from '@/lib/auth/uuid';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { canManageAssets } from '@/lib/auth/roles';
 import {
@@ -147,14 +146,16 @@ export async function registerAsset(
 
     const parsed = assetRegistrationSchema.safeParse(rawInput);
     if (!parsed.success) {
-      const firstError = parsed.error.issues[0]?.message ?? 'Validation failed.';
+      const firstError =
+        parsed.error.issues[0]?.message ?? 'Validation failed.';
       return validationError(firstError, parsed.error.flatten().fieldErrors);
     }
 
     const input = {
       ...parsed.data,
       pillar: parsed.data.pillar,
-      usefulLifeMonths: parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
+      usefulLifeMonths:
+        parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
       invoiceFile: formData.get('invoiceFile') as File | null,
     };
 
@@ -178,9 +179,8 @@ export async function registerAsset(
       return validationError('The selected model does not exist.');
     }
 
-    const resolvedCategoryPrefix = modelWithCategory.category.prefix
-      .trim()
-      .toUpperCase() || categoryPrefix;
+    const resolvedCategoryPrefix =
+      modelWithCategory.category.prefix.trim().toUpperCase() || categoryPrefix;
 
     // 6. Database Transaction
     const insertedAsset = await db.transaction(async (tx) => {
@@ -193,7 +193,9 @@ export async function registerAsset(
           const countResult = await tx
             .select({ value: sql<number>`cast(count(*) as integer)` })
             .from(assets)
-            .where(sql`${assets.assetTag} LIKE ${resolvedCategoryPrefix + '-%'}`);
+            .where(
+              sql`${assets.assetTag} LIKE ${resolvedCategoryPrefix + '-%'}`
+            );
 
           const nextSequence = (countResult[0]?.value ?? 0) + 1;
           const assetTag = `${resolvedCategoryPrefix}-${String(nextSequence).padStart(3, '0')}`;
@@ -326,7 +328,8 @@ export async function registerAsset(
 
 export async function getAssetDetails(id: string) {
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) throw new Error('Unauthorized');
+  if (!currentUser || !canManageAssets(currentUser.role))
+    throw new Error('Unauthorized');
 
   return getAssetDetailsById(id);
 }
@@ -451,7 +454,6 @@ export async function updateAsset(
     }
     throw new Error('Failed to update asset.');
   }
-  }
 }
 
 /**
@@ -484,9 +486,16 @@ export async function manualStatusOverrideAction(
     }
 
     // 2. Input Validation via Zod
-    const parsed = manualStatusOverrideSchema.safeParse({ assetId, newStatus, reasonNote });
+    const parsed = manualStatusOverrideSchema.safeParse({
+      assetId,
+      newStatus,
+      reasonNote,
+    });
     if (!parsed.success) {
-      return { success: false, message: parsed.error.issues[0]?.message ?? 'Validation failed.' };
+      return {
+        success: false,
+        message: parsed.error.issues[0]?.message ?? 'Validation failed.',
+      };
     }
     const trimmedNote = parsed.data.reasonNote;
 
