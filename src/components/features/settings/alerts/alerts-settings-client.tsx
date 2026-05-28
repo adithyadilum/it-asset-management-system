@@ -588,6 +588,109 @@ export function AlertsSettingsClient() {
               </section>
             );
           })}
+
+          {/* Integrations Configuration Section */}
+          {isAdmin && integrations && (
+            <section className="space-y-6 mt-8 border-t border-border pt-8">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Info className="h-4.5 w-4.5" />
+                </div>
+                <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+                  External Service Integrations
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Resend Card */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-primary" />
+                    <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+                      Resend Email Integration
+                    </h3>
+                  </div>
+                  <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}>
+                    Configure your Resend API Key to send automated alerts directly to users&apos; registered corporate email boxes.
+                  </p>
+                  <div className="space-y-1.5">
+                    <label htmlFor="resend-key-input" className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}>
+                      Resend API Key
+                    </label>
+                    <input
+                      id="resend-key-input"
+                      type="password"
+                      placeholder={integrations.resendConfigured ? '••••••••' : 're_...'}
+                      value={resendKey === '••••••••' ? '••••••••' : resendKey}
+                      onChange={(e) => setResendKey(e.target.value)}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-transparent text-sm focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      disabled={testingEmail || savingIntegrations}
+                      onClick={handleTestEmail}
+                      className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-border hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
+                    >
+                      {testingEmail ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Test Connection
+                    </button>
+                  </div>
+                </div>
+
+                {/* Teams Card */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                    <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+                      MS Teams Webhook
+                    </h3>
+                  </div>
+                  <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}>
+                    Configure the Incoming Webhook URL to deliver high-priority alerts directly to designated MS Teams channels.
+                  </p>
+                  <div className="space-y-1.5">
+                    <label htmlFor="teams-url-input" className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}>
+                      Webhook URL
+                    </label>
+                    <input
+                      id="teams-url-input"
+                      type="text"
+                      placeholder={integrations.teamsConfigured ? '••••••••' : 'https://outlook.office.com/webhook/...'}
+                      value={teamsUrl === '••••••••' ? '••••••••' : teamsUrl}
+                      onChange={(e) => setTeamsUrl(e.target.value)}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-transparent text-sm focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      disabled={testingTeams || savingIntegrations}
+                      onClick={handleTestTeams}
+                      className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-border hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
+                    >
+                      {testingTeams ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Test Webhook
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Master Action: Save Integrations Settings */}
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  disabled={savingIntegrations}
+                  onClick={handleSaveIntegrations}
+                  className="flex items-center justify-center gap-2 h-10 px-6 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {savingIntegrations ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save Integration Settings
+                </button>
+              </div>
+            </section>
+          )}
         </div>
       </ScrollArea>
     </div>
