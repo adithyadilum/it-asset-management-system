@@ -14,8 +14,7 @@ import {
     EmptyTitle,
 } from "@/components/ui/empty"
 import { HardDrive, Laptop, Monitor, Smartphone, Code, Armchair, Speaker } from "lucide-react"
-import { getDashboardBatchData, getDashboardRecentWriteOffs } from "@/actions/dashboard"
-import { canAccessFinancials, isEmployee } from "@/lib/auth/roles"
+import { getDashboardBatchData } from "@/actions/dashboard"
 import type { UserRole } from "@/types/auth"
 import { cookies } from "next/headers"
 import { fetchLiveExchangeRates, convertCurrencyAmount } from "@/lib/currency"
@@ -51,7 +50,7 @@ function getAssetPresentation(pillar: string | undefined, modelName: string) {
 export default async function DashboardPage() {
     const user = await getAuthenticatedUser()
 
-    if (user && isEmployee(user.role)) {
+    if (user?.role === 'Employee') {
         const employeeAssets = await getCurrentEmployeeAssets()
 
         return (
@@ -108,8 +107,7 @@ export default async function DashboardPage() {
     const lkrToTargetRate = convertCurrencyAmount(1, 'LKR', currencyCode, apiRates);
 
     const data = await getDashboardBatchData()
-    const canSeeWriteOffs = user ? canAccessFinancials(user.role) : false;
-    const recentWriteOffs = canSeeWriteOffs ? await getDashboardRecentWriteOffs() : [];
+
 
     return (
         <DashboardRefreshProvider>
@@ -137,8 +135,11 @@ export default async function DashboardPage() {
                                 overdueReturns={data.overdueReturns}
                                 pendingDisposals={data.pendingDisposals}
                                 highMaintenanceAssets={data.highMaintenanceAssets}
-                                recentWriteOffs={recentWriteOffs}
                                 topHighValueAssets={data.topHighValueAssets}
+                                depreciationLedger={data.depreciationLedger}
+                                writeOffsLedger={data.writeOffsLedger}
+                                softwareOptimization={data.softwareOptimization}
+                                recentActivities={data.recentActivities}
                                 userRole={userRole}
                             />
                         </div>

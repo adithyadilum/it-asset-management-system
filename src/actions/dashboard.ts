@@ -8,11 +8,11 @@ import {
   assetDisposals,
   assets,
   categories,
+  departments,
   locations,
   maintenanceTickets,
   models,
   users,
-  departments,
   systemAuditLogs,
   assetPurchases,
   softwareLicenses,
@@ -21,8 +21,8 @@ import {
 import { desc } from 'drizzle-orm';
 import type { AuthenticatedUser } from '@/actions/auth';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { isITOperator, isFinanceAuditor } from '@/lib/auth/roles';
 import { unstable_cache } from 'next/cache';
+import { getDepreciationLedger, getWriteOffsLedger } from '@/actions/financials';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 import {
   DEFAULT_SOFTWARE_SEAT_COST,
@@ -358,19 +358,6 @@ export async function getDashboardRecentActivities(): Promise<
 }
 
 // ============================================================================
-// READ: Recent Write-Offs Table (Completed Disposals)
-// ============================================================================
-
-export interface RecentWriteOffRow {
-  id: number;
-  assetTag: string;
-  assetName: string | null;
-  salvageValue: string | null;
-  bookValue: string | null;
-  resolvedAt: string | null;
-}
-
-// ============================================================================
 // READ: Top High-Value Assets Table
 // ============================================================================
 
@@ -422,40 +409,92 @@ export async function getDashboardTopHighValueAssets(): Promise<TopHighValueAsse
   });
 }
 
-/**
- * Returns the 5 most recent completed disposals for financial audit.
- *
- * Access: GlobalAdmin, FinanceAuditor
- */
-export async function getDashboardRecentWriteOffs(): Promise<RecentWriteOffRow[]> {
+// ============================================================================
+// READ: Software Seat Cost Optimization Table
+// ============================================================================
+
+export interface SoftwareOptimizationRow {
+  id: string;
+  productName: string;
+  totalSeats: number;
+  assignedSeats: number;
+  idleSeats: number;
+  costPerSeat: number;
+  monthlyLeak: number;
+}
+
+export async function getDashboardSoftwareOptimization(): Promise<SoftwareOptimizationRow[]> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor')
-    throw new Error('Forbidden');
+  assertAdminOrAuditor(user);
 
-  const rows = await db
+  // Get active software licenses and their models
+  const licenses = await db
     .select({
-      id: assetDisposals.id,
-      assetTag: assets.assetTag,
-      assetName: assets.name,
-      salvageValue: assetDisposals.actualSalvageValue,
-      bookValue: assetDisposals.bookValueAtDisposal,
-      resolvedAt: assetDisposals.resolvedAt,
+      id: softwareLicenses.id,
+      totalSeats: softwareLicenses.totalSeats,
+      assetId: softwareLicenses.assetId,
+      modelName: models.name,
     })
-    .from(assetDisposals)
-    .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
-    .where(eq(assetDisposals.status, 'Completed'))
-    .orderBy(desc(assetDisposals.resolvedAt))
-    .limit(5);
+    .from(softwareLicenses)
+    .innerJoin(models, eq(softwareLicenses.modelId, models.id))
+    .where(eq(softwareLicenses.isActive, true));
 
-  return rows.map((r) => ({
-    id: r.id,
-    assetTag: r.assetTag,
-    assetName: r.assetName,
-    salvageValue: r.salvageValue ? `$${Number(r.salvageValue).toLocaleString()}` : null,
-    bookValue: r.bookValue ? `$${Number(r.bookValue).toLocaleString()}` : null,
-    resolvedAt: r.resolvedAt ? r.resolvedAt.toISOString() : null,
-  }));
+  // Get allocations
+  const allocations = await db
+    .select({
+      licenseId: softwareAllocations.licenseId,
+      count: count(),
+    })
+    .from(softwareAllocations)
+    .where(isNull(softwareAllocations.revokedAt))
+    .groupBy(softwareAllocations.licenseId);
+
+  const allocMap = new Map(allocations.map((a) => [a.licenseId, a.count]));
+
+  // Fetch purchases for seat cost calculations
+  const softwareAssetIds = licenses
+    .map((l) => l.assetId)
+    .filter(Boolean) as string[];
+  let softwarePurchasesMap = new Map<string, number>();
+
+  if (softwareAssetIds.length > 0) {
+    const purchases = await db
+      .select({
+        assetId: assetPurchases.assetId,
+        totalCost: assetPurchases.totalCost,
+      })
+      .from(assetPurchases)
+      .where(inArray(assetPurchases.assetId, softwareAssetIds));
+
+    softwarePurchasesMap = new Map(
+      purchases.map((p) => [
+        p.assetId,
+        parseFloat(p.totalCost?.toString() || '0'),
+      ])
+    );
+  }
+
+  return licenses.map((lic) => {
+    const assigned = allocMap.get(lic.id) || 0;
+    const idle = Math.max(0, lic.totalSeats - assigned);
+    const licenseCost = lic.assetId
+      ? softwarePurchasesMap.get(lic.assetId) || 0
+      : 0;
+    const costPerSeat =
+      lic.totalSeats > 0 ? licenseCost / lic.totalSeats : DEFAULT_SOFTWARE_SEAT_COST;
+    const monthlyLeak = idle * costPerSeat;
+
+    return {
+      id: lic.id,
+      productName: lic.modelName || 'Unknown License',
+      totalSeats: lic.totalSeats,
+      assignedSeats: assigned,
+      idleSeats: idle,
+      costPerSeat,
+      monthlyLeak,
+    };
+  });
 }
 
 // ============================================================================
@@ -654,23 +693,22 @@ export async function getDashboardAssetsByCategory(): Promise<
 
 export interface DashboardKpiMetrics {
   // Hero KPIs
-  totalActiveAssets?: number;
-  totalActiveAssetsChange?: number;
+  totalActiveAssets: number;
+  totalActiveAssetsChange: number;
   totalAssetValue?: number;
   totalAssetValueTrend?: number;
   netBookValue?: number;
-  fleetHealthScore?: number;
-  fleetHealthLabel?: string;
+  fleetHealthScore: number;
+  fleetHealthLabel: string;
 
   // Secondary KPIs
-  inactiveSoftwareSeats?: number;
+  inactiveSoftwareSeats: number;
   inactiveSoftwareCostLeak?: number;
-  warrantyExpiries30Days?: number;
+  warrantyExpiries30Days: number;
   cumulativeRepairSpend?: number;
   repairSpendTrend?: number;
-  softwareRenewals30Days?: number;
-  impactedSoftwareEmployees?: number;
-  cumulativeSalvageRecouped?: number;
+  softwareRenewals30Days: number;
+  impactedSoftwareEmployees: number;
 }
 
 function getFleetHealthLabel(score: number): string {
@@ -733,7 +771,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
           )
         ),
 
-      // 2a. Total asset value (current)
+      // 2a. Total asset value (current) — exchange-rate adjusted
       db
         .select({
           sum: sql<string | null>`SUM(${assetPurchases.totalCost} * COALESCE(${assetPurchases.exchangeRate}, 1))`,
@@ -742,7 +780,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
         .where(eq(assets.isArchived, false)),
 
-      // 2b. Total asset value 30 days ago (assets that existed then)
+      // 2b. Total asset value 30 days ago — exchange-rate adjusted
       db
         .select({
           sum: sql<string | null>`SUM(${assetPurchases.totalCost} * COALESCE(${assetPurchases.exchangeRate}, 1))`,
@@ -756,7 +794,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
           )
         ),
 
-      // 3. Net Book Value via SQL (straight-line depreciation)
+      // 3. Net Book Value via SQL (straight-line depreciation, exchange-rate adjusted)
       db
         .select({
           nbv: sql<string | null>`
@@ -1021,12 +1059,6 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       impactedSoftwareEmployees = impactedRes[0]?.count || 0;
     }
 
-    // 7. Cumulative Salvage Recouped (actual salvage value of completed disposals)
-    const salvageRecoupedRes = await db
-      .select({ sum: sql<string | null>`SUM(${assetDisposals.actualSalvageValue})` })
-      .from(assetDisposals)
-      .where(eq(assetDisposals.status, 'Completed'));
-    const cumulativeSalvageRecouped = parseFloat(salvageRecoupedRes[0]?.sum || '0');
     // ── Fleet Health Score ─────────────────────────────────────────────
 
     const assignedCountHealth = totalAssignedRes[0]?.count || 0;
@@ -1075,7 +1107,6 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       repairSpendTrend,
       softwareRenewals30Days,
       impactedSoftwareEmployees,
-      cumulativeSalvageRecouped,
     };
   },
   ['dashboard-kpis'],
@@ -1098,7 +1129,7 @@ export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
 
   const metrics = await getCachedDashboardKpiMetrics();
 
-  if (isITOperator(user.role)) {
+  if (user.role === 'ITOperator') {
     return {
       totalActiveAssets: metrics.totalActiveAssets,
       totalActiveAssetsChange: metrics.totalActiveAssetsChange,
@@ -1108,15 +1139,6 @@ export async function getDashboardKpiMetrics(): Promise<DashboardKpiMetrics> {
       warrantyExpiries30Days: metrics.warrantyExpiries30Days,
       softwareRenewals30Days: metrics.softwareRenewals30Days,
       impactedSoftwareEmployees: metrics.impactedSoftwareEmployees,
-    };
-  }
-
-  if (isFinanceAuditor(user.role)) {
-    return {
-      totalAssetValue: metrics.totalAssetValue,
-      netBookValue: metrics.netBookValue,
-      cumulativeSalvageRecouped: metrics.cumulativeSalvageRecouped,
-      inactiveSoftwareCostLeak: metrics.inactiveSoftwareCostLeak,
     };
   }
 
@@ -1136,6 +1158,9 @@ export interface DashboardBatchData {
   highMaintenanceAssets: HighMaintenanceRow[];
   recentActivities: RecentActivity[];
   topHighValueAssets: TopHighValueAssetRow[];
+  depreciationLedger?: any[];
+  writeOffsLedger?: any[];
+  softwareOptimization?: SoftwareOptimizationRow[];
 }
 
 /**
@@ -1179,6 +1204,15 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
     canSeeTopAssets
       ? getDashboardTopHighValueAssets()
       : Promise.resolve([] as TopHighValueAssetRow[]),
+    canSeeTopAssets
+      ? getDepreciationLedger({ pageSize: 5 }).then((res) => res.data)
+      : Promise.resolve([] as any[]),
+    canSeeTopAssets
+      ? getWriteOffsLedger({ pageSize: 5 }).then((res) => res.data)
+      : Promise.resolve([] as any[]),
+    canSeeTopAssets
+      ? getDashboardSoftwareOptimization()
+      : Promise.resolve([] as SoftwareOptimizationRow[]),
   ]);
 
   // Extract values with fallbacks for any failed queries
@@ -1229,5 +1263,11 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
       results[6].status === 'fulfilled' ? results[6].value : [],
     topHighValueAssets:
       results[7].status === 'fulfilled' ? results[7].value : [],
+    depreciationLedger:
+      results[8].status === 'fulfilled' ? results[8].value : [],
+    writeOffsLedger:
+      results[9].status === 'fulfilled' ? results[9].value : [],
+    softwareOptimization:
+      results[10].status === 'fulfilled' ? results[10].value : [],
   };
 }

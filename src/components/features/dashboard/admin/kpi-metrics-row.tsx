@@ -48,15 +48,15 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
         <KpiCard
           size="hero"
           title="Total Assets"
-          value={formatNumber(metrics.totalActiveAssets ?? 0)}
+          value={formatNumber(metrics.totalActiveAssets)}
           badgeText={
-            (metrics.totalActiveAssetsChange ?? 0) > 0
+            metrics.totalActiveAssetsChange > 0
               ? `+${metrics.totalActiveAssetsChange} MTD`
-              : (metrics.totalActiveAssetsChange ?? 0) === 0
+              : metrics.totalActiveAssetsChange === 0
                 ? "No change"
                 : `${metrics.totalActiveAssetsChange} MTD`
           }
-          badgeType={(metrics.totalActiveAssetsChange ?? 0) >= 0 ? "positive" : "negative"}
+          badgeType={metrics.totalActiveAssetsChange >= 0 ? "positive" : "negative"}
           subText1="Active fleet (non-archived)"
           subText2="Excludes disposed and archived assets."
           href="/assets/hardware"
@@ -96,8 +96,8 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
         <KpiCard
           size="hero"
           title="Fleet Health"
-          value={`${metrics.fleetHealthScore ?? 0} / 100`}
-          badgeText={metrics.fleetHealthLabel ?? "Unknown"}
+          value={`${metrics.fleetHealthScore} / 100`}
+          badgeText={metrics.fleetHealthLabel}
           badgeType={
             metrics.fleetHealthLabel === "Excellent" || metrics.fleetHealthLabel === "Good"
               ? "positive"
@@ -105,41 +105,37 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
                 ? "neutral"
                 : "negative"
           }
-          valueColor={getHealthColor(metrics.fleetHealthLabel ?? "Unknown")}
+          valueColor={getHealthColor(metrics.fleetHealthLabel)}
           subText1="Composite fleet health indicator"
           subText2="Utilization, warranty, repairs, compliance."
         />
       </div>
 
       {/* ─── Row 2: Secondary KPIs ─────────────────────────────────────── */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Warranty Expiry */}
-        {metrics.warrantyExpiries30Days !== undefined && (
-          <KpiCard
-            title="Warranty Expiry (30d)"
-            value={`${formatNumber(metrics.warrantyExpiries30Days)} Assets`}
-            badgeText="Risk"
-            badgeType={metrics.warrantyExpiries30Days > 0 ? "negative" : "positive"}
-            valueColor={metrics.warrantyExpiries30Days > 0 ? "warning" : "default"}
-            subText1={`${formatNumber(metrics.warrantyExpiries30Days)} active devices near support end`}
-            subText2="Action needed to renew or retire."
-            href="/assets/hardware"
-          />
-        )}
+        <KpiCard
+          title="Warranty Expiry (30d)"
+          value={`${formatNumber(metrics.warrantyExpiries30Days)} Assets`}
+          badgeText="Risk"
+          badgeType={metrics.warrantyExpiries30Days > 0 ? "negative" : "positive"}
+          valueColor={metrics.warrantyExpiries30Days > 0 ? "warning" : "default"}
+          subText1={`${formatNumber(metrics.warrantyExpiries30Days)} active devices near support end`}
+          subText2="Action needed to renew or retire."
+          href="/assets/hardware"
+        />
 
         {/* Software Renewals */}
-        {metrics.softwareRenewals30Days !== undefined && (
-          <KpiCard
-            title="Software Renewals (30d)"
-            value={`${formatNumber(metrics.softwareRenewals30Days)} Licenses`}
-            badgeText="Risk"
-            badgeType={metrics.softwareRenewals30Days > 0 ? "negative" : "positive"}
-            valueColor={metrics.softwareRenewals30Days > 0 ? "warning" : "default"}
-            subText1={`${formatNumber(metrics.softwareRenewals30Days)} critical subscriptions near expiry`}
-            subText2={`Affects ${formatNumber(metrics.impactedSoftwareEmployees ?? 0)} employee custodians.`}
-            href="/assets/software"
-          />
-        )}
+        <KpiCard
+          title="Software Renewals (30d)"
+          value={`${formatNumber(metrics.softwareRenewals30Days)} Licenses`}
+          badgeText="Risk"
+          badgeType={metrics.softwareRenewals30Days > 0 ? "negative" : "positive"}
+          valueColor={metrics.softwareRenewals30Days > 0 ? "warning" : "default"}
+          subText1={`${formatNumber(metrics.softwareRenewals30Days)} critical subscriptions near expiry`}
+          subText2={`Affects ${formatNumber(metrics.impactedSoftwareEmployees)} employee custodians.`}
+          href="/assets/software"
+        />
 
         {/* Cumulative Repair Spend — financial roles only */}
         {metrics.cumulativeRepairSpend !== undefined && (
@@ -158,7 +154,7 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
         )}
 
         {/* Idle Software Seats */}
-        {metrics.inactiveSoftwareCostLeak !== undefined && metrics.inactiveSoftwareSeats !== undefined && (
+        {metrics.inactiveSoftwareCostLeak !== undefined && (
           <KpiCard
             title="Idle Software Seats"
             value={`${formatNumber(metrics.inactiveSoftwareSeats)} Seats`}
@@ -170,34 +166,7 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
             href="/assets/software"
           />
         )}
-
-        {metrics.inactiveSoftwareCostLeak !== undefined && metrics.inactiveSoftwareSeats === undefined && (
-          <KpiCard 
-            title="Software Cost Leak"
-            value={formatCurrency(metrics.inactiveSoftwareCostLeak)}
-            badgeText={`-${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
-            badgeType="negative"
-            valueColor="destructive"
-            subText1="Monthly waste from unused software licenses"
-            subText2="Identified cost savings potential."
-            href="/assets/software"
-          />
-        )}
-
-        {/* Salvage Cost Recovery */}
-        {metrics.cumulativeSalvageRecouped !== undefined && (
-          <KpiCard 
-            title="Salvage Cost Recovery"
-            value={formatCurrency(metrics.cumulativeSalvageRecouped)}
-            badgeText="Recouped"
-            badgeType="positive"
-            valueColor="default"
-            subText1="Total salvage value recovered from disposals"
-            subText2="From completed asset write-offs."
-            href="/financials/salvage"
-          />
-        )}
       </div>
     </div>
-  );
+  )
 }

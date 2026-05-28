@@ -11,8 +11,9 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { DisposeAssetsRequestDialog, type SelectedAssetLite } from "@/components/features/disposals/dispose-assets-request-dialog"
-import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow, RecentWriteOffRow, TopHighValueAssetRow } from "@/actions/dashboard"
+import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow, TopHighValueAssetRow, SoftwareOptimizationRow, RecentActivity } from "@/actions/dashboard"
 import { tiqriToast } from "@/components/shared/sonner"
+import { formatMoneyByCurrency } from "@/lib/currency"
 import { sendAssignmentReminderAction } from "@/actions/assignments"
 import { ArrowUpRight } from "lucide-react"
 import type { UserRole } from "@/types/auth"
@@ -237,55 +238,6 @@ function useHighMaintenanceColumns(onFlag: (asset: HighMaintenanceRow) => void):
   ], [onFlag])
 }
 
-function useWriteOffColumns(): ColumnDef<RecentWriteOffRow>[] {
-  return useMemo(() => [
-    {
-      id: "asset",
-      header: "Asset",
-      size: 180,
-      minSize: 150,
-      cell: ({ row }) => (
-        <span className="text-xs font-semibold text-foreground">
-          {row.original.assetName} ({row.original.assetTag})
-        </span>
-      ),
-    },
-    {
-      id: "bookValue",
-      header: "Book Value at Disposal",
-      size: 140,
-      minSize: 120,
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {row.original.bookValue || "—"}
-        </span>
-      ),
-    },
-    {
-      id: "salvageValue",
-      header: "Actual Salvage Recovery",
-      size: 140,
-      minSize: 120,
-      cell: ({ row }) => (
-        <span className="text-xs font-bold text-emerald-600">
-          {row.original.salvageValue || "—"}
-        </span>
-      ),
-    },
-    {
-      id: "resolvedAt",
-      header: "Disposed Date",
-      size: 140,
-      minSize: 120,
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {row.original.resolvedAt ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(row.original.resolvedAt)) : "—"}
-        </span>
-      ),
-    },
-  ], [])
-}
-
 function useTopHighValueAssetsColumns(): ColumnDef<TopHighValueAssetRow>[] {
   return useMemo(() => [
     {
@@ -335,18 +287,189 @@ function useTopHighValueAssetsColumns(): ColumnDef<TopHighValueAssetRow>[] {
   ], [])
 }
 
+function useDepreciationColumns(): ColumnDef<any>[] {
+  return useMemo(() => [
+    {
+      id: "asset",
+      header: "Asset Tag",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold text-foreground">
+          {row.original.assetId}
+        </span>
+      ),
+    },
+    {
+      id: "category",
+      header: "Category",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.category}
+        </span>
+      ),
+    },
+    {
+      id: "originalCost",
+      header: "Original Cost",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground font-medium">
+          {formatMoneyByCurrency(row.original.originalPrice, row.original.currencyCode)}
+        </span>
+      ),
+    },
+    {
+      id: "currentBookValue",
+      header: "Net Book Value",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs font-bold text-emerald-600">
+          {formatMoneyByCurrency(row.original.currentBookValue, row.original.currencyCode)}
+        </span>
+      ),
+    },
+    {
+      id: "lifespan",
+      header: "Useful Life",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.expectedLifespan}
+        </span>
+      ),
+    },
+  ], [])
+}
+
+function useWriteOffsColumns(): ColumnDef<any>[] {
+  return useMemo(() => [
+    {
+      id: "asset",
+      header: "Asset Tag",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold text-foreground">
+          {row.original.assetId}
+        </span>
+      ),
+    },
+    {
+      id: "disposalDate",
+      header: "Disposal Date",
+      size: 150,
+      minSize: 130,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.disposalDate ? new Date(row.original.disposalDate).toLocaleDateString() : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "originalCost",
+      header: "Original Cost",
+      size: 130,
+      minSize: 110,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground font-medium">
+          {formatMoneyByCurrency(row.original.originalPrice, row.original.currencyCode)}
+        </span>
+      ),
+    },
+    {
+      id: "bookValue",
+      header: "Value at Disposal",
+      size: 130,
+      minSize: 110,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {formatMoneyByCurrency(row.original.bookValue, row.original.currencyCode)}
+        </span>
+      ),
+    },
+    {
+      id: "salvageValue",
+      header: "Salvage Recouped",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs font-bold text-emerald-600">
+          {formatMoneyByCurrency(row.original.salvageValue, row.original.currencyCode)}
+        </span>
+      ),
+    },
+  ], [])
+}
+
+function useSoftwareOptimizationColumns(): ColumnDef<SoftwareOptimizationRow>[] {
+  return useMemo(() => [
+    {
+      id: "productName",
+      header: "Software Product",
+      size: 180,
+      minSize: 160,
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold text-foreground">
+          {row.original.productName}
+        </span>
+      ),
+    },
+    {
+      id: "seats",
+      header: "Seats (Idle / Total)",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          <span className="text-red-500 font-bold">{row.original.idleSeats}</span> / {row.original.totalSeats}
+        </span>
+      ),
+    },
+    {
+      id: "leak",
+      header: "Monthly Waste Leak",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs font-extrabold text-red-600">
+          {formatMoneyByCurrency(row.original.monthlyLeak, "LKR")}
+        </span>
+      ),
+    },
+  ], [])
+}
+
 // ─── Main client export ───────────────────────────────────────────────────────
 
 interface Props {
   overdueReturns: OverdueReturnRow[]
   pendingDisposals: PendingDisposalRow[]
   highMaintenanceAssets: HighMaintenanceRow[]
-  recentWriteOffs?: RecentWriteOffRow[]
   topHighValueAssets?: TopHighValueAssetRow[]
+  depreciationLedger?: any[]
+  writeOffsLedger?: any[]
+  softwareOptimization?: SoftwareOptimizationRow[]
+  recentActivities?: RecentActivity[]
   userRole: UserRole
 }
 
-export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, recentWriteOffs = [], topHighValueAssets = [], userRole }: Props) {
+export function DashboardTablesRowClient({
+  overdueReturns,
+  pendingDisposals,
+  highMaintenanceAssets,
+  topHighValueAssets = [],
+  depreciationLedger = [],
+  writeOffsLedger = [],
+  softwareOptimization = [],
+  recentActivities = [],
+  userRole,
+}: Props) {
   const showPending = userRole === 'GlobalAdmin'
   const showTopAssets = userRole === 'FinanceAuditor'
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
@@ -381,8 +504,10 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
   const overdueColumns = useOverdueColumns("Send Reminder", handleSendReminder, sendingReminderIds)
   const pendingColumns = usePendingDisposalColumns(userRole)
   const lemonsColumns = useHighMaintenanceColumns(handleFlagClick)
-  const writeOffColumns = useWriteOffColumns()
   const topHighValueColumns = useTopHighValueAssetsColumns()
+  const depreciationColumns = useDepreciationColumns()
+  const writeOffsColumns = useWriteOffsColumns()
+  const softwareOptimizationColumns = useSoftwareOptimizationColumns()
 
   const tableProps: {
     enableRowSelection: boolean
@@ -440,12 +565,26 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
           )}
 
           {showTopAssets && (
-            <TabsTrigger
-              value="topAssets"
-              className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
-            >
-              Top High-Value Assets
-            </TabsTrigger>
+            <>
+              <TabsTrigger
+                value="topAssets"
+                className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Top High-Value Assets
+              </TabsTrigger>
+              <TabsTrigger
+                value="depreciation"
+                className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Straight-Line Depreciation
+              </TabsTrigger>
+              <TabsTrigger
+                value="writeOffs"
+                className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                Asset Write-offs
+              </TabsTrigger>
+            </>
           )}
         </TabsList>
 
@@ -478,39 +617,46 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
         )}
 
         {showTopAssets && (
-          <TabsContent value="topAssets">
-            <DataTable
-              {...tableProps}
-              columns={topHighValueColumns}
-              data={topHighValueAssets}
-              emptyState={{
-                title: "No active assets",
-                description: "There are no active assets with recorded costs.",
-              }}
-            />
-          </TabsContent>
+          <>
+            <TabsContent value="topAssets">
+              <DataTable
+                {...tableProps}
+                columns={topHighValueColumns}
+                data={topHighValueAssets}
+                emptyState={{
+                  title: "No active assets",
+                  description: "There are no active assets with recorded costs.",
+                }}
+              />
+            </TabsContent>
+            <TabsContent value="depreciation">
+              <DataTable
+                {...tableProps}
+                columns={depreciationColumns}
+                data={depreciationLedger}
+                emptyState={{
+                  title: "No depreciating assets",
+                  description: "There are no active assets currently depreciating.",
+                }}
+              />
+            </TabsContent>
+            <TabsContent value="writeOffs">
+              <DataTable
+                {...tableProps}
+                columns={writeOffsColumns}
+                data={writeOffsLedger}
+                emptyState={{
+                  title: "No asset write-offs",
+                  description: "There are no completed asset write-offs/disposals.",
+                }}
+              />
+            </TabsContent>
+          </>
         )}
       </Tabs>
 
-      {/* ── Right Column: High-Maintenance (Lemons) or Recent Write-Offs (Auditor) ── */}
-      {userRole === 'FinanceAuditor' ? (
-        <div className="flex flex-col w-full">
-          <div className="h-10 mb-4 flex items-center">
-            <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-              Recent Write-Offs
-            </h3>
-          </div>
-          <DataTable
-            {...tableProps}
-            columns={writeOffColumns}
-            data={recentWriteOffs}
-            emptyState={{
-              title: "No recent write-offs",
-              description: "No assets have been decommissioned recently.",
-            }}
-          />
-        </div>
-      ) : (
+      {/* ── Right Column: High-Maintenance (Lemons) OR Software/Audit Stack ── */}
+      {userRole !== 'FinanceAuditor' ? (
         <div className="flex flex-col w-full">
           <div className="h-10 mb-4 flex items-center">
             <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
@@ -524,6 +670,23 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
             emptyState={{
               title: "No high-maintenance assets",
               description: "No assets have 3 or more repair tickets.",
+            }}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col w-full">
+          <div className="h-10 mb-4 flex items-center">
+            <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
+              Software Seat Cost Optimization
+            </h3>
+          </div>
+          <DataTable
+            {...tableProps}
+            columns={softwareOptimizationColumns}
+            data={softwareOptimization}
+            emptyState={{
+              title: "No active software licenses",
+              description: "No licenses found for optimization.",
             }}
           />
         </div>
