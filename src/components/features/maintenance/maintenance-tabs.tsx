@@ -23,6 +23,7 @@ interface MaintenanceTabsProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
   selectedTicketId?: number | null;
+  userRole?: string;
 }
 
 export function MaintenanceTabs({
@@ -35,8 +36,10 @@ export function MaintenanceTabs({
   searchTerm,
   onSearchChange,
   selectedTicketId,
+  userRole,
 }: MaintenanceTabsProps) {
-  const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'history'>('pending');
+  const defaultTab = userRole === 'FinanceAuditor' ? 'history' : 'pending';
+  const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'history'>(defaultTab as 'pending' | 'active' | 'history');
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
 
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => {
@@ -156,14 +159,16 @@ export function MaintenanceTabs({
   ];
 
   const tabConfig = [
-    {
-      id: 'pending',
-      label: `Pending Review ${pendingTickets.length > 0 ? `(${pendingTickets.length})` : ''}`,
-    },
-    {
-      id: 'active',
-      label: `Active Repairs ${activeRepairTickets.length > 0 ? `(${activeRepairTickets.length})` : ''}`,
-    },
+    ...(userRole !== 'FinanceAuditor' ? [
+      {
+        id: 'pending',
+        label: `Pending Review ${pendingTickets.length > 0 ? `(${pendingTickets.length})` : ''}`,
+      },
+      {
+        id: 'active',
+        label: `Active Repairs ${activeRepairTickets.length > 0 ? `(${activeRepairTickets.length})` : ''}`,
+      }
+    ] : []),
     {
       id: 'history',
       label: 'Repair History',
@@ -197,31 +202,35 @@ export function MaintenanceTabs({
           />
 
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 rounded-md border border-border bg-background">
-            <TabsContent value="pending" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
-              {isLoading ? (
-                <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[15%]', 'w-[30%]', 'w-[20%]']} />
-              ) : (
-                <DataTable
-                  columns={pendingReviewColumns}
-                  data={filteredPendingTickets}
-                  pageSizeOptions={[10, 20, 30, 50]}
-                  initialPageSize={10}
-                  onRowClick={(row) => onRowClick(row)}
-                  emptyState={{
-                    title: 'No pending maintenance tickets found',
-                    description: 'New maintenance requests will appear here once they are submitted.',
-                  }}
-                  className="border-0 h-full flex-1"
-                  enableRowScroll={true}
-                  activeRowCondition={(row: PendingReviewTicket) => row.id === selectedTicketId}
-                  enableRowSelection={false}
-                />
-              )}
-            </TabsContent>
+            {userRole !== 'FinanceAuditor' && (
+              <>
+                <TabsContent value="pending" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
+                  {isLoading ? (
+                    <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[15%]', 'w-[30%]', 'w-[20%]']} />
+                  ) : (
+                    <DataTable
+                      columns={pendingReviewColumns}
+                      data={filteredPendingTickets}
+                      pageSizeOptions={[10, 20, 30, 50]}
+                      initialPageSize={10}
+                      onRowClick={(row) => onRowClick(row)}
+                      emptyState={{
+                        title: 'No pending maintenance tickets found',
+                        description: 'New maintenance requests will appear here once they are submitted.',
+                      }}
+                      className="border-0 h-full flex-1"
+                      enableRowScroll={true}
+                      activeRowCondition={(row: PendingReviewTicket) => row.id === selectedTicketId}
+                      enableRowSelection={false}
+                    />
+                  )}
+                </TabsContent>
 
-            <TabsContent value="active" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
-              <ActiveRepairsGrid tickets={activeRepairTickets} isLoading={isLoading} onRowClick={onActiveRepairRowClick} />
-            </TabsContent>
+                <TabsContent value="active" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
+                  <ActiveRepairsGrid tickets={activeRepairTickets} isLoading={isLoading} onRowClick={onActiveRepairRowClick} />
+                </TabsContent>
+              </>
+            )}
 
             <TabsContent value="history" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
               <RepairHistoryGrid tickets={repairHistoryTickets} isLoading={isLoading} />

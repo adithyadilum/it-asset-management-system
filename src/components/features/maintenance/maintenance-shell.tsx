@@ -54,7 +54,7 @@ function uiReducer(state: UIState, action: UIAction): UIState {
   }
 }
 
-export function MaintenanceShell() {
+export function MaintenanceShell({ userRole }: { userRole?: string }) {
   const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>([]);
   const [activeRepairTickets, setActiveRepairTickets] = useState<ActiveRepairTicket[]>([]);
   const [repairHistoryTickets, setRepairHistoryTickets] = useState<RepairHistoryTicket[]>([]);
@@ -77,8 +77,8 @@ export function MaintenanceShell() {
     try {
       setIsLoading(true);
       const [ticketsResult, activeResult, historyResult] = await Promise.all([
-        getPendingMaintenanceTickets(query),
-        getActiveRepairTickets(query),
+        userRole !== 'FinanceAuditor' ? getPendingMaintenanceTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
+        userRole !== 'FinanceAuditor' ? getActiveRepairTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
         getRepairHistory(1, 100, query)
       ]);
       setPendingTickets(ticketsResult.tickets);
@@ -89,7 +89,7 @@ export function MaintenanceShell() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     let isMounted = true;
@@ -163,6 +163,7 @@ export function MaintenanceShell() {
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               selectedTicketId={uiState.selectedTicketId}
+              userRole={userRole}
             />
           </div>
         </main>

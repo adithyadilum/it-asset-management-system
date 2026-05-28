@@ -20,6 +20,7 @@ interface DisposalsLayoutProps {
   historyCurrentPage?: number;
   historyPageSize?: number;
   historySearchQuery?: string;
+  userRole?: string;
 }
 
 export function DisposalsLayout({
@@ -29,6 +30,7 @@ export function DisposalsLayout({
   historyCurrentPage = 1,
   historyPageSize = 10,
   historySearchQuery = '',
+  userRole,
 }: DisposalsLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,7 +44,8 @@ export function DisposalsLayout({
   const isRecordOpen = currentPanel === 'record';
   const numericRecordId = recordId ? Number(recordId) : null;
 
-  const [activeTab, setActiveTab] = useState('pending');
+  const defaultTab = userRole === 'FinanceAuditor' ? 'history' : 'pending';
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   const selectedRow = isReviewOpen && numericRecordId
     ? pendingData.find((row) => row.id === numericRecordId) || null
@@ -114,7 +117,7 @@ export function DisposalsLayout({
           {/* Tabs Container */}
           <ModuleNavigationTabs
             tabs={[
-              { id: 'pending', label: `Pending Disposal (${pendingData.length})` },
+              ...(userRole !== 'FinanceAuditor' ? [{ id: 'pending', label: `Pending Disposal (${pendingData.length})` }] : []),
               { id: 'history', label: 'Disposal History' }
             ]}
             defaultTab={activeTab}
@@ -122,6 +125,7 @@ export function DisposalsLayout({
             containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
           >
             {/* Tab Content - Pending */}
+            {userRole !== 'FinanceAuditor' && (
             <TabsContent
               value="pending"
               className="m-0 flex flex-1 flex-col min-h-0 outline-none"
@@ -131,6 +135,7 @@ export function DisposalsLayout({
                 onRowClick={openReviewPanel}
               />
             </TabsContent>
+            )}
 
             {/* Tab Content - History */}
             <TabsContent value="history" className="m-0 flex flex-1 flex-col min-h-0 outline-none">
