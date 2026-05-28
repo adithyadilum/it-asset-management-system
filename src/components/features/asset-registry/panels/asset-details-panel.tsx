@@ -127,13 +127,18 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     const softwareLicenseKey = props.serialNumber || '-';
     const softwareLicenseType = props.licenseType || props.specs?.license_type?.toString() || 'Subscription';
     const softwareVersion = props.specs?.version?.toString() || '-';
-    const rawExpiry = props.expiryDate || props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString();
+    const rawExpiry = (props.expiryDate && props.expiryDate !== '-') 
+      ? props.expiryDate 
+      : (props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || props.specs?.['Expiration Date']?.toString());
     const softwareExpirationDate = rawExpiry && rawExpiry !== '-' ? (
       !Number.isNaN(new Date(rawExpiry).getTime()) 
         ? format(new Date(rawExpiry), 'dd MMM yyyy') 
         : rawExpiry
     ) : '-';
-    const softwareTotalSeats = props.totalSeats?.toString() || props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || '-';
+    const softwareTotalSeats = (props.totalSeats !== undefined && props.totalSeats !== null) 
+      ? props.totalSeats.toString() 
+      : (props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || props.specs?.['Total Seats']?.toString() || '-');
+    const resolvedTotalSeats = parseInt(softwareTotalSeats, 10) || 0;
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
@@ -196,7 +201,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             modelName={props.model}
             fields={detailsFields}
             mode={isSoftware ? 'software' : 'default'}
-            totalSeats={props.totalSeats}
+            totalSeats={resolvedTotalSeats}
             allocatedCount={props.allocations?.length}
             softwareSections={isSoftware ? [
               {
@@ -281,7 +286,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     if (isSoftware) {
       const allocatedCount = props.allocations?.length ?? 0;
-      const totalSeats = props.totalSeats ?? 0;
+      const totalSeats = resolvedTotalSeats;
 
       tabsList.push({
         id: 'allocations',
