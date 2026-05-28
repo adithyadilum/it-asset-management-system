@@ -61,7 +61,7 @@ export function AcceptAssignmentDialog({
                 <DialogHeader className="space-y-0">
                     <div className="flex items-center justify-between gap-4">
                         <DialogTitle className="font-text-lg-semi-bold leading-7 text-foreground">
-                            Accept Equipment Assignment
+                            Accept Asset Assignment
                         </DialogTitle>
                     </div>
                 </DialogHeader>
