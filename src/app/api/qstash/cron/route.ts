@@ -11,6 +11,7 @@ import {
   notificationRules,
   notificationLogs,
 } from '@/db/schema';
+import { notificationQueue } from '@/db/schema';
 import {
   eq,
   and,
@@ -21,6 +22,7 @@ import {
   notInArray,
   sql,
 } from 'drizzle-orm';
+import { gte, lte } from 'drizzle-orm';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
 
 /**
@@ -85,6 +87,12 @@ export async function POST(req: NextRequest) {
     // 4. Run overdueRepairCheck
     await runOverdueRepairCheck();
 
+      // 5. Run pending acceptance escalation checks
+      await runPendingAcceptanceEscalation();
+
+      // 6. Run upcoming return reminders
+      await runUpcomingReturnCheck();
+
     return NextResponse.json({
       success: true,
       message: 'All checks processed successfully',
@@ -96,6 +104,214 @@ export async function POST(req: NextRequest) {
       { error: 'Internal Server Error', details: errMsg },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Escalation engine for pending acceptance assignments.
+ * - Looks at unprocessed rows in `notification_queue` and inserts escalation rows
+ *   and dispatches in-app reminders at 24h, 48h, and 72h (escalate to admin).
+ */
+async function runPendingAcceptanceEscalation() {
+  console.log('Starting pendingAcceptanceEscalation job...');
+
+  // Fetch unprocessed queue entries
+  const entries = await db
+    .select({
+      id: notificationQueue.id,
+      eventType: notificationQueue.eventType,
+      assignmentId: notificationQueue.assignmentId,
+      recipientId: notificationQueue.recipientId,
+      createdAt: notificationQueue.createdAt,
+    })
+    .from(notificationQueue)
+    .where(eq(notificationQueue.isProcessed, false));
+
+  if (!entries || entries.length === 0) {
+    console.log('No unprocessed notification_queue entries found.');
+    return;
+  }
+
+  const now = new Date();
+
+  for (const entry of entries) {
+    // Load assignment to compute elapsed time and find assigning admin
+    const [assignment] = await db
+      .select({ assignedDate: assetAssignments.assignedDate, assignedById: assetAssignments.assignedById, assignedToUserId: assetAssignments.assignedToUserId })
+      .from(assetAssignments)
+      .where(eq(assetAssignments.id, entry.assignmentId))
+      .limit(1);
+
+    if (!assignment) continue;
+
+    const assignedDate = assignment.assignedDate ? new Date(assignment.assignedDate) : null;
+    if (!assignedDate) continue;
+
+    const hours = Math.floor((now.getTime() - assignedDate.getTime()) / (1000 * 60 * 60));
+    const targetUrl = `/portal/my-assets?assignmentId=${entry.assignmentId}`;
+
+    // Helper removed; we'll inline dedupe checks using explicit event type literals
+
+    // 24h reminder to employee
+    if (hours >= 24 && hours < 48) {
+      // Deduplicate by checking notification_queue for an existing REMINDER_24H for this assignment/recipient
+      const [existing24] = await db
+        .select()
+        .from(notificationQueue)
+        .where(
+          and(
+            eq(notificationQueue.assignmentId, entry.assignmentId),
+            eq(notificationQueue.eventType, 'REMINDER_24H'),
+            eq(notificationQueue.recipientId, entry.recipientId as string)
+          )
+        )
+        .limit(1);
+      const has24 = !!existing24;
+      if (!has24) {
+        // Insert escalation queue entry
+        await db.insert(notificationQueue).values({
+          eventType: 'REMINDER_24H',
+          assignmentId: entry.assignmentId,
+          recipientId: entry.recipientId,
+        });
+
+        // Dispatch in-app notification to employee
+        await dispatchAlert({
+          eventType: 'ASSIGNMENT_PENDING',
+          userId: entry.recipientId as string,
+          title: 'Action Required: Assignment Pending',
+          message: `You have an assignment pending acknowledgment (assigned ${assignedDate.toISOString()}). Please review.`,
+          targetUrl,
+        });
+      }
+    }
+
+    // 48h reminder to employee
+    if (hours >= 48 && hours < 72) {
+      const [existing48] = await db
+        .select()
+        .from(notificationQueue)
+        .where(
+          and(
+            eq(notificationQueue.assignmentId, entry.assignmentId),
+            eq(notificationQueue.eventType, 'REMINDER_48H'),
+            eq(notificationQueue.recipientId, entry.recipientId as string)
+          )
+        )
+        .limit(1);
+      const has48 = !!existing48;
+      if (!has48) {
+        await db.insert(notificationQueue).values({
+          eventType: 'REMINDER_48H',
+          assignmentId: entry.assignmentId,
+          recipientId: entry.recipientId,
+        });
+
+        await dispatchAlert({
+          eventType: 'ASSIGNMENT_PENDING',
+          userId: entry.recipientId as string,
+          title: 'Reminder: Assignment Still Pending',
+          message: `Your assignment from ${assignedDate.toISOString()} is still awaiting acknowledgment.`,
+          targetUrl,
+        });
+      }
+    }
+
+    // 72h escalation to assigning admin
+    if (hours >= 72) {
+      const [existing72] = await db
+        .select()
+        .from(notificationQueue)
+        .where(
+          and(
+            eq(notificationQueue.assignmentId, entry.assignmentId),
+            eq(notificationQueue.eventType, 'REMINDER_72H_ADMIN')
+          )
+        )
+        .limit(1);
+      const has72 = !!existing72;
+      if (!has72) {
+        await db.insert(notificationQueue).values({
+          eventType: 'REMINDER_72H_ADMIN',
+          assignmentId: entry.assignmentId,
+          recipientId: entry.recipientId,
+        });
+
+        // Notify assigning admin (assignedById)
+        if (assignment.assignedById) {
+          await dispatchAlert({
+            eventType: 'ASSIGNMENT_PENDING',
+            userId: assignment.assignedById as string,
+            title: 'Escalation: Assignment Not Acknowledged',
+            message: `Assignment #${entry.assignmentId} assigned to user ${entry.recipientId} has not been acknowledged after 72 hours.`,
+            targetUrl: `/operations/assignments?assignmentId=${entry.assignmentId}`,
+          });
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Upcoming return checker: notifies employees of upcoming return dates within 14 days.
+ */
+async function runUpcomingReturnCheck() {
+  console.log('Starting upcomingReturnCheck job...');
+
+  const now = new Date();
+  const in14 = new Date(now);
+  in14.setDate(now.getDate() + 14);
+
+    const rows = await db
+    .select({
+      assignmentId: assetAssignments.id,
+      assetId: assetAssignments.assetId,
+      assignedToUserId: assetAssignments.assignedToUserId,
+      expectedReturnDate: assetAssignments.expectedReturnDate,
+      assetTag: assets.assetTag,
+      assetName: assets.name,
+    })
+    .from(assetAssignments)
+    .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
+    .where(
+      and(
+        isNull(assetAssignments.returnedDate),
+        inArray(assetAssignments.state, ['assigned', 'pending approval', 'overdue']),
+        isNotNull(assetAssignments.expectedReturnDate),
+        gte(assetAssignments.expectedReturnDate, now.toISOString()),
+        lte(assetAssignments.expectedReturnDate, in14.toISOString())
+      )
+    );
+
+  console.log(`Found ${rows.length} assignments with upcoming returns within 14 days.`);
+
+  for (const a of rows) {
+    const targetUrl = `/portal/my-assets?assignmentId=${a.assignmentId}`;
+
+    // Deduplicate via notification_logs
+    if (!a.assignedToUserId) continue;
+
+    const [existing] = await db
+      .select()
+      .from(notificationLogs)
+      .where(
+        and(
+          eq(notificationLogs.userId, a.assignedToUserId),
+          eq(notificationLogs.eventType, 'UPCOMING_RETURN'),
+          eq(notificationLogs.targetUrl, targetUrl)
+        )
+      )
+      .limit(1);
+
+    if (!existing) {
+      await dispatchAlert({
+        eventType: 'UPCOMING_RETURN',
+        userId: a.assignedToUserId as string,
+        title: 'Upcoming Asset Return',
+        message: `Your ${a.assetTag} is due for return on ${a.expectedReturnDate}. Please back up your files.`,
+        targetUrl,
+      });
+    }
   }
 }
 
