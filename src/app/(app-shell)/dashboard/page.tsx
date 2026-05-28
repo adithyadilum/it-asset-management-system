@@ -1,5 +1,7 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
+import { getPortalAlerts } from "@/lib/data/portal-repo"
+import PortalAlerts from "@/components/features/portal/portal-alerts"
 import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
 import { DashboardRefreshProvider } from "@/components/features/dashboard/admin/dashboard-refresh-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -49,13 +51,20 @@ export default async function DashboardPage() {
     const user = await getAuthenticatedUser()
 
     if (user?.role === "Employee") {
-        const employeeAssets = await getCurrentEmployeeAssets()
+        const [employeeAssets, alerts] = await Promise.all([
+            getCurrentEmployeeAssets(),
+            getPortalAlerts(user.id),
+        ])
 
         return (
             <section className="px-4 pb-4 pt-6 md:px-6 md:pb-6">
                 <h1 className="text-foreground text-2xl font-semibold leading-8">Welcome back, {user.name}</h1>
                 <p className="text-muted-foreground text-base font-normal leading-6">Here is the equipment currently assigned to you.</p>
-                <div className="mt-6 grid gap-4 xl:grid-cols-3">
+                <div className="mt-6 flex w-full flex-col gap-4">
+                    <PortalAlerts alerts={alerts} />
+                </div>
+
+                <div className="mt-4 grid gap-4 xl:grid-cols-3">
                     {employeeAssets.length > 0 ? (
                         employeeAssets.map((asset) => {
                             const presentation = getAssetPresentation(undefined, asset.modelName)
