@@ -144,7 +144,7 @@ export function PurchaseDetailsSection({
                   onSelect={(date) =>
                     setPurchaseDate(date ? formatDateForInput(date) : '')
                   }
-                  initialFocus
+                  autoFocus
                 />
               </PopoverContent>
             </Popover>
