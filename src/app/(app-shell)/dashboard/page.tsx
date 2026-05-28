@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { getPortalAlerts } from "@/lib/data/portal-repo"
-import PortalAlerts from "@/components/features/portal/portal-alerts"
+import { EmployeeAlerts } from "@/components/features/dashboard/employee/employee-alerts"
 import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
 import { DashboardRefreshProvider } from "@/components/features/dashboard/admin/dashboard-refresh-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
                 <h1 className="text-foreground text-2xl font-semibold leading-8">Welcome back, {user.name}</h1>
                 <p className="text-muted-foreground text-base font-normal leading-6">Here is the equipment currently assigned to you.</p>
                 <div className="mt-6 flex w-full flex-col gap-4">
-                    <PortalAlerts alerts={alerts} />
+                    <EmployeeAlerts alerts={alerts} />
                 </div>
 
                 <div className="mt-4 grid gap-4 xl:grid-cols-3">

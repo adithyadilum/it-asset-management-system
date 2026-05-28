@@ -3,19 +3,19 @@
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
-import { AssetAlert } from "@/components/shared/asset-alert"
-import { AcceptAssignmentDialog } from "@/components/features/dashboard/accept-assignment-dialog"
-import { RejectionDialog } from "@/components/features/dashboard/rejection-dialog"
 import { acceptAssignmentAction } from "@/actions/employee"
+import { RejectionDialog } from "@/components/features/dashboard/employee/rejection-dialog"
 import { tiqriToast } from "@/components/shared/sonner"
+import { AssetAlert } from "@/components/shared/asset-alert"
+import { AcceptAssignmentDialog } from "@/components/features/dashboard/employee/accept-assignment-dialog"
 import type { PortalAlerts, PendingAcceptanceItem } from "@/lib/data/portal-repo"
 import { formatDate } from "@/lib/date"
 
-interface PortalAlertsProps {
+interface EmployeeAlertsProps {
   alerts: PortalAlerts
 }
 
-export default function PortalAlerts({ alerts }: PortalAlertsProps) {
+export function EmployeeAlerts({ alerts }: EmployeeAlertsProps) {
   const router = useRouter()
   const [selectedAssignment, setSelectedAssignment] = useState<PendingAcceptanceItem | null>(null)
   const [isAcceptOpen, setIsAcceptOpen] = useState(false)
@@ -41,22 +41,22 @@ export default function PortalAlerts({ alerts }: PortalAlertsProps) {
 
   const handleConfirmAccept = async () => {
     if (!selectedAssignment) return
-    
+
     try {
       const res = await acceptAssignmentAction(selectedAssignment.assignmentId)
       if (!res?.success) throw new Error(res?.error ?? "Failed to accept assignment")
+
       tiqriToast.success("Assignment accepted.")
       setIsAcceptOpen(false)
       setSelectedAssignment(null)
       router.refresh()
-    } catch (err) {
-      tiqriToast.error(err instanceof Error ? err.message : "Failed to accept assignment")
+    } catch (error) {
+      tiqriToast.error(error instanceof Error ? error.message : "Failed to accept assignment")
     }
   }
 
   return (
     <div className="flex w-full flex-col gap-3">
-      {/* Urgent return requests (red) */}
       {alerts.returnRequested.map((item) => (
         <AssetAlert
           key={`return-${item.assignmentId}`}
@@ -66,7 +66,6 @@ export default function PortalAlerts({ alerts }: PortalAlertsProps) {
         />
       ))}
 
-      {/* Pending acceptance (blue) */}
       {alerts.pendingAcceptance.map((item) => (
         <AssetAlert
           key={`pending-${item.assignmentId}`}
@@ -79,7 +78,11 @@ export default function PortalAlerts({ alerts }: PortalAlertsProps) {
               assetTag={item.assetTag}
               condition="Unknown"
               assignedBy={item.assignedById ?? "IT"}
-              date={new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(item.assignedDate))}
+              date={new Intl.DateTimeFormat("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }).format(new Date(item.assignedDate))}
               isOpen={selectedAssignment?.assignmentId === item.assignmentId && isAcceptOpen}
               onOpenChange={(open: boolean) => {
                 if (open) openAcceptFor(item)
@@ -95,7 +98,6 @@ export default function PortalAlerts({ alerts }: PortalAlertsProps) {
         />
       ))}
 
-      {/* Upcoming returns (yellow) */}
       {alerts.upcomingReturns.map((item) => (
         <AssetAlert
           key={`upcoming-${item.assignmentId}`}
@@ -107,7 +109,7 @@ export default function PortalAlerts({ alerts }: PortalAlertsProps) {
 
       <RejectionDialog
         isOpen={isRejectOpen}
-        assignment={selectedAssignment as PendingAcceptanceItem | null}
+        assignment={selectedAssignment}
         onOpenChange={(open: boolean) => {
           if (!open) setSelectedAssignment(null)
           setIsRejectOpen(open)
