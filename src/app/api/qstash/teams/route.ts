@@ -5,7 +5,10 @@ import { db } from '@/db';
 import { integrationSettings, notificationLogs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { decrypt } from '@/lib/crypto';
-import { NotificationPayload, NotificationEventType } from '@/types/notifications';
+import {
+  NotificationPayload,
+  NotificationEventType,
+} from '@/types/notifications';
 
 /**
  * Handle incoming POST requests from QStash to dispatch Teams adaptive/connector cards.
@@ -38,14 +41,16 @@ export async function POST(req: NextRequest) {
       nextSigningKey: nextKey,
     });
 
-    const isValid = await receiver.verify({
-      signature,
-      body: bodyText,
-      url: req.url,
-    }).catch((err) => {
-      console.error('Signature verification threw error:', err);
-      return false;
-    });
+    const isValid = await receiver
+      .verify({
+        signature,
+        body: bodyText,
+        url: req.url,
+      })
+      .catch((err) => {
+        console.error('Signature verification threw error:', err);
+        return false;
+      });
 
     if (!isValid) {
       return NextResponse.json(
@@ -66,7 +71,9 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!settings || !settings.teamsWebhookUrl) {
-      console.error('Teams webhook URL is not configured in integration settings');
+      console.error(
+        'Teams webhook URL is not configured in integration settings'
+      );
       return NextResponse.json(
         { error: 'Teams service unconfigured' },
         { status: 500 }
@@ -85,34 +92,54 @@ export async function POST(req: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const actionUrl = targetUrl
-      ? (targetUrl.startsWith('http') ? targetUrl : `${baseUrl}${targetUrl}`)
+    const rawActionUrl = targetUrl
+      ? targetUrl.startsWith('http')
+        ? targetUrl
+        : targetUrl.startsWith('/')
+          ? `${baseUrl}${targetUrl}`
+          : `${baseUrl}/${targetUrl}`
       : baseUrl;
+
+    let actionUrl = baseUrl;
+    try {
+      const parsedUrl = new URL(rawActionUrl);
+      const parsedBase = new URL(baseUrl);
+      if (
+        parsedUrl.protocol === parsedBase.protocol &&
+        parsedUrl.hostname === parsedBase.hostname &&
+        parsedUrl.port === parsedBase.port
+      ) {
+        actionUrl = rawActionUrl;
+      }
+    } catch {
+      actionUrl = baseUrl;
+    }
 
     // 4. Format the MS Teams MessageCard payload
     const teamsCard = {
       '@type': 'MessageCard',
       '@context': 'http://schema.org/extensions',
-      'themeColor': '040D5A', // TIQRI Corporate Dark Blue
-      'summary': 'TIQRI Assets Alert Notification',
-      'sections': [
+      themeColor: '040D5A', // TIQRI Corporate Dark Blue
+      summary: 'TIQRI Assets Alert Notification',
+      sections: [
         {
-          'activityTitle': 'TIQRI Assets Notification Hub',
-          'activitySubtitle': `Operational Event: ${eventType}`,
-          'activityImage': 'https://raw.githubusercontent.com/adithyadilum/it-asset-management-system/main/public/icon.png',
-          'title': `📢 Action Required: ${title}`,
-          'text': message,
-          'markdown': true,
+          activityTitle: 'TIQRI Assets Notification Hub',
+          activitySubtitle: `Operational Event: ${eventType}`,
+          activityImage:
+            'https://raw.githubusercontent.com/adithyadilum/it-asset-management-system/main/public/icon.png',
+          title: `📢 Action Required: ${title}`,
+          text: message,
+          markdown: true,
         },
       ],
-      'potentialAction': [
+      potentialAction: [
         {
           '@type': 'OpenUri',
-          'name': 'View Asset Details',
-          'targets': [
+          name: 'View Asset Details',
+          targets: [
             {
-              'os': 'default',
-              'uri': actionUrl,
+              os: 'default',
+              uri: actionUrl,
             },
           ],
         },
@@ -128,7 +155,10 @@ export async function POST(req: NextRequest) {
       targetUrl: payload.targetUrl,
     });
 
-    return NextResponse.json({ success: true, message: 'Teams notification dispatched successfully' });
+    return NextResponse.json({
+      success: true,
+      message: 'Teams notification dispatched successfully',
+    });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Teams dispatch worker failed:', error);
@@ -151,7 +181,13 @@ interface TeamsRetryParams {
  * Send HTTP POST to Teams Incoming Webhook with backoff retry handling.
  * Logs failure on complete exhaustion to Dead Letter Log.
  */
-async function sendTeamsNotificationWithRetry({ webhookUrl, cardPayload, eventType, userId, targetUrl }: TeamsRetryParams) {
+async function sendTeamsNotificationWithRetry({
+  webhookUrl,
+  cardPayload,
+  eventType,
+  userId,
+  targetUrl,
+}: TeamsRetryParams) {
   const delays = [1000, 2000, 4000, 8000];
   let attempt = 0;
 
@@ -167,7 +203,9 @@ async function sendTeamsNotificationWithRetry({ webhookUrl, cardPayload, eventTy
       });
 
       if (!response.ok) {
-        throw new Error(`Teams Webhook responded with status: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Teams Webhook responded with status: ${response.status} ${response.statusText}`
+        );
       }
 
       console.log(`Teams card successfully posted on attempt ${attempt}`);
@@ -189,10 +227,14 @@ async function sendTeamsNotificationWithRetry({ webhookUrl, cardPayload, eventTy
             targetUrl,
           });
         } catch (dbErr) {
-          console.error('Failed to log Dead Letter Queue entry for Teams to DB:', dbErr);
+          console.error(
+            'Failed to log Dead Letter Queue entry for Teams to DB:',
+            dbErr
+          );
         }
 
-        throw err;
+        // Return gracefully so QStash does not retry
+        return null;
       }
 
       const backoffDelay = delays[attempt - 1] || 8000;

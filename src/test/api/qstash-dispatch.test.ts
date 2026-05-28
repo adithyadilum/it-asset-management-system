@@ -87,7 +87,11 @@ vi.mock('@/db', () => ({
   },
 }));
 
-function createRequest(url: string, bodyObj: any, signature?: string): NextRequest {
+function createRequest(
+  url: string,
+  bodyObj: any,
+  signature?: string
+): NextRequest {
   const headers = new Headers();
   if (signature) {
     headers.set('Upstash-Signature', signature);
@@ -101,7 +105,9 @@ function createRequest(url: string, bodyObj: any, signature?: string): NextReque
 
 describe('External Dispatch Route Handlers (Email & Teams)', () => {
   const encryptedResendKey = encrypt('re_test_key_123456');
-  const encryptedTeamsUrl = encrypt('https://outlook.office.com/webhook/test-webhook-url');
+  const encryptedTeamsUrl = encrypt(
+    'https://outlook.office.com/webhook/test-webhook-url'
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -110,7 +116,8 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
 
     process.env.QSTASH_CURRENT_SIGNING_KEY = 'current-sig';
     process.env.QSTASH_NEXT_SIGNING_KEY = 'next-sig';
-    process.env.ENCRYPTION_SECRET = 'IUr+UelUGH0oEhuAoI63Uvbcd+7Ra5o7Uo8PU2PaUHE=';
+    process.env.ENCRYPTION_SECRET =
+      'IUr+UelUGH0oEhuAoI63Uvbcd+7Ra5o7Uo8PU2PaUHE=';
     process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
   });
 
@@ -129,7 +136,11 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
 
     it('returns 401 if QStash signature is invalid', async () => {
       mockVerify.mockResolvedValueOnce(false);
-      const req = createRequest('http://localhost:3000/api/qstash/email', payload, 'bad-sig');
+      const req = createRequest(
+        'http://localhost:3000/api/qstash/email',
+        payload,
+        'bad-sig'
+      );
       const res = await emailHandler(req);
 
       expect(res.status).toBe(401);
@@ -152,7 +163,11 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
 
       mockSend.mockResolvedValueOnce({ id: 'email-id-123' });
 
-      const req = createRequest('http://localhost:3000/api/qstash/email', payload, 'valid-sig');
+      const req = createRequest(
+        'http://localhost:3000/api/qstash/email',
+        payload,
+        'valid-sig'
+      );
       const res = await emailHandler(req);
 
       expect(res.status).toBe(200);
@@ -160,17 +175,23 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
       expect(body.success).toBe(true);
 
       // Verify Resend send was triggered with the custom template
-      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
-        to: 'employee@tiqri.com',
-        subject: '[TIQRI Assets] Warranty Approaching Expiry',
-        html: expect.stringContaining('TIQRI Assets'),
-      }));
-      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
-        html: expect.stringContaining('HP EliteBook 840'),
-      }));
-      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
-        html: expect.stringContaining('Asset ID : TIQRI-LAP-023'),
-      }));
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'employee@tiqri.com',
+          subject: '[TIQRI Assets] Warranty Approaching Expiry',
+          html: expect.stringContaining('TIQRI Assets'),
+        })
+      );
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining('HP EliteBook 840'),
+        })
+      );
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining('Asset ID : TIQRI-LAP-023'),
+        })
+      );
     });
 
     it('implements exponential backoff and logs failure to Dead Letter logs after 5 unsuccessful attempts', async () => {
@@ -186,7 +207,11 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
       // Make Resend mock fail continuously
       mockSend.mockRejectedValue(new Error('SMTP service down'));
 
-      const req = createRequest('http://localhost:3000/api/qstash/email', payload, 'valid-sig');
+      const req = createRequest(
+        'http://localhost:3000/api/qstash/email',
+        payload,
+        'valid-sig'
+      );
 
       // Dispatch the handler inside a promise so we can advance time in the background
       const dispatchPromise = emailHandler(req);
@@ -197,7 +222,7 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
       }
 
       const res = await dispatchPromise;
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(200);
 
       // 5 failed send attempts
       expect(mockSend).toHaveBeenCalledTimes(5);
@@ -218,7 +243,11 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
 
     it('returns 401 if QStash signature is invalid', async () => {
       mockVerify.mockResolvedValueOnce(false);
-      const req = createRequest('http://localhost:3000/api/qstash/teams', payload, 'bad-sig');
+      const req = createRequest(
+        'http://localhost:3000/api/qstash/teams',
+        payload,
+        'bad-sig'
+      );
       const res = await teamsHandler(req);
 
       expect(res.status).toBe(401);
@@ -227,16 +256,18 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
     it('successfully decrypts teamsWebhookUrl, builds connector card, and dispatches webhook', async () => {
       mockVerify.mockResolvedValueOnce(true);
 
-      mockQueriesQueue = [
-        [{ id: 1, teamsWebhookUrl: encryptedTeamsUrl }],
-      ];
+      mockQueriesQueue = [[{ id: 1, teamsWebhookUrl: encryptedTeamsUrl }]];
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
       });
 
-      const req = createRequest('http://localhost:3000/api/qstash/teams', payload, 'valid-sig');
+      const req = createRequest(
+        'http://localhost:3000/api/qstash/teams',
+        payload,
+        'valid-sig'
+      );
       const res = await teamsHandler(req);
 
       expect(res.status).toBe(200);

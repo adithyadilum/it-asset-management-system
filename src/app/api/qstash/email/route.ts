@@ -13,7 +13,10 @@ import {
 } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { decrypt } from '@/lib/crypto';
-import { NotificationPayload, NotificationEventType } from '@/types/notifications';
+import {
+  NotificationPayload,
+  NotificationEventType,
+} from '@/types/notifications';
 
 /**
  * Handle incoming POST requests from QStash to dispatch emails.
@@ -46,14 +49,16 @@ export async function POST(req: NextRequest) {
       nextSigningKey: nextKey,
     });
 
-    const isValid = await receiver.verify({
-      signature,
-      body: bodyText,
-      url: req.url,
-    }).catch((err) => {
-      console.error('Signature verification threw error:', err);
-      return false;
-    });
+    const isValid = await receiver
+      .verify({
+        signature,
+        body: bodyText,
+        url: req.url,
+      })
+      .catch((err) => {
+        console.error('Signature verification threw error:', err);
+        return false;
+      });
 
     if (!isValid) {
       return NextResponse.json(
@@ -113,7 +118,9 @@ export async function POST(req: NextRequest) {
 
     if (targetUrl) {
       // Check if it's a direct asset page
-      const assetMatch = targetUrl.match(/\/assets\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+      const assetMatch = targetUrl.match(
+        /\/assets\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
+      );
       if (assetMatch) {
         const assetId = assetMatch[1];
         const [assetDetails] = await db
@@ -127,7 +134,9 @@ export async function POST(req: NextRequest) {
         }
       } else {
         // Check if it's an assignment page
-        const assignmentMatch = targetUrl.match(/\/operations\/assignments\/(\d+)/);
+        const assignmentMatch = targetUrl.match(
+          /\/operations\/assignments\/(\d+)/
+        );
         if (assignmentMatch) {
           const assignmentId = parseInt(assignmentMatch[1], 10);
           const [assignmentDetails] = await db
@@ -142,7 +151,9 @@ export async function POST(req: NextRequest) {
           }
         } else {
           // Check if it's a maintenance ticket page
-          const ticketMatch = targetUrl.match(/\/operations\/maintenance\/(\d+)/);
+          const ticketMatch = targetUrl.match(
+            /\/operations\/maintenance\/(\d+)/
+          );
           if (ticketMatch) {
             const ticketId = parseInt(ticketMatch[1], 10);
             const [ticketDetails] = await db
@@ -162,7 +173,9 @@ export async function POST(req: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const actionUrl = targetUrl
-      ? (targetUrl.startsWith('http') ? targetUrl : `${baseUrl}${targetUrl}`)
+      ? targetUrl.startsWith('http')
+        ? targetUrl
+        : `${baseUrl}${targetUrl}`
       : baseUrl;
 
     const validatedActionUrl = validateAndEscapeUrl(actionUrl);
@@ -196,7 +209,10 @@ export async function POST(req: NextRequest) {
       targetUrl,
     });
 
-    return NextResponse.json({ success: true, message: 'Email sent successfully' });
+    return NextResponse.json({
+      success: true,
+      message: 'Email sent successfully',
+    });
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Email dispatch worker failed:', error);
@@ -225,17 +241,27 @@ function escapeHtml(unsafe: string): string {
  */
 function validateAndEscapeUrl(url: string): string {
   if (!url) return '';
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrlStr = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   let cleanUrl = url;
-  
+
   if (url.startsWith('http://') || url.startsWith('https://')) {
-    if (!url.startsWith(baseUrl)) {
-      cleanUrl = baseUrl;
+    try {
+      const parsedUrl = new URL(url);
+      const parsedBase = new URL(baseUrlStr);
+      if (
+        parsedUrl.protocol !== parsedBase.protocol ||
+        parsedUrl.hostname !== parsedBase.hostname ||
+        parsedUrl.port !== parsedBase.port
+      ) {
+        cleanUrl = baseUrlStr;
+      }
+    } catch {
+      cleanUrl = baseUrlStr;
     }
   } else if (!url.startsWith('/')) {
     cleanUrl = '/' + url;
   }
-  
+
   return cleanUrl.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
@@ -250,7 +276,13 @@ interface EmailHtmlParams {
 /**
  * Generate inline-styled HTML template corresponding to TIQRI Assets design guidelines.
  */
-function generateEmailHtml({ title, message, assetName, assetTag, actionUrl }: EmailHtmlParams): string {
+function generateEmailHtml({
+  title,
+  message,
+  assetName,
+  assetTag,
+  actionUrl,
+}: EmailHtmlParams): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -323,7 +355,13 @@ interface RetryParams {
  * Execute email delivery with custom exponential backoff retry logic.
  * Log final failure into notificationLogs upon complete exhaustion.
  */
-async function sendEmailWithRetry({ resend, emailOptions, eventType, userId, targetUrl }: RetryParams) {
+async function sendEmailWithRetry({
+  resend,
+  emailOptions,
+  eventType,
+  userId,
+  targetUrl,
+}: RetryParams) {
   const delays = [1000, 2000, 4000, 8000]; // 1s, 2s, 4s, 8s backoff
   let attempt = 0;
 
@@ -338,7 +376,7 @@ async function sendEmailWithRetry({ resend, emailOptions, eventType, userId, tar
       return result;
     } catch (err) {
       console.warn(`Resend email delivery attempt ${attempt} failed:`, err);
-      
+
       if (attempt >= 5) {
         // Log to Dead Letter Queue (failed notificationLogs entry)
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -356,7 +394,8 @@ async function sendEmailWithRetry({ resend, emailOptions, eventType, userId, tar
           console.error('Failed to log Dead Letter Queue entry to DB:', dbErr);
         }
 
-        throw err;
+        // Return gracefully so QStash does not retry
+        return null;
       }
 
       const backoffDelay = delays[attempt - 1] || 8000;
