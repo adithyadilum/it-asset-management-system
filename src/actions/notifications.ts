@@ -116,6 +116,7 @@ export async function getIntegrationStatus() {
       data: {
         resendConfigured: !!settings?.resendApiKey,
         teamsConfigured: !!settings?.teamsWebhookUrl,
+        isAdmin: user.role === 'GlobalAdmin',
       },
     };
   } catch (error: unknown) {
@@ -161,17 +162,25 @@ export async function saveIntegrationSettings(data: { resendApiKey?: string; tea
     valuesToUpdate.updatedAt = new Date();
 
     if (existing) {
-      await db
+      const updated = await db
         .update(integrationSettings)
         .set(valuesToUpdate)
-        .where(eq(integrationSettings.id, 1));
+        .where(eq(integrationSettings.id, 1))
+        .returning();
+      if (!updated.length) {
+        throw new Error('Failed to update integration settings');
+      }
     } else {
-      await db
+      const inserted = await db
         .insert(integrationSettings)
         .values({
           id: 1,
           ...valuesToUpdate,
-        });
+        })
+        .returning();
+      if (!inserted.length) {
+        throw new Error('Failed to create integration settings');
+      }
     }
 
     // Log the audit action

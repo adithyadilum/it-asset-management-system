@@ -124,6 +124,8 @@ export async function POST(req: NextRequest) {
       webhookUrl: decryptedWebhookUrl,
       cardPayload: teamsCard,
       eventType,
+      userId: payload.userId,
+      targetUrl: payload.targetUrl,
     });
 
     return NextResponse.json({ success: true, message: 'Teams notification dispatched successfully' });
@@ -141,13 +143,15 @@ interface TeamsRetryParams {
   webhookUrl: string;
   cardPayload: Record<string, unknown>;
   eventType: NotificationEventType;
+  userId?: string;
+  targetUrl?: string;
 }
 
 /**
  * Send HTTP POST to Teams Incoming Webhook with backoff retry handling.
  * Logs failure on complete exhaustion to Dead Letter Log.
  */
-async function sendTeamsNotificationWithRetry({ webhookUrl, cardPayload, eventType }: TeamsRetryParams) {
+async function sendTeamsNotificationWithRetry({ webhookUrl, cardPayload, eventType, userId, targetUrl }: TeamsRetryParams) {
   const delays = [1000, 2000, 4000, 8000];
   let attempt = 0;
 
@@ -181,6 +185,8 @@ async function sendTeamsNotificationWithRetry({ webhookUrl, cardPayload, eventTy
             status: 'failed',
             errorMessage: `Exhausted 5 attempts. Last error: ${errMsg}`,
             sentAt: new Date(),
+            userId,
+            targetUrl,
           });
         } catch (dbErr) {
           console.error('Failed to log Dead Letter Queue entry for Teams to DB:', dbErr);

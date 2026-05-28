@@ -117,7 +117,7 @@ export function AlertsSettingsClient() {
       try {
         const res = await getIntegrationStatus();
         if (res.success && res.data) {
-          setIsAdmin(true);
+          setIsAdmin(res.data.isAdmin);
           setIntegrations(res.data);
           if (res.data.resendConfigured) setResendKey('••••••••');
           if (res.data.teamsConfigured) setTeamsUrl('••••••••');
@@ -656,7 +656,7 @@ export function AlertsSettingsClient() {
                     </label>
                     <input
                       id="teams-url-input"
-                      type="text"
+                      type="password"
                       placeholder={integrations.teamsConfigured ? '••••••••' : 'https://outlook.office.com/webhook/...'}
                       value={teamsUrl === '••••••••' ? '••••••••' : teamsUrl}
                       onChange={(e) => setTeamsUrl(e.target.value)}

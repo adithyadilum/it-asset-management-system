@@ -165,13 +165,18 @@ export async function POST(req: NextRequest) {
       ? (targetUrl.startsWith('http') ? targetUrl : `${baseUrl}${targetUrl}`)
       : baseUrl;
 
+    const validatedActionUrl = validateAndEscapeUrl(actionUrl);
+    const escapedMessage = escapeHtml(message);
+    const escapedAssetName = escapeHtml(assetName);
+    const escapedAssetTag = escapeHtml(assetTag);
+
     // 6. Generate the custom inline-styled HTML template
     const emailHtml = generateEmailHtml({
-      title,
-      message,
-      assetName,
-      assetTag,
-      actionUrl,
+      title: escapeHtml(title),
+      message: escapedMessage,
+      assetName: escapedAssetName,
+      assetTag: escapedAssetTag,
+      actionUrl: validatedActionUrl,
     });
 
     const resend = new Resend(decryptedKey);
@@ -187,6 +192,8 @@ export async function POST(req: NextRequest) {
         html: emailHtml,
       },
       eventType,
+      userId,
+      targetUrl,
     });
 
     return NextResponse.json({ success: true, message: 'Email sent successfully' });
@@ -198,6 +205,38 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Escape unsafe HTML characters to prevent XSS/HTML Injection
+ */
+function escapeHtml(unsafe: string): string {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Enforce that the redirection URL points only to relative paths or trusted HTTPS origins
+ */
+function validateAndEscapeUrl(url: string): string {
+  if (!url) return '';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  let cleanUrl = url;
+  
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (!url.startsWith(baseUrl)) {
+      cleanUrl = baseUrl;
+    }
+  } else if (!url.startsWith('/')) {
+    cleanUrl = '/' + url;
+  }
+  
+  return cleanUrl.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 interface EmailHtmlParams {
@@ -276,13 +315,15 @@ interface RetryParams {
     html: string;
   };
   eventType: NotificationEventType;
+  userId?: string;
+  targetUrl?: string;
 }
 
 /**
  * Execute email delivery with custom exponential backoff retry logic.
  * Log final failure into notificationLogs upon complete exhaustion.
  */
-async function sendEmailWithRetry({ resend, emailOptions, eventType }: RetryParams) {
+async function sendEmailWithRetry({ resend, emailOptions, eventType, userId, targetUrl }: RetryParams) {
   const delays = [1000, 2000, 4000, 8000]; // 1s, 2s, 4s, 8s backoff
   let attempt = 0;
 
@@ -308,6 +349,8 @@ async function sendEmailWithRetry({ resend, emailOptions, eventType }: RetryPara
             status: 'failed',
             errorMessage: `Exhausted 5 attempts. Last error: ${errMsg}`,
             sentAt: new Date(),
+            userId,
+            targetUrl,
           });
         } catch (dbErr) {
           console.error('Failed to log Dead Letter Queue entry to DB:', dbErr);

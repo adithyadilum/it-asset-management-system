@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST as emailHandler } from '@/app/api/qstash/email/route';
 import { POST as teamsHandler } from '@/app/api/qstash/teams/route';
 import { encrypt } from '@/lib/crypto';
+import { db } from '@/db';
+import { notificationLogs } from '@/db/schema';
 
 // Mock Upstash QStash client and receiver
 const mockVerify = vi.fn().mockResolvedValue(true);
@@ -199,6 +201,9 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
 
       // 5 failed send attempts
       expect(mockSend).toHaveBeenCalledTimes(5);
+
+      // Assert that DB insert was called with the notificationLogs table
+      expect(db.insert).toHaveBeenCalledWith(notificationLogs);
     });
   });
 
