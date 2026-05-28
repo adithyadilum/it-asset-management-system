@@ -176,11 +176,12 @@ export async function POST(req: NextRequest) {
 
     const resend = new Resend(decryptedKey);
 
+    const fromEmail = process.env.RESEND_FROM || 'onboarding@resend.dev';
     // 7. Dispatch the Email with custom backoff retry loop
     await sendEmailWithRetry({
       resend,
       emailOptions: {
-        from: 'TIQRI Assets <assets@tiqri.com>',
+        from: fromEmail,
         to: recipient.email,
         subject: `[TIQRI Assets] ${title}`,
         html: emailHtml,

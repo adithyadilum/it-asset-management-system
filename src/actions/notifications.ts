@@ -229,8 +229,9 @@ export async function testIntegrationConnection(channel: 'email' | 'teams', cred
       }
 
       const resend = new Resend(key);
+      const fromEmail = process.env.RESEND_FROM || 'onboarding@resend.dev';
       const testResult = await resend.emails.send({
-        from: 'TIQRI Assets <assets@tiqri.com>',
+        from: fromEmail,
         to: user.email,
         subject: 'TIQRI Assets — Resend Connection Test',
         html: `
