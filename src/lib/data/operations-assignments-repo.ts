@@ -838,6 +838,8 @@ export async function triggerAssignmentReminders(
 
 /**
  * Triggers a return request and updates state to 'requested'.
+ * Supports re-requesting: if state is already 'requested', updates returnRequestedAt
+ * and re-dispatches the in-app alert without throwing.
  */
 export async function triggerReturnRequests(
   assignmentIds: number[],
@@ -850,6 +852,8 @@ export async function triggerReturnRequests(
       assetTag: assets.assetTag,
       assetName: assets.name,
       userEmail: users.email,
+      assignedToUserId: assetAssignments.assignedToUserId,
+      state: assetAssignments.state,
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -857,7 +861,7 @@ export async function triggerReturnRequests(
     .where(inArray(assetAssignments.id, assignmentIds));
 
   await db.transaction(async (tx) => {
-    // Update state to 'requested'
+    // Update state to 'requested' and refresh returnRequestedAt
     const updated = await tx
       .update(assetAssignments)
       .set({
@@ -883,7 +887,7 @@ export async function triggerReturnRequests(
           entityId: a.assetId,
           actionType: 'UPDATE',
           performedById,
-          oldData: { state: 'assigned' },
+          oldData: { state: a.state },
           newData: { state: 'requested' },
         });
       })
@@ -901,7 +905,22 @@ export async function triggerReturnRequests(
           assetName: a.assetName || a.assetTag,
         });
       } catch (error) {
-        console.error('Failed to send return request notification:', error);
+        console.error('Failed to send return request email notification:', error);
+      }
+
+      // Dispatch in-app alert to employee dashboard
+      if (a.assignedToUserId) {
+        try {
+          await dispatchAlert({
+            eventType: 'RETURN_REQUESTED',
+            userId: a.assignedToUserId,
+            title: 'Return Requested',
+            message: `IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
+            targetUrl: '/dashboard',
+          });
+        } catch (error) {
+          console.error('Failed to dispatch in-app return request alert:', error);
+        }
       }
     })
   );

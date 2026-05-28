@@ -121,7 +121,8 @@ export async function getReturnRequestedAssignments(
       and(
         eq(assetAssignments.assignedToUserId, userId),
         isNull(assetAssignments.returnedDate),
-        isNotNull(assetAssignments.returnRequestedAt)
+        isNotNull(assetAssignments.returnRequestedAt),
+        eq(assetAssignments.state, 'requested')
       )
     )
     .orderBy(desc(assetAssignments.returnRequestedAt));

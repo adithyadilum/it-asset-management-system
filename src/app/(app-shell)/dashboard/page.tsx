@@ -69,7 +69,7 @@ export default async function DashboardPage() {
                 <div className="mt-4 grid gap-4 xl:grid-cols-3">
                     {employeeAssets.length > 0 ? (
                         employeeAssets.map((asset) => {
-                            const presentation = getAssetPresentation(undefined, asset.modelName)
+                            const presentation = getAssetPresentation(asset.pillar, asset.modelName)
 
                             return (
                                 <AssetCard

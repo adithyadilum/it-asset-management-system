@@ -17,7 +17,8 @@ export type NotificationEventType =
   | 'PENDING_ACCEPTANCE'
   | 'REMINDER_24H'
   | 'REMINDER_48H'
-  | 'UPCOMING_RETURN';
+  | 'UPCOMING_RETURN'
+  | 'RETURN_REQUESTED';
 
 /**
  * Notification delivery channels

@@ -477,6 +477,7 @@ export const notificationEventTypeEnum = pgEnum('notification_event_type', [
   'REMINDER_24H',
   'REMINDER_48H',
   'UPCOMING_RETURN',
+  'RETURN_REQUESTED',
 ]);
 
 export const notificationCategoryEnum = pgEnum('notification_category', [

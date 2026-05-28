@@ -1,13 +1,13 @@
 "use server";
 
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { ZodError } from 'zod';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-import { assetAssignments, assets, models, notificationQueue } from '@/db/schema';
+import { assetAssignments, assets, categories, models, notificationQueue } from '@/db/schema';
 import type { PortalAlerts } from '@/lib/data/portal-repo';
 import { acceptAssignmentSchema, rejectAssignmentSchema } from '@/lib/validations/portal';
 import { logAuditActionTx } from '@/lib/audit';
@@ -21,6 +21,7 @@ export type EmployeeAssignedAsset = {
   modelName: string;
   status: string;
   assignedDate: string;
+  pillar: string;
 };
 
 /**
@@ -49,14 +50,17 @@ export async function getCurrentEmployeeAssets(): Promise<
         modelName: models.name,
         status: assets.status,
         assignedDate: assetAssignments.assignedDate,
+        pillar: categories.pillar,
       })
       .from(assetAssignments)
       .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
       .where(
         and(
           eq(assetAssignments.assignedToUserId, currentUser.id),
-          isNull(assetAssignments.returnedDate)
+          isNull(assetAssignments.returnedDate),
+          inArray(assetAssignments.state, ['assigned', 'overdue', 'requested'])
         )
       )
       .orderBy(desc(assetAssignments.assignedDate));
