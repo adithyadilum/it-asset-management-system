@@ -414,7 +414,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
       return actions;
     },
-    [selectedAssignedRows, hasReminderCandidates, hasMarkReceivedCandidates, hasRequestAgainCandidates, hasReturnCandidates]
+    [hasReminderCandidates, hasMarkReceivedCandidates, hasRequestAgainCandidates, hasReturnCandidates]
   );
 
   // 3. Column Definitions for the Hardware Registry View

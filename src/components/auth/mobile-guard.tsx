@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useEnhancedDeviceDetect } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/hooks/use-mobile"
 import DesktopScreenRequired from "@/components/mobile/desktop-screen-required"
 
 type MobileGuardProps = {
@@ -9,7 +9,7 @@ type MobileGuardProps = {
 }
 
 export default function MobileGuard({ children }: MobileGuardProps) {
-  const { isMobile } = useEnhancedDeviceDetect()
+  const isMobile = useIsMobile()
 
   // If we're on a small/mobile viewport, show the desktop-required fallback.
   if (isMobile) {
