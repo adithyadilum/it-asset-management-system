@@ -367,24 +367,23 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   }, [props.assetId, props.assetTag]);
 
   const actions: SlidePanelAction[] = useMemo(() => {
-    if (props.hideActions) return [];
+    const list: SlidePanelAction[] = [];
 
     if (activeTabId === 'history') {
-      return [
-        {
-          id: 'export-csv',
-          label: isExporting ? 'Exporting...' : 'Export to CSV',
-          variant: 'default',
-          onClick: handleExportCSV,
-          disabled: isExporting
-        }
-      ];
+      list.push({
+        id: 'export-csv',
+        label: isExporting ? 'Exporting...' : 'Export to CSV',
+        variant: 'default',
+        onClick: handleExportCSV,
+        disabled: isExporting
+      });
+      return list;
     }
+
+    if (props.hideActions) return [];
 
     const isDisposed = props.status === 'Disposed';
     const isPendingDisposal = props.status === 'Pending Disposal';
-
-    const list: SlidePanelAction[] = [];
 
     // Disposed assets cannot be edited
     if (!isDisposed) {
@@ -412,7 +411,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         variant="metadata"
         label={`ID: ${props.assetTag || '-'}`}
       />
-      {isSoftware ? (
+      {isSoftware || props.hideActions ? (
         <StatusBadge value={props.status} showIcon />
       ) : (
         <InteractiveStatusBadge

@@ -198,6 +198,7 @@ interface AssetRegistryClientProps {
   }>;
   onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
   onRefreshRef?: React.MutableRefObject<() => void>;
+  canManage?: boolean;
 }
 
 export function AssetRegistryClient({
@@ -208,6 +209,7 @@ export function AssetRegistryClient({
   manualStatuses = [],
   onStatusUpdateRef,
   onRefreshRef,
+  canManage = false,
 }: AssetRegistryClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -991,6 +993,8 @@ export function AssetRegistryClient({
     },
   ];
 
+  const selectionActionsToDisplay = canManage ? selectionActions : [];
+
   const tableSkeletonColumnWidths =
     config.view === 'software'
       ? ['w-[26%]', 'w-[22%]', 'w-[17%]', 'w-[17%]', 'w-[18%]']
@@ -1052,7 +1056,7 @@ export function AssetRegistryClient({
           onClearFilter={clearFilter}
           onClearAllFilters={clearAllFilters}
         >
-          {config.view !== 'unified' && (
+          {config.view !== 'unified' && canManage && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button type="button" size="sm">
@@ -1097,15 +1101,15 @@ export function AssetRegistryClient({
                   ? [{ id: searchParams.get('sort')!, desc: searchParams.get('desc') === 'true' }]
                   : [{ id: 'assetTag', desc: true }]
               }
-              selectionActions={selectionActions}
+              selectionActions={selectionActionsToDisplay}
               selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
               emptyState={{
                 title: 'No assets found',
                 description: 'Add your first asset to start managing this registry.',
-                action: {
+                action: canManage ? {
                   label: config.addAssetLabel,
                   onClick: openRegistrationPanel,
-                },
+                } : undefined,
               }}
               isRowActive={(row) => Boolean(activeRecordId && row.assetTag === activeRecordId)}
               onRowClick={(row) => {
