@@ -7,12 +7,17 @@ import {
     Sun,
     Moon,
     Monitor,
+    Banknote,
+    Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { useTransition } from 'react';
 
 import { logout } from '@/actions/auth';
+import { setPreferredCurrency } from '@/actions/currency';
+import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -93,10 +98,11 @@ function buildBreadcrumbs(pathname: string): HeaderBreadcrumb[] {
     });
 }
 
-export function TopHeader({ user }: TopHeaderProps) {
+export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
     const { state, toggleSidebar } = useSidebar();
     const pathname = usePathname();
     const { setTheme } = useTheme();
+    const [isPending, startTransition] = useTransition();
     const breadcrumbs = buildBreadcrumbs(pathname);
 
     const initials = user.name
@@ -115,7 +121,7 @@ export function TopHeader({ user }: TopHeaderProps) {
     const roleLabel = roleLabelMap[user.role];
 
     return (
-        <header className="grid h-14 w-full grid-cols-2 md:grid-cols-3 items-center gap-4 rounded-none border-none bg-white md:rounded-lg md:bg-muted md:px-2">            {/* Left Column: Mobile Logo / Desktop Breadcrumb */}
+        <header className="grid h-14 w-full grid-cols-2 md:grid-cols-3 items-center gap-4 rounded-none border-none bg-background md:rounded-lg md:bg-muted md:px-2">            {/* Left Column: Mobile Logo / Desktop Breadcrumb */}
             <div className="flex items-center md:hidden pl-4">
                 <BrandHeader collapsed={false} />
             </div>
@@ -128,16 +134,16 @@ export function TopHeader({ user }: TopHeaderProps) {
                     className="flex h-7 w-7 items-center justify-center"
                 >
                     {state === 'collapsed' ? (
-                        <PanelLeftOpen className="h-4 w-4 text-slate-500" />
+                        <PanelLeftOpen className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                        <PanelLeftClose className="h-4 w-4 text-slate-500" />
+                        <PanelLeftClose className="h-4 w-4 text-muted-foreground" />
                     )}
                 </button>
 
                 <div className="flex items-center px-2">
                     <Separator
                         orientation="vertical"
-                        className="h-4.25 w-px bg-slate-200"
+                        className="h-4.25 w-px bg-muted"
                     />
                 </div>
 
@@ -145,7 +151,7 @@ export function TopHeader({ user }: TopHeaderProps) {
                     <BreadcrumbList className="min-w-0 flex-nowrap gap-1.5 overflow-hidden text-inherit">
                         {breadcrumbs.length === 0 ? (
                             <BreadcrumbItem>
-                                <BreadcrumbPage className={`${sidebarDefaultTextClass} whitespace-nowrap text-slate-900`}>
+                                <BreadcrumbPage className={`${sidebarDefaultTextClass} whitespace-nowrap text-foreground`}>
                                     Dashboard
                                 </BreadcrumbPage>
                             </BreadcrumbItem>
@@ -156,13 +162,13 @@ export function TopHeader({ user }: TopHeaderProps) {
                                 return [
                                     <BreadcrumbItem key={`${breadcrumb.href}-item`}>
                                         {isLast ? (
-                                            <BreadcrumbPage className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-slate-900`}>
+                                            <BreadcrumbPage className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-foreground`}>
                                                 {breadcrumb.label}
                                             </BreadcrumbPage>
                                         ) : (
                                             <BreadcrumbLink
                                                 asChild
-                                                className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-slate-500 hover:text-slate-700`}
+                                                className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-muted-foreground hover:text-foreground`}
                                             >
                                                 <Link href={breadcrumb.href}>{breadcrumb.label}</Link>
                                             </BreadcrumbLink>
@@ -171,7 +177,7 @@ export function TopHeader({ user }: TopHeaderProps) {
                                     !isLast ? (
                                         <BreadcrumbSeparator
                                             key={`${breadcrumb.href}-separator`}
-                                            className="text-slate-400"
+                                            className="text-muted-foreground"
                                         />
                                     ) : null,
                                 ];
@@ -194,7 +200,7 @@ export function TopHeader({ user }: TopHeaderProps) {
                     <div className="flex items-center px-2">
                         <Separator
                             orientation="vertical"
-                            className="h-4.25 w-px bg-slate-200"
+                            className="h-4.25 w-px bg-muted"
                         />
                     </div>
                 </div>
@@ -237,7 +243,7 @@ export function TopHeader({ user }: TopHeaderProps) {
                                         alt={user.name}
                                         className="rounded-lg object-cover"
                                     />
-                                    <AvatarFallback className="rounded-lg bg-slate-200 text-sm font-bold text-slate-600">
+                                    <AvatarFallback className="rounded-lg bg-muted text-sm font-bold text-muted-foreground">
                                         {initials}
                                     </AvatarFallback>
                                 </Avatar>
@@ -280,6 +286,32 @@ export function TopHeader({ user }: TopHeaderProps) {
                                                 <Monitor className="mr-2 h-4 w-4 text-muted-foreground" />
                                                 System
                                             </DropdownMenuItem>
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                            </div>
+
+                            {/* Currency Selector */}
+                            <div className="p-2 border-b border-border">
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="h-9 rounded-lg text-xs" disabled={isPending}>
+                                        <Banknote className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        Currency ({preferredCurrency})
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuPortal>
+                                        <DropdownMenuSubContent>
+                                            {SUPPORTED_CURRENCIES.map((currency) => (
+                                                <DropdownMenuItem
+                                                    key={currency}
+                                                    onClick={() => startTransition(() => setPreferredCurrency(currency))}
+                                                    className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted relative pl-8"
+                                                >
+                                                    {preferredCurrency === currency && (
+                                                        <Check className="absolute left-2 h-4 w-4 text-foreground" />
+                                                    )}
+                                                    {currency}
+                                                </DropdownMenuItem>
+                                            ))}
                                         </DropdownMenuSubContent>
                                     </DropdownMenuPortal>
                                 </DropdownMenuSub>

@@ -38,11 +38,11 @@ export function StandardModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className={cn("sm:max-w-[425px] rounded-xl", className)}>
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-[#00145a]">
+          <DialogTitle className="text-xl font-semibold text-foreground">
             {title}
           </DialogTitle>
           {description && (
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-muted-foreground">
               {description}
             </DialogDescription>
           )}
@@ -53,7 +53,7 @@ export function StandardModal({
         </div>
 
         {footer && (
-          <DialogFooter className="gap-2 sm:gap-0 bg-white px-4 py-3 rounded-b-xl">
+          <DialogFooter className="gap-2 sm:gap-0 bg-background px-4 py-3 rounded-b-xl">
             {footer}
           </DialogFooter>
         )}

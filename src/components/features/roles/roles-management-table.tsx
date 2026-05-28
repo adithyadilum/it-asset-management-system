@@ -61,7 +61,7 @@ export function RolesManagementTable({
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarFallback
                   className={cn(
-                    'rounded-lg bg-slate-200 text-slate-700',
+                    'rounded-lg bg-muted text-foreground',
                     TYPOGRAPHY_CLASSNAMES.textXsMedium
                   )}
                 >
@@ -70,10 +70,10 @@ export function RolesManagementTable({
               </Avatar>
 
               <div className="min-w-0">
-                <p className={cn('truncate text-slate-900', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
+                <p className={cn('truncate text-foreground', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
                   {user.name}
                 </p>
-                <p className={cn('truncate text-slate-500', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
+                <p className={cn('truncate text-muted-foreground', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
                   {user.email}
                 </p>
               </div>
@@ -85,7 +85,7 @@ export function RolesManagementTable({
         accessorKey: 'department',
         header: 'Department',
         cell: ({ row }) => (
-          <span className={cn('text-slate-900', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
+          <span className={cn('text-foreground', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
             {row.original.department}
           </span>
         ),
@@ -111,7 +111,7 @@ export function RolesManagementTable({
           return (
             <button
               type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => openRemoveModal(user)}
               aria-label={`Remove ${user.name} from ${roleLabel}`}
               disabled={isSelf}
@@ -136,7 +136,7 @@ export function RolesManagementTable({
           enableRowSelection={false}
           initialPageSize={50}
           pageSizeOptions={[10, 20, 50, 100]}
-          className="flex-1 border-slate-200"
+          className="flex-1 border-border"
           emptyState={{
             title: 'No users found',
             description: 'No users have been assigned to this role yet.',

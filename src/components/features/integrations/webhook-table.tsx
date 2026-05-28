@@ -28,13 +28,13 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
       {
         accessorKey: "name",
         header: "Description",
-        cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>{row.original.name}</span>,
+        cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{row.original.name}</span>,
       },
       {
         accessorKey: "url",
         header: "Target URL",
         cell: ({ row }) => (
-          <span className={`block max-w-[320px] truncate text-slate-500 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
+          <span className={`block max-w-[320px] truncate text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
             {row.original.url}
           </span>
         ),
@@ -48,7 +48,7 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
               <Badge
                 key={event}
                 variant="outline"
-                className={`rounded-full border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-500 ${TYPOGRAPHY_CLASSNAMES.textXsMedium}`}
+                className={`rounded-full border-border bg-muted px-2 py-0.5 text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textXsMedium}`}
               >
                 [{event}]
               </Badge>
@@ -67,7 +67,7 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${TYPOGRAPHY_CLASSNAMES.textXsMedium} ${
                 active
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-slate-200 bg-slate-50 text-slate-500"
+                  : "border-border bg-muted text-muted-foreground"
               }`}
             >
               <span className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-slate-400"}`} />

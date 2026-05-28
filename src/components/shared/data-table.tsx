@@ -302,10 +302,10 @@ export function DataTable<TData, TValue>({
       </colgroup>
       <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
         {(selectedRows > 0 && !disableSelectionHeader) ? (
-          <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500 transition-all duration-200 ease-in-out">
+          <TableRow className="h-13.25 border-border bg-primary hover:bg-primary transition-all duration-200 ease-in-out">
             <TableHead
               colSpan={table.getAllLeafColumns().length}
-              className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6 transition-all duration-200 ease-in-out"
+              className="h-13.25 bg-primary px-6 py-0 font-medium text-primary-foreground [&:has([role=checkbox])]:pr-6 transition-all duration-200 ease-in-out"
             >
               <div className="flex h-13.25 w-full items-center justify-between pr-6">
                 <div className="flex min-w-0 items-center">
@@ -317,10 +317,10 @@ export function DataTable<TData, TValue>({
                         (table.getIsSomeRowsSelected() ? "indeterminate" : false)
                       }
                       onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
-                      className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
+                      className="border-primary-foreground/70 data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=indeterminate]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary"
                     />
                   </div>
-                  <p className="truncate text-sm font-medium text-white ml-3">
+                  <p className="truncate text-sm font-medium text-primary-foreground ml-3">
                     {actionHeaderLabel}
                   </p>
                 </div>
@@ -358,7 +358,7 @@ export function DataTable<TData, TValue>({
                           action.tone === "destructive"
                             ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             : action.tone === "primary"
-                              ? "border-[#00145a] bg-[#00145a] text-white hover:bg-[#000d3d]"
+                              ? "border-primary-foreground/20 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
                               : "border-border bg-muted text-foreground hover:bg-muted/80"
                         )}
                       >
@@ -446,7 +446,7 @@ export function DataTable<TData, TValue>({
                 className={cn(
                   "h-13.25 border-border",
                   isRowClickable && "cursor-pointer hover:bg-muted/50",
-                  isActive && "bg-slate-50"
+                  isActive && "bg-muted"
                 )}
               >
                 {row.getVisibleCells().map((cell) => {

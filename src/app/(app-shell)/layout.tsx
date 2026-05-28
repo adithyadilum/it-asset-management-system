@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getAuthenticatedUser } from "@/actions/auth"
@@ -19,6 +20,9 @@ export default async function AppShellLayout({
     redirect("/login")
   }
 
+  const cookieStore = await cookies()
+  const preferredCurrency = cookieStore.get('preferred_currency')?.value || 'LKR'
+
   return (
     <>
       <PwaRegistration />
@@ -32,7 +36,7 @@ export default async function AppShellLayout({
         <AppSidebar userRole={user.role} />
 
         <div className="flex h-full w-full min-w-0 flex-1 flex-col md:gap-2">
-          <TopHeader user={{ name: user.name, email: user.email, role: user.role }} />
+          <TopHeader user={{ name: user.name, email: user.email, role: user.role }} preferredCurrency={preferredCurrency} />
 
           <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-lg bg-background">
             <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-md bg-background relative">

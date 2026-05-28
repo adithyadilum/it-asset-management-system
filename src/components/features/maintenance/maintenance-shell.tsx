@@ -143,13 +143,13 @@ export function MaintenanceShell() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full bg-slate-50 overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] w-full bg-muted overflow-hidden">
 
       {/* LEFT CARD (Main Tabs) */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <main className="flex min-h-0 flex-1 flex-col rounded-xl bg-white p-6">
+        <main className="flex min-h-0 flex-1 flex-col rounded-xl bg-background p-6">
           <div className="mb-4 shrink-0">
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>Maintenance & Repairs</h1>
+            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden flex flex-col">

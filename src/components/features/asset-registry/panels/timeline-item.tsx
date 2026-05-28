@@ -64,28 +64,28 @@ export function TimelineItem({
       {/* Content Column */}
       <div className="flex-1 pb-8 flex flex-col mt-1">
         <div className="flex justify-between items-start w-full">
-          <div className="text-[14px] font-medium text-slate-900 leading-5">
+          <div className="text-[14px] font-medium text-foreground leading-5">
             {title}
           </div>
-          <div className="text-[12px] font-light text-slate-500 leading-5">
+          <div className="text-[12px] font-light text-muted-foreground leading-5">
             {timestamp}
           </div>
         </div>
 
         {performedBy && (
-          <div className="text-[14px] font-light text-slate-500 mt-0.5 leading-5">
+          <div className="text-[14px] font-light text-muted-foreground mt-0.5 leading-5">
             Performed by {performedBy}
           </div>
         )}
 
         {description && (
-          <div className="text-[14px] font-light text-slate-500 mt-1.5 leading-5">
+          <div className="text-[14px] font-light text-muted-foreground mt-1.5 leading-5">
             {description}
           </div>
         )}
 
         {details && (
-          <div className="text-[14px] font-light text-slate-500 mt-0.5 leading-5">
+          <div className="text-[14px] font-light text-muted-foreground mt-0.5 leading-5">
             {details}
           </div>
         )}

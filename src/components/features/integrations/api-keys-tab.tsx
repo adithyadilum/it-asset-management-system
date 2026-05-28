@@ -45,23 +45,25 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
   return (
     <div className="flex flex-col gap-4">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-xs flex-1">
+      <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-3">
+        <div className="relative w-full max-w-none sm:max-w-xs flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search keys..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`h-9 pl-9 placeholder:text-slate-400 ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+            className={`h-9 pl-9 placeholder:text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+        <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start gap-2">
+          <Button variant="outline" size="sm" asChild className={`flex-1 sm:flex-none ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
             <a href="https://docs.tiqri.com/api" target="_blank" rel="noopener noreferrer">
-              View API Documentation
+              View API Docs
             </a>
           </Button>
-          <CreateApiKeyDialog onCreated={handleCreated} />
+          <div className="flex-1 sm:flex-none">
+            <CreateApiKeyDialog onCreated={handleCreated} />
+          </div>
         </div>
       </div>
 

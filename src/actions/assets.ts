@@ -23,6 +23,7 @@ import {
   manualStatusOverrideSchema,
   PILLAR_PREFIX_MAP,
 } from '@/lib/validations/asset-registration';
+import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -182,6 +183,9 @@ export async function registerAsset(
     const resolvedCategoryPrefix =
       modelWithCategory.category.prefix.trim().toUpperCase() || categoryPrefix;
 
+    const apiRates = await fetchLiveExchangeRates() ?? undefined;
+    const conversionRate = convertCurrencyAmount(1, input.currencyCode || 'LKR', 'LKR', apiRates).toFixed(6);
+
     // 6. Database Transaction
     const insertedAsset = await db.transaction(async (tx) => {
       let insertedAsset = null;
@@ -254,6 +258,7 @@ export async function registerAsset(
         shippingCost: shippingCost.toFixed(2),
         totalCost: totalCost.toFixed(2),
         currencyCode: input.currencyCode,
+        exchangeRate: conversionRate,
         warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
         invoiceUrl: uploadedInvoiceUrl,
       });

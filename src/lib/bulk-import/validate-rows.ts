@@ -367,7 +367,7 @@ export function validateRows(
       basePrice,
       tax,
       shippingCost,
-      currencyCode: currencyCode || 'USD',
+      currencyCode: currencyCode || 'LKR',
       warrantyMonths,
       notes: rawRow['Notes']?.trim() || null,
       instanceAttributes: Object.keys(instanceAttributes).length > 0 ? instanceAttributes : null,

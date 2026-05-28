@@ -381,7 +381,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     {
       accessorKey: "assetId",
       header: "Asset ID",
-      cell: ({ row }) => <span className="font-medium text-slate-700">{row.original.assetTag}</span>,
+      cell: ({ row }) => <span className="font-medium text-foreground">{row.original.assetTag}</span>,
     },
     {
       accessorKey: "assetName",
@@ -390,13 +390,13 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     {
       accessorKey: "serialNumber",
       header: "Serial Number",
-      cell: ({ row }) => <span className="text-slate-500 font-mono">{row.original.serialNumber}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground font-mono">{row.original.serialNumber}</span>,
     },
     {
       accessorKey: "category",
       header: "Category",
       cell: ({ row }) => (
-        <Badge variant="outline" className="h-5 rounded-full border-slate-200 bg-slate-50 px-2 text-[11px] font-medium text-slate-500">
+        <Badge variant="outline" className="h-5 rounded-full border-border bg-muted px-2 text-[11px] font-medium text-muted-foreground">
           {row.original.category}
         </Badge>
       ),
@@ -411,9 +411,9 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
           'assigned': "bg-emerald-50 text-emerald-700 border-emerald-200",
           'overdue': "bg-rose-50 text-rose-700 border-rose-200",
           'requested': "bg-blue-50 text-blue-700 border-blue-200",
-          'returned': "bg-slate-50 text-slate-700 border-slate-200",
+          'returned': "bg-muted text-foreground border-border",
         };
-        const colorClass = colors[state] || "bg-slate-50 text-slate-700 border-slate-200";
+        const colorClass = colors[state] || "bg-muted text-foreground border-border";
 
         return (
           <Badge variant="outline" className={`h-5 rounded-full px-2 text-[11px] font-medium capitalize ${colorClass}`}>
@@ -486,7 +486,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
           data={rows}
           onRowClick={customRowClick ?? handleRowClick}
           initialPageSize={10}
-          className="flex-1 min-h-0 rounded-lg border border-slate-200"
+          className="flex-1 min-h-0 rounded-lg border border-border"
           selectionActions={actions}
           selectionLabel={(count) => `${count} Assets Selected`}
           rowSelection={rowSelection}
@@ -498,11 +498,11 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-slate-50">
+    <div className="flex h-full w-full overflow-hidden bg-muted">
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
           <div className="mb-4 shrink-0">
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
               Assignments and Returns
             </h1>
           </div>

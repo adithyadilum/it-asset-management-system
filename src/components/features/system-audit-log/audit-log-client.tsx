@@ -43,15 +43,15 @@ const FILTER_FIELDS: AuditFilterField[] = [
 ];
 
 const ACTION_BADGE_STYLES: Record<string, string> = {
-    CREATE: "border-emerald-300 bg-emerald-50 text-emerald-700",
-    UPDATE: "border-sky-300 bg-sky-50 text-sky-700",
-    DELETE: "border-rose-300 bg-rose-50 text-rose-700",
-    DISPOSE: "border-orange-300 bg-orange-50 text-orange-700",
-    DISPOSED: "border-orange-300 bg-orange-50 text-orange-700",
-    EXPORTED: "border-amber-300 bg-amber-50 text-amber-700",
-    LOGIN: "border-violet-300 bg-violet-50 text-violet-700",
-    LOGOUT: "border-slate-300 bg-slate-50 text-slate-700",
-    ACCESS_DENIED: "border-red-300 bg-red-50 text-red-700",
+    CREATE: "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
+    UPDATE: "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400",
+    DELETE: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400",
+    DISPOSE: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    DISPOSED: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    EXPORTED: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
+    LOGIN: "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-400",
+    LOGOUT: "border-border bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400",
+    ACCESS_DENIED: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400",
 };
 
 function getInitials(name: string) {
@@ -442,16 +442,16 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                     <div className="flex min-w-0 items-center gap-3 py-0.5">
                         <Avatar className="size-7 rounded-md">
                             <AvatarImage src={performedBy?.avatarUrl ?? undefined} alt={performedBy?.name ?? "Unknown"} />
-                            <AvatarFallback className="rounded-md bg-slate-300 text-xs font-semibold text-slate-700">
+                            <AvatarFallback className="rounded-md bg-muted text-xs font-semibold text-foreground">
                                 {getInitials(performedBy?.name ?? "?")}
                             </AvatarFallback>
                         </Avatar>
 
                         <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold leading-5 text-slate-900">
+                            <p className="truncate text-sm font-semibold leading-5 text-foreground">
                                 {performedBy?.name ?? "Unknown"}
                             </p>
-                            <p className="truncate text-xs leading-4 text-slate-500">
+                            <p className="truncate text-xs leading-4 text-muted-foreground">
                                 {performedBy?.email ?? "Unknown"}
                             </p>
                         </div>
@@ -468,7 +468,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             cell: ({ row }) => {
                 const action = row.original.actionType.trim().toUpperCase();
                 const actionClassName =
-                    ACTION_BADGE_STYLES[action] ?? "border-slate-300 bg-slate-50 text-slate-700";
+                    ACTION_BADGE_STYLES[action] ?? "border-border bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400";
 
                 return (
                     <Badge
@@ -517,9 +517,9 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
 
     return (
         <TooltipProvider delayDuration={200}>
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6 text-slate-900">
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6 text-foreground">
                 <div className="mb-4">
-                    <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+                    <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
                         System Audit Log
                     </h1>
                 </div>

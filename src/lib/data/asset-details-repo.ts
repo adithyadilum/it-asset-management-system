@@ -367,7 +367,7 @@ export async function getAssetDetailsById(
           tax: purchaseRecord.tax?.toString() ?? null,
           shippingCost: purchaseRecord.shippingCost?.toString() ?? null,
           totalCost: purchaseRecord.totalCost?.toString() ?? null,
-          currencyCode: purchaseRecord.currencyCode ?? 'USD',
+          currencyCode: purchaseRecord.currencyCode ?? 'LKR',
           warrantyExpiry: purchaseRecord.warrantyExpiry?.toString() ?? null,
           invoiceUrl: purchaseRecord.invoiceUrl,
           createdAt: formatSafeISO(purchaseRecord.createdAt),
