@@ -8,10 +8,11 @@ import {
   assetDisposals,
   assets,
   categories,
-  departments,
+  locations,
   maintenanceTickets,
   models,
   users,
+  departments,
   systemAuditLogs,
   assetPurchases,
   softwareLicenses,
@@ -22,6 +23,7 @@ import type { AuthenticatedUser } from '@/actions/auth';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { isITOperator, isFinanceAuditor } from '@/lib/auth/roles';
 import { unstable_cache } from 'next/cache';
+import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 import {
   DEFAULT_SOFTWARE_SEAT_COST,
   DEFAULT_USEFUL_LIFE_MONTHS,
@@ -366,6 +368,58 @@ export interface RecentWriteOffRow {
   salvageValue: string | null;
   bookValue: string | null;
   resolvedAt: string | null;
+}
+
+// ============================================================================
+// READ: Top High-Value Assets Table
+// ============================================================================
+
+export interface TopHighValueAssetRow {
+  assetId: string;
+  assetTag: string;
+  assetName: string;
+  location: string;
+  originalCost: string | null;
+  currentBookValue: string | null;
+}
+
+export async function getDashboardTopHighValueAssets(): Promise<TopHighValueAssetRow[]> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  assertAdminOrAuditor(user);
+
+  const rows = await db
+    .select({
+      assetId: assets.id,
+      assetTag: assets.assetTag,
+      assetName: models.name,
+      locationName: locations.name,
+      totalCost: assetPurchases.totalCost,
+      purchaseDate: assetPurchases.purchaseDate,
+      usefulLifeMonths: assets.usefulLifeMonths,
+    })
+    .from(assets)
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .leftJoin(locations, eq(assets.locationId, locations.id))
+    .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+    .where(eq(assets.isArchived, false))
+    .orderBy(desc(assetPurchases.totalCost))
+    .limit(10);
+
+  return rows.map((r) => {
+    const cost = parseFloat(r.totalCost?.toString() || '0');
+    const lifeMonths = r.usefulLifeMonths || 60;
+    const bookValue = calculateStraightLineDepreciation(cost, lifeMonths, r.purchaseDate);
+
+    return {
+      assetId: r.assetId,
+      assetTag: r.assetTag,
+      assetName: r.assetName || 'Unknown Asset',
+      location: r.locationName || 'Unassigned',
+      originalCost: cost > 0 ? `$${cost.toLocaleString()}` : null,
+      currentBookValue: bookValue > 0 ? `$${bookValue.toLocaleString()}` : null,
+    };
+  });
 }
 
 /**
@@ -1081,6 +1135,7 @@ export interface DashboardBatchData {
   pendingDisposals: PendingDisposalRow[];
   highMaintenanceAssets: HighMaintenanceRow[];
   recentActivities: RecentActivity[];
+  topHighValueAssets: TopHighValueAssetRow[];
 }
 
 /**
@@ -1102,6 +1157,8 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
     user.role === 'GlobalAdmin' || user.role === 'ITOperator';
   const canSeeRecentActivities =
     user.role === 'GlobalAdmin' || user.role === 'FinanceAuditor';
+  const canSeeTopAssets =
+    user.role === 'GlobalAdmin' || user.role === 'FinanceAuditor';
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),
@@ -1119,6 +1176,9 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
     canSeeRecentActivities
       ? _getRecentActivitiesInternal()
       : Promise.resolve([] as RecentActivity[]),
+    canSeeTopAssets
+      ? getDashboardTopHighValueAssets()
+      : Promise.resolve([] as TopHighValueAssetRow[]),
   ]);
 
   // Extract values with fallbacks for any failed queries
@@ -1167,5 +1227,7 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
       results[5].status === 'fulfilled' ? results[5].value : [],
     recentActivities:
       results[6].status === 'fulfilled' ? results[6].value : [],
+    topHighValueAssets:
+      results[7].status === 'fulfilled' ? results[7].value : [],
   };
 }

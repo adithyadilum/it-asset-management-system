@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { DisposeAssetsRequestDialog, type SelectedAssetLite } from "@/components/features/disposals/dispose-assets-request-dialog"
-import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow, RecentWriteOffRow } from "@/actions/dashboard"
+import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow, RecentWriteOffRow, TopHighValueAssetRow } from "@/actions/dashboard"
 import { tiqriToast } from "@/components/shared/sonner"
 import { sendAssignmentReminderAction } from "@/actions/assignments"
 import { ArrowUpRight } from "lucide-react"
@@ -286,6 +286,55 @@ function useWriteOffColumns(): ColumnDef<RecentWriteOffRow>[] {
   ], [])
 }
 
+function useTopHighValueAssetsColumns(): ColumnDef<TopHighValueAssetRow>[] {
+  return useMemo(() => [
+    {
+      id: "asset",
+      header: "Asset",
+      size: 180,
+      minSize: 150,
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold text-foreground">
+          {row.original.assetName} ({row.original.assetTag})
+        </span>
+      ),
+    },
+    {
+      id: "location",
+      header: "Location",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.location}
+        </span>
+      ),
+    },
+    {
+      id: "originalCost",
+      header: "Original Cost",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.originalCost || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "currentBookValue",
+      header: "Current Book Value",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs font-bold text-emerald-600">
+          {row.original.currentBookValue || "—"}
+        </span>
+      ),
+    },
+  ], [])
+}
+
 // ─── Main client export ───────────────────────────────────────────────────────
 
 interface Props {
@@ -293,11 +342,13 @@ interface Props {
   pendingDisposals: PendingDisposalRow[]
   highMaintenanceAssets: HighMaintenanceRow[]
   recentWriteOffs?: RecentWriteOffRow[]
+  topHighValueAssets?: TopHighValueAssetRow[]
   userRole: UserRole
 }
 
-export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, recentWriteOffs = [], userRole }: Props) {
-  const showPending = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
+export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, recentWriteOffs = [], topHighValueAssets = [], userRole }: Props) {
+  const showPending = userRole === 'GlobalAdmin'
+  const showTopAssets = userRole === 'FinanceAuditor'
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<number[]>([])
@@ -331,6 +382,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
   const pendingColumns = usePendingDisposalColumns(userRole)
   const lemonsColumns = useHighMaintenanceColumns(handleFlagClick)
   const writeOffColumns = useWriteOffColumns()
+  const topHighValueColumns = useTopHighValueAssetsColumns()
 
   const tableProps: {
     enableRowSelection: boolean
@@ -353,7 +405,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
       {/* ── Left: Tabbed Interface ── */}
-      <Tabs defaultValue={userRole === 'FinanceAuditor' ? "pending" : "overdue"} className="w-full">
+      <Tabs defaultValue={userRole === 'FinanceAuditor' ? "topAssets" : "overdue"} className="w-full">
         <TabsList className="h-10 mb-4 gap-1 bg-muted rounded-lg p-1 w-fit">
           {userRole !== 'FinanceAuditor' && (
           <TabsTrigger
@@ -386,6 +438,15 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
               </span>
             </TabsTrigger>
           )}
+
+          {showTopAssets && (
+            <TabsTrigger
+              value="topAssets"
+              className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              Top High-Value Assets
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {userRole !== 'FinanceAuditor' && (
@@ -411,6 +472,20 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
               emptyState={{
                 title: "No pending disposals",
                 description: "There are no disposal requests awaiting review.",
+              }}
+            />
+          </TabsContent>
+        )}
+
+        {showTopAssets && (
+          <TabsContent value="topAssets">
+            <DataTable
+              {...tableProps}
+              columns={topHighValueColumns}
+              data={topHighValueAssets}
+              emptyState={{
+                title: "No active assets",
+                description: "There are no active assets with recorded costs.",
               }}
             />
           </TabsContent>

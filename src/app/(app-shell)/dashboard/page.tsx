@@ -131,6 +131,7 @@ export default async function DashboardPage() {
                                 pendingDisposals={data.pendingDisposals}
                                 highMaintenanceAssets={data.highMaintenanceAssets}
                                 recentWriteOffs={recentWriteOffs}
+                                topHighValueAssets={data.topHighValueAssets}
                                 userRole={userRole}
                             />
                         </div>
