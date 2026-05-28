@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 import { assetDisposals, assets, users, models, categories, assetDocuments } from '@/db/schema';
 import { eq, desc, inArray, and, sql, or, ilike } from 'drizzle-orm';
@@ -9,10 +11,18 @@ export const metadata = {
 };
 
 interface DisposalsPageProps {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function DisposalsPage({ searchParams }: DisposalsPageProps) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    redirect('/login');
+  }
+  if (user.role !== 'GlobalAdmin') {
+    redirect('/403');
+  }
+
   // Aliases for users table since we join it twice for requester and approver
   const requester = alias(users, 'requester');
   const approver = alias(users, 'approver');
@@ -22,7 +32,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   const searchQuery = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search : '';
   const page = typeof resolvedSearchParams?.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
   const pageSize = typeof resolvedSearchParams?.pageSize === 'string' ? parseInt(resolvedSearchParams.pageSize, 10) : 10;
-  
+
   const validPage = isNaN(page) || page < 1 ? 1 : page;
   const validPageSize = isNaN(pageSize) || pageSize < 1 ? 10 : pageSize;
 
@@ -46,14 +56,14 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   // Base condition for disposal history
   const searchCondition = searchQuery
     ? or(
-        ilike(assets.assetTag, `%${searchQuery}%`),
-        ilike(categories.name, `%${searchQuery}%`),
-        ilike(assetDisposals.reason, `%${searchQuery}%`),
-        ilike(requester.name, `%${searchQuery}%`),
-        ilike(approver.name, `%${searchQuery}%`)
-      )
+      ilike(assets.assetTag, `%${searchQuery}%`),
+      ilike(categories.name, `%${searchQuery}%`),
+      ilike(assetDisposals.reason, `%${searchQuery}%`),
+      ilike(requester.name, `%${searchQuery}%`),
+      ilike(approver.name, `%${searchQuery}%`)
+    )
     : undefined;
-    
+
   const historyBaseCondition = and(
     inArray(assetDisposals.status, ['Completed', 'Rejected']),
     searchCondition
@@ -116,7 +126,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
     .orderBy(desc(assetDisposals.resolvedAt))
     .limit(validPageSize)
     .offset((validPage - 1) * validPageSize);
-    
+
   // Format the history data to match the expected props
   const historyData = historyDataRaw.map(row => ({
     ...row,
@@ -124,8 +134,8 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   }));
 
   return (
-    <DisposalsLayout 
-      pendingData={pendingData} 
+    <DisposalsLayout
+      pendingData={pendingData}
       historyData={historyData}
       historyPageCount={pageCount}
       historyCurrentPage={validPage}

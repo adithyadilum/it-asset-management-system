@@ -75,12 +75,12 @@ export function FilterBar({
     <div className="flex shrink-0 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-[320px] flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal placeholder:text-slate-400"
+            className="h-9 rounded-lg border-border bg-background pl-9 text-sm font-normal placeholder:text-muted-foreground"
           />
         </div>
 
@@ -92,11 +92,11 @@ export function FilterBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
+                className="h-8 rounded-lg border-border bg-background px-3 text-sm text-foreground hover:bg-muted"
               >
-                <Filter className="mr-2 size-3.5 text-slate-500" />
+                <Filter className="mr-2 size-3.5 text-muted-foreground" />
                 Filters
-                <ChevronDown className="ml-2 size-4 text-slate-500" />
+                <ChevronDown className="ml-2 size-4 text-muted-foreground" />
               </Button>
             </PopoverTrigger>
 
@@ -104,14 +104,14 @@ export function FilterBar({
               align="end"
               side="bottom"
               sideOffset={10}
-              className="z-50 w-80 rounded-lg border border-slate-200 bg-white p-0 shadow-xl"
+              className="z-50 w-80 rounded-lg border border-border bg-background p-0 shadow-xl"
             >
-              <div className="border-b border-slate-200 px-3 py-2">
+              <div className="border-b border-border px-3 py-2">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Filter by</h3>
                   <button
                     type="button"
-                    className="text-slate-400 transition-colors hover:text-slate-600"
+                    className="text-muted-foreground transition-colors hover:text-muted-foreground"
                     onClick={() => setIsFilterPopoverOpen(false)}
                   >
                     <X className="size-4" />
@@ -121,9 +121,9 @@ export function FilterBar({
 
               <div className="space-y-3 px-3 py-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">Field</label>
+                  <label className="text-xs font-medium text-muted-foreground">Field</label>
                   <Select value={draftField} onValueChange={handleFieldChange}>
-                    <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
+                    <SelectTrigger className="h-8 w-full rounded-lg border-border text-sm text-foreground">
                       <SelectValue placeholder="Select field" />
                     </SelectTrigger>
                     <SelectContent>
@@ -137,7 +137,7 @@ export function FilterBar({
                 </div>
 
                 <div className="flex items-center gap-4 py-1">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
                     <input
                       type="radio"
                       className="size-4 accent-primary"
@@ -146,7 +146,7 @@ export function FilterBar({
                     />
                     is
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
                     <input
                       type="radio"
                       className="size-4 accent-primary"
@@ -158,10 +158,10 @@ export function FilterBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-500">Value</label>
+                  <label className="text-xs font-medium text-muted-foreground">Value</label>
                   {currentFieldConfig?.options && currentFieldConfig.options.length > 0 ? (
                     <Select value={draftValue} onValueChange={setDraftValue}>
-                      <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
+                      <SelectTrigger className="h-8 w-full rounded-lg border-border text-sm text-foreground">
                         <SelectValue placeholder="Select value" />
                       </SelectTrigger>
                       <SelectContent>
@@ -177,7 +177,7 @@ export function FilterBar({
                       value={draftValue}
                       onChange={(e) => setDraftValue(e.target.value)}
                       placeholder={`Enter ${currentFieldConfig?.label?.toLowerCase() || 'value'}`}
-                      className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800"
+                      className="h-8 w-full rounded-lg border-border text-sm text-foreground"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -193,7 +193,7 @@ export function FilterBar({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-3 text-sm text-slate-600 hover:bg-slate-100"
+                    className="h-8 px-3 text-sm text-muted-foreground hover:bg-muted"
                     onClick={onClearAllFilters}
                     disabled={appliedFilters.length === 0}
                   >
@@ -226,14 +226,14 @@ export function FilterBar({
               <Badge
                 key={`${filter.field}-${filter.operator}-${filter.value}`}
                 variant="outline"
-                className="h-7 gap-2 rounded-full border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="h-7 gap-2 rounded-full border-border bg-muted px-3 text-xs font-medium text-foreground hover:bg-muted"
               >
                 <span>
                   {filter.field} {filter.operator} {filter.value}
                 </span>
                 <button
                   type="button"
-                  className="text-slate-400 transition-colors hover:text-slate-600"
+                  className="text-muted-foreground transition-colors hover:text-muted-foreground"
                   onClick={() => onClearFilter(filter.field)}
                   aria-label={`Clear ${filter.field} filter`}
                 >
@@ -244,7 +244,7 @@ export function FilterBar({
 
             <button
               type="button"
-              className="ml-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-700"
+              className="ml-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               onClick={onClearAllFilters}
             >
               Clear filters

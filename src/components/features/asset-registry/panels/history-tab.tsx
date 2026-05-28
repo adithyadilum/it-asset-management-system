@@ -87,7 +87,7 @@ export function HistoryTab({
   if (isLoading) {
     return (
       <div className={cn('flex w-full items-center justify-center py-12', className)}>
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -100,7 +100,7 @@ export function HistoryTab({
           <p className="text-sm font-medium text-rose-900">Unable to load asset history</p>
           <p className="mt-1 text-sm text-rose-700">{error}</p>
         </div>
-        <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-white text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
+        <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-background text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
           Retry
         </Button>
       </div>
@@ -109,8 +109,8 @@ export function HistoryTab({
 
   if (logs.length === 0) {
     return (
-      <div className={cn('flex w-full flex-col items-center justify-center py-12 border border-dashed border-slate-200 rounded-xl bg-slate-50', className)}>
-        <p className="text-sm text-slate-500">No history records found for this asset.</p>
+      <div className={cn('flex w-full flex-col items-center justify-center py-12 border border-dashed border-border rounded-xl bg-muted', className)}>
+        <p className="text-sm text-muted-foreground">No history records found for this asset.</p>
       </div>
     );
   }
@@ -123,7 +123,7 @@ export function HistoryTab({
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
-          <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-white text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
+          <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-background text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
             Retry
           </Button>
         </div>
@@ -144,13 +144,13 @@ export function HistoryTab({
             type="button"
             variant="outline"
             size="sm"
-            className="text-sm font-medium shadow-sm bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+            className="text-sm font-medium shadow-sm bg-background hover:bg-muted text-foreground border-border"
             onClick={handleLoadMore}
             disabled={isLoadingMore}
           >
             {isLoadingMore ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin text-slate-400" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin text-muted-foreground" />
                 Loading...
               </>
             ) : (

@@ -42,13 +42,13 @@ export function PrintConfigurationModal({
             <DialogContent className="sm:max-w-125">
                 <DialogHeader>
                     <DialogTitle>Generate Asset Tags</DialogTitle>
-                    <DialogDescription className="text-slate-600 text-sm mt-2">
+                    <DialogDescription className="text-muted-foreground text-sm mt-2">
                         Your selected asset tags will be printed at standard label size.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="bg-slate-50 rounded-xl p-5 mt-2">
-                    <h4 className="text-sm font-medium text-slate-900 mb-4">
+                <div className="bg-muted rounded-xl p-5 mt-2">
+                    <h4 className="text-sm font-medium text-foreground mb-4">
                         Confirm Layout for {selectedCount} selected asset{selectedCount === 1 ? "" : "s"}
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
@@ -59,11 +59,11 @@ export function PrintConfigurationModal({
                             className={cn(
                                 "flex flex-col items-center justify-center py-6 px-4 rounded-xl transition-all border-2",
                                 layout === "a4"
-                                    ? "bg-slate-200/50 border-slate-300"
-                                    : "bg-white border-transparent hover:border-slate-200 shadow-sm"
+                                    ? "bg-muted/50 border-border"
+                                    : "bg-background border-transparent hover:border-border shadow-sm"
                             )}
                         >
-                            <div className="bg-white rounded-md p-2 shadow-sm border border-slate-200 mb-4 inline-flex">
+                            <div className="bg-background rounded-md p-2 shadow-sm border border-border mb-4 inline-flex">
                                 {/* Visual preview of A4 3x10 grid layout */}
                                 <svg width="48" height="72" viewBox="0 0 48 72" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     {Array.from({ length: 10 }).map((_, row) =>
@@ -84,8 +84,8 @@ export function PrintConfigurationModal({
                                 </svg>
                             </div>
                             <div className="text-center">
-                                <div className="text-sm font-medium text-slate-900">3 x 10</div>
-                                <div className="text-xs text-slate-500 mt-0.5">A4 sheet</div>
+                                <div className="text-sm font-medium text-foreground">3 x 10</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">A4 sheet</div>
                             </div>
                         </button>
 
@@ -96,11 +96,11 @@ export function PrintConfigurationModal({
                             className={cn(
                                 "flex flex-col items-center justify-center py-6 px-4 rounded-xl transition-all border-2",
                                 layout === "thermal"
-                                    ? "bg-slate-200/50 border-slate-300"
-                                    : "bg-white border-transparent hover:border-slate-200 shadow-sm"
+                                    ? "bg-muted/50 border-border"
+                                    : "bg-background border-transparent hover:border-border shadow-sm"
                             )}
                         >
-                            <div className="bg-white rounded-md p-2 shadow-sm border border-slate-200 mb-4 inline-flex">
+                            <div className="bg-background rounded-md p-2 shadow-sm border border-border mb-4 inline-flex">
                                 {/* Visual preview of continuous thermal roll layout */}
                                 <svg width="32" height="72" viewBox="0 0 32 72" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     {Array.from({ length: 12 }).map((_, row) => (
@@ -119,8 +119,8 @@ export function PrintConfigurationModal({
                                 </svg>
                             </div>
                             <div className="text-center">
-                                <div className="text-sm font-medium text-slate-900">1 x 12</div>
-                                <div className="text-xs text-slate-500 mt-0.5">Thermal Printer</div>
+                                <div className="text-sm font-medium text-foreground">1 x 12</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">Thermal Printer</div>
                             </div>
                         </button>
                     </div>
@@ -138,7 +138,7 @@ export function PrintConfigurationModal({
                     <Button
                         onClick={handleGenerate}
                         disabled={isGenerating}
-                        className="w-full sm:w-auto bg-[#0a1445] hover:bg-[#0a1445]/90 text-white"
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                         {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isGenerating ? "Generating PDF..." : "Generate"}

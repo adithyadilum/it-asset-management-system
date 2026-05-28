@@ -33,7 +33,7 @@ export function DisposalsLayout({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { setOpen, open } = useSidebar();
+  const { setOpen } = useSidebar();
 
   const currentPanel = searchParams.get('panel');
   const recordId = searchParams.get('id');
@@ -92,28 +92,21 @@ export function DisposalsLayout({
     }
   };
 
+  // Ensure the app sidebar is closed when a review panel is active to provide more space
   useEffect(() => {
-
-    if (open && isReviewOpen) {
-
+    if (isReviewOpen || isRecordOpen) {
       setOpen(false);
-
-      closeReviewPanel();
-
-      setTimeout(() => {
-        setOpen(true);
-      }, 450);
     }
-  }, [open, isReviewOpen, closeReviewPanel, setOpen]);
+  }, [isReviewOpen, isRecordOpen, setOpen]);
 
   return (
-    <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-slate-50">
+    <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-muted">
       {/* Main Workspace Shell */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
           {/* Header */}
           <div className="mb-4 shrink-0">
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
               Disposals
             </h1>
           </div>

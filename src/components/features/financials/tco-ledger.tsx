@@ -27,7 +27,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currency, setCurrency] = useState<SupportedCurrency>('USD');
+  const [currency, setCurrency] = useState<SupportedCurrency>('LKR');
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
 
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);

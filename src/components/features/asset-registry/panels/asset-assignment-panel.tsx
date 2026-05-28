@@ -108,13 +108,13 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       id: 'received',
       label: 'Received',
       variant: 'outline' as const,
-      className: 'h-9 rounded-lg border-slate-200 px-4 text-sm',
+      className: 'h-9 rounded-lg border-border px-4 text-sm',
       onClick: props.onMarkReceived,
     }] : []),
     ...(showReminder || showReturn ? [{
       id: 'lifecycle-action',
       label: showReminder ? 'Send Reminder' : 'Request Return',
-      className: 'h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]',
+      className: 'h-9 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90',
       onClick: showReminder ? props.onSendReminder : props.onRequestReturn,
     }] : [])
   ] : [
@@ -122,13 +122,13 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       id: 'edit',
       label: 'Edit',
       variant: 'outline',
-      className: 'h-9 rounded-lg border-slate-200 px-4 text-sm',
+      className: 'h-9 rounded-lg border-border px-4 text-sm',
       onClick: props.onEdit,
     },
     {
       id: 'assign',
       label: 'Assign',
-      className: 'h-9 rounded-lg bg-[#0B1D74] px-4 text-sm text-white hover:bg-[#0A175C]',
+      className: 'h-9 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90',
       onClick: props.onAssign,
     }
   ];

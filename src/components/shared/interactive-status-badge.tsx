@@ -130,9 +130,9 @@ export function InteractiveStatusBadge({
               showIcon
               colorTheme={currentStatusConfig?.colorTheme}
               iconName={currentStatusConfig?.iconName}
-              className="group-hover:ring-2 group-hover:ring-slate-200 group-hover:scale-[1.02] transition-all duration-150"
+              className="group-hover:ring-2 group-hover:ring-border group-hover:scale-[1.02] transition-all duration-150"
             />
-            <ChevronDown className="h-3 w-3 ml-1 text-slate-400 group-hover:text-slate-600 transition-colors" />
+            <ChevronDown className="h-3 w-3 ml-1 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-48 p-1">
@@ -153,7 +153,7 @@ export function InteractiveStatusBadge({
               </DropdownMenuItem>
             ))
           ) : (
-            <div className="p-2 text-xs text-slate-500 italic">
+            <div className="p-2 text-xs text-muted-foreground italic">
               No manual overrides available
             </div>
           )}

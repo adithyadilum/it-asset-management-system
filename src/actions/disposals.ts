@@ -22,6 +22,7 @@ import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { uploadFileToStorage } from '@/lib/storage';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 
 import {
   executeDisposalSchema,
@@ -302,7 +303,10 @@ export async function createBulkDisposalRequests(input: {
         metadata: { entries: auditEntries.length },
       });
 
-      return { inserted: toInsert.length };
+      return {
+        inserted: toInsert.length,
+        insertedDisposals,
+      };
     });
 
     revalidatePath('/operations/disposals');
@@ -311,6 +315,16 @@ export async function createBulkDisposalRequests(input: {
     revalidatePath('/assets/furniture');
     revalidatePath('/assets/office-electronics');
     revalidatePath('/assets/software');
+
+    result.insertedDisposals.forEach((disposal) => {
+      void dispatchWebhookEvent('disposal.requested', {
+        disposalId: disposal.id,
+        assetId: disposal.assetId,
+        reason,
+        justification,
+        requestedById: user.id,
+      });
+    });
 
     return {
       success: true as const,
@@ -833,7 +847,10 @@ export async function executeAssetDisposal(
 
       await tx.insert(systemAuditLogs).values(auditEntries);
 
-      return { disposedCount: updatedAssets.length };
+      return {
+        disposedCount: updatedAssets.length,
+        disposalRecords,
+      };
     });
 
     logLatency({
@@ -848,6 +865,15 @@ export async function executeAssetDisposal(
     revalidatePath('/assets/furniture');
     revalidatePath('/assets/office-electronics');
     revalidatePath('/assets/software');
+
+    result.disposalRecords.forEach((disposal) => {
+      void dispatchWebhookEvent('disposal.approved', {
+        disposalId: disposal.disposalId,
+        assetId: disposal.assetId,
+        approvedById: user.id,
+        disposalMethod: validData.disposalMethod,
+      });
+    });
 
     return {
       success: true,

@@ -101,8 +101,8 @@ export function RemoveUserModal({
         <div className="p-6">
           <div className="mb-2 flex items-start justify-between">
             <div className="flex items-center gap-2">
-              <Info className="mt-0.5 h-5 w-5 text-slate-400" />
-              <DialogTitle className={`${textLgBoldClass} text-slate-900`}>
+              <Info className="mt-0.5 h-5 w-5 text-muted-foreground" />
+              <DialogTitle className={`${textLgBoldClass} text-foreground`}>
                 Remove User from {targetRole}
               </DialogTitle>
             </div>
@@ -110,7 +110,7 @@ export function RemoveUserModal({
               variant="ghost"
               size="icon"
               aria-label="Close"
-              className="h-8 w-8 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              className="h-8 w-8 -mr-2 -mt-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
@@ -118,19 +118,19 @@ export function RemoveUserModal({
             </Button>
           </div>
 
-          <DialogDescription className={`mb-6 ml-7 text-slate-600 ${textSmRegularClass}`}>
+          <DialogDescription className={`mb-6 ml-7 text-muted-foreground ${textSmRegularClass}`}>
             This user will lose all privileges associated with the {targetRole} role.
           </DialogDescription>
 
-          <div className="mx-1 mb-6 flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3">
-            <Avatar className="h-10 w-10 overflow-hidden rounded-full bg-slate-200">
-              <AvatarFallback className={`rounded-full bg-slate-300 text-slate-700 ${textXsSemiBoldClass}`}>
+          <div className="mx-1 mb-6 flex items-center gap-3 rounded-lg border border-border bg-muted/80 p-3">
+            <Avatar className="h-10 w-10 overflow-hidden rounded-full bg-muted">
+              <AvatarFallback className={`rounded-full bg-muted text-foreground ${textXsSemiBoldClass}`}>
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="text-left">
-              <p className={`${textSmSemiBoldClass} text-slate-900`}>{user?.name ?? "Unknown User"}</p>
-              <p className={`${textXsRegularClass} text-slate-500`}>{user?.email ?? ""}</p>
+              <p className={`${textSmSemiBoldClass} text-foreground`}>{user?.name ?? "Unknown User"}</p>
+              <p className={`${textXsRegularClass} text-muted-foreground`}>{user?.email ?? ""}</p>
             </div>
           </div>
 
@@ -140,7 +140,7 @@ export function RemoveUserModal({
             <Button
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className={`px-6 hover:bg-slate-100 ${textSmMediumClass}`}
+              className={`px-6 hover:bg-muted ${textSmMediumClass}`}
               disabled={isSubmitting}
             >
               Cancel

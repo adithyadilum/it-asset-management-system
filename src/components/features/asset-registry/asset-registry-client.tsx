@@ -125,7 +125,7 @@ const ELECTRONICS_CONDITION_STYLES: Record<string, string> = {
   Active: 'border border-green-300 bg-green-50 text-green-700',
   'Inspection Due': 'border border-blue-300 bg-blue-50 text-blue-700',
   'Under Maintenance': 'border border-orange-300 bg-orange-50 text-orange-700',
-  Scheduled: 'border border-slate-300 bg-slate-50 text-slate-700',
+  Scheduled: 'border border-border bg-muted text-foreground',
 };
 
 const BULK_FETCH_PAGE_SIZE = 200;
@@ -174,7 +174,7 @@ function toCellText(value: string | null | undefined) {
 function renderElectronicsConditionBadge(condition: string) {
   const className =
     ELECTRONICS_CONDITION_STYLES[condition] ??
-    'border border-slate-300 bg-slate-50 text-slate-700';
+    'border border-border bg-muted text-foreground';
 
   return (
     <span
@@ -730,7 +730,7 @@ export function AssetRegistryClient({
               const available = row.original.availableSeats ?? 0;
               const assigned = Math.max(0, total - available);
               return (
-                <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-slate-50 text-slate-700 ring-slate-600/10 whitespace-nowrap">
+                <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-muted text-foreground ring-border whitespace-nowrap">
                   {assigned} / {total} Assigned
                 </span>
               );
@@ -809,17 +809,17 @@ export function AssetRegistryClient({
           accessorKey: 'serialNumber',
           header: 'License Key',
           cell: ({ row }) => {
-            const serialNumber = 
-              row.original.serialNumber || 
+            const serialNumber =
+              row.original.serialNumber ||
               String(row.original.instanceAttributes?.['license_key'] ?? row.original.instanceAttributes?.['License Key'] ?? '');
 
             if (!serialNumber || serialNumber === '-') return '-';
-            
+
             return (
               <div className="flex w-full pr-2">
-                <CopyableField 
-                  value={serialNumber} 
-                  label="License Key" 
+                <CopyableField
+                  value={serialNumber}
+                  label="License Key"
                   className="w-full"
                 />
               </div>
@@ -838,26 +838,25 @@ export function AssetRegistryClient({
           cell: ({ row }) => {
             const coreTotal = row.original.totalSeats;
             const coreAvailable = row.original.availableSeats;
-            
+
             // Fallbacks from instance attributes
             const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
-            
+
             const total = coreTotal ?? attrTotal;
             const available = coreAvailable ?? (total > 0 ? total : 0); // Crude fallback for availability
-            
+
             const isLow = total > 0 && available <= 2;
-            
+
             if (row.original.pillar !== 'Software') return null;
-            
+
             return (
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-                  available === 0 
-                    ? "bg-red-50 text-red-700 ring-red-600/10" 
-                    : isLow 
+                <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${available === 0
+                    ? "bg-red-50 text-red-700 ring-red-600/10"
+                    : isLow
                       ? "bg-amber-50 text-amber-700 ring-amber-600/10"
                       : "bg-green-50 text-green-700 ring-green-600/10"
-                }`}>
+                  }`}>
                   {available} / {total} Available
                 </span>
               </div>
@@ -871,22 +870,22 @@ export function AssetRegistryClient({
           cell: ({ row }) => {
             const coreExpiry = row.original.expiryDate;
             const attrExpiry = String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? row.original.instanceAttributes?.['license_expiry'] ?? '');
-            
+
             const expiryStr = coreExpiry || attrExpiry;
             if (!expiryStr || expiryStr === 'null') return '-';
-            
+
             const expiryDate = new Date(expiryStr);
             const today = new Date();
             const diffTime = expiryDate.getTime() - today.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            let colorClass = "text-slate-600";
+
+            let colorClass = "text-muted-foreground";
             if (diffDays <= 0) {
               colorClass = "text-red-600 font-medium";
             } else if (diffDays <= 30) {
               colorClass = "text-amber-600 font-medium";
             }
-            
+
             return (
               <span className={colorClass}>
                 {expiryDate.toLocaleDateString()}
@@ -1009,29 +1008,29 @@ export function AssetRegistryClient({
   }, [isPanelOpen, pathname, router, searchParams]);
 
   return (
-    <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
       <div className="mb-4">
         <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className={`inline-flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}
+              className={`inline-flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
             >
               <span>{selectedCategoryOption.name}</span>
-              <ChevronDown className="size-5 text-slate-700 mt-1" />
+              <ChevronDown className="size-5 text-foreground mt-1" />
             </button>
           </PopoverTrigger>
           <PopoverContent
             align="start"
             sideOffset={10}
-            className="w-fit rounded-lg border border-slate-200 p-2 shadow-xl"
+            className="w-fit rounded-lg border border-border p-2 shadow-xl"
           >
             <div className="w-max space-y-1">
               {categoryOptions.map((categoryOption) => (
                 <button
                   key={categoryOption.name}
                   type="button"
-                  className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-slate-800 hover:bg-slate-100"
+                  className="flex w-full items-center whitespace-nowrap rounded-md px-2 py-1 text-left text-sm font-semibold leading-5 text-foreground hover:bg-muted"
                   onClick={() => handleCategorySelect(categoryOption.name)}
                 >
                   {categoryOption.name}
@@ -1084,7 +1083,7 @@ export function AssetRegistryClient({
 
         <div className="flex min-h-0 flex-1 flex-col">
           {isPending ? (
-            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-3">
+            <div className="overflow-hidden rounded-lg border border-border bg-background p-3">
               <TableSkeleton rowCount={8} columnWidths={tableSkeletonColumnWidths} />
             </div>
           ) : (
@@ -1093,7 +1092,11 @@ export function AssetRegistryClient({
               data={visibleRows}
               pageSizeOptions={config.rowsPerPageOptions}
               initialPageSize={config.defaultPageSize}
-              defaultSorting={[{ id: 'assetTag', desc: true }]}
+              defaultSorting={
+                searchParams.get('sort')
+                  ? [{ id: searchParams.get('sort')!, desc: searchParams.get('desc') === 'true' }]
+                  : [{ id: 'assetTag', desc: true }]
+              }
               selectionActions={selectionActions}
               selectionLabel={(selectedCount) => `${selectedCount} Assets Selected`}
               emptyState={{
@@ -1112,7 +1115,7 @@ export function AssetRegistryClient({
                 params.set('animate', isPanelOpen ? '0' : '1');
                 router.push(`${pathname}?${params.toString()}`, { scroll: false });
               }}
-              className="rounded-lg border-slate-200"
+              className="rounded-lg border-border"
             />
           )}
         </div>
@@ -1155,27 +1158,27 @@ export function AssetRegistryClient({
             }
           }}
         >
-          <DialogContent className="max-w-90 rounded-xl border border-slate-200 bg-white p-0">
+          <DialogContent className="max-w-90 rounded-xl border border-border bg-background p-0">
             <DialogTitle className="sr-only">Transfer assets</DialogTitle>
             <DialogDescription className="sr-only">
               Transfer selected assets to a destination location.
             </DialogDescription>
 
-            <div className="border-b border-slate-200 px-4 py-3">
-              <h3 className="text-2xl font-semibold text-slate-900">
+            <div className="border-b border-border px-4 py-3">
+              <h3 className="text-2xl font-semibold text-foreground">
                 Transfer {transferSelectionRows.length} Assets
               </h3>
             </div>
 
             <div className="space-y-3 px-4 py-3">
-              <ScrollArea className="max-h-24 rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <ScrollArea className="max-h-24 rounded-lg border border-border bg-muted p-2">
                 <div className="space-y-1">
                   {transferSelectionRows.map((selectedRow) => (
                     <div
                       key={selectedRow.id}
-                      className="grid grid-cols-[88px_1fr] gap-2 text-sm text-slate-700"
+                      className="grid grid-cols-[88px_1fr] gap-2 text-sm text-foreground"
                     >
-                      <span className="font-medium text-slate-800">
+                      <span className="font-medium text-foreground">
                         {selectedRow.assetTag}
                       </span>
                       <span className="truncate">{toCellText(selectedRow.name)}</span>
@@ -1185,7 +1188,7 @@ export function AssetRegistryClient({
               </ScrollArea>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Current Location</label>
+                <label className="text-sm font-medium text-foreground">Current Location</label>
                 <Input
                   value={
                     uniqueSelectedLocations.length === 0
@@ -1195,12 +1198,12 @@ export function AssetRegistryClient({
                         : 'Multiple locations'
                   }
                   disabled
-                  className="h-9 rounded-lg border-slate-200 bg-slate-50"
+                  className="h-9 rounded-lg border-border bg-muted"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-foreground">
                   Destination Location
                 </label>
                 <select
@@ -1211,7 +1214,7 @@ export function AssetRegistryClient({
                       Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null
                     );
                   }}
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground"
                 >
                   <option value="">Select destination</option>
                   {locationOptions.map((locationOption) => (
@@ -1223,25 +1226,25 @@ export function AssetRegistryClient({
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Transfer Date</label>
+                <label className="text-sm font-medium text-foreground">Transfer Date</label>
                 <div className="relative">
                   <Input
                     type="date"
                     value={transferDate}
                     onChange={(event) => setTransferDate(event.target.value)}
-                    className="h-9 rounded-lg border-slate-200 pr-9"
+                    className="h-9 rounded-lg border-border pr-9"
                   />
-                  <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
+            <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-lg border-slate-200 px-3 text-sm"
+                className="h-8 rounded-lg border-border px-3 text-sm"
                 onClick={() => {
                   setIsTransferDialogOpen(false);
                   setTransferSelectionRows([]);
@@ -1255,7 +1258,7 @@ export function AssetRegistryClient({
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-lg bg-[#0B1D74] px-3 text-sm text-white hover:bg-[#0A175C]"
+                className="h-8 rounded-lg bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
                 onClick={() => void performBulkTransfer()}
                 disabled={!destinationLocationId || transferSelectionRows.length === 0 || isMutating}
               >

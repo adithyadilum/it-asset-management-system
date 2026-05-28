@@ -19,6 +19,7 @@ import {
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
@@ -63,6 +64,57 @@ function normalizeActionError(error: unknown): AssignmentActionResult {
   };
 }
 
+function dispatchAssignmentCreatedEvents(
+  result:
+    | { assignedAssetIds: string[]; assignments: { assignmentId: number; assetId: string }[] }
+    | null
+    | undefined,
+  input: { assignmentType: string; targetId: string | number; notes?: string; expectedReturnDate?: string },
+  performedById: string
+) {
+  if (!result || result.assignments.length === 0) {
+    return;
+  }
+
+  const isUserAssignment = input.assignmentType === 'user';
+  const targetPayload = isUserAssignment
+    ? {
+        assignedToUserId:
+          typeof input.targetId === 'string' ? input.targetId : String(input.targetId),
+        assignedToLocationId: null,
+      }
+    : {
+        assignedToUserId: null,
+        assignedToLocationId:
+          typeof input.targetId === 'number' ? input.targetId : Number(input.targetId),
+      };
+
+  result.assignments.forEach(({ assignmentId, assetId }) => {
+    void dispatchWebhookEvent('assignment.created', {
+      assignmentId,
+      assetId,
+      assignedById: performedById,
+      assignmentType: input.assignmentType,
+      expectedReturnDate: input.expectedReturnDate ?? null,
+      notes: input.notes?.trim() || null,
+      ...targetPayload,
+    });
+  });
+}
+
+function dispatchAssignmentReturnedEvents(
+  assignments: Array<{ assignmentId: number; assetId: string }>,
+  returnedDate: string
+) {
+  assignments.forEach((assignment) => {
+    void dispatchWebhookEvent('assignment.returned', {
+      assignmentId: assignment.assignmentId,
+      assetId: assignment.assetId,
+      returnedDate,
+    });
+  });
+}
+
 export async function assignAssetAction(
   input: AssignAssetInput
 ): Promise<AssignmentActionResult> {
@@ -100,6 +152,8 @@ export async function assignAssetAction(
       throw err;
     }
     const result = await assignSingleAsset(input, currentUser.id);
+
+    dispatchAssignmentCreatedEvents(result, input, currentUser.id);
 
     revalidatePath('/operations/assignments');
     revalidatePath('/assets');
@@ -163,6 +217,8 @@ export async function bulkAssignAssetsAction(
       throw err;
     }
     const result = await assignMultipleAssets(input, currentUser.id);
+
+    dispatchAssignmentCreatedEvents(result, input, currentUser.id);
 
     revalidatePath('/operations/assignments');
     revalidatePath('/assets');
@@ -294,7 +350,12 @@ export async function markAssetReceivedAction(
   }
 
   try {
-    await markAssignmentsAsReceived(assignmentIds, currentUser.id);
+    const result = await markAssignmentsAsReceived(assignmentIds, currentUser.id);
+
+    if (result.assignments.length > 0) {
+      dispatchAssignmentReturnedEvents(result.assignments, new Date().toISOString());
+    }
+
     revalidatePath('/operations/assignments');
     revalidatePath('/assets');
     return { success: true };
