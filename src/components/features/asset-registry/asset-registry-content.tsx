@@ -45,6 +45,7 @@ interface AssetRegistryContentProps {
         colorTheme?: string; 
         iconName?: string; 
     }>;
+    canManage?: boolean;
 }
 
 export function AssetRegistryContent({
@@ -56,6 +57,7 @@ export function AssetRegistryContent({
     closePanelUrl,
     pillar,
     manualStatuses = [],
+    canManage = false,
 }: AssetRegistryContentProps) {
     const onStatusUpdateRef = useRef<(assetId: string, nextStatus: string) => void>(() => { });
     const onRefreshRef = useRef<() => void>(() => { });
@@ -70,6 +72,7 @@ export function AssetRegistryContent({
                 manualStatuses={manualStatuses}
                 onStatusUpdateRef={onStatusUpdateRef}
                 onRefreshRef={onRefreshRef}
+                canManage={canManage}
             />
             <AssetRegistryPanels
                 currentPanel={currentPanel}
@@ -79,6 +82,7 @@ export function AssetRegistryContent({
                 manualStatuses={manualStatuses}
                 onStatusUpdateRef={onStatusUpdateRef}
                 onRefreshRef={onRefreshRef}
+                canManage={canManage}
             />
         </div>
     );
