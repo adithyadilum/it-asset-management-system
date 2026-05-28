@@ -15,12 +15,14 @@ import {
   assetAssignments,
   assets,
   categories,
+  notificationQueue,
   locations,
   models,
   users,
 } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
+import { dispatchAlert } from '@/lib/notifications/dispatcher';
 import { sendAssetNotification } from '../notifications';
 
 type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
@@ -252,6 +254,26 @@ async function validateAssetsForAssignment(assetIds: string[]) {
   }
 
   return assetsInDb;
+}
+
+async function enqueuePendingAcceptanceNotification(
+  assignmentId: number,
+  recipientId: string
+) {
+  await db.insert(notificationQueue).values({
+    eventType: 'PENDING_ACCEPTANCE',
+    assignmentId,
+    recipientId,
+  });
+
+  await dispatchAlert({
+    eventType: 'ASSIGNMENT_PENDING',
+    userId: recipientId,
+    title: 'Action Required: Assignment Pending',
+    message:
+      'You have a new asset awaiting your acknowledgment. Please review and accept it from your dashboard.',
+    targetUrl: '/dashboard',
+  });
 }
 
 async function loadAssetsByStatusDirect(
@@ -550,6 +572,20 @@ export async function assignSingleAsset(
       );
     }
 
+    if (target.assignedToUserId) {
+      try {
+        await enqueuePendingAcceptanceNotification(
+          assignment.id,
+          target.assignedToUserId
+        );
+      } catch (error) {
+        console.error(
+          'Failed to enqueue pending acceptance notification for assignment:',
+          error
+        );
+      }
+    }
+
     // Step 3: Create audit log (transaction-safe helper)
     await logAuditActionTx(tx, {
       entityType: 'Asset',
@@ -675,6 +711,24 @@ export async function assignMultipleAssets(
         })
       )
     );
+
+    if (target.assignedToUserId) {
+      try {
+        await Promise.all(
+          insertedAssignments.map((assignment) =>
+            enqueuePendingAcceptanceNotification(
+              assignment.id,
+              target.assignedToUserId as string
+            )
+          )
+        );
+      } catch (error) {
+        console.error(
+          'Failed to enqueue pending acceptance notifications for bulk assignment:',
+          error
+        );
+      }
+    }
 
     return {
       assignedAssetIds: updatedAssets.map((a) => a.id),
