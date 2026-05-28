@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { DisposeAssetsRequestDialog, type SelectedAssetLite } from "@/components/features/disposals/dispose-assets-request-dialog"
 import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow, RecentWriteOffRow } from "@/actions/dashboard"
-import { toast } from "sonner"
-import { sendAssignmentReminderAction } from "@/actions/assignments"
 import { tiqriToast } from "@/components/shared/sonner"
+import { sendAssignmentReminderAction } from "@/actions/assignments"
 import { ArrowUpRight } from "lucide-react"
+import type { UserRole } from "@/types/auth"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ function EmployeeCell({ name, email }: { name: string; email: string }) {
 function useOverdueColumns(
   actionLabel: string,
   onSendReminder: (row: OverdueReturnRow) => void,
-  sendingReminderIds: Set<number>
+  sendingReminderIds: number[]
 ): ColumnDef<OverdueReturnRow>[] {
   return useMemo(() => [
     {
@@ -95,7 +95,7 @@ function useOverdueColumns(
       minSize: 120,
       meta: { noTruncate: true },
       cell: ({ row }) => {
-        const isSending = sendingReminderIds.has(row.original.assignmentId)
+        const isSending = sendingReminderIds.includes(row.original.assignmentId)
         return (
           <Button
             variant="secondary"
@@ -293,14 +293,14 @@ interface Props {
   pendingDisposals: PendingDisposalRow[]
   highMaintenanceAssets: HighMaintenanceRow[]
   recentWriteOffs?: RecentWriteOffRow[]
-  userRole: string
+  userRole: UserRole
 }
 
 export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, recentWriteOffs = [], userRole }: Props) {
   const showPending = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
-  const [sendingReminderIds, setSendingReminderIds] = useState<Set<number>>(new Set())
+  const [sendingReminderIds, setSendingReminderIds] = useState<number[]>([])
 
   const handleFlagClick = (asset: HighMaintenanceRow) => {
     setFlaggedAsset({
@@ -312,26 +312,18 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
   }
 
   const handleSendReminder = async (row: OverdueReturnRow) => {
-    setSendingReminderIds((prev) => {
-      const next = new Set(prev)
-      next.add(row.assignmentId)
-      return next
-    })
+    setSendingReminderIds((prev) => [...prev, row.assignmentId])
     try {
       const result = await sendAssignmentReminderAction([row.assignmentId])
       if (result.success) {
-        toast.success("Reminder sent successfully")
+        tiqriToast.success("Reminder sent successfully")
       } else {
-        toast.error(result.error || "Failed to send reminder")
+        tiqriToast.error(result.error || "Failed to send reminder")
       }
     } catch {
-      toast.error("Failed to send reminder due to an unexpected error")
+      tiqriToast.error("Failed to send reminder due to an unexpected error")
     } finally {
-      setSendingReminderIds((prev) => {
-        const next = new Set(prev)
-        next.delete(row.assignmentId)
-        return next
-      })
+      setSendingReminderIds((prev) => prev.filter((id) => id !== row.assignmentId))
     }
   }
 
@@ -353,7 +345,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
     // 53px header + 53px × 3 rows = 212px — shows exactly 3 rows, rest scroll
     initialPageSize: 50,
     pageSizeOptions: [50],
-    className: "h-[212px] text-xs",
+    className: "min-h-[212px] max-h-[350px] text-xs",
     hideFooter: true,
   }
 

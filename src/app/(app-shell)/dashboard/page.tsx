@@ -1,10 +1,11 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
+import { DashboardRefreshProvider } from "@/components/features/dashboard/admin/dashboard-refresh-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { KpiMetricsRow } from "@/components/features/dashboard/admin/kpi-metrics-row"
 import { DashboardChartsRow } from "@/components/features/dashboard/admin/dashboard-charts-row"
-import { DashboardTablesRow } from "@/components/features/dashboard/admin/dashboard-tables-row"
+import { DashboardTablesRowClient } from "@/components/features/dashboard/admin/dashboard-tables-row-client"
 import { AssetCard } from "@/components/shared/asset-card"
 import {
     Empty,
@@ -12,47 +13,37 @@ import {
     EmptyHeader,
     EmptyTitle,
 } from "@/components/ui/empty"
-import { HardDrive, Laptop, Monitor, Smartphone } from "lucide-react"
-import { 
-    getDashboardOverdueReturns, 
-    getDashboardPendingDisposals, 
-    getDashboardHighMaintenanceAssets,
-    getDashboardRecentActivities,
-    getDashboardInventoryStatus,
-    getDashboardDepartmentAllocation,
-    getDashboardKpiMetrics,
-    getDashboardRecentWriteOffs
-} from "@/actions/dashboard"
-import { canAccessOperations, canAccessFinancials, isEmployee } from "@/lib/auth/roles"
+import { HardDrive, Laptop, Monitor, Smartphone, Code, Armchair, Speaker } from "lucide-react"
+import { getDashboardBatchData, getDashboardRecentWriteOffs } from "@/actions/dashboard"
+import { canAccessFinancials, isEmployee } from "@/lib/auth/roles"
+import type { UserRole } from "@/types/auth"
 
-function getAssetPresentation(modelName: string) {
+// ── Asset icon resolver using category pillar ────────────────────────────────
+
+const PILLAR_ICON_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
+    "IT & Digital": { label: "Device", icon: <Laptop className="h-8 w-8" /> },
+    "Software": { label: "Software", icon: <Code className="h-8 w-8" /> },
+    "Office Furniture": { label: "Furniture", icon: <Armchair className="h-8 w-8" /> },
+    "Office Electronics": { label: "Electronics", icon: <Speaker className="h-8 w-8" /> },
+}
+
+function getAssetPresentation(pillar: string | undefined, modelName: string) {
+    if (pillar && PILLAR_ICON_MAP[pillar]) {
+        return PILLAR_ICON_MAP[pillar]
+    }
+
+    // Fallback: model name heuristic for legacy data
     const normalized = modelName.trim().toLowerCase()
-
-    if (normalized.includes("macbook") || normalized.includes("laptop") || normalized.includes("thinkpad") || normalized.includes("desktop")) {
-        return {
-            label: "Laptop",
-            icon: <Laptop className="h-8 w-8" />,
-        }
+    if (normalized.includes("macbook") || normalized.includes("laptop") || normalized.includes("thinkpad")) {
+        return { label: "Laptop", icon: <Laptop className="h-8 w-8" /> }
     }
-
     if (normalized.includes("iphone") || normalized.includes("phone") || normalized.includes("mobile")) {
-        return {
-            label: "Phone",
-            icon: <Smartphone className="h-8 w-8" />,
-        }
+        return { label: "Phone", icon: <Smartphone className="h-8 w-8" /> }
     }
-
     if (normalized.includes("monitor") || normalized.includes("display")) {
-        return {
-            label: "Monitor",
-            icon: <Monitor className="h-8 w-8" />,
-        }
+        return { label: "Monitor", icon: <Monitor className="h-8 w-8" /> }
     }
-
-    return {
-        label: "Asset",
-        icon: <HardDrive className="h-8 w-8" />,
-    }
+    return { label: "Asset", icon: <HardDrive className="h-8 w-8" /> }
 }
 
 export default async function DashboardPage() {
@@ -68,7 +59,7 @@ export default async function DashboardPage() {
                 <div className="mt-6 grid gap-4 xl:grid-cols-3">
                     {employeeAssets.length > 0 ? (
                         employeeAssets.map((asset) => {
-                            const presentation = getAssetPresentation(asset.modelName)
+                            const presentation = getAssetPresentation(undefined, asset.modelName)
 
                             return (
                                 <AssetCard
@@ -105,62 +96,47 @@ export default async function DashboardPage() {
         )
     }
 
-    // Admin/Auditor logic
-    const canSeeOverdue = user ? canAccessOperations(user.role) : false;
-    const canSeePending = user ? canAccessFinancials(user.role) : false;
-    const canSeeHighMaintenance = user ? canAccessOperations(user.role) : false;
-    const canSeeRecentActivities = user ? canAccessFinancials(user.role) : false;
-    const canSeeWriteOffs = user ? canAccessFinancials(user.role) : false;
+    // ── Admin / Operator / Auditor dashboard ─────────────────────────────────
+    const userRole: UserRole = user?.role || 'Employee'
+    const userName = user?.name || 'Admin'
 
-    const [
-        overdueReturns, 
-        pendingDisposals, 
-        highMaintenanceAssets,
-        recentActivities,
-        inventoryStatus,
-        departmentAllocation,
-        kpiMetrics,
-        recentWriteOffs
-    ] = await Promise.all([
-        canSeeOverdue ? getDashboardOverdueReturns() : Promise.resolve([]),
-        canSeePending ? getDashboardPendingDisposals() : Promise.resolve([]),
-        canSeeHighMaintenance ? getDashboardHighMaintenanceAssets() : Promise.resolve([]),
-        canSeeRecentActivities ? getDashboardRecentActivities() : Promise.resolve([]),
-        getDashboardInventoryStatus(),
-        getDashboardDepartmentAllocation(),
-        getDashboardKpiMetrics(),
-        canSeeWriteOffs ? getDashboardRecentWriteOffs() : Promise.resolve([]),
-    ])
+    const data = await getDashboardBatchData()
+    const canSeeWriteOffs = user ? canAccessFinancials(user.role) : false;
+    const recentWriteOffs = canSeeWriteOffs ? await getDashboardRecentWriteOffs() : [];
 
     return (
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white overflow-hidden">
-            {/* Pinned header */}
-            <div className="shrink-0 px-6 pt-5 pb-3">
-                <DashboardHeader />
-            </div>
-
-            {/* Scrollable content */}
-            <ScrollArea className="flex-1 min-h-0">
-                <div className="px-6 py-5 flex flex-col gap-6">
-                    <KpiMetricsRow metrics={kpiMetrics} />
-
-                    <div className="flex flex-col gap-4">
-                        <DashboardChartsRow 
-                            activities={recentActivities} 
-                            inventoryStatus={inventoryStatus}
-                            departmentAllocation={departmentAllocation}
-                            userRole={user?.role || 'Employee'}
-                        />
-                        <DashboardTablesRow 
-                            overdueReturns={overdueReturns}
-                            pendingDisposals={pendingDisposals}
-                            highMaintenanceAssets={highMaintenanceAssets}
-                            recentWriteOffs={recentWriteOffs}
-                            userRole={user?.role || 'Employee'}
-                        />
-                    </div>
+        <DashboardRefreshProvider>
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl overflow-hidden">
+                {/* Pinned header */}
+                <div className="shrink-0 px-6 pt-5 pb-3 bg-background">
+                    <DashboardHeader userName={userName} userRole={userRole} />
                 </div>
-            </ScrollArea>
-        </main>
+
+                {/* Scrollable content */}
+                <ScrollArea className="flex-1 min-h-0">
+                    <div className="px-6 py-1 pb-5 flex flex-col gap-6">
+                        <KpiMetricsRow metrics={data.kpiMetrics} />
+
+                        <div className="flex flex-col gap-4">
+                            <DashboardChartsRow
+                                activities={data.recentActivities}
+                                inventoryStatus={data.inventoryStatus}
+                                departmentAllocation={data.departmentAllocation}
+                                userRole={userRole}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-4">
+                            <DashboardTablesRowClient
+                                overdueReturns={data.overdueReturns}
+                                pendingDisposals={data.pendingDisposals}
+                                highMaintenanceAssets={data.highMaintenanceAssets}
+                                recentWriteOffs={recentWriteOffs}
+                                userRole={userRole}
+                            />
+                        </div>
+                    </div>
+                </ScrollArea>
+            </main>
+        </DashboardRefreshProvider>
     )
 }

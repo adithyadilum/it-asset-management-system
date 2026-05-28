@@ -4,9 +4,13 @@ import {
     Ban,
     PanelLeftClose,
     PanelLeftOpen,
+    Sun,
+    Moon,
+    Monitor,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
 
 import { logout } from '@/actions/auth';
 import { BrandHeader } from '@/components/shared/brand-header';
@@ -25,7 +29,12 @@ import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
+    DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -87,6 +96,7 @@ function buildBreadcrumbs(pathname: string): HeaderBreadcrumb[] {
 export function TopHeader({ user }: TopHeaderProps) {
     const { state, toggleSidebar } = useSidebar();
     const pathname = usePathname();
+    const { setTheme } = useTheme();
     const breadcrumbs = buildBreadcrumbs(pathname);
 
     const initials = user.name
@@ -196,18 +206,18 @@ export function TopHeader({ user }: TopHeaderProps) {
                             className="md:flex md:items-center md:gap-4 md:rounded-lg md:p-2"
                             aria-label="Open user menu"
                         >
-                            <Avatar className="h-8 w-8 rounded-full md:rounded-lg">
+                            <Avatar className="h-8 w-8 rounded-lg">
                                 <AvatarImage alt={user.name} className="object-cover" />
-                                <AvatarFallback className="rounded-full bg-slate-300 text-xs font-semibold text-slate-700 md:rounded-lg md:bg-slate-300">
+                                <AvatarFallback className="rounded-lg bg-muted text-xs font-semibold text-muted-foreground">
                                     {initials}
                                 </AvatarFallback>
                             </Avatar>
 
                             <div className="hidden flex-col items-start md:flex">
-                                <span className="whitespace-nowrap font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
+                                <span className="whitespace-nowrap font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-foreground [font-style:var(--text-sm-semi-bold-font-style)]">
                                     {user.name}
                                 </span>
-                                <span className="overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
+                                <span className="overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
                                     {user.email}
                                 </span>
                             </div>
@@ -217,12 +227,12 @@ export function TopHeader({ user }: TopHeaderProps) {
                     <DropdownMenuContent
                         align="end"
                         sideOffset={8}
-                        className="w-72 overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-box-shadow-shadow-xl"
+                        className="w-72 overflow-hidden rounded-xl border border-border bg-popover p-0 shadow-xl"
                     >
                         <div className="flex flex-col">
                             {/* User Profile Header */}
-                            <div className="flex items-center gap-4 border-b border-slate-100 bg-slate-50/50 p-4">
-                                <Avatar className="h-12 w-12 shrink-0 rounded-lg border border-white shadow-sm">
+                            <div className="flex items-center gap-4 border-b border-border bg-muted/50 p-4">
+                                <Avatar className="h-12 w-12 shrink-0 rounded-lg border border-background shadow-sm">
                                     <AvatarImage
                                         alt={user.name}
                                         className="rounded-lg object-cover"
@@ -233,10 +243,10 @@ export function TopHeader({ user }: TopHeaderProps) {
                                 </Avatar>
 
                                 <div className="flex min-w-0 flex-1 flex-col items-start">
-                                    <span className="truncate self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
+                                    <span className="truncate self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-foreground [font-style:var(--text-sm-semi-bold-font-style)]">
                                         {user.name}
                                     </span>
-                                    <span className="truncate self-stretch font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-500 [font-style:var(--text-xs-regular-font-style)]">
+                                    <span className="truncate self-stretch font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [font-style:var(--text-xs-regular-font-style)]">
                                         {user.email}
                                     </span>
                                     <Badge
@@ -246,6 +256,33 @@ export function TopHeader({ user }: TopHeaderProps) {
                                         {roleLabel}
                                     </Badge>
                                 </div>
+                            </div>
+
+                            {/* Theme Selector */}
+                            <div className="p-2 border-b border-border">
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="h-9 rounded-lg text-xs">
+                                        <Sun className="mr-2 h-4 w-4 text-muted-foreground dark:hidden" />
+                                        <Moon className="mr-2 h-4 w-4 text-muted-foreground hidden dark:block" />
+                                        Theme
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuPortal>
+                                        <DropdownMenuSubContent>
+                                            <DropdownMenuItem onClick={() => setTheme("light")} className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted">
+                                                <Sun className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                Light
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setTheme("dark")} className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted">
+                                                <Moon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                Dark
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setTheme("system")} className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted">
+                                                <Monitor className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                System
+                                            </DropdownMenuItem>
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuPortal>
+                                </DropdownMenuSub>
                             </div>
 
                             {/* Actions Area */}

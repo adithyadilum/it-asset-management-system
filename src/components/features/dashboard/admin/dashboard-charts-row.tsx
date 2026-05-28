@@ -24,7 +24,7 @@ interface AssetAllocationChartProps {
 function AssetAllocationChart({ allocationData }: AssetAllocationChartProps) {
   return (
     <Card className="flex flex-col h-full shadow-sm border-border">
-      <CardHeader className="p-3 pb-1 shrink-0">
+      <CardHeader className="p-4 pb-2 shrink-0">
         <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
           Asset Allocation by Department
         </CardTitle>
@@ -33,15 +33,15 @@ function AssetAllocationChart({ allocationData }: AssetAllocationChartProps) {
         </p>
       </CardHeader>
 
-      <CardContent className="p-3 pt-1 flex-1 min-h-0 flex items-center justify-center">
+      <CardContent className="p-4 pt-1 flex-1 min-h-0 flex items-center justify-center">
         {allocationData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={allocationData} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} barSize={40}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+            <BarChart data={allocationData} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} barSize={40} aria-label="Asset allocation by department bar chart">
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fill: "#64748b" }}
+                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                 dy={4}
               />
               <YAxis hide />
@@ -50,15 +50,17 @@ function AssetAllocationChart({ allocationData }: AssetAllocationChartProps) {
                 contentStyle={{
                   borderRadius: "6px",
                   fontSize: "11px",
-                  border: "1px solid hsl(var(--border))",
+                  border: "1px solid var(--color-border)",
                   padding: "4px 8px",
+                  backgroundColor: "var(--color-popover)",
+                  color: "var(--color-popover-foreground)",
                 }}
               />
-              <Bar name="Assets" dataKey="value" radius={[4, 4, 0, 0]} fill="#040d5a">
+              <Bar name="Assets" dataKey="value" radius={[4, 4, 0, 0]} fill="var(--color-primary)">
                 <LabelList
                   dataKey="value"
                   position="top"
-                  style={{ fontSize: "10px", fill: "#64748b", fontWeight: 500 }}
+                  style={{ fontSize: "10px", fill: "var(--color-muted-foreground)", fontWeight: 500 }}
                 />
               </Bar>
             </BarChart>
@@ -70,9 +72,9 @@ function AssetAllocationChart({ allocationData }: AssetAllocationChartProps) {
         )}
       </CardContent>
 
-      <div className="px-3 pb-2 shrink-0">
+      <div className="px-4 pb-4 shrink-0">
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsMedium, "text-foreground flex items-center gap-1")}>
-          <TrendingUp className="w-3 h-3 text-[#7cc000]" />
+          <TrendingUp className="w-3 h-3 text-emerald-500" />
           Dynamic allocation details by custodian
         </p>
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground")}>
@@ -163,7 +165,7 @@ function InventoryStatusChart({
 
   return (
     <Card className="flex flex-col h-full shadow-sm border-border">
-      <CardHeader className="p-3 pb-1 shrink-0">
+      <CardHeader className="p-4 pb-2 shrink-0">
         <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
           <Link
             href="/assets?sort=status"
@@ -178,13 +180,13 @@ function InventoryStatusChart({
         </p>
       </CardHeader>
 
-      <CardContent className="p-3 pt-1 flex-1 min-h-0 flex items-center justify-between">
+      <CardContent className="p-4 pt-1 flex-1 min-h-0 flex items-center justify-between">
         {inventoryData.length > 0 ? (
           <>
             {/* Donut Column (Left) */}
             <div className="h-full w-[55%] min-h-[210px] relative flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }} aria-label="Current inventory status donut chart">
                   <Pie
                     data={inventoryData}
                     dataKey="value"
@@ -253,6 +255,11 @@ function InventoryStatusChart({
                   )}
                   onMouseEnter={() => setHoveredIndex(i)}
                   onMouseLeave={() => setHoveredIndex(null)}
+                  onFocus={() => setHoveredIndex(i)}
+                  onBlur={() => setHoveredIndex(null)}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${entry.name}: ${entry.value} assets`}
                 >
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
                   <span className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground leading-none truncate")}>
@@ -269,9 +276,9 @@ function InventoryStatusChart({
         )}
       </CardContent>
 
-      <div className="px-3 pb-2 shrink-0">
+      <div className="px-4 pb-4 shrink-0">
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsMedium, "text-foreground flex items-center gap-1")}>
-          <TrendingUp className={cn("w-3 h-3", isHealthy ? "text-[#7cc000]" : "text-orange-500")} />
+          <TrendingUp className={cn("w-3 h-3", isHealthy ? "text-emerald-500" : "text-orange-500")} />
           {utilizationTitle}
         </p>
         <p className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, "text-muted-foreground")}>
@@ -285,6 +292,7 @@ function InventoryStatusChart({
 // ─── Widget 3: Recent Activities ─────────────────────────────────────────────
 
 import type { RecentActivity, InventoryStatusItem, InventoryStatusResponse, DepartmentAllocationItem } from "@/actions/dashboard"
+import type { UserRole } from "@/types/auth"
 
 function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) {
   const getActionStyles = (actionType: string) => {
@@ -335,7 +343,7 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
 
   return (
     <Card className="flex flex-col h-full shadow-sm border-border">
-      <CardHeader className="p-3 pb-1 shrink-0">
+      <CardHeader className="p-4 pb-2 shrink-0">
         <CardTitle className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
           <Link
             href="/reports/audit-log"
@@ -350,7 +358,7 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
         </p>
       </CardHeader>
 
-      <CardContent className="p-3 pt-1 flex-1 min-h-0">
+      <CardContent className="p-4 pt-1 flex-1 min-h-0">
         <ScrollArea className="h-full">
           <div className="flex flex-col gap-2 pr-1">
             {activities.length > 0 ? (
@@ -397,12 +405,12 @@ export function DashboardChartsRow({
   activities: RecentActivity[]
   inventoryStatus: InventoryStatusResponse
   departmentAllocation: DepartmentAllocationItem[]
-  userRole: string
+  userRole: UserRole
 }) {
   const showRecentActivities = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
 
   return (
-    <div className={cn("grid gap-4 shrink-0 h-[340px]", showRecentActivities ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2")}>
+    <div className={cn("grid gap-4 min-h-[280px]", showRecentActivities ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2")}>
       <AssetAllocationChart allocationData={departmentAllocation} />
       <InventoryStatusChart
         inventoryData={inventoryStatus.inventoryData}

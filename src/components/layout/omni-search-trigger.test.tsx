@@ -49,7 +49,7 @@ describe('OmniSearchTrigger', () => {
     const popoverContent = screen
       .getByText('Start typing to search pages, assets, reports, and users.')
       .closest('[data-slot="popover-content"]');
-    expect(popoverContent).toHaveClass('w-[720px]');
+    expect(popoverContent).toHaveClass('w-180');
   });
 
   it('shows section-level empty states with entity-specific messages', async () => {

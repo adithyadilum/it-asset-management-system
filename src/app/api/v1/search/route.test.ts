@@ -19,11 +19,11 @@ vi.mock('jose', () => ({
   jwtVerify: vi.fn(),
 }));
 
-vi.mock('@/lib/jwt', () => ({
+vi.mock('@/lib/auth/jwt', () => ({
   getJwtSecretKey: vi.fn(() => new TextEncoder().encode('test-secret-key')),
 }));
 
-vi.mock('@/lib/uuid', () => ({
+vi.mock('@/lib/auth/uuid', () => ({
   isValidUuid: vi.fn(() => true),
 }));
 

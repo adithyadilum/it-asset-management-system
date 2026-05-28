@@ -53,11 +53,11 @@ describe('validateRows', () => {
 
   describe('Stage 1: Structural Validation', () => {
     it('fails when a required field is missing', () => {
-      const row = { ...validRow, 'Asset Name': '' };
+      const row = { ...validRow, 'Brand Name': '' };
       const result = validateRows([row], mockCache, defaultCategory);
       expect(result.success).toBe(false);
       expect(result.errorRows?.[0].errorStage).toBe('STRUCTURAL');
-      expect(result.errorRows?.[0].errorField).toBe('Asset Name');
+      expect(result.errorRows?.[0].errorField).toBe('Brand Name');
     });
 
     it('fails when Serial Number is blank but category requires it', () => {
