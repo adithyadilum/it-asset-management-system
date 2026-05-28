@@ -257,7 +257,7 @@ export async function getRepairHistory(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
     throw new Error('Forbidden');
 
   const offset = (page - 1) * pageSize;

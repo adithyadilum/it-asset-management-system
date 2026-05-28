@@ -89,8 +89,19 @@ function canAccessRoute(role: TokenRole, pathname: string) {
     return !isSettingsRoute && !isFinancialsRoute;
   }
 
-  // FinanceAuditor
-  return !isSettingsRoute && !isOperationsRoute;
+  if (role === 'FinanceAuditor') {
+    if (isSettingsRoute) return false;
+    if (isOperationsRoute) {
+      return (
+        pathname.startsWith('/operations/maintenance') ||
+        pathname.startsWith('/operations/disposals') ||
+        pathname === '/operations'
+      );
+    }
+    return true;
+  }
+
+  return true;
 }
 
 function getLoginRedirectResponse(request: NextRequest) {

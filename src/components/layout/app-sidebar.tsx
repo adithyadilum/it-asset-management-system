@@ -70,11 +70,11 @@ const managementItems: NavItem[] = [
         label: "Operations",
         icon: Activity,
         href: "/operations",
-        allowedRoles: ["GlobalAdmin", "ITOperator"],
+        allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"],
         children: [
-            { label: "Assignments & Returns", href: "/operations/assignments" },
-            { label: "Maintenance & Repairs", href: "/operations/maintenance" },
-            { label: "Disposals", href: "/operations/disposals", allowedRoles: ["GlobalAdmin"] },
+            { label: "Assignments & Returns", href: "/operations/assignments", allowedRoles: ["GlobalAdmin", "ITOperator"] },
+            { label: "Maintenance & Repairs", href: "/operations/maintenance", allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"] },
+            { label: "Disposals", href: "/operations/disposals", allowedRoles: ["GlobalAdmin", "FinanceAuditor"] },
         ],
     },
     {
