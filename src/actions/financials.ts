@@ -149,7 +149,7 @@ export async function getDepreciationLedger(
         category: row.categoryName,
         purchaseDate: row.purchaseDate,
         originalPrice: price,
-        currencyCode: row.currencyCode || 'USD',
+        currencyCode: row.currencyCode || 'LKR',
         expectedLifespan: `${(row.usefulLifeMonths || 60) / 12} years`,
         currentBookValue: Math.round(bookValue * 100) / 100,
       };
@@ -275,7 +275,7 @@ export async function getTCOLedger(
         category: row.categoryName,
         purchaseDate: row.purchaseDate,
         originalPrice: price,
-        currencyCode: row.currencyCode || 'USD',
+        currencyCode: row.currencyCode || 'LKR',
         totalRepairCosts: repairs,
         totalTCO: price + repairs,
       };
@@ -391,7 +391,7 @@ export async function getWriteOffsLedger(
       category: row.categoryName,
       disposalDate: row.disposalDate,
       originalPrice: parseFloat(row.originalPrice?.toString() || '0'),
-      currencyCode: row.currencyCode || 'USD',
+      currencyCode: row.currencyCode || 'LKR',
       bookValue: parseFloat(row.bookValueAtDisposal?.toString() || '0'),
       salvageValue: parseFloat(row.salvageValue?.toString() || '0'),
     }));

@@ -5,7 +5,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-import { assetAssignments, assetPurchases, assets, models } from '@/db/schema';
+import { assetAssignments, assetPurchases, assets, models, softwareLicenses } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { canManageAssets } from '@/lib/auth/roles';
@@ -262,6 +262,18 @@ export async function registerAsset(
         warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
         invoiceUrl: uploadedInvoiceUrl,
       });
+
+      if (input.pillar === 'Software') {
+        await tx.insert(softwareLicenses).values({
+          modelId: input.modelId,
+          assetId: insertedAsset.id,
+          licenseKey: input.serialNumber || null,
+          licenseType: input.licenseType || 'Subscription',
+          totalSeats: input.totalSeats ?? 1,
+          startDate: input.licenseStartDate ? toDateString(input.licenseStartDate) : null,
+          expiryDate: input.licenseExpiryDate ? toDateString(input.licenseExpiryDate) : null,
+        });
+      }
 
       return insertedAsset;
     });

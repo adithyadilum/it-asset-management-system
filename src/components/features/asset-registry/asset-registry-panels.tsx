@@ -62,6 +62,7 @@ export function AssetRegistryPanels({
                     recordId={cachedRecordId}
                     manualStatuses={manualStatuses}
                     onStatusUpdateRef={onStatusUpdateRef}
+                    onRefreshRef={onRefreshRef}
                 />
             ) : null}
         </>

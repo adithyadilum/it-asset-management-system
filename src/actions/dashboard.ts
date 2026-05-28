@@ -635,7 +635,12 @@ const getCachedDashboardKpiMetrics = unstable_cache(
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
-        .where(eq(assets.isArchived, false)),
+        .where(
+          and(
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed')
+          )
+        ),
 
       // 2b. Total asset value 30 days ago (assets that existed then)
       db
@@ -647,6 +652,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
         .where(
           and(
             eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed'),
             sql`${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp`
           )
         ),
@@ -683,7 +689,14 @@ const getCachedDashboardKpiMetrics = unstable_cache(
           assetId: softwareLicenses.assetId,
         })
         .from(softwareLicenses)
-        .where(eq(softwareLicenses.isActive, true)),
+        .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
+        .where(
+          and(
+            eq(softwareLicenses.isActive, true),
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed')
+          )
+        ),
 
       // 4b. Allocation counts per license
       db
@@ -740,9 +753,12 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       db
         .select({ id: softwareLicenses.id })
         .from(softwareLicenses)
+        .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
         .where(
           and(
             eq(softwareLicenses.isActive, true),
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed'),
             sql`${softwareLicenses.expiryDate}::date >= CURRENT_DATE`,
             sql`${softwareLicenses.expiryDate}::date <= CURRENT_DATE + INTERVAL '30 days'`
           )
@@ -801,13 +817,29 @@ const getCachedDashboardKpiMetrics = unstable_cache(
           sum: sql<string | null>`SUM(${softwareLicenses.totalSeats})`,
         })
         .from(softwareLicenses)
-        .where(eq(softwareLicenses.isActive, true)),
+        .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
+        .where(
+          and(
+            eq(softwareLicenses.isActive, true),
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed')
+          )
+        ),
 
-      // 8f. Allocated software seats
+      // 8f. Allocated software seats (only for active assets)
       db
         .select({ count: count() })
         .from(softwareAllocations)
-        .where(isNull(softwareAllocations.revokedAt)),
+        .innerJoin(softwareLicenses, eq(softwareAllocations.licenseId, softwareLicenses.id))
+        .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
+        .where(
+          and(
+            isNull(softwareAllocations.revokedAt),
+            eq(softwareLicenses.isActive, true),
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed')
+          )
+        ),
     ]);
 
     // ── Compute derived values ────────────────────────────────────────
@@ -831,7 +863,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
 
     const licenses = licensesRes;
     const allocMap = new Map(
-      allocationsCountRes.map((a) => [a.licenseId, a.count])
+      allocationsCountRes.map((a) => [a.licenseId, Number(a.count)])
     );
 
     // Fetch software purchase costs for per-seat pricing
