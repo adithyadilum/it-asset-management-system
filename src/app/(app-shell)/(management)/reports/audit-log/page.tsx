@@ -13,7 +13,7 @@ export default async function AuditLogPage() {
   const initialResult = await getAuditLogs({ page: 1, pageSize: 16 });
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-slate-50">
+    <div className="flex h-full w-full overflow-hidden bg-muted">
       <AuditLogClient initialResult={initialResult} />
     </div>
   );

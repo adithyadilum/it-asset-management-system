@@ -124,13 +124,13 @@ export function PurchaseDetailsTab({
         isLong && 'col-span-full'
       )}
     >
-      <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+      <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
         {label}
       </div>
       <div
         className={cn(
           TYPOGRAPHY_CLASSNAMES.textSmMedium,
-          'text-right text-slate-900',
+          'text-right text-foreground',
           isMono && 'font-mono tabular-nums tracking-wide'
         )}
       >
@@ -173,7 +173,7 @@ export function PurchaseDetailsTab({
           renderField('Total Cost of Ownership (TCO)', formattedTCO, true)}
 
         <div className="flex items-center justify-between border-b border-border/40 py-2.5">
-          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>
+          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
             Invoice PDF
           </div>
           <div>
@@ -189,7 +189,7 @@ export function PurchaseDetailsTab({
                 <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>{getInvoiceFilename(invoicePdf)}</span>
               </a>
             ) : (
-              <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-400')}>-</span>
+              <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>-</span>
             )}
           </div>
         </div>
@@ -197,7 +197,7 @@ export function PurchaseDetailsTab({
 
       {/* Vendor Details */}
       <div className="flex w-full flex-col gap-6 rounded-lg border border-border bg-muted/30 p-6 shadow-sm">
-        <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-slate-900')}>Vendor Details</h3>
+        <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-foreground')}>Vendor Details</h3>
         <div className="grid grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
           {renderField('Vendor ID', vendor.vendorCode ?? vendor.vendorId, true)}
           {renderField('Vendor Name', vendor.vendorName)}

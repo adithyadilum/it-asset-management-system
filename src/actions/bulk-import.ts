@@ -17,6 +17,7 @@ import { validateRows } from '@/lib/bulk-import/validate-rows';
 import { eq, like, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import Papa from 'papaparse';
+import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
 
 function addMonths(value: Date, months: number) {
   const nextDate = new Date(value);
@@ -227,6 +228,8 @@ export async function executeBulkImport(
     const importedAssetTags: string[] = [];
     const failedRows: Record<string, string | number>[] = [];
 
+    const apiRates = await fetchLiveExchangeRates() ?? undefined;
+
     for (const row of resolvedRows) {
       let assetTag = '';
 
@@ -264,6 +267,8 @@ export async function executeBulkImport(
               )
             : null;
 
+          const conversionRate = convertCurrencyAmount(1, row.currencyCode || 'LKR', 'LKR', apiRates).toFixed(6);
+
           await tx.insert(assetPurchases).values({
             assetId: newAsset.id,
             vendorId: row.vendorId,
@@ -273,6 +278,7 @@ export async function executeBulkImport(
             shippingCost: row.shippingCost.toFixed(2),
             totalCost: totalCost.toFixed(2),
             currencyCode: row.currencyCode,
+            exchangeRate: conversionRate,
             warrantyExpiry,
           });
 

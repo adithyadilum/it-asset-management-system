@@ -301,8 +301,8 @@ export function UserRoleAssignmentModal({
           <div className="p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-slate-500" />
-                <h2 className="text-lg font-bold text-slate-900">
+                <Info className="h-5 w-5 text-muted-foreground" />
+                <h2 className="text-lg font-bold text-foreground">
                   Assign Users to {roleLabelForAddMode}
                 </h2>
               </div>
@@ -311,7 +311,7 @@ export function UserRoleAssignmentModal({
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                className="-mr-1 -mt-1 text-slate-500 hover:bg-slate-100"
+                className="-mr-1 -mt-1 text-muted-foreground hover:bg-muted"
                 onClick={() => onOpenChange(false)}
               >
                 <X className="h-3.5 w-3.5" />
@@ -324,29 +324,29 @@ export function UserRoleAssignmentModal({
                 checked={hideUsersAlreadyInRole}
                 onCheckedChange={(checked) => setHideUsersAlreadyInRole(checked === true)}
                 disabled={isSubmitting}
-                className="border-slate-300"
+                className="border-border"
               />
-              <label htmlFor="hide-already-mapped" className="text-sm font-medium text-slate-700">
+              <label htmlFor="hide-already-mapped" className="text-sm font-medium text-foreground">
                 Hide users already in this role
               </label>
             </div>
 
             <div className="mt-2 relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search company directory by name or email..."
-                className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal"
+                className="h-9 rounded-lg border-border bg-background pl-9 text-sm font-normal"
                 disabled={isSubmitting}
               />
             </div>
 
             {normalizedQuery ? (
-              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="mt-3 rounded-lg border border-border bg-background p-3 shadow-sm">
                 {isSearching ? (
                   <div className="py-3 text-center">
-                    <p className="text-sm font-normal text-slate-500">Searching users...</p>
+                    <p className="text-sm font-normal text-muted-foreground">Searching users...</p>
                   </div>
                 ) : searchError ? (
                   <div className="py-3 text-center">
@@ -358,16 +358,16 @@ export function UserRoleAssignmentModal({
                       <div key={directoryUser.id} className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <Avatar className="size-7 rounded-md">
-                            <AvatarFallback className="rounded-md bg-slate-300 text-xs font-semibold text-slate-700">
+                            <AvatarFallback className="rounded-md bg-muted text-xs font-semibold text-foreground">
                               {getInitials(directoryUser.name)}
                             </AvatarFallback>
                           </Avatar>
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">
+                            <p className="truncate text-sm font-semibold text-foreground">
                               {directoryUser.name}
                             </p>
-                            <p className="truncate text-xs font-normal text-slate-500">{directoryUser.email}</p>
+                            <p className="truncate text-xs font-normal text-muted-foreground">{directoryUser.email}</p>
                           </div>
                         </div>
 
@@ -375,7 +375,7 @@ export function UserRoleAssignmentModal({
                           type="button"
                           variant="ghost"
                           size="icon-xs"
-                          className="text-slate-700 hover:bg-slate-100"
+                          className="text-foreground hover:bg-muted"
                           onClick={() => addUserToSelection(directoryUser)}
                           disabled={isSubmitting}
                         >
@@ -386,8 +386,8 @@ export function UserRoleAssignmentModal({
                   </div>
                 ) : (
                   <div className="py-3 text-center">
-                    <p className="text-base font-semibold text-slate-900">No user found</p>
-                    <p className="mt-1 text-xs font-normal text-slate-500">
+                    <p className="text-base font-semibold text-foreground">No user found</p>
+                    <p className="mt-1 text-xs font-normal text-muted-foreground">
                       Your search &quot;{searchQuery.trim()}&quot; did not match any users.
                     </p>
                   </div>
@@ -395,21 +395,21 @@ export function UserRoleAssignmentModal({
               </div>
             ) : null}
 
-            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-100/80 p-3">
+            <div className="mt-3 rounded-lg border border-border bg-muted/80 p-3">
               {mappedSelection.length > 0 ? (
-                <div className="max-h-25 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-500">
+                <div className="max-h-25 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted0">
                   {mappedSelection.map((selection) => (
                     <div key={selection.id} className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar className="size-7 rounded-md">
-                          <AvatarFallback className="rounded-md bg-slate-300 text-xs font-semibold text-slate-700">
+                          <AvatarFallback className="rounded-md bg-muted text-xs font-semibold text-foreground">
                             {getInitials(selection.name)}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{selection.name}</p>
-                          <p className="truncate text-xs font-normal text-slate-500">{selection.email}</p>
+                          <p className="truncate text-sm font-semibold text-foreground">{selection.name}</p>
+                          <p className="truncate text-xs font-normal text-muted-foreground">{selection.email}</p>
                         </div>
                       </div>
 
@@ -427,7 +427,7 @@ export function UserRoleAssignmentModal({
                   ))}
                 </div>
               ) : (
-                <div className="py-2 text-center text-xs font-normal text-slate-500">
+                <div className="py-2 text-center text-xs font-normal text-muted-foreground">
                   No users selected for this role.
                 </div>
               )}
@@ -458,12 +458,12 @@ export function UserRoleAssignmentModal({
         ) : user ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Change User Role</h3>
+              <h3 className="text-lg font-semibold text-foreground">Change User Role</h3>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                className="text-slate-500 hover:bg-slate-100"
+                className="text-muted-foreground hover:bg-muted"
                 onClick={() => onOpenChange(false)}
               >
                 <X className="h-3.5 w-3.5" />
@@ -471,7 +471,7 @@ export function UserRoleAssignmentModal({
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="user-role" className="text-sm font-medium text-slate-700">
+              <label htmlFor="user-role" className="text-sm font-medium text-foreground">
                 Role
               </label>
               <select
@@ -479,7 +479,7 @@ export function UserRoleAssignmentModal({
                 value={selectedRole}
                 onChange={(event) => setSelectedRole(event.target.value as UserRole)}
                 disabled={isSubmitting || activeUser?.id === currentUserId}
-                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-slate-300"
+                className="flex h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-border"
               >
                 {ROLE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -513,7 +513,7 @@ export function UserRoleAssignmentModal({
               </div>
               
               {activeUser?.id === currentUserId && (
-                <p className="text-right text-xs font-normal text-slate-500">
+                <p className="text-right text-xs font-normal text-muted-foreground">
                   You cannot modify your own role.
                 </p>
               )}

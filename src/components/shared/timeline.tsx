@@ -37,63 +37,63 @@ const ACTION_ICON_MAP: Record<
 > = {
     CREATE: {
         Icon: CheckCircle2,
-        color: 'text-emerald-600',
-        ringClass: 'ring-emerald-200',
-        badgeClass: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+        color: 'text-emerald-600 dark:text-emerald-400',
+        ringClass: 'ring-emerald-200 dark:ring-emerald-900/50',
+        badgeClass: 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400',
     },
     UPDATE: {
         Icon: PenTool,
-        color: 'text-sky-600',
-        ringClass: 'ring-sky-200',
-        badgeClass: 'border-sky-300 bg-sky-50 text-sky-700',
+        color: 'text-sky-600 dark:text-sky-400',
+        ringClass: 'ring-sky-200 dark:ring-sky-900/50',
+        badgeClass: 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400',
     },
     DELETE: {
         Icon: Trash2,
-        color: 'text-rose-600',
-        ringClass: 'ring-rose-200',
-        badgeClass: 'border-rose-300 bg-rose-50 text-rose-700',
+        color: 'text-rose-600 dark:text-rose-400',
+        ringClass: 'ring-rose-200 dark:ring-rose-900/50',
+        badgeClass: 'border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400',
     },
     DISPOSE: {
         Icon: Trash2,
-        color: 'text-orange-600',
-        ringClass: 'ring-orange-200',
-        badgeClass: 'border-orange-300 bg-orange-50 text-orange-700',
+        color: 'text-orange-600 dark:text-orange-400',
+        ringClass: 'ring-orange-200 dark:ring-orange-900/50',
+        badgeClass: 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400',
     },
     DISPOSED: {
         Icon: Trash2,
-        color: 'text-orange-600',
-        ringClass: 'ring-orange-200',
-        badgeClass: 'border-orange-300 bg-orange-50 text-orange-700',
+        color: 'text-orange-600 dark:text-orange-400',
+        ringClass: 'ring-orange-200 dark:ring-orange-900/50',
+        badgeClass: 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400',
     },
     EXPORTED: {
         Icon: Download,
-        color: 'text-amber-600',
-        ringClass: 'ring-amber-200',
-        badgeClass: 'border-amber-300 bg-amber-50 text-amber-700',
+        color: 'text-amber-600 dark:text-amber-400',
+        ringClass: 'ring-amber-200 dark:ring-amber-900/50',
+        badgeClass: 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400',
     },
     LOGIN: {
         Icon: LogIn,
-        color: 'text-violet-600',
-        ringClass: 'ring-violet-200',
-        badgeClass: 'border-violet-300 bg-violet-50 text-violet-700',
+        color: 'text-violet-600 dark:text-violet-400',
+        ringClass: 'ring-violet-200 dark:ring-violet-900/50',
+        badgeClass: 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-400',
     },
     LOGOUT: {
         Icon: LogOut,
-        color: 'text-slate-600',
-        ringClass: 'ring-slate-200',
-        badgeClass: 'border-slate-300 bg-slate-50 text-slate-700',
+        color: 'text-muted-foreground dark:text-zinc-400',
+        ringClass: 'ring-border dark:ring-zinc-800',
+        badgeClass: 'border-border bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400',
     },
     ACCESS_DENIED: {
         Icon: AlertCircle,
-        color: 'text-red-600',
-        ringClass: 'ring-red-200',
-        badgeClass: 'border-red-300 bg-red-50 text-red-700',
+        color: 'text-red-600 dark:text-red-400',
+        ringClass: 'ring-red-200 dark:ring-red-900/50',
+        badgeClass: 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400',
     },
     STATUS_CHANGE: {
         Icon: AlertCircle,
-        color: 'text-amber-600',
-        ringClass: 'ring-amber-200',
-        badgeClass: 'border-amber-300 bg-amber-50 text-amber-700',
+        color: 'text-amber-600 dark:text-amber-400',
+        ringClass: 'ring-amber-200 dark:ring-amber-900/50',
+        badgeClass: 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400',
     },
 };
 
@@ -278,7 +278,7 @@ export function AssetHistoryTimeline({
 }: AssetHistoryTimelineProps) {
     if (!historyLogs || historyLogs.length === 0) {
         return (
-            <div className="py-8 text-center text-sm text-gray-500">
+            <div className="py-8 text-center text-sm text-muted-foreground">
                 No history available
             </div>
         );
@@ -286,14 +286,14 @@ export function AssetHistoryTimeline({
 
     return (
         <TooltipProvider>
-            <div className="relative border-l-2 border-gray-200 ml-3 mt-6 space-y-8">
+            <div className="relative border-l-2 border-border ml-3 mt-6 space-y-8">
                 {historyLogs.map((log) => {
                     // Match each action to its own visual tone.
                     const iconConfig = ACTION_ICON_MAP[log.actionType] || {
                         Icon: AlertCircle,
-                        color: 'text-gray-600',
-                        ringClass: 'ring-gray-200',
-                        badgeClass: 'border-gray-300 bg-gray-50 text-gray-700',
+                        color: 'text-muted-foreground dark:text-zinc-400',
+                        ringClass: 'ring-border dark:ring-zinc-800',
+                        badgeClass: 'border-gray-300 bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400',
                     };
                     const changes = buildChangeList(log.oldValue, log.newValue);
                     const actionLabel = log.actionType.replace(/_/g, ' ');
@@ -301,7 +301,7 @@ export function AssetHistoryTimeline({
                     return (
                         <div key={log.id} className="relative pl-8">
                             {/* Timeline Node Icon */}
-                            <div className={`absolute -left-3 top-1 rounded-full bg-white p-0.5 ring-2 ${iconConfig.ringClass}`}>
+                            <div className={`absolute -left-3 top-1 rounded-full bg-background p-0.5 ring-2 ${iconConfig.ringClass}`}>
                                 <iconConfig.Icon
                                     className={`w-5 h-5 ${iconConfig.color}`}
                                     aria-label={`Action: ${log.actionType}`}
@@ -317,14 +317,14 @@ export function AssetHistoryTimeline({
                                             {actionLabel}
                                         </Badge>
                                         {showEntityLabel && log.entityLabel && (
-                                            <span className="text-sm text-gray-700 font-medium">
+                                            <span className="text-sm text-foreground font-medium">
                                                 {log.entityLabel}
                                             </span>
                                         )}
                                     </div>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                                                 {formatTimestamp(log.performedAt)}
                                             </span>
                                         </TooltipTrigger>
@@ -344,36 +344,36 @@ export function AssetHistoryTimeline({
                                                     alt={log.performedBy.name}
                                                 />
                                             )}
-                                            <AvatarFallback className="rounded-md bg-slate-300 text-xs font-semibold text-slate-700">
+                                            <AvatarFallback className="rounded-md bg-muted text-xs font-semibold text-foreground">
                                                 {getInitials(log.performedBy.name)}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="text-xs">
-                                            <p className="font-medium text-gray-700">
+                                            <p className="font-medium text-foreground">
                                                 {log.performedBy.name}
                                             </p>
-                                            <p className="text-gray-500">{log.performedBy.email}</p>
+                                            <p className="text-muted-foreground">{log.performedBy.email}</p>
                                         </div>
                                     </div>
                                 ) : (
-                                    <p className="text-xs text-gray-500 italic">System action</p>
+                                    <p className="text-xs text-muted-foreground italic">System action</p>
                                 )}
 
                                 {/* Show all changed fields for the record. */}
                                 {changes.length > 0 && (
-                                    <div className="mt-1 space-y-2 rounded-md border border-gray-100 bg-gray-50 p-3 text-xs">
+                                    <div className="mt-1 space-y-2 rounded-md border border-border bg-muted p-3 text-xs">
                                         {changes.map((change) => (
                                             <div key={`${log.id}-${change.field}`} className="space-y-1">
                                                 {change.field === 'reason' ? (
-                                                    <div className="mt-1 text-xs italic text-slate-600 border-l-2 border-slate-300 pl-2">
+                                                    <div className="mt-1 text-xs italic text-muted-foreground border-l-2 border-border pl-2">
                                                         &quot;{change.newValue}&quot;
                                                     </div>
                                                 ) : (
-                                                    <div className="flex flex-wrap items-start gap-1 text-gray-700">
-                                                        <span className="font-medium text-gray-800">{change.field}:</span>
-                                                        <span className="line-through text-gray-400">{change.oldValue}</span>
-                                                        <span className="text-gray-400">→</span>
-                                                        <span className="font-medium text-gray-900">{change.newValue}</span>
+                                                    <div className="flex flex-wrap items-start gap-1 text-foreground">
+                                                        <span className="font-medium text-foreground">{change.field}:</span>
+                                                        <span className="line-through text-muted-foreground">{change.oldValue}</span>
+                                                        <span className="text-muted-foreground">→</span>
+                                                        <span className="font-medium text-foreground">{change.newValue}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -383,8 +383,8 @@ export function AssetHistoryTimeline({
 
                                 {/* IP Address (if available) */}
                                 {log.ipAddress && (
-                                    <p className="text-xs text-gray-400">
-                                        From: <code className="bg-gray-100 px-1 rounded">{log.ipAddress}</code>
+                                    <p className="text-xs text-muted-foreground">
+                                        From: <code className="bg-muted px-1 rounded">{log.ipAddress}</code>
                                     </p>
                                 )}
                             </div>

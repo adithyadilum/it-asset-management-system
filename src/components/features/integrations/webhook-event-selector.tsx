@@ -28,7 +28,7 @@ export function WebhookEventSelector({
       {Object.entries(WEBHOOK_EVENT_GROUPS).map(([groupName, items]) => {
         return (
           <div key={groupName} className="grid gap-3">
-            <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>{groupName}</div>
+            <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{groupName}</div>
 
             <div className="grid gap-x-4 gap-y-3 grid-cols-[repeat(auto-fit,minmax(138px,1fr))]">
               {items.map((item) => (
@@ -37,9 +37,9 @@ export function WebhookEventSelector({
                     checked={selectedEvents.includes(item.event)}
                     onCheckedChange={() => toggleEvent(item.event)}
                     disabled={disabled}
-                    className="mt-0.5 h-4 w-4 rounded-[4px] border-slate-300 data-[state=checked]:border-[#0b2b69] data-[state=checked]:bg-[#0b2b69]"
+                    className="mt-0.5 h-4 w-4 rounded-[4px] border-border data-[state=checked]:border-[#0b2b69] data-[state=checked]:bg-primary"
                   />
-                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} leading-5 text-slate-700`}>
+                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} leading-5 text-foreground`}>
                     {item.label}
                   </span>
                 </label>

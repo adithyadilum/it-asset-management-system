@@ -34,10 +34,10 @@ export function TechnicalDetailsTab({
                 isLongValue && 'col-span-full'
               )}
             >
-              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500 capitalize')}>
+              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground capitalize')}>
                 {key.replace(/_/g, ' ')}
               </div>
-              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-slate-900')}>
+              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground')}>
                 {value}
               </div>
             </div>
@@ -47,13 +47,13 @@ export function TechnicalDetailsTab({
         {/* Note Section */}
         {note && (
           <div className="col-span-full mt-4 space-y-2">
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
               Note
             </div>
             <Textarea
               readOnly
               value={note}
-              className="min-h-25 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+              className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0"
             />
           </div>
         )}

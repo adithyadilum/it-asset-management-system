@@ -94,12 +94,12 @@ export function AssetDetailsTab({
                     <div className="space-y-4">
                         <div className="flex items-baseline justify-between mb-2">
                             <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4 text-slate-500" />
+                                <Users className="h-4 w-4 text-muted-foreground" />
                                 <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'text-foreground')}>
                                     Seat Allocation
                                 </h3>
                             </div>
-                            <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-600')}>
+                            <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
                                 {allocatedCount} of {totalSeats} seats
                             </span>
                         </div>
@@ -108,7 +108,7 @@ export function AssetDetailsTab({
                             className="h-2"
                             aria-label={`${allocatedCount} of ${totalSeats} seats allocated`}
                         />
-                        <div className="flex justify-between items-center text-xs text-slate-500 mt-2">
+                        <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
                             <span>{Math.max(0, totalSeats - allocatedCount)} seats available</span>
                             <span>{totalSeats > 0 ? Math.round((allocatedCount / totalSeats) * 100) : 0}% used</span>
                         </div>
@@ -132,10 +132,10 @@ export function AssetDetailsTab({
                                                 !isLastRow && 'border-b border-border/40'
                                             )}
                                         >
-                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
                                                 {row.label}
                                             </div>
-                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-slate-900 min-w-0')}>
+                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground min-w-0')}>
                                                 {row.value || '-'}
                                             </div>
                                         </div>
@@ -154,7 +154,7 @@ export function AssetDetailsTab({
                         <Textarea
                             readOnly
                             value={note}
-                            className="min-h-24 w-full resize-none bg-muted/20 text-slate-900 focus-visible:ring-0"
+                            className="min-h-24 w-full resize-none bg-muted/20 text-foreground focus-visible:ring-0"
                         />
                     </section>
                 ) : null}
@@ -206,13 +206,13 @@ export function AssetDetailsTab({
                                 isLongValue && 'col-span-full'
                             )}
                         >
-                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
                                 {item.label}
                             </div>
                             <div
                                 className={cn(
                                     TYPOGRAPHY_CLASSNAMES.textSmMedium,
-                                    'text-right text-slate-900',
+                                    'text-right text-foreground',
                                     item.label === 'Asset ID' && 'font-mono tracking-wide'
                                 )}
                             >
@@ -224,13 +224,13 @@ export function AssetDetailsTab({
 
                 {note ? (
                     <div className="col-span-full mt-4 space-y-2">
-                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>
+                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
                             Note
                         </div>
                         <Textarea
                             readOnly
                             value={note}
-                            className="min-h-25 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+                            className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0"
                         />
                     </div>
                 ) : null}

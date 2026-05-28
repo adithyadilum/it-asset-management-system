@@ -52,7 +52,7 @@ export function AcceptAssignmentDialog({
             }}
         >
             <DialogTrigger asChild>
-                <Button className="h-9 rounded-lg bg-[#031b86] px-4 text-sm font-medium text-white shadow-[0px_1px_2px_0px_rgba(0,0,0,0.10)] hover:bg-[#02156c]">
+                <Button className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-[0px_1px_2px_0px_rgba(0,0,0,0.10)] hover:bg-primary/90">
                     Review & Accept
                 </Button>
             </DialogTrigger>
@@ -66,7 +66,7 @@ export function AcceptAssignmentDialog({
                     </div>
                 </DialogHeader>
 
-                <div className="rounded-lg border border-slate-200 bg-muted py-6 shadow-sm shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10)]">
+                <div className="rounded-lg border border-border bg-muted py-6 shadow-sm shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10)]">
                     <div className="flex flex-col items-center justify-center gap-6 px-6">
                         <div className="flex w-full items-center justify-center gap-2.5 px-6 md:px-8">
                             <Laptop className="h-10 w-10 shrink-0 text-foreground" />

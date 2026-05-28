@@ -51,7 +51,7 @@ export function AssetTagDialog({
                         <PhysicalTag assetId={assetId} modelName={modelName} />
 
                         <Button
-                            className="w-full gap-2 bg-[#0a1445] hover:bg-[#0a1445]/90 text-white"
+                            className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                             onClick={() => setIsPrintModalOpen(true)}
                         >
                             <Printer className="h-4 w-4" />

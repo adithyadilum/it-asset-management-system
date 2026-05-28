@@ -72,8 +72,8 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-120 p-0">
           <DialogHeader className="p-6">
-            <DialogTitle className={`flex items-center gap-2 text-slate-900 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold}`}>
-              <KeyRound className="h-4 w-4 text-slate-500" />
+            <DialogTitle className={`flex items-center gap-2 text-foreground ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold}`}>
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
               Create API Key
             </DialogTitle>
           </DialogHeader>
@@ -90,7 +90,7 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                 <div className="grid gap-2">
                   {Object.entries(API_KEY_SCOPE_GROUPS).map(([group, items]) => (
                     <div key={group} className="rounded-md border border-border p-3">
-                      <div className={`mb-2 text-slate-900 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>{group}</div>
+                      <div className={`mb-2 text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>{group}</div>
                       <div className="grid gap-2">
                         {items.map((it) => (
                           <label key={it.scope} className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                               onCheckedChange={() => toggleScope(it.scope)}
                             />
                             <div>
-                              <div className={`text-slate-900 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>{it.label}</div>
+                              <div className={`text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>{it.label}</div>
                               <div className={`text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textXsRegular}`}>{it.description}</div>
                             </div>
                           </label>
@@ -117,7 +117,7 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
                 <Button
                   onClick={handleSubmit}
                   disabled={isPending as unknown as boolean}
-                  className={`h-9 rounded-md bg-[#0b2b69] px-4 text-white hover:bg-[#09224f] ${TYPOGRAPHY_CLASSNAMES.textSmSemiBold}`}
+                  className={`h-9 rounded-md bg-primary px-4 text-primary-foreground hover:bg-primary/90 ${TYPOGRAPHY_CLASSNAMES.textSmSemiBold}`}
                 >
                   {isPending ? "Creating..." : "Create"}
                 </Button>

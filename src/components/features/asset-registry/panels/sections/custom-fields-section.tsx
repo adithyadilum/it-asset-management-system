@@ -70,7 +70,7 @@ export function CustomFieldsSection({
               if (field.inputType === 'Boolean') {
                 return (
                   <div key={field.fieldName} className="space-y-2">
-                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                       {field.fieldName}
                       {field.required ? <span className="text-red-500"> *</span> : null}
                     </label>
@@ -97,7 +97,7 @@ export function CustomFieldsSection({
 
               return (
                 <div key={field.fieldName} className="space-y-2">
-                  <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                  <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                     {field.fieldName}
                     {field.required ? <span className="text-red-500"> *</span> : null}
                   </label>

@@ -196,13 +196,13 @@ export function PendingDisposalsGrid({
       />
 
       {/* Data Table Container */}
-      <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-white">
+      <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-background">
         <DataTable<PendingDisposalRow, unknown>
           columns={columns}
           data={filteredData}
           initialPageSize={10}
           pageSizeOptions={[10, 20, 50]}
-          className="rounded-lg border-slate-200"
+          className="rounded-lg border-border"
           rowSelection={rowSelection}
           onRowSelectionChange={setRowSelection}
 

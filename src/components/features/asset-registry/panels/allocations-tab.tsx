@@ -54,7 +54,7 @@ export function AllocationsTab({
                             <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'text-foreground')}>
                                 Seat Allocation
                             </h3>
-                            <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-600')}>
+                            <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
                                 {allocatedCount} of {totalSeats} seats
                             </span>
                         </div>
@@ -67,7 +67,7 @@ export function AllocationsTab({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="rounded-md bg-muted/40 p-3">
-                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, 'text-slate-500 mb-1')}>
+                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, 'text-muted-foreground mb-1')}>
                                 Allocated
                             </div>
                             <div className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-foreground')}>
@@ -75,7 +75,7 @@ export function AllocationsTab({
                             </div>
                         </div>
                         <div className="rounded-md bg-muted/40 p-3">
-                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, 'text-slate-500 mb-1')}>
+                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, 'text-muted-foreground mb-1')}>
                                 Available
                             </div>
                             <div className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-foreground')}>
@@ -110,7 +110,7 @@ export function AllocationsTab({
                                         <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-foreground truncate')}>
                                             {user.name}
                                         </div>
-                                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, 'text-slate-500 truncate')}>
+                                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textXsRegular, 'text-muted-foreground truncate')}>
                                             {user.email}
                                         </div>
                                     </div>
@@ -122,7 +122,7 @@ export function AllocationsTab({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => onRevoke(user.id)}
-                                        className="h-7 w-7 p-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                                        className="h-7 w-7 p-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
                                         title="Revoke allocation"
                                         aria-label={`Revoke allocation for ${user.name}`}
                                     >

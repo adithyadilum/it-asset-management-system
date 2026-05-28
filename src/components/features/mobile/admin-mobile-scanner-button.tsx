@@ -12,10 +12,10 @@ export function AdminMobileScannerButton() {
     <section>
       <button
         onClick={handleLaunchScanner}
-        className="w-full bg-gradient-to-br from-[#0a1142] to-[#1a2b75] hover:to-[#21358a] active:scale-[0.98] text-white py-10 px-6 rounded-[28px] flex flex-col items-center justify-center gap-4 shadow-[0_8px_30px_rgb(10,17,66,0.2)] transition-all duration-300 ease-out"
+        className="w-full bg-gradient-to-br from-primary to-primary/80 hover:to-primary/70 active:scale-[0.98] text-primary-foreground py-10 px-6 rounded-[28px] flex flex-col items-center justify-center gap-4 shadow-[0_8px_30px_rgb(10,17,66,0.2)] transition-all duration-300 ease-out"
       >
-        <div className="bg-white/10 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-inner">
-          <Camera className="h-8 w-8 text-white drop-shadow-md" strokeWidth={1.5} />
+        <div className="bg-background/10 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-inner">
+          <Camera className="h-8 w-8 text-primary-foreground drop-shadow-md" strokeWidth={1.5} />
         </div>
         <h2 className="text-2xl font-bold mt-2 tracking-tight">Launch Scanner</h2>
         <p className="text-center text-[15px] text-blue-100/80 mx-4 leading-relaxed font-medium">

@@ -64,8 +64,8 @@ export function SecretRevealDialog({
         <div className="p-6">
           <div className="mb-6 flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <KeyRound className="mt-0.5 h-6 w-6 text-slate-900" />
-              <DialogTitle className="text-xl font-semibold text-slate-900">
+              <KeyRound className="mt-0.5 h-6 w-6 text-foreground" />
+              <DialogTitle className="text-xl font-semibold text-foreground">
                 {title}
               </DialogTitle>
             </div>
@@ -75,24 +75,24 @@ export function SecretRevealDialog({
               size="icon"
               onClick={handleClose}
               aria-label="Close"
-              className="-mr-2 -mt-2 h-9 w-9 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="-mr-2 -mt-2 h-9 w-9 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
 
-          <p className="mb-5 text-base leading-7 text-slate-600">{description}</p>
+          <p className="mb-5 text-base leading-7 text-muted-foreground">{description}</p>
 
-          <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
-            <code className="min-w-0 truncate font-mono text-sm font-medium text-slate-900">
+          <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-muted px-4 py-3 shadow-sm">
+            <code className="min-w-0 truncate font-mono text-sm font-medium text-foreground">
               {secret ?? ""}
             </code>
             <Button
               onClick={handleCopy}
               size="sm"
-              className="h-9 shrink-0 gap-2 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+              className="h-9 shrink-0 gap-2 rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground hover:bg-muted"
             >
-              <Clipboard className="h-4 w-4 text-slate-900" />
+              <Clipboard className="h-4 w-4 text-foreground" />
               {copied ? "Copied" : copyLabel}
             </Button>
           </div>
@@ -102,7 +102,7 @@ export function SecretRevealDialog({
           <div className="flex justify-end">
             <Button
               onClick={handleClose}
-              className="h-9 rounded-md bg-[#0b2b69] px-4 text-sm font-semibold text-white hover:bg-[#09224f]"
+              className="h-9 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               {closeLabel}
             </Button>

@@ -14,7 +14,7 @@ export function BrandHeader({ collapsed = false }: BrandHeaderProps) {
           width={32}
           height={32}
           priority
-          className="size-8 object-contain"
+          className="size-8 object-contain dark:brightness-0 dark:invert"
         />
       </div>
     )
@@ -28,9 +28,9 @@ export function BrandHeader({ collapsed = false }: BrandHeaderProps) {
         width={89}
         height={50}
         priority
-        className="h-7 w-auto md:h-12.5 md:w-22.25 object-contain"
+        className="h-7 w-auto md:h-12.5 md:w-22.25 object-contain dark:brightness-0 dark:invert"
       />
-      <span className="text-2xl md:text-4xl md:leading-12.5 font-semibold text-[#0a1142]">Assets</span>
+      <span className="text-2xl md:text-4xl md:leading-12.5 font-semibold text-primary dark:text-white">Assets</span>
     </div>
   )
 }

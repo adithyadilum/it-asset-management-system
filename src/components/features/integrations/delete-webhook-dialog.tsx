@@ -70,18 +70,18 @@ export function DeleteWebhookDialog({
               aria-label="Close"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
-              className="-mr-2 -mt-2 h-9 w-9 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="-mr-2 -mt-2 h-9 w-9 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
 
-          <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
-            <p className="truncate text-sm font-medium text-slate-900">{name ?? "This webhook"}</p>
-            {url ? <p className="truncate text-xs text-slate-500">{url}</p> : null}
+          <div className="mb-6 rounded-lg border border-border bg-muted px-4 py-3 shadow-sm">
+            <p className="truncate text-sm font-medium text-foreground">{name ?? "This webhook"}</p>
+            {url ? <p className="truncate text-xs text-muted-foreground">{url}</p> : null}
           </div>
 
-          <DialogDescription className="mb-8 text-base font-regular leading-7 text-slate-900">
+          <DialogDescription className="mb-8 text-base font-regular leading-7 text-foreground">
             This will permanently delete the {name ?? "selected"} webhook and stop all event delivery to {url ?? "the configured URL"}.
           </DialogDescription>
 

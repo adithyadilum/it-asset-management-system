@@ -302,13 +302,13 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
           {userRole !== 'FinanceAuditor' && (
           <TabsTrigger
             value="overdue"
-            className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
           >
             Overdue Returns
             <span className={cn(
               "text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors",
               "group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground",
-              "group-data-[state=inactive]:bg-white group-data-[state=inactive]:text-primary border border-primary/30"
+              "group-data-[state=inactive]:bg-background group-data-[state=inactive]:text-primary border border-primary/30"
             )}>
               {overdueReturns.length}
             </span>
@@ -318,13 +318,13 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
           {showPending && (
             <TabsTrigger
               value="pending"
-              className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               Pending Disposals
               <span className={cn(
                 "text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors",
                 "group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground",
-                "group-data-[state=inactive]:bg-white group-data-[state=inactive]:text-primary border border-primary/30"
+                "group-data-[state=inactive]:bg-background group-data-[state=inactive]:text-primary border border-primary/30"
               )}>
                 {pendingDisposals.length}
               </span>
