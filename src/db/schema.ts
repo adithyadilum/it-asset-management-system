@@ -472,6 +472,10 @@ export const notificationEventTypeEnum = pgEnum('notification_event_type', [
   'ASSIGNMENT_ACCEPTED',
   'ASSIGNMENT_DECLINED',
   'ASSET_DEFECTIVE_REPORTED',
+  'PENDING_ACCEPTANCE',
+  'REMINDER_24H',
+  'REMINDER_48H',
+  'UPCOMING_RETURN',
 ]);
 
 export const notificationCategoryEnum = pgEnum('notification_category', [
@@ -491,6 +495,41 @@ export const notificationLogStatusEnum = pgEnum('notification_log_status', [
   'failed',
   'pending',
 ]);
+
+// Queue event types used by the escalation engine and reminder scheduler
+export const notificationQueueEventTypeEnum = pgEnum(
+  'notification_queue_event_type',
+  [
+    'PENDING_ACCEPTANCE',
+    'REMINDER_24H',
+    'REMINDER_48H',
+    'REMINDER_72H_ADMIN',
+  ]
+);
+
+export const notificationQueue = pgTable(
+  'notification_queue',
+  {
+    id: serial('id').primaryKey(),
+    eventType: notificationQueueEventTypeEnum('event_type').notNull(),
+    assignmentId: integer('assignment_id')
+      .notNull()
+      .references(() => assetAssignments.id, { onDelete: 'cascade' }),
+    recipientId: uuid('recipient_id')
+      .notNull()
+      .references(() => users.id),
+    isProcessed: boolean('is_processed').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    assignmentIdx: index('notification_queue_assignment_idx').on(
+      table.assignmentId
+    ),
+    recipientIdx: index('notification_queue_recipient_idx').on(
+      table.recipientId
+    ),
+  })
+);
 
 export const appNotifications = pgTable(
   'app_notifications',
@@ -787,6 +826,17 @@ export const notificationLogsRelations = relations(
     }),
   })
 );
+
+export const notificationQueueRelations = relations(notificationQueue, ({ one }) => ({
+  assignment: one(assetAssignments, {
+    fields: [notificationQueue.assignmentId],
+    references: [assetAssignments.id],
+  }),
+  recipient: one(users, {
+    fields: [notificationQueue.recipientId],
+    references: [users.id],
+  }),
+}));
 export const softwareLicensesRelations = relations(
   softwareLicenses,
   ({ one, many }) => ({
