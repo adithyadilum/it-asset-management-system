@@ -736,7 +736,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       // 2a. Total asset value (current)
       db
         .select({
-          sum: sql<string | null>`SUM(${assetPurchases.totalCost})`,
+          sum: sql<string | null>`SUM(${assetPurchases.totalCost} * COALESCE(${assetPurchases.exchangeRate}, 1))`,
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
@@ -745,7 +745,7 @@ const getCachedDashboardKpiMetrics = unstable_cache(
       // 2b. Total asset value 30 days ago (assets that existed then)
       db
         .select({
-          sum: sql<string | null>`SUM(${assetPurchases.totalCost})`,
+          sum: sql<string | null>`SUM(${assetPurchases.totalCost} * COALESCE(${assetPurchases.exchangeRate}, 1))`,
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
@@ -762,8 +762,8 @@ const getCachedDashboardKpiMetrics = unstable_cache(
           nbv: sql<string | null>`
             SUM(
               GREATEST(0,
-                ${assetPurchases.totalCost}::numeric - (
-                  ${assetPurchases.totalCost}::numeric
+                (${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}, 1)) - (
+                  (${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}, 1))
                   / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
                   * GREATEST(0,
                     EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12

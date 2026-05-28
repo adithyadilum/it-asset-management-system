@@ -1,25 +1,20 @@
 import { KpiCard } from "./kpi-card"
 import type { DashboardKpiMetrics } from "@/actions/dashboard"
 
+import { getCurrencySymbol } from "@/lib/currency"
+
 export interface KpiMetricsRowProps {
   metrics: DashboardKpiMetrics;
+  currencyCode?: string;
+  exchangeRate?: number;
 }
 
-function formatCurrency(value: number) {
-  if (value >= 1_000_000) {
-    return `$${(value / 1_000_000).toFixed(2)}M`;
-  }
-  if (value >= 1_000) {
-    return `$${(value / 1_000).toFixed(1)}K`;
-  }
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatCompactCurrency(value: number) {
-  if (value >= 1_000) {
-    return `$${(value / 1_000).toFixed(1)}K`;
-  }
-  return `$${value.toFixed(0)}`;
+function formatValueWithoutSymbol(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'decimal',
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function formatNumber(value: number) {
@@ -33,12 +28,17 @@ function getHealthColor(label: string): "success" | "warning" | "destructive" | 
   return "default";
 }
 
-export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
+export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 }: KpiMetricsRowProps) {
   const depreciationRate = (metrics.totalAssetValue ?? 0) > 0
     ? (1 - (metrics.netBookValue ?? 0) / (metrics.totalAssetValue ?? 1)) * 100
     : 0;
 
   const showFinancials = metrics.totalAssetValue !== undefined;
+  
+  const convertedTotalAssetValue = (metrics.totalAssetValue ?? 0) * exchangeRate;
+  const convertedNetBookValue = (metrics.netBookValue ?? 0) * exchangeRate;
+  const convertedRepairSpend = (metrics.cumulativeRepairSpend ?? 0) * exchangeRate;
+  const convertedSoftwareCostLeak = (metrics.inactiveSoftwareCostLeak ?? 0) * exchangeRate;
 
   return (
     <div className="flex flex-col gap-3">
@@ -67,7 +67,8 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
           <KpiCard
             size="hero"
             title="Total Asset Value"
-            value={formatCurrency(metrics.totalAssetValue!)}
+            value={formatValueWithoutSymbol(convertedTotalAssetValue)}
+            currencySymbol={getCurrencySymbol(currencyCode)}
             trendValue={metrics.totalAssetValueTrend}
             badgeType="positive"
             subText1="Acquisition cost of active inventory"
@@ -81,7 +82,8 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
           <KpiCard
             size="hero"
             title="Net Book Value"
-            value={formatCurrency(metrics.netBookValue)}
+            value={formatValueWithoutSymbol(convertedNetBookValue)}
+            currencySymbol={getCurrencySymbol(currencyCode)}
             badgeText={`-${depreciationRate.toFixed(1)}%`}
             badgeType="negative"
             subText1="Depreciated value of asset base"
@@ -143,7 +145,8 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
         {metrics.cumulativeRepairSpend !== undefined && (
           <KpiCard
             title="Cumulative Repair Spend"
-            value={formatCurrency(metrics.cumulativeRepairSpend)}
+            value={formatValueWithoutSymbol(convertedRepairSpend)}
+            currencySymbol={getCurrencySymbol(currencyCode)}
             trendValue={metrics.repairSpendTrend}
             badgeType={
               (metrics.repairSpendTrend ?? 0) <= 0 ? "positive" : "negative"
@@ -159,10 +162,10 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
           <KpiCard
             title="Idle Software Seats"
             value={`${formatNumber(metrics.inactiveSoftwareSeats)} Seats`}
-            badgeText={`-${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
+            badgeText={`-${getCurrencySymbol(currencyCode)}${formatValueWithoutSymbol(convertedSoftwareCostLeak)}/mo`}
             badgeType="negative"
             valueColor={metrics.inactiveSoftwareSeats > 0 ? "destructive" : "default"}
-            subText1={`${formatCurrency(metrics.inactiveSoftwareCostLeak)} monthly in idle seat waste`}
+            subText1={`${getCurrencySymbol(currencyCode)}${formatValueWithoutSymbol(convertedSoftwareCostLeak)} monthly in idle seat waste`}
             subText2="Target for license subscription downgrade."
             href="/assets/software"
           />

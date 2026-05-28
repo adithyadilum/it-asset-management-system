@@ -43,13 +43,13 @@ export function NotificationDropdown({
         <button
           type="button"
           aria-label="Notifications"
-          className="relative flex h-7 w-7 items-center justify-center hover:bg-slate-100 rounded-lg transition-colors"
+          className="relative flex h-7 w-7 items-center justify-center hover:bg-muted rounded-lg transition-colors"
         >
-          <Bell className="h-4 w-4 text-slate-500" />
+          <Bell className="h-4 w-4 text-muted-foreground" />
 
           {/* Badge */}
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs font-bold text-primary-foreground">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -59,15 +59,15 @@ export function NotificationDropdown({
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="w-80 p-0 rounded-lg border border-slate-200 bg-white shadow-lg"
+        className="w-80 p-0 rounded-lg border border-border bg-background shadow-lg"
       >
         {/* Header */}
-        <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
-          <h3 className="font-text-sm-semi-bold text-sm font-semibold text-slate-900">
+        <div className="border-b border-border bg-muted px-4 py-3">
+          <h3 className="font-text-sm-semi-bold text-sm font-semibold text-foreground">
             Notifications
           </h3>
           {unreadCount > 0 && (
-            <p className="font-text-xs-regular text-xs text-slate-500 mt-1">
+            <p className="font-text-xs-regular text-xs text-muted-foreground mt-1">
               {unreadCount} unread
             </p>
           )}
@@ -77,13 +77,13 @@ export function NotificationDropdown({
         <div className="max-h-96 overflow-y-auto">
           {isLoading && notifications.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <span className="font-text-sm-regular text-sm text-slate-500">
+              <span className="font-text-sm-regular text-sm text-muted-foreground">
                 Loading...
               </span>
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <span className="font-text-sm-regular text-sm text-slate-500">
+              <span className="font-text-sm-regular text-sm text-muted-foreground">
                 No notifications yet
               </span>
             </div>
@@ -100,12 +100,12 @@ export function NotificationDropdown({
 
         {/* Footer - Mark all as read button */}
         {notifications.length > 0 && unreadCount > 0 && (
-          <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="border-t border-border bg-muted px-4 py-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={onMarkAllAsRead}
-              className="w-full font-text-sm-medium text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+              className="w-full font-text-sm-medium text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               Mark all as read
             </Button>

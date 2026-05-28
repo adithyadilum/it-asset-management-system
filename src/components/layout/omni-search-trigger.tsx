@@ -38,12 +38,12 @@ const triggerTextClass =
   'font-text-sm-regular text-sm leading-5 tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]';
 
 const resultItemClass =
-  'mb-1 flex min-h-11 items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 transition-colors hover:bg-slate-100';
+  'mb-1 flex min-h-11 items-center gap-3 rounded-md border border-border bg-muted px-3 py-2 transition-colors hover:bg-muted';
 
 const sectionHeadingClass =
-  '**:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-slate-400';
+  '**:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground';
 
-const sectionDividerClass = 'my-2 h-px bg-slate-200/90';
+const sectionDividerClass = 'my-2 h-px bg-muted/90';
 
 interface OmniSearchTriggerProps {
   userRole: UserRole;
@@ -57,9 +57,9 @@ function SectionEmptyState({
   entity: string;
 }) {
   return (
-    <div className="mb-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-center">
-      <p className="text-sm font-semibold text-slate-900">No records found</p>
-      <p className="mt-1 text-xs text-slate-500">
+    <div className="mb-1 rounded-md border border-border bg-muted px-3 py-3 text-center">
+      <p className="text-sm font-semibold text-foreground">No records found</p>
+      <p className="mt-1 text-xs text-muted-foreground">
         Your search &quot;{query}&quot; did not match any {entity}.
       </p>
     </div>
@@ -73,12 +73,12 @@ function SectionSkeletonRows({ count = 2 }: { count?: number }) {
         <div
           key={`skeleton-${index}`}
           data-testid="omni-skeleton-row"
-          className="flex min-h-11 items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 animate-pulse"
+          className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-muted px-3 py-2 animate-pulse"
         >
-          <div className="size-4 rounded bg-slate-200" />
+          <div className="size-4 rounded bg-muted" />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <div className="h-3 w-1/3 rounded bg-slate-200" />
-            <div className="h-2.5 w-1/2 rounded bg-slate-100" />
+            <div className="h-3 w-1/3 rounded bg-muted" />
+            <div className="h-2.5 w-1/2 rounded bg-muted" />
           </div>
         </div>
       ))}
@@ -287,11 +287,11 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
         onSelect={() => handleSelectHref(item.href)}
         className={resultItemClass}
       >
-        <Icon className="size-4 text-slate-500" />
+        <Icon className="size-4 text-muted-foreground" />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm text-slate-900">{item.label}</span>
-          <span className="truncate text-xs text-slate-500">
+          <span className="truncate text-sm text-foreground">{item.label}</span>
+          <span className="truncate text-xs text-muted-foreground">
             {item.description}
           </span>
         </div>
@@ -307,11 +307,11 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
         onSelect={() => handleSelectHref(item.href)}
         className={resultItemClass}
       >
-        <ClipboardList className="size-4 text-slate-500" />
+        <ClipboardList className="size-4 text-muted-foreground" />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm text-slate-900">{item.label}</span>
-          <span className="truncate text-xs text-slate-500">
+          <span className="truncate text-sm text-foreground">{item.label}</span>
+          <span className="truncate text-xs text-muted-foreground">
             {item.description}
           </span>
         </div>
@@ -322,9 +322,9 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverAnchor asChild>
-        <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-slate-200 bg-white shadow-box-shadow-shadow-xs">
+        <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-border bg-background shadow-box-shadow-shadow-xs">
           <div className="flex items-center py-1.5 pl-3 pr-0">
-            <Search className="h-4 w-4 shrink-0 text-slate-400" />
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           </div>
 
           <div className="flex h-9 flex-1 items-center px-2">
@@ -347,7 +347,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
               }}
               aria-label="Omni Search"
               placeholder="Search..."
-              className={`w-full bg-transparent text-slate-500 outline-none placeholder:text-slate-500 ${triggerTextClass}`}
+              className={`w-full bg-transparent text-muted-foreground outline-none placeholder:text-muted-foreground ${triggerTextClass}`}
             />
           </div>
 
@@ -355,9 +355,9 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
             {['⌘', 'K'].map((key) => (
               <div
                 key={key}
-                className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-slate-50 px-1 py-0"
+                className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-muted px-1 py-0"
               >
-                <span className="font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-500 [font-style:var(--text-xs-regular-font-style)]">
+                <span className="font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [font-style:var(--text-xs-regular-font-style)]">
                   {key}
                 </span>
               </div>
@@ -372,9 +372,9 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
         align="center"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}
-        className="w-180 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-0 shadow-box-shadow-shadow-xl"
+        className="w-180 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-background p-0 shadow-box-shadow-shadow-xl"
       >
-        <Command shouldFilter={false} className="rounded-xl! bg-white p-0">
+        <Command shouldFilter={false} className="rounded-xl! bg-background p-0">
           <CommandList className="max-h-93 px-3 py-2">
             {searchError ? (
               <div className="px-1 pb-2 pt-1 text-xs text-red-600">
@@ -413,13 +413,13 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                         }
                         className={resultItemClass}
                       >
-                        <Monitor className="size-4 text-slate-500" />
+                        <Monitor className="size-4 text-muted-foreground" />
 
                         <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm text-slate-900">
+                          <span className="truncate text-sm text-foreground">
                             {asset.name ?? asset.assetTag}
                           </span>
-                          <span className="truncate text-xs text-slate-500">
+                          <span className="truncate text-xs text-muted-foreground">
                             {asset.assetTag}
                             {asset.serialNumber
                               ? ` • ${asset.serialNumber}`
@@ -468,13 +468,13 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                         onSelect={() => handleSelectHref('/settings/roles')}
                         className={resultItemClass}
                       >
-                        <UserRound className="size-4 text-slate-500" />
+                        <UserRound className="size-4 text-muted-foreground" />
 
                         <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm text-slate-900">
+                          <span className="truncate text-sm text-foreground">
                             {user.name}
                           </span>
-                          <span className="truncate text-xs text-slate-500">
+                          <span className="truncate text-xs text-muted-foreground">
                             {user.email} • {user.department}
                           </span>
                         </div>
@@ -488,12 +488,12 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                 </CommandGroup>
               </>
             ) : normalizedQuery.length === 0 ? (
-              <div className="px-1 py-6 text-center text-xs text-slate-500">
+              <div className="px-1 py-6 text-center text-xs text-muted-foreground">
                 Start typing to search pages, assets, reports, and users.
               </div>
             ) : null}
 
-            <div className="mt-2 border-t border-slate-200 px-1 pt-2 text-xs text-slate-500">
+            <div className="mt-2 border-t border-border px-1 pt-2 text-xs text-muted-foreground">
               {isSearching && normalizedQuery.length >= 2 ? (
                 <span className="inline-flex items-center gap-1">
                   <Loader2 className="size-3.5 animate-spin" />

@@ -31,21 +31,21 @@ export function NotificationItem({
     <button
       type="button"
       onClick={handleClick}
-      className={`w-full text-left border-b border-slate-100 px-4 py-3 transition-colors focus:outline-none ${
+      className={`w-full text-left border-b border-border px-4 py-3 transition-colors focus:outline-none ${
         !notification.isRead
           ? 'bg-blue-50 hover:bg-blue-100 focus:bg-blue-100/80'
-          : 'bg-white hover:bg-slate-50 focus:bg-slate-50'
+          : 'bg-background hover:bg-muted focus:bg-muted'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-text-sm-semi-bold text-sm font-semibold text-slate-900 truncate">
+          <p className="font-text-sm-semi-bold text-sm font-semibold text-foreground truncate">
             {notification.title}
           </p>
-          <p className="font-text-sm-regular text-sm text-slate-700 line-clamp-2 mt-1">
+          <p className="font-text-sm-regular text-sm text-foreground line-clamp-2 mt-1">
             {notification.message}
           </p>
-          <span className="font-text-xs-regular text-xs text-slate-500 mt-2 inline-block">
+          <span className="font-text-xs-regular text-xs text-muted-foreground mt-2 inline-block">
             {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
           </span>
         </div>

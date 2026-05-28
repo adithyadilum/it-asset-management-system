@@ -114,7 +114,7 @@ const STATUS_METRICS_META: Record<string, {
   'Defective': {
     metricLabel: 'Impaired Stock',
     insight: 'Requires technician diagnostics to repair or move to decommissioning queue.',
-    badgeClass: 'bg-red-500/10 text-red-500 border-red-500/20 dark:bg-red-500/20',
+    badgeClass: 'bg-destructive/10 text-red-500 border-red-500/20 dark:bg-destructive/20',
     type: 'active'
   },
   'Lost': {
@@ -126,7 +126,7 @@ const STATUS_METRICS_META: Record<string, {
   'Retired': {
     metricLabel: 'End of Life',
     insight: 'Asset reached end of its logical lifetime. Safe to store or prepare for physical disposal.',
-    badgeClass: 'bg-slate-500/10 text-slate-500 border-slate-500/20 dark:bg-slate-500/20',
+    badgeClass: 'bg-muted0/10 text-muted-foreground border-slate-500/20 dark:bg-muted0/20',
     type: 'inactive'
   },
   'Pending Disposal': {
@@ -301,43 +301,43 @@ function RecentActivitiesList({ activities }: { activities: RecentActivity[] }) 
     if (type.includes("CREATE") || type.includes("ADD")) {
       return {
         icon: Hash,
-        className: "border-emerald-300 bg-emerald-50 text-emerald-700",
-        iconColor: "text-emerald-500"
+        className: "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-400",
+        iconColor: "text-emerald-500 dark:text-emerald-400"
       }
     }
     if (type.includes("UPDATE") || type.includes("REPAIR") || type.includes("MAINTENANCE")) {
       return {
         icon: Wrench,
-        className: "border-sky-300 bg-sky-50 text-sky-700",
-        iconColor: "text-sky-500"
+        className: "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/20 dark:text-sky-400",
+        iconColor: "text-sky-500 dark:text-sky-400"
       }
     }
     if (type.includes("DELETE") || type.includes("REMOVE") || type.includes("LOST") || type.includes("ACCESS_DENIED")) {
       return {
         icon: AlertCircle,
-        className: "border-rose-300 bg-rose-50 text-rose-700",
-        iconColor: "text-rose-500"
+        className: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/20 dark:text-rose-400",
+        iconColor: "text-rose-500 dark:text-rose-400"
       }
     }
     if (type.includes("DISPOSE")) {
       return {
         icon: AlertCircle,
-        className: "border-orange-300 bg-orange-50 text-orange-700",
-        iconColor: "text-orange-500"
+        className: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/20 dark:text-orange-400",
+        iconColor: "text-orange-500 dark:text-orange-400"
       }
     }
     if (type.includes("LOGIN")) {
       return {
         icon: CheckCircle2,
-        className: "border-violet-300 bg-violet-50 text-violet-700",
-        iconColor: "text-violet-500"
+        className: "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/20 dark:text-violet-400",
+        iconColor: "text-violet-500 dark:text-violet-400"
       }
     }
 
     return {
       icon: CheckCircle2,
-      className: "border-slate-300 bg-slate-50 text-slate-700",
-      iconColor: "text-slate-500"
+      className: "border-border bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400",
+      iconColor: "text-muted-foreground dark:text-zinc-400"
     }
   }
 
@@ -428,7 +428,7 @@ export function DashboardChartsRow({
 //     <div className="shrink-0 flex items-center justify-between px-0.5">
 //       {/* Left: Tabs */}
 //       <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-//         <button className="flex items-center gap-1.5 rounded-md bg-white shadow-sm border border-border px-3 py-1 text-xs font-medium text-foreground">
+//         <button className="flex items-center gap-1.5 rounded-md bg-background shadow-sm border border-border px-3 py-1 text-xs font-medium text-foreground">
 //           Overdue Returns
 //           <span className="ml-0.5 bg-primary text-primary-foreground text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none">
 //             8

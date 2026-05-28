@@ -206,7 +206,7 @@ export function RejectDisposalDialog({
             variant="default"
             disabled={!isValid || isPending}
             onClick={handleSubmit}
-            className="h-10 px-6 shadow-md transition-all active:scale-95 border-[#00145a] bg-[#00145a] text-white hover:bg-[#000d3d]"
+            className="h-10 px-6 shadow-md transition-all active:scale-95 border-primary bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {isPending ? 'Processing...' : (isBulk ? 'Confirm Bulk Rejection' : 'Confirm Rejection')}
           </Button>

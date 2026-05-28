@@ -43,13 +43,15 @@ export function PhysicalTag({ assetId, modelName = "Standard Model" }: PhysicalT
                 </div>
             </div>
             <div className="flex items-center justify-center shrink-0 ml-8">
-                <div className="bg-white">
+                <div className="bg-white p-1 rounded-md">
                     {origin ? (
                         <QRCodeSVG
                             value={`${origin}/assets/${assetId}`}
                             size={128}
                             level="M"
                             includeMargin={false}
+                            bgColor="#ffffff"
+                            fgColor="#000000"
                         />
                     ) : (
                         // Show skeleton during SSR/Hydration until origin is resolved

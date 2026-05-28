@@ -30,6 +30,8 @@ function DoubleArrow({ direction = "up" }: { direction?: "up" | "down" }) {
 interface KpiCardProps {
   title: string
   value: string
+  /** Optional currency symbol to render as a small flag before the value */
+  currencySymbol?: string
   /** Computed trend value — when provided, renders ▲/▼ with colored text. */
   trendValue?: number
   /** Override badge text (e.g., "Risk", "Excellent"). Used when trendValue is not applicable. */
@@ -46,6 +48,7 @@ interface KpiCardProps {
 export function KpiCard({
   title,
   value,
+  currencySymbol,
   trendValue,
   badgeText,
   badgeType = "neutral",
@@ -109,7 +112,12 @@ export function KpiCard({
       </CardHeader>
 
       <CardContent className="p-4 pt-1 flex flex-col gap-1 flex-1 justify-between">
-        <div>
+        <div className="flex items-center gap-1.5 mt-1">
+          {currencySymbol && (
+            <Badge variant="secondary" className="px-1.5 py-0 border-border/50 text-[10px] font-bold tracking-wider uppercase text-muted-foreground bg-muted">
+              {currencySymbol}
+            </Badge>
+          )}
           <div className={cn(
             "leading-none tracking-tight",
             isHero ? TYPOGRAPHY_CLASSNAMES.text3xlSemiBold : TYPOGRAPHY_CLASSNAMES.text2xlSemiBold,

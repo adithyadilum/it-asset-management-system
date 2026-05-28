@@ -116,8 +116,8 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-stretch gap-2.5 bg-muted lg:flex-row">
-      <section className="flex w-full flex-col items-start gap-4 rounded-lg bg-white p-6 shadow-box-shadow-shadow-sm lg:max-w-100">
-        <h1 className="font-text-2xl-semi-bold text-(length:--text-2xl-semi-bold-font-size) leading-(--text-2xl-semi-bold-line-height) tracking-(--text-2xl-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-text-2xl-semi-bold-font-style,var(--text-2xl-semi-bold-font-style))]">
+      <section className="flex w-full flex-col items-start gap-4 rounded-lg bg-card text-card-foreground p-6 shadow-box-shadow-shadow-sm lg:max-w-100 border border-border">
+        <h1 className="font-text-2xl-semi-bold text-(length:--text-2xl-semi-bold-font-size) leading-(--text-2xl-semi-bold-line-height) tracking-(--text-2xl-semi-bold-letter-spacing) [font-style:var(--text-text-2xl-semi-bold-font-style,var(--text-2xl-semi-bold-font-style))]">
           Role Assignment
         </h1>
 
@@ -130,19 +130,19 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                 key={role.id}
                 href={`/settings/roles?role=${role.id}`}
                 className={[
-                  'flex w-full flex-col items-center gap-6 rounded-lg border border-slate-200 px-0 py-6 shadow-box-shadow-shadow-sm transition-colors',
-                  isActive ? 'bg-slate-50' : 'bg-white hover:bg-slate-50/50',
+                  'flex w-full flex-col items-center gap-6 rounded-lg border border-border px-0 py-6 transition-colors shadow-none text-foreground',
+                  isActive ? 'bg-muted' : 'bg-transparent hover:bg-muted/50',
                 ].join(' ')}
               >
                 <div className="flex w-full items-center gap-2.5 px-6 py-0">
                   <span
-                    className={`flex-1 text-left text-slate-900 ${textBaseSemiBoldClass}`}
+                    className={`flex-1 text-left ${textBaseSemiBoldClass}`}
                   >
                     {role.name}
                   </span>
 
-                  <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-blue-800 bg-white px-1.5 py-0.5">
-                    <span className={`${textSmMediumClass} text-blue-800`}>
+                  <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-primary bg-transparent px-1.5 py-0.5">
+                    <span className={`${textSmMediumClass} text-primary`}>
                       {roleCounts[role.id]} Users
                     </span>
                   </div>
@@ -153,8 +153,8 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
         </div>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col items-start gap-2.5 rounded-lg bg-white p-6 shadow-box-shadow-shadow-sm">
-        <h2 className="text-slate-900">
+      <section className="flex min-h-0 flex-1 flex-col items-start gap-2.5 rounded-lg bg-card text-card-foreground p-6 shadow-box-shadow-shadow-sm border border-border">
+        <h2>
           <span className="font-text-lg-semi-bold text-(length:--text-lg-semi-bold-font-size) leading-(--text-lg-semi-bold-line-height) tracking-(--text-lg-semi-bold-letter-spacing) [font-style:var(--text-lg-semi-bold-font-style)]">
             Users in{' '}
           </span>
@@ -164,7 +164,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
         </h2>
 
         <div className="flex w-full flex-col items-start justify-between gap-3 lg:flex-row lg:items-center">
-          <p className={`max-w-175 text-slate-900 ${textSmRegularClass}`}>
+          <p className={`max-w-175 text-muted-foreground ${textSmRegularClass}`}>
             {selectedRoleInfo.description}
           </p>
 
