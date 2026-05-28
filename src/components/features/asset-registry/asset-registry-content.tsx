@@ -61,7 +61,7 @@ export function AssetRegistryContent({
     const onRefreshRef = useRef<() => void>(() => { });
 
     return (
-        <div className="flex h-full w-full overflow-hidden bg-slate-50">
+        <div className="flex h-full w-full overflow-hidden bg-muted">
             <AssetRegistryClient
                 config={config}
                 initialCategories={initialCategories}

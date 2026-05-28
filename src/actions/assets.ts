@@ -7,6 +7,7 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 import { assetAssignments, assetPurchases, assets, models } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { canManageAssets } from '@/lib/auth/roles';
 import {
   getAssetDetailsById,
@@ -22,6 +23,7 @@ import {
   manualStatusOverrideSchema,
   PILLAR_PREFIX_MAP,
 } from '@/lib/validations/asset-registration';
+import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -145,14 +147,16 @@ export async function registerAsset(
 
     const parsed = assetRegistrationSchema.safeParse(rawInput);
     if (!parsed.success) {
-      const firstError = parsed.error.issues[0]?.message ?? 'Validation failed.';
+      const firstError =
+        parsed.error.issues[0]?.message ?? 'Validation failed.';
       return validationError(firstError, parsed.error.flatten().fieldErrors);
     }
 
     const input = {
       ...parsed.data,
       pillar: parsed.data.pillar,
-      usefulLifeMonths: parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
+      usefulLifeMonths:
+        parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
       invoiceFile: formData.get('invoiceFile') as File | null,
     };
 
@@ -176,9 +180,11 @@ export async function registerAsset(
       return validationError('The selected model does not exist.');
     }
 
-    const resolvedCategoryPrefix = modelWithCategory.category.prefix
-      .trim()
-      .toUpperCase() || categoryPrefix;
+    const resolvedCategoryPrefix =
+      modelWithCategory.category.prefix.trim().toUpperCase() || categoryPrefix;
+
+    const apiRates = await fetchLiveExchangeRates() ?? undefined;
+    const conversionRate = convertCurrencyAmount(1, input.currencyCode || 'LKR', 'LKR', apiRates).toFixed(6);
 
     // 6. Database Transaction
     const insertedAsset = await db.transaction(async (tx) => {
@@ -191,7 +197,9 @@ export async function registerAsset(
           const countResult = await tx
             .select({ value: sql<number>`cast(count(*) as integer)` })
             .from(assets)
-            .where(sql`${assets.assetTag} LIKE ${resolvedCategoryPrefix + '-%'}`);
+            .where(
+              sql`${assets.assetTag} LIKE ${resolvedCategoryPrefix + '-%'}`
+            );
 
           const nextSequence = (countResult[0]?.value ?? 0) + 1;
           const assetTag = `${resolvedCategoryPrefix}-${String(nextSequence).padStart(3, '0')}`;
@@ -250,6 +258,7 @@ export async function registerAsset(
         shippingCost: shippingCost.toFixed(2),
         totalCost: totalCost.toFixed(2),
         currencyCode: input.currencyCode,
+        exchangeRate: conversionRate,
         warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
         invoiceUrl: uploadedInvoiceUrl,
       });
@@ -273,6 +282,13 @@ export async function registerAsset(
             }
           : {}),
       },
+    });
+
+    void dispatchWebhookEvent('asset.created', {
+      assetTag: insertedAsset.assetTag,
+      assetId: insertedAsset.id,
+      modelId: input.modelId,
+      pillar: input.pillar,
     });
 
     revalidatePath('/assets');
@@ -317,7 +333,8 @@ export async function registerAsset(
 
 export async function getAssetDetails(id: string) {
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) throw new Error('Unauthorized');
+  if (!currentUser || !canManageAssets(currentUser.role))
+    throw new Error('Unauthorized');
 
   return getAssetDetailsById(id);
 }
@@ -413,6 +430,15 @@ export async function updateAsset(
         oldData: currentAsset as unknown as Record<string, unknown>,
         newData: updatedAsset as unknown as Record<string, unknown>,
       });
+
+      if (data.status && data.status !== currentAsset.status) {
+        void dispatchWebhookEvent('asset.status_changed', {
+          assetId,
+          assetTag: currentAsset.assetTag,
+          oldStatus: currentAsset.status,
+          newStatus: data.status,
+        });
+      }
     }
 
     revalidatePath('/assets');
@@ -465,9 +491,16 @@ export async function manualStatusOverrideAction(
     }
 
     // 2. Input Validation via Zod
-    const parsed = manualStatusOverrideSchema.safeParse({ assetId, newStatus, reasonNote });
+    const parsed = manualStatusOverrideSchema.safeParse({
+      assetId,
+      newStatus,
+      reasonNote,
+    });
     if (!parsed.success) {
-      return { success: false, message: parsed.error.issues[0]?.message ?? 'Validation failed.' };
+      return {
+        success: false,
+        message: parsed.error.issues[0]?.message ?? 'Validation failed.',
+      };
     }
     const trimmedNote = parsed.data.reasonNote;
 
@@ -565,6 +598,14 @@ export async function manualStatusOverrideAction(
     revalidatePath('/assets/software');
     revalidatePath('/assets/furniture');
     revalidatePath('/assets/office-electronics');
+
+    void dispatchWebhookEvent('asset.status_changed', {
+      assetId,
+      assetTag: currentAsset.assetTag,
+      oldStatus: currentAsset.status,
+      newStatus,
+      trigger: 'manual_override',
+    });
 
     return {
       success: true,

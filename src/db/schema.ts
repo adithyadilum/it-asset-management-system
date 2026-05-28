@@ -294,7 +294,8 @@ export const assetPurchases = pgTable('asset_purchases', {
   tax: decimal('tax', { precision: 12, scale: 2 }),
   shippingCost: decimal('shipping_cost', { precision: 12, scale: 2 }),
   totalCost: decimal('total_cost', { precision: 12, scale: 2 }),
-  currencyCode: varchar('currency_code', { length: 3 }).default('USD'),
+  currencyCode: varchar('currency_code', { length: 3 }).default('LKR'),
+  exchangeRate: decimal('exchange_rate', { precision: 15, scale: 6 }).default('1'),
   warrantyExpiry: date('warranty_expiry'),
   invoiceUrl: varchar('invoice_url', { length: 500 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -815,3 +816,58 @@ export const softwareAllocationsRelations = relations(
     }),
   })
 );
+
+
+// -----------------------------------------------------------------------------
+// 9. EXTERNAL INTEGRATIONS & WEBHOOKS
+// -----------------------------------------------------------------------------
+
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  keyHash: varchar('key_hash', { length: 64 }).notNull().unique(),
+  keyPrefix: varchar('key_prefix', { length: 16 }).notNull(),
+  keySuffix: varchar('key_suffix', { length: 4 }).notNull(),
+  scopes: text('scopes').array().notNull().default(sql`ARRAY['read:assets']`),
+  createdById: uuid('created_by_id')
+    .notNull()
+    .references(() => users.id),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  isRevoked: boolean('is_revoked').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  keyHashIdx: index('api_keys_key_hash_idx').on(table.keyHash),
+  isRevokedIdx: index('api_keys_is_revoked_idx').on(table.isRevoked),
+}));
+
+export const webhookSubscriptions = pgTable('webhook_subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  url: text('url').notNull(),
+  events: jsonb('events').$type<string[]>().notNull(),
+  secret: text('secret').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdById: uuid('created_by_id')
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  isActiveIdx: index('webhook_subscriptions_is_active_idx').on(table.isActive),
+  eventsIdx: index('webhook_subscriptions_events_gin_idx').using('gin', table.events),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [apiKeys.createdById],
+    references: [users.id],
+  }),
+}));
+
+export const webhookSubscriptionsRelations = relations(webhookSubscriptions, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [webhookSubscriptions.createdById],
+    references: [users.id],
+  }),
+}));

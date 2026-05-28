@@ -213,7 +213,7 @@ export function DisposalHistoryGrid({
         cell: ({ row }) => {
           const urls = row.original.documentUrls || [];
           if (urls.length === 0) {
-            return <span className="text-slate-400 text-sm">-</span>;
+            return <span className="text-muted-foreground text-sm">-</span>;
           }
           
           return (
@@ -267,7 +267,7 @@ export function DisposalHistoryGrid({
       />
 
       {/* Data Table Container */}
-      <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-white">
+      <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-background">
         <DataTable<HistoryDisposalRow, unknown>
           columns={columns}
           data={filteredData}
@@ -276,7 +276,7 @@ export function DisposalHistoryGrid({
           paginationState={paginationState}
           onPaginationChange={handlePaginationChange}
           pageSizeOptions={[10, 20, 50]}
-          className="rounded-lg border-slate-200"
+          className="rounded-lg border-border"
           onRowClick={(
             row: { original?: HistoryDisposalRow } | HistoryDisposalRow
           ) => {

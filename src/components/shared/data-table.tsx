@@ -85,6 +85,7 @@ type DataTableProps<TData, TValue> = {
 
   // Prevent selection header replacement
   disableSelectionHeader?: boolean
+  hideFooter?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -113,6 +114,7 @@ export function DataTable<TData, TValue>({
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   initialPageSize = DEFAULT_INITIAL_PAGE_SIZE,
   disableSelectionHeader = false,
+  hideFooter = false,
 }: DataTableProps<TData, TValue>) {
   const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
 
@@ -274,8 +276,8 @@ export function DataTable<TData, TValue>({
   const currentPage = Math.min(table.getState().pagination.pageIndex + 1, computedPageCount)
 
   const tableContent = (
-    <Table 
-      className={cn("table-fixed min-w-full", table.getRowModel().rows.length === 0 && "h-full")} 
+    <Table
+      className={cn("table-fixed min-w-full", table.getRowModel().rows.length === 0 && "h-full")}
       containerClassName={cn("!overflow-visible", table.getRowModel().rows.length === 0 && "h-full")}
     >
       <colgroup>
@@ -300,10 +302,10 @@ export function DataTable<TData, TValue>({
       </colgroup>
       <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
         {(selectedRows > 0 && !disableSelectionHeader) ? (
-          <TableRow className="h-13.25 border-border bg-slate-500 hover:bg-slate-500 transition-all duration-200 ease-in-out">
+          <TableRow className="h-13.25 border-border bg-primary hover:bg-primary transition-all duration-200 ease-in-out">
             <TableHead
               colSpan={table.getAllLeafColumns().length}
-              className="h-13.25 bg-slate-500 px-6 py-0 font-medium text-white [&:has([role=checkbox])]:pr-6 transition-all duration-200 ease-in-out"
+              className="h-13.25 bg-primary px-6 py-0 font-medium text-primary-foreground [&:has([role=checkbox])]:pr-6 transition-all duration-200 ease-in-out"
             >
               <div className="flex h-13.25 w-full items-center justify-between pr-6">
                 <div className="flex min-w-0 items-center">
@@ -315,10 +317,10 @@ export function DataTable<TData, TValue>({
                         (table.getIsSomeRowsSelected() ? "indeterminate" : false)
                       }
                       onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
-                      className="border-white/70 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-600 data-[state=indeterminate]:border-white data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-slate-600"
+                      className="border-primary-foreground/70 data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=indeterminate]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary"
                     />
                   </div>
-                  <p className="truncate text-sm font-medium text-white ml-3">
+                  <p className="truncate text-sm font-medium text-primary-foreground ml-3">
                     {actionHeaderLabel}
                   </p>
                 </div>
@@ -356,7 +358,7 @@ export function DataTable<TData, TValue>({
                           action.tone === "destructive"
                             ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             : action.tone === "primary"
-                              ? "border-[#00145a] bg-[#00145a] text-white hover:bg-[#000d3d]"
+                              ? "border-primary-foreground/20 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
                               : "border-border bg-muted text-foreground hover:bg-muted/80"
                         )}
                       >
@@ -444,7 +446,7 @@ export function DataTable<TData, TValue>({
                 className={cn(
                   "h-13.25 border-border",
                   isRowClickable && "cursor-pointer hover:bg-muted/50",
-                  isActive && "bg-slate-50"
+                  isActive && "bg-muted"
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
@@ -523,92 +525,94 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-4 py-3 text-sm">
-        <div className="flex-1 whitespace-nowrap text-muted-foreground">
-          {footerText !== undefined ? (
-            footerText
-          ) : enableRowSelection ? (
-            `${selectedRows} of ${totalRows} row(s) selected`
-          ) : (
-            `Showing ${totalRows} row(s)`
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <div className="flex items-center gap-2">
-            <label htmlFor="rows-per-page" className="whitespace-nowrap text-muted-foreground">
-              Rows per page
-            </label>
-            <Select
-              value={String(table.getState().pagination.pageSize)}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger id="rows-per-page" className="h-8 w-fit min-w-[70px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent>
-                {sortedPageSizes.map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {!hideFooter && (
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-4 py-3 text-sm">
+          <div className="flex-1 whitespace-nowrap text-muted-foreground">
+            {footerText !== undefined ? (
+              footerText
+            ) : enableRowSelection ? (
+              `${selectedRows} of ${totalRows} row(s) selected`
+            ) : (
+              `Showing ${totalRows} row(s)`
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <p className="whitespace-nowrap text-muted-foreground">
-              Page {currentPage} of {computedPageCount}
-            </p>
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-                aria-label="Go to first page"
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2">
+              <label htmlFor="rows-per-page" className="whitespace-nowrap text-muted-foreground">
+                Rows per page
+              </label>
+              <Select
+                value={String(table.getState().pagination.pageSize)}
+                onValueChange={(value) => table.setPageSize(Number(value))}
               >
-                {"<<"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                aria-label="Go to previous page"
-              >
-                {"<"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                aria-label="Go to next page"
-              >
-                {">"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => table.setPageIndex(computedPageCount - 1)}
-                disabled={!table.getCanNextPage()}
-                aria-label="Go to last page"
-              >
-                {">>"}
-              </Button>
+                <SelectTrigger id="rows-per-page" className="h-8 w-fit min-w-[70px]">
+                  <SelectValue placeholder={table.getState().pagination.pageSize} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortedPageSizes.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="whitespace-nowrap text-muted-foreground">
+                Page {currentPage} of {computedPageCount}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.setPageIndex(0)}
+                  disabled={!table.getCanPreviousPage()}
+                  aria-label="Go to first page"
+                >
+                  {"<<"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                  aria-label="Go to previous page"
+                >
+                  {"<"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                  aria-label="Go to next page"
+                >
+                  {">"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => table.setPageIndex(computedPageCount - 1)}
+                  disabled={!table.getCanNextPage()}
+                  aria-label="Go to last page"
+                >
+                  {">>"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
