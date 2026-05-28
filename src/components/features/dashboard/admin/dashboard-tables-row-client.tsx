@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { DisposeAssetsRequestDialog, type SelectedAssetLite } from "@/components/features/disposals/dispose-assets-request-dialog"
-import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow } from "@/actions/dashboard"
+import type { OverdueReturnRow, HighMaintenanceRow, PendingDisposalRow, RecentWriteOffRow } from "@/actions/dashboard"
 import { toast } from "sonner"
 import { sendAssignmentReminderAction } from "@/actions/assignments"
 import { tiqriToast } from "@/components/shared/sonner"
@@ -237,16 +237,66 @@ function useHighMaintenanceColumns(onFlag: (asset: HighMaintenanceRow) => void):
   ], [onFlag])
 }
 
+function useWriteOffColumns(): ColumnDef<RecentWriteOffRow>[] {
+  return useMemo(() => [
+    {
+      id: "asset",
+      header: "Asset",
+      size: 180,
+      minSize: 150,
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold text-foreground">
+          {row.original.assetName} ({row.original.assetTag})
+        </span>
+      ),
+    },
+    {
+      id: "bookValue",
+      header: "Book Value at Disposal",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.bookValue || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "salvageValue",
+      header: "Actual Salvage Recovery",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs font-bold text-emerald-600">
+          {row.original.salvageValue || "—"}
+        </span>
+      ),
+    },
+    {
+      id: "resolvedAt",
+      header: "Disposed Date",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground">
+          {row.original.resolvedAt ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(row.original.resolvedAt)) : "—"}
+        </span>
+      ),
+    },
+  ], [])
+}
+
 // ─── Main client export ───────────────────────────────────────────────────────
 
 interface Props {
   overdueReturns: OverdueReturnRow[]
   pendingDisposals: PendingDisposalRow[]
   highMaintenanceAssets: HighMaintenanceRow[]
+  recentWriteOffs?: RecentWriteOffRow[]
   userRole: string
 }
 
-export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, userRole }: Props) {
+export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, highMaintenanceAssets, recentWriteOffs = [], userRole }: Props) {
   const showPending = userRole === 'GlobalAdmin' || userRole === 'FinanceAuditor'
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
@@ -288,6 +338,7 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
   const overdueColumns = useOverdueColumns("Send Reminder", handleSendReminder, sendingReminderIds)
   const pendingColumns = usePendingDisposalColumns(userRole)
   const lemonsColumns = useHighMaintenanceColumns(handleFlagClick)
+  const writeOffColumns = useWriteOffColumns()
 
   const tableProps: {
     enableRowSelection: boolean
@@ -374,24 +425,41 @@ export function DashboardTablesRowClient({ overdueReturns, pendingDisposals, hig
         )}
       </Tabs>
 
-      {/* ── Right: High-Maintenance Assets ── */}
-      {userRole !== 'FinanceAuditor' && (
-      <div className="flex flex-col w-full">
-        <div className="h-10 mb-4 flex items-center">
-          <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
-            High-Maintenance Assets
-          </h3>
+      {/* ── Right Column: High-Maintenance (Lemons) or Recent Write-Offs (Auditor) ── */}
+      {userRole === 'FinanceAuditor' ? (
+        <div className="flex flex-col w-full">
+          <div className="h-10 mb-4 flex items-center">
+            <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
+              Recent Write-Offs
+            </h3>
+          </div>
+          <DataTable
+            {...tableProps}
+            columns={writeOffColumns}
+            data={recentWriteOffs}
+            emptyState={{
+              title: "No recent write-offs",
+              description: "No assets have been decommissioned recently.",
+            }}
+          />
         </div>
-        <DataTable
-          {...tableProps}
-          columns={lemonsColumns}
-          data={highMaintenanceAssets}
-          emptyState={{
-            title: "No high-maintenance assets",
-            description: "No assets have 3 or more repair tickets.",
-          }}
-        />
-      </div>
+      ) : (
+        <div className="flex flex-col w-full">
+          <div className="h-10 mb-4 flex items-center">
+            <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
+              High-Maintenance Assets
+            </h3>
+          </div>
+          <DataTable
+            {...tableProps}
+            columns={lemonsColumns}
+            data={highMaintenanceAssets}
+            emptyState={{
+              title: "No high-maintenance assets",
+              description: "No assets have 3 or more repair tickets.",
+            }}
+          />
+        </div>
       )}
 
       <DisposeAssetsRequestDialog

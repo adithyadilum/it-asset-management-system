@@ -37,12 +37,15 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
     metrics.netBookValue,
     metrics.cumulativeRepairSpend,
     metrics.warrantyExpiries30Days,
-    metrics.inactiveSoftwareSeats,
+    metrics.inactiveSoftwareSeats !== undefined ? metrics.inactiveSoftwareSeats : metrics.inactiveSoftwareCostLeak,
     metrics.softwareRenewals30Days,
+    metrics.cumulativeSalvageRecouped,
   ].filter(val => val !== undefined).length;
 
-  let gridColsClass = "grid-cols-1 md:grid-cols-3";
-  if (renderedCount === 6) {
+  let gridColsClass = "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+  if (renderedCount === 7) {
+    gridColsClass = "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7";
+  } else if (renderedCount === 6) {
     gridColsClass = "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6";
   } else if (renderedCount === 4) {
     gridColsClass = "sm:grid-cols-2 md:grid-cols-4";
@@ -115,6 +118,18 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
           href="/assets/software"
         />
       )}
+      {metrics.inactiveSoftwareCostLeak !== undefined && metrics.inactiveSoftwareSeats === undefined && (
+        <KpiCard 
+          title="Software Cost Leak"
+          value={formatCurrency(metrics.inactiveSoftwareCostLeak)}
+          badgeText={`-${formatCompactCurrency(metrics.inactiveSoftwareCostLeak)}/mo`}
+          badgeType="negative"
+          valueColor="destructive"
+          subText1="Monthly waste from unused software licenses"
+          subText2="Identified cost savings potential."
+          href="/assets/software"
+        />
+      )}
       {metrics.softwareRenewals30Days !== undefined && (
         <KpiCard 
           title="Software Renewals (30 Days)"
@@ -125,6 +140,18 @@ export function KpiMetricsRow({ metrics }: KpiMetricsRowProps) {
           subText1={`${formatNumber(metrics.softwareRenewals30Days)} critical subscriptions near expiry`}
           subText2={`Affects ${formatNumber(metrics.impactedSoftwareEmployees ?? 0)} employee custodians.`}
           href="/assets/software"
+        />
+      )}
+      {metrics.cumulativeSalvageRecouped !== undefined && (
+        <KpiCard 
+          title="Salvage Cost Recovery"
+          value={formatCurrency(metrics.cumulativeSalvageRecouped)}
+          badgeText="Recouped"
+          badgeType="positive"
+          valueColor="default"
+          subText1="Total salvage value recovered from disposals"
+          subText2="From completed asset write-offs."
+          href="/financials/salvage"
         />
       )}
     </div>

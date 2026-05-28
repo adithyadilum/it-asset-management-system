@@ -9,6 +9,7 @@ import {
   type OverdueReturnRow,
   type HighMaintenanceRow,
   type PendingDisposalRow,
+  type RecentWriteOffRow,
 } from "@/actions/dashboard"
 import { DashboardTablesRowClient } from "./dashboard-tables-row-client"
 
@@ -16,6 +17,7 @@ interface DashboardTablesRowProps {
   overdueReturns: OverdueReturnRow[];
   highMaintenanceAssets: HighMaintenanceRow[];
   pendingDisposals: PendingDisposalRow[];
+  recentWriteOffs?: RecentWriteOffRow[];
   userRole: string;
 }
 
@@ -23,6 +25,7 @@ export function DashboardTablesRow({
   overdueReturns, 
   highMaintenanceAssets, 
   pendingDisposals,
+  recentWriteOffs = [],
   userRole
 }: DashboardTablesRowProps) {
   return (
@@ -30,6 +33,7 @@ export function DashboardTablesRow({
       overdueReturns={overdueReturns}
       highMaintenanceAssets={highMaintenanceAssets}
       pendingDisposals={pendingDisposals}
+      recentWriteOffs={recentWriteOffs}
       userRole={userRole}
     />
   )
