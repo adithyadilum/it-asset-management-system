@@ -60,7 +60,7 @@ export function EmployeeAlerts({ alerts }: EmployeeAlertsProps) {
       {alerts.returnRequested.map((item) => (
         <AssetAlert
           key={`return-${item.assignmentId}`}
-          variant="return-overdue"
+          variant="notice"
           title="Urgent Action Required"
           message={`IT has requested the immediate return of ${item.modelName}.`}
         />
