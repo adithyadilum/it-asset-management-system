@@ -110,6 +110,7 @@ export function FinanceDashboardView({
         metrics={data.kpiMetrics}
         currencyCode={currencyCode}
         exchangeRate={exchangeRate}
+        isAuditor={true}
       />
 
       {/* Charts Grid */}
