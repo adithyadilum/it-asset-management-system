@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -18,6 +19,9 @@ export interface ModuleNavigationTabsProps {
   // Tab Configuration
   tabs: ModuleTab[];
   defaultTab?: string; // ID of the tab to show by default (defaults to first tab)
+
+  // Optional header rendered above the tabs
+  header?: React.ReactNode;
 
   // Callbacks
   onTabChange?: (tabId: string) => void;
@@ -44,6 +48,7 @@ export const ModuleNavigationTabs = React.forwardRef<
       tabs,
       defaultTab,
       onTabChange,
+      header,
       containerClassName = "",
       listClassName = "",
       triggerClassName = "",
@@ -65,11 +70,14 @@ export const ModuleNavigationTabs = React.forwardRef<
         onValueChange={handleTabChange}
         className={cn("w-full", containerClassName)} // Keeps the overall container full width
       >
+        {/* Optional header above the tabs */}
+        {header ? <div className="mb-3">{header}</div> : null}
+
         {/* ===== TAB LIST (Navigation) ===== */}
         <TabsList
           className={cn(
             // Container styles
-            "h-9 w-fit gap-2 rounded-lg bg-slate-50 p-1", // CHANGED: w-full to w-fit
+            "h-9 w-fit gap-2 rounded-lg bg-muted p-1", // CHANGED: w-full to w-fit
             // Flexbox layout
             "inline-flex items-center justify-start",
             // Custom className for the list background
@@ -83,14 +91,14 @@ export const ModuleNavigationTabs = React.forwardRef<
               className={cn(
                 // Default state (inactive)
                 "relative h-7 rounded-md border border-transparent px-2 py-1",
-                "text-sm font-medium text-slate-500",
-                "bg-transparent hover:text-slate-600 transition-colors",
+                `${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-muted-foreground`,
+                "bg-transparent hover:text-muted-foreground transition-colors",
                 "cursor-pointer",
 
                 // Active state
-                "data-[state=active]:bg-white",
-                "data-[state=active]:text-slate-900",
-                "data-[state=active]:border-slate-200",
+                "data-[state=active]:bg-background",
+                "data-[state=active]:text-foreground",
+                "data-[state=active]:border-border",
                 "data-[state=active]:shadow-sm",
 
                 // Accessibility
@@ -107,7 +115,7 @@ export const ModuleNavigationTabs = React.forwardRef<
         </TabsList>
 
         {/* ===== TAB CONTENT ===== */}
-        <div className="mt-4">
+        <div className="mt-4 flex flex-1 flex-col min-h-0">
           {/* If children provided, render them */}
           {children}
 

@@ -57,8 +57,13 @@ export function MockLoginFlow({ redirectTo }: MockLoginFlowProps) {
         throw new Error(result.error)
       }
 
+      let finalRedirect = redirectTo
+      if (result.user?.role === 'Employee' && finalRedirect === '/dashboard') {
+        finalRedirect = '/my-assets'
+      }
+
       // Use replace so the login page does not stay in browser history.
-      router.replace(redirectTo)
+      router.replace(finalRedirect)
     } catch (error: unknown) {
       setErrorMessage(
         error instanceof Error
@@ -114,7 +119,7 @@ export function MockLoginFlow({ redirectTo }: MockLoginFlowProps) {
                     <Button
                       type="button"
                       onClick={handleMicrosoftClick}
-                      className="h-9 w-full rounded-md border border-slate-800 bg-primary text-sm font-medium leading-5 text-primary-foreground shadow-sm hover:bg-primary/95"
+                      className="h-9 w-full rounded-md border border-border bg-primary text-sm font-medium leading-5 text-primary-foreground shadow-sm hover:bg-primary/95"
                     >
                       <MicrosoftMark />
                       Login with Microsoft
@@ -153,7 +158,7 @@ export function MockLoginFlow({ redirectTo }: MockLoginFlowProps) {
 
                       <Button
                         type="submit"
-                        className="h-9 w-full rounded-md border border-slate-800 bg-primary text-sm font-medium leading-5 text-primary-foreground shadow-sm hover:bg-primary/95"
+                        className="h-9 w-full rounded-md border border-border bg-primary text-sm font-medium leading-5 text-primary-foreground shadow-sm hover:bg-primary/95"
                       >
                         Sign In
                       </Button>

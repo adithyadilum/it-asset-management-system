@@ -8,7 +8,7 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
-const MAX_RESULTS = 20;
+
 
 export interface UserSearchResult {
   id: string;
@@ -35,7 +35,8 @@ function forbiddenResult(message: string): UsersActionResult {
  * @returns Array of users matching the query
  */
 export async function searchUsers(
-  query: string = ''
+  query: string = '',
+  limit: number = 20
 ): Promise<UsersActionResult> {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
@@ -69,7 +70,7 @@ export async function searchUsers(
       .from(users)
       .where(and(...filters))
       .orderBy(asc(users.name))
-      .limit(MAX_RESULTS);
+      .limit(limit);
 
     return {
       success: true,

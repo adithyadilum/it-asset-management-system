@@ -4,6 +4,7 @@ import { asc, and, desc, eq, isNull } from "drizzle-orm"
 import { SandboxSharedIntegrationSuiteClient } from "@/components/features/sandbox/sandbox-shared-integration-suite-client"
 import { SandboxToastPageClient } from "@/components/features/sandbox/sandbox-toast-page-client"
 import { SandboxUiPlaygroundClient } from "@/components/features/sandbox/sandbox-ui-playground-client"
+import { ReportPdfTestPage } from "@/components/features/sandbox/report-pdf-test-page"
 import { db } from "@/db"
 import { assetAssignments, assets, categories, locations, models, users } from "@/db/schema"
 
@@ -117,6 +118,7 @@ export default async function SandboxPage() {
         <div className="flex min-h-0 flex-1 flex-col">
             <SandboxToastPageClient />
             <SandboxUiPlaygroundClient />
+            <ReportPdfTestPage />
             <SandboxSharedIntegrationSuiteClient
                 employeeName={employeeAssetPreview.employeeName}
                 employeeEmail={employeeAssetPreview.employeeEmail}

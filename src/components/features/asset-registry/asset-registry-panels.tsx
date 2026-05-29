@@ -42,16 +42,18 @@ export function AssetRegistryPanels({
 
     return (
         <>
-            <RegistrationPanelWrapper
-                isOpen={currentPanel === "registration"}
-                onClose={(didSucceed) => {
-                    if (didSucceed) {
-                        onRefreshRef?.current?.();
-                    }
-                    handleClose();
-                }}
-                pillar={pillar}
-            />
+            {pillar ? (
+                <RegistrationPanelWrapper
+                    isOpen={currentPanel === "registration"}
+                    onClose={(didSucceed) => {
+                        if (didSucceed) {
+                            onRefreshRef?.current?.();
+                        }
+                        handleClose();
+                    }}
+                    pillar={pillar}
+                />
+            ) : null}
 
             {cachedRecordId ? (
                 <AssetDetailsPanelWrapper
@@ -60,6 +62,7 @@ export function AssetRegistryPanels({
                     recordId={cachedRecordId}
                     manualStatuses={manualStatuses}
                     onStatusUpdateRef={onStatusUpdateRef}
+                    onRefreshRef={onRefreshRef}
                 />
             ) : null}
         </>

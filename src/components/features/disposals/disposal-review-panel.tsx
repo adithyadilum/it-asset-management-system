@@ -59,10 +59,10 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start text-sm leading-5">
-      <span className={`w-40 ${bold ? 'font-semibold text-slate-900' : 'font-semibold text-slate-900'}`}>
+      <span className={`w-40 ${bold ? 'font-semibold text-foreground' : 'font-semibold text-foreground'}`}>
         {label}:
       </span>
-      <span className={`flex-1 ${bold ? 'font-semibold text-slate-900' : 'font-normal text-slate-600'}`}>
+      <span className={`flex-1 ${bold ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground'}`}>
         {value || '-'}
       </span>
     </div>
@@ -74,7 +74,7 @@ function WarrantyStatusBadge({
 }: {
   status?: string;
 }) {
-  if (!status) return <span className="text-sm font-normal text-slate-600">-</span>;
+  if (!status) return <span className="text-sm font-normal text-muted-foreground">-</span>;
 
   if (status === 'Expired') {
     return (
@@ -92,7 +92,7 @@ function WarrantyStatusBadge({
     );
   }
 
-  return <span className="text-sm font-normal text-slate-600">{status}</span>;
+  return <span className="text-sm font-normal text-muted-foreground">{status}</span>;
 }
 
 export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
@@ -130,9 +130,9 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
             className="h-32 w-auto object-contain drop-shadow-sm"
           />
         ) : (
-          <div className="flex h-32 w-48 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+          <div className="flex h-32 w-48 items-center justify-center rounded-lg border border-border bg-muted">
             <svg
-              className="h-8 w-8 text-slate-400"
+              className="h-8 w-8 text-muted-foreground"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -162,7 +162,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
       </div>
 
       {/* Disposal Request Details Section (Grey Background) */}
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 space-y-4">
+      <div className="rounded-lg border border-border bg-muted p-6 space-y-4">
         <div className="space-y-3">
           <DetailRow label="Requested By" value={props.requestedBy} />
           <DetailRow label="Date Requested" value={formatDateString(props.dateRequested)} />
@@ -170,11 +170,11 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
         </div>
 
         {/* Technician Notes */}
-        <div className="border-t border-slate-200 pt-4">
-          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900 mb-2`}>
+        <div className="border-t border-border pt-4">
+          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground mb-2`}>
             Technician Notes:
           </p>
-          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600 leading-relaxed`}>
+          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground leading-relaxed`}>
             {props.justification || 'No additional notes provided.'}
           </p>
         </div>
@@ -187,7 +187,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
           <DetailRow label="Original Cost" value={props.originalCost ? `$${props.originalCost.toFixed(0)}` : '-'} />
           <DetailRow label="Current Book Value" value={props.currentBookValue ? `$${props.currentBookValue.toFixed(0)}` : '-'} />
           <div className="flex items-start text-sm leading-5">
-            <span className="w-40 font-semibold text-slate-900">Warranty Status:</span>
+            <span className="w-40 font-semibold text-foreground">Warranty Status:</span>
             <WarrantyStatusBadge status={props.warrantyStatus} />
           </div>
         </div>
@@ -202,7 +202,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
       title={
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5" />
-          <span className="text-slate-900">Disposal Request Review</span>
+          <span className="text-foreground">Disposal Request Review</span>
         </div>
       }
       content={panelContent}

@@ -107,7 +107,7 @@ const PILLAR_OPTIONS = [
 ] as const;
 
 const READ_ONLY_INPUT_CLASSNAME =
-    "h-9 bg-slate-100 font-mono tracking-wide text-slate-700 pointer-events-none";
+    "h-9 bg-muted font-mono tracking-wide text-foreground pointer-events-none";
 
 function isRecordEntity(value: string | undefined): value is MasterDataRecordEntity {
     return MASTER_DATA_RECORD_ENTITIES.includes(value as MasterDataRecordEntity);
@@ -226,27 +226,27 @@ function renderSchemaRows(
     return (
         <div className="space-y-3 border-t pt-4">
             <div>
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>{title}</h3>
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>{description}</p>
+                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>{title}</h3>
+                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{description}</p>
             </div>
 
             {rows.length === 0 ? (
-                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                <div className={`rounded-md bg-muted px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                     No fields defined.
                 </div>
             ) : (
-                <div className="rounded-md border bg-slate-50/50">
-                    <div className="grid grid-cols-12 gap-4 border-b bg-slate-50 p-3 text-xs font-medium text-slate-500">
+                <div className="rounded-md border bg-muted/50">
+                    <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
                         <div className="col-span-5">Field Name</div>
                         <div className="col-span-4">Input Type</div>
                         <div className="col-span-3">Required</div>
                     </div>
                     <div className="space-y-2 p-2">
                         {rows.map((row, index) => (
-                            <div key={`${row.fieldName}-${index}`} className="grid grid-cols-12 items-center gap-4 rounded-sm bg-white p-2">
-                                <div className="col-span-5 text-sm text-slate-900">{row.fieldName}</div>
-                                <div className="col-span-4 text-sm text-slate-700">{row.inputType}</div>
-                                <div className="col-span-3 text-sm text-slate-700">{row.required ? "Yes" : "No"}</div>
+                            <div key={`${row.fieldName}-${index}`} className="grid grid-cols-12 items-center gap-4 rounded-sm bg-background p-2">
+                                <div className="col-span-5 text-sm text-foreground">{row.fieldName}</div>
+                                <div className="col-span-4 text-sm text-foreground">{row.inputType}</div>
+                                <div className="col-span-3 text-sm text-foreground">{row.required ? "Yes" : "No"}</div>
                             </div>
                         ))}
                     </div>
@@ -679,7 +679,7 @@ export function MasterDataRecordPanel({
         return (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                         {ENTITY_LABELS[normalizedEntity]} ID
                     </label>
                     <Input
@@ -717,7 +717,7 @@ export function MasterDataRecordPanel({
 
         return (
             <div className="space-y-2">
-                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                     {label}
                     {options?.required && !forceReadOnlyInEdit ? (
                         <span className="text-red-500"> *</span>
@@ -754,10 +754,10 @@ export function MasterDataRecordPanel({
             <div className="flex items-center justify-between rounded-lg border p-4">
                 {!isDetailMode ? <input type="hidden" name="isActive" value={String(isActive)} /> : null}
                 <div className="space-y-0.5">
-                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                         Active Status
                     </label>
-                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                         Keep this value selectable for new records.
                     </p>
                 </div>
@@ -795,7 +795,7 @@ export function MasterDataRecordPanel({
                             })}
 
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Type <span className="text-red-500">*</span>
                                 </label>
                                 {isDetailMode ? (
@@ -835,7 +835,7 @@ export function MasterDataRecordPanel({
                         </div>
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Parent Location
                             </label>
                             {isDetailMode ? (
@@ -892,7 +892,7 @@ export function MasterDataRecordPanel({
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {normalizedEntity && selectedRecord && Number.isFinite(numericRecordId) && (
                                 <div className="space-y-2">
-                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                         {ENTITY_LABELS[normalizedEntity]} ID
                                     </label>
                                     <Input
@@ -905,7 +905,7 @@ export function MasterDataRecordPanel({
                                 </div>
                             )}
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Type
                                 </label>
                                 {isDetailMode ? (
@@ -988,7 +988,7 @@ export function MasterDataRecordPanel({
                         })}
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Linked Assets
                             </label>
                             <Input
@@ -1022,7 +1022,7 @@ export function MasterDataRecordPanel({
                         {renderRecordIdPreview()}
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Type
                             </label>
                             {isDetailMode ? (
@@ -1069,12 +1069,12 @@ export function MasterDataRecordPanel({
                         </div>
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Model Image
                             </label>
                             {isDetailMode ? (
-                                <div className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
-                                    <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                <div className="flex items-center gap-3 rounded-lg border bg-muted px-3 py-2">
+                                    <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-background">
                                         {hasSelectedModelImage ? (
                                             <Image
                                                 src={displayModelImageUrl}
@@ -1084,19 +1084,19 @@ export function MasterDataRecordPanel({
                                                 className="h-full w-full object-cover"
                                             />
                                         ) : (
-                                            <ImagePlus className="h-5 w-5 text-slate-400" />
+                                            <ImagePlus className="h-5 w-5 text-muted-foreground" />
                                         )}
                                     </div>
-                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                         {hasSelectedModelImage ? "Image uploaded" : "No image available"}
                                     </p>
                                 </div>
                             ) : (
-                                <div className="space-y-3 rounded-lg border bg-slate-50 px-3 py-2">
+                                <div className="space-y-3 rounded-lg border bg-muted px-3 py-2">
                                     <input type="hidden" name="imageUrl" value={selectedModelImageUrl} />
 
                                     <div className="flex items-center gap-3">
-                                        <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                                        <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-background">
                                             {hasSelectedModelImage ? (
                                                 <Image
                                                     src={displayModelImageUrl}
@@ -1106,16 +1106,16 @@ export function MasterDataRecordPanel({
                                                     className="h-full w-full object-cover"
                                                 />
                                             ) : (
-                                                <ImagePlus className="h-5 w-5 text-slate-400" />
+                                                <ImagePlus className="h-5 w-5 text-muted-foreground" />
                                             )}
                                         </div>
                                         <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-slate-600`}>
+                                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-muted-foreground`}>
                                                 {modelImageFile ? modelImageFile.name : hasSelectedModelImage ? "Current image" : "No image selected"}
                                             </p>
                                             <button
                                                 type="button"
-                                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                                                 onClick={() => {
                                                     setShowModelImageUploader(true);
                                                     modelImageInputRef.current?.click();
@@ -1155,15 +1155,15 @@ export function MasterDataRecordPanel({
                                             onDrop={handleModelImageDrop}
                                             className={`cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors ${isModelImageDragOver
                                                 ? "border-primary bg-primary/5"
-                                                : "border-slate-300 bg-white hover:border-slate-400"
+                                                : "border-border bg-background hover:border-slate-400"
                                                 }`}
                                         >
                                             <div className="flex flex-col items-center gap-2 text-center">
-                                                <Upload className="h-5 w-5 text-slate-500" />
-                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                <Upload className="h-5 w-5 text-muted-foreground" />
+                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                                     Drag and drop a replacement image, or click to browse
                                                 </p>
-                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                                     PNG, JPG, WEBP or GIF. Maximum file size: 4.5MB.
                                                 </p>
                                             </div>
@@ -1175,7 +1175,7 @@ export function MasterDataRecordPanel({
                                             <button
                                                 type="button"
                                                 onClick={clearSelectedModelImage}
-                                                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-600 hover:text-slate-900`}
+                                                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-muted-foreground hover:text-foreground`}
                                             >
                                                 Remove selected file
                                             </button>
@@ -1192,7 +1192,7 @@ export function MasterDataRecordPanel({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Brand <span className="text-red-500">*</span>
                                 </label>
                                 {isDetailMode ? (
@@ -1234,7 +1234,7 @@ export function MasterDataRecordPanel({
                             </div>
 
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Category <span className="text-red-500">*</span>
                                 </label>
                                 {isDetailMode ? (
@@ -1293,22 +1293,22 @@ export function MasterDataRecordPanel({
 
                         <div className="space-y-4 border-t pt-4">
                             <div>
-                                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
                                     Model Specifications
                                 </h3>
-                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                     Fields below are sourced from common section of the selected Category.
                                 </p>
                             </div>
 
                             {!selectedModelCategory ? (
-                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                <div className={`rounded-md bg-muted px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                     Select a category to load model specification fields.
                                 </div>
                             ) : null}
 
                             {selectedModelCategory && selectedModelSpecs.length === 0 ? (
-                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                <div className={`rounded-md bg-muted px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                     This category has no model specification fields yet.
                                 </div>
                             ) : null}
@@ -1324,7 +1324,7 @@ export function MasterDataRecordPanel({
                                             if (isDetailMode) {
                                                 return (
                                                     <div key={spec.fieldName} className="space-y-2">
-                                                        <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                        <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                                             {spec.fieldName}
                                                         </label>
                                                         <Input
@@ -1340,7 +1340,7 @@ export function MasterDataRecordPanel({
 
                                             return (
                                                 <div key={spec.fieldName} className="space-y-2">
-                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                                         {spec.fieldName}
                                                         {spec.required ? <span className="text-red-500"> *</span> : null}
                                                     </label>
@@ -1365,7 +1365,7 @@ export function MasterDataRecordPanel({
                                         if (isDetailMode) {
                                             return (
                                                 <div key={spec.fieldName} className="space-y-2">
-                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                                         {spec.fieldName}
                                                     </label>
                                                     <Input
@@ -1381,7 +1381,7 @@ export function MasterDataRecordPanel({
 
                                         return (
                                             <div key={spec.fieldName} className="space-y-2">
-                                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                                     {spec.fieldName}
                                                     {spec.required ? <span className="text-red-500"> *</span> : null}
                                                 </label>
@@ -1477,7 +1477,7 @@ export function MasterDataRecordPanel({
                         </div>
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Cost Center ID
                             </label>
                             {!isDetailMode ? (
@@ -1510,7 +1510,7 @@ export function MasterDataRecordPanel({
                         })}
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Linked Assets
                             </label>
                             <Input
@@ -1543,17 +1543,17 @@ export function MasterDataRecordPanel({
 
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
-                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                         Status Icon {!isDetailMode && <span className="text-red-500"> *</span>}
                                     </label>
                                     {isDetailMode ? (
-                                        <div className="flex items-center gap-2 h-9 border rounded-md px-3 bg-slate-100">
+                                        <div className="flex items-center gap-2 h-9 border rounded-md px-3 bg-muted">
                                             {(() => {
                                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 const Icon = (LucideIcons as any)[iconName] as LucideIcon;
                                                 return Icon ? <Icon className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />;
                                             })()}
-                                            <span className="text-sm text-slate-700">{iconName}</span>
+                                            <span className="text-sm text-foreground">{iconName}</span>
                                         </div>
                                     ) : (
                                         <Select
@@ -1580,7 +1580,7 @@ export function MasterDataRecordPanel({
                                                             <SelectItem 
                                                                 key={icon} 
                                                                 value={icon}
-                                                                className="flex items-center justify-center p-2 hover:bg-slate-100 cursor-pointer rounded"
+                                                                className="flex items-center justify-center p-2 hover:bg-muted cursor-pointer rounded"
                                                             >
                                                                 {Icon ? <Icon className="h-5 w-5" /> : <span>{icon}</span>}
                                                             </SelectItem>
@@ -1598,13 +1598,13 @@ export function MasterDataRecordPanel({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                         Status Theme {!isDetailMode && <span className="text-red-500"> *</span>}
                                     </label>
                                     {isDetailMode ? (
-                                        <div className={cn("flex items-center gap-2 h-9 border rounded-md px-3 bg-slate-100")}>
-                                            <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-slate-200")} />
-                                            <span className="text-sm text-slate-700 capitalize">{colorTheme}</span>
+                                        <div className={cn("flex items-center gap-2 h-9 border rounded-md px-3 bg-muted")}>
+                                            <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-muted")} />
+                                            <span className="text-sm text-foreground capitalize">{colorTheme}</span>
                                         </div>
                                     ) : (
                                         <Select
@@ -1614,7 +1614,7 @@ export function MasterDataRecordPanel({
                                         >
                                             <SelectTrigger className="h-9">
                                                 <div className="flex items-center gap-2">
-                                                    <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-slate-200")} />
+                                                    <div className={cn("h-4 w-4 rounded-full border", STATUS_THEMES[colorTheme] || "bg-muted")} />
                                                     <SelectValue placeholder="Select a theme" />
                                                 </div>
                                             </SelectTrigger>

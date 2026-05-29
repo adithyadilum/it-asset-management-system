@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, userAgent } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
@@ -67,7 +67,9 @@ function canAccessRoute(role: TokenRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
-    pathname === '/dashboard/'
+    pathname === '/dashboard/' ||
+    pathname === '/my-assets' ||
+    pathname.startsWith('/my-assets/')
   ) {
     return true;
   }
@@ -142,19 +144,39 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(redirectTo, request.url));
     }
 
-    if (
-      payload &&
-      isProtectedRoute &&
-      !canAccessRoute(payload.role, pathname)
-    ) {
-      await logAuditAction({
-        entityType: 'URL',
-        entityId: request.url,
-        actionType: 'ACCESS_DENIED',
-        performedById: payload.sub ?? 'SYSTEM',
-        newData: { role: payload.role },
-      });
-      return NextResponse.redirect(new URL('/403', request.url));
+    if (payload && isProtectedRoute) {
+      const { device } = userAgent(request);
+      const isMobile = device.type === 'mobile';
+      const isAdmin = payload.role === 'GlobalAdmin' || payload.role === 'ITOperator';
+
+      // Admin mobile routing
+      if (isAdmin && isMobile && !pathname.startsWith('/mobile')) {
+        return NextResponse.redirect(new URL('/mobile', request.url));
+      }
+
+      // Block desktop users or non-admins from accessing /mobile
+      if (pathname.startsWith('/mobile')) {
+        if (!isMobile || !isAdmin) {
+          return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+      }
+
+      // Employee Dashboard Redirect
+      if (payload.role === 'Employee' && (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/')) {
+        return NextResponse.redirect(new URL('/my-assets', request.url));
+      }
+
+      // Check RBAC
+      if (!canAccessRoute(payload.role, pathname)) {
+        await logAuditAction({
+          entityType: 'URL',
+          entityId: request.url,
+          actionType: 'ACCESS_DENIED',
+          performedById: payload.sub ?? 'SYSTEM',
+          newData: { role: payload.role },
+        });
+        return NextResponse.redirect(new URL('/403', request.url));
+      }
     }
 
     return NextResponse.next();
@@ -168,5 +190,17 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+ matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - manifest.json (PWA manifest)
+     * - sw.js (Service Worker)
+     * - icons (PWA icons folder)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons).*)',
+  ],
 };

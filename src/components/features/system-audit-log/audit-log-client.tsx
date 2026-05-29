@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition, useCallback, useRef } from "react";
 import { format } from "date-fns";
-import { ChevronDown, Download, Search, X } from "lucide-react";
+import { Download } from "lucide-react";
 
 import { getAuditLogs, type AuditLogRow, type PaginatedAuditLogsResult } from "@/actions/audit-log";
 import type { PaginationState } from "@tanstack/react-table";
@@ -11,31 +11,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/shared/data-table";
-import { Input } from "@/components/ui/input";
+import { FilterBar, type AppliedFilter, type FilterFieldConfig } from "@/components/shared/filter-bar";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 import type { ColumnDef } from "@tanstack/react-table";
-
-type FilterOperator = "is" | "is not";
 
 type AuditFilterField =
     | "Action Taken"
@@ -43,12 +29,6 @@ type AuditFilterField =
     | "User"
     | "IP Address"
     | "Event Details";
-
-type AppliedFilter = {
-    field: AuditFilterField;
-    operator: FilterOperator;
-    value: string;
-};
 
 type AuditLogClientProps = {
     initialResult?: PaginatedAuditLogsResult;
@@ -63,15 +43,15 @@ const FILTER_FIELDS: AuditFilterField[] = [
 ];
 
 const ACTION_BADGE_STYLES: Record<string, string> = {
-    CREATE: "border-emerald-300 bg-emerald-50 text-emerald-700",
-    UPDATE: "border-sky-300 bg-sky-50 text-sky-700",
-    DELETE: "border-rose-300 bg-rose-50 text-rose-700",
-    DISPOSE: "border-orange-300 bg-orange-50 text-orange-700",
-    DISPOSED: "border-orange-300 bg-orange-50 text-orange-700",
-    EXPORTED: "border-amber-300 bg-amber-50 text-amber-700",
-    LOGIN: "border-violet-300 bg-violet-50 text-violet-700",
-    LOGOUT: "border-slate-300 bg-slate-50 text-slate-700",
-    ACCESS_DENIED: "border-red-300 bg-red-50 text-red-700",
+    CREATE: "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
+    UPDATE: "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/30 dark:text-sky-400",
+    DELETE: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400",
+    DISPOSE: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    DISPOSED: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    EXPORTED: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
+    LOGIN: "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-400",
+    LOGOUT: "border-border bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400",
+    ACCESS_DENIED: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400",
 };
 
 function getInitials(name: string) {
@@ -368,11 +348,6 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
     const [debouncedQuery, setDebouncedQuery] = useState("");
     const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
 
-    const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-    const [draftField, setDraftField] = useState<AuditFilterField>("Action Taken");
-    const [draftOperator, setDraftOperator] = useState<FilterOperator>("is");
-    const [draftValue, setDraftValue] = useState("");
-
     const [isPending, startTransition] = useTransition();
 
     // Debounce search so we only query the server after the user pauses typing.
@@ -416,10 +391,9 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             return [...remainingFilters, nextFilter];
         });
         setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-        setIsFilterPopoverOpen(false);
     };
 
-    const clearFilter = (field: AuditFilterField) => {
+    const clearFilter = (field: string) => {
         setAppliedFilters((currentFilters) =>
             currentFilters.filter((filter) => filter.field !== field)
         );
@@ -430,6 +404,20 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
         setAppliedFilters([]);
         setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     };
+
+    const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => {
+        return FILTER_FIELDS.map((field) => {
+            if (field === "Action Taken") {
+                return {
+                    value: field,
+                    label: field,
+                    options: Object.keys(ACTION_BADGE_STYLES),
+                };
+            }
+            // Free-text input for all other fields
+            return { value: field, label: field };
+        });
+    }, []);
 
     const tableColumns = useMemo<ColumnDef<AuditLogRow>[]>(() => [
         {
@@ -454,16 +442,16 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
                     <div className="flex min-w-0 items-center gap-3 py-0.5">
                         <Avatar className="size-7 rounded-md">
                             <AvatarImage src={performedBy?.avatarUrl ?? undefined} alt={performedBy?.name ?? "Unknown"} />
-                            <AvatarFallback className="rounded-md bg-slate-300 text-xs font-semibold text-slate-700">
+                            <AvatarFallback className="rounded-md bg-muted text-xs font-semibold text-foreground">
                                 {getInitials(performedBy?.name ?? "?")}
                             </AvatarFallback>
                         </Avatar>
 
                         <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold leading-5 text-slate-900">
+                            <p className="truncate text-sm font-semibold leading-5 text-foreground">
                                 {performedBy?.name ?? "Unknown"}
                             </p>
-                            <p className="truncate text-xs leading-4 text-slate-500">
+                            <p className="truncate text-xs leading-4 text-muted-foreground">
                                 {performedBy?.email ?? "Unknown"}
                             </p>
                         </div>
@@ -480,7 +468,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             cell: ({ row }) => {
                 const action = row.original.actionType.trim().toUpperCase();
                 const actionClassName =
-                    ACTION_BADGE_STYLES[action] ?? "border-slate-300 bg-slate-50 text-slate-700";
+                    ACTION_BADGE_STYLES[action] ?? "border-border bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400";
 
                 return (
                     <Badge
@@ -529,193 +517,38 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
 
     return (
         <TooltipProvider delayDuration={200}>
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6 text-slate-900">
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6 text-foreground">
                 <div className="mb-4">
-                    <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+                    <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
                         System Audit Log
                     </h1>
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col gap-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="relative w-full max-w-136 flex-1">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                            <Input
-                                value={searchValue}
-                                onChange={(event) => setSearchValue(event.target.value)}
-                                placeholder="Search..."
-                                className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm font-normal placeholder:text-slate-400"
-                            />
-                        </div>
+                    <FilterBar
+                        searchQuery={searchValue}
+                        onSearchChange={setSearchValue}
+                        searchPlaceholder="Search..."
+                        fields={filterFieldConfigs}
+                        appliedFilters={appliedFilters}
+                        onApplyFilter={setOrReplaceFilter}
+                        onClearFilter={clearFilter}
+                        onClearAllFilters={clearAllFilters}
+                    >
+                        <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                            onClick={() => downloadCsv(rows)}
+                        >
+                            <Download className="size-4" />
+                            Export Log (CSV)
+                        </Button>
+                    </FilterBar>
 
-                        <div className="flex items-center gap-2">
-                            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
-                                    >
-                                        Filters
-                                        <ChevronDown className="size-4" />
-                                    </Button>
-                                </PopoverTrigger>
-
-                                <PopoverContent
-                                    align="end"
-                                    side="bottom"
-                                    sideOffset={10}
-                                    className="w-80 rounded-lg border border-slate-200 p-0"
-                                >
-                                    <div className="border-b border-slate-200 px-3 py-2">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <h3 className="text-sm font-semibold text-slate-700">Filter by</h3>
-                                            <button
-                                                type="button"
-                                                className="text-slate-400 transition-colors hover:text-slate-600"
-                                                onClick={() => setIsFilterPopoverOpen(false)}
-                                            >
-                                                <X className="size-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3 px-3 py-3">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-medium text-slate-500">Field</label>
-                                            <Select value={draftField} onValueChange={(value) => setDraftField(value as AuditFilterField)}>
-                                                <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
-                                                    <SelectValue placeholder="Select field" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {FILTER_FIELDS.map((field) => (
-                                                        <SelectItem key={field} value={field}>
-                                                            {field}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-medium text-slate-500">Operator</label>
-                                            <Select value={draftOperator} onValueChange={(value) => setDraftOperator(value as FilterOperator)}>
-                                                <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
-                                                    <SelectValue placeholder="Select operator" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="is">is</SelectItem>
-                                                    <SelectItem value="is not">is not</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-medium text-slate-500">Value</label>
-                                            {draftField === "Action Taken" ? (
-                                                <Select value={draftValue} onValueChange={setDraftValue}>
-                                                    <SelectTrigger className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800">
-                                                        <SelectValue placeholder="Select action" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {Object.keys(ACTION_BADGE_STYLES).map((action) => (
-                                                            <SelectItem key={action} value={action}>
-                                                                {action}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            ) : (
-                                                <Input
-                                                    value={draftValue}
-                                                    onChange={(e) => setDraftValue(e.target.value)}
-                                                    placeholder={`Enter ${draftField.toLowerCase()}`}
-                                                    className="h-8 w-full rounded-lg border-slate-200 text-sm text-slate-800"
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="flex items-center justify-between gap-2 pt-1">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 px-3 text-sm text-slate-600 hover:bg-slate-100"
-                                                onClick={clearAllFilters}
-                                                disabled={appliedFilters.length === 0}
-                                            >
-                                                Clear all
-                                            </Button>
-
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                className="h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
-                                                onClick={() =>
-                                                    draftValue.length > 0
-                                                        ? setOrReplaceFilter({
-                                                            field: draftField,
-                                                            operator: draftOperator,
-                                                            value: draftValue,
-                                                        })
-                                                        : undefined
-                                                }
-                                                disabled={draftValue.length === 0}
-                                            >
-                                                Apply filter
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-
-                            <Button
-                                type="button"
-                                size="sm"
-                                className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                                onClick={() => downloadCsv(rows)}
-                            >
-                                <Download className="size-4" />
-                                Export Log (CSV)
-                            </Button>
-                        </div>
-                    </div>
-                    {appliedFilters.length > 0 ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                            {appliedFilters.map((filter) => (
-                                <Badge
-                                    key={`${filter.field}-${filter.operator}-${filter.value}`}
-                                    variant="outline"
-                                    className="h-7 gap-2 rounded-full border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700"
-                                >
-                                    <span>
-                                        {filter.field} {filter.operator} {filter.value}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        className="text-slate-400 transition-colors hover:text-slate-600"
-                                        onClick={() => clearFilter(filter.field)}
-                                        aria-label={`Clear ${filter.field} filter`}
-                                    >
-                                        <X className="size-3.5" />
-                                    </button>
-                                </Badge>
-                            ))}
-
-                            <button
-                                type="button"
-                                className="text-xs font-medium text-slate-500 transition-colors hover:text-slate-700"
-                                onClick={clearAllFilters}
-                            >
-                                Clear filters
-                            </button>
-                        </div>
-                    ) : null}
                     <DataTable<AuditLogRow, unknown>
                         columns={tableColumns}
                         data={rows}
-                        initialPageSize={meta.pageSize}
                         pageSizeOptions={[16, 24, 32, 48]}
                         manualPagination={true}
                         pageCount={meta.totalPages}

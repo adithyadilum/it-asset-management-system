@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { AssetDetailsPanel } from "./asset-details-panel";
+import { AddSoftwareUsersModal } from "./add-software-users-modal";
 import {
   getAssetDetailsByIdAction,
   getAssetHistoryByIdAction,
@@ -30,6 +31,7 @@ export interface AssetDetailsPanelWrapperProps {
     iconName?: string;
   }>;
   onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
+  onRefreshRef?: React.MutableRefObject<() => void>;
   hideActions?: boolean;
   additionalTabs?: TabbedPanelTab[];
 }
@@ -77,6 +79,7 @@ export function AssetDetailsPanelWrapper({
   recordId,
   manualStatuses = [],
   onStatusUpdateRef,
+  onRefreshRef,
   hideActions,
   additionalTabs,
 }: AssetDetailsPanelWrapperProps) {
@@ -87,6 +90,7 @@ export function AssetDetailsPanelWrapper({
   const [allocations, setAllocations] = useState<AllocationData[]>([]);
   const [financialVitals, setFinancialVitals] = useState<AssetFinancialVitals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
   if (isOpen && recordId !== prevRecordId) {
@@ -155,6 +159,7 @@ export function AssetDetailsPanelWrapper({
   }, [isOpen, recordId, refreshNonce]);
 
   return (
+    <>
     <AssetDetailsPanel
       isOpen={isOpen}
       onClose={onClose}
@@ -176,7 +181,10 @@ export function AssetDetailsPanelWrapper({
       dateCreated={formatDisplayDateTime(data?.asset.createdAt)}
       updatedAt={formatDisplayDateTime(data?.asset.updatedAt)}
       note={data?.assignment?.notes ?? ""}
-      specs={(data?.model.technicalDetails as Record<string, string | number | undefined>) ?? {}}
+      specs={{
+        ...(data?.model?.technicalDetails as Record<string, string | number | undefined>),
+        ...(data?.asset?.instanceAttributes as Record<string, string | number | undefined>)
+      }}
       techNote={""} // techNote doesn't exist
       currency={displayCurrency}
       sourceCurrency={sourceCurrency}
@@ -206,7 +214,10 @@ export function AssetDetailsPanelWrapper({
       historyEvents={historyEvents}
       maintenanceEvents={maintenanceEvents}
       allocations={allocations}
-      totalSeats={parseInt(String(data?.model.technicalDetails?.max_seats ?? data?.model.technicalDetails?.total_seats ?? 0), 10)}
+      totalSeats={data?.softwareLicense?.totalSeats}
+      availableSeats={data?.softwareLicense?.availableSeats}
+      expiryDate={formatDisplayDate(data?.softwareLicense?.expiryDate)}
+      licenseType={data?.softwareLicense?.licenseType}
       onCurrencyChange={setDisplayCurrencyOverride}
       manualStatuses={manualStatuses}
       onStatusChanged={(nextStatus) => {
@@ -232,6 +243,31 @@ export function AssetDetailsPanelWrapper({
       }}
       hideActions={hideActions}
       additionalTabs={additionalTabs}
+      onActionButtonClick={() => {
+        if (data?.model.category.pillar === 'Software') {
+          setIsAddUserModalOpen(true);
+        } else {
+          // Hardware assignments are typically handled differently, 
+          // but we provide the hook here for future expansion.
+        }
+      }}
     />
+    
+    {data?.model.category.pillar === 'Software' && (
+      <AddSoftwareUsersModal
+        isOpen={isAddUserModalOpen}
+        onClose={(didAllocate) => {
+          setIsAddUserModalOpen(false);
+          if (didAllocate) {
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
+          }
+        }}
+        assetId={data.asset.id}
+        availableSeats={data.softwareLicense?.availableSeats ?? 0}
+        existingAllocations={allocations}
+      />
+    )}
+    </>
   );
 }

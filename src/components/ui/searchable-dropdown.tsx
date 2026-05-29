@@ -29,7 +29,7 @@ interface SearchableDropdownProps {
   placeholder?: string
   emptyMessage?: string
   onSelect: (value: string) => void
-  defaultValue?: string
+  value?: string
 }
 
 /**
@@ -41,16 +41,13 @@ export function SearchableDropdown({
   placeholder = "Select an item...",
   emptyMessage = "No results found.",
   onSelect,
-  defaultValue = "",
+  value,
 }: SearchableDropdownProps) {
   const [open, setOpen] = React.useState(false)
-  const [value, setValue] = React.useState(defaultValue)
-  const [prevDefaultValue, setPrevDefaultValue] = React.useState(defaultValue)
 
-  if (defaultValue !== prevDefaultValue) {
-    setPrevDefaultValue(defaultValue)
-    setValue(defaultValue)
-  }
+  const isControlled = value !== undefined
+  const [internalValue, setInternalValue] = React.useState("")
+  const currentValue = isControlled ? value : internalValue
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -60,13 +57,15 @@ export function SearchableDropdown({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between font-normal",
-            value ? "text-foreground" : "text-muted-foreground"
+            "w-full justify-between font-normal min-w-0",
+            currentValue ? "text-foreground" : "text-muted-foreground"
           )}
         >
-          {value
-            ? options.find((option) => option.value === value)?.label
-            : placeholder}
+          <span className="truncate text-left flex-1">
+            {currentValue
+              ? options.find((option) => option.value === currentValue)?.label
+              : placeholder}
+          </span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
         </Button>
       </PopoverTrigger>
@@ -81,7 +80,10 @@ export function SearchableDropdown({
                   key={option.value}
                   value={`${option.label} ${option.value}`}
                   onSelect={() => {
-                    setValue(option.value === value ? "" : option.value)
+                    const newValue = option.value === currentValue ? "" : option.value
+                    if (!isControlled) {
+                      setInternalValue(newValue)
+                    }
                     onSelect(option.value)
                     setOpen(false)
                   }}
@@ -89,7 +91,7 @@ export function SearchableDropdown({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
+                      currentValue === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
                   {option.label}

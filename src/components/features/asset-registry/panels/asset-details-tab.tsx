@@ -1,25 +1,30 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { QrCode } from 'lucide-react';
+import { QrCode, Users } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 import type { MaintenanceEvent } from '@/lib/data/asset-details-repo';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { AssetTagDialog } from '@/components/features/asset-registry/tags/asset-tag-dialog';
 
 export interface AssetDetailsTabProps {
     imageUrl?: string;
     note?: string;
     assetTag: string;
+    modelName?: string;
     fields: { label: string; value: React.ReactNode }[];
     mode?: 'default' | 'software';
     softwareSections?: {
         title: string;
         rows: { label: string; value: React.ReactNode }[];
     }[];
+    totalSeats?: number;
+    allocatedCount?: number;
     maintenanceRecords?: MaintenanceEvent[];
     hideMaintenance?: boolean;
     onQRCodeClick?: () => void;
@@ -31,9 +36,12 @@ export function AssetDetailsTab({
     imageUrl,
     note,
     assetTag,
+    modelName,
     fields,
     mode = 'default',
     softwareSections = [],
+    totalSeats = 0,
+    allocatedCount = 0,
     maintenanceRecords = [],
     hideMaintenance = false,
     onQRCodeClick,
@@ -41,6 +49,14 @@ export function AssetDetailsTab({
     className = '',
 }: AssetDetailsTabProps) {
     const hasImage = typeof imageUrl === 'string' && imageUrl.trim().length > 0;
+    const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+
+    const handleTagButtonClick = () => {
+        setIsTagDialogOpen(true);
+        if (onQRCodeClick) {
+            onQRCodeClick();
+        }
+    };
 
     if (mode === 'software') {
         return (
@@ -63,7 +79,7 @@ export function AssetDetailsTab({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={onQRCodeClick}
+                        onClick={handleTagButtonClick}
                         title={assetTag}
                         aria-label="Asset Tag"
                         className="h-7 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground shadow-none hover:bg-muted"
@@ -72,6 +88,32 @@ export function AssetDetailsTab({
                         Asset Tag
                     </Button>
                 </div>
+
+                {/* Seat Allocation Overview */}
+                <section className="rounded-lg border border-border/60 bg-card p-5 shadow-xs">
+                    <div className="space-y-4">
+                        <div className="flex items-baseline justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'text-foreground')}>
+                                    Seat Allocation
+                                </h3>
+                            </div>
+                            <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
+                                {allocatedCount} of {totalSeats} seats
+                            </span>
+                        </div>
+                        <Progress
+                            value={totalSeats > 0 ? (allocatedCount / totalSeats) * 100 : 0}
+                            className="h-2"
+                            aria-label={`${allocatedCount} of ${totalSeats} seats allocated`}
+                        />
+                        <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
+                            <span>{Math.max(0, totalSeats - allocatedCount)} seats available</span>
+                            <span>{totalSeats > 0 ? Math.round((allocatedCount / totalSeats) * 100) : 0}% used</span>
+                        </div>
+                    </div>
+                </section>
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     {softwareSections.map((section) => (
@@ -86,14 +128,14 @@ export function AssetDetailsTab({
                                         <div
                                             key={`${section.title}-${index}`}
                                             className={cn(
-                                                'flex items-center justify-between py-2.5',
+                                                'flex items-center justify-between py-2.5 min-w-0 gap-4',
                                                 !isLastRow && 'border-b border-border/40'
                                             )}
                                         >
-                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
                                                 {row.label}
                                             </div>
-                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-slate-900')}>
+                                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground min-w-0')}>
                                                 {row.value || '-'}
                                             </div>
                                         </div>
@@ -112,7 +154,7 @@ export function AssetDetailsTab({
                         <Textarea
                             readOnly
                             value={note}
-                            className="min-h-24 w-full resize-none bg-muted/20 text-slate-900 focus-visible:ring-0"
+                            className="min-h-24 w-full resize-none bg-muted/20 text-foreground focus-visible:ring-0"
                         />
                     </section>
                 ) : null}
@@ -143,7 +185,7 @@ export function AssetDetailsTab({
                     <Button
                         type="button"
                         variant="outline"
-                        onClick={onQRCodeClick}
+                        onClick={handleTagButtonClick}
                         title={assetTag}
                         aria-label="Asset Tag"
                         className="h-7 rounded-full border-border bg-background px-3 text-xs font-medium text-foreground shadow-none hover:bg-muted"
@@ -164,13 +206,13 @@ export function AssetDetailsTab({
                                 isLongValue && 'col-span-full'
                             )}
                         >
-                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-slate-500')}>
+                            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
                                 {item.label}
                             </div>
                             <div
                                 className={cn(
                                     TYPOGRAPHY_CLASSNAMES.textSmMedium,
-                                    'text-right text-slate-900',
+                                    'text-right text-foreground',
                                     item.label === 'Asset ID' && 'font-mono tracking-wide'
                                 )}
                             >
@@ -182,13 +224,13 @@ export function AssetDetailsTab({
 
                 {note ? (
                     <div className="col-span-full mt-4 space-y-2">
-                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-slate-500')}>
+                        <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
                             Note
                         </div>
                         <Textarea
                             readOnly
                             value={note}
-                            className="min-h-25 w-full resize-none bg-muted/30 text-slate-900 focus-visible:ring-0"
+                            className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0"
                         />
                     </div>
                 ) : null}
@@ -234,6 +276,13 @@ export function AssetDetailsTab({
                     </div>
                 </div>
             ) : null}
+
+            <AssetTagDialog
+                isOpen={isTagDialogOpen}
+                onOpenChange={setIsTagDialogOpen}
+                assetId={assetTag}
+                modelName={modelName}
+            />
         </div>
     );
 }

@@ -2,13 +2,13 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { ColumnDef, PaginationState } from '@tanstack/react-table';
-import { Search, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
-import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useDebounce } from '@/hooks/use-debounce';
+import { FilterBar, type AppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
 
 export interface HistoryDisposalRow {
   id: number;
@@ -52,7 +52,28 @@ export function DisposalHistoryGrid({
   const searchParams = useSearchParams();
 
   const [localSearch, setLocalSearch] = useState(searchQuery);
+  const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const debouncedSearch = useDebounce(localSearch, 500);
+
+  const filterFieldConfigs: FilterFieldConfig[] = [
+    { value: 'assetTag', label: 'Asset ID' },
+    { value: 'category', label: 'Category' },
+    { value: 'reason', label: 'Reason' },
+    { value: 'flaggedBy', label: 'Flagged By' },
+  ];
+
+  const applyFilter = (filter: AppliedFilter) => {
+    setAppliedFilters((prev) => {
+      const filtered = prev.filter((f) => f.field !== filter.field);
+      return [...filtered, filter];
+    });
+  };
+
+  const clearFilter = (field: string) => {
+    setAppliedFilters((prev) => prev.filter((f) => f.field !== field));
+  };
+
+  const clearAllFilters = () => setAppliedFilters([]);
 
   // Sync search changes to URL
   useEffect(() => {
@@ -67,6 +88,29 @@ export function DisposalHistoryGrid({
     }
     router.push(`${pathname}?${params.toString()}`);
   }, [debouncedSearch, pathname, router, searchParams, searchQuery]);
+
+  // Client-side filtering for applied filters (on top of server-side search)
+  const filteredData = useMemo(() => {
+    let result = [...initialData];
+
+    appliedFilters.forEach((filter) => {
+      const { field, operator, value } = filter;
+      const lowerValue = value.toLowerCase();
+
+      result = result.filter((row) => {
+        let fieldValue = '';
+        if (field === 'assetTag') fieldValue = row.assetTag;
+        else if (field === 'category') fieldValue = row.category;
+        else if (field === 'reason') fieldValue = row.reason;
+        else if (field === 'flaggedBy') fieldValue = row.flaggedBy;
+
+        const isMatch = fieldValue.toLowerCase().includes(lowerValue);
+        return operator === 'is' ? isMatch : !isMatch;
+      });
+    });
+
+    return result;
+  }, [initialData, appliedFilters]);
 
   const paginationState = useMemo<PaginationState>(
     () => ({
@@ -169,7 +213,7 @@ export function DisposalHistoryGrid({
         cell: ({ row }) => {
           const urls = row.original.documentUrls || [];
           if (urls.length === 0) {
-            return <span className="text-slate-400 text-sm">-</span>;
+            return <span className="text-muted-foreground text-sm">-</span>;
           }
           
           return (
@@ -210,29 +254,29 @@ export function DisposalHistoryGrid({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-4">
-      {/* Toolbar (Search Only) */}
-      <div className="flex items-center justify-between w-full">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Search history..."
-            className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-sm text-slate-900 placeholder:text-slate-500"
-          />
-        </div>
-      </div>
+      {/* Toolbar (Standardized) */}
+      <FilterBar
+        searchQuery={localSearch}
+        onSearchChange={setLocalSearch}
+        searchPlaceholder="Search history..."
+        fields={filterFieldConfigs}
+        appliedFilters={appliedFilters}
+        onApplyFilter={applyFilter}
+        onClearFilter={clearFilter}
+        onClearAllFilters={clearAllFilters}
+      />
 
       {/* Data Table Container */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-background">
         <DataTable<HistoryDisposalRow, unknown>
           columns={columns}
-          data={initialData}
+          data={filteredData}
           manualPagination={true}
           pageCount={pageCount}
           paginationState={paginationState}
           onPaginationChange={handlePaginationChange}
           pageSizeOptions={[10, 20, 50]}
+          className="rounded-lg border-border"
           onRowClick={(
             row: { original?: HistoryDisposalRow } | HistoryDisposalRow
           ) => {

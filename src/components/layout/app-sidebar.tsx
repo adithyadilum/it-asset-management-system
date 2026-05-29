@@ -11,6 +11,7 @@ import {
     Laptop,
     LayoutDashboard,
     LifeBuoy,
+    MonitorSmartphone,
     Settings,
     Sofa,
 
@@ -74,7 +75,7 @@ const managementItems: NavItem[] = [
         children: [
             { label: "Assignments & Returns", href: "/operations/assignments" },
             { label: "Maintenance & Repairs", href: "/operations/maintenance" },
-            { label: "Disposals", href: "/operations/disposals" },
+            { label: "Disposals", href: "/operations/disposals", allowedRoles: ["GlobalAdmin"] },
         ],
     },
     {
@@ -95,7 +96,7 @@ const managementItems: NavItem[] = [
         allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"],
         children: [
             { label: "Standard Reports", href: "/reports/standard-reports" },
-            { label: "System Audit Log", href: "/reports/audit-log" },
+            { label: "System Audit Log", href: "/reports/audit-log", allowedRoles: ["GlobalAdmin", "FinanceAuditor"] },
         ],
     },
     {
@@ -121,13 +122,23 @@ function isPathActive(pathname: string, href?: string) {
         return false
     }
 
+    if (href === "/assets") {
+        const excludedSubPaths = [
+            "/assets/hardware",
+            "/assets/software",
+            "/assets/furniture",
+            "/assets/office-electronics",
+        ]
+        return pathname === "/assets" || (pathname.startsWith("/assets/") && !excludedSubPaths.some(sub => pathname.startsWith(sub)))
+    }
+
     return pathname === href || pathname.startsWith(`${href}/`)
 }
 
 function SectionLabel({ title }: { title: string }) {
     return (
         <div className="flex h-8 items-center px-2 opacity-70">
-            <span className="font-text-xs-bold text-[10px] leading-4 text-slate-900">
+            <span className="font-text-xs-bold text-[10px] leading-4 text-sidebar-foreground">
                 {title}
             </span>
         </div>
@@ -158,10 +169,10 @@ function ChildList({
                         type="button"
                         onClick={() => router.push(child.href)}
                         className={[
-                            "flex h-7 items-center rounded-md text-left transition-colors",
+                            "flex h-7 items-center rounded-md text-left transition-all duration-200",
                             isPathActive(pathname, child.href) || child.isActive
-                                ? "bg-[#040d5a] px-3 text-white"
-                                : "px-2 text-slate-900 hover:bg-slate-100",
+                                ? "bg-primary px-3 text-white font-medium"
+                                : "px-2 text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400",
                         ].join(" ")}
                     >
                         <span className="truncate font-text-sm-regular text-sm leading-5">
@@ -209,8 +220,10 @@ function NavGroup({
                                 type="button"
                                 onClick={() => router.push(defaultHref)}
                                 className={[
-                                    "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
-                                    isItemActive ? "bg-slate-100" : "",
+                                    "flex h-8 w-full items-center rounded-md transition-all duration-200",
+                                    isItemActive
+                                        ? "bg-primary text-white font-medium"
+                                        : "text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400",
                                     collapsed ? "justify-center px-0" : "gap-2 px-2",
                                 ].join(" ")}
                             >
@@ -234,10 +247,7 @@ function NavGroup({
                         <CollapsibleTrigger asChild>
                             <button
                                 type="button"
-                                className={[
-                                    "flex h-8 w-full items-center gap-2 rounded-md px-2 text-slate-900 hover:bg-slate-100",
-                                    isItemActive ? "bg-slate-100" : "",
-                                ].join(" ")}
+                                className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400 transition-all duration-200"
                             >
                                 <Icon className="size-4" />
                                 <span className="flex-1 truncate text-left font-text-sm-regular text-sm leading-5">
@@ -278,7 +288,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
     return (
         <Sidebar
             collapsible="icon"
-            className="h-full bg-muted [--sidebar:var(--muted)] border-r-0 group-data-[side=left]:border-r-0 group-data-[side=right]:border-l-0 data-[collapsible=icon]:border-r-0"
+            className="h-full bg-sidebar border-r-0 group-data-[side=left]:border-r-0 group-data-[side=right]:border-l-0 data-[collapsible=icon]:border-r-0"
         >
             <SidebarHeader className="h-17 justify-center p-2">
                 <BrandHeader collapsed={collapsed} />
@@ -286,18 +296,40 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
 
             <SidebarContent className="gap-0 overflow-x-hidden overflow-y-auto px-0 py-0 group-data-[collapsible=icon]:overflow-y-auto">
                 <div className="px-2 pt-2">
+                    {userRole !== "Employee" && (
+                        <button
+                            type="button"
+                            onClick={() => router.push("/dashboard")}
+                            className={[
+                                "flex h-8 w-full items-center rounded-md transition-all duration-200",
+                                pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+                                    ? "bg-primary text-white font-medium"
+                                    : "text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400",
+                                collapsed ? "justify-center px-0" : "gap-2 px-2",
+                            ].join(" ")}
+                        >
+                            <LayoutDashboard className="size-4" />
+                            {!collapsed ? (
+                                <span className="truncate font-text-sm-regular text-sm leading-5">Dashboard</span>
+                            ) : null}
+                        </button>
+                    )}
+
                     <button
                         type="button"
-                        onClick={() => router.push("/dashboard")}
+                        onClick={() => router.push("/my-assets")}
                         className={[
-                            "flex h-10 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
-                            pathname === "/dashboard" || pathname.startsWith("/dashboard/") ? "bg-slate-100" : "",
-                            collapsed ? "justify-center px-0" : "gap-2 pl-2 pr-8",
+                            "flex h-8 w-full items-center rounded-md transition-all duration-200",
+                            userRole !== "Employee" ? "mt-1" : "",
+                            pathname === "/my-assets" || pathname.startsWith("/my-assets/")
+                                ? "bg-primary text-white font-medium"
+                                : "text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400",
+                            collapsed ? "justify-center px-0" : "gap-2 px-2",
                         ].join(" ")}
                     >
-                        <LayoutDashboard className="size-4" />
+                        <MonitorSmartphone className="size-4" />
                         {!collapsed ? (
-                            <span className="truncate font-text-sm-regular text-sm leading-5">Dashboard</span>
+                            <span className="truncate font-text-sm-regular text-sm leading-5">My assets</span>
                         ) : null}
                     </button>
 
@@ -317,9 +349,9 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
             <SidebarFooter className="p-2">
                 <button
                     type="button"
-                    onClick={() => router.push("/dashboard")}
+                    onClick={() => router.push(userRole === "Employee" ? "/my-assets" : "/dashboard")}
                     className={[
-                        "flex h-8 w-full items-center rounded-md text-slate-900 hover:bg-slate-100",
+                        "flex h-8 w-full items-center rounded-md text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400 transition-all duration-200",
                         collapsed ? "justify-center px-0" : "gap-2 px-2",
                     ].join(" ")}
                 >

@@ -149,7 +149,7 @@ export async function getDepreciationLedger(
         category: row.categoryName,
         purchaseDate: row.purchaseDate,
         originalPrice: price,
-        currencyCode: row.currencyCode || 'USD',
+        currencyCode: row.currencyCode || 'LKR',
         expectedLifespan: `${(row.usefulLifeMonths || 60) / 12} years`,
         currentBookValue: Math.round(bookValue * 100) / 100,
       };
@@ -166,7 +166,10 @@ export async function getDepreciationLedger(
     };
   } catch (error) {
     console.error('[getDepreciationLedger] Error:', error);
-    throw error;
+    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+      throw error;
+    }
+    throw new Error('Failed to load depreciation ledger.');
   }
 }
 
@@ -272,7 +275,7 @@ export async function getTCOLedger(
         category: row.categoryName,
         purchaseDate: row.purchaseDate,
         originalPrice: price,
-        currencyCode: row.currencyCode || 'USD',
+        currencyCode: row.currencyCode || 'LKR',
         totalRepairCosts: repairs,
         totalTCO: price + repairs,
       };
@@ -289,7 +292,10 @@ export async function getTCOLedger(
     };
   } catch (error) {
     console.error('[getTCOLedger] Error:', error);
-    throw error;
+    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+      throw error;
+    }
+    throw new Error('Failed to load TCO ledger.');
   }
 }
 
@@ -385,7 +391,7 @@ export async function getWriteOffsLedger(
       category: row.categoryName,
       disposalDate: row.disposalDate,
       originalPrice: parseFloat(row.originalPrice?.toString() || '0'),
-      currencyCode: row.currencyCode || 'USD',
+      currencyCode: row.currencyCode || 'LKR',
       bookValue: parseFloat(row.bookValueAtDisposal?.toString() || '0'),
       salvageValue: parseFloat(row.salvageValue?.toString() || '0'),
     }));
@@ -401,6 +407,9 @@ export async function getWriteOffsLedger(
     };
   } catch (error) {
     console.error('[getWriteOffsLedger] Error:', error);
-    throw error;
+    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+      throw error;
+    }
+    throw new Error('Failed to load write-offs ledger.');
   }
 }

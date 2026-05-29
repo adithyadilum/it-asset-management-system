@@ -1055,6 +1055,7 @@ export async function seedAssets() {
       shippingCost: assetSeed.shippingCost,
       totalCost: assetSeed.totalCost,
       currencyCode: 'USD',
+      exchangeRate: '320.00',
       warrantyExpiry: assetSeed.warrantyExpiry,
       invoiceUrl: assetSeed.invoiceUrl,
     }));
@@ -1078,6 +1079,7 @@ export async function seedAssets() {
         shippingCost: purchaseSeed.shippingCost,
         totalCost: purchaseSeed.totalCost,
         currencyCode: purchaseSeed.currencyCode,
+        exchangeRate: purchaseSeed.exchangeRate,
         warrantyExpiry: purchaseSeed.warrantyExpiry,
         invoiceUrl: purchaseSeed.invoiceUrl,
       };

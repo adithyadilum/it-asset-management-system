@@ -1,3 +1,5 @@
-﻿export default function SettingsPage() {
-  return <div className="p-6 text-sm text-slate-600">Settings page coming soon.</div>
+import { redirect } from "next/navigation";
+
+export default function SettingsPage() {
+  redirect("/settings/master-data");
 }

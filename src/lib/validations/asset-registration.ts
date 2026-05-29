@@ -172,6 +172,59 @@ export const assetRegistrationSchema = z.object({
   // Dynamic attributes from category custom schema (JSONB)
   // Validated loosely here — the server can enforce per-field rules if needed.
   instanceAttributes: z.record(z.string(), z.unknown()).optional(),
+
+  // Software Licensing
+  licenseType: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? undefined : trimmed;
+    },
+    z.enum(['Perpetual', 'Subscription', 'Open Source / Free'], {
+      message: 'License type must be a valid option.',
+    }).optional()
+  ),
+  totalSeats: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? undefined : trimmed;
+    },
+    z.coerce.number().int().min(1, 'Total seats must be at least 1.').optional()
+  ),
+  licenseStartDate: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? undefined : trimmed;
+    },
+    z.coerce.date({ message: 'Start date is invalid.' }).optional()
+  ),
+  licenseExpiryDate: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? undefined : trimmed;
+    },
+    z.coerce.date({ message: 'Expiry date is invalid.' }).optional()
+  ),
+}).superRefine((data, ctx) => {
+  if (data.pillar === 'Software') {
+    if (!data.licenseType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['licenseType'],
+        message: 'License type is required for software.',
+      });
+    }
+    if (!data.totalSeats || data.totalSeats < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['totalSeats'],
+        message: 'Total seats is required for software.',
+      });
+    }
+  }
 });
 
 export type AssetRegistrationInput = z.infer<typeof assetRegistrationSchema>;
@@ -199,3 +252,46 @@ export const PILLAR_PREFIX_MAP: Record<DbPillar, string> = {
   'Office Furniture': 'FUR',
   'Office Electronics': 'ELC',
 };
+
+// ---------------------------------------------------------------------------
+// updateAsset — partial update schema
+// ---------------------------------------------------------------------------
+
+export const updateAssetSchema = z.object({
+  status: z
+    .enum([
+      'Available',
+      'Assigned',
+      'In Repair',
+      'Defective',
+      'Lost',
+      'Retired',
+      'Disposed',
+    ])
+    .optional(),
+  condition: z
+    .enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged'])
+    .nullable()
+    .optional(),
+  name: z.string().trim().min(1).max(255).nullable().optional(),
+  locationId: z.number().int().positive().nullable().optional(),
+  instanceAttributes: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+
+export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
+
+// ---------------------------------------------------------------------------
+// manualStatusOverrideAction — admin-only status override schema
+// ---------------------------------------------------------------------------
+
+export const manualStatusOverrideSchema = z.object({
+  assetId: z.string().uuid('Invalid asset ID.'),
+  newStatus: z.string().trim().min(1, 'Status is required.'),
+  reasonNote: z
+    .string()
+    .trim()
+    .min(10, 'Justification must be at least 10 characters.')
+    .max(1000, 'Justification must be 1000 characters or fewer.'),
+});
+
+export type ManualStatusOverrideInput = z.infer<typeof manualStatusOverrideSchema>;

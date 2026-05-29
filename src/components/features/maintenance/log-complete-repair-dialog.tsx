@@ -71,12 +71,14 @@ export function LogCompleteRepairDialog({
               Actual Final Cost: <span className="text-destructive">*</span>
             </Label>
             <div className="flex">
-              <Select defaultValue="USD" disabled={isLoading}>
-                <SelectTrigger className="w-[70px] rounded-r-none border-r-0 focus:ring-0 focus:border-border bg-background">
+              <Select defaultValue="LKR" disabled={isLoading}>
+                <SelectTrigger className="w-[80px] rounded-r-none border-r-0 focus:ring-0 focus:border-border bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="LKR">Rs</SelectItem>
                   <SelectItem value="USD">$</SelectItem>
+                  <SelectItem value="NOK">kr</SelectItem>
                 </SelectContent>
               </Select>
               <Input

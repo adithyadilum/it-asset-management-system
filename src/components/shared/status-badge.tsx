@@ -26,75 +26,77 @@ const BADGE_DICTIONARY: Record<string, { label: string; className: string; icon:
     // Asset Statuses
     available: {
         label: "Available",
-        className: "bg-green-50 text-green-700 border-green-400",
+        className: "bg-green-50 text-green-700 border-green-400 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800",
         icon: CheckCircle2,
     },
     assigned: {
         label: "Assigned",
-        className: "bg-slate-50 text-slate-700 border-slate-400",
+        className: "bg-muted text-foreground border-slate-400 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-800",
         icon: BadgeCheck,
     },
     new: {
         label: "New",
-        className: "bg-blue-50 text-blue-700 border-blue-400",
+        className: "bg-blue-50 text-blue-700 border-blue-400 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
         icon: Sparkles,
     },
     in_repair: {
         label: "In Repair",
-        className: "bg-purple-50 text-purple-700 border-purple-400",
+        className: "bg-purple-50 text-purple-700 border-purple-400 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800",
         icon: Wrench,
     },
     lost: {
         label: "Lost",
-        className: "bg-amber-50 text-amber-700 border-amber-400",
+        className: "bg-amber-50 text-amber-700 border-amber-400 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
         icon: AlertCircle,
     },
     defective: {
         label: "Defective",
-        className: "bg-red-50 text-red-700 border-red-400",
+        className: "bg-red-50 text-red-700 border-red-400 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
         icon: MinusCircle,
     },
     archived: {
         label: "Archived",
-        className: "bg-slate-50 text-slate-600 border-slate-300",
+        className: "bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border",
         icon: Archive,
     },
     active: {
         label: "Active",
-        className: "bg-lime-50 text-lime-700 border-lime-300",
+        className: "bg-lime-50 text-lime-700 border-lime-300 dark:bg-lime-950/30 dark:text-lime-400 dark:border-lime-800",
         icon: CheckCircle2,
     },
     inactive: {
         label: "Inactive",
-        className: "bg-slate-50 text-slate-600 border-slate-300",
+        className: "bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border",
         icon: MinusCircle,
     },
 
     // Hardware Conditions
-    pristine: { label: "Pristine", className: "bg-blue-50 text-blue-700 border-blue-200", icon: CheckCircle2 },
-    damaged: { label: "Damaged", className: "bg-red-50 text-red-700 border-red-200", icon: AlertTriangle },
-    broken: { label: "Broken", className: "bg-rose-50 text-rose-700 border-rose-200", icon: XCircle },
+    pristine: { label: "Pristine", className: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800", icon: CheckCircle2 },
+    damaged: { label: "Damaged", className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800", icon: AlertTriangle },
+    broken: { label: "Broken", className: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800", icon: XCircle },
 
     // Pending Alert States
-    critical: { label: "Critical", className: "bg-red-50 text-red-700 border-red-400", icon: AlertTriangle },
-    warning: { label: "Warning", className: "bg-amber-50 text-amber-700 border-amber-400", icon: AlertCircle },
-    neutral: { label: "Neutral", className: "bg-slate-50 text-slate-600 border-slate-300", icon: MinusCircle },
+    critical: { label: "Critical", className: "bg-red-50 text-red-700 border-red-400 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800", icon: AlertTriangle },
+    warning: { label: "Warning", className: "bg-amber-50 text-amber-700 border-amber-400 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800", icon: AlertCircle },
+    neutral: { label: "Neutral", className: "bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border", icon: MinusCircle },
 
     // User Roles
-    GlobalAdmin: { label: "Global Admin", className: "bg-purple-50 text-purple-700 border-purple-200", icon: CheckCircle2 },
-    ITOperator: { label: "IT Operator", className: "bg-indigo-50 text-indigo-700 border-indigo-200", icon: CheckCircle2 },
-    Employee: { label: "Employee", className: "bg-slate-50 text-slate-700 border-slate-200", icon: CheckCircle2 },
+    GlobalAdmin: { label: "Global Admin", className: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800", icon: CheckCircle2 },
+    ITOperator: { label: "IT Operator", className: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800", icon: CheckCircle2 },
+    Employee: { label: "Employee", className: "bg-muted text-foreground border-border dark:bg-muted dark:text-foreground dark:border-border", icon: CheckCircle2 },
 
     // Additional Asset Statuses
-    retired: { label: "Retired", className: "bg-stone-50 text-stone-600 border-stone-300", icon: Archive },
-    pending_disposal: { label: "Pending Disposal", className: "bg-orange-50 text-orange-700 border-orange-300", icon: AlertTriangle },
-    disposed: { label: "Disposed", className: "bg-slate-100 text-slate-600 border-slate-300 [&>svg]:text-green-600", icon: CheckCircle2 },
-    rejected: { label: "Rejected", className: "bg-slate-100 text-slate-600 border-slate-300 [&>svg]:text-red-500", icon: XCircle },
-    returned: { label: "Returned", className: "bg-teal-50 text-teal-700 border-teal-300", icon: CheckCircle2 },
+    retired: { label: "Retired", className: "bg-stone-50 text-stone-600 border-stone-300 dark:bg-stone-900/30 dark:text-stone-400 dark:border-stone-800", icon: Archive },
+    pending_disposal: { label: "Pending Disposal", className: "bg-orange-50 text-orange-700 border-orange-300 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800", icon: AlertTriangle },
+    disposed: { label: "Disposed", className: "bg-muted text-muted-foreground border-border [&>svg]:text-green-600 dark:bg-muted dark:text-muted-foreground dark:border-border dark:[&>svg]:text-green-400", icon: CheckCircle2 },
+    rejected: { label: "Rejected", className: "bg-muted text-muted-foreground border-border [&>svg]:text-red-500 dark:bg-muted dark:text-muted-foreground dark:border-border dark:[&>svg]:text-red-400", icon: XCircle },
+    returned: { label: "Returned", className: "bg-teal-50 text-teal-700 border-teal-300 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800", icon: CheckCircle2 },
+    expired: { label: "Expired", className: "bg-red-50 text-red-700 border-red-400 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800", icon: XCircle },
+    full: { label: "Full", className: "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800", icon: AlertTriangle },
 };
 
 // Fallback for unknown strings
-const FALLBACK = { label: "Unknown", className: "bg-slate-50 text-slate-700 border-slate-200", icon: HelpCircle };
+const FALLBACK = { label: "Unknown", className: "bg-muted text-foreground border-border dark:bg-muted dark:text-foreground dark:border-border", icon: HelpCircle };
 
 interface StatusBadgeProps {
     value?: string;
@@ -124,7 +126,7 @@ export function StatusBadge({
         return (
             <Badge
                 variant="outline"
-                className={cn("font-medium whitespace-nowrap bg-slate-100 text-slate-700 border-slate-200", className)}
+                className={cn("font-medium whitespace-nowrap bg-muted text-foreground border-border", className)}
             >
                 {linkedAssetLabel}
             </Badge>
@@ -137,7 +139,7 @@ export function StatusBadge({
         return (
             <Badge
                 variant="outline"
-                className={cn("font-medium whitespace-nowrap bg-slate-100 text-slate-700 border-slate-200", className)}
+                className={cn("font-medium whitespace-nowrap bg-muted text-foreground border-border", className)}
             >
                 {metadataLabel}
             </Badge>

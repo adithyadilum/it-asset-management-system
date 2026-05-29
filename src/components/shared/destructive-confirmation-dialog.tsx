@@ -178,7 +178,7 @@ export const DestructiveConfirmationDialog = React.forwardRef<
           </div>
 
           {/* ===== DESCRIPTION ===== */}
-          <AlertDialogDescription className="mt-2 text-sm text-gray-600">
+          <AlertDialogDescription className="mt-2 text-sm text-muted-foreground">
             {description}
           </AlertDialogDescription>
 
@@ -191,7 +191,7 @@ export const DestructiveConfirmationDialog = React.forwardRef<
                   key={item.id}
                   className={`flex items-center justify-between rounded-md p-4 transition-colors ${itemHasError
                     ? "border-2 border-red-500 bg-red-50"
-                    : "bg-gray-50"
+                    : "bg-muted"
                     }`}
                 >
                   <div className="flex flex-1 gap-6">
@@ -199,7 +199,7 @@ export const DestructiveConfirmationDialog = React.forwardRef<
                     {columns.map((col) => (
                       <div
                         key={col.key}
-                        className={`${col.width || "flex-1"} text-sm font-medium text-gray-700`}
+                        className={`${col.width || "flex-1"} text-sm font-medium text-foreground`}
                       >
                         {String(item[col.key] ?? "-")}
                       </div>

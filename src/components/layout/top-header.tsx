@@ -2,18 +2,26 @@
 
 import {
     Ban,
-    Bell,
-    Menu,
     PanelLeftClose,
     PanelLeftOpen,
+    Sun,
+    Moon,
+    Monitor,
+    Banknote,
+    Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { useTransition } from 'react';
 
 import { logout } from '@/actions/auth';
+import { setPreferredCurrency } from '@/actions/currency';
+import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -23,15 +31,20 @@ import {
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
+    DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { useSidebar } from '@/components/ui/sidebar';
 import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
+import { NotificationBell } from '@/components/features/notifications/notification-bell';
 
 const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
     '/dashboard': 'Dashboard',
@@ -85,9 +98,11 @@ function buildBreadcrumbs(pathname: string): HeaderBreadcrumb[] {
     });
 }
 
-export function TopHeader({ user }: TopHeaderProps) {
+export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
     const { state, toggleSidebar } = useSidebar();
     const pathname = usePathname();
+    const { setTheme } = useTheme();
+    const [isPending, startTransition] = useTransition();
     const breadcrumbs = buildBreadcrumbs(pathname);
 
     const initials = user.name
@@ -106,16 +121,9 @@ export function TopHeader({ user }: TopHeaderProps) {
     const roleLabel = roleLabelMap[user.role];
 
     return (
-        <header className="grid h-14 w-full grid-cols-3 items-center gap-4 rounded-none border-b border-slate-100 bg-white md:rounded-lg md:border-none md:bg-muted md:px-2">            {/* Left Column: Mobile Menu / Desktop Breadcrumb */}
-            <div className="flex md:hidden">
-                <button
-                    type="button"
-                    aria-label="Toggle menu"
-                    onClick={toggleSidebar}
-                    className="flex h-7 w-7 items-center justify-center"
-                >
-                    <Menu className="h-5 w-5 text-slate-900" />
-                </button>
+        <header className="grid h-14 w-full grid-cols-2 md:grid-cols-3 items-center gap-4 rounded-none border-none bg-background md:rounded-lg md:bg-muted md:px-2">            {/* Left Column: Mobile Logo / Desktop Breadcrumb */}
+            <div className="flex items-center md:hidden pl-4">
+                <BrandHeader collapsed={false} />
             </div>
 
             <div className="hidden min-w-0 items-center gap-2 px-2 md:flex">
@@ -126,16 +134,16 @@ export function TopHeader({ user }: TopHeaderProps) {
                     className="flex h-7 w-7 items-center justify-center"
                 >
                     {state === 'collapsed' ? (
-                        <PanelLeftOpen className="h-4 w-4 text-slate-500" />
+                        <PanelLeftOpen className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                        <PanelLeftClose className="h-4 w-4 text-slate-500" />
+                        <PanelLeftClose className="h-4 w-4 text-muted-foreground" />
                     )}
                 </button>
 
                 <div className="flex items-center px-2">
                     <Separator
                         orientation="vertical"
-                        className="h-4.25 w-px bg-slate-200"
+                        className="h-4.25 w-px bg-muted"
                     />
                 </div>
 
@@ -143,7 +151,7 @@ export function TopHeader({ user }: TopHeaderProps) {
                     <BreadcrumbList className="min-w-0 flex-nowrap gap-1.5 overflow-hidden text-inherit">
                         {breadcrumbs.length === 0 ? (
                             <BreadcrumbItem>
-                                <BreadcrumbPage className={`${sidebarDefaultTextClass} whitespace-nowrap text-slate-900`}>
+                                <BreadcrumbPage className={`${sidebarDefaultTextClass} whitespace-nowrap text-foreground`}>
                                     Dashboard
                                 </BreadcrumbPage>
                             </BreadcrumbItem>
@@ -154,13 +162,13 @@ export function TopHeader({ user }: TopHeaderProps) {
                                 return [
                                     <BreadcrumbItem key={`${breadcrumb.href}-item`}>
                                         {isLast ? (
-                                            <BreadcrumbPage className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-slate-900`}>
+                                            <BreadcrumbPage className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-foreground`}>
                                                 {breadcrumb.label}
                                             </BreadcrumbPage>
                                         ) : (
                                             <BreadcrumbLink
                                                 asChild
-                                                className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-slate-500 hover:text-slate-700`}
+                                                className={`${sidebarDefaultTextClass} truncate whitespace-nowrap text-muted-foreground hover:text-foreground`}
                                             >
                                                 <Link href={breadcrumb.href}>{breadcrumb.label}</Link>
                                             </BreadcrumbLink>
@@ -169,7 +177,7 @@ export function TopHeader({ user }: TopHeaderProps) {
                                     !isLast ? (
                                         <BreadcrumbSeparator
                                             key={`${breadcrumb.href}-separator`}
-                                            className="text-slate-400"
+                                            className="text-muted-foreground"
                                         />
                                     ) : null,
                                 ];
@@ -179,30 +187,20 @@ export function TopHeader({ user }: TopHeaderProps) {
                 </Breadcrumb>
             </div>
 
-            {/* Center Column: Mobile Logo / Desktop Search */}
-            <div className="flex justify-center md:hidden">
-                <BrandHeader collapsed={false} />
-            </div>
-
-            <div className="hidden justify-self-center md:flex">
+            {/* Center Column: Desktop Search */}
+            <div className="hidden items-center justify-self-center md:flex">
                 <OmniSearchTrigger userRole={user.role} />
             </div>
 
             {/* Right Column: Avatar & User Info */}
-            <div className="flex justify-end md:gap-4 md:p-2">
+            <div className="flex items-center justify-end md:gap-4 md:px-2 pr-4">
                 {/* Desktop: Bell Icon & Separator */}
-                <div className="hidden w-13 items-center justify-between md:flex">
-                    <button
-                        type="button"
-                        aria-label="Notifications"
-                        className="flex h-7 w-7 items-center justify-center"
-                    >
-                        <Bell className="h-4 w-4 text-slate-500" />
-                    </button>
+                <div className="hidden md:flex items-center">
+                    <NotificationBell />
                     <div className="flex items-center px-2">
                         <Separator
                             orientation="vertical"
-                            className="h-4.25 w-px bg-slate-200"
+                            className="h-4.25 w-px bg-muted"
                         />
                     </div>
                 </div>
@@ -214,18 +212,18 @@ export function TopHeader({ user }: TopHeaderProps) {
                             className="md:flex md:items-center md:gap-4 md:rounded-lg md:p-2"
                             aria-label="Open user menu"
                         >
-                            <Avatar className="h-8 w-8 rounded-full md:rounded-lg">
-                                <AvatarImage src="" alt={user.name} className="object-cover" />
-                                <AvatarFallback className="rounded-full bg-slate-300 text-xs font-semibold text-slate-700 md:rounded-lg md:bg-slate-300">
+                            <Avatar className="h-8 w-8 rounded-lg">
+                                <AvatarImage alt={user.name} className="object-cover" />
+                                <AvatarFallback className="rounded-lg bg-muted text-xs font-semibold text-muted-foreground">
                                     {initials}
                                 </AvatarFallback>
                             </Avatar>
 
                             <div className="hidden flex-col items-start md:flex">
-                                <span className="whitespace-nowrap font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
+                                <span className="whitespace-nowrap font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-foreground [font-style:var(--text-sm-semi-bold-font-style)]">
                                     {user.name}
                                 </span>
-                                <span className="overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
+                                <span className="overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
                                     {user.email}
                                 </span>
                             </div>
@@ -235,48 +233,103 @@ export function TopHeader({ user }: TopHeaderProps) {
                     <DropdownMenuContent
                         align="end"
                         sideOffset={8}
-                        className="w-67.5 min-w-67.5 border-none bg-transparent p-0 shadow-none ring-0"
+                        className="w-72 overflow-hidden rounded-xl border border-border bg-popover p-0 shadow-xl"
                     >
-                        <Card className="w-67.5 rounded-lg border border-solid border-slate-200 bg-white py-0 shadow-box-shadow-shadow-xl ring-0">
-                            <CardContent className="flex flex-col items-end gap-4 p-6">
-                                <div className="flex w-full justify-end">
-                                    <Ban className="h-4 w-4 text-slate-400" />
+                        <div className="flex flex-col">
+                            {/* User Profile Header */}
+                            <div className="flex items-center gap-4 border-b border-border bg-muted/50 p-4">
+                                <Avatar className="h-12 w-12 shrink-0 rounded-lg border border-background shadow-sm">
+                                    <AvatarImage
+                                        alt={user.name}
+                                        className="rounded-lg object-cover"
+                                    />
+                                    <AvatarFallback className="rounded-lg bg-muted text-sm font-bold text-muted-foreground">
+                                        {initials}
+                                    </AvatarFallback>
+                                </Avatar>
+
+                                <div className="flex min-w-0 flex-1 flex-col items-start">
+                                    <span className="truncate self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-foreground [font-style:var(--text-sm-semi-bold-font-style)]">
+                                        {user.name}
+                                    </span>
+                                    <span className="truncate self-stretch font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [font-style:var(--text-xs-regular-font-style)]">
+                                        {user.email}
+                                    </span>
+                                    <Badge
+                                        variant="outline"
+                                        className="mt-1.5 border-[#7cc000]/30 bg-[#7cc000]/10 px-1.5 py-0 text-[10px] font-bold leading-4 tracking-wider text-[#7cc000] uppercase hover:bg-[#7cc000]/20"
+                                    >
+                                        {roleLabel}
+                                    </Badge>
                                 </div>
+                            </div>
 
-                                <div className="flex w-full flex-col items-start gap-2">
-                                    <div className="flex w-full items-center gap-4 p-2">
-                                        <Avatar className="h-8 w-8 shrink-0 rounded-lg">
-                                            <AvatarImage
-                                                src=""
-                                                alt={user.name}
-                                                className="rounded-lg object-cover"
-                                            />
-                                            <AvatarFallback className="rounded-lg bg-slate-200 text-xs text-slate-600">
-                                                {initials}
-                                            </AvatarFallback>
-                                        </Avatar>
+                            {/* Theme Selector */}
+                            <div className="p-2 border-b border-border">
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="h-9 rounded-lg text-xs">
+                                        <Sun className="mr-2 h-4 w-4 text-muted-foreground dark:hidden" />
+                                        <Moon className="mr-2 h-4 w-4 text-muted-foreground hidden dark:block" />
+                                        Theme
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuPortal>
+                                        <DropdownMenuSubContent>
+                                            <DropdownMenuItem onClick={() => setTheme("light")} className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted">
+                                                <Sun className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                Light
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setTheme("dark")} className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted">
+                                                <Moon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                Dark
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setTheme("system")} className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted">
+                                                <Monitor className="mr-2 h-4 w-4 text-muted-foreground" />
+                                                System
+                                            </DropdownMenuItem>
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                            </div>
 
-                                        <div className="flex min-w-0 flex-1 flex-col items-start">
-                                            <span className="self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-slate-900 [font-style:var(--text-sm-semi-bold-font-style)]">
-                                                {user.name}
-                                            </span>
-                                            <span className="self-stretch overflow-hidden text-ellipsis font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-slate-900 [display:-webkit-box] [-webkit-line-clamp:1] [-webkit-box-orient:vertical] [font-style:var(--text-xs-regular-font-style)]">
-                                                {user.email}
-                                            </span>
-                                            <span className="self-stretch font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) text-[#7cc000] [font-style:var(--text-sm-semi-bold-font-style)]">
-                                                {roleLabel}
-                                            </span>
-                                        </div>
-                                    </div>
+                            {/* Currency Selector */}
+                            <div className="p-2 border-b border-border">
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger className="h-9 rounded-lg text-xs" disabled={isPending}>
+                                        <Banknote className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        Currency ({preferredCurrency})
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuPortal>
+                                        <DropdownMenuSubContent>
+                                            {SUPPORTED_CURRENCIES.map((currency) => (
+                                                <DropdownMenuItem
+                                                    key={currency}
+                                                    onClick={() => startTransition(() => setPreferredCurrency(currency))}
+                                                    className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted relative pl-8"
+                                                >
+                                                    {preferredCurrency === currency && (
+                                                        <Check className="absolute left-2 h-4 w-4 text-foreground" />
+                                                    )}
+                                                    {currency}
+                                                </DropdownMenuItem>
+                                            ))}
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                            </div>
 
-                                    <form action={logout} className="w-full">
-                                        <Button className="h-8 w-full rounded-lg bg-red-500 text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) text-white shadow-box-shadow-shadow-xs hover:bg-red-600 [font-style:var(--text-sm-medium-font-style)]">
-                                            Logout
-                                        </Button>
-                                    </form>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            {/* Actions Area */}
+                            <div className="p-2">
+                                <form action={logout} className="w-full">
+                                    <Button
+                                        variant="ghost"
+                                        className="h-9 w-full justify-start rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    >
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        Logout Session
+                                    </Button>
+                                </form>
+                            </div>
+                        </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

@@ -749,7 +749,7 @@ export function MasterDataManagementClient({
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-xs font-medium capitalize">{colorTheme}</span>
-                                <span className="text-[10px] text-slate-500 font-mono">{iconName}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">{iconName}</span>
                             </div>
                         </div>
                     );
@@ -976,9 +976,9 @@ export function MasterDataManagementClient({
     );
 
     return (
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-white p-6">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
             <div className="mb-4">
-                <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-slate-900`}>
+                <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
                     Master Data Management
                 </h1>
             </div>
@@ -988,12 +988,12 @@ export function MasterDataManagementClient({
                 onValueChange={handleTabChange}
                 className="min-h-0 flex-1"
             >
-                <TabsList className="h-9 gap-1 rounded-lg bg-slate-100 p-1">
+                <TabsList className="h-9 w-fit gap-1 rounded-lg bg-muted p-1">
                     {TAB_LABELS.map((tab) => (
                         <TabsTrigger
                             key={tab.id}
                             value={tab.id}
-                            className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} h-7 rounded-md px-3 data-[state=active]:border data-[state=active]:border-slate-200 data-[state=active]:bg-white data-[state=active]:shadow-box-shadow-shadow-sm`}
+                            className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} h-7 rounded-md px-3 data-[state=active]:border data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-box-shadow-shadow-sm`}
                         >
                             {tab.label}
                         </TabsTrigger>
@@ -1005,14 +1005,14 @@ export function MasterDataManagementClient({
                         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
                             {showTypeFilter && (
                                 <div className="flex items-center gap-2">
-                                    <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-700`}>
+                                    <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                         Type:
                                     </span>
                                     <Select
                                         value={pillarType}
                                         onValueChange={(value) => setPillarType(value as PillarFilter)}
                                     >
-                                        <SelectTrigger className="h-9 w-44 bg-white">
+                                        <SelectTrigger className="h-9 w-44 bg-background">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1027,7 +1027,7 @@ export function MasterDataManagementClient({
                             )}
 
                             <div className="relative w-full max-w-130">
-                                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     value={activeSearchValue}
                                     onChange={(event) =>

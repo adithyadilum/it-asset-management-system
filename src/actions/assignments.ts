@@ -12,12 +12,21 @@ import {
   assignMultipleAssets,
   assignSingleAsset,
   getAssignmentsDashboardData,
+  triggerAssignmentReminders,
+  triggerReturnRequests,
+  markAssignmentsAsReceived,
+  processAssetReturn,
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import {
+  processReturnPayloadSchema,
+  type ProcessReturnPayload,
+} from '@/lib/validations/asset-assignment';
 
 export interface AssignmentActionResult {
   success: boolean;
@@ -25,6 +34,7 @@ export interface AssignmentActionResult {
   assignedCount?: number;
   error?: string;
   code?: string;
+  statusCode?: number;
 }
 
 function forbiddenResult(message: string): AssignmentActionResult {
@@ -32,6 +42,7 @@ function forbiddenResult(message: string): AssignmentActionResult {
     success: false,
     error: message,
     code: 'FORBIDDEN',
+    statusCode: 403,
   };
 }
 
@@ -41,6 +52,7 @@ function normalizeActionError(error: unknown): AssignmentActionResult {
       success: false,
       error: error.message,
       code: error.code,
+      statusCode: error.statusCode,
     };
   }
 
@@ -48,7 +60,59 @@ function normalizeActionError(error: unknown): AssignmentActionResult {
     success: false,
     error: 'Unexpected error while processing assignment.',
     code: 'INTERNAL_ERROR',
+    statusCode: 500,
   };
+}
+
+function dispatchAssignmentCreatedEvents(
+  result:
+    | { assignedAssetIds: string[]; assignments: { assignmentId: number; assetId: string }[] }
+    | null
+    | undefined,
+  input: { assignmentType: string; targetId: string | number; notes?: string; expectedReturnDate?: string },
+  performedById: string
+) {
+  if (!result || result.assignments.length === 0) {
+    return;
+  }
+
+  const isUserAssignment = input.assignmentType === 'user';
+  const targetPayload = isUserAssignment
+    ? {
+        assignedToUserId:
+          typeof input.targetId === 'string' ? input.targetId : String(input.targetId),
+        assignedToLocationId: null,
+      }
+    : {
+        assignedToUserId: null,
+        assignedToLocationId:
+          typeof input.targetId === 'number' ? input.targetId : Number(input.targetId),
+      };
+
+  result.assignments.forEach(({ assignmentId, assetId }) => {
+    void dispatchWebhookEvent('assignment.created', {
+      assignmentId,
+      assetId,
+      assignedById: performedById,
+      assignmentType: input.assignmentType,
+      expectedReturnDate: input.expectedReturnDate ?? null,
+      notes: input.notes?.trim() || null,
+      ...targetPayload,
+    });
+  });
+}
+
+function dispatchAssignmentReturnedEvents(
+  assignments: Array<{ assignmentId: number; assetId: string }>,
+  returnedDate: string
+) {
+  assignments.forEach((assignment) => {
+    void dispatchWebhookEvent('assignment.returned', {
+      assignmentId: assignment.assignmentId,
+      assetId: assignment.assetId,
+      returnedDate,
+    });
+  });
 }
 
 export async function assignAssetAction(
@@ -80,13 +144,16 @@ export async function assignAssetAction(
       if (err instanceof ZodError) {
         return {
           success: false,
-          error: 'Invalid input for assignAssetAction.',
+          error:
+            err.issues[0]?.message || 'Invalid input for assignAssetAction.',
           code: 'VALIDATION_ERROR',
         };
       }
       throw err;
     }
     const result = await assignSingleAsset(input, currentUser.id);
+
+    dispatchAssignmentCreatedEvents(result, input, currentUser.id);
 
     revalidatePath('/operations/assignments');
     revalidatePath('/assets');
@@ -141,13 +208,17 @@ export async function bulkAssignAssetsAction(
       if (err instanceof ZodError) {
         return {
           success: false,
-          error: 'Invalid input for bulkAssignAssetsAction.',
+          error:
+            err.issues[0]?.message ||
+            'Invalid input for bulkAssignAssetsAction.',
           code: 'VALIDATION_ERROR',
         };
       }
       throw err;
     }
     const result = await assignMultipleAssets(input, currentUser.id);
+
+    dispatchAssignmentCreatedEvents(result, input, currentUser.id);
 
     revalidatePath('/operations/assignments');
     revalidatePath('/assets');
@@ -194,6 +265,150 @@ export async function getOperationsAssignmentsDataAction() {
     logLatency({
       scope: 'ACTION',
       label: 'assignments.getOperationsAssignmentsDataAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function sendAssignmentReminderAction(
+  assignmentIds: number[]
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult(
+      'Forbidden: You do not have permission to send reminders.'
+    );
+  }
+
+  try {
+    await triggerAssignmentReminders(assignmentIds, currentUser.id);
+    revalidatePath('/operations/assignments');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.sendAssignmentReminderAction',
+      error,
+      metadata: { count: assignmentIds.length },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.sendAssignmentReminderAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function requestAssetReturnAction(
+  assignmentIds: number[]
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult(
+      'Forbidden: You do not have permission to request returns.'
+    );
+  }
+
+  try {
+    await triggerReturnRequests(assignmentIds, currentUser.id);
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.requestAssetReturnAction',
+      error,
+      metadata: { count: assignmentIds.length },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.requestAssetReturnAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function markAssetReceivedAction(
+  assignmentIds: number[]
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult(
+      'Forbidden: You do not have permission to mark assets as received.'
+    );
+  }
+
+  try {
+    const result = await markAssignmentsAsReceived(assignmentIds, currentUser.id);
+
+    if (result.assignments.length > 0) {
+      dispatchAssignmentReturnedEvents(result.assignments, new Date().toISOString());
+    }
+
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.markAssetReceivedAction',
+      error,
+      metadata: { count: assignmentIds.length },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.markAssetReceivedAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function processAssetReturnAction(
+  input: ProcessReturnPayload
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult(
+      'Forbidden: You do not have permission to process asset returns.'
+    );
+  }
+
+  try {
+    processReturnPayloadSchema.parse(input);
+
+    await processAssetReturn(input, currentUser.id);
+
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.processAssetReturnAction',
+      error,
+      metadata: { assetId: input.assetId },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.processAssetReturnAction',
       startTime: actionTimer,
     });
   }

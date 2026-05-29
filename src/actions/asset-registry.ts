@@ -6,8 +6,10 @@ import {
   bulkUpdateAssets as bulkUpdateAssetsRepo,
   getAssetsByPillar as getAssetsByPillarRepo,
   getCategoriesByPillar as getCategoriesByPillarRepo,
+  getAllAssetsUnified as getAllAssetsUnifiedRepo,
   type AssetCondition,
   type AssetRegistryFilters,
+  type UnifiedRegistryFilters,
   type AssetStatus,
   type BulkAssetUpdatePayload,
   type RegistryPillar,
@@ -322,6 +324,64 @@ export async function getAssetsByPillar(input: AssetsGridQueryInput) {
   }
 }
 
+export async function getAllAssetsUnified(input: AssetsGridQueryInput) {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    throw new Error(
+      'Forbidden: You do not have permission to read asset registry data.'
+    );
+  }
+
+  const normalizedFilters: UnifiedRegistryFilters = {
+    pillar: normalizePillar(input.pillar) ?? undefined,
+    query: normalizeQuery(input.query),
+    status: typeof input.status === 'string' ? input.status : undefined,
+    page: normalizePage(input.page, DEFAULT_PAGE),
+    pageSize: normalizePageSize(input.pageSize),
+  };
+
+  try {
+    const queryTimer = startLatencyTimer();
+    try {
+      return await getAllAssetsUnifiedRepo(normalizedFilters);
+    } finally {
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'assetsRegistry.getAllAssetsUnified.query',
+        startTime: queryTimer,
+        metadata: {
+          hasPillar: Boolean(normalizedFilters.pillar),
+          hasQuery: Boolean(normalizedFilters.query),
+          hasStatus: Boolean(normalizedFilters.status),
+          page: normalizedFilters.page,
+          pageSize: normalizedFilters.pageSize,
+        },
+      });
+    }
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assetsRegistry.getAllAssetsUnified',
+      error,
+      metadata: {
+        hasPillar: Boolean(normalizedFilters.pillar),
+      },
+    });
+    throw new Error('Failed to load unified asset registry data.');
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assetsRegistry.getAllAssetsUnified',
+      startTime: actionTimer,
+      metadata: {
+        hasPillar: Boolean(normalizedFilters.pillar),
+      },
+    });
+  }
+}
+
 export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
@@ -399,10 +459,7 @@ export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
 
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update selected assets.',
+      error: 'Failed to update selected assets.',
     };
   } finally {
     logLatency({

@@ -20,26 +20,26 @@ type AlertStyleConfig = {
 
 const ALERT_STYLE_MAP: Record<AssetAlertVariant, AlertStyleConfig> = {
     reminder: {
-        container: "border-amber-300 bg-amber-50/45 text-amber-950",
-        button: "bg-amber-900 text-white hover:bg-amber-950",
+        container: "border-alert-reminder-border bg-alert-reminder-bg text-alert-reminder-text",
+        button: "bg-alert-reminder-btn text-primary-foreground hover:bg-alert-reminder-btn-hover",
     },
     "return-overdue": {
-        container: "border-red-300 bg-red-50/45 text-red-950",
-        button: "bg-[#6f1d2c] text-white hover:bg-[#5f1825]",
+        container: "border-alert-destructive-border bg-alert-destructive-bg text-alert-destructive-text",
+        button: "bg-alert-destructive-btn text-primary-foreground hover:bg-alert-destructive-btn-hover",
     },
     notice: {
-        container: "border-red-300 bg-red-50/45 text-red-950",
-        button: "bg-[#6f1d2c] text-white hover:bg-[#5f1825]",
+        container: "border-alert-destructive-border bg-alert-destructive-bg text-alert-destructive-text",
+        button: "bg-alert-destructive-btn text-primary-foreground hover:bg-alert-destructive-btn-hover",
     },
     "service-update": {
-        container: "border-orange-300 bg-orange-50/50 text-orange-950",
+        container: "border-alert-warning-border bg-alert-warning-bg text-alert-warning-text",
     },
     "repair-completed": {
-        container: "border-emerald-600 bg-emerald-50/50 text-emerald-950",
+        container: "border-alert-success-border bg-alert-success-bg text-alert-success-text",
     },
     "action-required": {
-        container: "border-blue-700 bg-blue-50/50 text-slate-900",
-        button: "bg-[#031b86] text-white hover:bg-[#02156c]",
+        container: "border-alert-info-border bg-alert-info-bg text-alert-info-text",
+        button: "bg-primary text-primary-foreground hover:bg-primary/90",
     },
 }
 

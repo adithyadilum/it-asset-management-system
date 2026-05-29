@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import {
   Select,
   SelectContent,
@@ -41,7 +42,7 @@ interface AssetAssignmentModalProps {
 }
 
 type AssigneeOption = {
-  id: string;
+  value: string;
   label: string;
 };
 
@@ -71,8 +72,8 @@ export function AssetAssignmentModal({
   const loadOptions = React.useCallback(async () => {
     try {
       const [usersResult, locationsResult] = await Promise.all([
-        searchUsers(),
-        searchLocations(),
+        searchUsers("", 1000),
+        searchLocations("", 1000),
       ]);
 
       if (!usersResult.success || !locationsResult.success) {
@@ -81,14 +82,14 @@ export function AssetAssignmentModal({
 
       setUserOptions(
         (usersResult.data ?? []).map((user) => ({
-          id: user.id,
+          value: user.id,
           label: user.name,
         }))
       );
 
       setLocationOptions(
         (locationsResult.data ?? []).map((location) => ({
-          id: String(location.id),
+          value: String(location.id),
           label: location.name,
         }))
       );
@@ -152,6 +153,18 @@ export function AssetAssignmentModal({
       return;
     }
 
+    if (resolvedAssignmentMode === "user" && expectedReturn) {
+      const [year, month, day] = expectedReturn.split("-").map(Number);
+      const selectedDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        tiqriToast.error("Select a valid date");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;
@@ -213,75 +226,66 @@ export function AssetAssignmentModal({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-140 rounded-xl p-0" showCloseButton={true}>
         <DialogHeader className="gap-1 px-6 pt-5 pb-4">
-          <DialogTitle className="text-[18px] font-semibold text-slate-900">
-            Assign Asset: <span className="font-medium text-slate-700">{assetLabel}</span>
+          <DialogTitle className="text-[18px] font-semibold text-foreground">
+            Assign Asset: <span className="font-medium text-foreground">{assetLabel}</span>
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-500">
+          <DialogDescription className="text-xs text-muted-foreground">
             Choose how you would like to assign the selected assets.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 pt-4 pb-5">
           <div className="space-y-2">
-            <label className={`flex items-center gap-2 text-sm ${disableUserAssignment ? "cursor-not-allowed text-slate-400" : "text-slate-700"}`}>
+            <label className={`flex items-center gap-2 text-sm ${disableUserAssignment ? "cursor-not-allowed text-muted-foreground" : "text-foreground"}`}>
               <input
                 type="radio"
                 name="assignment-mode"
                 checked={assignmentMode === "user"}
                 disabled={disableUserAssignment}
                 onChange={() => handleAssignmentModeChange("user")}
-                className="size-4 border-slate-300 accent-[#00145a]"
+                className="size-4 border-border accent-primary"
               />
               Assign to User
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="radio"
                 name="assignment-mode"
                 checked={assignmentMode === "location"}
                 onChange={() => handleAssignmentModeChange("location")}
-                className="size-4 border-slate-300 accent-[#00145a]"
+                className="size-4 border-border accent-primary"
               />
               Assign to Location
             </label>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-700">
+            <Label className="text-xs font-medium text-foreground">
               {disableUserAssignment || assignmentMode === "location" ? "Select a location" : "Select a user"}
             </Label>
-            <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="h-9 bg-white">
-                <SelectValue
-                  placeholder={
-                    disableUserAssignment || assignmentMode === "location"
-                      ? "Select a location"
-                      : "Select a user"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {activeOptions.length > 0 ? (
-                  activeOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.label}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="__empty" disabled>
-                    No options available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <SearchableDropdown
+              options={activeOptions}
+              value={assignee}
+              onSelect={setAssignee}
+              placeholder={
+                disableUserAssignment || assignmentMode === "location"
+                  ? "Select a location"
+                  : "Select a user"
+              }
+              emptyMessage={
+                disableUserAssignment || assignmentMode === "location"
+                  ? "No locations found."
+                  : "No users found."
+              }
+            />
           </div>
 
           {disableUserAssignment || assignmentMode === "location" ? null : (
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Expected Return Date</Label>
+              <Label className="text-xs font-medium text-foreground">Expected Return Date</Label>
               <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
                 <Select key={duration || "preset-duration"} value={`${duration}`} onValueChange={handleDurationChange}>
-                  <SelectTrigger className="h-9 bg-white">
+                  <SelectTrigger className="h-9 bg-background">
                     <SelectValue placeholder="Select duration">
                       {duration ? `${duration} days` : undefined}
                     </SelectValue>
@@ -311,7 +315,7 @@ export function AssetAssignmentModal({
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-700">Notes</Label>
+            <Label className="text-xs font-medium text-foreground">Notes</Label>
             <Textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
@@ -329,7 +333,7 @@ export function AssetAssignmentModal({
             >
               Cancel
             </Button>
-            <Button type="submit" className="bg-[#00145a] hover:bg-[#000d3d]" disabled={isSubmitting}>
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
               Assign Asset
             </Button>
           </div>

@@ -155,6 +155,18 @@ export function MultiAssetAssignmentModal({
       return;
     }
 
+    if (resolvedAssignmentMode === "user" && expectedReturn) {
+      const [year, month, day] = expectedReturn.split("-").map(Number);
+      const selectedDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        tiqriToast.error("Select a valid date");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;
@@ -217,16 +229,16 @@ export function MultiAssetAssignmentModal({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-160 rounded-xl p-0" showCloseButton={true}>
         <DialogHeader className="gap-1 px-6 pt-5 pb-4">
-          <DialogTitle className="text-[18px] font-semibold text-slate-900">
+          <DialogTitle className="text-[18px] font-semibold text-foreground">
             Assign {assetCount} {assetCount === 1 ? "Asset" : "Assets"}
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-500">
+          <DialogDescription className="text-xs text-muted-foreground">
             Choose how you would like to assign the selected assets.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 pt-2 pb-5">
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+          <div className="overflow-hidden rounded-lg border border-border bg-muted">
             <ScrollArea className="h-21.5 w-full">
               <div className="space-y-2 p-3">
                 {assets.map((asset) => (
@@ -234,8 +246,8 @@ export function MultiAssetAssignmentModal({
                     key={asset.assetId}
                     className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 text-xs"
                   >
-                    <p className="font-medium text-slate-700">{asset.assetTag}</p>
-                    <p className="truncate text-slate-700">{asset.assetName}</p>
+                    <p className="font-medium text-foreground">{asset.assetTag}</p>
+                    <p className="truncate text-foreground">{asset.assetName}</p>
                   </div>
                 ))}
               </div>
@@ -243,35 +255,35 @@ export function MultiAssetAssignmentModal({
           </div>
 
           <div className="space-y-2">
-            <label className={`flex items-center gap-2 text-sm ${disableUserAssignment ? "cursor-not-allowed text-slate-400" : "text-slate-700"}`}>
+            <label className={`flex items-center gap-2 text-sm ${disableUserAssignment ? "cursor-not-allowed text-muted-foreground" : "text-foreground"}`}>
               <input
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === "user"}
                 disabled={disableUserAssignment}
                 onChange={() => handleAssignmentModeChange("user")}
-                className="size-4 border-slate-300 accent-[#00145a]"
+                className="size-4 border-border accent-primary"
               />
               Assign to User
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === "location"}
                 onChange={() => handleAssignmentModeChange("location")}
-                className="size-4 border-slate-300 accent-[#00145a]"
+                className="size-4 border-border accent-primary"
               />
               Assign to Location
             </label>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-700">
+            <Label className="text-xs font-medium text-foreground">
               {disableUserAssignment || assignmentMode === "location" ? "Select a location" : "Select a user"}
             </Label>
             <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="h-9 bg-white">
+              <SelectTrigger className="h-9 bg-background">
                 <SelectValue
                   placeholder={
                     disableUserAssignment || assignmentMode === "location"
@@ -298,10 +310,10 @@ export function MultiAssetAssignmentModal({
 
           {disableUserAssignment || assignmentMode === "location" ? null : (
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-700">Expected Return Date</Label>
+              <Label className="text-xs font-medium text-foreground">Expected Return Date</Label>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[160px_minmax(0,1fr)]">
                 <Select key={duration || "preset-duration"} value={`${duration}`} onValueChange={handleDurationChange}>
-                  <SelectTrigger className="h-9 w-full bg-white">
+                  <SelectTrigger className="h-9 w-full bg-background">
                     <SelectValue placeholder="Select the duration">
                       {duration ? `${duration} days` : undefined}
                     </SelectValue>
@@ -331,7 +343,7 @@ export function MultiAssetAssignmentModal({
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-700">Notes</Label>
+            <Label className="text-xs font-medium text-foreground">Notes</Label>
             <Textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
@@ -349,7 +361,7 @@ export function MultiAssetAssignmentModal({
             >
               Cancel
             </Button>
-            <Button type="submit" className="bg-[#00145a] hover:bg-[#000d3d]" disabled={isSubmitting}>
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
               Assign {assets.length} {assets.length === 1 ? "Asset" : "Assets"}
             </Button>
           </div>

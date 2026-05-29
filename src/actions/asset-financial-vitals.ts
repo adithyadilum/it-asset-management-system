@@ -6,6 +6,7 @@ import { assets, assetPurchases, maintenanceTickets } from '@/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
 
 /**
  * Reusable RBAC guard for financial data.
@@ -23,15 +24,7 @@ async function enforceFinanceAccess() {
   return user;
 }
 
-/**
- * Validates that a string is a valid UUID format (v4).
- * Prevents invalid IDs from being processed.
- */
-function isValidUuid(id: string): boolean {
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
+// Removed redundant isValidUuid - using import from lib instead
 
 export interface AssetFinancialVitals {
   assetId: string;
@@ -60,9 +53,10 @@ export async function getAssetFinancialVitals(
   try {
     await enforceFinanceAccess();
 
-    // Validate UUID format to prevent malformed queries
-    if (!isValidUuid(assetId)) {
-      throw new Error('Invalid asset ID format');
+    // 0. Resolve Asset ID (could be tag or UUID)
+    const resolvedAssetId = await resolveAssetPrimaryId(assetId);
+    if (!resolvedAssetId) {
+      throw new Error('Asset not found or invalid ID format');
     }
 
     // 1. Fetch Asset and Purchase details
@@ -81,7 +75,7 @@ export async function getAssetFinancialVitals(
       })
       .from(assets)
       .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .where(eq(assets.id, assetId))
+      .where(eq(assets.id, resolvedAssetId))
       .limit(1);
 
     if (assetResult.length === 0) {
@@ -101,7 +95,7 @@ export async function getAssetFinancialVitals(
       .from(maintenanceTickets)
       .where(
         and(
-          eq(maintenanceTickets.assetId, assetId),
+          eq(maintenanceTickets.assetId, resolvedAssetId),
           eq(maintenanceTickets.status, 'COMPLETED')
         )
       );
@@ -133,7 +127,7 @@ export async function getAssetFinancialVitals(
       tax: parseFloat(asset.tax?.toString() || '0'),
       shippingCost: parseFloat(asset.shippingCost?.toString() || '0'),
       totalCost: price,
-      currencyCode: asset.currencyCode || 'USD',
+      currencyCode: asset.currencyCode || 'LKR',
       warrantyExpiry: asset.warrantyExpiry,
       isUnderWarranty,
       usefulLifeMonths: lifeMonths,
@@ -147,16 +141,18 @@ export async function getAssetFinancialVitals(
       error instanceof Error &&
       (error.message.includes('Unauthorized') ||
         error.message.includes('Forbidden'));
+    
     if (isAuthError) {
       console.debug(
         `[getAssetFinancialVitals] Authorization denied for asset ${assetId}`
       );
-    } else {
-      console.error(
-        `[getAssetFinancialVitals] Error for asset ${assetId}:`,
-        error
-      );
+      throw error;
     }
-    throw error;
+
+    console.error(
+      `[getAssetFinancialVitals] Error for asset ${assetId}:`,
+      error
+    );
+    throw new Error('Failed to load financial vitals.');
   }
 }

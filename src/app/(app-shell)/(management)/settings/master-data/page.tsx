@@ -464,7 +464,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
 
   return (
     <div
-      className="flex h-full w-full overflow-hidden bg-slate-50"
+      className="flex h-full w-full overflow-hidden bg-muted"
     >
       <MasterDataManagementClient
         key={`master-data-${activeTab ?? "asset-categories"}`}

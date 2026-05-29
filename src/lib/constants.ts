@@ -42,18 +42,18 @@ export const STATUSES_REQUIRING_ASSIGNMENT_CLOSURE = new Set<string>([
 
 // 1. Curated Colors mapped to Tailwind classes
 export const STATUS_THEMES = {
-  blue: 'bg-blue-50 text-blue-700 border-blue-200',
-  purple: 'bg-purple-50 text-purple-700 border-purple-200',
-  orange: 'bg-orange-50 text-orange-700 border-orange-200',
-  pink: 'bg-pink-50 text-pink-700 border-pink-200',
-  gray: 'bg-gray-50 text-gray-700 border-gray-200',
-  green: 'bg-green-50 text-green-700 border-green-200',
-  red: 'bg-red-50 text-red-700 border-red-200',
-  yellow: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  slate: 'bg-slate-50 text-slate-700 border-slate-200',
+  blue: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800',
+  purple: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800',
+  orange: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800',
+  pink: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/30 dark:text-pink-400 dark:border-pink-800',
+  gray: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-zinc-900/30 dark:text-zinc-400 dark:border-zinc-800',
+  green: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800',
+  red: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800',
+  yellow: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/30 dark:text-yellow-400 dark:border-yellow-800',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800',
+  cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-800',
+  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800',
+  slate: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-800',
 } as const;
 
 export type StatusTheme = keyof typeof STATUS_THEMES;
@@ -124,3 +124,11 @@ export const AVAILABLE_STATUS_ICONS = [
   'Briefcase',
   'FileText',
 ];
+
+// External Integrations
+
+export const API_KEY_PREFIX = 'eitams_live_';
+
+// Rate limit: reads from env, falls back to 100 req/min
+export const API_RATE_LIMIT_MAX = Number(process.env.API_RATE_LIMIT_MAX) || 100;
+export const API_RATE_LIMIT_WINDOW_SECONDS = Number(process.env.API_RATE_LIMIT_WINDOW_SECONDS) || 60;

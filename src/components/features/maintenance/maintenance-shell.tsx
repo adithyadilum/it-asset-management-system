@@ -143,27 +143,29 @@ export function MaintenanceShell() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full bg-background overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] w-full bg-muted overflow-hidden">
 
       {/* LEFT CARD (Main Tabs) */}
-      <div className="flex flex-1 flex-col bg-background overflow-hidden min-w-0">
-        <div className="px-6 pt-6 pb-2 shrink-0">
-          <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
-        </div>
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <main className="flex min-h-0 flex-1 flex-col rounded-xl bg-background p-6">
+          <div className="mb-4 shrink-0">
+            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
+          </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden flex flex-col px-6 pb-6">
-          <MaintenanceTabs
-            pendingTickets={pendingTickets}
-            activeRepairTickets={activeRepairTickets}
-            repairHistoryTickets={repairHistoryTickets}
-            isLoading={isLoading}
-            onRowClick={handlePendingRowClick}
-            onActiveRepairRowClick={handleActiveRepairRowClick}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            selectedTicketId={uiState.selectedTicketId}
-          />
-        </div>
+          <div className="min-h-0 flex-1 overflow-hidden flex flex-col">
+            <MaintenanceTabs
+              pendingTickets={pendingTickets}
+              activeRepairTickets={activeRepairTickets}
+              repairHistoryTickets={repairHistoryTickets}
+              isLoading={isLoading}
+              onRowClick={handlePendingRowClick}
+              onActiveRepairRowClick={handleActiveRepairRowClick}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedTicketId={uiState.selectedTicketId}
+            />
+          </div>
+        </main>
       </div>
 
       <div

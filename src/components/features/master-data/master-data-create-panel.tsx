@@ -163,7 +163,7 @@ const SCHEMA_CHECKBOX_CLASSNAME =
     "size-5 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground";
 const TOP_LEVEL_PARENT_LOCATION_VALUE = "none";
 const READ_ONLY_PREVIEW_INPUT_CLASSNAME =
-    "h-9 bg-slate-100 font-mono tracking-wide text-slate-700 pointer-events-none";
+    "h-9 bg-muted font-mono tracking-wide text-foreground pointer-events-none";
 
 const NEXT_ID_LABELS: Record<MasterDataRecordEntity, string> = {
     locations: "Location ID (Preview)",
@@ -415,7 +415,7 @@ export function MasterDataCreatePanel({
 
     const nextIdPreviewField = normalizedEntity ? (
         <div className="space-y-2">
-            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                 {NEXT_ID_LABELS[normalizedEntity]}
             </label>
             <Input
@@ -650,10 +650,10 @@ export function MasterDataCreatePanel({
     const renderActiveSwitch = (
         <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                     Active Status
                 </label>
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                     Keep this value selectable for new records.
                 </p>
             </div>
@@ -664,7 +664,7 @@ export function MasterDataCreatePanel({
     const renderModelSpecificationsSection = (
         <div className="space-y-4 border-t pt-4">
             <div className="flex items-center gap-2">
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
                     Model Specifications (Common)
                 </h3>
                 <TooltipProvider delayDuration={150}>
@@ -673,7 +673,7 @@ export function MasterDataCreatePanel({
                             <button
                                 type="button"
                                 aria-label="Model specifications help"
-                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:text-slate-700"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
                             >
                                 <Info className="h-4 w-4" />
                             </button>
@@ -685,8 +685,8 @@ export function MasterDataCreatePanel({
                 </TooltipProvider>
             </div>
 
-            <div className="rounded-md border bg-slate-50/50">
-                <div className="grid grid-cols-12 gap-4 border-b bg-slate-50 p-3 text-xs font-medium text-slate-500">
+            <div className="rounded-md border bg-muted/50">
+                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
                     <div className="col-span-5">Field Name</div>
                     <div className="col-span-4">Input Type</div>
                     <div className="col-span-2 text-center">Required?</div>
@@ -707,7 +707,7 @@ export function MasterDataCreatePanel({
                                         )
                                     }
                                     placeholder="e.g., RAM"
-                                    className="h-9 bg-white"
+                                    className="h-9 bg-background"
                                 />
                             </div>
                             <div className="col-span-4">
@@ -721,7 +721,7 @@ export function MasterDataCreatePanel({
                                         )
                                     }
                                 >
-                                    <SelectTrigger className="h-9 bg-white">
+                                    <SelectTrigger className="h-9 bg-background">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -753,7 +753,7 @@ export function MasterDataCreatePanel({
                                     size="icon"
                                     onClick={() => removeModelSpecAttribute(attribute.id)}
                                     disabled={modelSpecAttributes.length === 1}
-                                    className="text-slate-400 hover:text-red-500"
+                                    className="text-muted-foreground hover:text-red-500"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -762,13 +762,13 @@ export function MasterDataCreatePanel({
                     ))}
                 </div>
 
-                <div className="border-t bg-slate-50 p-3">
+                <div className="border-t bg-muted p-3">
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={addModelSpecAttribute}
-                        className="w-full text-slate-500 hover:bg-slate-200"
+                        className="w-full text-muted-foreground hover:bg-muted"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Add more
@@ -786,7 +786,7 @@ export function MasterDataCreatePanel({
     const renderAssetTrackingSection = (
         <div className="space-y-4 border-t pt-4">
             <div className="flex items-center gap-2">
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
                     Asset Tracking Fields (Unique)
                 </h3>
                 <TooltipProvider delayDuration={150}>
@@ -795,7 +795,7 @@ export function MasterDataCreatePanel({
                             <button
                                 type="button"
                                 aria-label="Asset tracking fields help"
-                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:text-slate-700"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
                             >
                                 <Info className="h-4 w-4" />
                             </button>
@@ -807,8 +807,8 @@ export function MasterDataCreatePanel({
                 </TooltipProvider>
             </div>
 
-            <div className="rounded-md border bg-slate-50/50">
-                <div className="grid grid-cols-12 gap-4 border-b bg-slate-50 p-3 text-xs font-medium text-slate-500">
+            <div className="rounded-md border bg-muted/50">
+                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
                     <div className="col-span-5">Field Name</div>
                     <div className="col-span-4">Input Type</div>
                     <div className="col-span-2 text-center">Required?</div>
@@ -829,7 +829,7 @@ export function MasterDataCreatePanel({
                                         )
                                     }
                                     placeholder="e.g., MAC Address"
-                                    className="h-9 bg-white"
+                                    className="h-9 bg-background"
                                 />
                             </div>
                             <div className="col-span-4">
@@ -843,7 +843,7 @@ export function MasterDataCreatePanel({
                                         )
                                     }
                                 >
-                                    <SelectTrigger className="h-9 bg-white">
+                                    <SelectTrigger className="h-9 bg-background">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -875,7 +875,7 @@ export function MasterDataCreatePanel({
                                     size="icon"
                                     onClick={() => removeAssetTrackingAttribute(attribute.id)}
                                     disabled={assetTrackingAttributes.length === 1}
-                                    className="text-slate-400 hover:text-red-500"
+                                    className="text-muted-foreground hover:text-red-500"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -884,13 +884,13 @@ export function MasterDataCreatePanel({
                     ))}
                 </div>
 
-                <div className="border-t bg-slate-50 p-3">
+                <div className="border-t bg-muted p-3">
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={addAssetTrackingAttribute}
-                        className="w-full text-slate-500 hover:bg-slate-200"
+                        className="w-full text-muted-foreground hover:bg-muted"
                     >
                         <Plus className="mr-2 h-4 w-4" />
                         Add more
@@ -928,7 +928,7 @@ export function MasterDataCreatePanel({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Location Name <span className="text-red-500">*</span>
                                 </label>
                                 <Input name="name" placeholder="Colombo HQ" required />
@@ -939,13 +939,13 @@ export function MasterDataCreatePanel({
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Type <span className="text-red-500">*</span>
                                 </label>
                                 <SearchableDropdown
                                     options={LOCATION_TYPE_OPTIONS}
                                     placeholder="Select a location type"
-                                    defaultValue={selectedLocationType}
+                                    value={selectedLocationType}
                                     onSelect={(value) =>
                                         setSelectedLocationType(value as LocationType)
                                     }
@@ -959,7 +959,7 @@ export function MasterDataCreatePanel({
                         </div>
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Parent Location
                             </label>
                             <SearchableDropdown
@@ -971,10 +971,10 @@ export function MasterDataCreatePanel({
                                     })),
                                 ]}
                                 placeholder="Select a location"
-                                defaultValue={selectedParentLocationId}
+                                value={selectedParentLocationId}
                                 onSelect={setSelectedParentLocationId}
                             />
-                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                 Select None to create a Building.
                             </p>
                             {getFieldError("parentId") && (
@@ -1001,13 +1001,13 @@ export function MasterDataCreatePanel({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Type
                                 </label>
                                 <SearchableDropdown
                                     options={PILLAR_OPTIONS}
                                     placeholder="Select a type"
-                                    defaultValue={categoryPillar}
+                                    value={categoryPillar}
                                     onSelect={handleCategoryPillarChange}
                                 />
                                 {getFieldError("pillar") && (
@@ -1020,7 +1020,7 @@ export function MasterDataCreatePanel({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Category Name <span className="text-red-500">*</span>
                                 </label>
                                 <Input name="name" placeholder="Wireless Keyboards" required />
@@ -1031,7 +1031,7 @@ export function MasterDataCreatePanel({
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Prefix Code <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
@@ -1049,7 +1049,7 @@ export function MasterDataCreatePanel({
                                     <TooltipProvider delayDuration={150}>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                                <Info className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                                                <Info className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                             </TooltipTrigger>
                                             <TooltipContent side="top" sideOffset={6}>
                                                 Used to generate Asset IDs. This cannot be changed after creation.
@@ -1077,7 +1077,7 @@ export function MasterDataCreatePanel({
                         {nextIdPreviewField}
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Brand Name <span className="text-red-500">*</span>
                             </label>
                             <Input
@@ -1113,20 +1113,20 @@ export function MasterDataCreatePanel({
                         {nextIdPreviewField}
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Type
                             </label>
                             <SearchableDropdown
                                 options={PILLAR_OPTIONS}
                                 placeholder="Select a type"
-                                defaultValue={modelPillar}
+                                value={modelPillar}
                                 onSelect={handleModelPillarChange}
                             />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Brand <span className="text-red-500">*</span>
                                 </label>
                                 <SearchableDropdown
@@ -1135,7 +1135,7 @@ export function MasterDataCreatePanel({
                                         label: brand.name,
                                     }))}
                                     placeholder="Select a brand"
-                                    defaultValue={selectedBrandId}
+                                    value={selectedBrandId}
                                     onSelect={setSelectedBrandId}
                                 />
                                 {getFieldError("brandId") && (
@@ -1146,7 +1146,7 @@ export function MasterDataCreatePanel({
                             </div>
 
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Category <span className="text-red-500">*</span>
                                 </label>
                                 <SearchableDropdown
@@ -1155,7 +1155,7 @@ export function MasterDataCreatePanel({
                                         label: category.name,
                                     }))}
                                     placeholder="Select a category"
-                                    defaultValue={normalizedSelectedCategoryId}
+                                    value={normalizedSelectedCategoryId}
                                     onSelect={handleModelCategoryChange}
                                 />
                                 {getFieldError("categoryId") && (
@@ -1167,7 +1167,7 @@ export function MasterDataCreatePanel({
                         </div>
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Model Name <span className="text-red-500">*</span>
                             </label>
                             <Input name="name" placeholder="ThinkPad T14" required />
@@ -1179,7 +1179,7 @@ export function MasterDataCreatePanel({
                         </div>
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Model Image
                             </label>
                             <Input
@@ -1190,8 +1190,8 @@ export function MasterDataCreatePanel({
                                 className="hidden"
                                 onChange={(event) => handleModelImageSelection(event.target.files)}
                             />
-                            <div className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-2">
-                                <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-white">
+                            <div className="flex items-center gap-3 rounded-lg border bg-muted px-3 py-2">
+                                <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-md border bg-background">
                                     {modelImagePreviewUrl ? (
                                         <Image
                                             src={modelImagePreviewUrl}
@@ -1201,11 +1201,11 @@ export function MasterDataCreatePanel({
                                             className="h-full w-full object-cover"
                                         />
                                     ) : (
-                                        <ImagePlus className="h-5 w-5 text-slate-400" />
+                                        <ImagePlus className="h-5 w-5 text-muted-foreground" />
                                     )}
                                 </div>
                                 <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-slate-600`}>
+                                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} truncate text-muted-foreground`}>
                                         {modelImageFile ? modelImageFile.name : "No image selected"}
                                     </p>
                                     <Button
@@ -1242,15 +1242,15 @@ export function MasterDataCreatePanel({
                                     onDrop={handleModelImageDrop}
                                     className={`cursor-pointer rounded-lg border-2 border-dashed p-4 transition-colors ${isModelImageDragOver
                                         ? "border-primary bg-primary/5"
-                                        : "border-slate-300 bg-slate-50/70 hover:border-slate-400"
+                                        : "border-border bg-muted/70 hover:border-slate-400"
                                         }`}
                                 >
                                     <div className="flex flex-col items-center gap-2 text-center">
-                                        <Upload className="h-5 w-5 text-slate-500" />
-                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                        <Upload className="h-5 w-5 text-muted-foreground" />
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                             Drag and drop an image, or click to browse
                                         </p>
-                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                             PNG, JPG, WEBP or GIF. Maximum file size: 4.5MB.
                                         </p>
                                     </div>
@@ -1277,22 +1277,22 @@ export function MasterDataCreatePanel({
 
                         <div className="space-y-4 border-t pt-4">
                             <div>
-                                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-slate-900`}>
+                                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
                                     Model Specifications
                                 </h3>
-                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-500`}>
+                                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                     Fields below are sourced from common section of the selected Category.
                                 </p>
                             </div>
 
                             {!selectedCategoryForModel && (
-                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                <div className={`rounded-md bg-muted px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                     Select a category to load model specification fields.
                                 </div>
                             )}
 
                             {selectedCategoryForModel && selectedCategoryModelSpecs.length === 0 && (
-                                <div className={`rounded-md bg-slate-50 px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-slate-600`}>
+                                <div className={`rounded-md bg-muted px-3 py-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
                                     This category has no model specification fields yet.
                                 </div>
                             )}
@@ -1307,7 +1307,7 @@ export function MasterDataCreatePanel({
 
                                             return (
                                                 <div key={spec.fieldName} className="space-y-2">
-                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                                         {spec.fieldName}
                                                         {spec.required && <span className="text-red-500"> *</span>}
                                                     </label>
@@ -1331,7 +1331,7 @@ export function MasterDataCreatePanel({
 
                                         return (
                                             <div key={spec.fieldName} className="space-y-2">
-                                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                                     {spec.fieldName}
                                                     {spec.required && <span className="text-red-500"> *</span>}
                                                 </label>
@@ -1367,7 +1367,7 @@ export function MasterDataCreatePanel({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Vendor Name <span className="text-red-500">*</span>
                                 </label>
                                 <Input name="companyName" placeholder="Acme Supplies" required />
@@ -1378,7 +1378,7 @@ export function MasterDataCreatePanel({
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Email
                                 </label>
                                 <Input
@@ -1396,7 +1396,7 @@ export function MasterDataCreatePanel({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Phone
                                 </label>
                                 <Input name="phone" placeholder="+94 11 555 0000" />
@@ -1407,7 +1407,7 @@ export function MasterDataCreatePanel({
                                 )}
                             </div>
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Website
                                 </label>
                                 <Input
@@ -1433,7 +1433,7 @@ export function MasterDataCreatePanel({
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Department Name <span className="text-red-500">*</span>
                                 </label>
                                 <Input name="name" placeholder="Finance" required />
@@ -1445,7 +1445,7 @@ export function MasterDataCreatePanel({
                             </div>
 
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Department Code <span className="text-red-500">*</span>
                                 </label>
                                 <Input name="shortCode" placeholder="FIN" required />
@@ -1458,7 +1458,7 @@ export function MasterDataCreatePanel({
                         </div>
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Cost Center ID (Auto Assigned)
                             </label>
                             <Input
@@ -1480,7 +1480,7 @@ export function MasterDataCreatePanel({
                         {nextIdPreviewField}
 
                         <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                 Owner Name <span className="text-red-500">*</span>
                             </label>
                             <Input
@@ -1506,7 +1506,7 @@ export function MasterDataCreatePanel({
 
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                     Status Name <span className="text-red-500">*</span>
                                 </label>
                                 <Input
@@ -1524,7 +1524,7 @@ export function MasterDataCreatePanel({
 
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
-                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                         Status Icon <span className="text-red-500">*</span>
                                     </label>
                                     <Select
@@ -1551,7 +1551,7 @@ export function MasterDataCreatePanel({
                                                         <SelectItem 
                                                             key={iconName} 
                                                             value={iconName}
-                                                            className="flex items-center justify-center p-2 hover:bg-slate-100 cursor-pointer rounded"
+                                                            className="flex items-center justify-center p-2 hover:bg-muted cursor-pointer rounded"
                                                         >
                                                             {Icon ? <Icon className="h-5 w-5" /> : <span>{iconName}</span>}
                                                         </SelectItem>
@@ -1568,7 +1568,7 @@ export function MasterDataCreatePanel({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-slate-900`}>
+                                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
                                         Status Theme <span className="text-red-500">*</span>
                                     </label>
                                     <Select

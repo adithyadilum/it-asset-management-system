@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, useRef } from "react";
-import { Download, Search, ChevronDown, DollarSign, Filter, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Download, ChevronDown, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/shared/data-table";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { FilterBar, type AppliedFilter, type FilterFieldConfig } from "@/components/shared/filter-bar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { DepreciationLedgerRecord } from "@/types/financials";
 import { format } from "date-fns";
@@ -13,15 +13,6 @@ import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
 import { getDepreciationLedger } from "@/actions/financials";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
-
-type FilterField = 'Asset Category' | 'Purchase Age';
-type FilterOperator = 'is' | 'is not';
-
-type AppliedFilter = {
-  field: FilterField;
-  operator: FilterOperator;
-  value: string;
-};
 
 interface DepreciationLedgerProps {
   initialData: DepreciationLedgerRecord[];
@@ -37,31 +28,21 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currency, setCurrency] = useState<SupportedCurrency>('USD');
+  const [currency, setCurrency] = useState<SupportedCurrency>('LKR');
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
-  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
 
-  // Query Builder Filter State
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
-  const [draftField, setDraftField] = useState<FilterField>('Asset Category');
-  const [draftOperator, setDraftOperator] = useState<FilterOperator>('is');
-  const [draftValue, setDraftValue] = useState('');
 
-  const filterFieldOptions: FilterField[] = ['Asset Category', 'Purchase Age'];
   const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]'];
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
   }, [initialData]);
 
-  const filterValueOptions = useMemo(() => {
-    if (draftField === 'Asset Category') return uniqueCategories;
-    if (draftField === 'Purchase Age') return ['This Year', 'Last Year', 'Older than 3 Years'];
-    return [];
-  }, [draftField, uniqueCategories]);
-
-  // Synchronization moved to event handlers to satisfy strict linting rules
-  // and avoid cascading renders.
+  const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => [
+    { value: 'Asset Category', label: 'Asset Category', options: uniqueCategories },
+    { value: 'Purchase Age', label: 'Purchase Age', options: ['This Year', 'Last Year', 'Older than 3 Years'] },
+  ], [uniqueCategories]);
 
   // Debounce search input
   useEffect(() => {
@@ -95,17 +76,15 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
     });
   }, [pagination.pageIndex, pagination.pageSize, debouncedSearch, appliedFilters]);
 
-  const applyFilter = () => {
-    if (!draftValue) return;
+  const applyFilter = (nextFilter: AppliedFilter) => {
     setAppliedFilters((currentFilters) => {
-      const withoutCurrentField = currentFilters.filter((f) => f.field !== draftField);
-      return [...withoutCurrentField, { field: draftField, operator: draftOperator, value: draftValue }];
+      const withoutCurrentField = currentFilters.filter((f) => f.field !== nextFilter.field);
+      return [...withoutCurrentField, nextFilter];
     });
     setPagination(p => ({ ...p, pageIndex: 0 }));
-    setIsFilterPopoverOpen(false);
   };
 
-  const clearFilter = (field: FilterField) => {
+  const clearFilter = (field: string) => {
     setAppliedFilters((currentFilters) => currentFilters.filter((f) => f.field !== field));
     setPagination(p => ({ ...p, pageIndex: 0 }));
   };
@@ -199,176 +178,45 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden gap-4">
-      <div className="flex flex-col gap-3 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="relative w-[320px]">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPagination(p => ({ ...p, pageIndex: 0 }));
-              }}
-              className={`pl-9 bg-background ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Currency Switcher */}
-            <Popover open={isCurrencyOpen} onOpenChange={setIsCurrencyOpen}>
-              <PopoverAnchor asChild>
-                <Button variant="outline" className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`} onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}>
-                  <DollarSign className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {currency} <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </PopoverAnchor>
-              <PopoverContent align="end" className="w-40 p-2 bg-background border-border shadow-md rounded-lg">
-                <div className="flex flex-col gap-1">
-                  {(['USD', 'LKR', 'NOK'] as SupportedCurrency[]).map((c) => (
-                    <Button
-                      key={c}
-                      variant={currency === c ? 'secondary' : 'ghost'}
-                      className={`justify-start ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
-                      onClick={() => { setCurrency(c); setIsCurrencyOpen(false); }}
-                    >
-                      {c === 'USD' ? '🇺🇸' : c === 'NOK' ? '🇳🇴' : '🇱🇰'} {c}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            {/* Query Builder Filter Dropdown */}
-            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-              <PopoverAnchor asChild>
+      <FilterBar
+        searchQuery={searchTerm}
+        onSearchChange={(value) => { setSearchTerm(value); setPagination(p => ({ ...p, pageIndex: 0 })); }}
+        searchPlaceholder="Search..."
+        fields={filterFieldConfigs}
+        appliedFilters={appliedFilters}
+        onApplyFilter={applyFilter}
+        onClearFilter={clearFilter}
+        onClearAllFilters={clearAllFilters}
+      >
+        {/* Currency Switcher */}
+        <Popover open={isCurrencyOpen} onOpenChange={setIsCurrencyOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
+              <DollarSign className="mr-2 h-4 w-4 text-muted-foreground" />
+              {currency} <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-40 p-2 bg-background border-border shadow-md rounded-lg">
+            <div className="flex flex-col gap-1">
+              {(['USD', 'LKR', 'NOK'] as SupportedCurrency[]).map((c) => (
                 <Button
-                  variant="outline"
-                  className={`bg-background text-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
-                  onClick={() => setIsFilterPopoverOpen(!isFilterPopoverOpen)}
+                  key={c}
+                  variant={currency === c ? 'secondary' : 'ghost'}
+                  className={`justify-start ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+                  onClick={() => { setCurrency(c); setIsCurrencyOpen(false); }}
                 >
-                  <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Filters
-                  <ChevronDown className="ml-2 h-4 w-4" />
+                  {c === 'USD' ? '🇺🇸' : c === 'NOK' ? '🇳🇴' : '🇱🇰'} {c}
                 </Button>
-              </PopoverAnchor>
-              <PopoverContent align="end" sideOffset={10} className="w-64 rounded-lg border border-border bg-background p-0 shadow-xl">
-                <div className="border-b border-border px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Filter by</h3>
-                    <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setIsFilterPopoverOpen(false)}>
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-3 px-3 py-3">
-                  <select
-                    value={draftField}
-                    onChange={(event) => {
-                      const newField = event.target.value as FilterField;
-                      setDraftField(newField);
-                      // Update draftValue immediately when field changes
-                      if (newField === 'Asset Category') {
-                        setDraftValue(uniqueCategories[0] || '');
-                      } else if (newField === 'Purchase Age') {
-                        setDraftValue('This Year');
-                      }
-                    }}
-                    className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
-                  >
-                    {filterFieldOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-
-                  <div className={`space-y-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}>
-                    <label className="flex items-center gap-2">
-                      <input type="radio" checked={draftOperator === 'is'} onChange={() => setDraftOperator('is')} /> is
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="radio" checked={draftOperator === 'is not'} onChange={() => setDraftOperator('is not')} /> is not
-                    </label>
-                  </div>
-
-                  <select
-                    value={draftValue}
-                    onChange={(event) => setDraftValue(event.target.value)}
-                    className={`h-8 w-full rounded-lg border border-border bg-background px-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
-                  >
-                    <option value="" disabled>Select value</option>
-                    {filterValueOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={`h-8 rounded-lg border-border bg-secondary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-secondary-foreground hover:bg-secondary/80`}
-                    onClick={() => setIsFilterPopoverOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className={`h-8 rounded-lg bg-primary px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-primary-foreground hover:bg-primary/90`}
-                    onClick={applyFilter}
-                  >
-                    Apply Filter
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-
-            <Button onClick={() => void exportToCSV()} className={`bg-primary hover:bg-primary/90 text-primary-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
-              <Download className="mr-2 h-4 w-4" />
-              Export Log
-            </Button>
-          </div>
-        </div>
-
-        {/* Applied Filters Badges */}
-        {appliedFilters.length > 0 ? (
-          <div className="flex items-center justify-between gap-2 shrink-0">
-            <div className="flex flex-wrap items-center gap-2">
-              {appliedFilters.map((filter) => (
-                <span
-                  key={filter.field}
-                  className={`inline-flex h-8 items-center gap-2 rounded-lg bg-muted/50 px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
-                >
-                  {`${filter.field} ${filter.operator} ${filter.value}`}
-                  <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => clearFilter(filter.field)}>
-                    <X className="size-4" />
-                  </button>
-                </span>
               ))}
-
-              <button
-                type="button"
-                className="inline-flex size-8 items-center justify-center rounded-lg text-xl text-muted-foreground hover:bg-muted/50"
-                onClick={() => setIsFilterPopoverOpen(true)}
-              >
-                +
-              </button>
             </div>
+          </PopoverContent>
+        </Popover>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className={`h-8 rounded-lg border-border bg-background px-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
-              onClick={clearAllFilters}
-            >
-              Clear Filters
-            </Button>
-          </div>
-        ) : null}
-      </div>
+        <Button onClick={() => void exportToCSV()} className={`bg-primary hover:bg-primary/90 text-primary-foreground ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
+          <Download className="mr-2 h-4 w-4" />
+          Export Log
+        </Button>
+      </FilterBar>
 
       <div className="min-h-0 flex-1 flex flex-col">
         {isPending ? (
