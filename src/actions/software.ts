@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { eq, inArray, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { softwareLicenses, softwareAllocations } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
@@ -78,13 +78,13 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
         newData: { allocatedUsers: newUsers },
       });
 
-      return { success: true, allocatedCount: newUsers.length };
+      return { success: true as const, allocatedCount: newUsers.length };
     });
 
     revalidatePath('/assets');
     revalidatePath('/assets/software');
-    revalidateTag('dashboard-kpis');
-
+    revalidateTag('dashboard-kpis', 'max');
+    
     return result;
   } catch (error) {
     logError({

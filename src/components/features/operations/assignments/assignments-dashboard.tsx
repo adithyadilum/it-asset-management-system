@@ -240,13 +240,25 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
   const hasReminderCandidates = useMemo(() => {
     return selectedAssignedRows.some(
-      (r) => ["pending approval", "overdue", "requested"].includes(r.state)
+      (r) => ["pending approval", "overdue"].includes(r.state)
     );
   }, [selectedAssignedRows]);
 
   const hasMarkReceivedCandidates = useMemo(() => {
     return selectedAssignedRows.some(
-      (r) => ["requested", "overdue", "assigned"].includes(r.state)
+      (r) => ["requested", "overdue"].includes(r.state)
+    );
+  }, [selectedAssignedRows]);
+
+  const hasRequestAgainCandidates = useMemo(() => {
+    return selectedAssignedRows.some(
+      (r) => r.state === "requested"
+    );
+  }, [selectedAssignedRows]);
+
+  const hasReturnCandidates = useMemo(() => {
+    return selectedAssignedRows.some(
+      (r) => r.state === "assigned"
     );
   }, [selectedAssignedRows]);
 
@@ -307,11 +319,11 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       if (hasMarkReceivedCandidates) {
         actions.push({
           id: "mark-received",
-          label: "Received",
+          label: "Returned",
           tone: "secondary",
           onClick: async (selectedRows) => {
             const ids = selectedRows
-              .filter((r) => ["requested", "overdue", "assigned"].includes(r.state))
+              .filter((r) => ["requested", "overdue"].includes(r.state))
               .map((r) => r.assignmentId)
               .filter((id): id is number => id !== undefined);
 
@@ -319,53 +331,82 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
             const result = await markAssetReceivedAction(ids);
             if (result.success) {
-              toast.success(`${ids.length} assets marked as received`);
+              toast.success(`${ids.length} assets marked as returned`);
               setRowSelection({});
             } else {
-              toast.error(result.error || "Failed to mark as received");
+              toast.error(result.error || "Failed to mark as returned");
             }
           },
         });
       }
 
-      if (hasReminderCandidates || selectedAssignedRows.some(r => r.state === "assigned")) {
+      if (hasRequestAgainCandidates) {
         actions.push({
-          id: "reminder-or-return",
-          label: hasReminderCandidates ? "Send Reminder" : "Request Return",
-          tone: "primary",
+          id: "request-again",
+          label: "Request Again",
+          tone: "secondary",
           onClick: async (selectedRows) => {
             const ids = selectedRows
+              .filter((r) => r.state === "requested")
               .map((r) => r.assignmentId)
               .filter((id): id is number => id !== undefined);
 
             if (ids.length === 0) return;
 
-            if (hasReminderCandidates) {
-              const reminderIds = selectedRows
-                .filter((r) => ["pending approval", "overdue", "requested"].includes(r.state))
-                .map((r) => r.assignmentId)
-                .filter((id): id is number => id !== undefined);
-
-              const result = await sendAssignmentReminderAction(reminderIds);
-              if (result.success) {
-                toast.success(`Reminder sent for ${reminderIds.length} assets`);
-                setRowSelection({});
-              } else {
-                toast.error(result.error || "Failed to send reminders");
-              }
+            const result = await requestAssetReturnAction(ids);
+            if (result.success) {
+              toast.success(`Return re-requested for ${ids.length} assets`);
+              setRowSelection({});
             } else {
-              const returnIds = selectedRows
-                .filter((r) => r.state === "assigned")
-                .map((r) => r.assignmentId)
-                .filter((id): id is number => id !== undefined);
+              toast.error(result.error || "Failed to re-request return");
+            }
+          },
+        });
+      }
 
-              const result = await requestAssetReturnAction(returnIds);
-              if (result.success) {
-                toast.success(`Return requested for ${returnIds.length} assets`);
-                setRowSelection({});
-              } else {
-                toast.error(result.error || "Failed to request return");
-              }
+      if (hasReminderCandidates) {
+        actions.push({
+          id: "send-reminder",
+          label: "Send Reminder",
+          tone: "primary",
+          onClick: async (selectedRows) => {
+            const reminderIds = selectedRows
+              .filter((r) => ["pending approval", "overdue"].includes(r.state))
+              .map((r) => r.assignmentId)
+              .filter((id): id is number => id !== undefined);
+
+            if (reminderIds.length === 0) return;
+
+            const result = await sendAssignmentReminderAction(reminderIds);
+            if (result.success) {
+              toast.success(`Reminder sent for ${reminderIds.length} assets`);
+              setRowSelection({});
+            } else {
+              toast.error(result.error || "Failed to send reminders");
+            }
+          },
+        });
+      }
+
+      if (hasReturnCandidates) {
+        actions.push({
+          id: "request-return",
+          label: "Request Return",
+          tone: "primary",
+          onClick: async (selectedRows) => {
+            const returnIds = selectedRows
+              .filter((r) => r.state === "assigned")
+              .map((r) => r.assignmentId)
+              .filter((id): id is number => id !== undefined);
+
+            if (returnIds.length === 0) return;
+
+            const result = await requestAssetReturnAction(returnIds);
+            if (result.success) {
+              toast.success(`Return requested for ${returnIds.length} assets`);
+              setRowSelection({});
+            } else {
+              toast.error(result.error || "Failed to request return");
             }
           },
         });
@@ -373,7 +414,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
 
       return actions;
     },
-    [selectedAssignedRows, hasReminderCandidates, hasMarkReceivedCandidates]
+    [hasReminderCandidates, hasMarkReceivedCandidates, hasRequestAgainCandidates, hasReturnCandidates]
   );
 
   // 3. Column Definitions for the Hardware Registry View

@@ -66,6 +66,26 @@ async function seedNotificationRules() {
       channelEmail: true,
       channelTeams: false,
     },
+    {
+      ruleKey: 'UPCOMING_RETURN',
+      displayName: 'Upcoming Asset Return',
+      category: 'OPERATIONAL' as const,
+      isEnabled: true,
+      thresholdDays: 14,
+      channelInApp: true,
+      channelEmail: true,
+      channelTeams: false,
+    },
+    {
+      ruleKey: 'PENDING_ACCEPTANCE',
+      displayName: 'Pending Asset Acceptance',
+      category: 'OPERATIONAL' as const,
+      isEnabled: true,
+      thresholdDays: null,
+      channelInApp: true,
+      channelEmail: true,
+      channelTeams: false,
+    },
 
     // SECURITY
     {

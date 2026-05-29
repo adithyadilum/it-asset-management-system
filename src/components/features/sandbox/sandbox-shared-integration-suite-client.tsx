@@ -8,7 +8,7 @@ import {
 } from "@/components/shared/destructive-confirmation-dialog"
 import { AssetCard } from "@/components/shared/asset-card"
 import { AssetAlert } from "@/components/shared/asset-alert"
-import { AcceptAssignmentDialog } from "@/components/features/dashboard/accept-assignment-dialog"
+import { AcceptAssignmentDialog } from "@/components/features/dashboard/employee/accept-assignment-dialog"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import { ModuleNavigationTabs } from "@/components/shared/module-navigation-tabs"
 import { StatusToggle } from "@/components/shared/status-toggle"

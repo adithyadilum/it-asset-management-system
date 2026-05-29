@@ -57,16 +57,16 @@ export function AcceptAssignmentDialog({
                 </Button>
             </DialogTrigger>
 
-            <DialogContent className="w-[92vw] gap-4 rounded-lg border border-border bg-background p-6 shadow-xl shadow-black/10 sm:max-w-[460px]">
+            <DialogContent className="w-[92vw] gap-4 rounded-lg border border-border bg-background p-6 shadow-xl shadow-black/10 sm:max-w-115">
                 <DialogHeader className="space-y-0">
                     <div className="flex items-center justify-between gap-4">
                         <DialogTitle className="font-text-lg-semi-bold leading-7 text-foreground">
-                            Accept Equipment Assignment
+                            Accept Asset Assignment
                         </DialogTitle>
                     </div>
                 </DialogHeader>
 
-                <div className="rounded-lg border border-border bg-muted py-6 shadow-sm shadow-[0px_1px_3px_0px_rgba(0,0,0,0.10)]">
+                <div className="rounded-lg border border-border bg-muted py-6 shadow-sm">
                     <div className="flex flex-col items-center justify-center gap-6 px-6">
                         <div className="flex w-full items-center justify-center gap-2.5 px-6 md:px-8">
                             <Laptop className="h-10 w-10 shrink-0 text-foreground" />
