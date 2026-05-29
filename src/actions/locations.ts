@@ -8,7 +8,7 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
-const MAX_RESULTS = 20;
+
 
 export interface LocationSearchResult {
   id: number;
@@ -34,7 +34,8 @@ function forbiddenResult(message: string): LocationsActionResult {
  * @returns Array of locations matching the query
  */
 export async function searchLocations(
-  query: string = ''
+  query: string = '',
+  limit: number = 20
 ): Promise<LocationsActionResult> {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
@@ -65,7 +66,7 @@ export async function searchLocations(
       .from(locations)
       .where(and(...filters))
       .orderBy(asc(locations.name))
-      .limit(MAX_RESULTS);
+      .limit(limit);
 
     return {
       success: true,

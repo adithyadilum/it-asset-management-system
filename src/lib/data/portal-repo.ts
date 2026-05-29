@@ -1,6 +1,12 @@
-import { and, desc, eq, gte, lte, isNull, isNotNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, isNull, isNotNull } from 'drizzle-orm';
 import { db } from '@/db';
-import { assetAssignments, assets, models, categories } from '@/db/schema';
+import {
+  assetAssignments,
+  assets,
+  models,
+  categories,
+  users,
+} from '@/db/schema';
 
 export interface PendingAcceptanceItem {
   assignmentId: number;
@@ -9,7 +15,7 @@ export interface PendingAcceptanceItem {
   modelName: string;
   category: string;
   assignedDate: string;
-  assignedById: string;
+  assignedByName: string | null;
 }
 
 export interface UpcomingReturnItem {
@@ -45,12 +51,13 @@ export async function getPendingAcceptanceAssignments(
       modelName: models.name,
       category: categories.name,
       assignedDate: assetAssignments.assignedDate,
-      assignedById: assetAssignments.assignedById,
+      assignedByName: users.name,
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
     .innerJoin(models, eq(assets.modelId, models.id))
     .innerJoin(categories, eq(models.categoryId, categories.id))
+    .leftJoin(users, eq(assetAssignments.assignedById, users.id))
     .where(
       and(
         eq(assetAssignments.assignedToUserId, userId),
@@ -93,7 +100,7 @@ export async function getUpcomingReturnAssignments(
         lte(assetAssignments.expectedReturnDate, in14.toISOString())
       )
     )
-    .orderBy(desc(assetAssignments.expectedReturnDate));
+    .orderBy(asc(assetAssignments.expectedReturnDate));
 
   return rows.map((r) => ({
     ...r,

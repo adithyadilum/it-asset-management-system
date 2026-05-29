@@ -15,6 +15,13 @@
       "when": 1778710255615,
       "tag": "0001_lean_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778710255616,
+      "tag": "0002_atomic_notification_queue_dedup",
+      "breakpoints": true
     }
   ]
 }

@@ -10,9 +10,10 @@ import {
   users,
   notificationRules,
   notificationLogs,
+  notificationQueue,
 } from '@/db/schema';
-import { notificationQueue } from '@/db/schema';
 import {
+  asc,
   eq,
   and,
   or,
@@ -20,10 +21,12 @@ import {
   isNotNull,
   inArray,
   notInArray,
+  gte,
+  lte,
   sql,
 } from 'drizzle-orm';
-import { gte, lte } from 'drizzle-orm';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
+import { formatDate } from '@/lib/date';
 
 /**
  * Handle incoming POST requests from Upstash QStash native scheduler.
@@ -87,11 +90,11 @@ export async function POST(req: NextRequest) {
     // 4. Run overdueRepairCheck
     await runOverdueRepairCheck();
 
-      // 5. Run pending acceptance escalation checks
-      await runPendingAcceptanceEscalation();
+    // 5. Run pending acceptance escalation checks
+    await runPendingAcceptanceEscalation();
 
-      // 6. Run upcoming return reminders
-      await runUpcomingReturnCheck();
+    // 6. Run upcoming return reminders
+    await runUpcomingReturnCheck();
 
     return NextResponse.json({
       success: true,
@@ -115,17 +118,27 @@ export async function POST(req: NextRequest) {
 async function runPendingAcceptanceEscalation() {
   console.log('Starting pendingAcceptanceEscalation job...');
 
-  // Fetch unprocessed queue entries
   const entries = await db
     .select({
-      id: notificationQueue.id,
-      eventType: notificationQueue.eventType,
       assignmentId: notificationQueue.assignmentId,
       recipientId: notificationQueue.recipientId,
-      createdAt: notificationQueue.createdAt,
+      assignedDate: assetAssignments.assignedDate,
+      assignedById: assetAssignments.assignedById,
+      assignedToUserId: assetAssignments.assignedToUserId,
     })
     .from(notificationQueue)
-    .where(eq(notificationQueue.isProcessed, false));
+    .innerJoin(
+      assetAssignments,
+      eq(notificationQueue.assignmentId, assetAssignments.id)
+    )
+    .where(
+      and(
+        eq(notificationQueue.isProcessed, false),
+        eq(notificationQueue.eventType, 'PENDING_ACCEPTANCE'),
+        eq(assetAssignments.state, 'pending approval'),
+        isNull(assetAssignments.returnedDate)
+      )
+    );
 
   if (!entries || entries.length === 0) {
     console.log('No unprocessed notification_queue entries found.');
@@ -133,123 +146,165 @@ async function runPendingAcceptanceEscalation() {
   }
 
   const now = new Date();
+  const reminderRows: Array<{
+    eventType: 'REMINDER_24H' | 'REMINDER_48H' | 'REMINDER_72H_ADMIN';
+    assignmentId: number;
+    recipientId: string;
+  }> = [];
+  const reminderDetails = new Map<
+    string,
+    {
+      assignmentId: number;
+      recipientId: string;
+      assignedDate: Date;
+      assignedById: string | null;
+      assignedToUserId: string | null;
+    }
+  >();
 
   for (const entry of entries) {
-    // Load assignment to compute elapsed time and find assigning admin
-    const [assignment] = await db
-      .select({ assignedDate: assetAssignments.assignedDate, assignedById: assetAssignments.assignedById, assignedToUserId: assetAssignments.assignedToUserId })
-      .from(assetAssignments)
-      .where(eq(assetAssignments.id, entry.assignmentId))
-      .limit(1);
-
-    if (!assignment) continue;
-
-    const assignedDate = assignment.assignedDate ? new Date(assignment.assignedDate) : null;
+    const assignedDate = entry.assignedDate
+      ? new Date(entry.assignedDate)
+      : null;
     if (!assignedDate) continue;
 
-    const hours = Math.floor((now.getTime() - assignedDate.getTime()) / (1000 * 60 * 60));
-    const targetUrl = `/portal/my-assets?assignmentId=${entry.assignmentId}`;
-
-    // Helper removed; we'll inline dedupe checks using explicit event type literals
-
-    // 24h reminder to employee
-    if (hours >= 24 && hours < 48) {
-      // Deduplicate by checking notification_queue for an existing REMINDER_24H for this assignment/recipient
-      const [existing24] = await db
-        .select()
-        .from(notificationQueue)
-        .where(
-          and(
-            eq(notificationQueue.assignmentId, entry.assignmentId),
-            eq(notificationQueue.eventType, 'REMINDER_24H'),
-            eq(notificationQueue.recipientId, entry.recipientId as string)
-          )
-        )
-        .limit(1);
-      const has24 = !!existing24;
-      if (!has24) {
-        // Insert escalation queue entry
-        await db.insert(notificationQueue).values({
-          eventType: 'REMINDER_24H',
+    const hours = Math.floor(
+      (now.getTime() - assignedDate.getTime()) / (1000 * 60 * 60)
+    );
+    if (hours >= 24) {
+      reminderRows.push({
+        eventType: 'REMINDER_24H',
+        assignmentId: entry.assignmentId,
+        recipientId: entry.recipientId,
+      });
+      reminderDetails.set(
+        `${entry.assignmentId}:REMINDER_24H:${entry.recipientId}`,
+        {
           assignmentId: entry.assignmentId,
           recipientId: entry.recipientId,
-        });
-
-        // Dispatch in-app notification to employee
-        await dispatchAlert({
-          eventType: 'ASSIGNMENT_PENDING',
-          userId: entry.recipientId as string,
-          title: 'Action Required: Assignment Pending',
-          message: `You have an assignment pending acknowledgment (assigned ${assignedDate.toISOString()}). Please review.`,
-          targetUrl,
-        });
-      }
-    }
-
-    // 48h reminder to employee
-    if (hours >= 48 && hours < 72) {
-      const [existing48] = await db
-        .select()
-        .from(notificationQueue)
-        .where(
-          and(
-            eq(notificationQueue.assignmentId, entry.assignmentId),
-            eq(notificationQueue.eventType, 'REMINDER_48H'),
-            eq(notificationQueue.recipientId, entry.recipientId as string)
-          )
-        )
-        .limit(1);
-      const has48 = !!existing48;
-      if (!has48) {
-        await db.insert(notificationQueue).values({
-          eventType: 'REMINDER_48H',
-          assignmentId: entry.assignmentId,
-          recipientId: entry.recipientId,
-        });
-
-        await dispatchAlert({
-          eventType: 'ASSIGNMENT_PENDING',
-          userId: entry.recipientId as string,
-          title: 'Reminder: Assignment Still Pending',
-          message: `Your assignment from ${assignedDate.toISOString()} is still awaiting acknowledgment.`,
-          targetUrl,
-        });
-      }
-    }
-
-    // 72h escalation to assigning admin
-    if (hours >= 72) {
-      const [existing72] = await db
-        .select()
-        .from(notificationQueue)
-        .where(
-          and(
-            eq(notificationQueue.assignmentId, entry.assignmentId),
-            eq(notificationQueue.eventType, 'REMINDER_72H_ADMIN')
-          )
-        )
-        .limit(1);
-      const has72 = !!existing72;
-      if (!has72) {
-        await db.insert(notificationQueue).values({
-          eventType: 'REMINDER_72H_ADMIN',
-          assignmentId: entry.assignmentId,
-          recipientId: entry.recipientId,
-        });
-
-        // Notify assigning admin (assignedById)
-        if (assignment.assignedById) {
-          await dispatchAlert({
-            eventType: 'ASSIGNMENT_PENDING',
-            userId: assignment.assignedById as string,
-            title: 'Escalation: Assignment Not Acknowledged',
-            message: `Assignment #${entry.assignmentId} assigned to user ${entry.recipientId} has not been acknowledged after 72 hours.`,
-            targetUrl: `/operations/assignments?assignmentId=${entry.assignmentId}`,
-          });
+          assignedDate,
+          assignedById: entry.assignedById,
+          assignedToUserId: entry.assignedToUserId,
         }
-      }
+      );
+    }
+
+    if (hours >= 48) {
+      reminderRows.push({
+        eventType: 'REMINDER_48H',
+        assignmentId: entry.assignmentId,
+        recipientId: entry.recipientId,
+      });
+      reminderDetails.set(
+        `${entry.assignmentId}:REMINDER_48H:${entry.recipientId}`,
+        {
+          assignmentId: entry.assignmentId,
+          recipientId: entry.recipientId,
+          assignedDate,
+          assignedById: entry.assignedById,
+          assignedToUserId: entry.assignedToUserId,
+        }
+      );
+    }
+
+    if (hours >= 72 && entry.assignedById) {
+      reminderRows.push({
+        eventType: 'REMINDER_72H_ADMIN',
+        assignmentId: entry.assignmentId,
+        recipientId: entry.assignedById,
+      });
+      reminderDetails.set(
+        `${entry.assignmentId}:REMINDER_72H_ADMIN:${entry.assignedById}`,
+        {
+          assignmentId: entry.assignmentId,
+          recipientId: entry.assignedById,
+          assignedDate,
+          assignedById: entry.assignedById,
+          assignedToUserId: entry.assignedToUserId,
+        }
+      );
     }
   }
+
+  if (reminderRows.length === 0) {
+    return;
+  }
+
+  const insertedRows = await db
+    .insert(notificationQueue)
+    .values(reminderRows)
+    .onConflictDoNothing()
+    .returning({
+      assignmentId: notificationQueue.assignmentId,
+      recipientId: notificationQueue.recipientId,
+      eventType: notificationQueue.eventType,
+    });
+
+  await Promise.all(
+    insertedRows.map((row) =>
+      dispatchPendingAcceptanceAlert(
+        row.assignmentId,
+        row.recipientId,
+        row.eventType as 'REMINDER_24H' | 'REMINDER_48H' | 'REMINDER_72H_ADMIN',
+        reminderDetails
+      )
+    )
+  );
+}
+
+async function dispatchPendingAcceptanceAlert(
+  assignmentId: number,
+  recipientId: string,
+  eventType: 'REMINDER_24H' | 'REMINDER_48H' | 'REMINDER_72H_ADMIN',
+  reminderDetails: Map<
+    string,
+    {
+      assignmentId: number;
+      recipientId: string;
+      assignedDate: Date;
+      assignedById: string | null;
+      assignedToUserId: string | null;
+    }
+  >
+) {
+  const details = reminderDetails.get(
+    `${assignmentId}:${eventType}:${recipientId}`
+  );
+  if (!details) {
+    return;
+  }
+
+  const targetUrl = `/portal/my-assets?assignmentId=${assignmentId}`;
+
+  if (eventType === 'REMINDER_24H') {
+    await dispatchAlert({
+      eventType: 'ASSIGNMENT_PENDING',
+      userId: recipientId,
+      title: 'Action Required: Assignment Pending',
+      message: `You have an assignment pending acknowledgment (assigned ${formatDate(details.assignedDate, 'PP')}). Please review.`,
+      targetUrl,
+    });
+    return;
+  }
+
+  if (eventType === 'REMINDER_48H') {
+    await dispatchAlert({
+      eventType: 'ASSIGNMENT_PENDING',
+      userId: recipientId,
+      title: 'Reminder: Assignment Still Pending',
+      message: `Your assignment from ${formatDate(details.assignedDate, 'PP')} is still awaiting acknowledgment.`,
+      targetUrl,
+    });
+    return;
+  }
+
+  await dispatchAlert({
+    eventType: 'ASSIGNMENT_PENDING',
+    userId: recipientId,
+    title: 'Escalation: Assignment Not Acknowledged',
+    message: `Assignment #${details.assignmentId} assigned to user ${details.assignedToUserId ?? 'unknown'} has not been acknowledged after 72 hours.`,
+    targetUrl: `/operations/assignments?assignmentId=${assignmentId}`,
+  });
 }
 
 /**
@@ -262,7 +317,7 @@ async function runUpcomingReturnCheck() {
   const in14 = new Date(now);
   in14.setDate(now.getDate() + 14);
 
-    const rows = await db
+  const rows = await db
     .select({
       assignmentId: assetAssignments.id,
       assetId: assetAssignments.assetId,
@@ -276,14 +331,21 @@ async function runUpcomingReturnCheck() {
     .where(
       and(
         isNull(assetAssignments.returnedDate),
-        inArray(assetAssignments.state, ['assigned', 'pending approval', 'overdue']),
+        inArray(assetAssignments.state, [
+          'assigned',
+          'pending approval',
+          'overdue',
+        ]),
         isNotNull(assetAssignments.expectedReturnDate),
         gte(assetAssignments.expectedReturnDate, now.toISOString()),
         lte(assetAssignments.expectedReturnDate, in14.toISOString())
       )
-    );
+    )
+    .orderBy(asc(assetAssignments.expectedReturnDate));
 
-  console.log(`Found ${rows.length} assignments with upcoming returns within 14 days.`);
+  console.log(
+    `Found ${rows.length} assignments with upcoming returns within 14 days.`
+  );
 
   for (const a of rows) {
     const targetUrl = `/portal/my-assets?assignmentId=${a.assignmentId}`;
@@ -308,7 +370,7 @@ async function runUpcomingReturnCheck() {
         eventType: 'UPCOMING_RETURN',
         userId: a.assignedToUserId as string,
         title: 'Upcoming Asset Return',
-        message: `Your ${a.assetTag} is due for return on ${a.expectedReturnDate}. Please back up your files.`,
+        message: `Your ${a.assetTag} is due for return on ${formatDate(a.expectedReturnDate, 'PP')}. Please back up your files.`,
         targetUrl,
       });
     }

@@ -43,6 +43,8 @@ interface KpiCardProps {
   href?: string
   /** Hero cards render larger values; standard cards are more compact. */
   size?: "hero" | "standard"
+  /** If true, applies hover effects as if it were clickable. */
+  isInteractive?: boolean
 }
 
 export function KpiCard({
@@ -57,6 +59,7 @@ export function KpiCard({
   subText2,
   href,
   size = "standard",
+  isInteractive = false,
 }: KpiCardProps) {
   // Compute badge from trendValue when available
   const displayBadgeText = badgeText ?? (
@@ -81,11 +84,13 @@ export function KpiCard({
 
   const isHero = size === "hero"
 
+  const _isInteractive = isInteractive || !!href;
+
   const cardContent = (
     <Card
       className={cn(
         "flex flex-col shadow-sm h-full transition-all duration-300",
-        href && "cursor-pointer hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5 group/kpi-card"
+        _isInteractive && "cursor-pointer hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5 group/kpi-card"
       )}
       aria-label={`${title}: ${value}`}
     >
@@ -133,7 +138,7 @@ export function KpiCard({
             </p>
             <ChevronRight className={cn(
               "w-3.5 h-3.5 text-muted-foreground shrink-0 transition-all duration-200",
-              href && "group-hover/kpi-card:translate-x-0.5 group-hover/kpi-card:text-primary"
+              _isInteractive && "group-hover/kpi-card:translate-x-0.5 group-hover/kpi-card:text-primary"
             )} />
           </div>
           <p className="text-xs leading-tight text-muted-foreground mt-1">

@@ -90,7 +90,7 @@ export function RejectionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[92vw] gap-4 rounded-xl p-0 sm:max-w-[520px]" showCloseButton={false}>
+      <DialogContent className="w-[92vw] gap-4 rounded-xl p-0 sm:max-w-130" showCloseButton={false}>
         <div className="border-b border-border px-6 pt-6 pb-4">
           <DialogHeader className="gap-3">
             <div className="flex items-start gap-3">

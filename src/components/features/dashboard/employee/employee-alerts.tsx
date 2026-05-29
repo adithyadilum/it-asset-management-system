@@ -22,11 +22,23 @@ export function EmployeeAlerts({ alerts }: EmployeeAlertsProps) {
   const [isRejectOpen, setIsRejectOpen] = useState(false)
 
   useEffect(() => {
-    const id = setInterval(() => {
-      router.refresh()
-    }, 60_000)
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        router.refresh()
+      }
+    }
 
-    return () => clearInterval(id)
+    const id = setInterval(refreshIfVisible, 300_000)
+    const handleVisibilityChange = () => {
+      refreshIfVisible()
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      clearInterval(id)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
   }, [router])
 
   const openAcceptFor = (item: PendingAcceptanceItem) => {
@@ -77,7 +89,7 @@ export function EmployeeAlerts({ alerts }: EmployeeAlertsProps) {
               assetName={item.modelName}
               assetTag={item.assetTag}
               condition="Unknown"
-              assignedBy={item.assignedById ?? "IT"}
+              assignedBy={item.assignedByName ?? "IT"}
               date={new Intl.DateTimeFormat("en-US", {
                 month: "short",
                 day: "numeric",

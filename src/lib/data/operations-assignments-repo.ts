@@ -260,11 +260,19 @@ async function enqueuePendingAcceptanceNotification(
   assignmentId: number,
   recipientId: string
 ) {
-  await db.insert(notificationQueue).values({
-    eventType: 'PENDING_ACCEPTANCE',
-    assignmentId,
-    recipientId,
-  });
+  const [notification] = await db
+    .insert(notificationQueue)
+    .values({
+      eventType: 'PENDING_ACCEPTANCE',
+      assignmentId,
+      recipientId,
+    })
+    .onConflictDoNothing()
+    .returning({ id: notificationQueue.id });
+
+  if (!notification) {
+    return;
+  }
 
   await dispatchAlert({
     eventType: 'ASSIGNMENT_PENDING',
@@ -522,7 +530,7 @@ export async function assignSingleAsset(
 
   await validateAssetsForAssignment([normalizedAssetId]);
 
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     // Step 1: Update asset status
     const [asset] = await tx
       .update(assets)
@@ -572,20 +580,6 @@ export async function assignSingleAsset(
       );
     }
 
-    if (target.assignedToUserId) {
-      try {
-        await enqueuePendingAcceptanceNotification(
-          assignment.id,
-          target.assignedToUserId
-        );
-      } catch (error) {
-        console.error(
-          'Failed to enqueue pending acceptance notification for assignment:',
-          error
-        );
-      }
-    }
-
     // Step 3: Create audit log (transaction-safe helper)
     await logAuditActionTx(tx, {
       entityType: 'Asset',
@@ -611,6 +605,22 @@ export async function assignSingleAsset(
       assignments: [{ assignmentId: assignment.id, assetId: asset.id }],
     };
   });
+
+  if (target.assignedToUserId) {
+    try {
+      await enqueuePendingAcceptanceNotification(
+        result.assignments[0].assignmentId,
+        target.assignedToUserId
+      );
+    } catch (error) {
+      console.error(
+        'Failed to enqueue pending acceptance notification for assignment:',
+        error
+      );
+    }
+  }
+
+  return result;
 }
 
 export async function assignMultipleAssets(
@@ -638,7 +648,7 @@ export async function assignMultipleAssets(
 
   await validateAssetsForAssignment(normalizedAssetIds);
 
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     // Step 1: Update asset statuses
     const updatedAssets = await tx
       .update(assets)
@@ -712,30 +722,35 @@ export async function assignMultipleAssets(
       )
     );
 
-    if (target.assignedToUserId) {
-      try {
-        await Promise.all(
-          insertedAssignments.map((assignment) =>
-            enqueuePendingAcceptanceNotification(
-              assignment.id,
-              target.assignedToUserId as string
-            )
-          )
-        );
-      } catch (error) {
-        console.error(
-          'Failed to enqueue pending acceptance notifications for bulk assignment:',
-          error
-        );
-      }
-    }
-
     return {
       assignedAssetIds: updatedAssets.map((a) => a.id),
       assignedCount: updatedAssets.length,
-      assignments: insertedAssignments.map((assignment) => ({ assignmentId: assignment.id, assetId: assignment.assetId })),
+      assignments: insertedAssignments.map((assignment) => ({
+        assignmentId: assignment.id,
+        assetId: assignment.assetId,
+      })),
     };
   });
+
+  if (target.assignedToUserId) {
+    try {
+      await Promise.all(
+        result.assignments.map((assignment) =>
+          enqueuePendingAcceptanceNotification(
+            assignment.assignmentId,
+            target.assignedToUserId as string
+          )
+        )
+      );
+    } catch (error) {
+      console.error(
+        'Failed to enqueue pending acceptance notifications for bulk assignment:',
+        error
+      );
+    }
+  }
+
+  return result;
 }
 
 export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {
@@ -905,7 +920,10 @@ export async function triggerReturnRequests(
           assetName: a.assetName || a.assetTag,
         });
       } catch (error) {
-        console.error('Failed to send return request email notification:', error);
+        console.error(
+          'Failed to send return request email notification:',
+          error
+        );
       }
 
       // Dispatch in-app alert to employee dashboard
@@ -919,7 +937,10 @@ export async function triggerReturnRequests(
             targetUrl: '/dashboard',
           });
         } catch (error) {
-          console.error('Failed to dispatch in-app return request alert:', error);
+          console.error(
+            'Failed to dispatch in-app return request alert:',
+            error
+          );
         }
       }
     })
