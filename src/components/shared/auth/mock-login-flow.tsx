@@ -57,8 +57,13 @@ export function MockLoginFlow({ redirectTo }: MockLoginFlowProps) {
         throw new Error(result.error)
       }
 
+      let finalRedirect = redirectTo
+      if (result.user?.role === 'Employee' && finalRedirect === '/dashboard') {
+        finalRedirect = '/my-assets'
+      }
+
       // Use replace so the login page does not stay in browser history.
-      router.replace(redirectTo)
+      router.replace(finalRedirect)
     } catch (error: unknown) {
       setErrorMessage(
         error instanceof Error

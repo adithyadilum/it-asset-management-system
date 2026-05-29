@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import {
   Select,
   SelectContent,
@@ -41,7 +42,7 @@ interface AssetAssignmentModalProps {
 }
 
 type AssigneeOption = {
-  id: string;
+  value: string;
   label: string;
 };
 
@@ -71,8 +72,8 @@ export function AssetAssignmentModal({
   const loadOptions = React.useCallback(async () => {
     try {
       const [usersResult, locationsResult] = await Promise.all([
-        searchUsers(),
-        searchLocations(),
+        searchUsers("", 1000),
+        searchLocations("", 1000),
       ]);
 
       if (!usersResult.success || !locationsResult.success) {
@@ -81,14 +82,14 @@ export function AssetAssignmentModal({
 
       setUserOptions(
         (usersResult.data ?? []).map((user) => ({
-          id: user.id,
+          value: user.id,
           label: user.name,
         }))
       );
 
       setLocationOptions(
         (locationsResult.data ?? []).map((location) => ({
-          id: String(location.id),
+          value: String(location.id),
           label: location.name,
         }))
       );
@@ -262,30 +263,21 @@ export function AssetAssignmentModal({
             <Label className="text-xs font-medium text-foreground">
               {disableUserAssignment || assignmentMode === "location" ? "Select a location" : "Select a user"}
             </Label>
-            <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="h-9 bg-background">
-                <SelectValue
-                  placeholder={
-                    disableUserAssignment || assignmentMode === "location"
-                      ? "Select a location"
-                      : "Select a user"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {activeOptions.length > 0 ? (
-                  activeOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.label}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="__empty" disabled>
-                    No options available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <SearchableDropdown
+              options={activeOptions}
+              value={assignee}
+              onSelect={setAssignee}
+              placeholder={
+                disableUserAssignment || assignmentMode === "location"
+                  ? "Select a location"
+                  : "Select a user"
+              }
+              emptyMessage={
+                disableUserAssignment || assignmentMode === "location"
+                  ? "No locations found."
+                  : "No users found."
+              }
+            />
           </div>
 
           {disableUserAssignment || assignmentMode === "location" ? null : (
