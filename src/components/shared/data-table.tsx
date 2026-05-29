@@ -18,7 +18,8 @@ import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 import { TableEmptyState, type TableEmptyStateAction } from "@/components/shared/table-empty-state"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
 import {
   Select,
   SelectContent,
@@ -515,10 +516,17 @@ export function DataTable<TData, TValue>({
       )}
     >
       {enableRowScroll ? (
-        <ScrollArea className="flex-1 min-h-0">
-          {tableContent}
+        <ScrollAreaPrimitive.Root className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
+          <ScrollAreaPrimitive.Viewport
+            data-slot="scroll-area-viewport"
+            className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+          >
+            {tableContent}
+          </ScrollAreaPrimitive.Viewport>
+          <ScrollBar orientation="vertical" />
           <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+          <ScrollAreaPrimitive.Corner />
+        </ScrollAreaPrimitive.Root>
       ) : (
         <div className="flex-1 min-h-0 overflow-auto">
           {tableContent}

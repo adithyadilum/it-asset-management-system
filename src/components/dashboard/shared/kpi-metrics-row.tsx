@@ -1,6 +1,5 @@
 import { KpiCard } from "./kpi-card"
-import type { DashboardKpiMetrics } from "@/actions/dashboard"
-
+import type { DashboardKpiMetrics } from "@/actions/dashboard/shared"
 import { getCurrencySymbol } from "@/lib/currency"
 
 export interface KpiMetricsRowProps {
