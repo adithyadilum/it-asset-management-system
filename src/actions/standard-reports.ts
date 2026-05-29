@@ -1112,7 +1112,7 @@ export async function fetchReportPreview(
           Tax: row.tax ? String(row.tax) : '-',
           'Shipping Cost': row.shippingCost ? String(row.shippingCost) : '-',
           'Total Cost': row.totalCost ? String(row.totalCost) : '-',
-          Currency: row.currency || 'USD',
+          Currency: row.currency || 'LKR',
           'Warranty Expiry': row.warrantyExpiry
             ? new Date(row.warrantyExpiry).toLocaleDateString()
             : '-',

@@ -65,6 +65,7 @@ export function AssetRegistryPanels({
                     manualStatuses={manualStatuses}
                     onStatusUpdateRef={onStatusUpdateRef}
                     hideActions={!canManage}
+                    onRefreshRef={onRefreshRef}
                 />
             ) : null}
         </>

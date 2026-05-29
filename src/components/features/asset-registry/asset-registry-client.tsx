@@ -728,8 +728,10 @@ export function AssetRegistryClient({
           header: 'Assignment',
           cell: ({ row }) => {
             if (row.original.pillar === 'Software') {
-              const total = row.original.totalSeats ?? 0;
-              const available = row.original.availableSeats ?? 0;
+              const coreTotal = row.original.totalSeats || 0;
+              const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
+              const total = coreTotal > 0 ? coreTotal : (isNaN(attrTotal) ? 0 : attrTotal);
+              const available = coreTotal > 0 ? (row.original.availableSeats ?? 0) : total;
               const assigned = Math.max(0, total - available);
               return (
                 <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-muted text-foreground ring-border whitespace-nowrap">
@@ -838,14 +840,15 @@ export function AssetRegistryClient({
           id: 'availability',
           header: 'Availability',
           cell: ({ row }) => {
-            const coreTotal = row.original.totalSeats;
+            const coreTotal = row.original.totalSeats || 0;
             const coreAvailable = row.original.availableSeats;
 
             // Fallbacks from instance attributes
             const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
 
-            const total = coreTotal ?? attrTotal;
-            const available = coreAvailable ?? (total > 0 ? total : 0); // Crude fallback for availability
+            const total = coreTotal > 0 ? coreTotal : (isNaN(attrTotal) ? 0 : attrTotal);
+            // Crude fallback for availability if coreTotal is 0
+            const available = coreTotal > 0 ? (coreAvailable ?? 0) : total;
 
             const isLow = total > 0 && available <= 2;
 

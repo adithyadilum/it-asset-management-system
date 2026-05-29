@@ -127,7 +127,7 @@ export function SoftwareLicensingSection({
                     onSelect={(date) =>
                       setLicenseStartDate(date ? formatDateForInput(date) : '')
                     }
-                    initialFocus
+                    autoFocus
                   />
                 </PopoverContent>
               </Popover>
@@ -163,7 +163,7 @@ export function SoftwareLicensingSection({
                     onSelect={(date) =>
                       setLicenseExpiryDate(date ? formatDateForInput(date) : '')
                     }
-                    initialFocus
+                    autoFocus
                   />
                 </PopoverContent>
               </Popover>

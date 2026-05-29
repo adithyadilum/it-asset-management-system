@@ -127,7 +127,7 @@ export async function getAssetFinancialVitals(
       tax: parseFloat(asset.tax?.toString() || '0'),
       shippingCost: parseFloat(asset.shippingCost?.toString() || '0'),
       totalCost: price,
-      currencyCode: asset.currencyCode || 'USD',
+      currencyCode: asset.currencyCode || 'LKR',
       warrantyExpiry: asset.warrantyExpiry,
       isUnderWarranty,
       usefulLifeMonths: lifeMonths,
