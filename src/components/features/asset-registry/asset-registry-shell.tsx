@@ -11,6 +11,8 @@ import {
 } from '@/components/features/asset-registry/registry-config';
 import { AssetRegistryContent } from './asset-registry-content';
 import { getManualOverrideStatuses } from '@/actions/statuses';
+import { getAuthenticatedUser } from '@/actions/auth';
+import { canManageAssets } from '@/lib/auth/roles';
 
 const getCachedCategoriesByPillar = cache(
   (pillar: string) => getCategoriesByPillar(pillar)
@@ -35,7 +37,7 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
 
   const fetchFn = config.view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
 
-  const [categories, initialResult, manualStatuses] = await Promise.all([
+  const [categories, initialResult, manualStatuses, currentUser] = await Promise.all([
     config.pillar ? getCachedCategoriesByPillar(config.pillar) : Promise.resolve([]),
     fetchFn({
       pillar: config.pillar,
@@ -43,7 +45,10 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
       pageSize: config.defaultPageSize,
     }),
     getManualOverrideStatuses(),
+    getAuthenticatedUser(),
   ]);
+
+  const canManage = currentUser ? canManageAssets(currentUser.role) : false;
 
   return (
     <AssetRegistryContent
@@ -55,6 +60,7 @@ export async function AssetRegistryShell({ view, searchParams }: AssetRegistrySh
       closePanelUrl={closePanelUrl}
       pillar={config.pillar || ''}
       manualStatuses={manualStatuses}
+      canManage={canManage}
     />
   );
 }
