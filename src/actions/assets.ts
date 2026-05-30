@@ -23,6 +23,7 @@ import {
   manualStatusOverrideSchema,
   PILLAR_PREFIX_MAP,
 } from '@/lib/validations/asset-registration';
+import { editAssetSchema, type EditAssetActionState } from '@/lib/validations/asset-edit';
 import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
 
 // ---------------------------------------------------------------------------
@@ -638,6 +639,144 @@ export async function manualStatusOverrideAction(
     logLatency({
       scope: 'ACTION',
       label: 'assets.manualStatusOverrideAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Edit Asset Details (inline panel edit)
+// ---------------------------------------------------------------------------
+
+export async function editAssetDetailsAction(
+  assetId: string,
+  data: Record<string, unknown>
+): Promise<EditAssetActionState> {
+  const actionTimer = startLatencyTimer();
+
+  try {
+    // 1. Auth Guard
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      return { success: false, message: 'Unauthorized: Please sign in.' };
+    }
+
+    if (!canManageAssets(currentUser.role)) {
+      return {
+        success: false,
+        message: 'Forbidden: You do not have permission to edit assets.',
+      };
+    }
+
+    // 2. Input Validation
+    const parsed = editAssetSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: parsed.error.issues[0]?.message ?? 'Validation failed.',
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const { warrantyExpiry, ...assetFields } = parsed.data;
+
+    // 3. Fetch current asset to verify state
+    const currentAsset = await db.query.assets.findFirst({
+      where: eq(assets.id, assetId),
+    });
+
+    if (!currentAsset) {
+      return { success: false, message: 'Asset not found.' };
+    }
+
+    if (currentAsset.status === 'Disposed') {
+      return {
+        success: false,
+        message: 'Disposed assets cannot be edited.',
+      };
+    }
+
+    // 4. Build update payload (only include fields that were actually provided)
+    const assetUpdatePayload: Record<string, unknown> = {};
+    if (assetFields.name !== undefined) assetUpdatePayload.name = assetFields.name;
+    if (assetFields.condition !== undefined) assetUpdatePayload.condition = assetFields.condition;
+    if (assetFields.locationId !== undefined) assetUpdatePayload.locationId = assetFields.locationId;
+    if (assetFields.ownerId !== undefined) assetUpdatePayload.ownerId = assetFields.ownerId;
+    if (assetFields.instanceAttributes !== undefined) {
+      assetUpdatePayload.instanceAttributes = assetFields.instanceAttributes;
+    }
+
+    const hasAssetChanges = Object.keys(assetUpdatePayload).length > 0;
+    const hasWarrantyChange = warrantyExpiry !== undefined;
+
+    if (!hasAssetChanges && !hasWarrantyChange) {
+      return { success: true, message: 'No changes detected.' };
+    }
+
+    // 5. Atomic Transaction
+    await db.transaction(async (tx) => {
+      // Step A: Update assets table
+      if (hasAssetChanges) {
+        await tx
+          .update(assets)
+          .set({ ...assetUpdatePayload, updatedAt: new Date() })
+          .where(eq(assets.id, assetId));
+      }
+
+      // Step B: Update warranty expiry in asset_purchases if provided
+      if (hasWarrantyChange) {
+        await tx
+          .update(assetPurchases)
+          .set({ warrantyExpiry: warrantyExpiry, updatedAt: new Date() })
+          .where(eq(assetPurchases.assetId, assetId));
+      }
+
+      // Step C: Audit log
+      await logAuditActionTx(tx, {
+        entityType: 'Asset',
+        entityId: assetId,
+        actionType: 'UPDATE',
+        performedById: currentUser.id,
+        oldData: {
+          name: currentAsset.name,
+          condition: currentAsset.condition,
+          locationId: currentAsset.locationId,
+          ownerId: currentAsset.ownerId,
+          instanceAttributes: currentAsset.instanceAttributes,
+        } as Record<string, unknown>,
+        newData: {
+          ...assetUpdatePayload,
+          ...(hasWarrantyChange ? { warrantyExpiry } : {}),
+        } as Record<string, unknown>,
+      });
+    });
+
+    // 6. Revalidation
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+
+    return {
+      success: true,
+      message: 'Asset details updated successfully.',
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assets.editAssetDetailsAction',
+      error,
+    });
+
+    return {
+      success: false,
+      message: 'Unexpected error while updating asset details.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assets.editAssetDetailsAction',
       startTime: actionTimer,
     });
   }
