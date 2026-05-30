@@ -99,9 +99,10 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       <StatusBadge value={props.status} showIcon className="h-6 rounded-full px-2 text-[12px]" />
     </div>
   );
-  const showReminder = ["pending approval", "overdue", "requested"].includes(props.state);
+  const showReminder = ["pending approval", "overdue"].includes(props.state);
   const showReturn = props.state === "assigned";
-  const showMarkReceived = ["requested", "overdue", "assigned"].includes(props.state);
+  const showRequestAgain = props.state === "requested";
+  const showMarkReceived = ["overdue"].includes(props.state);
 
   const actions: SlidePanelAction[] = isAssigned ? [
     ...(showMarkReceived ? [{
@@ -111,12 +112,33 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       className: 'h-9 rounded-lg border-border px-4 text-sm',
       onClick: props.onMarkReceived,
     }] : []),
-    ...(showReminder || showReturn ? [{
+    ...(showRequestAgain ? [
+      {
+        id: 'request-again',
+        label: 'Request Again',
+        variant: 'outline' as const,
+        className: 'h-9 rounded-lg border-border px-4 text-sm',
+        onClick: props.onRequestReturn,
+      },
+      {
+        id: 'returned',
+        label: 'Returned',
+        className: 'h-9 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90',
+        onClick: props.onMarkReceived,
+      },
+    ] : []),
+    ...(showReminder ? [{
       id: 'lifecycle-action',
-      label: showReminder ? 'Send Reminder' : 'Request Return',
+      label: 'Send Reminder',
       className: 'h-9 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90',
-      onClick: showReminder ? props.onSendReminder : props.onRequestReturn,
-    }] : [])
+      onClick: props.onSendReminder,
+    }] : []),
+    ...(showReturn ? [{
+      id: 'lifecycle-action',
+      label: 'Request Return',
+      className: 'h-9 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90',
+      onClick: props.onRequestReturn,
+    }] : []),
   ] : [
     {
       id: 'edit',

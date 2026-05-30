@@ -24,14 +24,14 @@ export function MobileRouteHandler({ role }: { role: UserRole }) {
     } else {
       // Standard Employee Mobile Routing
       if (pathname?.startsWith("/mobile")) {
-        router.replace("/dashboard")
+        router.replace("/my-assets")
       } else if (
         pathname === "/" || 
         pathname?.startsWith("/admin") || 
         pathname?.startsWith("/assets") ||
         pathname?.startsWith("/users")
       ) {
-        router.replace("/dashboard")
+        router.replace("/my-assets")
       }
     }
   }, [isMobile, role, pathname, router])

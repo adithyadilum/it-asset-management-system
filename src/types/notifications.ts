@@ -13,7 +13,12 @@ export type NotificationEventType =
   | 'ASSIGNMENT_PENDING'
   | 'ASSIGNMENT_ACCEPTED'
   | 'ASSIGNMENT_DECLINED'
-  | 'ASSET_DEFECTIVE_REPORTED';
+  | 'ASSET_DEFECTIVE_REPORTED'
+  | 'PENDING_ACCEPTANCE'
+  | 'REMINDER_24H'
+  | 'REMINDER_48H'
+  | 'UPCOMING_RETURN'
+  | 'RETURN_REQUESTED';
 
 /**
  * Notification delivery channels

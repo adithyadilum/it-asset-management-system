@@ -11,6 +11,7 @@ import {
     Laptop,
     LayoutDashboard,
     LifeBuoy,
+    MonitorSmartphone,
     Settings,
     Sofa,
 
@@ -295,20 +296,40 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
 
             <SidebarContent className="gap-0 overflow-x-hidden overflow-y-auto px-0 py-0 group-data-[collapsible=icon]:overflow-y-auto">
                 <div className="px-2 pt-2">
+                    {userRole !== "Employee" && (
+                        <button
+                            type="button"
+                            onClick={() => router.push("/dashboard")}
+                            className={[
+                                "flex h-8 w-full items-center rounded-md transition-all duration-200",
+                                pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+                                    ? "bg-primary text-white font-medium"
+                                    : "text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400",
+                                collapsed ? "justify-center px-0" : "gap-2 px-2",
+                            ].join(" ")}
+                        >
+                            <LayoutDashboard className="size-4" />
+                            {!collapsed ? (
+                                <span className="truncate font-text-sm-regular text-sm leading-5">Dashboard</span>
+                            ) : null}
+                        </button>
+                    )}
+
                     <button
                         type="button"
-                        onClick={() => router.push("/dashboard")}
+                        onClick={() => router.push("/my-assets")}
                         className={[
                             "flex h-8 w-full items-center rounded-md transition-all duration-200",
-                            pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+                            userRole !== "Employee" ? "mt-1" : "",
+                            pathname === "/my-assets" || pathname.startsWith("/my-assets/")
                                 ? "bg-primary text-white font-medium"
                                 : "text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400",
                             collapsed ? "justify-center px-0" : "gap-2 px-2",
                         ].join(" ")}
                     >
-                        <LayoutDashboard className="size-4" />
+                        <MonitorSmartphone className="size-4" />
                         {!collapsed ? (
-                            <span className="truncate font-text-sm-regular text-sm leading-5">Dashboard</span>
+                            <span className="truncate font-text-sm-regular text-sm leading-5">My assets</span>
                         ) : null}
                     </button>
 
@@ -328,7 +349,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
             <SidebarFooter className="p-2">
                 <button
                     type="button"
-                    onClick={() => router.push("/dashboard")}
+                    onClick={() => router.push(userRole === "Employee" ? "/my-assets" : "/dashboard")}
                     className={[
                         "flex h-8 w-full items-center rounded-md text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400 transition-all duration-200",
                         collapsed ? "justify-center px-0" : "gap-2 px-2",

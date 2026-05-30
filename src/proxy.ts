@@ -67,7 +67,9 @@ function canAccessRoute(role: TokenRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
-    pathname === '/dashboard/'
+    pathname === '/dashboard/' ||
+    pathname === '/my-assets' ||
+    pathname.startsWith('/my-assets/')
   ) {
     return true;
   }
@@ -168,6 +170,11 @@ export async function proxy(request: NextRequest) {
         if (!isMobile || !isAdmin) {
           return NextResponse.redirect(new URL('/dashboard', request.url));
         }
+      }
+
+      // Employee Dashboard Redirect
+      if (payload.role === 'Employee' && (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/')) {
+        return NextResponse.redirect(new URL('/my-assets', request.url));
       }
 
       // Check RBAC

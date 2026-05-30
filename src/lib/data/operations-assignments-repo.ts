@@ -15,12 +15,14 @@ import {
   assetAssignments,
   assets,
   categories,
+  notificationQueue,
   locations,
   models,
   users,
 } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
+import { dispatchAlert } from '@/lib/notifications/dispatcher';
 import { sendAssetNotification } from '../notifications';
 
 type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
@@ -252,6 +254,34 @@ async function validateAssetsForAssignment(assetIds: string[]) {
   }
 
   return assetsInDb;
+}
+
+async function enqueuePendingAcceptanceNotification(
+  assignmentId: number,
+  recipientId: string
+) {
+  const [notification] = await db
+    .insert(notificationQueue)
+    .values({
+      eventType: 'PENDING_ACCEPTANCE',
+      assignmentId,
+      recipientId,
+    })
+    .onConflictDoNothing()
+    .returning({ id: notificationQueue.id });
+
+  if (!notification) {
+    return;
+  }
+
+  await dispatchAlert({
+    eventType: 'ASSIGNMENT_PENDING',
+    userId: recipientId,
+    title: 'Action Required: Assignment Pending',
+    message:
+      'You have a new asset awaiting your acknowledgment. Please review and accept it from your dashboard.',
+    targetUrl: '/dashboard',
+  });
 }
 
 async function loadAssetsByStatusDirect(
@@ -500,7 +530,7 @@ export async function assignSingleAsset(
 
   await validateAssetsForAssignment([normalizedAssetId]);
 
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     // Step 1: Update asset status
     const [asset] = await tx
       .update(assets)
@@ -575,6 +605,22 @@ export async function assignSingleAsset(
       assignments: [{ assignmentId: assignment.id, assetId: asset.id }],
     };
   });
+
+  if (target.assignedToUserId) {
+    try {
+      await enqueuePendingAcceptanceNotification(
+        result.assignments[0].assignmentId,
+        target.assignedToUserId
+      );
+    } catch (error) {
+      console.error(
+        'Failed to enqueue pending acceptance notification for assignment:',
+        error
+      );
+    }
+  }
+
+  return result;
 }
 
 export async function assignMultipleAssets(
@@ -602,7 +648,7 @@ export async function assignMultipleAssets(
 
   await validateAssetsForAssignment(normalizedAssetIds);
 
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     // Step 1: Update asset statuses
     const updatedAssets = await tx
       .update(assets)
@@ -679,9 +725,32 @@ export async function assignMultipleAssets(
     return {
       assignedAssetIds: updatedAssets.map((a) => a.id),
       assignedCount: updatedAssets.length,
-      assignments: insertedAssignments.map((assignment) => ({ assignmentId: assignment.id, assetId: assignment.assetId })),
+      assignments: insertedAssignments.map((assignment) => ({
+        assignmentId: assignment.id,
+        assetId: assignment.assetId,
+      })),
     };
   });
+
+  if (target.assignedToUserId) {
+    try {
+      await Promise.all(
+        result.assignments.map((assignment) =>
+          enqueuePendingAcceptanceNotification(
+            assignment.assignmentId,
+            target.assignedToUserId as string
+          )
+        )
+      );
+    } catch (error) {
+      console.error(
+        'Failed to enqueue pending acceptance notifications for bulk assignment:',
+        error
+      );
+    }
+  }
+
+  return result;
 }
 
 export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {
@@ -784,6 +853,8 @@ export async function triggerAssignmentReminders(
 
 /**
  * Triggers a return request and updates state to 'requested'.
+ * Supports re-requesting: if state is already 'requested', updates returnRequestedAt
+ * and re-dispatches the in-app alert without throwing.
  */
 export async function triggerReturnRequests(
   assignmentIds: number[],
@@ -796,6 +867,8 @@ export async function triggerReturnRequests(
       assetTag: assets.assetTag,
       assetName: assets.name,
       userEmail: users.email,
+      assignedToUserId: assetAssignments.assignedToUserId,
+      state: assetAssignments.state,
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -803,7 +876,7 @@ export async function triggerReturnRequests(
     .where(inArray(assetAssignments.id, assignmentIds));
 
   await db.transaction(async (tx) => {
-    // Update state to 'requested'
+    // Update state to 'requested' and refresh returnRequestedAt
     const updated = await tx
       .update(assetAssignments)
       .set({
@@ -829,7 +902,7 @@ export async function triggerReturnRequests(
           entityId: a.assetId,
           actionType: 'UPDATE',
           performedById,
-          oldData: { state: 'assigned' },
+          oldData: { state: a.state },
           newData: { state: 'requested' },
         });
       })
@@ -847,7 +920,28 @@ export async function triggerReturnRequests(
           assetName: a.assetName || a.assetTag,
         });
       } catch (error) {
-        console.error('Failed to send return request notification:', error);
+        console.error(
+          'Failed to send return request email notification:',
+          error
+        );
+      }
+
+      // Dispatch in-app alert to employee dashboard
+      if (a.assignedToUserId) {
+        try {
+          await dispatchAlert({
+            eventType: 'RETURN_REQUESTED',
+            userId: a.assignedToUserId,
+            title: 'Return Requested',
+            message: `IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
+            targetUrl: '/dashboard',
+          });
+        } catch (error) {
+          console.error(
+            'Failed to dispatch in-app return request alert:',
+            error
+          );
+        }
       }
     })
   );

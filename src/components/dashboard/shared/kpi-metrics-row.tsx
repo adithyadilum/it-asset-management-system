@@ -2,6 +2,14 @@ import { KpiCard } from "./kpi-card"
 import type { DashboardKpiMetrics } from "@/actions/dashboard/shared"
 import { getCurrencySymbol } from "@/lib/currency"
 import { cn } from "@/lib/utils"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export interface KpiMetricsRowProps {
   metrics: DashboardKpiMetrics;
@@ -94,22 +102,56 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1,
         )}
 
         {/* Fleet Health Score — always visible */}
-        <KpiCard
-          size="hero"
-          title="Fleet Health"
-          value={`${metrics.fleetHealthScore} / 100`}
-          badgeText={metrics.fleetHealthLabel}
-          badgeType={
-            metrics.fleetHealthLabel === "Excellent" || metrics.fleetHealthLabel === "Good"
-              ? "positive"
-              : metrics.fleetHealthLabel === "Fair"
-                ? "neutral"
-                : "negative"
-          }
-          valueColor={getHealthColor(metrics.fleetHealthLabel)}
-          subText1="Composite fleet health indicator"
-          subText2="Utilization, warranty, repairs, compliance."
-        />
+        <Dialog>
+          <DialogTrigger asChild>
+            <div className="h-full">
+              <KpiCard
+                size="hero"
+                title="Fleet Health"
+                value={`${metrics.fleetHealthScore} / 100`}
+                badgeText={metrics.fleetHealthLabel}
+                badgeType={
+                  metrics.fleetHealthLabel === "Excellent" || metrics.fleetHealthLabel === "Good"
+                    ? "positive"
+                    : metrics.fleetHealthLabel === "Fair"
+                      ? "neutral"
+                      : "negative"
+                }
+                valueColor={getHealthColor(metrics.fleetHealthLabel)}
+                subText1="Composite fleet health indicator"
+                subText2="Utilization, warranty, repairs, compliance."
+                isInteractive={true}
+              />
+            </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Fleet Health Score</DialogTitle>
+              <DialogDescription>
+                How this metric is calculated and why it matters to your organization.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2 text-sm text-foreground">
+              <p>
+                The <strong>Fleet Health Score</strong> ({metrics.fleetHealthScore}/100) is a composite index representing the overall operational efficiency, financial risk, and reliability of your entire IT asset infrastructure.
+              </p>
+              
+              <div className="space-y-2">
+                <h4 className="font-semibold text-foreground">Key Factors:</h4>
+                <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                  <li><strong>Utilization Rate:</strong> Measures the ratio of active, assigned assets against idle inventory. High idle counts lower the score.</li>
+                  <li><strong>Warranty Coverage:</strong> Tracks the percentage of active hardware still protected by vendor warranties, reducing out-of-pocket repair risks.</li>
+                  <li><strong>Maintenance Overhead:</strong> Penalizes fleets with disproportionately high repair frequencies or excessive cumulative maintenance spend.</li>
+                  <li><strong>Software Compliance:</strong> Monitors license allocations to prevent costly over-provisioning (idle seats) or compliance breaches.</li>
+                </ul>
+              </div>
+
+              <div className="bg-muted p-3 rounded-md text-xs text-muted-foreground mt-4">
+                <strong>Why it&apos;s needed:</strong> This single metric helps IT Directors quickly gauge if the asset fleet is optimized or if intervention (e.g., renewing warranties, downgrading software tiers, retiring broken hardware) is required.
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* ─── Row 2: Secondary KPIs ─────────────────────────────────────── */}

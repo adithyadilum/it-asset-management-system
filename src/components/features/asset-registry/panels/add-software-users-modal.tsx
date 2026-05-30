@@ -74,6 +74,7 @@ export function AddSoftwareUsersModal({
   // Reset state when modal opens
   React.useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedUsers([]);
       setSearchQuery('');
       setSearchResults([]);
@@ -85,6 +86,7 @@ export function AddSoftwareUsersModal({
     let isMounted = true;
 
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsSearching(true);
       searchUsers(debouncedQuery)
         .then((result) => {
@@ -149,6 +151,7 @@ export function AddSoftwareUsersModal({
         tiqriToast.error(result.error || 'Failed to allocate users.');
       }
     } catch (error) {
+      console.error(error);
       tiqriToast.error('An unexpected error occurred.');
     } finally {
       setIsSubmitting(false);
