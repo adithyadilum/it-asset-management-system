@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { cn } from '@/lib/utils';
 import { ResolveInternallyDialog } from './resolve-internally-dialog';
 import { InitiateRepairDialog } from './initiate-repair-dialog';
 import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from '@/types/maintenance';
-import { AlertCircle, X } from 'lucide-react';
-import Image from 'next/image';
-import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface IssueReviewPanelProps {
   isOpen: boolean;
@@ -37,39 +39,6 @@ export function IssueReviewPanel({
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [showRepairDialog, setShowRepairDialog] = useState(false);
 
-  if (!isOpen) return null;
-
-  if (isLoading || !data) {
-    // ... [Skeleton remains unchanged]
-    return (
-      <div className="flex flex-col h-full w-full bg-background relative">
-        <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-6 w-6 rounded-full" />
-            <Skeleton className="h-7 w-64" />
-          </div>
-          <Skeleton className="h-5 w-5 rounded-full" />
-        </div>
-        <div className="flex flex-col flex-1 p-6 space-y-8 overflow-hidden">
-          <div className="flex justify-center shrink-0">
-            <Skeleton className="w-45 h-30 rounded-lg" />
-          </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-          </div>
-          <Skeleton className="h-28 w-full rounded-xl shrink-0" />
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-            <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const { ticket, warrantyStatus, bookValue, originalCost } = data;
-
   const formatCurrency = (value: number | string | null) => {
     if (value === null) return 'N/A';
     const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -86,113 +55,148 @@ export function IssueReviewPanel({
     }
   };
 
-  return (
-    <>
-      <div className="flex flex-col h-full w-full bg-background relative">
-
-        {/* HEADER */}
-        <div className="flex items-center justify-between p-6 border-b border-border shrink-0 bg-background z-10">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 text-muted-foreground opacity-70" strokeWidth={2} />
-            <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
-              Issue Review : {ticket.asset.assetTag}
-            </h2>
-          </div>
-          <button onClick={() => onClose(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+  if (isLoading || !data) {
+    const skeletonContent = (
+      <div className="flex flex-col flex-1 space-y-8 overflow-hidden">
+        <div className="flex justify-center shrink-0">
+          <Skeleton className="w-45 h-30 rounded-lg" />
         </div>
-
-        {/* SCROLLABLE BODY */}
-        <div className="flex flex-col flex-1 p-6 overflow-y-auto">
-
-          <div className="flex justify-center mb-6 shrink-0">
-            {ticket.asset.imageUrl ? (
-              <div className="relative w-45 h-30 rounded-lg bg-background overflow-hidden border border-border">
-                <Image src={ticket.asset.imageUrl} alt={ticket.asset.name || ticket.asset.assetTag} fill className="object-contain p-2" />
-              </div>
-            ) : (
-              <div className="relative w-45 h-30 bg-muted/30 rounded-lg flex items-center justify-center border border-dashed border-border">
-                <span className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>No Image</span>
-              </div>
-            )}
-          </div>
-
-          <div className={`grid grid-cols-2 gap-x-4 gap-y-4 mb-8 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} shrink-0`}>
-            <div className="grid grid-cols-[110px_1fr] gap-2 items-center min-w-0">
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Asset ID :</span>
-              <span className="text-muted-foreground truncate">{ticket.asset.assetTag}</span>
-
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Model :</span>
-              <span className="text-muted-foreground truncate">{ticket.model?.name || 'N/A'}</span>
-
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Serial Number :</span>
-              <span className="text-muted-foreground truncate">{ticket.asset.serialNumber || 'N/A'}</span>
-            </div>
-
-            <div className="grid grid-cols-[110px_1fr] gap-2 items-center min-w-0">
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Category :</span>
-              <span className="text-muted-foreground truncate">{ticket.category?.name || 'N/A'}</span>
-
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Brand :</span>
-              <span className="text-muted-foreground truncate">{ticket.brand?.name || 'N/A'}</span>
-
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Date Created :</span>
-              <span className="text-muted-foreground truncate">{formatDate(ticket.asset.createdAt)}</span>
-            </div>
-          </div>
-
-          <div className={`bg-muted/30 border border-border rounded-xl p-6 mb-8 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} space-y-4 shrink-0`}>
-            <div className="grid grid-cols-[110px_1fr] gap-2 min-w-0">
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Dispatched By:</span>
-              <span className="text-muted-foreground truncate">{ticket.reportedBy?.name || 'Unknown'}</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Issue:</span>
-              <span className="text-muted-foreground wrap-break-word">{ticket.reportedIssue}</span>
-            </div>
-          </div>
-
-          <div className={`grid grid-cols-2 gap-x-4 gap-y-4 pb-4 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} shrink-0`}>
-            <div className="grid grid-cols-[130px_1fr] gap-2 items-center min-w-0">
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Purchase Date:</span>
-              <span className="text-muted-foreground truncate">{formatDate(ticket.purchase?.purchaseDate || null)}</span>
-
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Current Book Value:</span>
-              <span className="text-muted-foreground truncate">{formatCurrency(bookValue)}</span>
-
-              {data.totalTCO != null && (
-                <>
-                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Total TCO:</span>
-                  <span className="truncate font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-[110px_1fr] gap-2 items-center min-w-0">
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Original Cost:</span>
-              <span className="text-muted-foreground truncate">{formatCurrency(originalCost)}</span>
-
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Warranty Status:</span>
-              <div>
-                <Badge variant="outline" className={warrantyStatus === 'Active' ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm' : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'}>
-                  {warrantyStatus}
-                </Badge>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
+          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
         </div>
+        <Skeleton className="h-28 w-full rounded-xl shrink-0" />
+      </div>
+    );
 
-        {/* FIXED FOOTER */}
-        <div className="p-6 border-t border-border shrink-0 flex items-center justify-end gap-3 bg-background z-10">
-          <Button variant="outline" onClick={() => setShowResolveDialog(true)} disabled={isResolvingInternally || isInitiatingRepair} className="bg-background text-foreground border-border hover:bg-muted/50 shadow-sm h-10">
-            Resolve Internally
-          </Button>
-          <Button onClick={() => setShowRepairDialog(true)} disabled={isResolvingInternally || isInitiatingRepair} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm h-10">
-            Initiate Repair
-          </Button>
+    return (
+      <SlidePanel
+        isOpen={isOpen}
+        onClose={() => onClose(false)}
+        title="Issue Review"
+        content={skeletonContent}
+        actions={[]}
+      />
+    );
+  }
+
+  const { ticket, warrantyStatus, bookValue, originalCost } = data;
+
+  const resolvedPanelTitle = (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{ticket.asset.name || ticket.model?.name || 'Asset'}</span>
+      <StatusBadge variant="metadata" label={`ID: ${ticket.asset.assetTag}`} />
+      <StatusBadge value="Active" showIcon />
+    </div>
+  );
+
+  const detailsFields = [
+    { label: 'Asset ID', value: ticket.asset.assetTag },
+    { label: 'Category', value: ticket.category?.name || 'N/A' },
+    { label: 'Model', value: ticket.model?.name || 'N/A' },
+    { label: 'Brand', value: ticket.brand?.name || 'N/A' },
+    { label: 'Serial Number', value: ticket.asset.serialNumber || 'N/A' },
+    { label: 'Date Created', value: formatDate(ticket.asset.createdAt) },
+  ];
+
+  const financialFields = [
+    { label: 'Purchase Date', value: formatDate(ticket.purchase?.purchaseDate || null) },
+    { label: 'Original Cost', value: formatCurrency(originalCost) },
+    { label: 'Current Book Value', value: formatCurrency(bookValue) },
+    {
+      label: 'Warranty Status',
+      value: (
+        <Badge variant="outline" className={warrantyStatus === 'Active' ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm' : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'}>
+          {warrantyStatus}
+        </Badge>
+      )
+    },
+  ];
+  if (data.totalTCO != null) {
+    financialFields.push({
+      label: 'Total TCO',
+      value: <span className="font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
+    });
+  }
+
+  const mainContent = (
+    <div className="flex w-full flex-col items-start gap-6">
+      {/* Image Container */}
+      <div className="mt-2 flex w-full flex-col items-center gap-2.5">
+        {ticket.asset.imageUrl ? (
+          <div className="relative w-[153px] h-[121px] rounded bg-background overflow-hidden border border-border">
+            <Image src={ticket.asset.imageUrl} alt="Asset Image" fill className="object-contain p-2" />
+          </div>
+        ) : (
+          <div className="flex h-30.25 w-38.25 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+            No image available
+          </div>
+        )}
+      </div>
+
+      {/* Details Grid */}
+      <div className="mt-4 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+        {detailsFields.map((item, index) => (
+          <div key={`detail-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground', item.label === 'Asset ID' && 'font-mono tracking-wide')}>{item.value || '-'}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="my-2 h-px w-full bg-border" />
+
+      {/* Financials Grid */}
+      <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+        <h3 className="col-span-full text-base font-medium leading-6 text-foreground mb-2">Financial Vitals</h3>
+        {financialFields.map((item, index) => (
+          <div key={`financial-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground')}>{item.value || '-'}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="my-2 h-px w-full bg-border" />
+
+      {/* Reported Issue Section */}
+      <div className="w-full mt-2">
+        <div className="space-y-2">
+          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
+            Reported Issue (Dispatched By: <span className="font-semibold text-foreground">{ticket.reportedBy?.name || 'Unknown'}</span>)
+          </div>
+          <Textarea readOnly value={ticket.reportedIssue} className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0" />
         </div>
       </div>
+    </div>
+  );
+
+  const slidePanelActions: SlidePanelAction[] = [
+    {
+      id: 'resolve-internally',
+      label: 'Resolve Internally',
+      variant: 'outline',
+      onClick: () => setShowResolveDialog(true),
+      disabled: isResolvingInternally || isInitiatingRepair,
+    },
+    {
+      id: 'initiate-repair',
+      label: 'Initiate Repair',
+      variant: 'default',
+      onClick: () => setShowRepairDialog(true),
+      disabled: isResolvingInternally || isInitiatingRepair,
+    },
+  ];
+
+  return (
+    <>
+      <SlidePanel
+        isOpen={isOpen}
+        onClose={() => onClose(false)}
+        title={resolvedPanelTitle}
+        content={mainContent}
+        actions={slidePanelActions}
+      />
 
       <ResolveInternallyDialog
         isOpen={showResolveDialog}
