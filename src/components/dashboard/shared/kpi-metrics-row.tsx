@@ -43,7 +43,7 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1,
     : 0;
 
   const showFinancials = metrics.totalAssetValue !== undefined;
-  
+
   const convertedTotalAssetValue = (metrics.totalAssetValue ?? 0) * exchangeRate;
   const convertedNetBookValue = (metrics.netBookValue ?? 0) * exchangeRate;
   const convertedRepairSpend = (metrics.cumulativeRepairSpend ?? 0) * exchangeRate;
@@ -120,7 +120,7 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1,
                 valueColor={getHealthColor(metrics.fleetHealthLabel)}
                 subText1="Composite fleet health indicator"
                 subText2="Utilization, warranty, repairs, compliance."
-                isInteractive={true}
+                
               />
             </div>
           </DialogTrigger>
@@ -135,7 +135,7 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1,
               <p>
                 The <strong>Fleet Health Score</strong> ({metrics.fleetHealthScore}/100) is a composite index representing the overall operational efficiency, financial risk, and reliability of your entire IT asset infrastructure.
               </p>
-              
+
               <div className="space-y-2">
                 <h4 className="font-semibold text-foreground">Key Factors:</h4>
                 <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
