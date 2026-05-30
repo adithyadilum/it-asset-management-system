@@ -103,11 +103,11 @@ export function InventoryStatusChart({
         </p>
       </CardHeader>
 
-      <CardContent className="p-4 pt-1 flex-1 min-h-0 flex items-center justify-between">
+      <CardContent className="p-4 pt-1 flex-1 min-h-60 flex items-stretch justify-between">
         {inventoryData.length > 0 ? (
           <>
             {/* Donut Column (Left) */}
-            <div className="h-full w-[55%] min-h-[210px] relative flex items-center justify-center">
+            <div className="h-full w-[55%] min-h-60 relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%" minHeight={1} minWidth={1}>
                 <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }} aria-label="Current inventory status donut chart">
                   <Pie
@@ -135,7 +135,7 @@ export function InventoryStatusChart({
               {/* Absolute Overlay Details Card on top of Pie Chart */}
               {hoveredIndex !== null && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 p-2 animate-in fade-in duration-200">
-                  <div className="bg-popover/98 backdrop-blur-md border border-border shadow-2xl rounded-xl p-3 w-[190px] flex flex-col gap-1.5 text-popover-foreground">
+                  <div className="bg-popover/98 backdrop-blur-md border border-border shadow-2xl rounded-xl p-3 w-48 flex flex-col gap-1.5 text-popover-foreground">
                     {/* Header */}
                     <div className="flex items-center gap-1.5 pb-1 border-b border-border/50">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: inventoryData[hoveredIndex].color }} />

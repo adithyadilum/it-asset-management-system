@@ -21,7 +21,7 @@ function KpiCardSkeleton() {
 
 function ChartCardSkeleton() {
   return (
-    <Card className="flex flex-col shadow-sm min-h-[280px]">
+    <Card className="flex flex-col shadow-sm min-h-70">
       <CardHeader className="p-4 pb-2">
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-3 w-56 mt-1" />
@@ -46,7 +46,7 @@ function TableSectionSkeleton({ isTabs = true }: { isTabs?: boolean }) {
           <Skeleton className="h-5 w-48" />
         </div>
       )}
-      <div className="border rounded-md flex flex-col overflow-hidden h-[212px] bg-background">
+      <div className="border rounded-md flex flex-col overflow-hidden h-53 bg-background">
         <Skeleton className="h-10 w-full rounded-none border-b" />
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="flex-1 w-full rounded-none border-b last:border-b-0" />
