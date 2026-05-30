@@ -8,7 +8,7 @@
 
 // ── Cache TTLs (seconds) ─────────────────────────────────────────────
 /** Revalidation interval for KPI metrics cache. */
-export const DASHBOARD_KPI_CACHE_TTL = 300; // 5 minutes
+export const DASHBOARD_KPI_CACHE_TTL = 30; // 5 minutes
 
 /** Revalidation interval for inventory & allocation caches. */
 export const DASHBOARD_CHART_CACHE_TTL = 300; // 5 minutes
@@ -43,11 +43,11 @@ export const DEFAULT_USEFUL_LIFE_MONTHS = 60; // 5 years
  */
 export const FLEET_HEALTH_WEIGHTS = {
   /** % of active assets currently assigned to a user/location. */
-  utilization: 0.30,
+  utilization: 0.3,
   /** Inverse ratio of overdue returns vs total assigned. */
-  overdue: 0.20,
+  overdue: 0.2,
   /** Inverse ratio of assets with ≥3 maintenance tickets. */
-  repairs: 0.20,
+  repairs: 0.2,
   /** % of active assets under warranty. */
   warranty: 0.15,
   /** % of software seats actively allocated. */
