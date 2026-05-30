@@ -168,23 +168,12 @@ export function MaintenanceShell() {
         </main>
       </div>
 
-      <div
-        className={cn(
-          "shrink-0 bg-background overflow-hidden transition-all duration-300 ease-in-out transform",
-          uiState.isPanelOpen
-            ? "w-137.5 xl:w-150 border-l border-border opacity-100 translate-x-0"
-            : "w-0 border-0 opacity-0 translate-x-8"
-        )}
-      >
-        <div className="w-137.5 xl:w-150 h-full flex flex-col">
-          <IssueReviewPanelWrapper
-            isOpen={uiState.isPanelOpen}
-            onClose={handlePanelClose}
-            ticketId={uiState.selectedTicketId}
-            onSuccess={() => loadData(debouncedSearch)}
-          />
-        </div>
-      </div>
+      <IssueReviewPanelWrapper
+        isOpen={uiState.isPanelOpen}
+        onClose={handlePanelClose}
+        ticketId={uiState.selectedTicketId}
+        onSuccess={() => loadData(debouncedSearch)}
+      />
 
       <LogCompleteRepairDialog
         isOpen={uiState.showCompleteDialog}
