@@ -4,16 +4,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { DataTable } from "@/components/shared/data-table"
 import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import { KpiMetricsRow } from "./shared/kpi-metrics-row"
-import { DepartmentAllocationChart } from "./shared/department-allocation-chart"
-import { InventoryStatusChart } from "./shared/inventory-status-chart"
-import { RecentActivitiesList } from "./shared/recent-activities-list"
-import { DataTablesContainer } from "./shared/data-tables-container"
+import { KpiMetricsRow } from "../shared/kpi-metrics-row"
+import { DepartmentAllocationChart } from "../shared/department-allocation-chart"
+import { InventoryStatusChart } from "../shared/inventory-status-chart"
+import { RecentActivitiesList } from "../shared/recent-activities-list"
+import { DataTablesContainer } from "../shared/data-tables-container"
 import {
   useTopHighValueAssetsColumns,
   useWriteOffsColumns,
   useSoftwareOptimizationColumns,
-} from "./shared/dashboard-table-columns"
+} from "../shared/dashboard-table-columns"
 import type { FinanceDashboardBatchData } from "@/actions/dashboard/finance"
 
 interface FinanceDashboardViewProps {
