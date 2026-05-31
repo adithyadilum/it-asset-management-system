@@ -50,7 +50,7 @@ const DEFAULT_HISTORY_LIMIT = 3;
 export async function getPendingMaintenanceTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
     throw new Error('Forbidden');
 
   const baseCondition = and(
@@ -108,7 +108,7 @@ export async function getTicketForIssueReview(
 ): Promise<IssueReviewPanelData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
     throw new Error('Forbidden');
 
   const result = await db
@@ -199,7 +199,7 @@ export async function getTicketForIssueReview(
 export async function getVendors() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
     throw new Error('Forbidden');
 
   return await db
@@ -219,7 +219,7 @@ export async function getVendors() {
 export async function getActiveRepairTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
     throw new Error('Forbidden');
 
   const baseCondition = and(
@@ -261,7 +261,7 @@ export async function getRepairHistory(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
     throw new Error('Forbidden');
 
   const offset = (page - 1) * pageSize;
@@ -324,7 +324,7 @@ export async function getAssetMaintenanceHistory(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
     throw new Error('Forbidden');
 
   const assetRecord = await db

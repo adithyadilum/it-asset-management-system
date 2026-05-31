@@ -205,20 +205,33 @@ export function IssueReviewPanel({
         isLoading={isResolvingInternally}
       />
 
-      <InitiateRepairDialog
-        isOpen={showRepairDialog}
-        onClose={() => setShowRepairDialog(false)}
-        onConfirm={async (formData) => {
-          if (onInitiateRepair) await onInitiateRepair(formData);
-        }}
-        vendors={vendors}
-        isLoading={isInitiatingRepair}
-        assetId={ticket.asset.assetTag}
-        assetName={ticket.model?.name || ticket.asset.name || undefined}
-        assetSerial={ticket.asset.serialNumber || undefined}
-        reportedBy={ticket.reportedBy?.name || undefined}
-        reportedDate={ticket.createdAt}
-      />
+      {data && (
+        <>
+          <ResolveInternallyDialog
+            isOpen={showResolveDialog}
+            onClose={() => setShowResolveDialog(false)}
+            onConfirm={async (note) => {
+              if (onResolveInternally) await onResolveInternally(note);
+            }}
+            isLoading={isResolvingInternally}
+          />
+
+          <InitiateRepairDialog
+            isOpen={showRepairDialog}
+            onClose={() => setShowRepairDialog(false)}
+            onConfirm={async (formData) => {
+              if (onInitiateRepair) await onInitiateRepair(formData);
+            }}
+            vendors={vendors}
+            isLoading={isInitiatingRepair}
+            assetId={data.ticket.asset.assetTag}
+            assetName={data.ticket.model?.name || data.ticket.asset.name || undefined}
+            assetSerial={data.ticket.asset.serialNumber || undefined}
+            reportedBy={data.ticket.reportedBy?.name || undefined}
+            reportedDate={data.ticket.createdAt}
+          />
+        </>
+      )}
     </>
   );
 }

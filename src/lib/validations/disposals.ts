@@ -34,6 +34,7 @@ export const executeDisposalSchema = z
     tagsRemoved: z.boolean().refine((val) => val === true, {
       message: 'You must confirm physical tags are removed.',
     }),
+    actualSalvageValue: z.coerce.number().min(0, 'Salvage value must be non-negative.').optional(),
     // Support for both single and multiple receipt URLs
     receiptUrl: receiptUrlSchema.optional(),
     receiptUrls: receiptUrlsSchema.optional(),

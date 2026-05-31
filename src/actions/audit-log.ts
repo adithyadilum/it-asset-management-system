@@ -18,7 +18,7 @@ import {
 import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { canManageAssets } from '@/lib/auth/roles';
+import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { extractLabelFromValues } from '@/lib/audit';
 import { auditLogQuerySchema } from '@/lib/validations/audit-log';
 
@@ -849,7 +849,7 @@ export async function getAssetAuditHistory(
 
   try {
     const currentUser = await getAuthenticatedUser();
-    if (!currentUser || !canManageAssets(currentUser.role)) {
+    if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
       throw new Error('Unauthorized access to asset history.');
     }
 
@@ -959,7 +959,7 @@ export async function getAllAssetAuditHistory(
 
   try {
     const currentUser = await getAuthenticatedUser();
-    if (!currentUser || !canManageAssets(currentUser.role)) {
+    if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
       throw new Error('Unauthorized access to asset history.');
     }
 

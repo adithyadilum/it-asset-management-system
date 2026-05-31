@@ -1,7 +1,7 @@
 import { KpiCard } from "./kpi-card"
-import type { DashboardKpiMetrics } from "@/actions/dashboard"
-
+import type { DashboardKpiMetrics } from "@/actions/dashboard/shared"
 import { getCurrencySymbol } from "@/lib/currency"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ export interface KpiMetricsRowProps {
   metrics: DashboardKpiMetrics;
   currencyCode?: string;
   exchangeRate?: number;
+  isAuditor?: boolean;
 }
 
 function formatValueWithoutSymbol(value: number) {
@@ -36,13 +37,13 @@ function getHealthColor(label: string): "success" | "warning" | "destructive" | 
   return "default";
 }
 
-export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 }: KpiMetricsRowProps) {
+export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1, isAuditor = false }: KpiMetricsRowProps) {
   const depreciationRate = (metrics.totalAssetValue ?? 0) > 0
     ? (1 - (metrics.netBookValue ?? 0) / (metrics.totalAssetValue ?? 1)) * 100
     : 0;
 
   const showFinancials = metrics.totalAssetValue !== undefined;
-  
+
   const convertedTotalAssetValue = (metrics.totalAssetValue ?? 0) * exchangeRate;
   const convertedNetBookValue = (metrics.netBookValue ?? 0) * exchangeRate;
   const convertedRepairSpend = (metrics.cumulativeRepairSpend ?? 0) * exchangeRate;
@@ -119,7 +120,7 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
                 valueColor={getHealthColor(metrics.fleetHealthLabel)}
                 subText1="Composite fleet health indicator"
                 subText2="Utilization, warranty, repairs, compliance."
-                isInteractive={true}
+                
               />
             </div>
           </DialogTrigger>
@@ -134,7 +135,7 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
               <p>
                 The <strong>Fleet Health Score</strong> ({metrics.fleetHealthScore}/100) is a composite index representing the overall operational efficiency, financial risk, and reliability of your entire IT asset infrastructure.
               </p>
-              
+
               <div className="space-y-2">
                 <h4 className="font-semibold text-foreground">Key Factors:</h4>
                 <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
@@ -154,30 +155,34 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1 
       </div>
 
       {/* ─── Row 2: Secondary KPIs ─────────────────────────────────────── */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={cn("grid gap-3 grid-cols-1 sm:grid-cols-2", isAuditor ? "lg:grid-cols-2" : "lg:grid-cols-4")}>
         {/* Warranty Expiry */}
-        <KpiCard
-          title="Warranty Expiry (30d)"
-          value={`${formatNumber(metrics.warrantyExpiries30Days)} Assets`}
-          badgeText="Risk"
-          badgeType={metrics.warrantyExpiries30Days > 0 ? "negative" : "positive"}
-          valueColor={metrics.warrantyExpiries30Days > 0 ? "warning" : "default"}
-          subText1={`${formatNumber(metrics.warrantyExpiries30Days)} active devices near support end`}
-          subText2="Action needed to renew or retire."
-          href="/assets/hardware"
-        />
+        {!isAuditor && (
+          <KpiCard
+            title="Warranty Expiry (30d)"
+            value={`${formatNumber(metrics.warrantyExpiries30Days)} Assets`}
+            badgeText="Risk"
+            badgeType={metrics.warrantyExpiries30Days > 0 ? "negative" : "positive"}
+            valueColor={metrics.warrantyExpiries30Days > 0 ? "warning" : "default"}
+            subText1={`${formatNumber(metrics.warrantyExpiries30Days)} active devices near support end`}
+            subText2="Action needed to renew or retire."
+            href="/assets/hardware"
+          />
+        )}
 
         {/* Software Renewals */}
-        <KpiCard
-          title="Software Renewals (30d)"
-          value={`${formatNumber(metrics.softwareRenewals30Days)} Licenses`}
-          badgeText="Risk"
-          badgeType={metrics.softwareRenewals30Days > 0 ? "negative" : "positive"}
-          valueColor={metrics.softwareRenewals30Days > 0 ? "warning" : "default"}
-          subText1={`${formatNumber(metrics.softwareRenewals30Days)} critical subscriptions near expiry`}
-          subText2={`Affects ${formatNumber(metrics.impactedSoftwareEmployees)} employee custodians.`}
-          href="/assets/software"
-        />
+        {!isAuditor && (
+          <KpiCard
+            title="Software Renewals (30d)"
+            value={`${formatNumber(metrics.softwareRenewals30Days)} Licenses`}
+            badgeText="Risk"
+            badgeType={metrics.softwareRenewals30Days > 0 ? "negative" : "positive"}
+            valueColor={metrics.softwareRenewals30Days > 0 ? "warning" : "default"}
+            subText1={`${formatNumber(metrics.softwareRenewals30Days)} critical subscriptions near expiry`}
+            subText2={`Affects ${formatNumber(metrics.impactedSoftwareEmployees)} employee custodians.`}
+            href="/assets/software"
+          />
+        )}
 
         {/* Cumulative Repair Spend — financial roles only */}
         {metrics.cumulativeRepairSpend !== undefined && (

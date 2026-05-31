@@ -15,7 +15,7 @@ import {
   type RegistryPillar,
 } from '@/lib/data/asset-registry-repo';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { canManageAssets } from '@/lib/auth/roles';
+import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/auth/uuid';
 
@@ -211,7 +211,7 @@ export async function getCategoriesByPillar(pillarInput: unknown) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || !canManageAssets(currentUser.role)) {
+  if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to read asset categories.'
     );
@@ -262,7 +262,7 @@ export async function getAssetsByPillar(input: AssetsGridQueryInput) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || !canManageAssets(currentUser.role)) {
+  if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to read asset registry data.'
     );
@@ -328,7 +328,7 @@ export async function getAllAssetsUnified(input: AssetsGridQueryInput) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || !canManageAssets(currentUser.role)) {
+  if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to read asset registry data.'
     );

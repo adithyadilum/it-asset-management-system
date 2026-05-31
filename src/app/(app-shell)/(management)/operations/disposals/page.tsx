@@ -19,7 +19,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   if (!user) {
     redirect('/login');
   }
-  if (user.role !== 'GlobalAdmin') {
+  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
     redirect('/403');
   }
 
@@ -141,6 +141,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
       historyCurrentPage={validPage}
       historyPageSize={validPageSize}
       historySearchQuery={searchQuery}
+      userRole={user.role}
     />
   );
 }

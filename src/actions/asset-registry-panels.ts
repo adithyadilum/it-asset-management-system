@@ -12,12 +12,12 @@ import {
   vendors,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { canManageAssets } from '@/lib/auth/roles';
+import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { logError } from '@/lib/latency';
 
 export async function getAssetDetailsByIdAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: null };
   }
 
@@ -33,7 +33,7 @@ export async function getAssetDetailsByIdAction(id: string) {
 
 export async function getAssetHistoryByIdAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: [] };
   }
 
@@ -49,7 +49,7 @@ export async function getAssetHistoryByIdAction(id: string) {
 
 export async function getAssetMaintenanceByIdAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: [] };
   }
 
@@ -66,7 +66,7 @@ export async function getAssetMaintenanceByIdAction(id: string) {
 
 export async function getAssetAllocationsAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: [] };
   }
 
@@ -83,7 +83,7 @@ export async function getAssetAllocationsAction(id: string) {
 
 export async function getAssetDisposalAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: null };
   }
 
