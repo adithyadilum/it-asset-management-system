@@ -9,7 +9,6 @@ import {
   locations,
   models,
   owners,
-  sessions,
   systemAuditLogs,
   users,
   vendors,
@@ -111,18 +110,7 @@ function buildTargetEntitySearchCondition(searchValue: string) {
           or ${users.email} ilike ${searchValue}
         )
     )`,
-    sql<boolean>`exists (
-      select 1
-      from ${sessions}
-      left join ${users} on ${sessions.userId} = ${users.id}
-      where ${systemAuditLogs.entityType} = 'sessions'
-        and ${sessions.tokenId} = ${systemAuditLogs.entityId}
-        and (
-          ${sessions.tokenId} ilike ${searchValue}
-          or ${users.name} ilike ${searchValue}
-          or ${users.email} ilike ${searchValue}
-        )
-    )`,
+
     sql<boolean>`exists (
       select 1
       from ${locations}
@@ -272,7 +260,7 @@ export async function resolveAuditValueLabels(
     for (const [key, value] of Object.entries(safeObj)) {
       const entityType = idMappings[key];
       if (entityType && value) {
-        if (entityType === 'Asset' || entityType === 'users' || entityType === 'sessions') {
+        if (entityType === 'Asset' || entityType === 'users') {
           collectedIds[entityType]?.add(String(value));
         } else {
           const num = Number(value);
@@ -405,10 +393,6 @@ export async function resolveTargetEntityLabels(
     .map((record) => record.entityId)
     .filter((entityId) => entityId.trim().length > 0);
 
-  const sessionTokenIds = records
-    .filter((record) => record.entityType === 'sessions')
-    .map((record) => record.entityId)
-    .filter((entityId) => entityId.trim().length > 0);
 
   const numericEntityIds = {
     locations: records
@@ -449,7 +433,6 @@ export async function resolveTargetEntityLabels(
   const [
     assetRows,
     userRows,
-    sessionRows,
     locationRows,
     categoryRows,
     brandRows,
@@ -479,17 +462,7 @@ export async function resolveTargetEntityLabels(
           .from(users)
           .where(inArray(users.id, userIds))
       : Promise.resolve([]),
-    sessionTokenIds.length > 0
-      ? db
-          .select({
-            tokenId: sessions.tokenId,
-            userName: users.name,
-            userEmail: users.email,
-          })
-          .from(sessions)
-          .leftJoin(users, eq(sessions.userId, users.id))
-          .where(inArray(sessions.tokenId, sessionTokenIds))
-      : Promise.resolve([]),
+
     numericEntityIds.locations.length > 0
       ? db
           .select({
@@ -586,17 +559,7 @@ export async function resolveTargetEntityLabels(
     );
   }
 
-  for (const row of sessionRows) {
-    addLabel(
-      'sessions',
-      row.tokenId,
-      row.userName && row.userEmail
-        ? `Session for ${row.userName} <${row.userEmail}>`
-        : (row.userName ??
-            row.userEmail ??
-            `Session ${row.tokenId.slice(0, 8)}`)
-    );
-  }
+
 
   for (const row of locationRows) {
     addLabel(

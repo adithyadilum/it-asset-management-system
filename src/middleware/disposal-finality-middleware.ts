@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { getToken } from 'next-auth/jwt';
 
 import { db } from '@/db';
 import { assets } from '@/db/schema';
 import { logAuditAction } from '@/lib/audit';
 import { logError } from '@/lib/latency';
-import { jwtVerify } from 'jose';
-import { getJwtSecretKey } from '@/lib/auth/jwt';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
 import { isValidUuid } from '@/lib/auth/uuid';
 
 /**
@@ -77,19 +75,13 @@ export async function disposalFinalityMiddleware(request: NextRequest) {
 
     if (isDisposed || isArchived) {
       // Identify the user for the audit trail
-      const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+      const token = await getToken({ req: request });
       let userId: string | null = null;
 
       if (token) {
-        try {
-          const { payload } = await jwtVerify(token, getJwtSecretKey());
-          const sub = payload.sub as string;
-          // Only use the user ID if it's a valid UUID
-          if (sub && isValidUuid(sub)) {
-            userId = sub;
-          }
-        } catch {
-          // Token invalid or verification failed - log as anonymous attempt
+        const sub = token.id as string | undefined;
+        if (sub && isValidUuid(sub)) {
+          userId = sub;
         }
       }
 
