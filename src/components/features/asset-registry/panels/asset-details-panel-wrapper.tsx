@@ -102,12 +102,14 @@ export function AssetDetailsPanelWrapper({
     owners: { value: string; label: string }[];
   }>({ locations: [], owners: [] });
 
-  if (isOpen && recordId !== prevRecordId) {
-    setPrevRecordId(recordId);
-    setIsLoading(true);
-    setDisplayCurrencyOverride(null);
-    setIsEditing(false); // Reset edit mode when switching records
-  }
+  useEffect(() => {
+    if (isOpen && recordId !== prevRecordId) {
+      setPrevRecordId(recordId);
+      setIsLoading(true);
+      setDisplayCurrencyOverride(null);
+      setIsEditing(false); // Reset edit mode when switching records
+    }
+  }, [isOpen, recordId, prevRecordId]);
 
   const sourceCurrency = data?.purchase?.currencyCode?.trim() || 'USD';
   const displayCurrency = displayCurrencyOverride ?? sourceCurrency;
@@ -196,9 +198,9 @@ export function AssetDetailsPanelWrapper({
   return (
     <>
     {/* ---- Edit Mode: Replaces the read-only panel in the same position ---- */}
-    {isEditing && data ? (
+    {isOpen && isEditing && data ? (
       <AssetEditForm
-        isOpen={true}
+        isOpen={isOpen}
         onClose={handleEditClose}
         onSaved={handleEditSaved}
         data={data}
