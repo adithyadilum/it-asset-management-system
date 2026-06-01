@@ -92,7 +92,6 @@ export function AssetDetailsPanelWrapper({
   const [financialVitals, setFinancialVitals] = useState<AssetFinancialVitals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [prevRecordId, setPrevRecordId] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   // ---- Edit Mode State ----
@@ -102,72 +101,56 @@ export function AssetDetailsPanelWrapper({
     owners: { value: string; label: string }[];
   }>({ locations: [], owners: [] });
 
-  useEffect(() => {
-    if (isOpen && recordId !== prevRecordId) {
-      setPrevRecordId(recordId);
-      setIsLoading(true);
-      setDisplayCurrencyOverride(null);
-      setIsEditing(false); // Reset edit mode when switching records
-    }
-  }, [isOpen, recordId, prevRecordId]);
-
   const sourceCurrency = data?.purchase?.currencyCode?.trim() || 'USD';
   const displayCurrency = displayCurrencyOverride ?? sourceCurrency;
 
   useEffect(() => {
-    if (isOpen && recordId) {
-      let isMounted = true;
+    if (!isOpen || !recordId) return;
 
-      Promise.all([
-        getAssetDetailsByIdAction(recordId),
-        getAssetHistoryByIdAction(recordId),
-        getAssetMaintenanceByIdAction(recordId),
-        getAssetAllocationsAction(recordId),
-        getAssetFinancialVitals(recordId).catch(() => null),
-      ])
-        .then(([detailsRes, historyRes, maintenanceRes, allocationsRes, financialRes]) => {
-          if (isMounted) {
-            if (detailsRes.success) {
-              setData(detailsRes.data);
-            } else {
-              tiqriToast.error("Failed to load asset details");
-            }
+    let isMounted = true;
 
-            if (historyRes.success) {
-              setHistoryEvents(historyRes.data);
-            } else {
-              setHistoryEvents([]);
-            }
+    const fetchData = async () => {
+      // Reset UI state at the start of a new fetch cycle
+      if (isMounted) {
+        setIsLoading(true);
+        setDisplayCurrencyOverride(null);
+        setIsEditing(false);
+      }
 
-            if (maintenanceRes.success) {
-              setMaintenanceEvents(maintenanceRes.data);
-            } else {
-              setMaintenanceEvents([]);
-            }
+      try {
+        const [detailsRes, historyRes, maintenanceRes, allocationsRes, financialRes] =
+          await Promise.all([
+            getAssetDetailsByIdAction(recordId),
+            getAssetHistoryByIdAction(recordId),
+            getAssetMaintenanceByIdAction(recordId),
+            getAssetAllocationsAction(recordId),
+            getAssetFinancialVitals(recordId).catch(() => null),
+          ]);
 
-            if (allocationsRes.success) {
-              setAllocations(allocationsRes.data);
-            } else {
-              setAllocations([]);
-            }
-
-            if (financialRes) {
-              setFinancialVitals(financialRes);
-            } else {
-              setFinancialVitals(null);
-            }
+        if (isMounted) {
+          if (detailsRes.success) {
+            setData(detailsRes.data);
+          } else {
+            tiqriToast.error("Failed to load asset details");
           }
-        })
-        .finally(() => {
-          if (isMounted) {
-            setIsLoading(false);
-          }
-        });
 
-      return () => {
-        isMounted = false;
-      };
-    }
+          setHistoryEvents(historyRes.success ? historyRes.data : []);
+          setMaintenanceEvents(maintenanceRes.success ? maintenanceRes.data : []);
+          setAllocations(allocationsRes.success ? allocationsRes.data : []);
+          setFinancialVitals(financialRes ?? null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, recordId, refreshNonce]);
 
   // ---- Edit Mode Handlers ----

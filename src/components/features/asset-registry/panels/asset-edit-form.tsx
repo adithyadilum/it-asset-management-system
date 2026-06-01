@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition, useMemo } from 'react';
+import React, { useState, useTransition, useMemo, useCallback } from 'react';
 import { Lock } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
@@ -142,7 +142,7 @@ export function AssetEditForm({
     setInstanceAttributes((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSave() {
+  const handleSave = useCallback(() => {
     setErrors({});
 
     // Client-side validations
@@ -232,7 +232,11 @@ export function AssetEditForm({
         tiqriToast.error('An unexpected error occurred.');
       }
     });
-  }
+  }, [
+    name, condition, locationId, ownerId, warrantyExpiry, instanceAttributes,
+    data, showCondition, showLocation, isSoftware, editableAttrKeys,
+    onClose, onSaved, startTransition,
+  ]);
 
   // ---- Locked Fields ----
 
