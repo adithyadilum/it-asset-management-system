@@ -173,6 +173,8 @@
 - **What We Learned:** Serverless databases utilizing HTTP drivers cannot support traditional multi-query transactions because the HTTP protocol is stateless and cannot hold a database lock open.
 - **Impact:** We replaced multi-step transactions with single, atomic SQL queries (utilizing `inArray` and `.returning()`). This guarantees data integrity and bulk-update capabilities without crashing the serverless connection.
 
+## Date: May 2026
+
 ### Topic: Network Waterfalls & Parallel Data Fetching
 
 - **Context:** Application code execution was taking ~500ms+ even in production builds. This was caused by sequential database queries (Network Waterfalls), where the app paid the TLS/SSL geographic network latency tax multiple times per page load.
@@ -269,3 +271,62 @@
   2. A Surrogate Key (an integer like `98` or a UUID) is for machines: it is hidden, mathematically unique, and entirely immutable.
   3. Audit logs must always use the Surrogate Key. If an audit log relies on a mutable business key, and a user later corrects a typo in that asset tag, the historical link to all previous audit records is permanently severed.
 - **Impact:** By strictly enforcing Surrogate Keys in the `systemAuditLogs` table, our compliance ledger is completely tamper-proof and resilient to user edits. To make this data human-readable for compliance officers, the frontend UI will simply perform a SQL `JOIN` to map the immutable machine ID back to the current Business Key or category name, ensuring the UI always displays an accurate, unbroken historical trail.
+
+## Date: June 2026
+
+### Topic: Real-Time Serverless Architecture (WebSockets vs. Pub/Sub)
+
+- **The Context:** We needed to architect Epic 11 (Mobile Companion) to act as a wireless barcode gun that syncs instantly with an active desktop session.
+- **What we learned:** Attempting to host persistent WebSockets using a custom Next.js `server.ts` wrapper breaks deployment on serverless environments like Vercel. Instead, a managed pub/sub broker (like Pusher) is the industry standard. Furthermore, persistent WebSockets should be strictly reserved for low-volume, critical workflows (like IT Admins scanning assets) to stay safely under free-tier connection limits.
+- **The Impact:** We secured a highly scalable, serverless-compatible architecture that bridges mobile and desktop clients without requiring expensive infrastructure upgrades or breaking Next.js performance optimizations.
+
+### Topic: Smart Notification Polling via SWR
+
+- **The Context:** Deciding how to implement the global Notification Bell (Epic 23) without exhausting our WebSocket concurrent connection limits when standard employees log in.
+- **What we learned:** For global, high-volume features, client-side SWR (Stale-While-Revalidate) polling is vastly superior to WebSockets. By configuring SWR with `refreshInterval` and `revalidateOnFocus`, the browser intelligently pauses database requests when the tab is inactive, and fetches instantly when the user returns.
+- **The Impact:** The notification system scales infinitely to thousands of employees at zero extra connection cost, preserving our 100-connection Pusher limit exclusively for the mobile scanner.
+
+### Topic: Backend Cloud Colocation
+
+- **The Context:** Setting up the infrastructure and environment variables for the Next.js app, Neon PostgreSQL database, and Pusher WebSocket cluster.
+- **What we learned:** Even when developing locally from a different geographic region, all backend infrastructure must be colocated in the same data center (e.g., Singapore `ap1`). This ensures the "trigger hops" between the Next.js Server Action, the Database, and the Pusher API remain under 1-2 milliseconds.
+- **The Impact:** We avoided cross-ocean HTTP latency, which guarantees sub-500ms real-time UI updates while actively lowering serverless compute billing times on Vercel.
+
+### Topic: React DOM Manipulation & Synthetic Events
+
+- **The Context:** Programmatically injecting a 1D barcode scanned from the mobile PWA into a focused input field on the desktop React application.
+- **What we learned:** Directly mutating the `value` of an HTML input field bypasses React's Virtual DOM, meaning form state (like Zod validation schemas) will not register the input. To force React to recognize the change, you must use the native `HTMLInputElement` descriptor to set the value and dispatch a bubbled, synthetic `input` event.
+- **The Impact:** Flawless hardware scanner integration. The desktop application behaves exactly as if the user typed the barcode manually, perfectly triggering all existing form validations and auto-saves.
+
+### Topic: Progressive Web App (PWA) Hybrid Gating
+
+- **The Context:** We needed a standalone mobile app for field operations without the overhead of building and maintaining separate iOS (Swift) and Android (Kotlin) repositories.
+- **What we learned:** A PWA doesn't require an entirely separate frontend. By combining a `manifest.json` with a viewport and user-role detection hook (`useDeviceDetect`), a single Next.js web application can route IT Admins to a locked-down, full-screen scanner interface, while simultaneously serving standard responsive views to normal employees.
+- **The Impact:** Massive reduction in development time. We delivered a native-app feel for field workers that utilizes device hardware (camera and haptics) within our existing Next.js App Router ecosystem.
+
+### Topic: Corporate Standard PDF Generation
+
+- **The Context:** Building the multi-page IT Asset Audit Report generation engine (Epic 23).
+- **What we learned:** Static PDF overlay templates fail entirely when dealing with dynamic data tables. We must use a code-based engine (`@react-pdf/renderer`) utilizing Flexbox to handle automatic page breaking. Furthermore, corporate standards dictate grayscale safety (using text labels alongside status colors), zebra-striping for readability, and repeating fixed headers/footers for auditability.
+- **The Impact:** The system now generates dynamic, legally defensible, and highly professional corporate reports that look perfect whether containing 10 rows or 10,000 rows.
+
+### Topic: AI-Delegated Code Audits
+
+- **The Context:** Reconciling "code drift" and outdated documentation across 20 epics built simultaneously by 5 different developers.
+- **What we learned:** AI tools must be segmented by scope. Gemini CLI Pro acts as the Global Architect (piping multiple files for security sweeps and rewriting documentation to match reality), GitHub Copilot Pro acts as the Tactical Refactorer (fixing inline hydration and TypeScript errors), and Antigravity Pro orchestrates the terminal commands and git diffs.
+- **The Impact:** We established a 48-hour audit protocol that leverages AI to clear technical debt, eliminate N+1 queries, enforce the Next.js Client/Server boundary, and synchronize documentation directly from the source code.
+
+### Topic: React Native (Expo) Dependency & Environment Management
+
+- **Context:** The team faced version mismatch errors because public Expo Go apps only support SDK 54, while our repository initialized with the bleeding-edge SDK 56. We also encountered strict peer-dependency conflicts with React 19, a Node.js `TYPE_STRIPPING` crash related to `expo-status-bar`, and Babel plugin cloning errors.
+- **What We Learned:** The safest way to align a team's local environment is to explicitly target an older SDK (`npm install expo@~54.0.0`), use `npx expo install --fix` to align native modules, and use `--legacy-peer-deps` to bypass strict React 19 conflicts. We also learned that UI components (like `expo-status-bar`) cannot be listed in the `app.json` plugins array, or modern Node.js versions will crash. Finally, missing Babel plugins (like `react-native-reanimated`) must be explicitly locked in `package.json`, not just installed locally.
+- **Impact:** The entire mobile team is now unblocked, operating on identical, stable SDK 54 environments, and can test native hardware features (camera, haptics) immediately without needing to set up custom development builds.
+- **Context:** We needed a way to reliably fetch live currency rates (USD, LKR, NOK) for the dashboard without hitting rate limits or exposing API keys inside the mobile app bundle.
+- **What We Learned:** Mobile apps should _never_ ping external third-party APIs directly. Instead, the Next.js backend should act as a proxy. By using the free `open.er-api.com` endpoint and leveraging Next.js's native fetch caching (`next: { revalidate: 86400 }`), the server fetches the rates once every 24 hours. The mobile app then queries the internal Next.js API.
+- **Impact:** We secured a highly reliable, 100% free currency conversion pipeline that loads instantly for mobile users, completely protects our infrastructure from external rate limits, and requires zero API key management.
+
+### Topic: Enterprise Security & Architecture Setup
+
+- **Context:** Our mentor advised migrating away from our custom Prisma-based user/password authentication in favor of Keycloak, and implementing GitHub CodeQL for security scanning.
+- **What We Learned:** Keycloak transforms the app from stateful database authentication to stateless JWT authentication. The Prisma `User` table becomes a "shadow table" (syncing basic details but dropping passwords entirely), and Next.js uses `next-auth` to intercept Keycloak tokens for Role-Based Access Control (RBAC). For CodeQL, we learned it acts as a semantic database scanner to catch complex vulnerabilities (like SQL injection), but should be reserved for the Next.js backend, not the mobile UI layer.
+- **Impact:** We have established a clear, enterprise-grade architectural roadmap. We deferred CodeQL setup to avoid disrupting the team's CI/CD momentum during the current sprint, and we defined a precise Docker strategy to safely spin up Keycloak locally before writing any migration code.
