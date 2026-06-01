@@ -1,34 +1,47 @@
 import { NextResponse, userAgent } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
+import { getToken } from 'next-auth/jwt';
 
 import {
   DEFAULT_POST_LOGIN_REDIRECT,
   sanitizeRedirectPath,
 } from '@/lib/auth/auth-redirect';
-import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import {
-  normalizeTokenRole,
-  SESSION_COOKIE_NAME,
-  type TokenRole,
-} from '@/lib/auth/session';
 import { logAuditAction } from '@/lib/audit';
+import type { UserRole } from '@/types/auth';
 
-async function verifyTokenAndRole(token: string) {
+type TokenRole = UserRole;
+
+function normalizeTokenRole(role: unknown): TokenRole | null {
+  if (
+    role === 'GlobalAdmin' ||
+    role === 'ITOperator' ||
+    role === 'FinanceAuditor' ||
+    role === 'Employee'
+  ) {
+    return role;
+  }
+
+  return null;
+}
+
+async function verifyTokenAndRole(request: NextRequest) {
   const authTimer = startLatencyTimer();
 
   try {
-    const verified = await jwtVerify(token, getJwtSecretKey());
-    const payload = verified.payload as { role?: unknown; sub?: string };
+    const token = await getToken({ req: request });
 
-    const role = normalizeTokenRole(payload.role);
-
-    if (!role) {
-      throw new Error('Role is missing or invalid in token');
+    if (!token) {
+      return null;
     }
 
-    return { role, sub: payload.sub };
+    const role = normalizeTokenRole(token.role);
+
+    if (!role) {
+      return null;
+    }
+
+    return { role, sub: token.id as string | undefined };
   } finally {
     logLatency({
       scope: 'PROXY AUTH',
@@ -118,7 +131,6 @@ function getLoginRedirectResponse(request: NextRequest) {
 }
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const { pathname } = request.nextUrl;
   const isProtectedRoute =
     !isPublicAssetPath(pathname) &&
@@ -128,25 +140,13 @@ export async function proxy(request: NextRequest) {
   const isLoginRoute = pathname === '/login';
 
   try {
-    if (!token && isProtectedRoute) {
+    const payload = await verifyTokenAndRole(request);
+
+    if (!payload && isProtectedRoute) {
       return getLoginRedirectResponse(request);
     }
 
-    let payload: { role: TokenRole; sub?: string } | null = null;
-
-    if (token) {
-      try {
-        payload = await verifyTokenAndRole(token);
-      } catch {
-        const response = isProtectedRoute
-          ? getLoginRedirectResponse(request)
-          : NextResponse.next();
-        response.cookies.delete(SESSION_COOKIE_NAME);
-        return response;
-      }
-    }
-
-    if (token && isLoginRoute) {
+    if (payload && isLoginRoute) {
       const redirectTo = sanitizeRedirectPath(
         request.nextUrl.searchParams.get('redirectTo'),
         DEFAULT_POST_LOGIN_REDIRECT

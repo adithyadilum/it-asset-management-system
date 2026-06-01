@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Noto_Sans } from "next/font/google";
 import { Toaster } from "@/components/shared/sonner";
 import { ThemeProvider } from "@/components/shared/theme-provider";
+import { NextAuthSessionProvider } from "@/components/shared/auth/session-provider";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <NextAuthSessionProvider>
+            {children}
+          </NextAuthSessionProvider>
           <Toaster position="bottom-center" />
         </ThemeProvider>
       </body>
