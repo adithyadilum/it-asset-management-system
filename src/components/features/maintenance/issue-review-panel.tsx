@@ -198,13 +198,6 @@ export function IssueReviewPanel({
         actions={slidePanelActions}
       />
 
-      <ResolveInternallyDialog
-        isOpen={showResolveDialog}
-        onClose={() => setShowResolveDialog(false)}
-        onConfirm={async (note) => { if (onResolveInternally) await onResolveInternally(note); }}
-        isLoading={isResolvingInternally}
-      />
-
       {data && (
         <>
           <ResolveInternallyDialog
