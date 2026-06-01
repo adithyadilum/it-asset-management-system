@@ -703,6 +703,25 @@ export async function editAssetDetailsAction(
     if (assetFields.locationId !== undefined) assetUpdatePayload.locationId = assetFields.locationId;
     if (assetFields.ownerId !== undefined) assetUpdatePayload.ownerId = assetFields.ownerId;
     if (assetFields.instanceAttributes !== undefined) {
+      // Only allow keys that already exist on the asset's instance attributes
+      const existingKeys = new Set(
+        Object.keys(
+          (currentAsset.instanceAttributes as Record<string, unknown> | null) ?? {}
+        )
+      );
+      const incomingKeys = Object.keys(assetFields.instanceAttributes ?? {});
+      const unknownKeys = incomingKeys.filter((k) => !existingKeys.has(k));
+
+      if (unknownKeys.length > 0) {
+        return {
+          success: false,
+          message: `Unknown instance attribute keys: ${unknownKeys.join(', ')}`,
+          errors: {
+            instanceAttributes: [`Unknown keys are not allowed: ${unknownKeys.join(', ')}`],
+          },
+        };
+      }
+
       assetUpdatePayload.instanceAttributes = assetFields.instanceAttributes;
     }
 
