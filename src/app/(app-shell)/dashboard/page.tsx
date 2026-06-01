@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from "@/actions/auth"
 
-import { DashboardHeader } from "@/components/features/dashboard/admin/dashboard-header"
-import { DashboardRefreshProvider } from "@/components/features/dashboard/admin/dashboard-refresh-provider"
+import { DashboardHeader } from "@/components/features/dashboard/shared/dashboard-header"
+import { DashboardRefreshProvider } from "@/components/features/dashboard/shared/dashboard-refresh-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { UserRole } from "@/types/auth"
 import { cookies } from "next/headers"
@@ -14,9 +14,9 @@ import { getITDashboardData } from "@/actions/dashboard/it-operator"
 import { getFinanceDashboardData } from "@/actions/dashboard/finance"
 
 // Role-specific view components
-import { AdminDashboardView } from "@/components/dashboard/admin-dashboard-view"
-import { ITDashboardView } from "@/components/dashboard/it-dashboard-view"
-import { FinanceDashboardView } from "@/components/dashboard/finance-dashboard-view"
+import { AdminDashboardView } from "@/components/features/dashboard/admin/admin-dashboard-view"
+import { ITDashboardView } from "@/components/features/dashboard/itoperator/it-dashboard-view"
+import { FinanceDashboardView } from "@/components/features/dashboard/financialauditor/finance-dashboard-view"
 
 export default async function DashboardPage() {
     const user = await getAuthenticatedUser()
