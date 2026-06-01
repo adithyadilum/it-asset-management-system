@@ -5,7 +5,13 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-import { assetAssignments, assetPurchases, assets, models, softwareLicenses } from '@/db/schema';
+import {
+  assetAssignments,
+  assetPurchases,
+  assets,
+  models,
+  softwareLicenses,
+} from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
@@ -23,7 +29,10 @@ import {
   manualStatusOverrideSchema,
   PILLAR_PREFIX_MAP,
 } from '@/lib/validations/asset-registration';
-import { editAssetSchema, type EditAssetActionState } from '@/lib/validations/asset-edit';
+import {
+  editAssetSchema,
+  type EditAssetActionState,
+} from '@/lib/validations/asset-edit';
 import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
 
 // ---------------------------------------------------------------------------
@@ -184,8 +193,13 @@ export async function registerAsset(
     const resolvedCategoryPrefix =
       modelWithCategory.category.prefix.trim().toUpperCase() || categoryPrefix;
 
-    const apiRates = await fetchLiveExchangeRates() ?? undefined;
-    const conversionRate = convertCurrencyAmount(1, input.currencyCode || 'LKR', 'LKR', apiRates).toFixed(6);
+    const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
+    const conversionRate = convertCurrencyAmount(
+      1,
+      input.currencyCode || 'LKR',
+      'LKR',
+      apiRates
+    ).toFixed(6);
 
     // 6. Database Transaction
     const insertedAsset = await db.transaction(async (tx) => {
@@ -271,8 +285,12 @@ export async function registerAsset(
           licenseKey: input.serialNumber || null,
           licenseType: input.licenseType || 'Subscription',
           totalSeats: input.totalSeats ?? 1,
-          startDate: input.licenseStartDate ? toDateString(input.licenseStartDate) : null,
-          expiryDate: input.licenseExpiryDate ? toDateString(input.licenseExpiryDate) : null,
+          startDate: input.licenseStartDate
+            ? toDateString(input.licenseStartDate)
+            : null,
+          expiryDate: input.licenseExpiryDate
+            ? toDateString(input.licenseExpiryDate)
+            : null,
         });
       }
 
@@ -698,15 +716,20 @@ export async function editAssetDetailsAction(
 
     // 4. Build update payload (only include fields that were actually provided)
     const assetUpdatePayload: Record<string, unknown> = {};
-    if (assetFields.name !== undefined) assetUpdatePayload.name = assetFields.name;
-    if (assetFields.condition !== undefined) assetUpdatePayload.condition = assetFields.condition;
-    if (assetFields.locationId !== undefined) assetUpdatePayload.locationId = assetFields.locationId;
-    if (assetFields.ownerId !== undefined) assetUpdatePayload.ownerId = assetFields.ownerId;
+    if (assetFields.name !== undefined)
+      assetUpdatePayload.name = assetFields.name;
+    if (assetFields.condition !== undefined)
+      assetUpdatePayload.condition = assetFields.condition;
+    if (assetFields.locationId !== undefined)
+      assetUpdatePayload.locationId = assetFields.locationId;
+    if (assetFields.ownerId !== undefined)
+      assetUpdatePayload.ownerId = assetFields.ownerId;
     if (assetFields.instanceAttributes !== undefined) {
       // Only allow keys that already exist on the asset's instance attributes
       const existingKeys = new Set(
         Object.keys(
-          (currentAsset.instanceAttributes as Record<string, unknown> | null) ?? {}
+          (currentAsset.instanceAttributes as Record<string, unknown> | null) ??
+            {}
         )
       );
       const incomingKeys = Object.keys(assetFields.instanceAttributes ?? {});
@@ -717,7 +740,9 @@ export async function editAssetDetailsAction(
           success: false,
           message: `Unknown instance attribute keys: ${unknownKeys.join(', ')}`,
           errors: {
-            instanceAttributes: [`Unknown keys are not allowed: ${unknownKeys.join(', ')}`],
+            instanceAttributes: [
+              `Unknown keys are not allowed: ${unknownKeys.join(', ')}`,
+            ],
           },
         };
       }
@@ -736,18 +761,32 @@ export async function editAssetDetailsAction(
     await db.transaction(async (tx) => {
       // Step A: Update assets table
       if (hasAssetChanges) {
-        await tx
+        const result = await tx
           .update(assets)
           .set({ ...assetUpdatePayload, updatedAt: new Date() })
-          .where(eq(assets.id, assetId));
+          .where(eq(assets.id, assetId))
+          .returning({ id: assets.id });
+
+        if (result.length === 0) {
+          throw new Error(
+            'Failed to update asset. Row not found or not updated.'
+          );
+        }
       }
 
       // Step B: Update warranty expiry in asset_purchases if provided
       if (hasWarrantyChange) {
-        await tx
+        const result = await tx
           .update(assetPurchases)
           .set({ warrantyExpiry: warrantyExpiry, updatedAt: new Date() })
-          .where(eq(assetPurchases.assetId, assetId));
+          .where(eq(assetPurchases.assetId, assetId))
+          .returning({ id: assetPurchases.id });
+
+        if (result.length === 0) {
+          throw new Error(
+            'Failed to update asset purchase. Row not found or not updated.'
+          );
+        }
       }
 
       // Step C: Audit log
@@ -790,7 +829,10 @@ export async function editAssetDetailsAction(
 
     return {
       success: false,
-      message: 'Unexpected error while updating asset details.',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Unexpected error while updating asset details.',
     };
   } finally {
     logLatency({

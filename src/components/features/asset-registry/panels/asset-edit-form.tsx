@@ -190,15 +190,28 @@ export function AssetEditForm({
 
     // Instance attributes — only send the instance-level keys, not model-level technicalDetails
     if (editableAttrKeys.size > 0) {
-      const originalAttrs = data.asset.instanceAttributes as Record<string, unknown> | null;
-      const updatedAttrs: Record<string, unknown> = {};
+      const originalAttrs = (data.asset.instanceAttributes as Record<string, unknown>) || {};
+      const updatedAttrs: Record<string, unknown> = { ...originalAttrs };
       let hasAttrChanges = false;
 
       for (const key of editableAttrKeys) {
         const newVal = instanceAttributes[key] ?? '';
-        const oldVal = String((originalAttrs as Record<string, unknown>)?.[key] ?? '');
-        updatedAttrs[key] = newVal;
-        if (newVal !== oldVal) hasAttrChanges = true;
+        const oldVal = originalAttrs[key];
+
+        let parsedVal: string | number | boolean = newVal;
+        if (typeof oldVal === 'number' && newVal !== '') {
+          const num = Number(newVal);
+          if (!isNaN(num)) parsedVal = num;
+        } else if (typeof oldVal === 'boolean') {
+          if (newVal.toLowerCase() === 'true') parsedVal = true;
+          else if (newVal.toLowerCase() === 'false') parsedVal = false;
+        }
+
+        updatedAttrs[key] = parsedVal;
+
+        if (String(parsedVal) !== String(oldVal ?? '')) {
+          hasAttrChanges = true;
+        }
       }
 
       if (hasAttrChanges) {

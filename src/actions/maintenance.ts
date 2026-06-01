@@ -50,7 +50,11 @@ const DEFAULT_HISTORY_LIMIT = 3;
 export async function getPendingMaintenanceTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const baseCondition = and(
@@ -108,7 +112,11 @@ export async function getTicketForIssueReview(
 ): Promise<IssueReviewPanelData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const result = await db
@@ -199,7 +207,11 @@ export async function getTicketForIssueReview(
 export async function getVendors() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   return await db
@@ -219,7 +231,11 @@ export async function getVendors() {
 export async function getActiveRepairTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const baseCondition = and(
@@ -261,7 +277,11 @@ export async function getRepairHistory(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const offset = (page - 1) * pageSize;
@@ -324,7 +344,11 @@ export async function getAssetMaintenanceHistory(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator' && user.role !== 'FinanceAuditor')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const assetRecord = await db
@@ -410,6 +434,17 @@ export async function resolveIssueInternally(
       if (updatedAssets.length === 0)
         throw new Error('Failed to update asset status');
 
+      // Terminate any active assignments since the asset is now Available
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: now })
+        .where(
+          and(
+            eq(assetAssignments.assetId, ticket.assetId),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
+
       const updatedTickets = await tx
         .update(maintenanceTickets)
         .set({
@@ -429,7 +464,10 @@ export async function resolveIssueInternally(
         entityId: ticket.assetId,
         actionType: 'UPDATE',
         performedById: user.id,
-        oldValue: { status: currentAsset.status, isArchived: currentAsset.isArchived },
+        oldValue: {
+          status: currentAsset.status,
+          isArchived: currentAsset.isArchived,
+        },
         newValue: {
           status: 'Available',
           isArchived: false,
@@ -698,17 +736,16 @@ export async function completeRepairTicket(
         .returning({ id: assets.id });
       if (updatedAssets.length === 0) throw new Error('Failed to update asset');
 
-      if (parsed.data.updateStatusTo === 'Disposed') {
-        await tx
-          .update(assetAssignments)
-          .set({ returnedDate: now })
-          .where(
-            and(
-              eq(assetAssignments.assetId, assetId),
-              isNull(assetAssignments.returnedDate)
-            )
-          );
-      }
+      // Terminate any active assignments since the asset is now Available or Disposed
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: now })
+        .where(
+          and(
+            eq(assetAssignments.assetId, assetId),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
@@ -716,7 +753,11 @@ export async function completeRepairTicket(
         entityId: assetId,
         actionType: 'UPDATE',
         performedById: user.id,
-        oldValue: { status: currentAsset.status, isArchived: currentAsset.isArchived, ticketStatus: 'ACTIVE' },
+        oldValue: {
+          status: currentAsset.status,
+          isArchived: currentAsset.isArchived,
+          ticketStatus: 'ACTIVE',
+        },
         newValue: {
           status: parsed.data.updateStatusTo,
           isArchived,

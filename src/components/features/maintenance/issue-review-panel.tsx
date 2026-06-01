@@ -85,8 +85,8 @@ export function IssueReviewPanel({
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
       <span className="truncate">{ticket.asset.name || ticket.model?.name || 'Asset'}</span>
-      <StatusBadge variant="metadata" label={`ID: ${ticket.asset.assetTag}`} />
-      <StatusBadge value="Active" showIcon />
+      <StatusBadge variant="metadata" label={`ID: ${ticket.asset.assetTag || '-'}`} />
+      <StatusBadge value={ticket.asset.status} showIcon />
     </div>
   );
 
