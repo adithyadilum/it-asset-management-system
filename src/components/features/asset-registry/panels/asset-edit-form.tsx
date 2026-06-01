@@ -5,8 +5,6 @@ import { Lock } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -291,8 +289,7 @@ export function AssetEditForm({
         disabled: isPending,
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isPending, onClose]
+    [isPending, onClose, handleSave]
   );
 
   // ---- Render ----
