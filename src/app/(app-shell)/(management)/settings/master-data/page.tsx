@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { cache } from "react";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
@@ -16,7 +16,6 @@ import {
   models,
   owners,
   customStatuses,
-  users,
   vendors,
 } from "@/db/schema";
 import { authOptions } from "@/lib/auth/auth-options";

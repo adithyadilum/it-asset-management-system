@@ -180,9 +180,7 @@ export async function assignUsersRoleBulk(
       })
     );
 
-    const updatedUserIds = updatedUsers.map(
-      (updatedUser) => updatedUser.updatedId
-    );
+
 
 
     revalidatePath('/settings/roles');
