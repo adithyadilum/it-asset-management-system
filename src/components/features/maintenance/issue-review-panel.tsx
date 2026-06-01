@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { cn } from '@/lib/utils';
 import { ResolveInternallyDialog } from './resolve-internally-dialog';
 import { InitiateRepairDialog } from './initiate-repair-dialog';
 import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from '@/types/maintenance';
-import Image from 'next/image';
-import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { cn } from '@/lib/utils';
 
 interface IssueReviewPanelProps {
   isOpen: boolean;
@@ -54,216 +55,147 @@ export function IssueReviewPanel({
     }
   };
 
-  // Title rendering matching Asset Details Panel style
-  const resolvedPanelTitle = useMemo(() => {
-    if (isLoading || !data) {
-      return (
-        <div className="flex items-center gap-2">
-          <span className="truncate">Issue Review</span>
-        </div>
-      );
-    }
-    return (
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="truncate">Issue Review</span>
-        <StatusBadge
-          variant="metadata"
-          label={`ID: ${data.ticket.asset.assetTag || '-'}`}
-        />
-      </div>
-    );
-  }, [isLoading, data]);
-
-  // Actions matching Asset Details Panel style
-  const actions: SlidePanelAction[] = useMemo(() => {
-    if (isLoading || !data) return [];
-    return [
-      {
-        id: 'resolve-internally',
-        label: 'Resolve Internally',
-        variant: 'outline',
-        onClick: () => setShowResolveDialog(true),
-        disabled: isResolvingInternally || isInitiatingRepair,
-      },
-      {
-        id: 'initiate-repair',
-        label: 'Initiate Repair',
-        variant: 'default',
-        onClick: () => setShowRepairDialog(true),
-        disabled: isResolvingInternally || isInitiatingRepair,
-      },
-    ];
-  }, [isLoading, data, isResolvingInternally, isInitiatingRepair]);
-
-  // Content for panel (including loading skeletons or actual data)
-  const panelContent = useMemo(() => {
-    if (isLoading || !data) {
-      return (
-        <div className="flex flex-col flex-1 space-y-8 overflow-hidden">
-          <div className="flex justify-center shrink-0">
-            <Skeleton className="w-45 h-30 rounded-lg" />
-          </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-          </div>
-          <Skeleton className="h-28 w-full rounded-xl shrink-0" />
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const { ticket, warrantyStatus, bookValue, originalCost } = data;
-
-    return (
-      <div className="flex flex-col gap-6 text-sm text-foreground">
-        {/* Asset Image Header */}
+  if (isLoading || !data) {
+    const skeletonContent = (
+      <div className="flex flex-col flex-1 space-y-8 overflow-hidden">
         <div className="flex justify-center shrink-0">
-          {ticket.asset.imageUrl ? (
-            <div className="relative w-45 h-30 rounded-lg bg-background overflow-hidden border border-border">
-              <Image
-                src={ticket.asset.imageUrl}
-                alt={ticket.asset.name || ticket.asset.assetTag}
-                fill
-                className="object-contain p-2"
-              />
-            </div>
-          ) : (
-            <div className="relative w-45 h-30 bg-muted/30 rounded-lg flex items-center justify-center border border-dashed border-border">
-              <span className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>No Image</span>
-            </div>
-          )}
+          <Skeleton className="w-45 h-30 rounded-lg" />
         </div>
-
-        {/* Asset Details Table */}
-        <div className="grid grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-          {[
-            { label: 'Asset ID', value: ticket.asset.assetTag, className: 'font-mono tracking-wide' },
-            { label: 'Category', value: ticket.category?.name || 'N/A' },
-            { label: 'Model', value: ticket.model?.name || 'N/A' },
-            { label: 'Brand', value: ticket.brand?.name || 'N/A' },
-            { label: 'Serial Number', value: ticket.asset.serialNumber || 'N/A' },
-            { label: 'Date Created', value: formatDate(ticket.asset.createdAt) },
-          ].map((item, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between border-b border-border/40 py-2.5"
-            >
-              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
-                {item.label}
-              </div>
-              <div
-                className={cn(
-                  TYPOGRAPHY_CLASSNAMES.textSmMedium,
-                  'text-right text-foreground',
-                  item.className
-                )}
-              >
-                {item.value}
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
+          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
         </div>
-
-        {/* Reported Issue Section */}
-        <section className="rounded-lg border border-border/60 bg-card p-5 shadow-xs">
-          <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-4 text-sm text-foreground')}>
-            Reported Issue
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-border/40">
-              <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>Dispatched By</span>
-              <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-foreground')}>
-                {ticket.reportedBy?.name || 'Unknown'}
-              </span>
-            </div>
-            <div className="flex flex-col gap-2 pt-2">
-              <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>Issue</span>
-              <p className={cn(TYPOGRAPHY_CLASSNAMES.textSmRegular, 'text-foreground bg-muted/30 border border-border/50 rounded-lg p-3 whitespace-pre-wrap leading-relaxed')}>
-                {ticket.reportedIssue}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Financials & Warranty Section */}
-        <section className="rounded-lg border border-border/60 bg-card p-5 shadow-xs">
-          <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-4 text-sm text-foreground')}>
-            Financials & Warranty
-          </h3>
-          <div className="grid grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-            {[
-              { label: 'Purchase Date', value: formatDate(ticket.purchase?.purchaseDate || null) },
-              { label: 'Original Cost', value: formatCurrency(originalCost) },
-              { label: 'Current Book Value', value: formatCurrency(bookValue) },
-              {
-                label: 'Warranty Status',
-                value: (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'rounded-full px-2.5 py-0.5 font-medium shadow-none text-xs border',
-                      warrantyStatus === 'Active'
-                        ? 'bg-success/15 border-success/30 text-success'
-                        : 'bg-destructive/15 border-destructive/30 text-destructive'
-                    )}
-                  >
-                    {warrantyStatus}
-                  </Badge>
-                ),
-              },
-              ...(data.totalTCO != null
-                ? [
-                    {
-                      label: 'Total TCO',
-                      value: <span className="font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>,
-                    },
-                  ]
-                : []),
-            ].map((item, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between border-b border-border/40 py-2.5"
-              >
-                <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
-                  {item.label}
-                </div>
-                <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground')}>
-                  {item.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <Skeleton className="h-28 w-full rounded-xl shrink-0" />
       </div>
     );
-  }, [isLoading, data]);
+
+    return (
+      <SlidePanel
+        isOpen={isOpen}
+        onClose={() => onClose(false)}
+        title="Issue Review"
+        content={skeletonContent}
+        actions={[]}
+      />
+    );
+  }
+
+  const { ticket, warrantyStatus, bookValue, originalCost } = data;
+
+  const resolvedPanelTitle = (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{ticket.asset.name || ticket.model?.name || 'Asset'}</span>
+      <StatusBadge variant="metadata" label={`ID: ${ticket.asset.assetTag || '-'}`} />
+      <StatusBadge value={ticket.asset.status} showIcon />
+    </div>
+  );
+
+  const detailsFields = [
+    { label: 'Asset ID', value: ticket.asset.assetTag },
+    { label: 'Category', value: ticket.category?.name || 'N/A' },
+    { label: 'Model', value: ticket.model?.name || 'N/A' },
+    { label: 'Brand', value: ticket.brand?.name || 'N/A' },
+    { label: 'Serial Number', value: ticket.asset.serialNumber || 'N/A' },
+    { label: 'Date Created', value: formatDate(ticket.asset.createdAt) },
+  ];
+
+  const financialFields = [
+    { label: 'Purchase Date', value: formatDate(ticket.purchase?.purchaseDate || null) },
+    { label: 'Original Cost', value: formatCurrency(originalCost) },
+    { label: 'Current Book Value', value: formatCurrency(bookValue) },
+    {
+      label: 'Warranty Status',
+      value: (
+        <Badge variant="outline" className={warrantyStatus === 'Active' ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm' : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'}>
+          {warrantyStatus}
+        </Badge>
+      )
+    },
+  ];
+  if (data.totalTCO != null) {
+    financialFields.push({
+      label: 'Total TCO',
+      value: <span className="font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
+    });
+  }
+
+  const mainContent = (
+    <div className="flex w-full flex-col items-start gap-6">
+      {/* Image Container */}
+      <div className="mt-2 flex w-full flex-col items-center gap-2.5">
+        {ticket.asset.imageUrl ? (
+          <div className="relative w-38.25 h-30.25 rounded bg-background overflow-hidden border border-border">
+            <Image src={ticket.asset.imageUrl} alt="Asset Image" fill className="object-contain p-2" />
+          </div>
+        ) : (
+          <div className="flex h-30.25 w-38.25 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
+            No image available
+          </div>
+        )}
+      </div>
+
+      {/* Details Grid */}
+      <div className="mt-4 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+        {detailsFields.map((item, index) => (
+          <div key={`detail-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground', item.label === 'Asset ID' && 'font-mono tracking-wide')}>{item.value || '-'}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="my-2 h-px w-full bg-border" />
+
+      {/* Financials Grid */}
+      <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
+        <h3 className="col-span-full text-base font-medium leading-6 text-foreground mb-2">Financial Vitals</h3>
+        {financialFields.map((item, index) => (
+          <div key={`financial-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
+            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground')}>{item.value || '-'}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="my-2 h-px w-full bg-border" />
+
+      {/* Reported Issue Section */}
+      <div className="w-full mt-2">
+        <div className="space-y-2">
+          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
+            Reported Issue (Dispatched By: <span className="font-semibold text-foreground">{ticket.reportedBy?.name || 'Unknown'}</span>)
+          </div>
+          <Textarea readOnly value={ticket.reportedIssue} className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0" />
+        </div>
+      </div>
+    </div>
+  );
+
+  const slidePanelActions: SlidePanelAction[] = [
+    {
+      id: 'resolve-internally',
+      label: 'Resolve Internally',
+      variant: 'outline',
+      onClick: () => setShowResolveDialog(true),
+      disabled: isResolvingInternally || isInitiatingRepair,
+    },
+    {
+      id: 'initiate-repair',
+      label: 'Initiate Repair',
+      variant: 'default',
+      onClick: () => setShowRepairDialog(true),
+      disabled: isResolvingInternally || isInitiatingRepair,
+    },
+  ];
 
   return (
     <>
       <SlidePanel
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={() => onClose(false)}
         title={resolvedPanelTitle}
-        content={panelContent}
-        actions={actions}
+        content={mainContent}
+        actions={slidePanelActions}
       />
 
       {data && (

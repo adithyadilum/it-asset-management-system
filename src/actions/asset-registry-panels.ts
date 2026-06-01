@@ -206,3 +206,40 @@ export async function getRegistrationOptionsAction(pillar: string) {
     return { success: false, message: 'Failed to load registration options.', data: null };
   }
 }
+
+export async function getEditDropdownOptionsAction() {
+  const user = await getAuthenticatedUser();
+  if (!user || !canManageAssets(user.role)) {
+    return { success: false, message: 'Forbidden', data: null };
+  }
+
+  try {
+    const [locationsList, ownersList] = await Promise.all([
+      db.query.locations.findMany({
+        where: eq(locations.isActive, true),
+        columns: { id: true, name: true },
+      }),
+      db.query.owners.findMany({
+        where: eq(owners.isActive, true),
+        columns: { id: true, companyName: true },
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        locations: locationsList.map((l: { id: number; name: string }) => ({
+          value: String(l.id),
+          label: l.name,
+        })),
+        owners: ownersList.map((o: { id: number; companyName: string }) => ({
+          value: String(o.id),
+          label: o.companyName,
+        })),
+      },
+    };
+  } catch (error) {
+    logError({ scope: 'ACTION', label: 'panels.getEditDropdownOptionsAction', error });
+    return { success: false, message: 'Failed to load dropdown options.', data: null };
+  }
+}

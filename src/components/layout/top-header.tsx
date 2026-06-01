@@ -102,7 +102,7 @@ function buildBreadcrumbs(pathname: string): HeaderBreadcrumb[] {
 export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
     const { state, toggleSidebar } = useSidebar();
     const pathname = usePathname();
-    const { setTheme, theme, systemTheme } = useTheme();
+    const { setTheme } = useTheme();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isPending, startTransition] = useTransition();
 
