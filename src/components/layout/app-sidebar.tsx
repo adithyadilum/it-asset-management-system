@@ -109,6 +109,7 @@ const managementItems: NavItem[] = [
             { label: "User Roles & Access", href: "/settings/roles" },
             { label: "Alerts & Notifications", href: "/settings/alerts" },
             { label: "Integrations", href: "/settings/integrations" },
+            { label: "Linked Devices", href: "/settings/devices" },
         ],
     },
 ]

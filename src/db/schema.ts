@@ -936,3 +936,40 @@ export const webhookSubscriptionsRelations = relations(
     }),
   })
 );
+
+// -----------------------------------------------------------------------------
+// 10. LINKED MOBILE DEVICES (QR Code Auth Flow)
+// -----------------------------------------------------------------------------
+
+export const linkedDevices = pgTable(
+  'linked_devices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    deviceName: varchar('device_name', { length: 255 })
+      .notNull()
+      .default('Unknown Device'),
+    deviceOs: varchar('device_os', { length: 100 }),
+    deviceModel: varchar('device_model', { length: 100 }),
+    jwtId: varchar('jwt_id', { length: 64 }).notNull().unique(),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
+    linkedAt: timestamp('linked_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    isRevoked: boolean('is_revoked').default(false).notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('linked_devices_user_id_idx').on(table.userId),
+    jwtIdIdx: index('linked_devices_jwt_id_idx').on(table.jwtId),
+    isRevokedIdx: index('linked_devices_is_revoked_idx').on(table.isRevoked),
+  })
+);
+
+export const linkedDevicesRelations = relations(linkedDevices, ({ one }) => ({
+  user: one(users, {
+    fields: [linkedDevices.userId],
+    references: [users.id],
+  }),
+}));

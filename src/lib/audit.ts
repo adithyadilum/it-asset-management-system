@@ -21,7 +21,9 @@ export type AuditActionType =
   | 'WEBHOOK_CREATED'
   | 'WEBHOOK_UPDATED'
   | 'WEBHOOK_DELETED'
-  | 'EXTERNAL_API_ACCESS';
+  | 'EXTERNAL_API_ACCESS'
+  | 'DEVICE_LINKED'
+  | 'DEVICE_UNLINKED';
 
 type AuditPayload = {
   entityType: string;

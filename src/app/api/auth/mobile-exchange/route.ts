@@ -1,0 +1,83 @@
+import { NextResponse } from 'next/server';
+import { Redis } from '@upstash/redis';
+import * as jose from 'jose';
+import crypto from 'crypto';
+import { db } from '@/db';
+import { linkedDevices } from '@/db/schema';
+import { logAuditAction } from '@/lib/audit';
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+// A separate secret just for signing mobile companion app tokens
+const MOBILE_SECRET = new TextEncoder().encode(process.env.MOBILE_JWT_SECRET);
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  const { linkToken, deviceName, deviceOs, deviceModel } = body;
+
+  if (!linkToken) {
+    return NextResponse.json({ error: 'Missing token' }, { status: 400 });
+  }
+
+  // 1. Fetch the user data from Upstash
+  const redisKey = `qr_link:${linkToken}`;
+  const userData = await redis.get(redisKey);
+
+  if (!userData) {
+    return NextResponse.json({ error: 'QR Code expired or invalid' }, { status: 401 });
+  }
+
+  // 2. BURN THE TOKEN! Single-use only.
+  await redis.del(redisKey);
+
+  // 3. Set a claimed marker so the web dashboard can detect success
+  // This key lives for 120s — enough time for the polling to detect it
+  await redis.set(`qr_claimed:${linkToken}`, '1', { ex: 120 });
+
+  // 4. Generate a unique JWT ID for revocation tracking
+  const jti = crypto.randomBytes(16).toString('hex');
+
+  // 5. Parse user data
+  const user = typeof userData === 'string' ? JSON.parse(userData) : userData;
+
+  // 6. Generate a long-lived JWT specifically for the mobile device
+  const mobileJwt = await new jose.SignJWT({
+    id: user.id,
+    role: user.role,
+    email: user.email,
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setJti(jti)
+    .setExpirationTime('30d') // Mobile sessions can last 30 days
+    .sign(MOBILE_SECRET);
+
+  // 7. Persist the device link in the database
+  const resolvedDeviceName = deviceName || 'Unknown Device';
+  await db.insert(linkedDevices).values({
+    userId: user.id,
+    deviceName: resolvedDeviceName,
+    deviceOs: deviceOs || null,
+    deviceModel: deviceModel || null,
+    jwtId: jti,
+    lastActiveAt: new Date(),
+  });
+
+  // 8. Audit log the device link event
+  await logAuditAction({
+    entityType: 'linked_devices',
+    entityId: jti,
+    actionType: 'DEVICE_LINKED',
+    performedById: user.id,
+    newData: {
+      deviceName: resolvedDeviceName,
+      deviceOs: deviceOs || null,
+      deviceModel: deviceModel || null,
+    },
+  });
+
+  return NextResponse.json({ accessToken: mobileJwt });
+}

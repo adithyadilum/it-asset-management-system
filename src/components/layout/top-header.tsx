@@ -9,6 +9,7 @@ import {
     Monitor,
     Banknote,
     Check,
+    Smartphone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -46,6 +47,7 @@ import { Separator } from '@/components/ui/separator';
 import { useSidebar } from '@/components/ui/sidebar';
 import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
 import { NotificationBell } from '@/components/features/notifications/notification-bell';
+import DevicePairingModal from '@/components/auth/device-pairing-modal';
 
 const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
     '/dashboard': 'Dashboard',
@@ -69,6 +71,7 @@ const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
     '/settings/roles': 'User Roles & Access',
     '/settings/alerts': 'Alerts & Notifications',
     '/settings/integrations': 'Integrations',
+    '/settings/devices': 'Linked Devices',
 };
 
 const sidebarDefaultTextClass =
@@ -105,6 +108,7 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
     const { setTheme } = useTheme();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isPending, startTransition] = useTransition();
+    const [pairingModalOpen, setPairingModalOpen] = useState(false);
 
     const handleLogout = async () => {
         try {
@@ -332,6 +336,18 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
                                 </DropdownMenuSub>
                             </div>
 
+                            {/* Link Device */}
+                            <div className="p-2 border-b border-border">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setPairingModalOpen(true)}
+                                    className="h-9 w-full justify-start rounded-lg text-xs"
+                                >
+                                    <Smartphone className="mr-2 h-4 w-4 text-muted-foreground" />
+                                    Link Device
+                                </Button>
+                            </div>
+
                             {/* Actions Area */}
                             <div className="p-2">
                                 <Button
@@ -347,6 +363,7 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
                         </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
+                <DevicePairingModal open={pairingModalOpen} onOpenChange={setPairingModalOpen} />
             </div>
         </header>
     );
