@@ -1,16 +1,48 @@
 version: '3.8'
 
 services:
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    command: start-dev
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - 8080:8080
-    volumes:
-      - keycloak_data:/opt/keycloak/data
+      - '3000:3000'
+    environment:
+      # Database (Neon)
+      - DATABASE_URL=${DATABASE_URL}
 
-volumes:
-  keycloak_data:
+      # Authentication (Cloud-IAM + NextAuth)
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER}
+
+      # Caching / Rate Limiting (Upstash)
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
+      - API_RATE_LIMIT_MAX=${API_RATE_LIMIT_MAX}
+      - API_RATE_LIMIT_WINDOW_SECONDS=${API_RATE_LIMIT_WINDOW_SECONDS}
+
+      # Real-time Events (Pusher)
+      - PUSHER_APP_ID=${PUSHER_APP_ID}
+      - NEXT_PUBLIC_PUSHER_KEY=${NEXT_PUBLIC_PUSHER_KEY}
+      - PUSHER_SECRET=${PUSHER_SECRET}
+      - NEXT_PUBLIC_PUSHER_CLUSTER=${NEXT_PUBLIC_PUSHER_CLUSTER}
+
+      # Messaging Queue & Scheduling (QStash)
+      - QSTASH_URL=${QSTASH_URL}
+      - QSTASH_TOKEN=${QSTASH_TOKEN}
+      - QSTASH_CURRENT_SIGNING_KEY=${QSTASH_CURRENT_SIGNING_KEY}
+      - QSTASH_NEXT_SIGNING_KEY=${QSTASH_NEXT_SIGNING_KEY}
+
+      # Security & Encrypted Fields
+      - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
+
+      # Frontend / App Details & Optional Features
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - NEXT_PUBLIC_NOTIFICATION_POLL_INTERVAL=${NEXT_PUBLIC_NOTIFICATION_POLL_INTERVAL}
+      - RESEND_FROM=${RESEND_FROM}
+      - ENABLE_SANDBOX=${ENABLE_SANDBOX}
+      - NEXT_PUBLIC_ENABLE_SANDBOX=${NEXT_PUBLIC_ENABLE_SANDBOX}
+

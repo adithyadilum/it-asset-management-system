@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  reactStrictMode: true,
   // Add your ngrok URL and local IP here (DO NOT include https://)
   allowedDevOrigins: [
     'cadc-2402-4000-2110-33a2-68ce-638f-2f60-50e9.ngrok-free.app',
