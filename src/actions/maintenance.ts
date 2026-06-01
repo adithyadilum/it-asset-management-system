@@ -381,7 +381,7 @@ export async function resolveIssueInternally(
 
   // 3. Atomic Database Transaction
   try {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const ticketResult = await tx
         .select()
         .from(maintenanceTickets)
@@ -439,20 +439,22 @@ export async function resolveIssueInternally(
         performedAt: now,
       });
 
-      // Revalidate cache for assets grids and maintenance tabs
-      revalidatePath('/assets');
-      revalidatePath('/assets/hardware');
-      revalidatePath('/assets/software');
-      revalidatePath('/assets/furniture');
-      revalidatePath('/assets/office-electronics');
-      revalidatePath('/operations/maintenance');
-
       return {
         success: true,
         message: 'Issue resolved successfully',
         assetId: ticket.assetId,
       };
     });
+
+    // Revalidate cache for assets grids and maintenance tabs (after successful commit)
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
   } catch (error) {
     const knownMessages = [
       'Ticket with ID',
@@ -500,7 +502,7 @@ export async function initiateVendorRepair(
 
   // 3. Atomic Database Transaction
   try {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const currentAssetResult = await tx
         .select()
         .from(assets)
@@ -590,14 +592,6 @@ export async function initiateVendorRepair(
         reportedIssue: newTicketValues.reportedIssue,
       });
 
-      // Revalidate cache for assets grids and maintenance tabs
-      revalidatePath('/assets');
-      revalidatePath('/assets/hardware');
-      revalidatePath('/assets/software');
-      revalidatePath('/assets/furniture');
-      revalidatePath('/assets/office-electronics');
-      revalidatePath('/operations/maintenance');
-
       return {
         success: true,
         message: 'Asset dispatched successfully',
@@ -605,6 +599,16 @@ export async function initiateVendorRepair(
         assetId: parsed.data.assetId,
       };
     });
+
+    // Revalidate cache for assets grids and maintenance tabs (after successful commit)
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
   } catch (error) {
     const knownMessages = [
       'Asset ',
@@ -649,7 +653,7 @@ export async function completeRepairTicket(
 
   // 3. Atomic Database Transaction
   try {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const ticketResult = await tx
         .select()
         .from(maintenanceTickets)
@@ -731,14 +735,6 @@ export async function completeRepairTicket(
         actualCost: parsed.data.actualCost,
       });
 
-      // Revalidate cache for assets grids and maintenance tabs
-      revalidatePath('/assets');
-      revalidatePath('/assets/hardware');
-      revalidatePath('/assets/software');
-      revalidatePath('/assets/furniture');
-      revalidatePath('/assets/office-electronics');
-      revalidatePath('/operations/maintenance');
-
       return {
         success: true,
         message: 'Repair completed successfully',
@@ -746,6 +742,16 @@ export async function completeRepairTicket(
         assetId,
       };
     });
+
+    // Revalidate cache for assets grids and maintenance tabs (after successful commit)
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
   } catch (error) {
     const knownMessages = [
       'Ticket ',
