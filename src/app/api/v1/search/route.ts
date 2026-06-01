@@ -1,5 +1,5 @@
-import { and, asc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
-import { jwtVerify } from 'jose';
+import { and, asc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -9,13 +9,10 @@ import {
   categories,
   departments,
   models,
-  sessions,
   systemAuditLogs,
   users,
 } from '@/db/schema';
-import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { isValidUuid } from '@/lib/auth/uuid';
 import { omniSearchQuerySchema } from '@/lib/validations/omni-search';
 import type { UserRole } from '@/types/auth';
 import type {
@@ -25,7 +22,6 @@ import type {
   OmniSearchUserResult,
 } from '@/types/omni-search';
 
-const SESSION_COOKIE_NAME = 'session_token';
 const MAX_RESULTS_PER_GROUP = 8;
 
 function normalizeTokenRole(role: unknown): UserRole | null {
@@ -57,54 +53,18 @@ async function getAuthenticatedSearchUser(
   request: NextRequest
 ): Promise<{ id: string; role: UserRole } | null> {
   const authTimer = startLatencyTimer();
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-
-  if (!token) {
-    return null;
-  }
 
   try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-    const userId = payload.sub;
-    const sessionId = payload.sid;
+    const token = await getToken({ req: request });
 
-    if (!isValidUuid(userId)) {
+    if (!token) {
       return null;
     }
 
-    if (typeof sessionId !== 'string') {
-      return null;
-    }
+    const userId = token.id as string | undefined;
+    const role = normalizeTokenRole(token.role);
 
-    const role = normalizeTokenRole(payload.role);
-    if (!role) {
-      return null;
-    }
-
-    let activeSession: Array<{ id: number }> = [];
-    const sessionLookupTimer = startLatencyTimer();
-    try {
-      activeSession = await db
-        .select({ id: sessions.id })
-        .from(sessions)
-        .where(
-          and(
-            eq(sessions.userId, userId),
-            eq(sessions.tokenId, sessionId),
-            isNull(sessions.revokedAt),
-            sql`${sessions.expiresAt} > NOW()`
-          )
-        )
-        .limit(1);
-    } finally {
-      logLatency({
-        scope: 'DB ACTION',
-        label: 'search.getAuthenticatedSearchUser.session_lookup',
-        startTime: sessionLookupTimer,
-      });
-    }
-
-    if (activeSession.length === 0) {
+    if (!userId || !role) {
       return null;
     }
 

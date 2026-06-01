@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '@/db';
 import { disposalFinalityMiddleware } from '@/middleware/disposal-finality-middleware';
-import { jwtVerify } from 'jose';
+import { getToken } from 'next-auth/jwt';
 
 vi.mock('@/db', () => ({
   db: {
@@ -19,26 +19,20 @@ vi.mock('@/db', () => ({
   },
 }));
 
-vi.mock('jose', () => ({
-  jwtVerify: vi.fn(),
-}));
-
-vi.mock('@/lib/auth/jwt', () => ({
-  getJwtSecretKey: vi.fn(() => new TextEncoder().encode('test-secret-key')),
+vi.mock('next-auth/jwt', () => ({
+  getToken: vi.fn(),
 }));
 
 vi.mock('@/lib/audit', () => ({
   logAuditAction: vi.fn().mockResolvedValue(undefined),
 }));
 
-function createRequest(url: string, method: string = 'GET', sessionToken?: string): NextRequest {
+function createRequest(url: string, method: string = 'GET'): NextRequest {
   return {
     nextUrl: new URL(url),
     method,
     cookies: {
-      get: vi.fn(() =>
-        sessionToken ? { name: 'session_token', value: sessionToken } : undefined
-      ),
+      get: vi.fn(),
     },
   } as unknown as NextRequest;
 }
@@ -127,12 +121,11 @@ describe('disposalFinalityMiddleware', () => {
       assetTag: 'AST-001',
     });
 
-    vi.mocked(jwtVerify).mockResolvedValue({
-      payload: { sub: '550e8400-e29b-41d4-a716-446655440001' },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    vi.mocked(getToken).mockResolvedValue({
+      id: '550e8400-e29b-41d4-a716-446655440001',
+    } as never);
 
-    const req = createRequest(`http://localhost/api/v1/assets/${assetId}`, 'DELETE', 'mock-token');
+    const req = createRequest(`http://localhost/api/v1/assets/${assetId}`, 'DELETE');
     await disposalFinalityMiddleware(req);
     
     const { logAuditAction } = await import('@/lib/audit');

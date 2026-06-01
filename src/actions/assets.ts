@@ -5,7 +5,13 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
-import { assetAssignments, assetPurchases, assets, models, softwareLicenses } from '@/db/schema';
+import {
+  assetAssignments,
+  assetPurchases,
+  assets,
+  models,
+  softwareLicenses,
+} from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
@@ -23,6 +29,10 @@ import {
   manualStatusOverrideSchema,
   PILLAR_PREFIX_MAP,
 } from '@/lib/validations/asset-registration';
+import {
+  editAssetSchema,
+  type EditAssetActionState,
+} from '@/lib/validations/asset-edit';
 import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
 
 // ---------------------------------------------------------------------------
@@ -183,8 +193,13 @@ export async function registerAsset(
     const resolvedCategoryPrefix =
       modelWithCategory.category.prefix.trim().toUpperCase() || categoryPrefix;
 
-    const apiRates = await fetchLiveExchangeRates() ?? undefined;
-    const conversionRate = convertCurrencyAmount(1, input.currencyCode || 'LKR', 'LKR', apiRates).toFixed(6);
+    const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
+    const conversionRate = convertCurrencyAmount(
+      1,
+      input.currencyCode || 'LKR',
+      'LKR',
+      apiRates
+    ).toFixed(6);
 
     // 6. Database Transaction
     const insertedAsset = await db.transaction(async (tx) => {
@@ -270,8 +285,12 @@ export async function registerAsset(
           licenseKey: input.serialNumber || null,
           licenseType: input.licenseType || 'Subscription',
           totalSeats: input.totalSeats ?? 1,
-          startDate: input.licenseStartDate ? toDateString(input.licenseStartDate) : null,
-          expiryDate: input.licenseExpiryDate ? toDateString(input.licenseExpiryDate) : null,
+          startDate: input.licenseStartDate
+            ? toDateString(input.licenseStartDate)
+            : null,
+          expiryDate: input.licenseExpiryDate
+            ? toDateString(input.licenseExpiryDate)
+            : null,
         });
       }
 
@@ -638,6 +657,187 @@ export async function manualStatusOverrideAction(
     logLatency({
       scope: 'ACTION',
       label: 'assets.manualStatusOverrideAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Edit Asset Details (inline panel edit)
+// ---------------------------------------------------------------------------
+
+export async function editAssetDetailsAction(
+  assetId: string,
+  data: Record<string, unknown>
+): Promise<EditAssetActionState> {
+  const actionTimer = startLatencyTimer();
+
+  try {
+    // 1. Auth Guard
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+      return { success: false, message: 'Unauthorized: Please sign in.' };
+    }
+
+    if (!canManageAssets(currentUser.role)) {
+      return {
+        success: false,
+        message: 'Forbidden: You do not have permission to edit assets.',
+      };
+    }
+
+    // 2. Input Validation
+    const parsed = editAssetSchema.safeParse(data);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: parsed.error.issues[0]?.message ?? 'Validation failed.',
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const { warrantyExpiry, ...assetFields } = parsed.data;
+
+    // 3. Fetch current asset to verify state
+    const currentAsset = await db.query.assets.findFirst({
+      where: eq(assets.id, assetId),
+    });
+
+    if (!currentAsset) {
+      return { success: false, message: 'Asset not found.' };
+    }
+
+    if (currentAsset.status === 'Disposed') {
+      return {
+        success: false,
+        message: 'Disposed assets cannot be edited.',
+      };
+    }
+
+    // 4. Build update payload (only include fields that were actually provided)
+    const assetUpdatePayload: Record<string, unknown> = {};
+    if (assetFields.name !== undefined)
+      assetUpdatePayload.name = assetFields.name;
+    if (assetFields.condition !== undefined)
+      assetUpdatePayload.condition = assetFields.condition;
+    if (assetFields.locationId !== undefined)
+      assetUpdatePayload.locationId = assetFields.locationId;
+    if (assetFields.ownerId !== undefined)
+      assetUpdatePayload.ownerId = assetFields.ownerId;
+    if (assetFields.instanceAttributes !== undefined) {
+      // Only allow keys that already exist on the asset's instance attributes
+      const existingKeys = new Set(
+        Object.keys(
+          (currentAsset.instanceAttributes as Record<string, unknown> | null) ??
+            {}
+        )
+      );
+      const incomingKeys = Object.keys(assetFields.instanceAttributes ?? {});
+      const unknownKeys = incomingKeys.filter((k) => !existingKeys.has(k));
+
+      if (unknownKeys.length > 0) {
+        return {
+          success: false,
+          message: `Unknown instance attribute keys: ${unknownKeys.join(', ')}`,
+          errors: {
+            instanceAttributes: [
+              `Unknown keys are not allowed: ${unknownKeys.join(', ')}`,
+            ],
+          },
+        };
+      }
+
+      assetUpdatePayload.instanceAttributes = assetFields.instanceAttributes;
+    }
+
+    const hasAssetChanges = Object.keys(assetUpdatePayload).length > 0;
+    const hasWarrantyChange = warrantyExpiry !== undefined;
+
+    if (!hasAssetChanges && !hasWarrantyChange) {
+      return { success: true, message: 'No changes detected.' };
+    }
+
+    // 5. Atomic Transaction
+    await db.transaction(async (tx) => {
+      // Step A: Update assets table
+      if (hasAssetChanges) {
+        const result = await tx
+          .update(assets)
+          .set({ ...assetUpdatePayload, updatedAt: new Date() })
+          .where(eq(assets.id, assetId))
+          .returning({ id: assets.id });
+
+        if (result.length === 0) {
+          throw new Error(
+            'Failed to update asset. Row not found or not updated.'
+          );
+        }
+      }
+
+      // Step B: Update warranty expiry in asset_purchases if provided
+      if (hasWarrantyChange) {
+        const result = await tx
+          .update(assetPurchases)
+          .set({ warrantyExpiry: warrantyExpiry, updatedAt: new Date() })
+          .where(eq(assetPurchases.assetId, assetId))
+          .returning({ id: assetPurchases.id });
+
+        if (result.length === 0) {
+          throw new Error(
+            'Failed to update asset purchase. Row not found or not updated.'
+          );
+        }
+      }
+
+      // Step C: Audit log
+      await logAuditActionTx(tx, {
+        entityType: 'Asset',
+        entityId: assetId,
+        actionType: 'UPDATE',
+        performedById: currentUser.id,
+        oldData: {
+          name: currentAsset.name,
+          condition: currentAsset.condition,
+          locationId: currentAsset.locationId,
+          ownerId: currentAsset.ownerId,
+          instanceAttributes: currentAsset.instanceAttributes,
+        } as Record<string, unknown>,
+        newData: {
+          ...assetUpdatePayload,
+          ...(hasWarrantyChange ? { warrantyExpiry } : {}),
+        } as Record<string, unknown>,
+      });
+    });
+
+    // 6. Revalidation
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+
+    return {
+      success: true,
+      message: 'Asset details updated successfully.',
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assets.editAssetDetailsAction',
+      error,
+    });
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Unexpected error while updating asset details.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assets.editAssetDetailsAction',
       startTime: actionTimer,
     });
   }

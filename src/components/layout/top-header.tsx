@@ -13,9 +13,10 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 
-import { logout } from '@/actions/auth';
+import { getFederatedLogoutUrl } from '@/actions/auth';
+import { signOut } from 'next-auth/react';
 import { setPreferredCurrency } from '@/actions/currency';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 import { BrandHeader } from '@/components/shared/brand-header';
@@ -102,7 +103,21 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
     const { state, toggleSidebar } = useSidebar();
     const pathname = usePathname();
     const { setTheme } = useTheme();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isPending, startTransition] = useTransition();
+
+    const handleLogout = async () => {
+        try {
+            setIsLoggingOut(true);
+            const federatedUrl = await getFederatedLogoutUrl();
+            await signOut({ redirect: false });
+            window.location.href = federatedUrl;
+        } catch (error) {
+            console.error('Logout failed:', error);
+            setIsLoggingOut(false);
+        }
+    };
+
     const breadcrumbs = buildBreadcrumbs(pathname);
 
     const initials = user.name
@@ -319,15 +334,15 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
 
                             {/* Actions Area */}
                             <div className="p-2">
-                                <form action={logout} className="w-full">
-                                    <Button
-                                        variant="ghost"
-                                        className="h-9 w-full justify-start rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
-                                    >
-                                        <Ban className="mr-2 h-4 w-4" />
-                                        Logout Session
-                                    </Button>
-                                </form>
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleLogout}
+                                    disabled={isLoggingOut}
+                                    className="h-9 w-full justify-start rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                                >
+                                    <Ban className="mr-2 h-4 w-4" />
+                                    {isLoggingOut ? 'Logging out...' : 'Logout Session'}
+                                </Button>
                             </div>
                         </div>
                     </DropdownMenuContent>

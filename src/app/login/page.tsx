@@ -1,4 +1,4 @@
-import { MockLoginFlow } from "@/components/shared/auth/mock-login-flow"
+import { KeycloakLogin } from "@/components/shared/auth/keycloak-login"
 import { DEFAULT_POST_LOGIN_REDIRECT, sanitizeRedirectPath } from "@/lib/auth/auth-redirect"
 
 type LoginPageProps = {
@@ -14,5 +14,5 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const redirectToValue = Array.isArray(redirectToParam) ? redirectToParam[0] : redirectToParam
   const redirectTo = sanitizeRedirectPath(redirectToValue, DEFAULT_POST_LOGIN_REDIRECT)
 
-  return <MockLoginFlow redirectTo={redirectTo} />
+  return <KeycloakLogin redirectTo={redirectTo} />
 }
