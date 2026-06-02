@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { linkedDevices } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
+import Pusher from 'pusher';
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -44,6 +45,22 @@ export async function POST(req: Request) {
     .update(linkedDevices)
     .set({ isRevoked: true })
     .where(eq(linkedDevices.id, deviceId));
+
+  // Trigger real-time revocation event via Pusher
+  try {
+    const pusher = new Pusher({
+      appId: process.env.PUSHER_APP_ID!,
+      key: process.env.NEXT_PUBLIC_PUSHER_KEY!,
+      secret: process.env.PUSHER_SECRET!,
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+      useTLS: true,
+    });
+    await pusher.trigger(`device-${device.jwtId}`, 'device_unlinked', {
+      message: 'Device revoked by admin',
+    });
+  } catch (error) {
+    console.error('Failed to trigger Pusher revocation event:', error);
+  }
 
   // Audit log
   await logAuditAction({

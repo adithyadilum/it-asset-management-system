@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { Redis } from '@upstash/redis';
 import * as jose from 'jose';
 import crypto from 'crypto';
@@ -12,11 +13,14 @@ const redis = new Redis({
 });
 
 // A separate secret just for signing mobile companion app tokens
-const MOBILE_SECRET = new TextEncoder().encode(process.env.MOBILE_JWT_SECRET);
+const MOBILE_SECRET = new TextEncoder().encode(
+  process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+);
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { linkToken, deviceName, deviceOs, deviceModel } = body;
+  const { token, linkToken: bodyLinkToken, deviceName, deviceOs, deviceModel } = body;
+  const linkToken = token || bodyLinkToken;
 
   if (!linkToken) {
     return NextResponse.json({ error: 'Missing token' }, { status: 400 });
@@ -78,6 +82,9 @@ export async function POST(req: Request) {
       deviceModel: deviceModel || null,
     },
   });
+
+  revalidatePath('/settings/devices');
+  revalidatePath('/(app-shell)/(management)/settings/devices');
 
   return NextResponse.json({ accessToken: mobileJwt });
 }

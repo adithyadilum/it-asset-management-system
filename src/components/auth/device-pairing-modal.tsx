@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { CheckCircle2, RefreshCw, Loader2, QrCode } from 'lucide-react';
 import {
@@ -26,6 +27,7 @@ async function fetchQRToken(): Promise<{ token: string; expires_in: number }> {
 }
 
 export default function DevicePairingModal({ open, onOpenChange }: DevicePairingModalProps) {
+    const router = useRouter();
     const [pairingState, setPairingState] = useState<PairingState>('loading');
     const [linkToken, setLinkToken] = useState<string | null>(null);
     const [timeLeft, setTimeLeft] = useState(60);
@@ -108,6 +110,7 @@ export default function DevicePairingModal({ open, onOpenChange }: DevicePairing
                 if (data.claimed) {
                     setPairingState('success');
                     clearInterval(pollInterval);
+                    router.refresh();
                     setTimeout(() => onOpenChange(false), 2000);
                 }
             } catch {

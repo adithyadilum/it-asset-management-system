@@ -6,7 +6,9 @@ import { db } from '@/db';
 import { linkedDevices } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
-const MOBILE_SECRET = new TextEncoder().encode(process.env.MOBILE_JWT_SECRET);
+const MOBILE_SECRET = new TextEncoder().encode(
+  process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+);
 
 export async function POST(req: Request) {
   let userId = null;
