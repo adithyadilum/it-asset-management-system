@@ -12,6 +12,7 @@ declare module 'next-auth' {
       role: UserRole;
     } & DefaultSession['user'];
     idToken?: string;
+    error?: string;
   }
 
   /**
@@ -34,5 +35,9 @@ declare module 'next-auth/jwt' {
     id?: string;
     role?: UserRole;
     idToken?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
+    error?: string;
   }
 }

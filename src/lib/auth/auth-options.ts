@@ -1,4 +1,5 @@
 import type { NextAuthOptions } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 import KeycloakProvider from 'next-auth/providers/keycloak';
 import { eq } from 'drizzle-orm';
 
@@ -17,6 +18,45 @@ function normalizeRole(role: unknown): UserRole {
   }
 
   return 'Employee';
+}
+
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+  try {
+    const url = `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      method: 'POST',
+      body: new URLSearchParams({
+        client_id: process.env.KEYCLOAK_CLIENT_ID!,
+        client_secret: process.env.KEYCLOAK_CLIENT_SECRET!,
+        grant_type: 'refresh_token',
+        refresh_token: token.refreshToken as string,
+      }),
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) {
+      throw refreshedTokens;
+    }
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      idToken: refreshedTokens.id_token,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
+      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+    };
+  } catch (error) {
+    console.error('Error refreshing access token', error);
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
+    };
+  }
 }
 
 export const authOptions: NextAuthOptions = {
@@ -82,8 +122,14 @@ export const authOptions: NextAuthOptions = {
      * token fields are reused — zero DB overhead.
      */
     async jwt({ token, account }) {
+      // Initial sign in
       if (account) {
         token.idToken = account.id_token;
+        token.accessToken = account.access_token;
+        token.refreshToken = account.refresh_token;
+        // account.expires_at is in seconds from epoch
+        token.accessTokenExpires = (account.expires_at as number) * 1000;
+
         const email = token.email?.toLowerCase();
 
         if (email) {
@@ -98,9 +144,17 @@ export const authOptions: NextAuthOptions = {
             token.name = dbUser.name;
           }
         }
+        return token;
       }
 
-      return token;
+      // Return previous token if the access token has not expired yet
+      // We add a small buffer (e.g., 60 seconds) to prevent tokens expiring just after the check
+      if (Date.now() < (token.accessTokenExpires as number) - 60 * 1000) {
+        return token;
+      }
+
+      // Access token has expired, try to update it
+      return refreshAccessToken(token);
     },
 
     /**
@@ -115,7 +169,8 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string;
       }
       
-      session.idToken = token.idToken as string | undefined;
+      session.idToken = token.idToken;
+      session.error = token.error;
 
       return session;
     },
