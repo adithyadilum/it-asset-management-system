@@ -1,48 +1,162 @@
 import { describe, it, expect } from 'vitest';
-import { assetRegistrationSchema } from './asset-registration';
+import { assetRegistrationSchema } from '@/lib/validations/asset-registration';
 
 describe('assetRegistrationSchema', () => {
-  const baseValidAsset = {
+  const baseValidHardwareAsset = {
     pillar: 'IT & Digital',
     categoryId: 1,
     brandId: 1,
     modelId: 1,
-    name: 'Test Asset',
+    name: 'Test Hardware Asset',
     purchaseDate: '2023-10-01',
     basePrice: 1000,
     vendorId: 1,
+    locationId: 5,
+    ownerId: 2,
   };
 
-  it('should validate successfully for a valid hardware asset', () => {
-    const result = assetRegistrationSchema.safeParse(baseValidAsset);
+  const baseValidSoftwareAsset = {
+    pillar: 'Software',
+    categoryId: 2,
+    brandId: 3,
+    modelId: 4,
+    name: 'Test Software Asset',
+    purchaseDate: '2023-11-01',
+    basePrice: 500,
+    vendorId: 2,
+    licenseType: 'Subscription',
+    totalSeats: 10,
+    ownerId: 2,
+  };
+
+  // ---------------------------------------------------------------------------
+  // Core valid scenarios
+  // ---------------------------------------------------------------------------
+
+  it('validates a complete valid hardware asset', () => {
+    const result = assetRegistrationSchema.safeParse(baseValidHardwareAsset);
     expect(result.success).toBe(true);
   });
 
-  it('should require licenseType and totalSeats for Software pillar', () => {
-    const softwareAsset = {
-      ...baseValidAsset,
-      pillar: 'Software',
+  it('validates a complete valid software asset', () => {
+    const result = assetRegistrationSchema.safeParse(baseValidSoftwareAsset);
+    expect(result.success).toBe(true);
+  });
+
+  it('validates valid furniture asset (no location required)', () => {
+    const furnitureAsset = {
+      ...baseValidHardwareAsset,
+      pillar: 'Office Furniture',
+      locationId: undefined, // Optional for furniture
     };
+    const result = assetRegistrationSchema.safeParse(furnitureAsset);
+    expect(result.success).toBe(true);
+  });
 
-    const result = assetRegistrationSchema.safeParse(softwareAsset);
+  // ---------------------------------------------------------------------------
+  // General field validations
+  // ---------------------------------------------------------------------------
+
+  it('rejects missing or empty name', () => {
+    const noName = { ...baseValidHardwareAsset, name: '' };
+    const missingName = { ...baseValidHardwareAsset, name: undefined };
+
+    expect(assetRegistrationSchema.safeParse(noName).success).toBe(false);
+    expect(assetRegistrationSchema.safeParse(missingName).success).toBe(false);
+  });
+
+  it('rejects invalid pillar', () => {
+    const result = assetRegistrationSchema.safeParse({
+      ...baseValidHardwareAsset,
+      pillar: 'InvalidPillar',
+    });
     expect(result.success).toBe(false);
+  });
 
+  it('accepts basePrice = 0', () => {
+    const zeroPrice = { ...baseValidHardwareAsset, basePrice: 0 };
+    expect(assetRegistrationSchema.safeParse(zeroPrice).success).toBe(true);
+  });
+
+  it('rejects basePrice < 0', () => {
+    const negativePrice = { ...baseValidHardwareAsset, basePrice: -100 };
+    expect(assetRegistrationSchema.safeParse(negativePrice).success).toBe(false);
+  });
+
+  it('rejects missing relations (category, brand, model)', () => {
+    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, categoryId: 0 }).success).toBe(false);
+    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, brandId: 0 }).success).toBe(false);
+    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, modelId: 0 }).success).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Date validations
+  // ---------------------------------------------------------------------------
+
+  it('requires purchaseDate to be valid YYYY-MM-DD', () => {
+    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, purchaseDate: '2023-13-01' }).success).toBe(false);
+    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, purchaseDate: 'not-a-date' }).success).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Warranty / Optional Financials
+  // ---------------------------------------------------------------------------
+
+  it('accepts valid warrantyMonths', () => {
+    const result = assetRegistrationSchema.safeParse({
+      ...baseValidHardwareAsset,
+      warrantyMonths: 36,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid warrantyMonths (<= 0)', () => {
+    const result = assetRegistrationSchema.safeParse({
+      ...baseValidHardwareAsset,
+      warrantyMonths: 0,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid warrantyMonths (> 120)', () => {
+    const result = assetRegistrationSchema.safeParse({
+      ...baseValidHardwareAsset,
+      warrantyMonths: 121,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Software specific rules (Super-refinement)
+  // ---------------------------------------------------------------------------
+
+  it('rejects software missing licenseType', () => {
+    const result = assetRegistrationSchema.safeParse({
+      ...baseValidSoftwareAsset,
+      licenseType: undefined,
+    });
+    expect(result.success).toBe(false);
     if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      expect(fieldErrors.licenseType).toContain('License type is required for software.');
-      expect(fieldErrors.totalSeats).toContain('Total seats is required for software.');
+      expect(result.error.flatten().fieldErrors.licenseType).toContain('License type is required for software.');
     }
   });
 
-  it('should validate successfully for a valid software asset with required fields', () => {
-    const softwareAsset = {
-      ...baseValidAsset,
-      pillar: 'Software',
-      licenseType: 'Subscription',
-      totalSeats: 10,
-    };
+  it('rejects software missing totalSeats', () => {
+    const result = assetRegistrationSchema.safeParse({
+      ...baseValidSoftwareAsset,
+      totalSeats: undefined,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.totalSeats).toContain('Total seats is required for software.');
+    }
+  });
 
-    const result = assetRegistrationSchema.safeParse(softwareAsset);
-    expect(result.success).toBe(true);
+  it('rejects software with invalid licenseType', () => {
+    const result = assetRegistrationSchema.safeParse({
+      ...baseValidSoftwareAsset,
+      licenseType: 'InvalidLicense',
+    });
+    expect(result.success).toBe(false);
   });
 });
