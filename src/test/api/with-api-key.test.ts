@@ -67,9 +67,10 @@ const mockApiKeyRecord: any = {
     vi.clearAllMocks();
   });
 
-  function createRequest(authHeader?: string, ip?: string) {
+  function createRequest(authHeader?: string, ip?: string, xApiKeyHeader?: string) {
     const headers = new Headers();
     if (authHeader !== undefined) headers.set('authorization', authHeader);
+    if (xApiKeyHeader !== undefined) headers.set('x-api-key', xApiKeyHeader);
     if (ip !== undefined) headers.set('x-forwarded-for', ip);
     return new NextRequest('http://localhost/api/test', { headers });
   }
@@ -151,6 +152,17 @@ const mockApiKeyRecord: any = {
     expect(applyRateLimit).toHaveBeenCalledWith('key-test-id:1.2.3.4');
     expect(db.update).toHaveBeenCalled();
     expect(logAuditAction).toHaveBeenCalled();
+  });
+
+  it('succeeds and calls handler if valid x-api-key header is provided', async () => {
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(mockApiKeyRecord);
+    vi.mocked(applyRateLimit).mockResolvedValueOnce({ success: true, limit: 100, remaining: 99, reset: 1234 });
+    
+    const req = createRequest(undefined, '1.2.3.4', validToken);
+    const res = await wrappedHandler(req, {});
+    
+    expect(res.status).toBe(200);
+    expect(mockHandler).toHaveBeenCalledWith(req, { apiKey: mockApiKeyRecord });
   });
 
   it('returns INTERNAL_ERROR for unhandled faults', async () => {
