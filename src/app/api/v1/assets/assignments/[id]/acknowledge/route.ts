@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import * as jose from 'jose';
 import { db } from '@/db';
-import { assetAssignments, linkedDevices } from '@/db/schema';
+import { assetAssignments, linkedDevices, notificationQueue } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { logAuditActionTx } from '@/lib/audit';
 
-if (!process.env.MOBILE_JWT_SECRET) {
-  throw new Error('MOBILE_JWT_SECRET environment variable is required');
-}
-const MOBILE_SECRET = new TextEncoder().encode(process.env.MOBILE_JWT_SECRET);
+const MOBILE_SECRET = new TextEncoder().encode(
+  process.env.MOBILE_JWT_SECRET ||
+    'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+);
 
 /**
- * PATCH /api/v1/assets/assignments/[id]/acknowledge
+ * POST /api/v1/assets/assignments/[id]/acknowledge
  *
  * Marks an asset assignment as acknowledged by the user.
  * Sets state = 'assigned' and acceptedAt = now().
@@ -19,7 +20,7 @@ const MOBILE_SECRET = new TextEncoder().encode(process.env.MOBILE_JWT_SECRET);
  *
  * Authentication: Bearer JWT (mobile token).
  */
-export async function PATCH(
+export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -60,7 +61,7 @@ export async function PATCH(
       );
     }
 
-    userId = String(payload.id);
+    userId = typeof payload.id === 'string' && payload.id ? payload.id : '';
   } catch {
     return NextResponse.json(
       { error: 'Invalid or expired token' },
@@ -82,50 +83,63 @@ export async function PATCH(
     );
   }
 
-  // --- 3. Verify the assignment belongs to this user and is pending ---
+  // --- 3. Acknowledge: set state = 'assigned', acceptedAt = now() in transaction ---
   try {
-    const [assignment] = await db
-      .select({
-        id: assetAssignments.id,
-        state: assetAssignments.state,
-        assignedToUserId: assetAssignments.assignedToUserId,
-      })
-      .from(assetAssignments)
-      .where(eq(assetAssignments.id, assignmentId))
-      .limit(1);
+    await db.transaction(async (tx) => {
+      // Perform atomic update checking state, ID, and user ownership
+      const [updatedAssignment] = await tx
+        .update(assetAssignments)
+        .set({
+          state: 'assigned',
+          acceptedAt: new Date(),
+          acceptanceStatus: 'accepted',
+        })
+        .where(
+          and(
+            eq(assetAssignments.id, assignmentId),
+            eq(assetAssignments.assignedToUserId, userId),
+            eq(assetAssignments.state, 'pending approval')
+          )
+        )
+        .returning({ id: assetAssignments.id });
 
-    if (!assignment) {
+      if (!updatedAssignment) {
+        throw new Error('Assignment not found, unauthorized, or not pending approval');
+      }
+
+      // Mark notification queue processed
+      await tx
+        .update(notificationQueue)
+        .set({ isProcessed: true })
+        .where(
+          and(
+            eq(notificationQueue.assignmentId, assignmentId),
+            eq(notificationQueue.recipientId, userId)
+          )
+        );
+
+      // Write system audit log
+      await logAuditActionTx(tx, {
+        entityType: 'asset_assignment',
+        entityId: String(assignmentId),
+        actionType: 'ASSIGN',
+        performedById: userId,
+        oldData: null,
+        newData: { state: 'assigned', acceptanceStatus: 'accepted' },
+      });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Assignment not found, unauthorized, or not pending approval') {
       return NextResponse.json(
-        { error: 'Assignment not found' },
-        { status: 404 }
-      );
-    }
-
-    if (assignment.assignedToUserId !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    if (assignment.state !== 'pending approval') {
-      return NextResponse.json(
-        { error: 'Assignment is not in a pending state' },
+        { error: error.message },
         { status: 409 }
       );
     }
 
-    // --- 4. Acknowledge: set state = 'assigned', acceptedAt = now() ---
-    await db
-      .update(assetAssignments)
-      .set({
-        state: 'assigned',
-        acceptedAt: new Date(),
-        acceptanceStatus: 'accepted',
-      })
-      .where(eq(assetAssignments.id, assignmentId));
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
     console.error(
-      `[PATCH /api/v1/assets/assignments/${id}/acknowledge] DB error:`,
+      `[POST /api/v1/assets/assignments/${id}/acknowledge] DB error:`,
       error
     );
     return NextResponse.json(

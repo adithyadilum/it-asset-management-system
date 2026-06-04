@@ -56,7 +56,9 @@ function mapStatus(
  *     status: 'assigned' | 'repair' | 'lost' | 'disposed' | 'new';
  *     state: string;        // raw assignment state e.g. 'pending approval'
  *     category?: string;
+ *     pillar?: string;
  *     assignedDate?: string; // ISO string
+ *     expectedReturnDate?: string; // ISO date (YYYY-MM-DD)
  *     location?: string;
  *     assignedByName?: string;
  *     condition?: string;
@@ -105,7 +107,7 @@ export async function GET(req: Request) {
       );
     }
 
-    userId = String(payload.id);
+    userId = typeof payload.id === 'string' && payload.id ? payload.id : '';
   } catch {
     return NextResponse.json(
       { error: 'Invalid or expired token' },
@@ -126,7 +128,7 @@ export async function GET(req: Request) {
         assignedDate: assetAssignments.assignedDate,
         expectedReturnDate: assetAssignments.expectedReturnDate,
         state: assetAssignments.state,
-        condition: assetAssignments.returnCondition,
+        condition: assets.condition,
         // Asset
         assetId: assets.id,
         assetTag: assets.assetTag,
