@@ -20,6 +20,7 @@ import { getFederatedLogoutUrl } from '@/actions/auth';
 import { signOut } from 'next-auth/react';
 import { setPreferredCurrency } from '@/actions/currency';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
+import { isGlobalAdmin } from '@/lib/auth/roles';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -336,17 +337,19 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
                                 </DropdownMenuSub>
                             </div>
 
-                            {/* Link Device */}
-                            <div className="p-2 border-b border-border">
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => setPairingModalOpen(true)}
-                                    className="h-9 w-full justify-start rounded-lg text-xs"
-                                >
-                                    <Smartphone className="mr-2 h-4 w-4 text-muted-foreground" />
-                                    Link Device
-                                </Button>
-                            </div>
+                            {/* Link Device — GlobalAdmin only */}
+                            {isGlobalAdmin(user.role) && (
+                                <div className="p-2 border-b border-border">
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setPairingModalOpen(true)}
+                                        className="h-9 w-full justify-start rounded-lg text-xs"
+                                    >
+                                        <Smartphone className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        Link Device
+                                    </Button>
+                                </div>
+                            )}
 
                             {/* Actions Area */}
                             <div className="p-2">

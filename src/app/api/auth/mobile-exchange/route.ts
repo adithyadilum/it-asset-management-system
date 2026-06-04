@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { db } from '@/db';
 import { linkedDevices } from '@/db/schema';
 import { logAuditAction } from '@/lib/audit';
+import { isGlobalAdmin } from '@/lib/auth/roles';
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -37,8 +38,8 @@ export async function POST(req: Request) {
   // 2. BURN THE TOKEN! Single-use only.
   await redis.del(redisKey);
 
-  // 3. Set a claimed marker so the web dashboard can detect success
-  // This key lives for 120s — enough time for the polling to detect it
+  // 3. Set a claimed marker so the web dashboard can detect success.
+  // This key lives for 120s — enough time for the polling to detect it.
   await redis.set(`qr_claimed:${linkToken}`, '1', { ex: 120 });
 
   // 4. Generate a unique JWT ID for revocation tracking
@@ -47,7 +48,26 @@ export async function POST(req: Request) {
   // 5. Parse user data
   const user = typeof userData === 'string' ? JSON.parse(userData) : userData;
 
-  // 6. Generate a long-lived JWT specifically for the mobile device
+  // 6. RBAC: Final backstop — only a GlobalAdmin session may ever receive a mobile JWT.
+  // This guards against any token minted before the generate-qr endpoint was hardened.
+  if (!isGlobalAdmin(user.role)) {
+    await logAuditAction({
+      entityType: 'linked_devices',
+      entityId: user.id,
+      actionType: 'UNAUTHORIZED_MOBILE_EXCHANGE_ATTEMPT',
+      performedById: user.id,
+      newData: {
+        attemptedByRole: user.role,
+        reason: 'Non-admin user attempted to claim a mobile session token.',
+      },
+    });
+    return NextResponse.json(
+      { error: 'Forbidden: Only Global Administrators can link a mobile device.' },
+      { status: 403 },
+    );
+  }
+
+  // 7. Generate a long-lived JWT specifically for the mobile device
   const mobileJwt = await new jose.SignJWT({
     id: user.id,
     role: user.role,
@@ -59,7 +79,7 @@ export async function POST(req: Request) {
     .setExpirationTime('30d') // Mobile sessions can last 30 days
     .sign(MOBILE_SECRET);
 
-  // 7. Persist the device link in the database
+  // 8. Persist the device link in the database
   const resolvedDeviceName = deviceName || 'Unknown Device';
   await db.insert(linkedDevices).values({
     userId: user.id,
@@ -70,7 +90,7 @@ export async function POST(req: Request) {
     lastActiveAt: new Date(),
   });
 
-  // 8. Audit log the device link event
+  // 9. Audit log the device link event
   await logAuditAction({
     entityType: 'linked_devices',
     entityId: jti,
@@ -88,3 +108,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ accessToken: mobileJwt });
 }
+
