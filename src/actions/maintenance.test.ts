@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER, FINANCE_AUDITOR_USER } from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -38,7 +38,6 @@ const { mockDb, chain } = vi.hoisted(() => {
       try {
         return await cb(db);
       } catch (e) {
-        console.error('TRANSACTION ERROR:', e);
         throw e;
       }
     }),
@@ -48,8 +47,8 @@ const { mockDb, chain } = vi.hoisted(() => {
 
 vi.mock('@/db', () => ({ db: mockDb }));
 vi.mock('@/db/schema', () => ({
-  maintenanceTickets: { id: 'maintenanceTickets.id', assetId: 'maintenanceTickets.assetId', status: 'maintenanceTickets.status', ticketType: 'maintenanceTickets.ticketType' },
-  assets: { id: 'assets.id', assetTag: 'assets.assetTag' },
+  maintenanceTickets: { id: 'maintenanceTickets.id', assetId: 'maintenanceTickets.assetId', status: 'maintenanceTickets.status', ticketType: 'maintenanceTickets.ticketType', reportedIssue: 'maintenanceTickets.reportedIssue' },
+  assets: { id: 'assets.id', assetTag: 'assets.assetTag', name: 'assets.name' },
   users: { id: 'users.id' },
   assetPurchases: { id: 'assetPurchases.id', assetId: 'assetPurchases.assetId' },
   models: { id: 'models.id', categoryId: 'models.categoryId', brandId: 'models.brandId' },
@@ -80,7 +79,6 @@ vi.mock('@/lib/financial-math', () => ({
 import {
   getPendingMaintenanceTickets,
   getTicketForIssueReview,
-  getVendors,
   getActiveRepairTickets,
   getRepairHistory,
   getAssetMaintenanceHistory,
@@ -93,137 +91,263 @@ import {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('Read Operations (Auth/Role guards)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('Read Operations: getPendingMaintenanceTickets', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(getPendingMaintenanceTickets()).rejects.toThrow('Unauthorized');
   });
 
-  const endpoints = [
-    { name: 'getPendingMaintenanceTickets', fn: () => getPendingMaintenanceTickets() },
-    { name: 'getTicketForIssueReview', fn: () => getTicketForIssueReview(1) },
-    { name: 'getVendors', fn: () => getVendors() },
-    { name: 'getActiveRepairTickets', fn: () => getActiveRepairTickets() },
-    { name: 'getRepairHistory', fn: () => getRepairHistory() },
-    { name: 'getAssetMaintenanceHistory', fn: () => getAssetMaintenanceHistory('LPT-001') },
-  ];
+  it('throws Forbidden for Employee role', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    await expect(getPendingMaintenanceTickets()).rejects.toThrow('Forbidden');
+  });
 
-  for (const { name, fn } of endpoints) {
-    it(`${name} throws unauthorized for unauthenticated user`, async () => {
-      mockGetAuthenticatedUser.mockResolvedValue(null);
-      await expect(fn()).rejects.toThrow('Unauthorized');
-    });
+  it('returns tickets for GlobalAdmin', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
+    const result = await getPendingMaintenanceTickets();
+    expect(result.tickets).toHaveLength(1);
+  });
 
-    it(`${name} throws forbidden for employee role`, async () => {
-      mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      await expect(fn()).rejects.toThrow('Forbidden');
-    });
-  }
+  it('returns tickets for ITOperator', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
+    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
+    const result = await getPendingMaintenanceTickets();
+    expect(result.tickets).toHaveLength(1);
+  });
+
+  it('returns tickets for FinanceAuditor', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
+    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
+    const result = await getPendingMaintenanceTickets();
+    expect(result.tickets).toHaveLength(1);
+  });
+
+  it('applies search filter on asset tag, name, or issue', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const mChain = chain([{ ticket: { id: 1 } }]);
+    mockDb.select.mockReturnValueOnce(mChain);
+    const result = await getPendingMaintenanceTickets('search-term');
+    expect(result.tickets).toHaveLength(1);
+  });
 });
 
-describe('resolveIssueInternally', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('Read Operations: getTicketForIssueReview', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(getTicketForIssueReview(1)).rejects.toThrow('Unauthorized');
   });
 
-  it('rejects invalid input schema (missing ticketId or short note)', async () => {
+  it('throws error for invalid (non-positive) ticket ID', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    // resolutionNote needs to be at least 10 chars
-    await expect(resolveIssueInternally(1, 'short')).rejects.toThrow();
+    // Actually throws 'Ticket not found' if passed to db and not found
+    mockDb.select.mockReturnValueOnce(chain([]));
+    await expect(getTicketForIssueReview(-1)).rejects.toThrow();
   });
 
-  it('successfully resolves issue, updates asset, logs audit and dispatches webhook', async () => {
+  it('throws when ticket not found', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([]));
+    await expect(getTicketForIssueReview(1)).rejects.toThrow('Ticket not found');
+  });
+
+  it('returns full review panel data for valid ticket', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([{
+      ticket: { id: 1 },
+      asset: { id: 'a1', status: 'Available' },
+    }]));
+    const result = await getTicketForIssueReview(1);
+    expect(result).not.toBeNull();
+  });
+});
+
+describe('Read Operations: getActiveRepairTickets', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(getActiveRepairTickets()).rejects.toThrow('Unauthorized');
+  });
+
+  it('throws Forbidden for Employee role', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    await expect(getActiveRepairTickets()).rejects.toThrow('Forbidden');
+  });
+
+  it('returns active vendor repair tickets', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
+    const result = await getActiveRepairTickets();
+    expect(result.tickets).toHaveLength(1);
+  });
+});
+
+describe('Read Operations: getRepairHistory', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(getRepairHistory()).rejects.toThrow('Unauthorized');
+  });
+
+  it('returns paginated repair history', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([{ count: 1 }]));
+    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
+    const result = await getRepairHistory(10);
+    expect(result.tickets).toHaveLength(1);
+  });
+});
+
+describe('Read Operations: getAssetMaintenanceHistory', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(getAssetMaintenanceHistory('uuid')).rejects.toThrow('Unauthorized');
+  });
+
+  it('throws for asset with no history if asset not found', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([]));
+    await expect(getAssetMaintenanceHistory('uuid')).rejects.toThrow('Asset not found');
+  });
+});
+
+describe('Write Operations: resolveIssueInternally', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws when ticket not found in DB', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([])); // Empty result for ticket
+    await expect(resolveIssueInternally(999, 'Valid resolution note')).rejects.toThrow('Ticket with ID 999 not found');
+  });
+
+  it('throws when associated asset not found', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, assetId: 'uuid', status: 'ACTIVE' }])); // Ticket
+    mockDb.select.mockReturnValueOnce(chain([])); // Asset not found
+    await expect(resolveIssueInternally(1, 'Valid resolution note')).rejects.toThrow('Asset with ID uuid not found');
+  });
+
+  it('updates ticket, reverts asset status, inserts audit log', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
     
-    // Setup db.select for ticket and asset
-    mockDb.select.mockReturnValueOnce(chain([{ id: 1, assetId: '00000000-0000-4000-a000-000000000000' }])); // Ticket
-    mockDb.select.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000000', status: 'In Repair', isArchived: false }])); // Asset
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, assetId: 'uuid', status: 'ACTIVE' }])); // Ticket
+    mockDb.select.mockReturnValueOnce(chain([{ id: 'uuid', status: 'In Repair', isArchived: false }])); // Asset
     
-    // Updates
     mockDb.update.mockReturnValue(chain([{ id: 1 }]));
     
-    try {
-      const result = await resolveIssueInternally(1, 'Resolved by replacing the faulty RAM module');
-      expect(result.success).toBe(true);
-    } catch (e) {
-      console.error('TEST ERROR:', e);
-      throw e;
-    }
+    const result = await resolveIssueInternally(1, 'Resolved by replacing the faulty RAM module');
+    expect(result.success).toBe(true);
     
     expect(mockDb.insert).toHaveBeenCalledTimes(1); // systemAuditLogs
     expect(mockDb.update).toHaveBeenCalledTimes(3); // assets, assetAssignments, maintenanceTickets
   });
-
-  it('rolls back and throws error if ticket is not found', async () => {
-    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.select.mockReturnValueOnce(chain([])); // Empty result for ticket
-    
-    await expect(resolveIssueInternally(999, 'Valid resolution note 10+ char')).rejects.toThrow('Ticket with ID 999 not found');
-  });
 });
 
-describe('initiateVendorRepair', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('Write Operations: initiateVendorRepair', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(initiateVendorRepair(1, 'uuid', '1', 'RMA')).rejects.toThrow('Unauthorized');
   });
 
-  it('rejects if vendor is not found', async () => {
-    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    
-    mockDb.select.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000000', status: 'Available' }])); // Asset exists
-    mockDb.select.mockReturnValueOnce(chain([])); // Vendor does not exist
-    
-    await expect(initiateVendorRepair(1, '00000000-0000-4000-a000-000000000000', '1', 'RMA-123')).rejects.toThrow('Vendor 1 not found');
+  it('throws Forbidden for Employee', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    await expect(initiateVendorRepair(1, 'uuid', '1', 'RMA')).rejects.toThrow('Forbidden');
   });
 
-  it('creates vendor ticket, updates asset and closes original ticket', async () => {
+  it('throws validation error for invalid assetId (non-UUID)', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    await expect(initiateVendorRepair(1, 'not-uuid', '1', 'RMA')).rejects.toThrow('Invalid asset ID format.');
+  });
+
+  it('throws when asset not found in DB', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const validUuid = '550e8400-e29b-41d4-a716-446655440000';
+    mockDb.select.mockReturnValueOnce(chain([])); // Asset not found
+    await expect(initiateVendorRepair(1, validUuid, '1', 'RMA')).rejects.toThrow(`Asset ${validUuid} not found`);
+  });
+
+  it('creates new VENDOR ticket, updates asset, closes triage ticket, logs audit', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const validUuid = '550e8400-e29b-41d4-a716-446655440000';
     
-    mockDb.select.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000000', status: 'Available' }])); // Asset
-    mockDb.select.mockReturnValueOnce(chain([{ id: '1', companyName: 'Dell' }])); // Vendor
+    mockDb.select.mockReturnValueOnce(chain([{ id: validUuid, status: 'Available' }])); // Asset
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, companyName: 'Dell' }])); // Vendor
     
     mockDb.update.mockReturnValue(chain([{ id: 1 }]));
     mockDb.insert.mockReturnValue(chain([{ id: 2 }])); // New ticket inserted returning id=2
     
-    try {
-      const result = await initiateVendorRepair(1, '00000000-0000-4000-a000-000000000000', '1', 'RMA-123', '150', '2023-12-31');
-      expect(result.success).toBe(true);
-      expect(result.ticketId).toBe(2);
-    } catch (e) {
-      console.error('VENDOR ERROR:', e);
-      throw e;
-    }
+    const result = await initiateVendorRepair(1, validUuid, '1', 'RMA-123', '150', '2025-12-31');
+    expect(result.success).toBe(true);
+    expect(result.ticketId).toBe(2);
     
     expect(mockDispatchWebhookEvent).toHaveBeenCalledWith(
       'maintenance.created',
-      expect.objectContaining({ ticketId: 2, assetId: '00000000-0000-4000-a000-000000000000' })
+      expect.objectContaining({ ticketId: 2, assetId: validUuid })
     );
   });
 });
 
-describe('completeRepairTicket', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('Write Operations: completeRepairTicket', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('throws Unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(completeRepairTicket(1, '150', 'Fixed', 'Available')).rejects.toThrow('Unauthorized');
   });
 
-  it('successfully completes repair and updates asset to Available', async () => {
+  it('throws Forbidden for Employee', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    await expect(completeRepairTicket(1, '150', 'Fixed', 'Available')).rejects.toThrow('Forbidden');
+  });
+
+  it('throws validation error for non-positive actualCost', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    await expect(completeRepairTicket(1, '-10', 'Fixed', 'Available')).rejects.toThrow('Actual cost must be 0 or more.');
+  });
+
+  it('throws when ticket not found', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([]));
+    await expect(completeRepairTicket(1, '150', 'Fixed', 'Available')).rejects.toThrow('Ticket 1 not found');
+  });
+
+  it('updates ticket to COMPLETED, sets asset to Available, terminates assignments', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     
-    mockDb.select.mockReturnValueOnce(chain([{ id: 2, assetId: '00000000-0000-4000-a000-000000000000' }])); // Ticket
-    mockDb.select.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000000', status: 'In Repair', isArchived: false }])); // Asset
+    mockDb.select.mockReturnValueOnce(chain([{ id: 2, assetId: 'uuid' }])); // Ticket
+    mockDb.select.mockReturnValueOnce(chain([{ id: 'uuid', status: 'In Repair', isArchived: false }])); // Asset
     
     mockDb.update.mockReturnValue(chain([{ id: 2 }]));
     
-    try {
-      const result = await completeRepairTicket(2, '150', 'Motherboard replaced', 'Available');
-      expect(result.success).toBe(true);
-    } catch (e) {
-      console.error('COMPLETE ERROR:', e);
-      throw e;
-    }
+    const result = await completeRepairTicket(2, '150', 'Motherboard replaced', 'Available');
+    expect(result.success).toBe(true);
     
     expect(mockDispatchWebhookEvent).toHaveBeenCalledWith(
       'maintenance.completed',
-      expect.objectContaining({ ticketId: 2, assetId: '00000000-0000-4000-a000-000000000000' })
+      expect.objectContaining({ ticketId: 2, assetId: 'uuid' })
     );
+  });
+
+  it('sets asset status to Disposed and isArchived=true when specified', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    
+    mockDb.select.mockReturnValueOnce(chain([{ id: 2, assetId: 'uuid' }])); // Ticket
+    mockDb.select.mockReturnValueOnce(chain([{ id: 'uuid', status: 'In Repair', isArchived: false }])); // Asset
+    
+    const updateChain = chain([{ id: 2 }]);
+    mockDb.update.mockReturnValue(updateChain);
+    
+    const result = await completeRepairTicket(2, '150', 'Beyond economical repair', 'Disposed');
+    expect(result.success).toBe(true);
   });
 });

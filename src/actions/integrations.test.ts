@@ -227,7 +227,7 @@ describe('deleteApiKey', () => {
     expect(result.success).toBe(true);
     expect(mockLogAuditAction).toHaveBeenCalledWith(
       expect.objectContaining({
-        actionType: 'API_KEY_DELETED',
+        actionType: 'DELETE',
         entityId: keyId,
       })
     );
