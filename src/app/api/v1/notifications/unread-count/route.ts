@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
 import { getUnreadCount } from '@/lib/notifications/services';
 
-export async function GET() {
+export async function GET(request?: NextRequest) {
   try {
-    const user = await getAuthenticatedUser();
+    const user = await getAuthenticatedUserFromRequest(request);
 
     if (!user?.id) {
       return NextResponse.json(
