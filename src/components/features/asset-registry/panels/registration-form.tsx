@@ -23,6 +23,7 @@ import {
   type RegistrationPillarInput,
 } from '@/lib/validations/asset-registration';
 import { getPillarFormConfig } from '@/components/features/asset-registry/panels/pillar-form-config';
+import { useBarcodeInjection } from '@/hooks/use-barcode-injection';
 import { ClassificationSection } from './sections/classification-section';
 import { SoftwareLicensingSection } from './sections/software-licensing-section';
 import { PhysicalAttributesSection } from './sections/physical-attributes-section';
@@ -171,6 +172,18 @@ export function RegistrationForm({
     registerAsset,
     initialRegisterAssetActionState
   );
+
+  useBarcodeInjection((barcode) => {
+    if (document.activeElement?.id === 'serialNumber') {
+      setSerialNumber(barcode);
+    } else {
+      navigator.clipboard.writeText(barcode).then(() => {
+        tiqriToast.success('serial number is copied to the clipboard');
+      }).catch(() => {
+        tiqriToast.error('Failed to copy barcode to clipboard');
+      });
+    }
+  });
 
   const [pillar, setPillar] = React.useState<RegistrationPillarInput>(() =>
     resolveStartingPillar(initialPillar)
