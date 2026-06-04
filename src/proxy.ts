@@ -38,31 +38,47 @@ async function verifyTokenAndRole(request: NextRequest) {
       return null;
     }
 
-    // ── Reject expired sessions ──────────────────────────────────────────────
-    // accessTokenExpires is stored as milliseconds-since-epoch in the JWT.
-    // If it is in the past the Keycloak access token can no longer be used.
-    // We treat this as unauthenticated here in the proxy so the request never
-    // reaches getServerSession() / the app-shell layout, which would call the
-    // jwt() callback → refreshAccessToken → fail → redirect /login → loop.
-    //
-    // A 30-second pre-expiry buffer lets us catch tokens that would expire
-    // mid-request even if the clock says they are still valid right now.
-    const EXPIRY_BUFFER_MS = 30 * 1000;
-    const accessTokenExpires = token.accessTokenExpires as number | undefined;
-    if (
-      typeof accessTokenExpires === 'number' &&
-      Date.now() > accessTokenExpires - EXPIRY_BUFFER_MS
-    ) {
-      return null;
-    }
-
     const role = normalizeTokenRole(token.role);
 
     if (!role) {
       return null;
     }
 
-    return { role, sub: token.id as string | undefined };
+    // ── Determine whether the access token is still fresh ────────────────────
+    // accessTokenExpires is milliseconds-since-epoch stored in the JWT cookie.
+    // We do NOT block access here — getServerSession() in the app-shell layout
+    // will attempt a silent refresh via the jwt() callback when the access
+    // token is expired. Blocking here would kick the user out every 5 minutes
+    // (the typical Keycloak access token lifetime) even when the refresh token
+    // is still perfectly valid.
+    //
+    // What we DO use this flag for: deciding whether to redirect an already-
+    // authenticated user AWAY from /login. We only bounce them if the access
+    // token is still fresh — if it's expired we let them stay on /login so
+    // that the app-shell's failed-refresh → redirect("/login") flow lands
+    // cleanly without bouncing back and creating the redirect loop.
+    const EXPIRY_BUFFER_MS = 30 * 1000; // 30-second safety margin
+    const accessTokenExpires = token.accessTokenExpires as number | undefined;
+    const isAccessTokenFresh =
+      typeof accessTokenExpires === 'number'
+        ? Date.now() < accessTokenExpires - EXPIRY_BUFFER_MS
+        : true; // no expiry stored → assume fresh (legacy token)
+
+    // ── Detect truly dead sessions ────────────────────────────────────────────
+    // refreshTokenExpires is stored in the JWT when auth-options.ts is updated
+    // to persist it. If both the access token AND the refresh token are past
+    // their expiry, there is no way to recover the session silently. We return
+    // null so the caller clears the cookie and sends the user to /login.
+    const refreshTokenExpires = token.refreshTokenExpires as number | undefined;
+    if (
+      !isAccessTokenFresh &&
+      typeof refreshTokenExpires === 'number' &&
+      Date.now() > refreshTokenExpires
+    ) {
+      return null;
+    }
+
+    return { role, sub: token.id as string | undefined, isAccessTokenFresh };
   } finally {
     logLatency({
       scope: 'PROXY AUTH',
@@ -184,6 +200,20 @@ export async function proxy(request: NextRequest) {
     }
 
     if (payload && isLoginRoute) {
+      // Only redirect an already-authenticated user away from /login when the
+      // access token is STILL FRESH. If it is expired (but possibly refreshable)
+      // we must NOT redirect — the app-shell's failed-refresh path will
+      // redirect here anyway, and bouncing them back would create the loop:
+      //   /dashboard → refresh fails → /login → proxy bounces → /dashboard → …
+      if (!payload.isAccessTokenFresh) {
+        // Access token is expired; let /login render. getServerSession() hasn't
+        // run yet so we don't know whether the refresh token is still good.
+        // If it is, the user just needs to click "Sign in" once — Keycloak
+        // will return a fresh session immediately. If it isn't, the sign-in
+        // flow will show a proper Keycloak error.
+        return NextResponse.next();
+      }
+
       const redirectTo = sanitizeRedirectPath(
         request.nextUrl.searchParams.get('redirectTo'),
         DEFAULT_POST_LOGIN_REDIRECT
