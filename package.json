@@ -47,6 +47,7 @@
     "papaparse": "^5.5.3",
     "postgres": "^3.4.8",
     "pusher": "^5.3.3",
+    "pusher-js": "^8.5.0",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
     "radix-ui": "^1.4.3",
