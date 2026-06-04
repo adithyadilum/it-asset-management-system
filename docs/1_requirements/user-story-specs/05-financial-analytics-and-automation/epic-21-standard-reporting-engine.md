@@ -2,28 +2,29 @@
 
 ## Summary
 
-This epic governs the creation, preview, and extraction of system data into portable formats (CSV and PDF). It provides a dual-interface approach: users can utilize one-click "Quick Templates" for common queries, or use a dynamic filter engine to build custom, one-off reports on the fly. Furthermore, Global Admins can configure and save their own templates for future reuse. All generated reports are previewed in a real-time data grid before exporting, ensuring the user extracts exactly what they need.
+This epic governs the creation, preview, and extraction of system data into portable formats (CSV and PDF). It provides a dual-interface approach: users can utilize one-click "Quick Templates" for common queries, or use a dynamic filter engine to build custom, one-off reports on the fly. Furthermore, Global Admins can configure and save their own templates for future reuse. All generated reports are previewed in a real-time data grid before exporting, ensuring the user extracts exactly what they need. Both CSV and PDF generation are optimized using client-side utilities to reduce server load.
 
 ## In Scope
 
 - Left-hand configuration sidebar (Templates, Primary Data Source, Filters).
-- Right-hand live "Report Preview" data grid.
-- "Add New Template" modal for saving reusable report configurations.
-- CSV Export Engine & Configuration Modal.
-- PDF Generation Engine & Formatting Modal (Layout, Branding, Page Size).
+- Right-hand live "Report Preview" data grid with pagination.
+- "Add New Template" modal for saving reusable report configurations to the database.
+- Multi-Source data querying (Assets, Assignments, Maintenance, Financials, Audits, etc.).
+- Client-side CSV Export Engine (supports current page or full dataset).
+- Client-side PDF Generation Engine (prints formatted report data).
 
 ## Out of Scope / Limitations
 
 - Automated Report Emailing: Scheduling a report to automatically email out every Monday morning is pushed to a future phase; currently, generation requires manual triggering.
-- Complex Data Joining: Users can select a `Primary Data Source` (e.g., Assets OR Maintenance Records), but they cannot write complex SQL `JOIN` queries across multiple distinct modules in the UI.
+- Complex Data Joining: Users can select a `Primary Data Source` (e.g., Asset Registry OR Maintenance Records), but they cannot write complex SQL `JOIN` queries across multiple distinct modules in the UI.
 
 ### User Stories
 
-- [US-21.1 — Quick Templates & Preview](https://app.clickup.com/t/86ewvxvp3)
-- [US-21.2 — Custom One-time Reporting](https://app.clickup.com/t/86ewvxvtg)
-- [US-21.3 — Creating Custom Report Templates](https://app.clickup.com/t/86ewvxw0e)
-- [US-21.4 — CSV Export](https://app.clickup.com/t/86ewvxw4u)
-- [US-21.5 — PDF Generation](https://app.clickup.com/t/86ewvxw9t)
+- [US-21.1 — Quick Templates & Preview](#user-story-us-211--quick-templates--preview)
+- [US-21.2 — Custom One-time Reporting](#user-story-us-212--custom-one-time-reporting)
+- [US-21.3 — Creating Custom Report Templates](#user-story-us-213--creating-custom-report-templates)
+- [US-21.4 — CSV Export](#user-story-us-214--csv-export)
+- [US-21.5 — PDF Generation](#user-story-us-215--pdf-generation)
 
 ---
 
@@ -36,31 +37,27 @@ This epic governs the creation, preview, and extraction of system data into port
 ### Acceptance Criteria (Gherkin)
 
 - Scenario: Triggering a Quick Template
-  - Given I navigate to `Reports & Audits > Standard Reports`
-  - When I click "Preview report" on a template card (e.g., "Monthly Depreciation")
-  - Then the left-hand Filters automatically populate with the template's saved parameters.
-  - And the right-hand "Report Preview" panel instantly loads the resulting data grid, showing the first paginated subset of rows (e.g., 16 rows).
-
-![](https://t90181861921.p.clickup-attachments.com/t90181861921/cba47f62-3892-46bb-b30d-21c72b8fb748/Report%20Generation%20preview%20-%20Desktop.png)
+  - Given I navigate to `Reports > Standard Reports`
+  - When I click a template card (e.g., "Monthly Depreciation")
+  - Then the left-hand Filters automatically populate with the template's saved parameters and fields.
+  - And the right-hand "Report Preview" panel instantly loads the resulting data grid, showing the first paginated subset of rows.
 
 ### UI/UX Specifications & Constraints
 
-- Template Cards: The template cards must display a clear Title, a descriptive subtext, and a relevant icon to guide the user visually.
 - Empty State: Before a report is generated, the right-hand preview panel must display a clean empty state with an icon and the text: "Select your filters and click Preview Data to see results here."
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/b29c0e65-4340-4282-a41e-798e67014edf/Report%20Generation%20-%20Desktop.png)
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the split-screen layout: Left Configuration Sidebar (template cards, filter controls) and Right Report Preview Panel (data grid with empty state).
-- [ ] Build the reusable `TemplateCard` component displaying: icon, title, description, and "Preview report" button.
-- [ ] Implement the empty state UI for the preview panel with an illustrative icon and guidance text.
+- [x] Build the split-screen layout (`StandardReportsShell`): Left Configuration Sidebar (template cards, filter controls) and Right Report Preview Panel (data grid with empty state).
+- [x] Build the reusable `ReportTemplateCard` component.
+- [x] Implement the empty state UI and table skeleton loaders for the preview panel.
 
 #### Backend
 
-- [ ] Create a `GET /api/v1/reports/templates` endpoint returning all available report templates (system-default + custom).
-- [ ] Create a `POST /api/v1/reports/preview` endpoint that accepts filter parameters and returns paginated query results for the report preview grid.
+- [x] Create a `getReportTemplates` server action returning all available report templates.
+- [x] Create a `fetchReportPreview` server action that accepts filter parameters and returns paginated query results.
 
 ---
 
@@ -74,29 +71,22 @@ This epic governs the creation, preview, and extraction of system data into port
 
 - Scenario: Building a One-Off Report
   - Given I am on the Standard Reports page
-  - When I select a `Primary Data Source` (e.g., "Assets") from the dropdown
-  - And I configure the manual filters (`Date Range`, `Category`, `Location`, `Status`)
-  - And I click "Preview report" at the bottom of the sidebar
-  - Then the right panel dynamically updates to show the preview of my custom query.
-
-![](https://t90181861921.p.clickup-attachments.com/t90181861921/ae4d98c7-f2f5-4a07-8f37-3b64026267af/Untitled.png)
-
-- Scenario: Clearing Filters
-  - Given I have applied several filters
-  - When I click the "Clear filters" text button
-  - Then all dropdowns reset to their default empty states and the Date Range clears.
+  - When I select a `Primary Data Source` (e.g., Asset Registry, Maintenance Records, Depreciation Ledger, Software Licenses, Audit Logs)
+  - And I configure the manual filters (`Date Range`, `Category`, `Location`, `Status`, `Asset Type`)
+  - And I click the generate/preview button
+  - Then the right panel dynamically updates to show the preview of my custom query with dynamically determined columns based on the source.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Implement the `Primary Data Source` dropdown that dynamically updates the available filter options based on the selected source (e.g., "Assets" shows Category/Location/Status filters; "Maintenance Records" shows Vendor/Date/Cost filters).
-- [ ] Build the dynamic filter controls: Date Range picker, Category multi-select, Location dropdown, Status multi-select.
-- [ ] Implement the "Clear filters" button to reset all filter state to defaults.
+- [x] Implement the Configuration Panel dropdowns that populate filter options.
+- [x] Build dynamic column definitions in the `StandardReportsPreviewPanel` that adapt based on the selected `Primary Data Source`.
 
 #### Backend
 
-- [ ] Create a `GET /api/v1/reports/datasources` endpoint returning the available primary data sources and their respective filter schemas.
+- [x] Create a `getStandardReportsFilterOptions` server action returning distinct locations, categories, statuses, vendors, etc.
+- [x] Implement complex routing within `fetchReportPreview` to execute distinct Drizzle ORM queries depending on the requested `source`.
 
 ---
 
@@ -109,35 +99,30 @@ This epic governs the creation, preview, and extraction of system data into port
 ### Acceptance Criteria (Gherkin)
 
 - Scenario: The Template Builder Workflow
-  - Given I click the "Add new report template" card
-  - When the "Add New Template" modal opens
-  - Then I am required to fill out `Basic Information` (Name, Code, Description, Active Toggle).
-  - And I select the `Primary Data Source` and default `Filters`.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/bba2b23b-5255-4f7d-9a66-70a6cf05601e/1.png)
-- Scenario: Selecting Specific Columns (Report Fields)
-  - Given I am building a template
-  - When I scroll down to the `Report Fields` section
-  - Then I see a multi-select grid of checkboxes allowing me to pick exactly which columns appear in the report (e.g., only checking `Asset ID`, `Brand`, and `Purchase Cost`).
+  - Given I click the "Create Template" button
+  - When the "Create Template" modal opens
+  - Then I am required to fill out basic info and select the Data Source, Filters, and Fields (columns).
 - Scenario: Saving the Template
-  - Given I configure my template and select a `Sort` direction (Ascending/Descending)
   - When I click "Save Template"
-  - Then the modal closes, and a new quick-action card immediately appears in the left sidebar.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/274a7a5b-551a-46cb-8713-ef4347e9c9d3/Report%20Generation%20template%20Modal%20-%20Desktop.png)
+  - Then the backend automatically generates a sequential Report Code (e.g., `RPT-YYYY-001`).
+  - And the template is saved to the database and appears in the sidebar.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the "Add New Template" multi-step modal with: Basic Information section (Name, Code, Description, Active toggle), Data Source and Filters section, Report Fields checkbox grid, and Sort configuration (field + direction).
-- [ ] After successful save, dynamically append the new template card to the sidebar without requiring a page refresh.
+- [x] Build the `CreateTemplateDialog` multi-step modal with form validation (Zod).
+- [x] Pass the newly created template data back to the parent to update the UI without a hard page refresh.
 
 #### Backend
 
-- [ ] Create RESTful CRUD endpoints for report templates: `POST /api/v1/reports/templates` (create), `PUT /api/v1/reports/templates/{id}` (update), `DELETE /api/v1/reports/templates/{id}` (delete).
+- [x] Create `createReportTemplate`, `updateReportTemplate`, and `deleteReportTemplate` server actions.
+- [x] Implement the sequential report code generator (`RPT-YYYY-NNN`) in the creation logic.
+- [x] Add `logAuditAction` triggers for template CRUD operations.
 
 #### Database
 
-- [ ] Create a `ReportTemplates` table with columns: `id`, `name`, `code` (UNIQUE), `description`, `is_active` (boolean), `data_source` (ENUM: ASSETS, MAINTENANCE, ASSIGNMENTS, DISPOSALS), `filters` (JSON), `fields` (JSON array of selected column keys), `sort_field`, `sort_direction` (ENUM: ASC, DESC), `created_by` (FK → Users), `created_at`, `updated_at`.
+- [x] Create the `ReportTemplates` table schema mapping the name, report code, data source, active state, and JSON structures for filters and fields.
 
 ---
 
@@ -151,27 +136,22 @@ This epic governs the creation, preview, and extraction of system data into port
 
 - Scenario: CSV Configuration Modal
   - Given I have previewed a report in the right-hand panel
-  - When I click the green "Export CSV >" button
-  - Then the "Export as CSV" modal opens.
+  - When I click the "Export CSV" button
+  - Then the "Export CSV" standard modal opens.
 - Scenario: Executing the Export
   - Given the modal is open
-  - When I select the `Data Scope` (Export current preview only OR Export full dataset)
-  - And I input a custom `File Name` and toggle `Include Header Row`
-  - And I click "Export as CSV"
-  - Then the backend streams the data into a formatted `.csv` file and automatically triggers the browser download.
-
-![](https://t90181861921.p.clickup-attachments.com/t90181861921/86d8ba9d-8d48-4e73-a7b4-f082d1f2341a/Report%20Generation%20CSV%20export%20-%20Desktop.png)
+  - When I select the `Data Scope` (Current Page Preview OR All Records)
+  - And I click "Export"
+  - Then the client application processes the data into a CSV string and automatically triggers the browser download.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the "Export as CSV" configuration modal with: Data Scope toggle (Current preview / Full dataset), File Name input, Include Header Row checkbox, and "Export as CSV" button.
-
-#### Backend
-
-- [ ] Create a `POST /api/v1/reports/export/csv` endpoint that: accepts the report query parameters and scope option, executes the query, and streams the results as a CSV file response.
-- [ ] Implement streaming CSV generation using Node.js `Transform` streams to handle datasets exceeding 50,000 rows without exhausting server memory.
+- [x] Build the "Export CSV" modal with Data Scope radio buttons.
+- [x] Integrate `PapaParse` (`papaparse`) to handle client-side CSV generation.
+- [x] If "All Records" is selected, fetch the full dataset from `fetchReportPreview` using a large `pageSize` before parsing.
+- [x] Create a `Blob` URL and trigger a hidden anchor click to download the `.csv` file.
 
 ---
 
@@ -185,29 +165,20 @@ This epic governs the creation, preview, and extraction of system data into port
 
 - Scenario: PDF Configuration Modal
   - Given I have previewed a report
-  - When I click the dark blue "Generate PDF >" button
+  - When I click the "Generate PDF" button
   - Then the "Generate PDF Report" modal opens.
-- Scenario: Formatting and Branding
-  - Given the PDF modal is open
-  - Then I am presented with `Layout Settings` (Landscape/Portrait) and `Page Size` (A4/Letter).
-  - And I can toggle specific `Branding` elements to be injected into the document header/footer (Include company logo, report title, filter summary, export timestamp, generated by user).
 - Scenario: Generating the Document
-  - When I configure my branding and click "Generate PDF"
-  - Then the system renders a clean, professional PDF matching my layout constraints and triggers the download.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/55c1ca17-a0b4-491b-95eb-8b421ae2627b/Report%20Generation%20PDF%20export%20-%20Desktop.png)
-
-### UI/UX Specifications & Constraints
-
-- PDF Readability: If the report contains more than 8 columns, the default Layout Setting should automatically switch to "Landscape" to prevent the data table from becoming cramped or illegible in the final PDF.
+  - Given the PDF modal is open
+  - When I choose the Data Scope and click "Generate"
+  - Then the system warns me if the dataset is excessively large (>5000 rows).
+  - And upon proceeding, it compiles the data with a title, description, and applied filter metadata.
+  - And the browser's native print/PDF engine is triggered via `generateAndOpenReportPdf` to render the clean document.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the "Generate PDF Report" configuration modal with: Layout toggle (Portrait/Landscape, auto-default to Landscape if >8 columns), Page Size dropdown (A4/Letter), and Branding checkboxes (company logo, report title, filter summary, timestamp, generated by).
-
-#### Backend
-
-- [ ] Create a `POST /api/v1/reports/export/pdf` endpoint that accepts the report query parameters and PDF configuration options (layout, page size, branding flags).
-- [ ] Integrate a robust server-side PDF generation library (e.g., Puppeteer or pdfmake) capable of rendering the data grid as a clean table, injecting the company logo image, and respecting the layout and page-size constraints.
-- [ ] Stream the generated PDF back to the client as a downloadable file.
+- [x] Build the `GenerateReportPdfModal` component.
+- [x] Implement logic to fetch the full dataset if the "All Matching Records" scope is selected.
+- [x] Implement the `LARGE_EXPORT_THRESHOLD` warning state.
+- [x] Create the `generateAndOpenReportPdf` utility to compile the `ReportPdfData` payload and open a printable document window.

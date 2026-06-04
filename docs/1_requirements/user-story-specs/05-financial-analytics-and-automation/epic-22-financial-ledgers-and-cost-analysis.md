@@ -6,7 +6,7 @@ This epic builds a highly secured, dedicated sandbox for the Finance department.
 
 ## In Scope
 
-- Role-Based Access Control (RBAC) specifically locking the `Financials` module to Finance and Global Admin roles.
+- Role-Based Access Control (RBAC) specifically locking the `Financials` module to `FinanceAuditor` and `GlobalAdmin` roles.
 - The `Depreciation Ledger` data grid and backend calculation engine.
 - The `Total Cost of Ownership` (TCO) aggregation ledger.
 - The `Salvage & Write-Offs` ledger for finalized asset reconciliation.
@@ -19,10 +19,10 @@ This epic builds a highly secured, dedicated sandbox for the Finance department.
 
 ### User Stories
 
-- [US-22.1 — Financial Module Security (RBAC)](https://app.clickup.com/t/86ewvyf4e)
-- [US-22.2 — The Depreciation Ledger](https://app.clickup.com/t/86ewvyf6p)
-- [US-22.3 — Total Cost of Ownership (TCO)](https://app.clickup.com/t/86ewvyfx7)
-- [US-22.4 — Write-Offs & Salvage Ledger](https://app.clickup.com/t/86ewvyfzf)
+- [US-22.1 — Financial Module Security (RBAC)](#user-story-us-221--financial-module-security-rbac)
+- [US-22.2 — The Depreciation Ledger](#user-story-us-222--the-depreciation-ledger)
+- [US-22.3 — Total Cost of Ownership (TCO)](#user-story-us-223--total-cost-of-ownership-tco)
+- [US-22.4 — Write-Offs & Salvage Ledger](#user-story-us-224--write-offs--salvage-ledger)
 
 ---
 
@@ -39,23 +39,22 @@ This epic builds a highly secured, dedicated sandbox for the Finance department.
   - When I look at the left-hand navigation sidebar
   - Then the `Financials` accordion menu (containing Depreciation Ledger, Total Cost of Ownership, and Salvage & Write-Offs) is completely hidden from the DOM.
   - And if I attempt to manually navigate to the corresponding URLs, the backend strictly returns a `403 Forbidden` error.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/c17c3572-f753-40d1-8973-2e26d44e2d53/IT%20operator%20Error%20403%20Screen-%20Desktop.png)
+
 - Scenario: Authorized Access
-  - Given I log in as a `Finance Manager` or `Global Admin`
+  - Given I log in as a `Finance Auditor` or `Global Admin`
   - When I look at the sidebar
   - Then the `Financials` module is fully visible and accessible.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/3b7f9479-b107-4d4c-8422-bb09d754b0c3/Depreciation%20Ledger%20-%20Desktop1.png)
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Update the global Sidebar component with conditional rendering: hide the `Financials` accordion menu entirely when `user.role` is not `FinanceManager` or `GlobalAdmin`.
-- [ ] Wrap all Financial module routes with the `<ProtectedRoute allowedRoles={['FinanceManager', 'GlobalAdmin']} />` guard, redirecting unauthorized users to the 403 page.
+- [x] Update the global Sidebar component with conditional rendering: hide the `Financials` accordion menu entirely when `user.role` is not `FinanceAuditor` or `GlobalAdmin`.
+- [x] Wrap all Financial module routes with role guards, redirecting unauthorized users to the 403 page.
 
 #### Backend
 
-- [ ] Write backend middleware to reject API requests to all `/api/v1/financials/*` endpoints from non-authorized roles, returning `403 Forbidden`.
+- [x] Implement an `enforceFinanceAccess()` guard in the server actions (`getDepreciationLedger`, `getTCOLedger`, `getWriteOffsLedger`, `getAssetFinancialVitals`) to reject requests from non-authorized roles.
 
 ---
 
@@ -72,29 +71,25 @@ _Note: The depreciation calculations must be validated with the Finance Departme
 - Scenario: Ledger Interface & Data Presentation
   - Given I navigate to `Financials > Depreciation Ledger`
   - Then I see a paginated data grid tailored for accountants.
-  - And the columns strictly display: `Asset ID`, `Category`, `Purchase Date`, `Original Purchase Price`, `Expected Lifespan`, and `Current Book Value`.
+  - And the columns display: `Asset ID`, `Category`, `Purchase Date`, `Original Purchase Price`, `Expected Lifespan`, and `Current Book Value`.
+
 - Scenario: Automated Depreciation Calculation
   - Given a laptop was purchased for $1,400 with a 5-year expected lifespan
   - When I view its row in the grid
-  - Then the backend automatically calculates and displays the active `Current Book Value` (e.g., $800) based on the time elapsed since the Purchase Date.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/6c325020-f8f3-408d-9cde-86850c1b85f0/Depreciation%20Ledger%20-%20Desktop.png)
-
-### UI/UX Specifications & Constraints
-
-- Financial Toolbar: The top of the grid must include a unified search bar, a `Filters` dropdown, and a prominent dark-blue `Export Log (CSV)` button aligned to the right.
+  - Then the backend automatically calculates and displays the active `Current Book Value` (e.g., $800) based on the time elapsed since the Purchase Date using Straight-Line Depreciation.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the `Depreciation Ledger` data grid UI with the specified columns and the financial toolbar (search bar, Filters dropdown, `Export Log (CSV)` button).
-- [ ] Format financial values as localized currency strings (e.g., `$1,400.00 USD`) in the grid cells.
+- [x] Build the `Depreciation Ledger` data grid UI with the specified columns and the financial toolbar.
+- [x] Format financial values as localized currency strings in the grid cells.
 
 #### Backend
 
-- [ ] Create a `GET /api/v1/financials/depreciation` endpoint with pagination, search, and filter support.
-- [ ] Implement the Straight-Line Depreciation calculation in a SQL View or backend aggregation: `Current Book Value = Original Purchase Price - ((Original Purchase Price / Expected Lifespan in months) * Months Elapsed Since Purchase)`, floored at `$0.00`.
-- [ ] Wire the `Export Log (CSV)` button to the Epic 21 CSV generation engine via a `POST /api/v1/reports/export/csv` call with pre-configured depreciation query parameters.
+- [x] Create a `getDepreciationLedger` server action with pagination, search, and category/age filters.
+- [x] Exclude disposed assets (`status != 'Disposed'`) from active depreciation calculations.
+- [x] Implement the Straight-Line Depreciation calculation (`calculateStraightLineDepreciation` math utility).
 
 ---
 
@@ -109,23 +104,23 @@ _Note: The depreciation calculations must be validated with the Finance Departme
 - Scenario: Accessing the TCO Ledger
   - Given I navigate to `Financials > Total Cost of Ownership`
   - Then I see a data grid with the following columns: `Asset ID`, `Category`, `Purchase Date`, `Original Purchase Price`, `Total Repair Costs`, and `Total TCO`.
+
 - Scenario: TCO Mathematical Aggregation
   - Given an asset has an Original Purchase Price of $1,400
-  - When it accumulates $300 in vendor repair tickets over its lifecycle
+  - When it accumulates $300 in completed vendor repair tickets over its lifecycle
   - Then the Financials TCO Engine instantly aggregates these records.
   - And displays $300 under `Total Repair Costs` and dynamically updates the `Total TCO` column to $1,700.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/d33a0ffa-13d3-47f9-9985-27997767fddf/Total%20Cost%20of%20Ownership%20(TCO)%20-%20Desktop.png)
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the `Total Cost of Ownership` data grid UI with the specified columns and the financial toolbar (search, filters, `Export Log (CSV)` button).
+- [x] Build the `Total Cost of Ownership` data grid UI with the specified columns and the financial toolbar.
 
 #### Backend
 
-- [ ] Create a `GET /api/v1/financials/tco` endpoint that executes a SQL aggregation query joining the `Assets` table (`purchase_price`) with `SUM(actual_cost)` from all related `MaintenanceTickets` records, computing `Total TCO = purchase_price + SUM(actual_cost)`.
-- [ ] Support pagination, search (by Asset ID, Category), and filter (by date range, cost range) on the TCO endpoint.
+- [x] Create a `getTCOLedger` endpoint that executes a SQL aggregation query joining the `assetPurchases.totalCost` with `SUM(maintenanceTickets.actualCost)` where ticket status is `COMPLETED`.
+- [x] Support pagination, search, and filter (by cost ranges) on the TCO endpoint.
 
 ---
 
@@ -139,25 +134,25 @@ _Note: The depreciation calculations must be validated with the Finance Departme
 
 - Scenario: Viewing the Salvage Ledger
   - Given I navigate to `Financials > Salvage & Write-Offs`
-  - Then I see a read-only grid listing only assets with a `Disposed` status.
+  - Then I see a read-only grid listing only assets with a completed disposal.
   - And the columns strictly display: `Asset ID`, `Category`, `Disposal Date`, `Original Purchase Price`, `Book Value at Time of Disposal`, and `Salvage Value`.
+
 - Scenario: Reconciling Salvage Value
   - Given an asset was disposed of, locking its `Book Value at Time of Disposal` at $300
   - When the IT team logged an $800 `Salvage Value` paid by the vendor or buyer during the disposal workflow
   - Then I can review these values side-by-side in the grid to calculate the final financial impact of the retirement.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/5af369c5-c595-4d57-ba07-1ffe9e900810/Write-Offs%20%26%20Salvage%20-%20Desktop.png)
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the `Write-Offs & Salvage` data grid UI with the specified columns and the financial toolbar (search, filters, `Export Log (CSV)` button).
+- [x] Build the `Write-Offs & Salvage` data grid UI with the specified columns and the financial toolbar.
 
 #### Backend
 
-- [ ] Create a `GET /api/v1/financials/writeoffs` endpoint fetching only assets with `status === 'Disposed'`, joining the disposal record for `disposal_date`, the locked `book_value_at_disposal`, and the `salvage_value`.
+- [x] Create a `getWriteOffsLedger` endpoint fetching only assets where `assetDisposals.status === 'Completed'`.
+- [x] Join the disposal record for `disposalDate` (`resolvedAt`), the locked `bookValueAtDisposal`, and the `actualSalvageValue`.
 
 #### Database
 
-- [ ] Add a `salvage_value` numeric column to the Epic 18 Disposal payload schema (either in `DisposalRequests` or `Assets` table).
-- [ ] Add a `book_value_at_disposal` numeric column to persist the calculated depreciated value at the moment of disposal, ensuring it never changes after finalization.
+- [x] Add the `actualSalvageValue` and `bookValueAtDisposal` decimal columns to the `assetDisposals` table to persist historical values at the exact moment of finalization.

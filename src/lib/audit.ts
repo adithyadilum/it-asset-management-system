@@ -23,7 +23,9 @@ export type AuditActionType =
   | 'WEBHOOK_DELETED'
   | 'EXTERNAL_API_ACCESS'
   | 'DEVICE_LINKED'
-  | 'DEVICE_UNLINKED';
+  | 'DEVICE_UNLINKED'
+  | 'UNAUTHORIZED_QR_GENERATION_ATTEMPT'
+  | 'UNAUTHORIZED_MOBILE_EXCHANGE_ATTEMPT';
 
 type AuditPayload = {
   entityType: string;
