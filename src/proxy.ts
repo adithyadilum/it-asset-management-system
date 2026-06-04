@@ -29,9 +29,30 @@ async function verifyTokenAndRole(request: NextRequest) {
   const authTimer = startLatencyTimer();
 
   try {
+    // getToken() decrypts the JWT cookie but does NOT call the jwt callback
+    // and does NOT attempt a Keycloak token refresh. It returns the raw
+    // cookie payload. This keeps the proxy stateless and low-latency.
     const token = await getToken({ req: request });
 
     if (!token) {
+      return null;
+    }
+
+    // ── Reject expired sessions ──────────────────────────────────────────────
+    // accessTokenExpires is stored as milliseconds-since-epoch in the JWT.
+    // If it is in the past the Keycloak access token can no longer be used.
+    // We treat this as unauthenticated here in the proxy so the request never
+    // reaches getServerSession() / the app-shell layout, which would call the
+    // jwt() callback → refreshAccessToken → fail → redirect /login → loop.
+    //
+    // A 30-second pre-expiry buffer lets us catch tokens that would expire
+    // mid-request even if the clock says they are still valid right now.
+    const EXPIRY_BUFFER_MS = 30 * 1000;
+    const accessTokenExpires = token.accessTokenExpires as number | undefined;
+    if (
+      typeof accessTokenExpires === 'number' &&
+      Date.now() > accessTokenExpires - EXPIRY_BUFFER_MS
+    ) {
       return null;
     }
 
@@ -127,7 +148,23 @@ function getLoginRedirectResponse(request: NextRequest) {
   );
 
   loginUrl.searchParams.set('redirectTo', requestedPath);
-  return NextResponse.redirect(loginUrl);
+  const response = NextResponse.redirect(loginUrl);
+
+  // Clear the stale NextAuth session cookie so the browser doesn't keep
+  // replaying the broken JWT on every subsequent request, which would
+  // re-trigger the RefreshAccessTokenError → redirect loop even after the
+  // fix above. Deleting the cookie here gives the user a clean slate and
+  // forces NextAuth to issue a fresh sign-in flow.
+  const secureCookieName = '__Secure-next-auth.session-token';
+  const plainCookieName = 'next-auth.session-token';
+
+  if (request.cookies.has(secureCookieName)) {
+    response.cookies.delete(secureCookieName);
+  } else if (request.cookies.has(plainCookieName)) {
+    response.cookies.delete(plainCookieName);
+  }
+
+  return response;
 }
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();

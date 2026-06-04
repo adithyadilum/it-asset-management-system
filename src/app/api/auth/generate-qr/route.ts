@@ -46,7 +46,7 @@ export async function POST() {
       email: user.email,
       status: 'pending',
     }), { ex: 60 });
-  } catch (_error) {
+  } catch {
     return NextResponse.json({ error: 'Redis error' }, { status: 500 });
   }
 

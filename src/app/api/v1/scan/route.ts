@@ -5,6 +5,7 @@ import * as jose from 'jose';
 import { db } from '@/db';
 import { linkedDevices } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getAssetDetailsById } from '@/lib/data/asset-details-repo';
 
 const MOBILE_SECRET = new TextEncoder().encode(
   process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
@@ -73,7 +74,35 @@ export async function POST(req: Request) {
   // --- 4. Execute Business Logic ---
   console.log(`Scan initiated by user ${userId} with role ${userRole}`);
   
-  // Process the QR scan in your Drizzle database...
+  let assetTag: string | null = null;
+  try {
+    const body = await req.json();
+    let rawTag = body.assetTag;
+    if (typeof rawTag === 'string') {
+      // If the QR code contains a full URL (e.g. https://.../assets/LAP-001)
+      if (rawTag.includes('/assets/')) {
+        rawTag = rawTag.split('/assets/').pop()?.split('?')[0] || rawTag;
+      }
+      // Clean up any trailing slashes or spaces
+      assetTag = rawTag.trim().replace(/\/+$/, '');
+    }
+  } catch {
+    // ignore
+  }
+
+  if (!assetTag) {
+    return NextResponse.json({ error: 'Asset tag is required' }, { status: 400 });
+  }
+
+  const assetDetails = await getAssetDetailsById(assetTag);
+
+  if (!assetDetails) {
+    return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+  }
   
-  return NextResponse.json({ success: true, message: 'Asset Scanned Successfully' });
+  return NextResponse.json({ 
+    success: true, 
+    message: 'Asset Scanned Successfully',
+    data: assetDetails
+  });
 }

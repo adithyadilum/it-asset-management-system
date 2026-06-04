@@ -1,4 +1,5 @@
 import { parseAndValidateImport, executeBulkImport } from '@/actions/bulk-import';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
@@ -110,6 +111,7 @@ describe('Bulk Import Integration', () => {
     expect(result.summary?.successCount).toBe(1);
     expect(result.summary?.failedCount).toBe(0);
     expect(result.summary?.importedAssetTags).toHaveLength(1);
+    expect(revalidatePath).toHaveBeenCalledWith('/assets', 'layout');
   });
 
   it('fails execute if lock is not granted', async () => {

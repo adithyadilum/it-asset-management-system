@@ -2,187 +2,172 @@
 
 ## Summary
 
-This epic builds the Employee Portal, a simplified and highly restricted view of the IDAMS system intended for standard corporate users. It ensures that non-admin employees can only view the hardware explicitly assigned to them. Crucially, it introduces the "Digital Acceptance" workflow, requiring users to explicitly acknowledge receipt of new equipment, legally binding them to the company's IT acceptable use policy.
+This epic builds the Employee Portal, a simplified and highly restricted view of the IT Asset Management system intended for standard corporate users. It ensures that non-admin employees can only view the hardware explicitly assigned to them. Crucially, it introduces the "Digital Acceptance" workflow, requiring users to explicitly acknowledge receipt of new equipment or report issues securely via Next.js Server Actions.
 
 ## In Scope
 
 - Strict Role-Based Access Control (RBAC) enforcing a 403 Forbidden wall against admin routes.
-- A mobile-responsive "My Assets" dashboard featuring asset cards.
-- In-app notification banners for pending assignments and upcoming return dates.
-- A "Digital Acceptance" modal with a mandatory acknowledgment checkbox.
+- A mobile-responsive "My Assets" dashboard featuring dynamically styled asset cards mapped to database pillars.
+- In-app notification banners (`EmployeeAlerts`) for pending assignments and upcoming return dates.
+- A "Digital Acceptance" transaction workflow updating assignment state and audit logs.
 - A "Report Issue / Did Not Receive" rejection pathway.
 
 ## Out of Scope / Limitations
 
-- Self-Service Requests: The ability for an employee to browse a catalog and request _new_ assets, or log detailed IT support tickets, is deferred to a future epic. The "Service Requests" sidebar item will act as a disabled placeholder for now.
-- Notification Delivery Infrastructure: While this epic defines the _business rules and triggers_ for when alerts should happen (e.g., escalating after 72 hours), the actual technical integration with SMTP servers and Microsoft Teams API to deliver those messages is deferred to the future Notifications & Alerts Epic. In this epic, the backend will merely log the events to a queue.
+- Self-Service Requests: The ability for an employee to browse a catalog and request *new* assets is deferred to a future epic.
+- Notification Delivery Infrastructure: While this epic defines the *business rules and triggers* for when alerts should happen (e.g., storing items in the `notification_queue`), the actual email/Slack integration is deferred.
 
 ## Assumptions & Dependencies
 
-- Assumes Epic 1 (Azure AD SSO) accurately maps standard employees to a `user_id` that matches the `Assigned To` field in the Assets database.
+- Relies on NextAuth.js to identify the user making the request.
+- Assumes the database table `asset_assignments` maps precisely to the logged-in user's `id`.
+
+---
 
 ### User Stories
 
-- [US-12.1 — Secure Portal Routing & Role Restriction](https://app.clickup.com/t/86ewvnqg3)
-- [US-12.2 — "My Assets" Dashboard](https://app.clickup.com/t/86ewvnqg7)
-- [US-12.3 — Digital Acceptance & Escalating Reminders](https://app.clickup.com/t/86ewvnqgg)
-- [US-12.4 — Asset Return Reminders & Admin Requests](https://app.clickup.com/t/86ewvnqgn)
+- [US-12.1 — Secure Portal Routing & Role Restriction](#user-story-us-121--secure-portal-routing--role-restriction)
+- [US-12.2 — "My Assets" Dashboard](#user-story-us-122--my-assets-dashboard)
+- [US-12.3 — Digital Acceptance & Rejection Workflow](#user-story-us-123--digital-acceptance--rejection-workflow)
+- [US-12.4 — Asset Return Reminders & Admin Requests](#user-story-us-124--asset-return-reminders--admin-requests)
 
 ---
 
 ## User Story: US-12.1 — Secure Portal Routing & Role Restriction
 
-- As a System Administrator,
-- I want standard employees to be strictly confined to the Employee Portal,
-- So that they cannot view, edit, or tamper with the global asset registry, financial ledgers, or admin dashboards.
+- **As a** System Administrator,
+- **I want** standard employees to be strictly confined to the Employee Portal,
+- **So that** they cannot view, edit, or tamper with the global asset registry, financial ledgers, or admin dashboards.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Default Employee Login Routing
-  - Given a user logs in via Microsoft SSO
-  - When their system role resolves to "Standard Employee"
-  - Then the application automatically routes them to the `/portal/my-assets` dashboard
-  - And the left-hand navigation sidebar is heavily restricted, showing only "My Dashboard", "My Assets", and "Service Requests".
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/484ca4ab-d2ca-47c1-ab07-de7264aaecce/My-assets.png)
-- Scenario: Admin Route Bypass Attempt
-  - Given I am logged in as a Standard Employee
-  - When I attempt to bypass the UI by manually typing an admin URL (e.g., `/registry/hardware` or `/settings`)
-  - Then the backend API rejects any data fetching
-  - And the frontend aggressively intercepts the route, displaying a full-screen 403 Forbidden error page stating "You do not have permission to view this directory."
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/f9ea167c-d752-44d2-89e4-63c36d722b64/Employee%20potal%20Error%20403%20Screen-%20Desktop.png)
+- **Scenario: Default Employee Login Routing**
+  - **Given** a user logs in via Microsoft SSO
+  - **When** their system role resolves to "Employee"
+  - **Then** the application automatically routes them to the `/my-assets` dashboard
+  - **And** the left-hand navigation sidebar displays only the paths explicitly permitted for their role.
+
+- **Scenario: Admin Route Bypass Attempt**
+  - **Given** I am logged in as an Employee
+  - **When** I attempt to bypass the UI by manually typing an admin URL (e.g., `/assets/hardware` or `/settings`)
+  - **Then** the backend API rejects any data fetching via `canManageAssets` and `isGlobalAdmin` blocks.
+  - **And** the frontend aggressively intercepts the route, displaying a 403 Forbidden error page.
 
 ### Technical Implementation Tasks
 
 #### Frontend
-
-- [ ] Implement a `<ProtectedRoute allowedRoles={['GlobalAdmin', 'ITOperator']} />` higher-order component (HOC) or route guard wrapper around all admin-only routes (Epic 6, 7, 8 components).
-- [ ] Implement the role-aware Sidebar component that shows only "My Dashboard", "My Assets", and "Service Requests" (disabled placeholder) for Standard Employees.
-- [ ] Implement post-login routing logic: if `user.role === 'StandardEmployee'`, redirect to `/portal/my-assets` instead of the admin dashboard.
-- [ ] Reuse the 403 Forbidden error page component from Epic 2 for route interception.
+- [x] Implement the role-aware Sidebar component that filters the standard navigation.
+- [x] Implement post-login routing logic directing `Employee` roles to `/my-assets`.
+- [x] Reuse the `403 Forbidden` error page component from Epic 2 for route interception.
 
 #### Backend
-
-- [ ] Write strict backend middleware ensuring all admin API endpoints (`/api/v1/assets`, `/api/v1/settings`, `/api/v1/master-data`) validate the JWT role and return `403 Forbidden` for Standard Employee tokens.
+- [x] Write strict backend guards ensuring all admin server actions (`getAssetsByPillar`, `getAssetDetailsById`, etc.) validate the JWT role and throw `Unauthorized` errors for Employees.
 
 ---
 
 ## User Story: US-12.2 — "My Assets" Dashboard
 
-- As a Standard Employee,
-- I want to log in and immediately see a clean list of the equipment assigned to me,
-- So that I know exactly what corporate property I am currently responsible for.
+- **As a** Standard Employee,
+- **I want** to log in and immediately see a clean list of the equipment assigned to me,
+- **So that** I know exactly what corporate property I am currently responsible for.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Viewing Active Assignments
-  - Given I am logged into the Employee Portal
-  - When the dashboard loads
-  - Then I see a "Welcome back, \[First Name\]" greeting
-  - And I see a grid of Asset Cards representing the items currently assigned to me.
-  - And each card displays the Asset Type (e.g., Laptop), an Icon/Image, the Model Name, Asset ID, Date Assigned, and an "Active" status badge.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/b0375786-7f41-4f89-b6b4-0fa3f37527e7/My-assets.png)
-- Scenario: Mobile Responsiveness
-  - Given I access the portal on a smartphone
-  - When the dashboard renders
-  - Then the sidebar collapses into a hamburger menu
-  - And the Asset Cards stack vertically in a single column to fit the screen perfectly.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/73b62fa6-bd15-45df-8b67-854c71e8b2fe/Employee-Portal-Mobile.png)
+- **Scenario: Viewing Active Assignments & Dynamic Icons**
+  - **Given** I am logged into the Employee Portal
+  - **When** the `/my-assets` dashboard loads
+  - **Then** the backend executes `getCurrentEmployeeAssets()`
+  - **And** I see a grid of Asset Cards representing the items currently assigned to me.
+  - **And** the system dynamically renders an appropriate icon (e.g., Laptop, Software, Monitor) based on the asset's Pillar or a textual heuristic fallback.
+
+- **Scenario: Mobile Responsiveness**
+  - **Given** I access the portal on a smartphone
+  - **When** the dashboard renders
+  - **Then** the Asset Cards stack vertically (`grid-cols-1`) to fit the screen perfectly, utilizing Tailwind responsive utilities.
+
+- **Scenario: Empty State Fallback**
+  - **Given** I am a new employee with no active assignments
+  - **When** I log in to the portal
+  - **Then** the UI displays an Empty State component clearly indicating: "We couldn't find any hardware linked to your profile."
 
 ### UI/UX Specifications & Constraints
 
-- Read-Only UI: The asset cards must be strictly read-only. Clicking on them should not open the complex 700px Admin slide-out panel, as employees do not need to see depreciation values or MAC addresses.
+- **Read-Only UI:** The asset cards must be strictly read-only. Clicking on them should not open the complex Admin slide-out panel.
 
 ### Technical Implementation Tasks
 
 #### Frontend
-
-- [ ] Build the `EmployeeDashboard` React layout with a personalized greeting ("Welcome back, {firstName}") and a responsive CSS Grid of `AssetCard` components.
-- [ ] Build the `AssetCard` component displaying: asset type icon/image, model name, Asset ID, date assigned, and status badge.
-- [ ] Implement mobile responsive layout: sidebar collapses to hamburger menu, asset cards stack in a single column on small screens.
-- [ ] Ensure asset cards are strictly read-only with no click-through to admin panels.
+- [x] Build the `MyAssetsPage` layout with a responsive CSS Grid.
+- [x] Build the `AssetCard` component displaying asset type icon, model name, status badge, and assigned date.
+- [x] Build the `getAssetPresentation` utility to dynamically map DB pillars to React `lucide` icons.
+- [x] Implement the `<Empty>` state fallback for users with 0 records.
 
 #### Backend
-
-- [ ] Create a secure `GET /api/v1/portal/my-assets` endpoint that _forces_ the database query to filter strictly by the requesting user's ID (`WHERE assigned_to = jwt.user_id`), returning only their assigned assets.
+- [x] Create the `getCurrentEmployeeAssets` Server Action fetching only records `WHERE assignedToUserId = currentUser.id` and filtering for specific valid states (`assigned`, `overdue`, `requested`).
 
 ---
 
-## User Story: US-12.3 — Digital Acceptance & Escalating Reminders
+## User Story: US-12.3 — Digital Acceptance & Rejection Workflow
 
-- As an IT Administrator,
-- I want employees to explicitly acknowledge when they receive new hardware, and be automatically reminded if they forget,
-- So that I have a digital paper trail proving the asset was delivered, without having to manually chase users for a signature.
+- **As an** IT Administrator,
+- **I want** employees to explicitly acknowledge when they receive new hardware, or securely report if something is wrong,
+- **So that** I have a digital paper trail proving the asset was delivered and accepted under policy.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: New Assignment Alert Banner & Initial Notification Trigger
-  - Given an IT Admin has just assigned a new Monitor to me
-  - When the system records the assignment
-  - And when I log in, a prominent blue "Action Required" banner appears at the top of my dashboard.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/80677873-0864-45a8-927b-721117fe396c/Employee%20Portal%20-%20Desktop.png)
-- Scenario: Escalating Reminder Engine (Trigger Logic)
-  - Given an asset assignment is in a "Pending Acceptance" state
-  - When 24 hours, 48 hours, and 72 hours pass without the user clicking "Confirm Receipt"
-  - Then the system queues escalating reminder events for the Notification Engine.
-  - And on the 72-hour event, the payload flags the issuing IT Admin.
-- Scenario: Acknowledgment Checkbox & Confirmation
-  - Given I click the "Review & Accept" button
-  - When I check the mandatory acknowledgment box
-  - Then the "Confirm Receipt" button becomes active
-  - And clicking it updates the asset's assignment status to "Confirmed", which will permanently halt the queued reminders.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/fa5c4519-0175-4266-95b7-b51a30576983/Confirm-reciept.png)
+- **Scenario: Rendering the Alert Banner**
+  - **Given** an IT Admin has assigned a new item to me in "Pending Approval" state
+  - **When** I load the dashboard
+  - **Then** the `EmployeeAlerts` component fetches `getPortalAlertsAction`
+  - **And** renders an interactive banner asking me to review the pending item.
+
+- **Scenario: Transactional Acceptance**
+  - **Given** I click the "Review & Accept" button
+  - **When** I confirm receipt via the `acceptAssignmentAction`
+  - **Then** the backend validates the payload using Zod
+  - **And** an atomic transaction updates the `asset_assignments` table to `state: 'assigned'` and `acceptanceStatus: 'accepted'`.
+  - **And** marks the corresponding alert in `notificationQueue` as `isProcessed: true`.
+  - **And** logs the exact change to the system Audit Log.
+
+- **Scenario: Secure Rejection (Did Not Receive)**
+  - **Given** I received an alert for an asset I do not physically possess
+  - **When** I click to reject and provide a mandatory reason
+  - **Then** the `rejectAssignmentAction` runs, returning the `asset_assignments` to `state: 'returned'` and `acceptanceStatus: 'rejected'`.
+  - **And** automatically makes the main asset `status: 'Available'` again.
+  - **And** appends my provided rejection reason into the assignment's database `notes`.
 
 ### Technical Implementation Tasks
 
 #### Frontend
-
-- [ ] Build the "Action Required" alert banner component that renders at the top of the Employee Dashboard when there are pending acceptance items.
-- [ ] Build the Acceptance Modal with: asset details summary, mandatory acknowledgment checkbox (linked to IT acceptable use policy), and a "Confirm Receipt" button that enables only when the checkbox is checked.
-- [ ] Implement the "Report Issue / Did Not Receive" rejection pathway as a secondary action in the Acceptance Modal.
+- [x] Build the `EmployeeAlerts` banner component integrating with the portal notification store.
+- [x] Provide UI workflows for both Acceptance and Rejection with modal confirmations.
 
 #### Backend
-
-- [ ] Create a `POST /api/v1/portal/assignments/{id}/accept` endpoint that logs the digital acceptance timestamp, updates the assignment status to "Confirmed", and cancels any pending reminder events.
-- [ ] Create a `POST /api/v1/portal/assignments/{id}/reject` endpoint for the "Did Not Receive" pathway, notifying the issuing admin.
-- [ ] Implement an escalation scheduler (cron job or task queue): at 24h, 48h, and 72h intervals, check for assignments still in "Pending Acceptance" state and enqueue `REMINDER_ESCALATED` events to the notification queue.
-
-#### Database
-
-- [ ] Create a `NotificationQueue` table with columns: `id`, `event_type` (ENUM: PENDING_ACCEPTANCE, REMINDER_24H, REMINDER_48H, REMINDER_72H_ADMIN), `assignment_id` (FK), `recipient_id` (FK → Users), `is_processed` (boolean), `created_at`.
+- [x] Build `acceptAssignmentAction` managing atomic updates for assignments and the notification queue.
+- [x] Build `rejectAssignmentAction` including Zod validation for the mandatory rejection reason string.
+- [x] Wire up Drizzle ORM transactions to guarantee state synchronicity between the `assets`, `asset_assignments`, and `notification_queue` tables.
+- [x] Generate system Audit Logs (`logAuditActionTx`) on both acceptance and rejection.
 
 ---
 
 ## User Story: US-12.4 — Asset Return Reminders & Admin Requests
 
-- As a Standard Employee,
-- I want to see portal banners when a temporary loaner is expiring, or when IT explicitly requests a device back,
-- So that I can back up my files and bring the device to the IT desk on time.
+- **As a** Standard Employee,
+- **I want** to see portal banners when a temporary loaner is expiring, or when IT explicitly requests a device back,
+- **So that** I can back up my files and bring the device to the IT desk on time.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Scheduled Return Alert
-  - Given I have a device assigned to me with an "Expected Return Date" of Feb 28, 2026
-  - When the current date falls within 14 days of that return date
-  - Then a prominent yellow "Reminder" banner appears on my dashboard
-  - And the system queues an `UPCOMING_RETURN` event for the future Notification Engine.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/7fa0b4d6-094f-4d45-968d-abe03514ddff/Employee%20Portal%20-%20Desktop%20(1).png)
-- Scenario: Admin-Initiated Return Request (Ad-Hoc)
-  - Given an IT Admin manually clicks the "Request Return" button on my laptop from their Admin interface (Epic 14 feature)
-  - When the action is triggered
-  - Then the system queues an `URGENT_RETURN_REQUESTED` event
-  - And a red "Urgent Action Required" banner instantly appears on my Employee Dashboard stating: "IT has requested the immediate return of \[Asset Name\]."
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/36dfdcb9-6bfa-431b-a821-d7d859e06bf1/Employee%20Portal%20-%20Desktop%20(2).png)
+- **Scenario: Viewing Pending Alerts**
+  - **Given** I have a pending return request triggered by an IT admin or an expected return date
+  - **When** I log into the employee dashboard
+  - **Then** the `getPortalAlertsAction` returns the active notification
+  - **And** the `EmployeeAlerts` component renders a distinct visual banner prompting me to return the equipment.
 
 ### Technical Implementation Tasks
 
 #### Frontend
-
-- [ ] Build the yellow "Upcoming Return" alert banner component, conditionally rendered when an asset's expected return date is within 14 days.
-- [ ] Build the red "Urgent Action Required" alert banner component for admin-initiated return requests.
-- [ ] Implement real-time banner rendering via WebSocket or polling to display admin-initiated return requests without requiring a page refresh.
+- [x] Integrate the return reminder UI via the generic `EmployeeAlerts` wrapper.
 
 #### Backend
-
-- [ ] Implement a scheduled task (cron job) that runs daily, identifies assignments with `expected_return_date` within 14 days, and enqueues `UPCOMING_RETURN` events to the notification queue.
-- [ ] Implement the admin "Request Return" action handler: when triggered, enqueue an `URGENT_RETURN_REQUESTED` event and push a real-time notification to the employee's active session (via WebSocket or push API).
-- [ ] Create a `GET /api/v1/portal/notifications` endpoint that returns the authenticated employee's pending alerts and banners.
+- [x] Implement the `getPortalAlertsAction` resolving active alerts from the database for the specific user.

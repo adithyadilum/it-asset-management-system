@@ -7,14 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "check": "npm run lint && tsc --noEmit",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:assets": "tsx src/db/seed.assets.ts",
     "db:seed:dashboard": "tsx src/db/seed.dashboard.ts",
     "db:seed:notifications": "tsx src/db/seed.notifications.ts",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:db:up": "docker-compose -f docker-compose.test.yml up -d --wait",
+    "test:db:down": "docker-compose -f docker-compose.test.yml down -v",
+    "e2e": "dotenv -e .env.test -- playwright test",
+    "e2e:ui": "dotenv -e .env.test -- playwright test --ui"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",
@@ -64,6 +68,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.4.0",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -73,17 +78,19 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.2",
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.4.0",
+    "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "eslint-config-prettier": "^10.1.8",
-    "jsdom": "^29.0.2",
+    "jsdom": "^29.1.1",
     "prettier": "^3.8.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.8"
   }
 }

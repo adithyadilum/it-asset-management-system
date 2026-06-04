@@ -9,7 +9,7 @@ This epic governs what authenticated users are allowed to do inside the system. 
 - A split-view Administrator Control Panel for bulk and manual role mapping.
 - Interactive UI modals for granting and revoking access.
 - Enforcement of the four core system roles: Global Admin, IT Operator, Finance Auditor, and Standard Employee.
-- UI/UX adjustments based on roles (hiding unauthorized sidebar navigation and action buttons).
+- UI/UX adjustments based on roles (hiding unauthorized sidebar navigation and action buttons via authorization utilities).
 
 ## Out of Scope / Limitations
 
@@ -18,257 +18,224 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 ## Assumptions & Dependencies
 
-- Relies on successful authentication and Azure AD JWT token generation completed in Epic 1.
+- Relies on successful authentication and session token generation completed in Epic 1.
+- Uses `getAuthenticatedUser()` Server Action to fetch authoritative role state.
+
+---
 
 ### User Stories
 
-- [US-2.1 — Administrator Control Panel for System Permissions](https://app.clickup.com/t/86ewvb9ju)
-- [US-2.2 — Global Admin Role Capabilities](https://app.clickup.com/t/86ewvbbdj)
-- [US-2.3 — IT Operator Role Capabilities](https://app.clickup.com/t/86ewvbbdx)
-- [US-2.4 — Finance Auditor Role Capabilities](https://app.clickup.com/t/86ewvbbe6)
-- [US-2.5 — Default "Least Privilege" Access Assignment](https://app.clickup.com/t/86ewvcmr9)
+- [US-2.1 — Administrator Control Panel for System Permissions](#user-story-us-21--administrator-control-panel-for-system-permissions)
+- [US-2.2 — Global Admin Role Capabilities](#user-story-us-22--global-admin-role-capabilities)
+- [US-2.3 — IT Operator Role Capabilities](#user-story-us-23--it-operator-role-capabilities)
+- [US-2.4 — Finance Auditor Role Capabilities](#user-story-us-24--finance-auditor-role-capabilities)
+- [US-2.5 — Default "Least Privilege" Access Assignment](#user-story-us-25--default-least-privilege-access-assignment)
 
 ---
 
 ## User Story: US-2.1 — Administrator Control Panel for System Permissions
 
-- As a System Administrator,
-- I want an easy-to-use interface to manage what employees can do in the system,
-- So that I can securely elevate IT staff to manage hardware and Finance staff to view reports, without needing a developer to write code.
+- **As a** System Administrator,
+- **I want** an easy-to-use interface to manage what employees can do in the system,
+- **So that** I can securely elevate IT staff to manage hardware and Finance staff to view reports, without needing a developer to write code.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Automated Baseline Role Assignment
-  - Given a newly hired employee logs in for the first time
-  - When they authenticate successfully
-  - Then the system automatically grants them the baseline "Standard Employee" access level.
-- Scenario: Standard Employee Data Isolation
-  - Given I am logged in as a "Standard Employee"
-  - When I attempt to query the API for the main registry
-  - Then the database strictly limits my response to assets where my account is listed as the `Custodian`.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/00115065-0f96-4e9c-9668-4f5c33cc5819/Employee%20Portal%20-%20Desktop.png)
-- Scenario: Bulk User Selection & Mapping
-  - Given I am viewing the Role Assignment control panel and click "Add User"
-  - When the assignment popup window appears
-  - Then I can search for and select multiple users at once to add to the mapping selection list
-  - And clicking "Confirm Mapping" assigns all selected users to the target role simultaneously.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/ff0199e8-9603-4c8a-b7f0-a56d5192e066/User-roles-and-access-view.png)
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/b83ca182-f674-49fd-ae3e-ca1ffa2f4aac/add%20user%20to%20roles%20-%20Desktop.png)
-- Scenario: Removing a User During Selection
-  - Given I am in the "Add User" popup and have selected multiple employees
-  - When I click the trash icon next to a selected user _before_ confirming
-  - Then the user is removed from the temporary selection list.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/c26b966e-bcfe-48b7-86ff-86ccec823ac1/User-roles-and-access-add.png)
-- Scenario: Searching for a Non-Existent User
-  - Given I am in the "Add User" popup
-  - When I search for a user who does not exist in the system
-  - Then a message appears stating: "No users found."
-  - And the "Confirm Mapping" button remains disabled.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/3f43b61e-da38-4f8c-a02b-2a961e512929/add%20user%20to%20roles(no%20user%20found)%20-%20Desktop.png)
-- Scenario: Revoking Elevated Access
-  - Given a user is currently assigned to a role
-  - When I click the trash icon next to their name in the role list
-  - Then a confirmation popup appears titled "Remove User Access"
-  - And after clicking "Confirm Removal", the user is removed from that role.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/9b5b807b-3b2e-4551-b4f1-430c182c9d33/Remove%20User%20access%20-%20Desktop.png)
-- Scenario: Global Admin Anti-Lockout
-  - Given I am logged in as a "Global Admin"
-  - When I attempt to remove my own Global Admin role
-  - Then the system disables the trash icon/action to prevent me from accidentally locking myself out.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/92719eab-d249-4799-bdce-2a56a4fe698a/User%20roles%20and%20access%20-%20Desktop.png)
+- **Scenario: Bulk User Selection & Mapping**
+  - **Given** I am viewing the Role Assignment control panel and click "Add User"
+  - **When** the assignment popup window appears
+  - **Then** I can search for and select multiple users at once to add to the mapping selection list
+  - **And** clicking "Confirm Mapping" assigns all selected users to the target role simultaneously via a single atomic database transaction.
+
+- **Scenario: Removing a User During Selection**
+  - **Given** I am in the "Add User" popup and have selected multiple employees
+  - **When** I click the trash icon next to a selected user _before_ confirming
+  - **Then** the user is removed from the temporary selection list.
+
+- **Scenario: Searching for a Non-Existent User**
+  - **Given** I am in the "Add User" popup
+  - **When** I search for a user who does not exist in the system (query matches no email or name)
+  - **Then** a message appears stating: "No users found."
+  - **And** the "Confirm Mapping" button remains disabled.
+
+- **Scenario: Revoking Elevated Access**
+  - **Given** a user is currently assigned to an elevated role
+  - **When** I click the trash icon next to their name in the role list
+  - **Then** a confirmation popup appears titled "Remove User Access"
+  - **And** after clicking "Confirm Removal", the user is removed from that role and falls back to the "Employee" role.
+
+- **Scenario: Global Admin Anti-Lockout (Server-Side Guard)**
+  - **Given** I am logged in as a "Global Admin"
+  - **When** I attempt to remove my own Global Admin role (either via UI or directly hitting the API)
+  - **Then** the system throws an error stating "Action Prohibited: You cannot modify your own role."
+  - **And** my role remains unchanged to prevent accidental lockouts.
 
 ### UI/UX Specifications & Constraints
 
-- Layout: Must utilize a Master-Detail split-view component. The left column lists the 4 core roles, and the right panel displays the users assigned to the selected role.
-- Add User Modal: Triggered by the "Add User" button. Must support multi-select functionality.
-- Revocation Modal: Triggered by the trash icon in the active role list. Must strictly include:
-  - Title: "Remove User Access"
-  - Description: A text warning explaining that the user will immediately lose access to the permissions associated with that role.
-  - Button: A primary/destructive button labeled "Confirm Removal".
-- Anti-Lockout UX: The trash icon next to the active user's own name in the Role Mapping screen must be styled with low opacity and a `cursor-not-allowed` hover state.
+- **Layout:** Must utilize a Master-Detail split-view component. The left column lists the 4 core roles, and the right panel displays the users assigned to the selected role.
+- **Add User Modal:** Triggered by the "Add User" button. Must support multi-select functionality with dynamic user searching.
+- **Revocation Modal:** Triggered by the trash icon in the active role list. Must strictly include a destructive action button to confirm removal.
+- **Anti-Lockout UX:** The trash icon next to the active user's own name in the Role Mapping screen must be styled with low opacity and a `cursor-not-allowed` hover state.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Build the Master-Detail split-view layout component: left panel listing the 4 roles, right panel displaying assigned users for the selected role.
-- [ ] Build the "Add User" modal with a searchable input, multi-select user list, individual trash-icon removal, and a "Confirm Mapping" CTA.
-- [ ] Build the "Remove User Access" confirmation modal with destructive-action styling.
-- [ ] Implement self-lockout prevention logic: disable the trash icon on the current user's own row when the "Global Admin" role is selected.
-- [ ] Build the "No users found" empty state for the user search within the Add User modal.
+- [x] Build the Master-Detail split-view layout component: left panel listing the 4 roles, right panel displaying assigned users.
+- [x] Build the "Add User" modal with a searchable input, multi-select user list, and a "Confirm Mapping" CTA.
+- [x] Build the "Remove User Access" confirmation modal with destructive-action styling.
+- [x] Implement self-lockout prevention logic: disable the trash icon on the current user's own row.
+- [x] Build the "No users found" empty state for the user search within the Add User modal.
 
 #### Backend
 
-- [ ] Create a `UserRoles` mapping table in the database linking `user_id` to `role_id`.
-- [ ] Create a `POST /api/v1/roles/{roleId}/users` bulk-assignment endpoint accepting an array of user IDs.
-- [ ] Create a `DELETE /api/v1/roles/{roleId}/users/{userId}` revocation endpoint.
-- [ ] Write backend validation to reject any `DELETE` request targeting the active user's own mapping row in the `UserRoles` table (anti-lockout fail-safe).
-- [ ] Create a `GET /api/v1/users/search?q={query}` endpoint to power the user search in the Add User modal, with support for filtering out already-mapped users.
+- [x] Integrate roles into the `Users` table (`role` column enum: 'GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee').
+- [x] Create an `assignUsersRoleBulk` server action accepting an array of user IDs.
+- [x] Create a `removeUserFromManagedRole` server action to gracefully revert users to the `Employee` role.
+- [x] Write backend validation to reject any request targeting the active user's own role (anti-lockout fail-safe).
+- [x] Create a `searchUsers(query: string)` server action to power the user search in the Add User modal.
+- [x] Implement Audit Logging (`logAuditAction`) for all role modifications (UPDATE actions on the users entity).
 
 ---
 
 ## User Story: US-2.2 — Global Admin Role Capabilities
 
-- As a Global Admin,
-- I want full, unrestricted read and write access to the entire application,
-- So that I can configure system settings, map roles, build master data schemas, and oversee all IT operations without blockers.
+- **As a** Global Admin,
+- **I want** full, unrestricted read and write access to the entire application,
+- **So that** I can configure system settings, map roles, build master data schemas, and oversee all IT operations without blockers.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Full System Navigation
-  - Given I am logged in as a "Global Admin"
-  - When I view the application interface
-  - Then all sidebar navigation menus (Dashboard, Assets, Master Data, System Log, Integrations, Settings) are visible and clickable.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/b6403ec3-0cd2-426e-b6a1-8e72dd3c54a9/Dashboard%20-%20Desktop%20sidebar%20highlighted.png)
+- **Scenario: Full System Navigation**
+  - **Given** I am logged in as a "Global Admin" (`isGlobalAdmin = true`)
+  - **When** I view the application interface
+  - **Then** all sidebar navigation menus (Dashboard, Assets, Financials, Master Data, System Log, Settings) are visible and clickable.
+  - **And** all Server Actions execute without throwing `Forbidden` errors.
 
 ### UI/UX Specifications & Constraints
 
-- Visibility: The Global Admin sees the interface exactly as it is designed in Figma, with zero hidden tabs, missing buttons, or restricted views.
-- Anti-Lockout UX: The trash icon next to the active user's own name in the Role Mapping screen must be styled with low opacity and a `cursor-not-allowed` hover state.
+- **Visibility:** The Global Admin sees the interface exactly as it is designed, with zero hidden tabs or missing buttons.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Implement the role-aware Sidebar component that renders all navigation items when `user.role === 'GlobalAdmin'`.
-- [ ] Ensure all action buttons (Edit, Delete, Assign, Dispose, etc.) render without restriction for this role across all pages.
+- [x] Implement role-aware rendering in the Sidebar component that displays all navigation items when `isGlobalAdmin` evaluates to true.
+- [x] Ensure all action buttons (Edit, Delete, Assign, Dispose, etc.) render without restriction for this role across all pages (`canManageAssets`, `canAccessFinancials`, `canAccessOperations`).
 
 #### Backend
 
-- [ ] Configure the backend JWT parser to identify and validate the `GlobalAdmin` claim from the token payload.
-- [ ] Ensure all RBAC middleware grants full pass-through access for requests carrying the `GlobalAdmin` role.
+- [x] Expose role evaluation utility functions in `src/lib/auth/roles.ts`.
+- [x] Enforce authorization inside server actions by validating `currentUser.role === 'GlobalAdmin'` for sensitive operations like `searchUsers` and `assignUserRole`.
 
 ---
 
 ## User Story: US-2.3 — IT Operator Role Capabilities
 
-- As an IT Operator,
-- I want full read/write access to hardware records but be restricted from system configuration settings,
-- So that I can efficiently assign, return, and repair assets without the risk of accidentally altering the database schemas or API webhooks.
+- **As an** IT Operator,
+- **I want** full read/write access to hardware records but be restricted from system configuration settings,
+- **So that** I can efficiently assign, return, and repair assets without the risk of accidentally altering the database schemas or roles.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Automated Group-Based Assignment
-  - Given my corporate Microsoft profile belongs to the "IT Helpdesk" Active Directory group
-  - When I authenticate via Microsoft SSO
-  - Then the system automatically grants me the "IT Operator" role without manual admin mapping.
-- Scenario: Hardware Operations Access
-  - Given I am logged in as an "IT Operator"
-  - When I view the Main Asset Registry
-  - Then I have full access to click "Add Asset", "Assign", "Return", and "Flag for Dispose".
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/7de1a221-6f1b-4aa6-ad4c-5da79c4f02ef/Multiple%20Assets%20Assignment%20for%20Loaction-%20Desktop.png)
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/89852115-70d3-42f8-a7bc-6d07504047d5/Asset%20Registry%20Wizard.png)
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/89919fdd-fb41-4340-9fca-89b0127cbee3/Request%20Return%20for%20Multiple%20Asset-%20Desktop.png)
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/1b5abed4-f351-41b6-9a63-e7ed033190a6/Request%20Disposal%20Review-%20Desktop.png)
-- Scenario: Settings & Configuration Block
-  - Given I am logged in as an "IT Operator"
-  - When I look at the main sidebar navigation
-  - Then the "Settings", "Integrations", "System Log", and "Master Data" tabs are completely hidden from view.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/9725d127-8459-4ef4-bc16-39f591c78ae3/Collapsed%3DFalse%2C%20Admin%3DTrue.png)
-- Scenario: Forced URL Navigation Block
-  - Given I am logged in as an "IT Operator"
-  - When I attempt to bypass the UI by manually typing `/settings/api-keys` into the browser URL bar
-  - Then the system routes me to a "403 Forbidden - Access Denied" empty state page.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/76a1a024-1261-4efa-a365-f9b1b10ea1b6/IT%20operator%20Error%20403%20Screen-%20Desktop.png)
+- **Scenario: Hardware Operations Access**
+  - **Given** I am logged in as an "IT Operator" (`canManageAssets = true`, `canAccessOperations = true`)
+  - **When** I view the Main Asset Registry
+  - **Then** I have full access to click "Add Asset", "Assign", "Return", and "Flag for Dispose".
+
+- **Scenario: Settings & Configuration Block**
+  - **Given** I am logged in as an "IT Operator"
+  - **When** I look at the main sidebar navigation
+  - **Then** the "Settings", "System Log", and Financial reporting tabs are completely hidden from view.
+
+- **Scenario: Blocked Server Action Execution**
+  - **Given** I am logged in as an "IT Operator"
+  - **When** I attempt to bypass the UI by manually executing a Role Assignment server action
+  - **Then** the backend strictly rejects the request with a "Forbidden: Only Global Administrators can modify roles" exception.
 
 ### UI/UX Specifications & Constraints
 
-- Sidebar UI: Dynamically remove restricted routes from the React Router sidebar component so the user doesn't even know they exist.
-- Error Page: The 403 Forbidden page must include a clean illustration and a "Return to Dashboard" button.
+- **Sidebar UI:** Dynamically remove restricted routes from the sidebar component so the user doesn't even know they exist.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Implement conditional sidebar rendering that hides "Settings", "Integrations", "System Log", and "Master Data" navigation items when `user.role === 'ITOperator'`.
-- [ ] Build a reusable `403 Forbidden` error page component with an illustration and a "Return to Dashboard" navigation button.
-- [ ] Implement frontend route guards that redirect IT Operators to the 403 page if they attempt to access restricted URL paths.
+- [x] Implement conditional sidebar rendering utilizing `canAccessFinancials` and `isGlobalAdmin` to hide financial ledgers, system logs, and role management settings.
+- [x] Allow access to Asset creation/assignment interfaces via `canManageAssets` evaluations.
 
 #### Backend
 
-- [ ] Implement Azure AD Group-to-Role mapping logic in the SSO callback to automatically assign the "IT Operator" role when the user's token contains the "IT Helpdesk" group claim.
-- [ ] Write RBAC middleware to strictly protect configuration API routes (e.g., `POST /api/categories`, `GET /api/settings`, `POST /api/webhooks`) from this role, returning `403 Forbidden`.
+- [x] Write authorization guards within server actions (e.g. `assignUserRole`) to reject invocations from users holding the `ITOperator` role attempting unauthorized modifications.
 
 ---
 
 ## User Story: US-2.4 — Finance Auditor Role Capabilities
 
-- As a Finance Auditor,
-- I want global read-only access to all hardware registries and financial ledgers,
-- So that I can review depreciation, warranty statuses, and Total Cost of Ownership (TCO) without the risk of accidentally deleting or re-assigning physical hardware.
+- **As a** Finance Auditor,
+- **I want** global read-only access to all hardware registries and financial ledgers,
+- **So that** I can review depreciation, warranty statuses, and Total Cost of Ownership (TCO) without the risk of accidentally deleting or re-assigning physical hardware.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Global Read Access
-  - Given I am logged in as a "Finance Auditor"
-  - When I navigate to the Asset Registry or Financial Reports tabs
-  - Then I can view all hardware data across all locations globally.
-- Scenario: Action Restriction (No Write Access)
-  - Given I am logged in as a "Finance Auditor"
-  - When I open an Asset Details slide-out panel
-  - Then the "Edit", "Dispose", "Assign", and "Delete" buttons are hidden from the UI.
-- Scenario: Backend Write Block
-  - Given I am logged in as a "Finance Auditor"
-  - When I attempt to bypass the UI and send an API `POST` or `PUT` request to update an asset's status
-  - Then the backend rejects the request with a `403 Forbidden` error.
+- **Scenario: Global Read Access**
+  - **Given** I am logged in as a "Finance Auditor" (`canViewAssetRegistry = true`, `canAccessFinancials = true`)
+  - **When** I navigate to the Asset Registry or Financials tabs
+  - **Then** I can view all hardware data across all locations globally.
+
+- **Scenario: Action Restriction (No Write Access)**
+  - **Given** I am logged in as a "Finance Auditor" (`canManageAssets = false`, `canAccessOperations = false`)
+  - **When** I open an Asset Details panel
+  - **Then** the "Edit", "Dispose", "Assign", and "Delete" buttons are hidden from the UI.
 
 ### UI/UX Specifications & Constraints
 
-- Action Buttons: Instead of showing disabled buttons, completely remove destructive/operational action buttons from the DOM to keep the interface clean and avoid confusing the auditor.
-- Export Enablement: The auditor must still be able to see and click all "Export CSV" and "Download Report" buttons.
+- **Action Buttons:** Instead of showing disabled buttons, completely remove destructive/operational action buttons from the DOM to keep the interface clean and avoid confusing the auditor.
+- **Export Enablement:** The auditor must still be able to see and click all "Export CSV" and "Download Report" buttons.
 
 ### Technical Implementation Tasks
 
 #### Frontend
 
-- [ ] Implement conditional rendering logic to completely remove all write-action buttons (Edit, Assign, Dispose, Delete) from the DOM when `user.role === 'FinanceAuditor'`.
-- [ ] Ensure "Export CSV" and "Download Report" buttons remain visible and fully functional for this role.
-- [ ] Implement the role-aware Sidebar component that shows Financial module navigation but hides operational settings.
+- [x] Implement conditional rendering logic utilizing `canManageAssets(role)` to remove all write-action buttons (Edit, Assign, Dispose, Delete) from the DOM.
+- [x] Ensure financial reporting navigation and export functionalities remain visible and fully functional (`canAccessFinancials`).
 
 #### Backend
 
-- [ ] Apply strict Read-Only (`GET`-only) middleware enforcement for the `FinanceAuditor` role across all `/api/assets/*` and `/api/operations/*` controllers.
-- [ ] Ensure the Finance-specific API endpoints (`GET /api/financials/*`) are accessible to both `FinanceAuditor` and `GlobalAdmin` roles.
+- [x] Enforce authorization inside operational Server Actions to ensure they return a `Forbidden` rejection if a `FinanceAuditor` tries to bypass the UI to execute an asset mutation.
 
 ---
 
 ## User Story: US-2.5 — Default "Least Privilege" Access Assignment
 
-- As an Admin,
-- I want every new employee logging into the system to default to the lowest possible permission level,
-- So that our sensitive financial and hardware data is protected by default, requiring a conscious action from an administrator to grant elevated access.
+- **As an** Admin,
+- **I want** every new employee logging into the system to default to the lowest possible permission level,
+- **So that** our sensitive financial and hardware data is protected by default, requiring a conscious action from an administrator to grant elevated access.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: First-Time Login Default
-  - Given a newly hired employee logs into the asset management system for the very first time
-  - When they authenticate successfully via Microsoft SSO
-  - Then the backend automatically creates their internal profile and assigns them the baseline "Standard Employee" role
-  - And they are strictly limited to viewing only their own assigned assets.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/b30f1bbc-301c-4d8e-883d-626dd54a3cbc/Employee%20Portal%20-%20Desktop.png)
-- Scenario: Admin Explicit Elevation
-  - Given a user currently holds the default "Standard Employee" role
-  - When a Global Admin explicitly uses the Role Assignment panel to upgrade them to an "IT Operator"
-  - Then their permissions are instantly elevated.
-- Scenario: Missing Active Directory Group Fallback
-  - Given an employee logs in but their corporate Azure AD profile does not belong to any recognized IT or Finance groups
-  - When the system parses their SSO token
-  - Then the system safely defaults their access to "Standard Employee" rather than rejecting their login.
+- **Scenario: First-Time Login Default**
+  - **Given** a newly hired employee logs into the asset management system for the very first time
+  - **When** they authenticate successfully via SSO
+  - **Then** the backend automatically creates their internal profile and assigns them the baseline "Employee" role.
 
-### UI/UX Specifications & Constraints
+- **Scenario: Admin Explicit Elevation**
+  - **Given** a user currently holds the default "Employee" role
+  - **When** a Global Admin explicitly uses the Role Assignment panel to upgrade them to an "IT Operator"
+  - **Then** their permissions are instantly elevated and logged in the Audit database.
 
-- Silent Provisioning: The end-user should not see any popup or notification stating "You have been assigned the Standard Employee role." They should simply land on their clean, restricted dashboard seamlessly.
-- Control Panel Reflection: In the Global Admin's Role Assignment split-view UI, any user who has logged in at least once must automatically appear in the list when the "Standard Employee" role is selected on the left panel.
+- **Scenario: Revocation Fallback**
+  - **Given** an administrator revokes a user's specialized role
+  - **When** the `removeUserFromManagedRole` action executes
+  - **Then** the database actively falls back the user to the "Employee" baseline rather than leaving them in a null state.
 
 ### Technical Implementation Tasks
 
 #### Backend
 
-- [ ] Write user-provisioning logic in the SSO callback: if the incoming `user_id` does not exist in the local `Users` table, insert a new record and set their `role_id` to the database equivalent of "Standard Employee".
-- [ ] Ensure the RBAC middleware strictly treats any `null` or missing role mappings as "Standard Employee" to prevent accidental privilege escalation.
-- [ ] Implement Azure AD group-claims parsing: if the user's JWT contains recognized group memberships (e.g., "IT Helpdesk", "Finance Team"), auto-elevate during provisioning instead of defaulting.
+- [x] Ensure Just-in-Time (JIT) provisioning logic defaults all new users strictly to the `Employee` role string instead of null.
+- [x] Implement `removeUserFromManagedRole` to perform an update explicitly setting the role back to `Employee`.
 
 #### Database
 
-- [ ] Seed the `Roles` table with the 4 hardcoded role records (Global Admin, IT Operator, Finance Auditor, Standard Employee) during initial database migration.
-- [ ] Add a `NOT NULL DEFAULT` constraint on the `role_id` column in the `Users` table pointing to the "Standard Employee" role ID to enforce least-privilege at the schema level.
+- [x] Structure the `UserRole` type and database enum to enforce only `GlobalAdmin`, `ITOperator`, `FinanceAuditor`, or `Employee` values.
