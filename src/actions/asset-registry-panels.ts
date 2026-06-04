@@ -165,7 +165,8 @@ export async function getRegistrationOptionsAction(pillar: string) {
             value: String(c.id),
             label: c.name,
             pillar: c.pillar,
-            customSchema: c.customSchema,
+            // Deep clone JSONB to remove [Object: null prototype] which breaks Next.js Server Actions
+            customSchema: c.customSchema ? JSON.parse(JSON.stringify(c.customSchema)) : null,
           })
         ),
         brands: brandsList.map((b: { id: number; name: string }) => ({

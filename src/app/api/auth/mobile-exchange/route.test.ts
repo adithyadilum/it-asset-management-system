@@ -59,10 +59,11 @@ describe('POST /api/auth/mobile-exchange', () => {
     vi.clearAllMocks();
   });
 
+  // NOTE: role must be 'GlobalAdmin' — non-admin tokens are rejected by the RBAC backstop.
   const mockUser = {
     id: 'user-123',
-    role: 'Employee',
-    email: 'test@tiqri.com',
+    role: 'GlobalAdmin',
+    email: 'admin@tiqri.com',
     status: 'pending',
   };
 
@@ -156,5 +157,59 @@ describe('POST /api/auth/mobile-exchange', () => {
     // Verify cache revalidation
     expect(revalidatePath).toHaveBeenCalledWith('/settings/devices');
     expect(revalidatePath).toHaveBeenCalledWith('/(app-shell)/(management)/settings/devices');
+  });
+});
+
+describe('POST /api/auth/mobile-exchange — RBAC backstop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 403 when the QR token was minted by an Employee', async () => {
+    mockRedisGet.mockResolvedValue(JSON.stringify({
+      id: 'employee-456',
+      role: 'Employee',
+      email: 'employee@tiqri.com',
+      status: 'pending',
+    }));
+
+    const req = createRequest({
+      token: 'employee-token',
+      deviceName: 'iPhone 15',
+      deviceOs: 'iOS 17',
+      deviceModel: 'iPhone15,2',
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toMatch(/Forbidden/i);
+
+    // Ensure no device was persisted in the database
+    expect(mockInsertValues).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when the QR token was minted by an ITOperator', async () => {
+    mockRedisGet.mockResolvedValue(JSON.stringify({
+      id: 'operator-789',
+      role: 'ITOperator',
+      email: 'operator@tiqri.com',
+      status: 'pending',
+    }));
+
+    const req = createRequest({
+      token: 'operator-token',
+      deviceName: 'Pixel 8',
+      deviceOs: 'Android 14',
+      deviceModel: 'Pixel8',
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toMatch(/Forbidden/i);
+
+    // Ensure no device was persisted in the database
+    expect(mockInsertValues).not.toHaveBeenCalled();
   });
 });
