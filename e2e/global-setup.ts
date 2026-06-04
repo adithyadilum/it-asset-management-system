@@ -1,9 +1,8 @@
 import { execSync } from 'child_process';
-import { FullConfig } from '@playwright/test';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-async function globalSetup(config: FullConfig) {
+async function globalSetup() {
   console.log('[Global Setup] Loading test environment variables...');
   dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
   

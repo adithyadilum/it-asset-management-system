@@ -86,7 +86,7 @@ export async function POST(req: Request) {
       // Clean up any trailing slashes or spaces
       assetTag = rawTag.trim().replace(/\/+$/, '');
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 

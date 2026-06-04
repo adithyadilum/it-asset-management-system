@@ -168,7 +168,8 @@ describe('executeDisposalSchema', () => {
   });
 
   it('fails when neither receiptUrl nor receiptUrls provided', () => {
-    const { receiptUrls, ...withoutReceipts } = validInput;
+    const withoutReceipts = { ...validInput };
+    delete (withoutReceipts as { receiptUrls?: unknown[] }).receiptUrls;
     const result = executeDisposalSchema.safeParse(withoutReceipts);
     expect(result.success).toBe(false);
   });

@@ -1,11 +1,10 @@
 import { test as base } from '@playwright/test';
-import { execSync } from 'child_process';
 import { faker } from '@faker-js/faker';
 
 type DbFixtures = {
   db: {
-    seedAsset: (overrides?: any) => Promise<any>;
-    seedUser: (overrides?: any) => Promise<any>;
+    seedAsset: (overrides?: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    seedUser: (overrides?: Record<string, unknown>) => Promise<Record<string, unknown>>;
   };
 };
 
@@ -16,7 +15,7 @@ export const test = base.extend<DbFixtures>({
     
     // 2. Define Data Factories using Faker
     const factories = {
-      seedAsset: async (overrides = {}) => {
+      seedAsset: async (overrides: Record<string, unknown> = {}) => {
         // We could import the actual Drizzle db instance here and insert, 
         // but for now we provide a mock API to show the pattern.
         // In a full implementation, you'd insert via `db.insert(assets)...`
@@ -30,7 +29,7 @@ export const test = base.extend<DbFixtures>({
         // await db.insert(assets).values(asset);
         return asset;
       },
-      seedUser: async (overrides = {}) => {
+      seedUser: async (overrides: Record<string, unknown> = {}) => {
         const user = {
           id: faker.string.uuid(),
           email: faker.internet.email(),

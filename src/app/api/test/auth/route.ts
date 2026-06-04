@@ -34,11 +34,11 @@ export async function POST(req: NextRequest) {
       const inserted = await db.insert(users).values({
         email: userEmail,
         name: `${role} Test User`,
-        role: role as any,
+        role: role as 'GlobalAdmin' | 'Employee' | 'ITOperator' | 'FinanceAuditor',
         isActive: true,
       }).onConflictDoUpdate({
         target: users.email,
-        set: { role: role as any, isActive: true }
+        set: { role: role as 'GlobalAdmin' | 'Employee' | 'ITOperator' | 'FinanceAuditor', isActive: true }
       }).returning();
       dbUser = inserted[0];
     }
@@ -75,8 +75,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, user: dbUser, cookieName, token: encodedToken });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to create test session:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -11,8 +11,7 @@ const MOBILE_SECRET = new TextEncoder().encode(
 );
 
 export async function POST(req: Request) {
-  let userId = null;
-  let userRole = null;
+  let userId: string | null = null;
 
   // --- 1. Check for Mobile App (Bearer Token) ---
   const authHeader = req.headers.get('authorization');
@@ -49,8 +48,7 @@ export async function POST(req: Request) {
           .where(eq(linkedDevices.id, device.id));
       }
 
-      userId = payload.id;
-      userRole = payload.role;
+      userId = payload.id as string;
     } catch {
       return NextResponse.json({ error: 'Invalid or Expired Mobile Token' }, { status: 401 });
     }
@@ -61,7 +59,6 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (session?.user) {
       userId = session.user.id;
-      userRole = session.user.role;
     }
   }
 

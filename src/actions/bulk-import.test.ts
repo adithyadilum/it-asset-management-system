@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
+import { ResolvedImportRow } from '@/lib/bulk-import/types';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -165,7 +166,7 @@ describe('executeBulkImport', () => {
 
   it('returns error if rows exceed 5000', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    const rows = Array(5001).fill({} as any);
+    const rows = Array(5001).fill({} as unknown as ResolvedImportRow);
     const res = await executeBulkImport(1, rows, 'file.csv');
     expect(res.success).toBe(false);
     expect(res.message).toContain('Cannot import more than 5000 rows');
@@ -175,7 +176,7 @@ describe('executeBulkImport', () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockDb.execute.mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: false }] });
     
-    const res = await executeBulkImport(1, [{}] as any, 'file.csv');
+    const res = await executeBulkImport(1, [{}] as unknown as ResolvedImportRow[], 'file.csv');
     expect(res.success).toBe(false);
     expect(res.message).toContain('progress');
   });
@@ -205,7 +206,7 @@ describe('executeBulkImport', () => {
       warrantyMonths: 12,
     };
 
-    const res = await executeBulkImport(1, [mockRow as any], 'file.csv');
+    const res = await executeBulkImport(1, [mockRow as unknown as ResolvedImportRow], 'file.csv');
     
     expect(res.success).toBe(true);
     // 1 asset + 1 purchase + 1 audit (inside tx)

@@ -57,7 +57,7 @@ describe('useIsMobile', () => {
   it('updates state dynamically on window resize', () => {
     window.innerWidth = 800;
     
-    let changeListener: any;
+    let changeListener: (() => void) | undefined;
     const addEventListener = vi.fn().mockImplementation((event, listener) => {
       changeListener = listener;
     });

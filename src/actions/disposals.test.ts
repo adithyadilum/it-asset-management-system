@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { revalidatePath } from 'next/cache';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER, FINANCE_AUDITOR_USER } from '@/test/fixtures/users';
+import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import type { DisposalFormState } from '@/types/disposals';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
@@ -210,7 +211,7 @@ describe('rejectDisposalRequest', () => {
 
   it('returns forbidden for non-admin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
-    const result = await rejectDisposalRequest({} as any, formData);
+    const result = await rejectDisposalRequest({} as unknown as DisposalFormState, formData);
     expect(result.success).toBe(false);
     expect(result.message).toContain('FORBIDDEN');
   });
@@ -218,7 +219,7 @@ describe('rejectDisposalRequest', () => {
   it('returns validation error on bad schema', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     formData.set('rejectionReason', 'a'); // too short
-    const result = await rejectDisposalRequest({} as any, formData);
+    const result = await rejectDisposalRequest({} as unknown as DisposalFormState, formData);
     expect(result.success).toBe(false);
     expect(result.message).toBe('Validation failed.');
   });
@@ -230,7 +231,7 @@ describe('rejectDisposalRequest', () => {
     
     mockDb.update.mockReturnValue(chain([{ id: 1 }]));
     
-    const result = await rejectDisposalRequest({} as any, formData);
+    const result = await rejectDisposalRequest({} as unknown as DisposalFormState, formData);
     expect(result.success).toBe(true);
     expect(mockDb.update).toHaveBeenCalledTimes(2); // disposals, assets
     expect(mockDb.insert).toHaveBeenCalledTimes(1); // audit
@@ -254,7 +255,7 @@ describe('rejectDisposalRequest', () => {
     
     mockDb.update.mockReturnValue(chain([{ id: 1 }]));
     
-    const result = await rejectDisposalRequest({} as any, formData);
+    const result = await rejectDisposalRequest({} as unknown as DisposalFormState, formData);
     expect(result.success).toBe(true);
     expect(mockDb.insert).toHaveBeenCalledTimes(2); // tickets, audit
 
@@ -313,14 +314,14 @@ describe('executeAssetDisposal', () => {
 
   it('returns forbidden for non-admin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
-    const result = await executeAssetDisposal({} as any, formData);
+    const result = await executeAssetDisposal({} as unknown as DisposalFormState, formData);
     expect(result.success).toBe(false);
   });
 
   it('returns validation error on bad schema', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     formData.set('dataWiped', 'false');
-    const result = await executeAssetDisposal({} as any, formData);
+    const result = await executeAssetDisposal({} as unknown as DisposalFormState, formData);
     expect(result.success).toBe(false);
   });
 
@@ -331,7 +332,7 @@ describe('executeAssetDisposal', () => {
     
     mockDb.update.mockReturnValue(chain([{ id: 1 }]));
     
-    const result = await executeAssetDisposal({} as any, formData);
+    const result = await executeAssetDisposal({} as unknown as DisposalFormState, formData);
     expect(result.success).toBe(true);
     
     // Updates: disposals, assets

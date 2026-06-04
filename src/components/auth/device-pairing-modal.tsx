@@ -119,7 +119,7 @@ export default function DevicePairingModal({ open, onOpenChange }: DevicePairing
         }, 2000);
 
         return () => clearInterval(pollInterval);
-    }, [pairingState, linkToken, onOpenChange]);
+    }, [pairingState, linkToken, onOpenChange, router]);
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
