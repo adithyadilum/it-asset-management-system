@@ -13,7 +13,9 @@ export async function GET(request?: NextRequest) {
       );
     }
 
-    const searchParams = request.nextUrl.searchParams;
+    const searchParams = request
+      ? request.nextUrl.searchParams
+      : new URL('http://localhost/').searchParams;
     const rawLimit = parseInt(searchParams.get('limit') || '10', 10);
     const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
     
