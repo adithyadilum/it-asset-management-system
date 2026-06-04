@@ -37,7 +37,7 @@ export type AuthenticatedUser = {
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user) {
+  if (!session?.user || session.error === 'RefreshAccessTokenError') {
     return null;
   }
 

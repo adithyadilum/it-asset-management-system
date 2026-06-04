@@ -46,15 +46,22 @@ export function withApiKey<TContext extends Record<string, unknown>>(
   return async (req: NextRequest, ctx: TContext) => {
     try {
       const authHeader = req.headers.get('authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
+      const apiKeyHeader = req.headers.get('x-api-key');
+
+      let token = '';
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7).trim();
+      } else if (apiKeyHeader) {
+        token = apiKeyHeader.trim();
+      }
+
+      if (!token) {
         return apiError(
           401,
           'UNAUTHORIZED',
-          'Missing or invalid Authorization header'
+          'Missing or invalid API key. Provide via Authorization header as a Bearer token or via x-api-key header.'
         );
       }
-
-      const token = authHeader.slice(7).trim();
       const hash = createHash('sha256').update(token).digest('hex');
 
       const found = (await db.query.apiKeys.findFirst({

@@ -1,9 +1,11 @@
-﻿import { getAuthenticatedUser } from '@/actions/auth'
+import { getAuthenticatedUser } from '@/actions/auth'
 import { getApiKeys, getWebhookSubscriptions } from '@/lib/data/integrations-repo'
 import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs'
 import { ApiKeysTab } from '@/components/features/integrations/api-keys-tab'
 import { WebhooksTab } from '@/components/features/integrations/webhooks-tab'
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography'
+import { Button } from '@/components/ui/button'
+import { BookOpen } from 'lucide-react'
 
 export default async function IntegrationsPage() {
   const user = await getAuthenticatedUser()
@@ -23,6 +25,12 @@ export default async function IntegrationsPage() {
   const header = (
     <div className="flex items-center justify-between">
       <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Integrations & API</h1>
+      <Button asChild variant="outline" size="sm" className="gap-2">
+        <a href="/api-docs/index.html" target="_blank" rel="noopener noreferrer">
+          <BookOpen className="h-4 w-4" />
+          View API Documentation
+        </a>
+      </Button>
     </div>
   )
 

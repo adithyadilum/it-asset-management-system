@@ -973,3 +973,35 @@ export const linkedDevicesRelations = relations(linkedDevices, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// -----------------------------------------------------------------------------
+// 11. AUTH: SERVER-SIDE REFRESH TOKEN STORE
+//
+// Keycloak's Refresh Token Rotation (RTR) policy revokes a refresh token the
+// moment it is used. In a multi-worker Next.js setup (e.g. Turbopack), multiple
+// Node.js processes can each decode the same encrypted JWT cookie and all try to
+// refresh concurrently — causing Keycloak to see a "replay" and reject with
+// invalid_grant.
+//
+// This table is the single authoritative store for the latest valid refresh token
+// per user. Refreshes acquire a pg_advisory_xact_lock keyed on the user ID, so
+// only one worker can hit Keycloak at a time. Others wait, then discover the
+// token was already refreshed and skip the Keycloak call entirely.
+// -----------------------------------------------------------------------------
+export const userRefreshTokens = pgTable('user_refresh_tokens', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  refreshToken: text('refresh_token').notNull(),
+  accessToken: text('access_token'),
+  idToken: text('id_token'),
+  accessTokenExpires: timestamp('access_token_expires', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const userRefreshTokensRelations = relations(userRefreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [userRefreshTokens.userId],
+    references: [users.id],
+  }),
+}));

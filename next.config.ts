@@ -7,6 +7,7 @@ const nextConfig = {
     'cadc-2402-4000-2110-33a2-68ce-638f-2f60-50e9.ngrok-free.app',
     '192.168.8.101',
     'localhost:3000',
+    '127.0.0.1',
   ],
   reactCompiler: true,
   experimental: {

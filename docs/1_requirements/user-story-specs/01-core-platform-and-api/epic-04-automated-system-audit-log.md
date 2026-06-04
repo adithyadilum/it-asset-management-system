@@ -2,14 +2,15 @@
 
 ## Summary
 
-This epic acts as the system's black box flight recorder. To meet strict ISO 27001 enterprise compliance standards, the system must maintain an Immutable Audit Ledger. It automatically and silently records every single action (Create, Update, Delete) performed by any user, capturing their identity, their exact location (IP Address), and a detailed Before/After snapshot of the data they changed.
+This epic acts as the system's black box flight recorder. To meet strict ISO 27001 enterprise compliance standards, the system must maintain an Immutable Audit Ledger. It automatically and silently records every single action (Create, Update, Delete, Status Change) performed by any user, capturing their identity, their exact location (IP Address), and a detailed Before/After snapshot of the data they changed.
 
 ## In Scope
 
-- Automated, system-wide backend event tracking for all database mutations.
+- Automated, system-wide backend event tracking for all database mutations via reusable Drizzle ORM wrappers/utilities.
 - Direct IP Address capture for security forensics.
-- JSON diffing to capture the exact "Before" and "After" state of a modified record.
-- A high-density, filterable UI for Security Auditors to review and export the ledger.
+- JSON diffing to capture the exact "Before" and "After" state of a modified record, skipping empty changes.
+- A high-density, filterable UI for Security Auditors and Global Admins to review the ledger.
+- Automated resolution of relational IDs (UUIDs and foreign keys) into human-readable labels (e.g. converting `locationId: 5` to `LOC-0005 · Colombo HQ`).
 
 ## Out of Scope / Limitations
 
@@ -18,105 +19,97 @@ This epic acts as the system's black box flight recorder. To meet strict ISO 270
 
 ## Assumptions & Dependencies
 
-- Relies on the SSO/JWT authentication from Epic 1 to accurately tag the `actor_id` to the event.
-- The production hosting infrastructure (e.g., Azure or AWS) is configured to pass the true client IP address through any Load Balancers or Reverse Proxies.
+- Relies on the NextAuth.js session from Epic 1 to accurately tag the `performedById` to the event.
+- The production hosting infrastructure (e.g., Vercel, Azure) is configured to pass the true client IP address via `x-forwarded-for` headers.
+- Relies on the RBAC middleware from Epic 2, restricting access to `GlobalAdmin` and `FinanceAuditor`.
+
+---
 
 ### User Stories
 
-- [US-4.1 — Automated Action & IP Logging (The Ledger)](https://app.clickup.com/t/86ewvd4dr)
-- [US-4.2 — Forensic Audit Log Viewer & Export](https://app.clickup.com/t/86ewvd4dz)
+- [US-4.1 — Automated Action & IP Logging (The Ledger)](#user-story-us-41--automated-action--ip-logging-the-ledger)
+- [US-4.2 — Forensic Audit Log Viewer & Label Resolution](#user-story-us-42--forensic-audit-log-viewer--label-resolution)
 
 ---
 
 ## User Story: US-4.1 — Automated Action & IP Logging (The Ledger)
 
-- As a Corporate Security and Compliance Officer,
-- I want the system to automatically and silently record exactly who changed what, when, and from where,
-- So that we maintain an unalterable, mathematically verifiable trail of all system activity for our annual compliance audits.
+- **As a** Corporate Security and Compliance Officer,
+- **I want** the system to automatically and silently record exactly who changed what, when, and from where,
+- **So that** we maintain an unalterable, mathematically verifiable trail of all system activity for our annual compliance audits.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: Automated State Diff & IP Capture
-  - Given an IT Admin updates the status of a laptop from "Available" to "In Repair"
-  - When the HTTP request hits the backend
-  - Then the server captures the user's IP address directly from the incoming request
-  - And writes an immutable record to the Audit Log containing the precise Before/After JSON states (e.g., `{"status": "Available"}` ➔ `{"status": "In Repair"}`).
-- Scenario: Tamper-Proofing (Immutability Constraint)
-  - Given a Global Admin attempts to cover up a mistake or malicious action
-  - When they attempt to send a `DELETE` or `UPDATE` database command targeting the Audit Log table
-  - Then the database actively rejects the query, preserving the original record.
+- **Scenario: Automated State Diff & Empty Diff Skipping**
+  - **Given** an IT Admin updates the status of a laptop
+  - **When** the HTTP request hits the backend and the mutation triggers `logAuditAction`
+  - **Then** the server computes a deep recursive comparison between `oldData` and `newData`
+  - **And** writes an immutable record to the `system_audit_logs` table containing only the exact fields that changed.
+  - **But if** no fields actually changed, the system silently aborts the logging action to prevent database bloat.
 
-### UI/UX Specifications & Constraints
+- **Scenario: Direct IP Extraction behind Proxies**
+  - **Given** a user is accessing the system behind a corporate proxy or Vercel edge network
+  - **When** an action triggers an audit log
+  - **Then** the system extracts the true client IP address from the `x-forwarded-for` header
+  - **And** stores it directly on the audit log row.
 
-- Invisible Operation: This user story has no direct frontend UI. It is an invisible backend middleware that must not add more than 100ms of latency to standard CRUD operations.
+- **Scenario: Tamper-Proofing & Fallback Protection**
+  - **Given** a database outage or error occurs while writing an audit log
+  - **When** `logAuditAction` throws an exception
+  - **Then** the error is caught and logged to the server console (`console.error`)
+  - **And** the original user's CRUD operation is permitted to complete smoothly (the UI doesn't crash).
 
 ### Technical Implementation Tasks
 
 #### Backend
-
-- [ ] Write a reusable backend middleware/interceptor that automatically hooks into all `POST`, `PUT`, `PATCH`, and `DELETE` controller actions to capture audit data.
-- [ ] Implement a utility function to compute Before/After object states by fetching the current record before mutation, then serializing both states into a JSON diff payload.
-- [ ] Implement IP address extraction logic from the request object, handling `X-Forwarded-For` headers for requests behind Load Balancers or Reverse Proxies.
-- [ ] Ensure the middleware captures the `actor_id` from the authenticated JWT payload and attaches it to every audit log entry.
-- [ ] Implement performance safeguards: use asynchronous (non-blocking) log writes where possible to stay under the 100ms latency budget.
+- [x] Write a reusable `logAuditAction` utility function that captures `entityType`, `entityId`, `actionType`, `performedById`, `oldData`, and `newData`.
+- [x] Implement deep recursive JSON diffing (`areAuditValuesEqual`) to isolate the exact changed properties.
+- [x] Implement IP address extraction logic from the Next.js `headers()` object (`x-forwarded-for`).
+- [x] Include a transactional equivalent (`logAuditActionTx`) for database operations requiring atomicity.
 
 #### Database
-
-- [ ] Create an append-only `AuditLogs` table with columns: `id`, `actor_id` (FK → Users), `actor_email`, `action_type` (ENUM: CREATE, UPDATE, DELETE, DISPOSE), `entity_type`, `entity_id`, `ip_address`, `before_state` (JSONB), `after_state` (JSONB), `created_at`.
-- [ ] Strictly revoke `UPDATE` and `DELETE` database privileges on the `AuditLogs` table at the database-user level to enforce immutability.
-- [ ] Create an index on `(entity_type, entity_id)` and `(actor_id)` for efficient querying by the Audit Log viewer.
+- [x] Create an append-only `system_audit_logs` table via Drizzle ORM with columns: `id`, `performed_by_id`, `action_type`, `entity_type`, `entity_id`, `ip_address`, `old_value` (JSONB), `new_value` (JSONB), `performed_at`.
 
 ---
 
-## User Story: US-4.2 — Forensic Audit Log Viewer & Export
+## User Story: US-4.2 — Forensic Audit Log Viewer & Label Resolution
 
-- As a Security Auditor,
-- I want an interface to search, filter, and download the system's history,
-- So that I can quickly conduct forensic investigations into missing hardware, unauthorized role changes, or data discrepancies.
+- **As a** Security Auditor or Global Admin,
+- **I want** an interface to search, filter, and decipher the system's history,
+- **So that** I can quickly conduct forensic investigations into missing hardware, unauthorized role changes, or data discrepancies without needing a developer to translate UUIDs into names.
 
 ### Acceptance Criteria (Gherkin)
 
-- Scenario: High-Density Log Viewing
-  - Given I navigate to the "System Audit Log" page
-  - When the page loads
-  - Then I am presented with a chronologically ordered table of all system events, displaying the Actor, Event Type, IP Address, Date/Time, and the Target Asset/Entity.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/acb80c19-a3f7-4e51-907b-9cab22e97e00/System-audit-log.png)
-- Scenario: Filtering by Actor and Event
-  - Given I am investigating a specific employee's actions
-  - When I apply filters for Actor "Jane Doe" and Action Type "DELETE"
-  - Then the data table instantly refines to show only destructive actions performed by Jane.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/ff5bc6c2-fe1c-4323-a51b-94616286b9d2/System-audit-log-apply-filters.png)
-- Scenario: Expanding the JSON Diff Payload
-  - Given I am looking at a specific "UPDATE" event row in the table
-  - When I click "View Details" or expand the row
-  - Then a modal or expanding row reveals the exact Before and After JSON data, highlighting exactly which fields were changed.
-  ![](https://t90181861921.p.clickup-attachments.com/t90181861921/5bb01ffa-4540-4ea8-ba2c-46e90504686d/System-audit-log-filtered.png)
-- Scenario: Exporting the Ledger for Compliance
-  - Given my filters are applied to show all events from the past 30 days
-  - When I click the "Export Log (CSV)" button
-  - Then a CSV file containing the currently filtered dataset is generated and downloaded to my local machine.
+- **Scenario: High-Density Log Viewing & Authorization**
+  - **Given** I am logged in as a Global Admin or Finance Auditor
+  - **When** I navigate to the `/reports/audit-log` route
+  - **Then** I am presented with a chronologically ordered table of all system events.
+  - **But if** I navigate to this page as an IT Operator or Employee, I am redirected to the `/403` error page.
+
+- **Scenario: Dynamic Label Resolution for Foreign Keys**
+  - **Given** an audit log row recorded an asset's location change from `locationId: 1` to `locationId: 5`
+  - **When** the backend resolves the paginated query (`getAuditLogs`)
+  - **Then** the system dynamically fetches the relational metadata
+  - **And** replaces the raw numeric IDs with human-readable labels (e.g., `LOC-0005 · Colombo HQ`) in the JSON payload sent to the client UI.
+
+- **Scenario: Asset-Specific Audit History Timeline**
+  - **Given** I am viewing the details panel for a specific laptop asset
+  - **When** I open the "History" or "Audit" tab
+  - **Then** the system executes `getAssetAuditHistory`
+  - **And** displays only the subset of logs where `entityType === 'Asset'` and `entityId` matches the laptop's UUID.
 
 ### UI/UX Specifications & Constraints
 
-- Data Visualization: Use strict color-coded badges for Action Types to make the log easily scannable:
-  - `CREATE`: Green Badge
-  - `UPDATE`: Blue Badge
-  - `DELETE` / `DISPOSE`: Red/Warning Badge
-- Filter Layout: Because auditors need to cross-reference multiple data points, place a robust filter bar directly above the table featuring Date Range pickers, an Actor dropdown, and an Action Type multi-select.
-- Monospace Font: The "Before/After" data diffs must be rendered in a monospace font (like Courier or Roboto Mono) wrapped in a light gray background box so technical data is easy to read.
+- **Data Visualization:** Use color-coded indicators or clear textual columns to make the log easily scannable.
+- **Humanized Payload:** The "Before/After" data diffs must be rendered clearly, showing string labels rather than raw database UUIDs or Foreign Key IDs.
 
 ### Technical Implementation Tasks
 
 #### Frontend
-
-- [ ] Build the Audit Log data table page in React with chronological ordering (newest first) and pagination.
-- [ ] Build the filter bar component with: Date Range pickers, Actor searchable dropdown, Action Type multi-select, and Entity Type filter.
-- [ ] Implement color-coded action-type badges component (Green = CREATE, Blue = UPDATE, Red = DELETE/DISPOSE).
-- [ ] Build the expandable row / "View Details" modal component rendering Before/After JSON diffs in a monospace font with a highlighted-change visual indicator.
-- [ ] Implement the "Export Log (CSV)" button that sends the current filter parameters to the backend and triggers the CSV file download.
+- [x] Build the Audit Log page in React at `src/app/(app-shell)/(management)/reports/audit-log/page.tsx`.
+- [x] Build the `AuditLogClient` containing the filterable, paginated data table component.
 
 #### Backend
-
-- [ ] Create an API endpoint `GET /api/v1/audit-logs` with support for complex query parameters: `dateFrom`, `dateTo`, `actorId`, `actionType[]`, `entityType`, `entityId`, and cursor-based or offset pagination.
-- [ ] Implement a backend CSV streaming/generation service that accepts the same filter parameters and returns the result set as a downloadable `.csv` file (`GET /api/v1/audit-logs/export`).
-- [ ] Ensure the endpoint enforces RBAC: only `GlobalAdmin` and `FinanceAuditor` roles can access the audit log API.
+- [x] Create a `getAuditLogs` Server Action that safely authenticates the user and fetches paginated results from `system_audit_logs`.
+- [x] Implement the `resolveAuditValueLabels` function to bulk-fetch and swap internal IDs (e.g. `locationId`, `departmentId`, `vendorId`) with explicit display codes/names.
+- [x] Create `getAssetAuditHistory` to scope the audit query to a specific asset UUID for granular tracking.
