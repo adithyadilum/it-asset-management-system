@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
@@ -198,6 +199,7 @@ describe('registerAsset', () => {
       'asset.created',
       expect.objectContaining({ assetTag: 'LPT-001' })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 
   it('successfully inserts a software asset with license data', async () => {
@@ -215,6 +217,7 @@ describe('registerAsset', () => {
     expect(result.success).toBe(true);
     expect(result.assetId).toBe('SFW-001');
     expect(mockDb.insert).toHaveBeenCalledTimes(3); // assets, assetPurchases, softwareLicenses
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 
   it('rolls back transaction on DB failure', async () => {
@@ -287,6 +290,7 @@ describe('updateAsset', () => {
       'asset.status_changed',
       expect.objectContaining({ oldStatus: 'Available', newStatus: 'Assigned' })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 });
 
@@ -321,6 +325,12 @@ describe('manualStatusOverrideAction', () => {
         newData: expect.objectContaining({ status: 'Lost', reason: 'Asset was reported missing today' })
       })
     );
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
   });
 
   it('rejects status change for software assets (Software rejection)', async () => {

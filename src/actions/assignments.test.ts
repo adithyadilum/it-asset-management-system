@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import {
   ADMIN_USER,
   IT_OPERATOR_USER,
@@ -179,6 +180,8 @@ describe('assignAssetAction', () => {
       validSingleInput,
       ADMIN_USER.id
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 
   it('returns normalized error for AssignmentServiceError', async () => {
@@ -260,6 +263,8 @@ describe('bulkAssignAssetsAction', () => {
     const result = await bulkAssignAssetsAction(validBulkInput);
     expect(result.success).toBe(true);
     expect(result.assignedCount).toBe(2);
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 
   it('returns normalized error for service failures', async () => {
@@ -318,6 +323,7 @@ describe('sendAssignmentReminderAction', () => {
     const result = await sendAssignmentReminderAction([1, 2]);
     expect(result.success).toBe(true);
     expect(mockTriggerAssignmentReminders).toHaveBeenCalledWith([1, 2], ADMIN_USER.id);
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
   });
 });
 
@@ -355,6 +361,8 @@ describe('requestAssetReturnAction', () => {
     const result = await requestAssetReturnAction([1, 2]);
     expect(result.success).toBe(true);
     expect(mockTriggerReturnRequests).toHaveBeenCalledWith([1, 2], ADMIN_USER.id);
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 
   it('returns normalized error on service failure', async () => {
@@ -393,6 +401,8 @@ describe('markAssetReceivedAction', () => {
     const result = await markAssetReceivedAction([1]);
     expect(result.success).toBe(true);
     expect(mockMarkAssignmentsAsReceived).toHaveBeenCalledWith([1], ADMIN_USER.id);
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 
   it('dispatches webhook events for returned assignments', async () => {
@@ -444,6 +454,8 @@ describe('processAssetReturnAction', () => {
     const result = await processAssetReturnAction(validInput);
     expect(result.success).toBe(true);
     expect(mockProcessAssetReturn).toHaveBeenCalledWith(validInput, ADMIN_USER.id);
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
 
   it('returns normalized error on service failure', async () => {

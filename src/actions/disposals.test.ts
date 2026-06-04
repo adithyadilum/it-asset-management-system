@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER, FINANCE_AUDITOR_USER } from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
@@ -185,6 +186,13 @@ describe('createBulkDisposalRequests', () => {
     expect(mockDb.insert).toHaveBeenCalledTimes(2); // disposals, audit
     expect(mockDb.update).toHaveBeenCalledTimes(2); // assets, assignments
     expect(mockDispatchWebhookEvent).toHaveBeenCalledWith('disposal.requested', expect.any(Object));
+
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/disposals');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
   });
 });
 
@@ -226,6 +234,14 @@ describe('rejectDisposalRequest', () => {
     expect(result.success).toBe(true);
     expect(mockDb.update).toHaveBeenCalledTimes(2); // disposals, assets
     expect(mockDb.insert).toHaveBeenCalledTimes(1); // audit
+
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/disposals');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
   });
 
   it('creates maintenance ticket if fallbackStatus is In Repair', async () => {
@@ -241,6 +257,14 @@ describe('rejectDisposalRequest', () => {
     const result = await rejectDisposalRequest({} as any, formData);
     expect(result.success).toBe(true);
     expect(mockDb.insert).toHaveBeenCalledTimes(2); // tickets, audit
+
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/disposals');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
   });
 });
 
@@ -316,5 +340,12 @@ describe('executeAssetDisposal', () => {
     expect(mockDb.insert).toHaveBeenCalledTimes(2);
     // Webhook
     expect(mockDispatchWebhookEvent).toHaveBeenCalledWith('disposal.approved', expect.any(Object));
+
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/disposals');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
   });
 });

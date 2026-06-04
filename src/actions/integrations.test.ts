@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
@@ -151,6 +152,7 @@ describe('createApiKey', () => {
         entityId: 'key-1',
       })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/integrations');
   });
 });
 
@@ -203,6 +205,7 @@ describe('revokeApiKey', () => {
         newData: { isRevoked: true },
       })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/integrations');
   });
 });
 
@@ -231,6 +234,7 @@ describe('deleteApiKey', () => {
         entityId: keyId,
       })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/integrations');
   });
 });
 
@@ -261,6 +265,7 @@ describe('createWebhook', () => {
     expect(mockLogAuditAction).toHaveBeenCalledWith(
       expect.objectContaining({ actionType: 'WEBHOOK_CREATED' })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/integrations');
   });
 });
 
@@ -293,6 +298,7 @@ describe('updateWebhook', () => {
     expect(mockLogAuditAction).toHaveBeenCalledWith(
       expect.objectContaining({ actionType: 'WEBHOOK_UPDATED' })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/integrations');
   });
 
   it('calls QStash update when URL changes', async () => {
@@ -309,6 +315,7 @@ describe('updateWebhook', () => {
     expect(mockLogAuditAction).toHaveBeenCalledWith(
       expect.objectContaining({ actionType: 'WEBHOOK_UPDATED' })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/integrations');
   });
 });
 
@@ -339,6 +346,7 @@ describe('deleteWebhook', () => {
     expect(mockLogAuditAction).toHaveBeenCalledWith(
       expect.objectContaining({ actionType: 'WEBHOOK_DELETED' })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/integrations');
   });
 });
 

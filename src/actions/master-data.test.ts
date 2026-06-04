@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
@@ -190,6 +191,7 @@ describe('deleteMasterDataRecords', () => {
     expect(result.success).toBe(true);
     expect(result.message).toContain('2 records deleted');
     expect(mockLogAuditAction).toHaveBeenCalledTimes(2);
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/master-data');
   });
 
   it('returns singular message for 1 deleted record', async () => {
@@ -200,6 +202,7 @@ describe('deleteMasterDataRecords', () => {
     const result = await deleteMasterDataRecords('brands', [1]);
     expect(result.success).toBe(true);
     expect(result.message).toBe('Record deleted successfully.');
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/master-data');
   });
 
   it('logs audit with correct entity type and performer', async () => {
@@ -289,6 +292,7 @@ describe('createBrand', () => {
         performedById: ADMIN_USER.id,
       })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/master-data');
   });
 
   it('returns error for database failure (e.g. duplicate name)', async () => {
@@ -363,6 +367,7 @@ describe('createCategory', () => {
         actionType: 'CREATE',
       })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/master-data');
   });
 
   it('returns error for invalid pillar value', async () => {

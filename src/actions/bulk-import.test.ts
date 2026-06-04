@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
@@ -214,5 +215,6 @@ describe('executeBulkImport', () => {
       expect(res.summary?.successCount).toBe(1);
       expect(res.summary?.failedCount).toBe(0);
     }
+    expect(revalidatePath).toHaveBeenCalledWith('/assets', 'layout');
   });
 });

@@ -129,6 +129,7 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify cache revalidation
     expect(revalidatePath).toHaveBeenCalledWith('/settings/devices');
+    expect(revalidatePath).toHaveBeenCalledWith('/(app-shell)/(management)/settings/devices');
   });
 
   it('successfully exchanges a valid legacy "linkToken" format and returns JWT token', async () => {
@@ -154,5 +155,6 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify cache revalidation
     expect(revalidatePath).toHaveBeenCalledWith('/settings/devices');
+    expect(revalidatePath).toHaveBeenCalledWith('/(app-shell)/(management)/settings/devices');
   });
 });

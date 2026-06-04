@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import {
   ADMIN_USER,
   IT_OPERATOR_USER,
@@ -208,6 +209,7 @@ describe('assignUserRole', () => {
         performedById: ADMIN_USER.id,
       })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/roles');
   });
 });
 
@@ -229,6 +231,15 @@ describe('assignUsersRoleBulk', () => {
     await expect(assignUsersRoleBulk([TARGET_USER.id], 'BadRole' as any)).rejects.toThrow(
       'Invalid role value'
     );
+  });
+
+  it('returns error when user IDs array is empty', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const result = await assignUsersRoleBulk([], 'ITOperator');
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringContaining('at least one valid user'),
+    });
   });
 
   it('returns error when all user IDs are invalid UUIDs', async () => {
@@ -264,6 +275,7 @@ describe('assignUsersRoleBulk', () => {
         updatedCount: 1,
       })
     );
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/roles');
   });
 
   it('logs individual audit entries per user', async () => {
@@ -296,6 +308,7 @@ describe('assignUsersRoleBulk', () => {
       'ITOperator'
     );
     expect(result).toEqual(expect.objectContaining({ success: true }));
+    expect(revalidatePath).toHaveBeenCalledWith('/settings/roles');
   });
 
   it('returns error on database failure', async () => {

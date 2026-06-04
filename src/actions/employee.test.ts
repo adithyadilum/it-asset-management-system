@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
@@ -143,6 +144,7 @@ describe('acceptAssignmentAction', () => {
     const res = await acceptAssignmentAction(1);
     expect(res.success).toBe(true);
     expect(mockDispatchAlert).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith('/dashboard');
   });
 });
 
@@ -165,6 +167,7 @@ describe('rejectAssignmentAction', () => {
     const res = await rejectAssignmentAction(1, 'Damaged on arrival');
     expect(res.success).toBe(true);
     expect(mockDispatchAlert).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith('/dashboard');
   });
 });
 

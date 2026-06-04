@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
@@ -134,9 +135,19 @@ describe('bulkUpdateAssets', () => {
 
   it('throws unauthorized for employee user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    const result = await bulkUpdateAssets({ assetIds: ['00000000-0000-4000-a000-000000000000'], updates: { status: 'Available' } }).catch(e => e);
-    expect(result).toBeInstanceOf(Error);
-    expect(result.message).toContain('Forbidden');
+    await expect(
+      bulkUpdateAssets({
+        assetIds: ['00000000-0000-4000-a000-000000000000'],
+        updates: { status: 'Available' },
+      })
+    ).rejects.toThrow('Forbidden');
+  });
+
+  it('returns error if assetIds array is empty', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const result = await bulkUpdateAssets({ assetIds: [], updates: { status: 'Available' } });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Select at least one valid asset');
   });
 
   it('returns error if assetIds array contains no valid UUIDs', async () => {
@@ -167,5 +178,11 @@ describe('bulkUpdateAssets', () => {
       performedById: ADMIN_USER.id,
       actionType: 'BULK_UPDATE',
     });
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
   });
 });

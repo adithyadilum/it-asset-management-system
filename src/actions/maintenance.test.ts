@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER, FINANCE_AUDITOR_USER } from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
@@ -248,6 +249,13 @@ describe('Write Operations: resolveIssueInternally', () => {
     
     expect(mockDb.insert).toHaveBeenCalledTimes(1); // systemAuditLogs
     expect(mockDb.update).toHaveBeenCalledTimes(3); // assets, assetAssignments, maintenanceTickets
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
   });
 });
 
@@ -294,6 +302,13 @@ describe('Write Operations: initiateVendorRepair', () => {
       'maintenance.created',
       expect.objectContaining({ ticketId: 2, assetId: validUuid })
     );
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
   });
 });
 
@@ -336,6 +351,13 @@ describe('Write Operations: completeRepairTicket', () => {
       'maintenance.completed',
       expect.objectContaining({ ticketId: 2, assetId: 'uuid' })
     );
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
   });
 
   it('sets asset status to Disposed and isArchived=true when specified', async () => {
@@ -349,5 +371,12 @@ describe('Write Operations: completeRepairTicket', () => {
     
     const result = await completeRepairTicket(2, '150', 'Beyond economical repair', 'Disposed');
     expect(result.success).toBe(true);
+
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/hardware');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
+    expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
   });
 });
