@@ -173,18 +173,6 @@ export function RegistrationForm({
     initialRegisterAssetActionState
   );
 
-  useBarcodeInjection((barcode) => {
-    if (document.activeElement?.id === 'serialNumber') {
-      setSerialNumber(barcode);
-    } else {
-      navigator.clipboard.writeText(barcode).then(() => {
-        tiqriToast.success('serial number is copied to the clipboard');
-      }).catch(() => {
-        tiqriToast.error('Failed to copy barcode to clipboard');
-      });
-    }
-  });
-
   const [pillar, setPillar] = React.useState<RegistrationPillarInput>(() =>
     resolveStartingPillar(initialPillar)
   );
@@ -215,6 +203,18 @@ export function RegistrationForm({
   const [locationId, setLocationId] = React.useState('');
 
   const lastToastKeyRef = React.useRef<string>('');
+
+  useBarcodeInjection((barcode) => {
+    if (document.activeElement?.id === 'serialNumber') {
+      setSerialNumber(barcode);
+    } else {
+      navigator.clipboard.writeText(barcode).then(() => {
+        tiqriToast.success('serial number is copied to the clipboard');
+      }).catch(() => {
+        tiqriToast.error('Failed to copy barcode to clipboard');
+      });
+    }
+  });
 
   const handleInvoiceSelection = React.useCallback((files: FileList | null) => {
     const selectedFile = files?.[0] ?? null;
