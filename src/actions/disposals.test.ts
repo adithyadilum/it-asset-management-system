@@ -11,7 +11,7 @@ vi.mock('@/actions/auth', () => ({
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from'].forEach(
+    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from', 'groupBy'].forEach(
       (m) => (c[m] = vi.fn().mockReturnThis())
     );
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
@@ -77,9 +77,9 @@ vi.mock('@/lib/latency', () => ({
   logLatency: vi.fn(),
   logError: vi.fn(),
 }));
-
 import {
   getDisposalReviewDetails,
+  getDisposalHistory,
   createBulkDisposalRequests,
   rejectDisposalRequest,
   uploadDisposalReceipt,
@@ -134,6 +134,44 @@ describe('getDisposalReviewDetails', () => {
     const result = await getDisposalReviewDetails(1);
     expect(result.disposalId).toBe(1);
     expect(result.assetId).toBe(VALID_UUID);
+  });
+});
+
+describe('getDisposalHistory', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns unauthorized for unauthenticated user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(getDisposalHistory({})).rejects.toThrow('UNAUTHENTICATED');
+  });
+
+  it('returns forbidden for Employee', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    await expect(getDisposalHistory({})).rejects.toThrow('FORBIDDEN');
+  });
+
+  it('returns forbidden for ITOperator', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
+    await expect(getDisposalHistory({})).rejects.toThrow('FORBIDDEN');
+  });
+
+  it('returns history for GlobalAdmin', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockDb.select.mockReturnValueOnce(chain([{ count: 1 }]));
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, status: 'Completed', documentUrls: [] }]));
+    
+    const result = await getDisposalHistory({ page: 1, pageSize: 10 });
+    expect(result.data.length).toBe(1);
+    expect(result.pagination.totalRecords).toBe(1);
+  });
+
+  it('returns history for FinanceAuditor', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue({ id: 'finance', role: 'FinanceAuditor' });
+    mockDb.select.mockReturnValueOnce(chain([{ count: 1 }]));
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, status: 'Completed', documentUrls: [] }]));
+    
+    const result = await getDisposalHistory({});
+    expect(result.data.length).toBe(1);
   });
 });
 

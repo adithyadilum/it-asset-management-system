@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
 import { getUserNotifications, getUserNotificationsCount } from '@/lib/notifications/services';
 
-export async function GET(request: NextRequest) {
+export async function GET(request?: NextRequest) {
   try {
-    const user = await getAuthenticatedUser();
+    const user = await getAuthenticatedUserFromRequest(request);
 
     if (!user?.id) {
       return NextResponse.json(
@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const searchParams = request.nextUrl.searchParams;
+    const searchParams = request
+      ? request.nextUrl.searchParams
+      : new URL('http://localhost/').searchParams;
     const rawLimit = parseInt(searchParams.get('limit') || '10', 10);
     const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
     
