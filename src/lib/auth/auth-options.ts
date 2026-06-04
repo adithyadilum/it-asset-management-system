@@ -110,6 +110,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
       const newRefreshToken: string = refreshedTokens.refresh_token ?? refreshTokenToUse;
       const newExpires = new Date(Date.now() + (refreshedTokens.expires_in as number) * 1000);
+      // refresh_expires_in is the Keycloak field for how long the refresh token
+      // itself is valid (seconds). Fall back to 30 days if not present.
+      const newRefreshExpires =
+        typeof refreshedTokens.refresh_expires_in === 'number'
+          ? Date.now() + refreshedTokens.refresh_expires_in * 1000
+          : Date.now() + 30 * 24 * 60 * 60 * 1000;
 
       // ── 4. Persist the new refresh token before releasing the lock ────────
       await tx
@@ -141,6 +147,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         idToken: refreshedTokens.id_token as string,
         refreshToken: newRefreshToken,
         accessTokenExpires: newExpires.getTime(),
+        refreshTokenExpires: newRefreshExpires,
         error: undefined,
       };
     });
@@ -245,6 +252,15 @@ export const authOptions: NextAuthOptions = {
 
             // Persist the initial refresh token to the authoritative DB store
             if (account.refresh_token && account.expires_at) {
+              // Store the refresh token expiry in the JWT so the proxy can detect
+              // a completely dead session without a DB call from the edge runtime.
+              // Keycloak returns refresh_expires_in (seconds); fall back to 30 days.
+              const refreshExpiresIn =
+                typeof (account as Record<string, unknown>).refresh_expires_in === 'number'
+                  ? (account as Record<string, unknown>).refresh_expires_in as number
+                  : 30 * 24 * 60 * 60;
+              token.refreshTokenExpires = Date.now() + refreshExpiresIn * 1000;
+
               await db
                 .insert(userRefreshTokens)
                 .values({
