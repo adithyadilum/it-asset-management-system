@@ -1,6 +1,7 @@
 'use server';
 
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, or, ilike, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
@@ -637,6 +638,134 @@ export async function uploadDisposalReceipt(formData: FormData) {
 }
 
 // ============================================================================
+// GET DISPOSAL HISTORY
+// ============================================================================
+
+export async function getDisposalHistory(params: {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const actionTimer = startLatencyTimer();
+  const user = await getAuthenticatedUser();
+
+  if (!user) throw new Error('UNAUTHENTICATED');
+  assertAllowed(user.role, ['GlobalAdmin', 'FinanceAuditor']);
+
+  const searchQuery = params.search || '';
+  const page = params.page && params.page > 0 ? params.page : 1;
+  const pageSize = params.pageSize && params.pageSize > 0 ? params.pageSize : 10;
+
+  try {
+    const dbTimer = startLatencyTimer();
+
+    // Aliases for users table
+    const requester = alias(users, 'requester');
+    const approver = alias(users, 'approver');
+
+    const searchCondition = searchQuery
+      ? or(
+          ilike(assets.assetTag, `%${searchQuery}%`),
+          ilike(categories.name, `%${searchQuery}%`),
+          ilike(assetDisposals.reason, `%${searchQuery}%`),
+          ilike(requester.name, `%${searchQuery}%`),
+          ilike(approver.name, `%${searchQuery}%`)
+        )
+      : undefined;
+
+    const historyBaseCondition = and(
+      inArray(assetDisposals.status, ['Completed', 'Rejected']),
+      searchCondition
+    );
+
+    // 1. Fetch disposal history count for pagination
+    const [countResult] = await db
+      .select({ count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)` })
+      .from(assetDisposals)
+      .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
+      .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
+      .where(historyBaseCondition);
+
+    const totalRecords = countResult?.count || 0;
+    const pageCount = Math.max(Math.ceil(totalRecords / pageSize), 1);
+    const validPage = Math.min(page, pageCount);
+
+    // 2. Fetch disposal history paginated data
+    const historyDataRaw = await db
+      .select({
+        id: assetDisposals.id,
+        assetId: assets.id,
+        assetTag: assets.assetTag,
+        category: categories.name,
+        reason: assetDisposals.reason,
+        flaggedBy: requester.name,
+        disposedBy: approver.name,
+        disposalDate: assetDisposals.resolvedAt,
+        status: assetDisposals.status,
+        documentUrls: sql<string[]>`COALESCE(array_agg(DISTINCT ${assetDocuments.fileUrl}) FILTER (WHERE ${assetDocuments.fileUrl} IS NOT NULL), '{}')`,
+      })
+      .from(assetDisposals)
+      .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
+      .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
+      .leftJoin(
+        assetDocuments,
+        and(
+          eq(assetDocuments.assetId, assets.id),
+          eq(assetDocuments.documentType, 'disposal-certificate')
+        )
+      )
+      .where(historyBaseCondition)
+      .groupBy(
+        assetDisposals.id,
+        assets.id,
+        assets.assetTag,
+        categories.name,
+        assetDisposals.reason,
+        requester.name,
+        approver.name,
+        assetDisposals.resolvedAt,
+        assetDisposals.status
+      )
+      .orderBy(desc(assetDisposals.resolvedAt))
+      .limit(pageSize)
+      .offset((validPage - 1) * pageSize);
+
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'disposals.getDisposalHistory',
+      startTime: dbTimer,
+    });
+
+    const data = historyDataRaw.map(row => ({
+      ...row,
+      flaggedBy: row.flaggedBy || 'Unknown',
+    }));
+
+    return {
+      data,
+      pagination: {
+        page: validPage,
+        pageSize,
+        pageCount,
+        totalRecords,
+      },
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'disposals.getDisposalHistory',
+      startTime: actionTimer,
+    });
+  }
+}
+
+// ============================================================================
 // EXECUTE ASSET DISPOSAL
 // ============================================================================
 
@@ -681,6 +810,7 @@ export async function executeAssetDisposal(
       disposalMethod: formData.get('disposalMethod')?.toString() || '',
       dataWiped: formData.get('dataWiped') === 'true',
       tagsRemoved: formData.get('tagsRemoved') === 'true',
+      actualSalvageValue: formData.get('actualSalvageValue')?.toString() || undefined,
       receiptUrls: parsedReceiptUrls,
     });
 
@@ -773,21 +903,45 @@ export async function executeAssetDisposal(
         currentAssets.map((a) => [a.id, a.status])
       );
 
-      // 4. Execute disposal: update disposal records
-      const updatedDisposals = await tx
-        .update(assetDisposals)
-        .set({
-          status: 'Completed',
-          approvedById: user.id,
-          resolvedAt: validData.disposalDate
-            ? new Date(validData.disposalDate)
-            : new Date(),
-          reason: validData.reason,
-        })
-        .where(inArray(assetDisposals.id, normalizedDisposalIds))
-        .returning({ disposalId: assetDisposals.id });
+      // Get book value for the assets at the time of disposal
+      const bookValuesMap = new Map<string, number>();
+      for (const assetId of normalizedAssetIds) {
+        try {
+          const vitals = await getAssetFinancialVitals(assetId);
+          bookValuesMap.set(assetId, vitals.currentBookValue);
+        } catch {
+          bookValuesMap.set(assetId, 0);
+        }
+      }
 
-      if (updatedDisposals.length !== normalizedDisposalIds.length) {
+      const totalSalvage = validData.actualSalvageValue ?? 0;
+      const salvagePerAsset = normalizedAssetIds.length > 0 ? (totalSalvage / normalizedAssetIds.length) : 0;
+
+      // 4. Execute disposal: update disposal records individually
+      const updatedDisposalIds: number[] = [];
+      for (const record of disposalRecords) {
+        const bookValue = bookValuesMap.get(record.assetId) ?? 0;
+        const res = await tx
+          .update(assetDisposals)
+          .set({
+            status: 'Completed',
+            approvedById: user.id,
+            resolvedAt: validData.disposalDate
+              ? new Date(validData.disposalDate)
+              : new Date(),
+            reason: validData.reason,
+            actualSalvageValue: String(salvagePerAsset.toFixed(2)),
+            bookValueAtDisposal: String(bookValue.toFixed(2)),
+          })
+          .where(eq(assetDisposals.id, record.disposalId))
+          .returning({ disposalId: assetDisposals.id });
+
+        if (res.length > 0) {
+          updatedDisposalIds.push(res[0].disposalId);
+        }
+      }
+
+      if (updatedDisposalIds.length !== normalizedDisposalIds.length) {
         throw new Error('Failed to update all disposal requests.');
       }
 

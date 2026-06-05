@@ -1,5 +1,7 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { db } from '@/db';
 import {
   maintenanceTickets,
@@ -11,8 +13,9 @@ import {
   categories,
   systemAuditLogs,
   vendors,
+  assetAssignments,
 } from '@/db/schema';
-import { eq, and, ilike, or, desc, sql } from 'drizzle-orm';
+import { eq, and, ilike, or, desc, sql, isNull } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
@@ -47,7 +50,11 @@ const DEFAULT_HISTORY_LIMIT = 3;
 export async function getPendingMaintenanceTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const baseCondition = and(
@@ -105,7 +112,11 @@ export async function getTicketForIssueReview(
 ): Promise<IssueReviewPanelData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const result = await db
@@ -196,7 +207,11 @@ export async function getTicketForIssueReview(
 export async function getVendors() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   return await db
@@ -216,7 +231,11 @@ export async function getVendors() {
 export async function getActiveRepairTickets(searchTerm = '') {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const baseCondition = and(
@@ -258,7 +277,11 @@ export async function getRepairHistory(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const offset = (page - 1) * pageSize;
@@ -321,7 +344,11 @@ export async function getAssetMaintenanceHistory(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinanceAuditor'
+  )
     throw new Error('Forbidden');
 
   const assetRecord = await db
@@ -378,7 +405,7 @@ export async function resolveIssueInternally(
 
   // 3. Atomic Database Transaction
   try {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const ticketResult = await tx
         .select()
         .from(maintenanceTickets)
@@ -401,11 +428,22 @@ export async function resolveIssueInternally(
 
       const updatedAssets = await tx
         .update(assets)
-        .set({ status: 'Available', updatedAt: now })
+        .set({ status: 'Available', isArchived: false, updatedAt: now })
         .where(eq(assets.id, ticket.assetId))
         .returning({ id: assets.id });
       if (updatedAssets.length === 0)
         throw new Error('Failed to update asset status');
+
+      // Terminate any active assignments since the asset is now Available
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: now })
+        .where(
+          and(
+            eq(assetAssignments.assetId, ticket.assetId),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
 
       const updatedTickets = await tx
         .update(maintenanceTickets)
@@ -426,9 +464,13 @@ export async function resolveIssueInternally(
         entityId: ticket.assetId,
         actionType: 'UPDATE',
         performedById: user.id,
-        oldValue: { status: currentAsset.status },
+        oldValue: {
+          status: currentAsset.status,
+          isArchived: currentAsset.isArchived,
+        },
         newValue: {
           status: 'Available',
+          isArchived: false,
           resolutionNote: safeResolutionNote,
           actionContext: 'MAINTENANCE_RESOLVED_INTERNALLY',
         },
@@ -441,6 +483,16 @@ export async function resolveIssueInternally(
         assetId: ticket.assetId,
       };
     });
+
+    // Revalidate cache for assets grids and maintenance tabs (after successful commit)
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
   } catch (error) {
     const knownMessages = [
       'Ticket with ID',
@@ -488,7 +540,7 @@ export async function initiateVendorRepair(
 
   // 3. Atomic Database Transaction
   try {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const currentAssetResult = await tx
         .select()
         .from(assets)
@@ -585,6 +637,16 @@ export async function initiateVendorRepair(
         assetId: parsed.data.assetId,
       };
     });
+
+    // Revalidate cache for assets grids and maintenance tabs (after successful commit)
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
   } catch (error) {
     const knownMessages = [
       'Asset ',
@@ -629,7 +691,7 @@ export async function completeRepairTicket(
 
   // 3. Atomic Database Transaction
   try {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       const ticketResult = await tx
         .select()
         .from(maintenanceTickets)
@@ -665,12 +727,25 @@ export async function completeRepairTicket(
       if (updatedTickets.length === 0)
         throw new Error('Failed to update maintenance ticket');
 
+      const isArchived = parsed.data.updateStatusTo === 'Disposed';
+
       const updatedAssets = await tx
         .update(assets)
-        .set({ status: parsed.data.updateStatusTo, updatedAt: now })
+        .set({ status: parsed.data.updateStatusTo, isArchived, updatedAt: now })
         .where(eq(assets.id, assetId))
         .returning({ id: assets.id });
       if (updatedAssets.length === 0) throw new Error('Failed to update asset');
+
+      // Terminate any active assignments since the asset is now Available or Disposed
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: now })
+        .where(
+          and(
+            eq(assetAssignments.assetId, assetId),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
@@ -678,9 +753,14 @@ export async function completeRepairTicket(
         entityId: assetId,
         actionType: 'UPDATE',
         performedById: user.id,
-        oldValue: { status: currentAsset.status, ticketStatus: 'ACTIVE' },
+        oldValue: {
+          status: currentAsset.status,
+          isArchived: currentAsset.isArchived,
+          ticketStatus: 'ACTIVE',
+        },
         newValue: {
           status: parsed.data.updateStatusTo,
+          isArchived,
           ticketStatus: 'COMPLETED',
           actualCost: parsed.data.actualCost,
           resolutionNotes: parsed.data.resolutionNotes,
@@ -703,6 +783,16 @@ export async function completeRepairTicket(
         assetId,
       };
     });
+
+    // Revalidate cache for assets grids and maintenance tabs (after successful commit)
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
   } catch (error) {
     const knownMessages = [
       'Ticket ',

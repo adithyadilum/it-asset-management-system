@@ -12,12 +12,12 @@ import {
   vendors,
 } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { canManageAssets } from '@/lib/auth/roles';
+import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { logError } from '@/lib/latency';
 
 export async function getAssetDetailsByIdAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: null };
   }
 
@@ -33,7 +33,7 @@ export async function getAssetDetailsByIdAction(id: string) {
 
 export async function getAssetHistoryByIdAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: [] };
   }
 
@@ -49,7 +49,7 @@ export async function getAssetHistoryByIdAction(id: string) {
 
 export async function getAssetMaintenanceByIdAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: [] };
   }
 
@@ -66,7 +66,7 @@ export async function getAssetMaintenanceByIdAction(id: string) {
 
 export async function getAssetAllocationsAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: [] };
   }
 
@@ -83,7 +83,7 @@ export async function getAssetAllocationsAction(id: string) {
 
 export async function getAssetDisposalAction(id: string) {
   const user = await getAuthenticatedUser();
-  if (!user || !canManageAssets(user.role)) {
+  if (!user || !canViewAssetRegistry(user.role)) {
     return { success: false, message: 'Forbidden', data: null };
   }
 
@@ -165,7 +165,8 @@ export async function getRegistrationOptionsAction(pillar: string) {
             value: String(c.id),
             label: c.name,
             pillar: c.pillar,
-            customSchema: c.customSchema,
+            // Deep clone JSONB to remove [Object: null prototype] which breaks Next.js Server Actions
+            customSchema: c.customSchema ? JSON.parse(JSON.stringify(c.customSchema)) : null,
           })
         ),
         brands: brandsList.map((b: { id: number; name: string }) => ({
@@ -204,5 +205,42 @@ export async function getRegistrationOptionsAction(pillar: string) {
   } catch (error) {
     logError({ scope: 'ACTION', label: 'panels.getRegistrationOptionsAction', error });
     return { success: false, message: 'Failed to load registration options.', data: null };
+  }
+}
+
+export async function getEditDropdownOptionsAction() {
+  const user = await getAuthenticatedUser();
+  if (!user || !canManageAssets(user.role)) {
+    return { success: false, message: 'Forbidden', data: null };
+  }
+
+  try {
+    const [locationsList, ownersList] = await Promise.all([
+      db.query.locations.findMany({
+        where: eq(locations.isActive, true),
+        columns: { id: true, name: true },
+      }),
+      db.query.owners.findMany({
+        where: eq(owners.isActive, true),
+        columns: { id: true, companyName: true },
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        locations: locationsList.map((l: { id: number; name: string }) => ({
+          value: String(l.id),
+          label: l.name,
+        })),
+        owners: ownersList.map((o: { id: number; companyName: string }) => ({
+          value: String(o.id),
+          label: o.companyName,
+        })),
+      },
+    };
+  } catch (error) {
+    logError({ scope: 'ACTION', label: 'panels.getEditDropdownOptionsAction', error });
+    return { success: false, message: 'Failed to load dropdown options.', data: null };
   }
 }

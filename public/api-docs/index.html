@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EITAMS API Documentation</title>
+    <!-- Load Swagger UI stylesheet from verified CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+    <style>
+      html {
+        box-sizing: border-box;
+        overflow-y: scroll;
+      }
+      *, *:before, *:after {
+        box-sizing: inherit;
+      }
+      body {
+        margin: 0;
+        background: #fafafa;
+        font-family: sans-serif;
+      }
+      /* Custom EITAMS Theme Styles */
+      .swagger-ui .topbar {
+        background-color: #040d5a !important; /* TIQRI Brand Navy Dark */
+        border-bottom: 2px solid #5C74F7;     /* Highlighting accent border */
+      }
+      .swagger-ui .topbar a {
+        max-width: 300px;
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+      }
+      .swagger-ui .topbar a span {
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-left: 8px;
+        letter-spacing: 0.5px;
+      }
+      .swagger-ui .info {
+        margin: 40px 0 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <!-- Load Swagger UI scripts from verified CDN -->
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" charset="UTF-8"></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
+    <script>
+      window.onload = function() {
+        window.ui = SwaggerUIBundle({
+          url: "/api/openapi.json",
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIStandalonePreset
+          ],
+          plugins: [
+            SwaggerUIBundle.plugins.DownloadUrl
+          ],
+          layout: "BaseLayout",
+          docExpansion: "list",
+          defaultModelsExpandDepth: 1,
+          persistAuthorization: true
+        });
+      };
+    </script>
+  </body>
+</html>

@@ -1,146 +1,183 @@
-/**
- * @vitest-environment node
- */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { NextRequest } from 'next/server';
 
-import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+// 1. Mock dependencies BEFORE importing the module under test
+const mockLogAuditAction = vi.fn();
+vi.mock('@/lib/audit', () => ({
+  logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
+}));
 
-import { db } from '@/db';
-import { disposalFinalityMiddleware } from '@/middleware/disposal-finality-middleware';
-import { jwtVerify } from 'jose';
+const mockLogError = vi.fn();
+vi.mock('@/lib/latency', () => ({
+  logError: (...args: unknown[]) => mockLogError(...args),
+}));
 
+const mockGetToken = vi.fn();
+vi.mock('next-auth/jwt', () => ({
+  getToken: () => mockGetToken(),
+}));
+
+const mockDbFindFirst = vi.fn();
 vi.mock('@/db', () => ({
   db: {
     query: {
       assets: {
-        findFirst: vi.fn(),
+        findFirst: (...args: unknown[]) => mockDbFindFirst(...args),
       },
     },
   },
 }));
 
-vi.mock('jose', () => ({
-  jwtVerify: vi.fn(),
+// Mock schema to satisfy imports
+vi.mock('@/db/schema', () => ({
+  assets: { id: 'assets.id' },
 }));
 
-vi.mock('@/lib/auth/jwt', () => ({
-  getJwtSecretKey: vi.fn(() => new TextEncoder().encode('test-secret-key')),
-}));
-
-vi.mock('@/lib/audit', () => ({
-  logAuditAction: vi.fn().mockResolvedValue(undefined),
-}));
-
-function createRequest(url: string, method: string = 'GET', sessionToken?: string): NextRequest {
+// Mock NextResponse
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>();
+  class MockNextResponse {
+    status: number;
+    body: string;
+    headers: unknown;
+    constructor(body: string, init?: { status?: number; headers?: unknown }) {
+      this.body = body;
+      this.status = init?.status || 200;
+      this.headers = init?.headers || {};
+    }
+    json() {
+      return JSON.parse(this.body);
+    }
+    static next = vi.fn().mockReturnValue('next-response');
+  }
   return {
-    nextUrl: new URL(url),
-    method,
-    cookies: {
-      get: vi.fn(() =>
-        sessionToken ? { name: 'session_token', value: sessionToken } : undefined
-      ),
-    },
-  } as unknown as NextRequest;
-}
+    ...actual,
+    NextResponse: MockNextResponse,
+  };
+});
+
+// Import the middleware AFTER mocks are set up
+import { disposalFinalityMiddleware } from '@/middleware/disposal-finality-middleware';
 
 describe('disposalFinalityMiddleware', () => {
-  const findFirstMock = db.query.assets.findFirst as unknown as ReturnType<typeof vi.fn>;
+  const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+  const MOCK_USER_ID = '123e4567-e89b-12d3-a456-426614174000';
+
+  const createMockRequest = (method: string, pathname: string) => {
+    return {
+      method,
+      nextUrl: { pathname },
+    } as unknown as NextRequest;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('passes through for GET requests', async () => {
-    const req = createRequest('http://localhost/api/v1/assets/550e8400-e29b-41d4-a716-446655440000', 'GET');
-    const response = await disposalFinalityMiddleware(req);
-    
-    // NextResponse.next() doesn't have an easily detectable "next" state in standard Response objects
-    // but we can check that it didn't return a 403
-    expect(response.status).not.toBe(403);
-    expect(findFirstMock).not.toHaveBeenCalled();
+  it('allows non-asset API requests', async () => {
+    const req = createMockRequest('PUT', '/api/v1/users/123');
+    const result = await disposalFinalityMiddleware(req);
+    expect(result).toBe('next-response');
+    expect(mockDbFindFirst).not.toHaveBeenCalled();
   });
 
-  it('passes through for non-asset routes', async () => {
-    const req = createRequest('http://localhost/api/v1/other/route', 'PATCH');
-    const response = await disposalFinalityMiddleware(req);
-    
-    expect(response.status).not.toBe(403);
-    expect(findFirstMock).not.toHaveBeenCalled();
+  it('allows GET requests on asset endpoints', async () => {
+    const req = createMockRequest('GET', `/api/v1/assets/${VALID_UUID}`);
+    const result = await disposalFinalityMiddleware(req);
+    expect(result).toBe('next-response');
+    expect(mockDbFindFirst).not.toHaveBeenCalled();
   });
 
-  it('blocks PATCH requests for Disposed assets', async () => {
-    const assetId = '550e8400-e29b-41d4-a716-446655440000';
-    findFirstMock.mockResolvedValue({
-      id: assetId,
+  it('allows requests with invalid UUIDs without querying DB', async () => {
+    const req = createMockRequest('PUT', '/api/v1/assets/invalid-id-format');
+    const result = await disposalFinalityMiddleware(req);
+    expect(result).toBe('next-response');
+    expect(mockDbFindFirst).not.toHaveBeenCalled();
+  });
+
+  it('allows request when asset is not found', async () => {
+    mockDbFindFirst.mockResolvedValue(null);
+    const req = createMockRequest('PATCH', `/api/v1/assets/${VALID_UUID}`);
+    
+    const result = await disposalFinalityMiddleware(req);
+    expect(result).toBe('next-response');
+    expect(mockDbFindFirst).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows request when asset is active', async () => {
+    mockDbFindFirst.mockResolvedValue({
+      id: VALID_UUID,
+      status: 'Assigned',
+      isArchived: false,
+      assetTag: 'TAG-123',
+    });
+    
+    const req = createMockRequest('DELETE', `/api/v1/assets/${VALID_UUID}`);
+    const result = await disposalFinalityMiddleware(req);
+    expect(result).toBe('next-response');
+  });
+
+  it('blocks request and returns 403 when asset is disposed', async () => {
+    mockDbFindFirst.mockResolvedValue({
+      id: VALID_UUID,
       status: 'Disposed',
       isArchived: false,
-      assetTag: 'AST-001',
+      assetTag: 'TAG-123',
     });
-
-    const req = createRequest(`http://localhost/api/v1/assets/${assetId}`, 'PATCH');
-    const response = await disposalFinalityMiddleware(req);
+    mockGetToken.mockResolvedValue({ id: MOCK_USER_ID });
+    
+    const req = createMockRequest('PUT', `/api/v1/assets/${VALID_UUID}`);
+    const response = await disposalFinalityMiddleware(req) as Response;
     
     expect(response.status).toBe(403);
-    const body = await response.json();
-    expect(body.message).toBe('Record is finalized');
-    expect(body.details).toBe('Asset is disposed');
+    const json = await response.json();
+    expect(json.message).toBe('Record is finalized');
+    expect(json.details).toBe('Asset is disposed');
+    
+    expect(mockLogAuditAction).toHaveBeenCalledWith(expect.objectContaining({
+      actionType: 'ACCESS_DENIED',
+      performedById: MOCK_USER_ID,
+      newData: expect.objectContaining({
+        reason: 'Attempted to modify a finalized record (Disposed or Archived)',
+        assetTag: 'TAG-123',
+        method: 'PUT',
+      }),
+    }));
   });
 
-  it('blocks PUT requests for Archived assets', async () => {
-    const assetId = '550e8400-e29b-41d4-a716-446655440000';
-    findFirstMock.mockResolvedValue({
-      id: assetId,
+  it('blocks request and returns 403 when asset is archived', async () => {
+    mockDbFindFirst.mockResolvedValue({
+      id: VALID_UUID,
       status: 'Available',
       isArchived: true,
-      assetTag: 'AST-001',
+      assetTag: 'TAG-456',
     });
-
-    const req = createRequest(`http://localhost/api/v1/assets/${assetId}`, 'PUT');
-    const response = await disposalFinalityMiddleware(req);
+    mockGetToken.mockResolvedValue(null); // Anonymous user
+    
+    const req = createMockRequest('DELETE', `/api/v1/assets/${VALID_UUID}`);
+    const response = await disposalFinalityMiddleware(req) as Response;
     
     expect(response.status).toBe(403);
-    const body = await response.json();
-    expect(body.details).toBe('Asset is archived');
+    const json = await response.json();
+    expect(json.details).toBe('Asset is archived');
+    
+    // Should not log audit if no valid user ID
+    expect(mockLogAuditAction).not.toHaveBeenCalled();
   });
 
-  it('allows PATCH requests for active assets', async () => {
-    const assetId = '550e8400-e29b-41d4-a716-446655440000';
-    findFirstMock.mockResolvedValue({
-      id: assetId,
-      status: 'Available',
-      isArchived: false,
-      assetTag: 'AST-001',
-    });
-
-    const req = createRequest(`http://localhost/api/v1/assets/${assetId}`, 'PATCH');
-    const response = await disposalFinalityMiddleware(req);
+  it('returns 503 if database check throws error', async () => {
+    mockDbFindFirst.mockRejectedValue(new Error('DB failure'));
     
-    expect(response.status).not.toBe(403);
-  });
-
-  it('logs audit action when blocking', async () => {
-    const assetId = '550e8400-e29b-41d4-a716-446655440000';
-    findFirstMock.mockResolvedValue({
-      id: assetId,
-      status: 'Disposed',
-      isArchived: false,
-      assetTag: 'AST-001',
-    });
-
-    vi.mocked(jwtVerify).mockResolvedValue({
-      payload: { sub: '550e8400-e29b-41d4-a716-446655440001' },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-
-    const req = createRequest(`http://localhost/api/v1/assets/${assetId}`, 'DELETE', 'mock-token');
-    await disposalFinalityMiddleware(req);
+    const req = createMockRequest('PATCH', `/api/v1/assets/${VALID_UUID}`);
+    const response = await disposalFinalityMiddleware(req) as Response;
     
-    const { logAuditAction } = await import('@/lib/audit');
-    expect(logAuditAction).toHaveBeenCalledWith(expect.objectContaining({
-      entityType: 'Asset',
-      entityId: assetId,
-      actionType: 'ACCESS_DENIED',
-      performedById: '550e8400-e29b-41d4-a716-446655440001',
+    expect(response.status).toBe(503);
+    const json = await response.json();
+    expect(json.error).toBe('Service Unavailable');
+    
+    expect(mockLogError).toHaveBeenCalledWith(expect.objectContaining({
+      scope: 'DISPOSAL_FINALITY_GUARD',
+      label: 'unexpected_error_checking_record_finality',
     }));
   });
 });

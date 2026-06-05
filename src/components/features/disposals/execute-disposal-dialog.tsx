@@ -66,6 +66,7 @@ export function ExecuteDisposalDialog({
 }: ExecuteDisposalDialogProps) {
   const [reason, setReason] = useState('');
   const [method, setMethod] = useState<'Sold' | 'Stolen' | 'E-waste' | 'Donated' | ''>('');
+  const [salvageValue, setSalvageValue] = useState('');
   const [dataWiped, setDataWiped] = useState(false);
   const [tagsRemoved, setTagsRemoved] = useState(false);
   
@@ -107,6 +108,7 @@ export function ExecuteDisposalDialog({
         formData.set('assetIds', JSON.stringify(selectedAssets.map((a) => a.assetId)));
         formData.set('reason', reason);
         formData.set('disposalMethod', method);
+        formData.set('actualSalvageValue', salvageValue);
         formData.set('dataWiped', String(dataWiped));
         formData.set('tagsRemoved', String(tagsRemoved));
         formData.set('receiptUrls', JSON.stringify(receiptUrls));
@@ -134,6 +136,7 @@ export function ExecuteDisposalDialog({
     if (!open) {
       setReason('');
       setMethod('');
+      setSalvageValue('');
       setDataWiped(false);
       setTagsRemoved(false);
       setReceiptUrls([]);
@@ -240,6 +243,21 @@ export function ExecuteDisposalDialog({
                     <SelectItem value="Stolen">Stolen / Written Off</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5 w-full">
+                <Label className="text-sm font-medium text-foreground">
+                  Actual Salvage Value ($) <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={salvageValue}
+                  onChange={(e) => setSalvageValue(e.target.value)}
+                  className="h-10 border-input bg-background shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
               </div>
             </div>
 

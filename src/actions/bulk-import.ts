@@ -190,11 +190,8 @@ export async function executeBulkImport(
   const lockResult = await db.execute(
     sql`SELECT pg_try_advisory_lock(${BULK_IMPORT_LOCK_ID})`
   );
-
-  // Note: lockResult.rows[0] in postgres.js driver using drizzle usually has the column name.
-  // Wait, the postgres driver we use is `pg` or `@neondatabase/serverless` or `postgres`.
-  // Drizzle `db.execute` returns an object. Let's cast properly.
-  const lockGranted = lockResult.rows[0]?.pg_try_advisory_lock;
+  const rows = Array.isArray(lockResult) ? lockResult : (lockResult as { rows?: unknown[] }).rows;
+  const lockGranted = (rows?.[0] as Record<string, unknown> | undefined)?.pg_try_advisory_lock;
 
   if (!lockGranted) {
     return {

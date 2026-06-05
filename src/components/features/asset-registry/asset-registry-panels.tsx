@@ -18,6 +18,7 @@ interface AssetRegistryPanelsProps {
     }>;
     onStatusUpdateRef?: React.MutableRefObject<(assetId: string, nextStatus: string) => void>;
     onRefreshRef?: React.MutableRefObject<() => void>;
+    canManage?: boolean;
 }
 
 export function AssetRegistryPanels({
@@ -28,6 +29,7 @@ export function AssetRegistryPanels({
     manualStatuses = [],
     onStatusUpdateRef,
     onRefreshRef,
+    canManage = false,
 }: AssetRegistryPanelsProps) {
     const router = useRouter();
     const [cachedRecordId, setCachedRecordId] = useState(recordId);
@@ -62,6 +64,7 @@ export function AssetRegistryPanels({
                     recordId={cachedRecordId}
                     manualStatuses={manualStatuses}
                     onStatusUpdateRef={onStatusUpdateRef}
+                    hideActions={!canManage}
                     onRefreshRef={onRefreshRef}
                 />
             ) : null}

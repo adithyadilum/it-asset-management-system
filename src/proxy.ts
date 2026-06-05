@@ -1,34 +1,84 @@
 import { NextResponse, userAgent } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
+import { getToken } from 'next-auth/jwt';
 
 import {
   DEFAULT_POST_LOGIN_REDIRECT,
   sanitizeRedirectPath,
 } from '@/lib/auth/auth-redirect';
-import { getJwtSecretKey } from '@/lib/auth/jwt';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import {
-  normalizeTokenRole,
-  SESSION_COOKIE_NAME,
-  type TokenRole,
-} from '@/lib/auth/session';
 import { logAuditAction } from '@/lib/audit';
+import type { UserRole } from '@/types/auth';
 
-async function verifyTokenAndRole(token: string) {
+type TokenRole = UserRole;
+
+function normalizeTokenRole(role: unknown): TokenRole | null {
+  if (
+    role === 'GlobalAdmin' ||
+    role === 'ITOperator' ||
+    role === 'FinanceAuditor' ||
+    role === 'Employee'
+  ) {
+    return role;
+  }
+
+  return null;
+}
+
+async function verifyTokenAndRole(request: NextRequest) {
   const authTimer = startLatencyTimer();
 
   try {
-    const verified = await jwtVerify(token, getJwtSecretKey());
-    const payload = verified.payload as { role?: unknown; sub?: string };
+    // getToken() decrypts the JWT cookie but does NOT call the jwt callback
+    // and does NOT attempt a Keycloak token refresh. It returns the raw
+    // cookie payload. This keeps the proxy stateless and low-latency.
+    const token = await getToken({ req: request });
 
-    const role = normalizeTokenRole(payload.role);
-
-    if (!role) {
-      throw new Error('Role is missing or invalid in token');
+    if (!token) {
+      return null;
     }
 
-    return { role, sub: payload.sub };
+    const role = normalizeTokenRole(token.role);
+
+    if (!role) {
+      return null;
+    }
+
+    // ── Determine whether the access token is still fresh ────────────────────
+    // accessTokenExpires is milliseconds-since-epoch stored in the JWT cookie.
+    // We do NOT block access here — getServerSession() in the app-shell layout
+    // will attempt a silent refresh via the jwt() callback when the access
+    // token is expired. Blocking here would kick the user out every 5 minutes
+    // (the typical Keycloak access token lifetime) even when the refresh token
+    // is still perfectly valid.
+    //
+    // What we DO use this flag for: deciding whether to redirect an already-
+    // authenticated user AWAY from /login. We only bounce them if the access
+    // token is still fresh — if it's expired we let them stay on /login so
+    // that the app-shell's failed-refresh → redirect("/login") flow lands
+    // cleanly without bouncing back and creating the redirect loop.
+    const EXPIRY_BUFFER_MS = 30 * 1000; // 30-second safety margin
+    const accessTokenExpires = token.accessTokenExpires as number | undefined;
+    const isAccessTokenFresh =
+      typeof accessTokenExpires === 'number'
+        ? Date.now() < accessTokenExpires - EXPIRY_BUFFER_MS
+        : true; // no expiry stored → assume fresh (legacy token)
+
+    // ── Detect truly dead sessions ────────────────────────────────────────────
+    // refreshTokenExpires is stored in the JWT when auth-options.ts is updated
+    // to persist it. If both the access token AND the refresh token are past
+    // their expiry, there is no way to recover the session silently. We return
+    // null so the caller clears the cookie and sends the user to /login.
+    const refreshTokenExpires = token.refreshTokenExpires as number | undefined;
+    if (
+      !isAccessTokenFresh &&
+      typeof refreshTokenExpires === 'number' &&
+      Date.now() > refreshTokenExpires
+    ) {
+      return null;
+    }
+
+    return { role, sub: token.id as string | undefined, isAccessTokenFresh };
   } finally {
     logLatency({
       scope: 'PROXY AUTH',
@@ -91,8 +141,19 @@ function canAccessRoute(role: TokenRole, pathname: string) {
     return !isSettingsRoute && !isFinancialsRoute;
   }
 
-  // FinanceAuditor
-  return !isSettingsRoute && !isOperationsRoute;
+  if (role === 'FinanceAuditor') {
+    if (isSettingsRoute) return false;
+    if (isOperationsRoute) {
+      return (
+        pathname.startsWith('/operations/maintenance') ||
+        pathname.startsWith('/operations/disposals') ||
+        pathname === '/operations'
+      );
+    }
+    return true;
+  }
+
+  return true;
 }
 
 function getLoginRedirectResponse(request: NextRequest) {
@@ -103,11 +164,26 @@ function getLoginRedirectResponse(request: NextRequest) {
   );
 
   loginUrl.searchParams.set('redirectTo', requestedPath);
-  return NextResponse.redirect(loginUrl);
+  const response = NextResponse.redirect(loginUrl);
+
+  // Clear the stale NextAuth session cookie so the browser doesn't keep
+  // replaying the broken JWT on every subsequent request, which would
+  // re-trigger the RefreshAccessTokenError → redirect loop even after the
+  // fix above. Deleting the cookie here gives the user a clean slate and
+  // forces NextAuth to issue a fresh sign-in flow.
+  const secureCookieName = '__Secure-next-auth.session-token';
+  const plainCookieName = 'next-auth.session-token';
+
+  if (request.cookies.has(secureCookieName)) {
+    response.cookies.delete(secureCookieName);
+  } else if (request.cookies.has(plainCookieName)) {
+    response.cookies.delete(plainCookieName);
+  }
+
+  return response;
 }
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const { pathname } = request.nextUrl;
   const isProtectedRoute =
     !isPublicAssetPath(pathname) &&
@@ -117,25 +193,27 @@ export async function proxy(request: NextRequest) {
   const isLoginRoute = pathname === '/login';
 
   try {
-    if (!token && isProtectedRoute) {
+    const payload = await verifyTokenAndRole(request);
+
+    if (!payload && isProtectedRoute) {
       return getLoginRedirectResponse(request);
     }
 
-    let payload: { role: TokenRole; sub?: string } | null = null;
-
-    if (token) {
-      try {
-        payload = await verifyTokenAndRole(token);
-      } catch {
-        const response = isProtectedRoute
-          ? getLoginRedirectResponse(request)
-          : NextResponse.next();
-        response.cookies.delete(SESSION_COOKIE_NAME);
-        return response;
+    if (payload && isLoginRoute) {
+      // Only redirect an already-authenticated user away from /login when the
+      // access token is STILL FRESH. If it is expired (but possibly refreshable)
+      // we must NOT redirect — the app-shell's failed-refresh path will
+      // redirect here anyway, and bouncing them back would create the loop:
+      //   /dashboard → refresh fails → /login → proxy bounces → /dashboard → …
+      if (!payload.isAccessTokenFresh) {
+        // Access token is expired; let /login render. getServerSession() hasn't
+        // run yet so we don't know whether the refresh token is still good.
+        // If it is, the user just needs to click "Sign in" once — Keycloak
+        // will return a fresh session immediately. If it isn't, the sign-in
+        // flow will show a proper Keycloak error.
+        return NextResponse.next();
       }
-    }
 
-    if (token && isLoginRoute) {
       const redirectTo = sanitizeRedirectPath(
         request.nextUrl.searchParams.get('redirectTo'),
         DEFAULT_POST_LOGIN_REDIRECT

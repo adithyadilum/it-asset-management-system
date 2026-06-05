@@ -9,15 +9,18 @@ import {
     Monitor,
     Banknote,
     Check,
+    Smartphone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 
-import { logout } from '@/actions/auth';
+import { getFederatedLogoutUrl } from '@/actions/auth';
+import { signOut } from 'next-auth/react';
 import { setPreferredCurrency } from '@/actions/currency';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
+import { isGlobalAdmin } from '@/lib/auth/roles';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -45,6 +48,7 @@ import { Separator } from '@/components/ui/separator';
 import { useSidebar } from '@/components/ui/sidebar';
 import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
 import { NotificationBell } from '@/components/features/notifications/notification-bell';
+import DevicePairingModal from '@/components/auth/device-pairing-modal';
 
 const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
     '/dashboard': 'Dashboard',
@@ -68,6 +72,7 @@ const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
     '/settings/roles': 'User Roles & Access',
     '/settings/alerts': 'Alerts & Notifications',
     '/settings/integrations': 'Integrations',
+    '/settings/devices': 'Linked Devices',
 };
 
 const sidebarDefaultTextClass =
@@ -102,7 +107,22 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
     const { state, toggleSidebar } = useSidebar();
     const pathname = usePathname();
     const { setTheme } = useTheme();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isPending, startTransition] = useTransition();
+    const [pairingModalOpen, setPairingModalOpen] = useState(false);
+
+    const handleLogout = async () => {
+        try {
+            setIsLoggingOut(true);
+            const federatedUrl = await getFederatedLogoutUrl();
+            await signOut({ redirect: false });
+            window.location.href = federatedUrl;
+        } catch (error) {
+            console.error('Logout failed:', error);
+            setIsLoggingOut(false);
+        }
+    };
+
     const breadcrumbs = buildBreadcrumbs(pathname);
 
     const initials = user.name
@@ -317,21 +337,36 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
                                 </DropdownMenuSub>
                             </div>
 
-                            {/* Actions Area */}
-                            <div className="p-2">
-                                <form action={logout} className="w-full">
+                            {/* Link Device — GlobalAdmin only */}
+                            {isGlobalAdmin(user.role) && (
+                                <div className="p-2 border-b border-border">
                                     <Button
                                         variant="ghost"
-                                        className="h-9 w-full justify-start rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        onClick={() => setPairingModalOpen(true)}
+                                        className="h-9 w-full justify-start rounded-lg text-xs"
                                     >
-                                        <Ban className="mr-2 h-4 w-4" />
-                                        Logout Session
+                                        <Smartphone className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        Link Device
                                     </Button>
-                                </form>
+                                </div>
+                            )}
+
+                            {/* Actions Area */}
+                            <div className="p-2">
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleLogout}
+                                    disabled={isLoggingOut}
+                                    className="h-9 w-full justify-start rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                                >
+                                    <Ban className="mr-2 h-4 w-4" />
+                                    {isLoggingOut ? 'Logging out...' : 'Logout Session'}
+                                </Button>
                             </div>
                         </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
+                <DevicePairingModal open={pairingModalOpen} onOpenChange={setPairingModalOpen} />
             </div>
         </header>
     );

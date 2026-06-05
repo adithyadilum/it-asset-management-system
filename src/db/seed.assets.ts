@@ -1,5 +1,4 @@
 import * as dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
@@ -18,7 +17,7 @@ import {
   maintenanceTickets,
   models,
   owners,
-  sessions,
+
   softwareAllocations,
   softwareLicenses,
   systemAuditLogs,
@@ -93,34 +92,29 @@ export async function seedAssets() {
         name: 'Admin User',
         role: 'GlobalAdmin',
         department: 'IT',
-        password: 'Admin@1234',
       },
       {
         email: 'it@tiqri.com',
         name: 'IT Support',
         role: 'ITOperator',
         department: 'IT',
-        password: 'IT@1234',
       },
       {
         email: 'finance@tiqri.com',
         name: 'Finance Auditor',
         role: 'FinanceAuditor',
         department: 'Finance',
-        password: 'Finance@1234',
       },
       {
         email: 'employee@tiqri.com',
         name: 'Standard Employee',
         role: 'Employee',
         department: 'HR',
-        password: 'Employee@1234',
       },
     ] as const;
 
     const userIds: Record<string, string> = {};
     for (const userSeed of userSeeds) {
-      const passwordHash = await bcrypt.hash(userSeed.password, 10);
       const existing = await first(
         db
           .select({ id: users.id })
@@ -135,7 +129,6 @@ export async function seedAssets() {
           .update(users)
           .set({
             name: userSeed.name,
-            password: passwordHash,
             departmentId: departmentIds[userSeed.department],
             role: userSeed.role as never,
             isActive: true,
@@ -149,7 +142,6 @@ export async function seedAssets() {
         .values({
           email: userSeed.email,
           name: userSeed.name,
-          password: passwordHash,
           departmentId: departmentIds[userSeed.department],
           role: userSeed.role as never,
           isActive: true,
@@ -163,31 +155,6 @@ export async function seedAssets() {
     const financeUserId = userIds['finance@tiqri.com'];
     const employeeUserId = userIds['employee@tiqri.com'];
 
-    const sessionToken = 'seed-session-admin';
-    const sessionExisting = await first(
-      db
-        .select({ id: sessions.id })
-        .from(sessions)
-        .where(eq(sessions.tokenId, sessionToken))
-        .limit(1)
-    );
-
-    if (sessionExisting) {
-      await db
-        .update(sessions)
-        .set({
-          userId: adminUserId,
-          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-          revokedAt: null,
-        })
-        .where(eq(sessions.id, sessionExisting.id));
-    } else {
-      await db.insert(sessions).values({
-        userId: adminUserId,
-        tokenId: sessionToken,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-      });
-    }
 
     const locationSeeds = [
       { name: 'Colombo HQ', type: 'HQ', parent: null, isActive: true },
@@ -1573,7 +1540,7 @@ export async function seedAssets() {
           tablesSeeded: [
             'departments',
             'users',
-            'sessions',
+
             'locations',
             'vendors',
             'owners',

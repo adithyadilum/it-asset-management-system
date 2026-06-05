@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/db';
-import { departments, users, sessions } from '@/db/schema';
-import { eq, ilike, or, and, isNull, inArray, sql } from 'drizzle-orm';
+import { departments, users } from '@/db/schema';
+import { eq, ilike, or, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
@@ -180,31 +180,8 @@ export async function assignUsersRoleBulk(
       })
     );
 
-    const updatedUserIds = updatedUsers.map(
-      (updatedUser) => updatedUser.updatedId
-    );
-    if (updatedUserIds.length > 0) {
-      const revokeSessionsTimer = startLatencyTimer();
-      await db
-        .update(sessions)
-        .set({ revokedAt: new Date() })
-        .where(
-          and(
-            inArray(sessions.userId, updatedUserIds),
-            isNull(sessions.revokedAt),
-            sql`${sessions.expiresAt} > NOW()`
-          )
-        );
 
-      logLatency({
-        scope: 'DB ACTION',
-        label: 'roles.assignUsersRoleBulk.revoke_sessions',
-        startTime: revokeSessionsTimer,
-        metadata: {
-          updatedCount: updatedUsers.length,
-        },
-      });
-    }
+
 
     revalidatePath('/settings/roles');
     return {
@@ -302,26 +279,7 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
       newData: { role: updatedUsers[0].updatedRole },
     });
 
-    // Revoke active sessions so role changes take effect immediately.
-    const revokeSessionTimer = startLatencyTimer();
-    await db
-      .update(sessions)
-      .set({ revokedAt: new Date() })
-      .where(
-        and(
-          eq(sessions.userId, targetUserId),
-          isNull(sessions.revokedAt),
-          sql`${sessions.expiresAt} > NOW()`
-        )
-      );
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'roles.assignUserRole.revoke_sessions',
-      startTime: revokeSessionTimer,
-      metadata: {
-        targetUserId,
-      },
-    });
+
 
     revalidatePath('/settings/roles');
     return { success: true };

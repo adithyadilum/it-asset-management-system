@@ -61,7 +61,7 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
     if (result.errors.length > 0) {
       // Only throw if it's not just a trailing empty line parsing error
       const nonTrivialErrors = result.errors.filter(
-        (err) => err.code !== 'TooManyFields' && err.code !== 'TooFewFields'
+        (err) => err.code !== 'TooManyFields' && err.code !== 'TooFewFields' && err.code !== 'UndetectableDelimiter'
       );
       if (nonTrivialErrors.length > 0) {
         const firstError = nonTrivialErrors[0];

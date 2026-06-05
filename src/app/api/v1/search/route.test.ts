@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '@/db';
 import { GET } from '@/app/api/v1/search/route';
-import { jwtVerify } from 'jose';
+import { getToken } from 'next-auth/jwt';
 
 vi.mock('@/db', () => ({
   db: {
@@ -15,16 +15,8 @@ vi.mock('@/db', () => ({
   },
 }));
 
-vi.mock('jose', () => ({
-  jwtVerify: vi.fn(),
-}));
-
-vi.mock('@/lib/auth/jwt', () => ({
-  getJwtSecretKey: vi.fn(() => new TextEncoder().encode('test-secret-key')),
-}));
-
-vi.mock('@/lib/auth/uuid', () => ({
-  isValidUuid: vi.fn(() => true),
+vi.mock('next-auth/jwt', () => ({
+  getToken: vi.fn(),
 }));
 
 vi.mock('@/lib/latency', () => ({
@@ -44,13 +36,11 @@ function createSelectChain(result: unknown) {
   };
 }
 
-function createRequest(url: string, sessionToken?: string): NextRequest {
+function createRequest(url: string): NextRequest {
   return {
     nextUrl: new URL(url),
     cookies: {
-      get: vi.fn(() =>
-        sessionToken ? { name: 'session_token', value: sessionToken } : undefined
-      ),
+      get: vi.fn(),
     },
   } as unknown as NextRequest;
 }
@@ -63,6 +53,8 @@ describe('GET /api/v1/search', () => {
   });
 
   it('returns 401 when token is missing', async () => {
+    vi.mocked(getToken).mockResolvedValue(null);
+
     const response = await GET(createRequest('http://localhost/api/v1/search?q=laptop'));
     expect(response.status).toBe(401);
 
@@ -71,16 +63,12 @@ describe('GET /api/v1/search', () => {
   });
 
   it('returns assets, users, and backend-driven reports for GlobalAdmin', async () => {
-    vi.mocked(jwtVerify).mockResolvedValue({
-      payload: {
-        sub: '123e4567-e89b-12d3-a456-426614174000',
-        sid: 'session-id-1',
-        role: 'GlobalAdmin',
-      },
+    vi.mocked(getToken).mockResolvedValue({
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      role: 'GlobalAdmin',
     } as never);
 
     const queuedResults = [
-      [{ id: 1 }],
       [
         {
           id: 'asset-1',
@@ -108,7 +96,7 @@ describe('GET /api/v1/search', () => {
     );
 
     const response = await GET(
-      createRequest('http://localhost/api/v1/search?q=report', 'valid-token')
+      createRequest('http://localhost/api/v1/search?q=report')
     );
 
     expect(response.status).toBe(200);
@@ -125,18 +113,13 @@ describe('GET /api/v1/search', () => {
   });
 
   it('returns empty restricted groups for Employee role', async () => {
-    vi.mocked(jwtVerify).mockResolvedValue({
-      payload: {
-        sub: '123e4567-e89b-12d3-a456-426614174000',
-        sid: 'session-id-2',
-        role: 'Employee',
-      },
+    vi.mocked(getToken).mockResolvedValue({
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      role: 'Employee',
     } as never);
 
-    dbSelectMock.mockImplementation(() => createSelectChain([{ id: 1 }]));
-
     const response = await GET(
-      createRequest('http://localhost/api/v1/search?q=lap', 'valid-token')
+      createRequest('http://localhost/api/v1/search?q=lap')
     );
 
     expect(response.status).toBe(200);

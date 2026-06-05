@@ -120,26 +120,12 @@ export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: text('name').notNull(),
-  password: text('password').notNull(),
   departmentId: integer('department_id').references(() => departments.id),
   role: roleEnum('role').default('Employee').notNull(),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
-});
-
-export const sessions = pgTable('sessions', {
-  id: serial('id').primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  tokenId: text('token_id').notNull().unique(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  revokedAt: timestamp('revoked_at', { withTimezone: true }),
 });
 
 // -----------------------------------------------------------------------------
@@ -950,3 +936,72 @@ export const webhookSubscriptionsRelations = relations(
     }),
   })
 );
+
+// -----------------------------------------------------------------------------
+// 10. LINKED MOBILE DEVICES (QR Code Auth Flow)
+// -----------------------------------------------------------------------------
+
+export const linkedDevices = pgTable(
+  'linked_devices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    deviceName: varchar('device_name', { length: 255 })
+      .notNull()
+      .default('Unknown Device'),
+    deviceOs: varchar('device_os', { length: 100 }),
+    deviceModel: varchar('device_model', { length: 100 }),
+    jwtId: varchar('jwt_id', { length: 64 }).notNull().unique(),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
+    linkedAt: timestamp('linked_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    isRevoked: boolean('is_revoked').default(false).notNull(),
+  },
+  (table) => ({
+    userIdIdx: index('linked_devices_user_id_idx').on(table.userId),
+    jwtIdIdx: index('linked_devices_jwt_id_idx').on(table.jwtId),
+    isRevokedIdx: index('linked_devices_is_revoked_idx').on(table.isRevoked),
+  })
+);
+
+export const linkedDevicesRelations = relations(linkedDevices, ({ one }) => ({
+  user: one(users, {
+    fields: [linkedDevices.userId],
+    references: [users.id],
+  }),
+}));
+
+// -----------------------------------------------------------------------------
+// 11. AUTH: SERVER-SIDE REFRESH TOKEN STORE
+//
+// Keycloak's Refresh Token Rotation (RTR) policy revokes a refresh token the
+// moment it is used. In a multi-worker Next.js setup (e.g. Turbopack), multiple
+// Node.js processes can each decode the same encrypted JWT cookie and all try to
+// refresh concurrently — causing Keycloak to see a "replay" and reject with
+// invalid_grant.
+//
+// This table is the single authoritative store for the latest valid refresh token
+// per user. Refreshes acquire a pg_advisory_xact_lock keyed on the user ID, so
+// only one worker can hit Keycloak at a time. Others wait, then discover the
+// token was already refreshed and skip the Keycloak call entirely.
+// -----------------------------------------------------------------------------
+export const userRefreshTokens = pgTable('user_refresh_tokens', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  refreshToken: text('refresh_token').notNull(),
+  accessToken: text('access_token'),
+  idToken: text('id_token'),
+  accessTokenExpires: timestamp('access_token_expires', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const userRefreshTokensRelations = relations(userRefreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [userRefreshTokens.userId],
+    references: [users.id],
+  }),
+}));
