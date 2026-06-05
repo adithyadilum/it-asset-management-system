@@ -3,6 +3,7 @@ import { Geist_Mono, Noto_Sans } from "next/font/google";
 import { Toaster } from "@/components/shared/sonner";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { NextAuthSessionProvider } from "@/components/shared/auth/session-provider";
+import { GlobalBarcodeListener } from "@/components/shared/global-barcode-listener";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <NextAuthSessionProvider>
+            <GlobalBarcodeListener />
             {children}
           </NextAuthSessionProvider>
           <Toaster position="bottom-center" />

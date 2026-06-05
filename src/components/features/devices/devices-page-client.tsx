@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DevicePairingModal from '@/components/auth/device-pairing-modal';
 import { DevicesList } from '@/components/features/devices/devices-list';
 import type { LinkedDevice } from '@/lib/data/devices-repo';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import Pusher from 'pusher-js';
 
 interface DevicesPageClientProps {
   devices: LinkedDevice[];
@@ -13,6 +16,30 @@ interface DevicesPageClientProps {
 
 export function DevicesPageClient({ devices }: DevicesPageClientProps) {
   const [pairingOpen, setPairingOpen] = useState(false);
+  const router = useRouter();
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    });
+
+    const channelName = `user-${session.user.id}`;
+    const channel = pusher.subscribe(channelName);
+
+    channel.bind('devices_updated', () => {
+      // Refresh the page data when a device unlinks itself
+      router.refresh();
+    });
+
+    return () => {
+      channel.unbind('devices_updated');
+      pusher.unsubscribe(channelName);
+      pusher.disconnect();
+    };
+  }, [session?.user?.id, router]);
 
   return (
     <>
