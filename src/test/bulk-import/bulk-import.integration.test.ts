@@ -83,7 +83,7 @@ describe('Bulk Import Integration', () => {
     vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce({
       id: 1,
       name: 'Laptops',
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       prefix: 'LAP',
       isActive: true,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

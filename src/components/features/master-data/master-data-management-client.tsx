@@ -38,7 +38,7 @@ export type MasterDataTabId =
 
 type PillarFilter =
     | "all"
-    | "IT & Digital"
+    | "Hardware"
     | "Software"
     | "Office Furniture"
     | "Office Electronics";
@@ -192,7 +192,7 @@ const TYPE_FILTER_TAB_IDS = new Set<MasterDataTabId>([
 
 const PILLAR_OPTIONS: Array<{ label: string; value: PillarFilter }> = [
     { label: "All", value: "all" },
-    { label: "IT & Digital", value: "IT & Digital" },
+    { label: "Hardware", value: "Hardware" },
     { label: "Software", value: "Software" },
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },

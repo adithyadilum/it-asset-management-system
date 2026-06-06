@@ -100,7 +100,7 @@ const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
 };
 
 const PILLAR_OPTIONS = [
-    { label: "IT & Digital", value: "IT & Digital" },
+    { label: "Hardware", value: "Hardware" },
     { label: "Software", value: "Software" },
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },
@@ -464,7 +464,7 @@ export function MasterDataRecordPanel({
         return location?.name ?? "Unknown";
     }, [draft.parentId, locations]);
 
-    const modelPillar = asString(draft.pillar) || "IT & Digital";
+    const modelPillar = asString(draft.pillar) || "Hardware";
     const selectedModelCategoryId = asString(draft.categoryId);
 
     const categoryOptionsForModel = useMemo(

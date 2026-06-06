@@ -47,7 +47,7 @@ const assetsItems: NavItem[] = [
         allowedRoles: privilegedRoles,
     },
     {
-        label: "IT & Digital",
+        label: "Hardware",
         icon: Laptop,
         allowedRoles: privilegedRoles,
         children: [

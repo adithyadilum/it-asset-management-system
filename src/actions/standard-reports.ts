@@ -308,7 +308,7 @@ export async function fetchReportPreview(
       let dbPillar: string | undefined = undefined;
       if (filters.assetType && filters.assetType !== 'All Assets') {
         dbPillar = filters.assetType;
-        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Hardware') dbPillar = 'Hardware';
         if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
       }
@@ -494,7 +494,7 @@ export async function fetchReportPreview(
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
         let dbPillar = filters.assetType;
-        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Hardware') dbPillar = 'Hardware';
         if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
         conditions.push(eq(categories.pillar, dbPillar as never));
@@ -629,7 +629,7 @@ export async function fetchReportPreview(
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
         let dbPillar = filters.assetType;
-        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Hardware') dbPillar = 'Hardware';
         if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
         conditions.push(eq(categories.pillar, dbPillar as never));
@@ -891,7 +891,7 @@ export async function fetchReportPreview(
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
         let dbPillar = filters.assetType;
-        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Hardware') dbPillar = 'Hardware';
         if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
         conditions.push(eq(categories.pillar, dbPillar as never));
@@ -1040,7 +1040,7 @@ export async function fetchReportPreview(
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
         let dbPillar = filters.assetType;
-        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Hardware') dbPillar = 'Hardware';
         if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
         conditions.push(eq(categories.pillar, dbPillar as never));
@@ -1144,7 +1144,7 @@ export async function fetchReportPreview(
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
         let dbPillar = filters.assetType;
-        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Hardware') dbPillar = 'Hardware';
         if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
         conditions.push(eq(categories.pillar, dbPillar as never));
@@ -1256,7 +1256,7 @@ export async function fetchReportPreview(
       }
       if (filters.assetType && filters.assetType !== 'All Assets') {
         let dbPillar = filters.assetType;
-        if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+        if (dbPillar === 'Hardware') dbPillar = 'Hardware';
         if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
         if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
         conditions.push(eq(categories.pillar, dbPillar as never));
@@ -1640,7 +1640,7 @@ export async function fetchReportPreview(
     // Asset Type filter — map frontend generic names to DB pillars
     if (filters.assetType && filters.assetType !== 'All Assets') {
       let dbPillar = filters.assetType;
-      if (dbPillar === 'Hardware') dbPillar = 'IT & Digital';
+      if (dbPillar === 'Hardware') dbPillar = 'Hardware';
       if (dbPillar === 'Furniture') dbPillar = 'Office Furniture';
       if (dbPillar === 'Electronics') dbPillar = 'Office Electronics';
 

@@ -5,7 +5,7 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 export const DB_PILLAR_VALUES = [
-  'IT & Digital',
+  'Hardware',
   'Software',
   'Office Furniture',
   'Office Electronics',
@@ -247,7 +247,7 @@ export const initialRegisterAssetActionState: RegisterAssetActionState = {
 // ---------------------------------------------------------------------------
 
 export const PILLAR_PREFIX_MAP: Record<DbPillar, string> = {
-  'IT & Digital': 'HRW',
+  'Hardware': 'HRW',
   Software: 'SFT',
   'Office Furniture': 'FUR',
   'Office Electronics': 'ELC',

@@ -32,7 +32,7 @@ export const roleEnum = pgEnum('role', [
   'Employee',
 ]);
 export const pillarEnum = pgEnum('pillar', [
-  'IT & Digital',
+  'Hardware',
   'Software',
   'Office Furniture',
   'Office Electronics',

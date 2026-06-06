@@ -67,7 +67,7 @@ import {
 } from "@/lib/constants";
 
 type Pillar =
-    | "IT & Digital"
+    | "Hardware"
     | "Software"
     | "Office Furniture"
     | "Office Electronics";
@@ -97,7 +97,7 @@ interface MasterDataCreatePanelProps {
 }
 
 const PILLAR_OPTIONS: Array<{ label: string; value: Pillar }> = [
-    { label: "IT & Digital", value: "IT & Digital" },
+    { label: "Hardware", value: "Hardware" },
     { label: "Software", value: "Software" },
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },
@@ -226,8 +226,8 @@ export function MasterDataCreatePanel({
         INITIAL_CREATE_MASTER_DATA_STATE
     );
     const [isActive, setIsActive] = useState(true);
-    const [categoryPillar, setCategoryPillar] = useState<Pillar>("IT & Digital");
-    const [modelPillar, setModelPillar] = useState<Pillar>("IT & Digital");
+    const [categoryPillar, setCategoryPillar] = useState<Pillar>("Hardware");
+    const [modelPillar, setModelPillar] = useState<Pillar>("Hardware");
     const [selectedLocationType, setSelectedLocationType] = useState<LocationType | "">("");
     const [selectedParentLocationId, setSelectedParentLocationId] = useState(
         TOP_LEVEL_PARENT_LOCATION_VALUE
@@ -431,8 +431,8 @@ export function MasterDataCreatePanel({
     const resetCreateFormState = useCallback(() => {
         setState(INITIAL_CREATE_MASTER_DATA_STATE);
         setIsActive(true);
-        setCategoryPillar("IT & Digital");
-        setModelPillar("IT & Digital");
+        setCategoryPillar("Hardware");
+        setModelPillar("Hardware");
         setSelectedLocationType("");
         setSelectedParentLocationId(TOP_LEVEL_PARENT_LOCATION_VALUE);
         setSelectedBrandId("");

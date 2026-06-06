@@ -209,7 +209,7 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
 
             {/* Center Column: Desktop Search */}
             <div className="hidden items-center justify-self-center md:flex">
-                <OmniSearchTrigger userRole={user.role} />
+                {user.role !== 'Employee' && <OmniSearchTrigger userRole={user.role} />}
             </div>
 
             {/* Right Column: Avatar & User Info */}

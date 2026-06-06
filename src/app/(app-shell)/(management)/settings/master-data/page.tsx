@@ -441,7 +441,7 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     categoryId: row.categoryId,
     brandName: row.brandName ?? "Unknown",
     categoryName: row.categoryName ?? "Unknown",
-    pillar: row.pillar ?? "IT & Digital",
+    pillar: row.pillar ?? "Hardware",
     imageUrl: row.imageUrl ?? null,
     technicalDetails: normalizeModelTechnicalDetails(row.technicalDetails),
   }));

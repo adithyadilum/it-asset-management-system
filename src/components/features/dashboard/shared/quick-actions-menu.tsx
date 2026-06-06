@@ -32,7 +32,7 @@ import type { UserRole } from '@/types/auth'
 
 const PILLAR_OPTIONS = [
   {
-    label: 'IT & Digital',
+    label: 'Hardware',
     slug: 'hardware',
     icon: Monitor,
     description: 'Laptops, desktops, servers, and networking equipment',

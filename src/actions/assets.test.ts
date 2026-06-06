@@ -116,7 +116,7 @@ function formData(entries: Record<string, string>): FormData {
 }
 
 const validHardwarePayload = {
-  pillar: 'IT & Digital',
+  pillar: 'Hardware',
   name: 'Dell XPS 15',
   categoryId: '1',
   brandId: '1',
@@ -169,7 +169,7 @@ describe('registerAsset', () => {
   it('rejects invalid input payload (Zod validation)', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     // Missing required fields like basePrice, name, etc.
-    const result = await registerAsset({ success: false }, formData({ pillar: 'IT & Digital' }));
+    const result = await registerAsset({ success: false }, formData({ pillar: 'Hardware' }));
     expect(result.success).toBe(false);
     expect(result.errors).toBeDefined();
   });
@@ -311,7 +311,7 @@ describe('manualStatusOverrideAction', () => {
     mockDb.query.assets.findFirst.mockResolvedValue({
       id: '00000000-0000-4000-a000-000000000000',
       status: 'Available',
-      model: { category: { pillar: 'IT & Digital' } }
+      model: { category: { pillar: 'Hardware' } }
     });
     mockDb.transaction.mockImplementation(async (cb) => { await cb(mockDb); });
 
@@ -351,7 +351,7 @@ describe('manualStatusOverrideAction', () => {
     mockDb.query.assets.findFirst.mockResolvedValue({
       id: '00000000-0000-4000-a000-000000000000',
       status: 'Disposed',
-      model: { category: { pillar: 'IT & Digital' } }
+      model: { category: { pillar: 'Hardware' } }
     });
 
     const result = await manualStatusOverrideAction('00000000-0000-4000-a000-000000000000', 'Lost', 'reasoning here');

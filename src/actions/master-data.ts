@@ -44,7 +44,7 @@ import {
 import { type LocationType } from '@/types/master-data';
 
 const CATEGORY_PILLARS = new Set([
-  'IT & Digital',
+  'Hardware',
   'Software',
   'Office Furniture',
   'Office Electronics',
@@ -1247,7 +1247,7 @@ export async function updateMasterDataRecord(
           .set({
             name: name.value,
             pillar: pillar as
-              | 'IT & Digital'
+              | 'Hardware'
               | 'Software'
               | 'Office Furniture'
               | 'Office Electronics',

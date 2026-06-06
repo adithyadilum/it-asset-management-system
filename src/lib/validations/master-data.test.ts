@@ -468,7 +468,7 @@ describe('categorySchema', () => {
 
   it('accepts a valid category', () => {
     const result = categorySchema.safeParse({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       name: 'Laptops',
       prefix: 'LAP',
       customSchema: validCustomSchema,
@@ -487,7 +487,7 @@ describe('categorySchema', () => {
   });
 
   it('accepts all valid pillar values', () => {
-    for (const pillar of ['IT & Digital', 'Software', 'Office Furniture', 'Office Electronics']) {
+    for (const pillar of ['Hardware', 'Software', 'Office Furniture', 'Office Electronics']) {
       const result = categorySchema.safeParse({
         pillar,
         name: 'Test',
@@ -500,7 +500,7 @@ describe('categorySchema', () => {
 
   it('rejects name shorter than 2 chars', () => {
     const result = categorySchema.safeParse({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       name: 'L',
       prefix: 'LAP',
       customSchema: validCustomSchema,
@@ -511,7 +511,7 @@ describe('categorySchema', () => {
   it('requires prefix to be exactly 3 alphanumeric characters', () => {
     expect(
       categorySchema.safeParse({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: 'Laptops',
         prefix: 'LA',
         customSchema: validCustomSchema,
@@ -520,7 +520,7 @@ describe('categorySchema', () => {
 
     expect(
       categorySchema.safeParse({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: 'Laptops',
         prefix: 'LAPT',
         customSchema: validCustomSchema,
@@ -529,7 +529,7 @@ describe('categorySchema', () => {
 
     expect(
       categorySchema.safeParse({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: 'Laptops',
         prefix: 'L@P',
         customSchema: validCustomSchema,
@@ -539,7 +539,7 @@ describe('categorySchema', () => {
 
   it('transforms prefix to uppercase', () => {
     const result = categorySchema.safeParse({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       name: 'Laptops',
       prefix: 'lap',
       customSchema: validCustomSchema,
@@ -552,7 +552,7 @@ describe('categorySchema', () => {
 
   it('rejects invalid customSchema JSON', () => {
     const result = categorySchema.safeParse({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       name: 'Laptops',
       prefix: 'LAP',
       customSchema: 'not json',
@@ -562,7 +562,7 @@ describe('categorySchema', () => {
 
   it('rejects customSchema missing modelSpecs', () => {
     const result = categorySchema.safeParse({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       name: 'Laptops',
       prefix: 'LAP',
       customSchema: JSON.stringify({ assetTracking: [] }),
@@ -572,7 +572,7 @@ describe('categorySchema', () => {
 
   it('validates customSchema structure (modelSpecs array, assetTracking array)', () => {
     const validResult = categorySchema.safeParse({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       name: 'Laptops',
       prefix: 'LAP',
       customSchema: JSON.stringify({
@@ -585,7 +585,7 @@ describe('categorySchema', () => {
 
   it('rejects customSchema with extra unexpected keys (strict mode)', () => {
     const result = categorySchema.safeParse({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       name: 'Laptops',
       prefix: 'LAP',
       customSchema: JSON.stringify({

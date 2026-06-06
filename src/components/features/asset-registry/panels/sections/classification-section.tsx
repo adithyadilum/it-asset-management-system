@@ -36,6 +36,7 @@ type ClassificationSectionProps = {
   selectedModel: ModelRegistrationOption | null;
   selectedModelLabel: string;
   modelEmptyMessage: string;
+  brandEmptyMessage: string;
   derivedAssetName: string;
 };
 
@@ -59,6 +60,7 @@ export function ClassificationSection({
   selectedModel,
   selectedModelLabel,
   modelEmptyMessage,
+  brandEmptyMessage,
   derivedAssetName,
 }: ClassificationSectionProps) {
   const selectedModelImageUrl = selectedModel?.imageUrl ?? '';
@@ -115,7 +117,7 @@ export function ClassificationSection({
           onChange={onBrandChange}
           options={brandOptions}
           placeholder="Select Brand.."
-          emptyMessage="No brands found."
+          emptyMessage={brandEmptyMessage}
           error={getError(state, 'brandId')}
         />
 

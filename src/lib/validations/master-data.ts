@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { LOCATION_TYPES } from '@/types/master-data';
 
 const pillarSchema = z.enum([
-  'IT & Digital',
+  'Hardware',
   'Software',
   'Office Furniture',
   'Office Electronics',

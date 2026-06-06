@@ -258,7 +258,7 @@ describe('External API Endpoints Scoping', () => {
 
   describe('POST /api/v1/external/assets', () => {
     const validAssetBody = JSON.stringify({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       categoryId: 1,
       brandId: 1,
       modelId: 1,
@@ -317,7 +317,7 @@ describe('External API Endpoints Scoping', () => {
       });
 
       const invalidBody = JSON.stringify({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: '', // Empty name triggers validation failure
       });
 

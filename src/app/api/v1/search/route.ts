@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, or, sql, ne } from 'drizzle-orm';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
@@ -114,10 +114,13 @@ async function searchAssetsByQuery(
       .innerJoin(models, eq(assets.modelId, models.id))
       .leftJoin(categories, eq(models.categoryId, categories.id))
       .where(
-        or(
-          ilike(assets.assetTag, containsQuery),
-          ilike(assets.name, containsQuery),
-          ilike(assets.serialNumber, containsQuery)
+        and(
+          ne(assets.status, 'Disposed'),
+          or(
+            ilike(assets.assetTag, containsQuery),
+            ilike(assets.name, containsQuery),
+            ilike(assets.serialNumber, containsQuery)
+          )
         )
       )
       .orderBy(rankExpression, asc(assets.assetTag))
@@ -195,62 +198,87 @@ async function searchReportsByQuery(
   const normalizedQuery = query.trim().toLowerCase();
 
   try {
-    const [softwareCountRows, attentionCountRows, auditCountRows] =
-      await Promise.all([
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(assets)
-          .innerJoin(models, eq(assets.modelId, models.id))
-          .innerJoin(categories, eq(models.categoryId, categories.id))
-          .where(eq(categories.pillar, 'Software'))
-          .limit(1),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(assets)
-          .where(inArray(assets.status, ['In Repair', 'Defective', 'Lost']))
-          .limit(1),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(systemAuditLogs)
-          .limit(1),
-      ]);
-
-    const softwareAssetsCount = softwareCountRows[0]?.count ?? 0;
-    const attentionAssetsCount = attentionCountRows[0]?.count ?? 0;
-    const auditEventsCount = auditCountRows[0]?.count ?? 0;
-
-    const reportCandidates: OmniSearchReportResult[] = [
+    const reportCandidates = [
       {
         id: 'report-software-compliance',
         label: 'Software Compliance Report',
-        description: `${softwareAssetsCount} software assets tracked`,
+        description: 'software assets tracked',
         href: '/reports',
+        needsSoftwareCount: true,
       },
       {
         id: 'report-overdue-assets',
         label: 'Overdue Assets Report',
-        description: `${attentionAssetsCount} assets require attention`,
+        description: 'assets require attention',
         href: '/reports',
+        needsAttentionCount: true,
       },
       {
         id: 'report-audit-activity',
         label: 'Audit Activity Report',
-        description: `${auditEventsCount} logged audit events`,
+        description: 'logged audit events',
         href: '/reports/audit-log',
+        needsAuditCount: true,
       },
     ];
 
-    return reportCandidates
-      .filter((reportCandidate) => {
-        if (!normalizedQuery) {
-          return true;
-        }
+    const matchedReports = reportCandidates.filter((report) => {
+      if (!normalizedQuery) return true;
+      const haystack = `${report.label} ${report.description}`.toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
 
-        const haystack =
-          `${reportCandidate.label} ${reportCandidate.description}`.toLowerCase();
-        return haystack.includes(normalizedQuery);
-      })
-      .slice(0, MAX_RESULTS_PER_GROUP);
+    if (matchedReports.length === 0) {
+      return [];
+    }
+
+    const queries: Promise<{ count: number }[]>[] = [];
+    const reportQueryMapping: { index: number; id: string }[] = [];
+
+    matchedReports.forEach((report, i) => {
+      if (report.needsSoftwareCount) {
+        queries.push(
+          db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(assets)
+            .innerJoin(models, eq(assets.modelId, models.id))
+            .innerJoin(categories, eq(models.categoryId, categories.id))
+            .where(eq(categories.pillar, 'Software'))
+            .limit(1)
+        );
+        reportQueryMapping.push({ index: queries.length - 1, id: report.id });
+      } else if (report.needsAttentionCount) {
+        queries.push(
+          db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(assets)
+            .where(inArray(assets.status, ['In Repair', 'Defective', 'Lost']))
+            .limit(1)
+        );
+        reportQueryMapping.push({ index: queries.length - 1, id: report.id });
+      } else if (report.needsAuditCount) {
+        queries.push(
+          db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(systemAuditLogs)
+            .limit(1)
+        );
+        reportQueryMapping.push({ index: queries.length - 1, id: report.id });
+      }
+    });
+
+    const results = await Promise.all(queries);
+
+    return matchedReports.map((report) => {
+      const mapping = reportQueryMapping.find((m) => m.id === report.id);
+      const count = mapping ? (results[mapping.index]?.[0]?.count ?? 0) : 0;
+      return {
+        id: report.id,
+        label: report.label,
+        description: `${count} ${report.description}`,
+        href: report.href,
+      };
+    }).slice(0, MAX_RESULTS_PER_GROUP);
   } finally {
     logLatency({
       scope: 'DB ACTION',

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."pillar" RENAME VALUE 'IT & Digital' TO 'Hardware';

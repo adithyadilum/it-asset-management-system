@@ -22,6 +22,13 @@
       "when": 1778710255616,
       "tag": "0002_atomic_notification_queue_dedup",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780766416537,
+      "tag": "0003_rename_pillar",
+      "breakpoints": true
     }
   ]
 }

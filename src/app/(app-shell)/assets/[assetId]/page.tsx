@@ -31,7 +31,7 @@ export default async function AssetIdPage({ params }: { params: Promise<{ assetI
     }
 
     let pillarPath = 'hardware';
-    if (assetRecord.pillar === 'IT & Digital') pillarPath = 'hardware';
+    if (assetRecord.pillar === 'Hardware') pillarPath = 'hardware';
     else if (assetRecord.pillar === 'Software') pillarPath = 'software';
     else if (assetRecord.pillar === 'Office Furniture') pillarPath = 'furniture';
     else if (assetRecord.pillar === 'Office Electronics') pillarPath = 'office-electronics';

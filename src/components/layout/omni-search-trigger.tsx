@@ -15,6 +15,7 @@ import {
   getVisibleOmniStaticItems,
   type OmniStaticItem,
 } from '@/lib/omni-search-index';
+import { Command as CommandPrimitive } from 'cmdk';
 import {
   Command,
   CommandGroup,
@@ -321,60 +322,60 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
-      <PopoverAnchor asChild>
-        <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-border bg-background shadow-box-shadow-shadow-xs">
-          <div className="flex items-center py-1.5 pl-3 pr-0">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </div>
+      <Command shouldFilter={false} className="bg-transparent overflow-visible">
+        <PopoverAnchor asChild>
+          <div className="flex h-9 w-112.5 items-center rounded-lg border border-solid border-border bg-background shadow-box-shadow-shadow-xs">
+            <div className="flex items-center py-1.5 pl-3 pr-0">
+              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </div>
 
-          <div className="flex h-9 flex-1 items-center px-2">
-            <input
-              ref={inputRef}
-              value={searchValue}
-              onChange={(event) => {
-                setSearchValue(event.target.value);
-                if (!isOpen) {
-                  setIsOpen(true);
-                }
-              }}
-              onFocus={() => setIsOpen(true)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  event.preventDefault();
-                  setIsOpen(false);
-                  inputRef.current?.blur();
-                }
-              }}
-              aria-label="Omni Search"
-              placeholder="Search..."
-              className={`w-full bg-transparent text-muted-foreground outline-none placeholder:text-muted-foreground ${triggerTextClass}`}
-            />
-          </div>
+            <div className="flex h-9 flex-1 items-center px-2">
+              <CommandPrimitive.Input
+                ref={inputRef}
+                value={searchValue}
+                onValueChange={(val) => {
+                  setSearchValue(val);
+                  if (!isOpen) {
+                    setIsOpen(true);
+                  }
+                }}
+                onFocus={() => setIsOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setIsOpen(false);
+                    inputRef.current?.blur();
+                  }
+                }}
+                aria-label="Omni Search"
+                placeholder="Search..."
+                className={`w-full bg-transparent text-muted-foreground outline-none placeholder:text-muted-foreground ${triggerTextClass}`}
+              />
+            </div>
 
-          <div className="flex items-center gap-1 py-1.5 pl-0 pr-3">
-            {['⌘', 'K'].map((key) => (
-              <div
-                key={key}
-                className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-muted px-1 py-0"
-              >
-                <span className="font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [font-style:var(--text-xs-regular-font-style)]">
-                  {key}
-                </span>
-              </div>
-            ))}
+            <div className="flex items-center gap-1 py-1.5 pl-0 pr-3">
+              {['⌘', 'K'].map((key) => (
+                <div
+                  key={key}
+                  className="flex h-5 w-5 flex-col items-center justify-center overflow-hidden rounded-lg bg-muted px-1 py-0"
+                >
+                  <span className="font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [font-style:var(--text-xs-regular-font-style)]">
+                    {key}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </PopoverAnchor>
+        </PopoverAnchor>
 
-      <PopoverContent
-        side="bottom"
-        sideOffset={8}
-        align="center"
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={(event) => event.preventDefault()}
-        className="w-180 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-background p-0 shadow-box-shadow-shadow-xl"
-      >
-        <Command shouldFilter={false} className="rounded-xl! bg-background p-0">
+        <PopoverContent
+          side="bottom"
+          sideOffset={8}
+          align="center"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          className="w-180 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-background p-0 shadow-box-shadow-shadow-xl"
+        >
           <CommandList className="max-h-93 px-3 py-2">
             {searchError ? (
               <div className="px-1 pb-2 pt-1 text-xs text-red-600">
@@ -435,57 +436,65 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                   ) : null}
                 </CommandGroup>
 
-                <div className={sectionDividerClass} />
+                {userRole !== 'Employee' && (
+                  <>
+                    <div className={sectionDividerClass} />
 
-                <CommandGroup
-                  heading="Reports"
-                  className={`px-0 ${sectionHeadingClass}`}
-                >
-                  {isSearching ? <SectionSkeletonRows count={1} /> : null}
+                    <CommandGroup
+                      heading="Reports"
+                      className={`px-0 ${sectionHeadingClass}`}
+                    >
+                      {isSearching ? <SectionSkeletonRows count={1} /> : null}
 
-                  {!isSearching
-                    ? reportsResults.map((item) => renderReportItem(item))
-                    : null}
+                      {!isSearching
+                        ? reportsResults.map((item) => renderReportItem(item))
+                        : null}
 
-                  {shouldShowReportsEmptyState ? (
-                    <SectionEmptyState query={normalizedQuery} entity="reports" />
-                  ) : null}
-                </CommandGroup>
+                      {shouldShowReportsEmptyState ? (
+                        <SectionEmptyState query={normalizedQuery} entity="reports" />
+                      ) : null}
+                    </CommandGroup>
+                  </>
+                )}
 
-                <div className={sectionDividerClass} />
+                {userRole === 'GlobalAdmin' && (
+                  <>
+                    <div className={sectionDividerClass} />
 
-                <CommandGroup
-                  heading="Users"
-                  className={`px-0 ${sectionHeadingClass}`}
-                >
-                  {isSearching ? <SectionSkeletonRows /> : null}
+                    <CommandGroup
+                      heading="Users"
+                      className={`px-0 ${sectionHeadingClass}`}
+                    >
+                      {isSearching ? <SectionSkeletonRows /> : null}
 
-                  {!isSearching
-                    ? usersResults.map((user) => (
-                      <CommandItem
-                        key={user.id}
-                        value={`${user.name} ${user.email} ${user.department}`}
-                        onSelect={() => handleSelectHref('/settings/roles')}
-                        className={resultItemClass}
-                      >
-                        <UserRound className="size-4 text-muted-foreground" />
+                      {!isSearching
+                        ? usersResults.map((user) => (
+                          <CommandItem
+                            key={user.id}
+                            value={`${user.name} ${user.email} ${user.department}`}
+                            onSelect={() => handleSelectHref('/settings/roles')}
+                            className={resultItemClass}
+                          >
+                            <UserRound className="size-4 text-muted-foreground" />
 
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm text-foreground">
-                            {user.name}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {user.email} • {user.department}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))
-                    : null}
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <span className="truncate text-sm text-foreground">
+                                {user.name}
+                              </span>
+                              <span className="truncate text-xs text-muted-foreground">
+                                {user.email} • {user.department}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))
+                        : null}
 
-                  {shouldShowUsersEmptyState ? (
-                    <SectionEmptyState query={normalizedQuery} entity="users" />
-                  ) : null}
-                </CommandGroup>
+                      {shouldShowUsersEmptyState ? (
+                        <SectionEmptyState query={normalizedQuery} entity="users" />
+                      ) : null}
+                    </CommandGroup>
+                  </>
+                )}
               </>
             ) : normalizedQuery.length === 0 ? (
               <div className="px-1 py-6 text-center text-xs text-muted-foreground">
@@ -493,19 +502,21 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
               </div>
             ) : null}
 
-            <div className="mt-2 border-t border-border px-1 pt-2 text-xs text-muted-foreground">
-              {isSearching && normalizedQuery.length >= 2 ? (
-                <span className="inline-flex items-center gap-1">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Searching...
-                </span>
-              ) : (
-                `${totalResultsCount} results`
-              )}
-            </div>
+            {normalizedQuery.length >= 2 && (
+              <div className="mt-2 border-t border-border px-1 pt-2 text-xs text-muted-foreground">
+                {isSearching ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Searching...
+                  </span>
+                ) : (
+                  `${totalResultsCount} results`
+                )}
+              </div>
+            )}
           </CommandList>
-        </Command>
-      </PopoverContent>
+        </PopoverContent>
+      </Command>
     </Popover>
   );
 }

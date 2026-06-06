@@ -56,8 +56,8 @@ export interface AssignmentsDashboardData {
 }
 
 const DASHBOARD_PILLARS: Array<
-  'IT & Digital' | 'Office Furniture' | 'Office Electronics'
-> = ['IT & Digital', 'Office Furniture', 'Office Electronics'];
+  'Hardware' | 'Office Furniture' | 'Office Electronics'
+> = ['Hardware', 'Office Furniture', 'Office Electronics'];
 
 export type AssignmentTargetType = 'user' | 'location';
 

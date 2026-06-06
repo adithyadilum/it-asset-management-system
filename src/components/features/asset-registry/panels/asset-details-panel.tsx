@@ -28,7 +28,7 @@ export interface AssetDetailsPanelProps {
   assetId: string;
   assetTag: string;
   assetName?: string;
-  assetCategory: 'IT & Digital' | 'Software' | 'Office Furniture' | 'Office Electronics' | string;
+  assetCategory: 'Hardware' | 'Software' | 'Office Furniture' | 'Office Electronics' | string;
   model: string;
   brand: string;
   serialNumber?: string;

@@ -63,7 +63,7 @@ export function StandardReportsConfigPanel({
 
   // Map UI Asset Types to DB Pillars for filtering category options
   const typeToPillarMap: Record<string, string> = {
-    'Hardware': 'IT & Digital',
+    'Hardware': 'Hardware',
     'Software': 'Software',
     'Electronics': 'Office Electronics',
     'Furniture': 'Office Furniture',

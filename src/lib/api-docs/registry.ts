@@ -540,7 +540,7 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            pillar: z.enum(['IT & Digital', 'Software', 'Office Furniture', 'Office Electronics']),
+            pillar: z.enum(['Hardware', 'Software', 'Office Furniture', 'Office Electronics']),
             categoryId: z.number(),
             brandId: z.number(),
             modelId: z.number(),

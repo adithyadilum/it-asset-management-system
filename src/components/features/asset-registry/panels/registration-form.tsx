@@ -113,7 +113,7 @@ function formatPurchaseDateLabel(inputValue: string) {
 function resolveStartingPillar(
   initialPillar?: RegistrationPillarInput
 ): RegistrationPillarInput {
-  return initialPillar ?? 'IT & Digital';
+  return initialPillar ?? 'Hardware';
 }
 
 function RegistrationFormSkeleton() {
@@ -238,20 +238,29 @@ export function RegistrationForm({
     setPillar(resolveStartingPillar(initialPillar));
   }
 
-  const filteredModelOptions = React.useMemo(
-    () =>
-      modelOptions
-        .filter((option) => {
-          const matchesCategory =
-            categoryId.length === 0 || option.categoryId === categoryId;
-          const matchesBrand =
-            brandId.length === 0 || option.brandId === brandId;
+  const filteredModelOptions = React.useMemo(() => {
+    if (categoryId.length === 0) return [];
+    
+    return modelOptions
+      .filter((option) => {
+        const matchesCategory = option.categoryId === categoryId;
+        const matchesBrand = brandId.length === 0 || option.brandId === brandId;
+        return matchesCategory && matchesBrand;
+      })
+      .map(({ value, label }) => ({ value, label }));
+  }, [brandId, categoryId, modelOptions]);
 
-          return matchesCategory && matchesBrand;
-        })
-        .map(({ value, label }) => ({ value, label })),
-    [brandId, categoryId, modelOptions]
-  );
+  const filteredBrandOptions = React.useMemo(() => {
+    if (categoryId.length === 0) return [];
+
+    const validBrandIds = new Set(
+      modelOptions
+        .filter((option) => option.categoryId === categoryId)
+        .map((option) => option.brandId)
+    );
+
+    return brandOptions.filter((option) => validBrandIds.has(option.value));
+  }, [categoryId, modelOptions, brandOptions]);
 
   const [prevFilteredModelOptions, setPrevFilteredModelOptions] = React.useState(filteredModelOptions);
   if (filteredModelOptions !== prevFilteredModelOptions) {
@@ -262,6 +271,19 @@ export function RegistrationForm({
       );
       if (!stillValidModel) {
         setModelId('');
+      }
+    }
+  }
+
+  const [prevFilteredBrandOptions, setPrevFilteredBrandOptions] = React.useState(filteredBrandOptions);
+  if (filteredBrandOptions !== prevFilteredBrandOptions) {
+    setPrevFilteredBrandOptions(filteredBrandOptions);
+    if (brandId.length > 0) {
+      const stillValidBrand = filteredBrandOptions.some(
+        (option) => option.value === brandId
+      );
+      if (!stillValidBrand) {
+        setBrandId('');
       }
     }
   }
@@ -305,9 +327,15 @@ export function RegistrationForm({
 
   const formError = state.errors?.form?.[0];
   const modelEmptyMessage =
-    brandId.length > 0 || categoryId.length > 0
+    categoryId.length === 0
+      ? 'Please select a category first.'
+      : brandId.length > 0
       ? config.modelFilteredEmptyMessage
       : config.modelEmptyMessage;
+  const brandEmptyMessage =
+    categoryId.length === 0
+      ? 'Please select a category first.'
+      : 'No brands found.';
   const selectedModelLabel =
     modelOptions.find((option) => option.value === modelId)?.label ?? '';
   const selectedBrandLabel =
@@ -416,11 +444,12 @@ export function RegistrationForm({
         modelId={modelId}
         onModelChange={setModelId}
         categoryOptions={categoryOptions}
-        brandOptions={brandOptions}
+        brandOptions={filteredBrandOptions}
         filteredModelOptions={filteredModelOptions}
         selectedModel={selectedModel}
         selectedModelLabel={selectedModelLabel}
         modelEmptyMessage={modelEmptyMessage}
+        brandEmptyMessage={brandEmptyMessage}
         derivedAssetName={derivedAssetName}
       />
 

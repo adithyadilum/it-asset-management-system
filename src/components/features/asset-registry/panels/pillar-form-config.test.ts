@@ -3,8 +3,8 @@ import { getPillarFormConfig } from './pillar-form-config';
 import { type RegistrationPillarInput } from '@/lib/validations/asset-registration';
 
 describe('getPillarFormConfig', () => {
-  it('should return correct config for IT & Digital', () => {
-    const config = getPillarFormConfig('IT & Digital');
+  it('should return correct config for Hardware', () => {
+    const config = getPillarFormConfig('Hardware');
     expect(config.panelTitle).toBe('Asset Registry');
     expect(config.panelDescription).toBe('Hardware');
     expect(config.showSerialNumber).toBe(true);
@@ -43,7 +43,7 @@ describe('getPillarFormConfig', () => {
     expect(config.showSoftwareLicensingSection).toBe(false);
   });
 
-  it('should fallback to IT & Digital config for unknown pillar', () => {
+  it('should fallback to Hardware config for unknown pillar', () => {
     const config = getPillarFormConfig('Unknown Pillar' as RegistrationPillarInput);
     expect(config.panelTitle).toBe('Asset Registry');
     expect(config.panelDescription).toBe('Hardware');

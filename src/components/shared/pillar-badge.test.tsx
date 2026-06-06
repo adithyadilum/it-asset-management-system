@@ -3,9 +3,9 @@ import { describe, it, expect } from 'vitest';
 import { PillarBadge } from './pillar-badge';
 
 describe('PillarBadge', () => {
-  it('renders IT & Digital pillar with correct styling', () => {
-    const { container } = render(<PillarBadge pillar="IT & Digital" />);
-    expect(screen.getByText('IT & Digital')).toBeInTheDocument();
+  it('renders Hardware pillar with correct styling', () => {
+    const { container } = render(<PillarBadge pillar="Hardware" />);
+    expect(screen.getByText('Hardware')).toBeInTheDocument();
     expect(container.firstChild).toHaveClass('bg-indigo-50');
   });
 

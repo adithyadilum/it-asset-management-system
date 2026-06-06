@@ -40,7 +40,7 @@ export interface RegistryViewConfig {
 export const REGISTRY_VIEW_CONFIGS: Record<RegistryView, RegistryViewConfig> = {
   hardware: {
     view: 'hardware',
-    pillar: 'IT & Digital',
+    pillar: 'Hardware',
     title: 'Laptops',
     showAllCategoryOption: true,
     allCategoryLabel: 'All Hardware',
