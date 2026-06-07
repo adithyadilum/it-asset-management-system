@@ -7,3 +7,6 @@ class ResizeObserverMock {
 }
 
 global.ResizeObserver = ResizeObserverMock;
+
+import { vi } from 'vitest';
+vi.mock('server-only', () => ({}));

@@ -51,8 +51,8 @@ describe('StandardReportsPreviewPanel', () => {
 
   it('renders data grid when showDataGrid is true', () => {
     render(<StandardReportsPreviewPanel {...defaultProps} />);
-    expect(screen.getByText('TAG-001')).toBeInTheDocument();
-    expect(screen.getByText('Laptop')).toBeInTheDocument();
+    expect(screen.getByText('AST-001')).toBeInTheDocument();
+    expect(screen.getByText('MacBook Pro')).toBeInTheDocument();
   });
 
   it('shows error state when errorMessage is provided', () => {

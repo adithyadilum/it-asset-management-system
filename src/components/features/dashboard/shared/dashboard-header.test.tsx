@@ -27,6 +27,7 @@ describe('DashboardHeader', () => {
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
     vi.useRealTimers();
     vi.clearAllMocks();
   });

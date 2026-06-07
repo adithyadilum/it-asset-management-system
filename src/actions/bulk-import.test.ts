@@ -12,6 +12,11 @@ vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
 }));
 
+vi.mock('@/lib/currency', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
+  convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -52,6 +57,7 @@ vi.mock('@/db/schema', () => ({
   assets: { id: 'assets.id', assetTag: 'assets.assetTag' },
   assetPurchases: { id: 'assetPurchases.id' },
   categories: { id: 'categories.id' },
+  systemAuditLogs: { id: 'systemAuditLogs.id' },
 }));
 
 const mockGenerateTemplateWorkbook = vi.fn().mockResolvedValue({ buffer: Buffer.from('test'), fileName: 'template.xlsx' });

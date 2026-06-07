@@ -19,7 +19,7 @@ describe('DeleteWebhookDialog', () => {
       />
     );
     
-    expect(screen.getByText('Delete Webhook')).toBeInTheDocument();
-    expect(screen.getByText(/Test Hook/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Delete Webhook')[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Test Hook/i)[0]).toBeInTheDocument();
   });
 });

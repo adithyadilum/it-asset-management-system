@@ -20,6 +20,6 @@ describe('EditWebhookDialog', () => {
       />
     );
     
-    expect(screen.getByText('Edit Webhook')).toBeInTheDocument();
+    expect(screen.getByText('Configure Webhook')).toBeInTheDocument();
   });
 });

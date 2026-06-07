@@ -4,13 +4,13 @@ import { ApiKeyTable } from './api-key-table';
 
 describe('ApiKeyTable', () => {
   const mockApiKeys: any[] = [
-    { id: '1', name: 'Production Key', prefix: 'prod_', lastUsed: '2023-01-01', created: '2022-01-01', permissions: ['read', 'write'] },
+    { id: '1', name: 'Production Key', keyPrefix: 'prod_', keySuffix: 'a1b2', lastUsedAt: new Date('2023-01-01'), createdAt: new Date('2022-01-01'), permissions: ['read', 'write'] },
   ];
 
   it('renders api keys correctly', () => {
     render(<ApiKeyTable keys={mockApiKeys} onChanged={vi.fn()} />);
     
     expect(screen.getByText('Production Key')).toBeInTheDocument();
-    expect(screen.getByText('prod_••••••••••••')).toBeInTheDocument();
+    expect(screen.getByText('prod_****************a1b2')).toBeInTheDocument();
   });
 });

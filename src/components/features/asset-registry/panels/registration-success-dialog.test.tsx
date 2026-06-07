@@ -1,0 +1,17 @@
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { RegistrationSuccessDialog } from './registration-success-dialog';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() })
+}));
+
+describe('RegistrationSuccessDialog', () => {
+  it('renders success dialog', () => {
+    const mockAsset = { id: '1', assetTag: 'AST-1', name: 'Laptop' };
+    // @ts-ignore
+    render(<RegistrationSuccessDialog isOpen={true} onOpenChange={vi.fn()} asset={mockAsset as any} />);
+    
+    expect(screen.getByText(/Asset Registered Successfully/i)).toBeInTheDocument();
+  });
+});

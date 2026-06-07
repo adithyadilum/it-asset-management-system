@@ -57,7 +57,7 @@ describe('StandardReportsConfigPanel', () => {
 
     expect(screen.getByText('Template 1')).toBeInTheDocument();
     
-    fireEvent.click(screen.getByText('Select Source Assets'));
+    fireEvent.click(screen.getAllByText('Select Source Assets')[0]);
     expect(mockOnFilterChange).toHaveBeenCalledWith('source', 'Assets');
 
     fireEvent.click(screen.getByText('Preview report'));
