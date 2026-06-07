@@ -961,13 +961,13 @@ export function MasterDataRecordPanel({
                         {renderSchemaRows(
                             "Model Specifications (Common)",
                             "Fields used when creating models.",
-                            category.customSchema.modelSpecs
+                            category.customSchema?.modelSpecs
                         )}
 
                         {renderSchemaRows(
                             "Asset Tracking Fields (Unique)",
                             "Fields captured for each physical asset instance.",
-                            category.customSchema.assetTracking
+                            category.customSchema?.assetTracking
                         )}
 
                         {renderActiveStatus()}

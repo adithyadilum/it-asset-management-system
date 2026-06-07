@@ -25,6 +25,7 @@ Our CI/CD pipeline relies on strict naming conventions to route tests to the cor
 ### A. UI Components
 * **Tool:** Vitest
 * **Rule:** Test for rendering, accessibility (ARIA roles), and user interactions (clicks, typing). Do not test actual network requests or database connections here.
+* **Fixing Tests:** If a test fails, first make sure the test logic is correct. If the test is correct and still fails, it means the component is faulty. Fix the component instead of forcing the test to pass incorrectly.
 
 ### B. Server Actions
 Server Actions blur the line between frontend and backend. Follow these guidelines:

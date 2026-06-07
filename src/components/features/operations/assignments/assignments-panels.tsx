@@ -59,7 +59,7 @@ export function AssignmentsPanels({
 		setCachedAsset(selectedAsset);
 	}
 
-	if (isOpen && cachedAsset?.assetId !== prevRecordId) {
+	if (isOpen && (cachedAsset?.assetId ?? null) !== prevRecordId) {
 		setPrevRecordId(cachedAsset?.assetId ?? null);
 		setIsLoading(true);
 	}
