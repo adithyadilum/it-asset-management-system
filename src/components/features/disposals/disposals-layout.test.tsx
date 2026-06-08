@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DisposalsLayout } from './disposals-layout';
 
 vi.mock('next/navigation', () => ({
@@ -29,6 +29,12 @@ vi.mock('./disposal-asset-detail-panel', () => ({
 }));
 
 describe('DisposalsLayout', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders pending and history tabs for standard user', () => {
     render(<DisposalsLayout pendingData={[]} historyData={[]} />);
 

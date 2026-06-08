@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { InventoryStatusChart } from './inventory-status-chart';
 
 // ResizeObserver mock
@@ -8,9 +8,19 @@ class ResizeObserver {
   unobserve() {}
   disconnect() {}
 }
-window.ResizeObserver = ResizeObserver;
+vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('InventoryStatusChart', () => {
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders chart component', () => {
     const mockData = [
       { status: 'Available', count: 100, fill: '#123456' }

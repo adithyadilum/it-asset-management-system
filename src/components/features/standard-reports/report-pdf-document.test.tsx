@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ReportPdfDocument } from './report-pdf-document';
 
 // Mock react-pdf since it relies on node/browser streams not present in pure jsdom effectively
@@ -17,6 +17,12 @@ vi.mock('@react-pdf/renderer', () => ({
 }));
 
 describe('ReportPdfDocument', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders without crashing (component is mostly declarative PDF definitions)', () => {
     const mockData = {
       title: 'Test Report',
@@ -37,7 +43,7 @@ describe('ReportPdfDocument', () => {
     const { screen } = require('@testing-library/react');
 
     render(<ReportPdfDocument data={mockData} />);
-    
+
     expect(screen.getAllByTestId('pdf-document').length).toBeGreaterThan(0);
   });
 });

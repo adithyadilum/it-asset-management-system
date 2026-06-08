@@ -26,9 +26,11 @@ describe('DashboardHeader', () => {
     });
   });
 
-  afterEach(() => {
-    vi.clearAllTimers();
+  afterEach(async () => {
+    // Restore real timers so the flush setTimeout doesn't hang indefinitely
     vi.useRealTimers();
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
     vi.clearAllMocks();
   });
 

@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { HistoryTab } from './history-tab';
 
 vi.mock('@/actions/audit-log', () => ({
@@ -10,6 +10,12 @@ vi.mock('@/actions/audit-log', () => ({
 }));
 
 describe('HistoryTab', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders history correctly', async () => {
     render(<HistoryTab assetId="1" />);
     await waitFor(() => {

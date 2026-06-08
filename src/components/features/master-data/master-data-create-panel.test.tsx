@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MasterDataCreatePanel } from './master-data-create-panel';
 
 vi.mock('next/navigation', () => ({
@@ -26,9 +26,19 @@ vi.mock('@/components/shared/slide-panel', () => ({
 
 // Mock ResizeObserver
 class ResizeObserver { observe() {} unobserve() {} disconnect() {} }
-window.ResizeObserver = ResizeObserver;
+vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('MasterDataCreatePanel', () => {
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const defaultProps = {
     isOpen: true,
     onCloseUrl: '/settings/master-data',

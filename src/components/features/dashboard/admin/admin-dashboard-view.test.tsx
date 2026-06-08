@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AdminDashboardView } from './admin-dashboard-view';
 
 vi.mock('server-only', () => ({}));
@@ -28,6 +28,12 @@ vi.mock('@/actions/assignments', () => ({
 }));
 
 describe('AdminDashboardView', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders admin dashboard view with metrics and charts', () => {
     const mockData = {
       kpiMetrics: [],

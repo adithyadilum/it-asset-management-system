@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { TechnicalDetailsTab } from './technical-details-tab';
 
 describe('TechnicalDetailsTab', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders technical details', () => {
     const mockAsset = {
       specifications: { cpu: 'i7', ram: '16GB' },

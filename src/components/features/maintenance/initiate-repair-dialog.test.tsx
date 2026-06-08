@@ -1,3 +1,8 @@
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
+const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InitiateRepairDialog } from './initiate-repair-dialog';
@@ -5,6 +10,12 @@ import { InitiateRepairDialog } from './initiate-repair-dialog';
 HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('InitiateRepairDialog', () => {
+  afterAll(() => {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    HTMLElement.prototype.hasPointerCapture = originalHasPointerCapture;
+    HTMLElement.prototype.releasePointerCapture = originalReleasePointerCapture;
+  });
+
   const mockOnClose = vi.fn();
   const mockOnConfirm = vi.fn();
   

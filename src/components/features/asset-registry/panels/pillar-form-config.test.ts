@@ -1,8 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { getPillarFormConfig } from './pillar-form-config';
 import { type RegistrationPillarInput } from '@/lib/validations/asset-registration';
 
 describe('getPillarFormConfig', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('should return correct config for Hardware', () => {
     const config = getPillarFormConfig('Hardware');
     expect(config.panelTitle).toBe('Asset Registry');

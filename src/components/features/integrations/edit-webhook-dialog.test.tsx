@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { EditWebhookDialog } from './edit-webhook-dialog';
 
 vi.mock('./webhook-event-selector', () => ({
@@ -11,6 +11,12 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('EditWebhookDialog', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders correctly', () => {
     render(
       <EditWebhookDialog

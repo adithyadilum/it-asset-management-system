@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ActiveRepairsGrid } from './active-repairs-grid';
 
 // Mock DataTable and TableSkeleton
@@ -30,6 +30,12 @@ vi.mock('@/components/shared/table-skeleton', () => ({
 }));
 
 describe('ActiveRepairsGrid', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockTickets: any[] = [
     {
       id: 1,

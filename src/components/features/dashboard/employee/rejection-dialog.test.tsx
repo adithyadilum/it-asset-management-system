@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { RejectionDialog } from './rejection-dialog';
 import { rejectAssignmentAction } from '@/actions/employee';
 
@@ -12,6 +12,12 @@ vi.mock('@/actions/employee', () => ({
 }));
 
 describe('RejectionDialog', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('requires reason and calls rejectAssignmentAction', async () => {
     const mockOnSuccess = vi.fn();
     const mockAssignment = {

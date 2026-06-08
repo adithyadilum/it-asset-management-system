@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MaintenanceTabs } from './maintenance-tabs';
 
 vi.mock('@/components/shared/data-table', () => ({
@@ -34,6 +34,12 @@ vi.mock('./repair-history-grid', () => ({
 }));
 
 describe('MaintenanceTabs', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockPendingTickets: any[] = [
     { id: 1, asset: { assetTag: 'TAG-1' }, reportedIssue: 'Broken screen', createdAt: '2023-01-01' }
   ];

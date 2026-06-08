@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { PurchaseDetailsTab } from './purchase-details-tab';
 
 describe('PurchaseDetailsTab', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders purchase details correctly', () => {
     const mockDetails = {
       currency: 'USD',

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { StandardReportsPreviewPanel } from './standard-reports-preview-panel';
 import { fetchReportPreview } from '@/actions/standard-reports';
 
@@ -33,9 +33,15 @@ vi.mock('@/components/ui/standard-modal', () => ({
 }));
 
 describe('StandardReportsPreviewPanel', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockPagination = { pageIndex: 0, pageSize: 16 };
   const mockSetPagination = vi.fn();
-  
+
   const defaultProps = {
     showDataGrid: true,
     previewData: [{ id: '1', 'Asset Tag': 'AST-001', 'Asset Name': 'MacBook Pro' }],
@@ -68,23 +74,23 @@ describe('StandardReportsPreviewPanel', () => {
 
   it('handles Export CSV flow', async () => {
     (fetchReportPreview as any).mockResolvedValue({ data: [], totalRows: 0 });
-    
+
     // Mock URL.createObjectURL
     global.URL.createObjectURL = vi.fn(() => 'blob:test');
     global.URL.revokeObjectURL = vi.fn();
-    
+
     render(<StandardReportsPreviewPanel {...defaultProps} />);
-    
+
     fireEvent.click(screen.getByText(/Export CSV/i));
-    
+
     expect(screen.getByTestId('export-modal')).toBeInTheDocument();
-    
+
     // Choose All Records
     fireEvent.click(screen.getByLabelText('All Records'));
-    
+
     // Click Export
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
-    
+
     await waitFor(() => {
       expect(fetchReportPreview).toHaveBeenCalled();
     });

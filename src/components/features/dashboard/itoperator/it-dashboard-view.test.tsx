@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ITDashboardView } from './it-dashboard-view';
 
 vi.mock('../shared/kpi-metrics-row', () => ({
@@ -13,6 +13,12 @@ vi.mock('@/components/shared/data-table', () => ({
 }));
 
 describe('ITDashboardView', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders it dashboard view', () => {
     const mockData = {
       kpiMetrics: {},

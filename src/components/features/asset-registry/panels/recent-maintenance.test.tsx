@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { RecentMaintenance } from './recent-maintenance';
 
 vi.mock('@/actions/maintenance', () => ({
@@ -9,6 +9,12 @@ vi.mock('@/actions/maintenance', () => ({
 }));
 
 describe('RecentMaintenance', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders maintenance records', async () => {
     render(<RecentMaintenance assetTag="AST-1" />);
     await waitFor(() => {

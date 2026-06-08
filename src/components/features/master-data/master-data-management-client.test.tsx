@@ -11,9 +11,13 @@ vi.mock('next/navigation', () => ({
 
 // Mock ResizeObserver
 class ResizeObserver { observe() {} unobserve() {} disconnect() {} }
-window.ResizeObserver = ResizeObserver;
+vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('MasterDataManagementClient', () => {
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const mockRouter = { push: vi.fn(), replace: vi.fn() };
 
   beforeEach(() => {

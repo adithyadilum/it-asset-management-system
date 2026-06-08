@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { StandardReportsShell } from './standard-reports-shell';
 import { fetchReportPreview } from '@/actions/standard-reports';
 
@@ -39,6 +39,12 @@ vi.mock('./standard-reports-preview-panel', () => ({
 }));
 
 describe('StandardReportsShell', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders correctly and handles interactions', async () => {
     (fetchReportPreview as any).mockResolvedValue({
       data: [{ id: 1, tag: 'T-1' }],

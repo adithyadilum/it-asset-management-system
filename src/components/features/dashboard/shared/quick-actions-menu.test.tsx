@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { QuickActionsMenu } from './quick-actions-menu';
 
 vi.mock('next/navigation', () => ({
@@ -7,6 +7,12 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('QuickActionsMenu', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders quick actions menu and responds to clicks', () => {
     render(<QuickActionsMenu userRole="GlobalAdmin" />);
     

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import { MobileRouteHandler } from './mobile-route-handler';
 
 vi.mock('next/navigation', () => ({
@@ -7,7 +7,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/mobile'
 }));
 
-describe.skip('MobileRouteHandler', () => {
+describe('MobileRouteHandler', () => {
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
   beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,

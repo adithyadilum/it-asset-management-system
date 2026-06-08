@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { StandardReportsConfigPanel } from './standard-reports-config-panel';
 
 vi.mock('@/components/ui/select', () => ({
@@ -25,6 +25,12 @@ vi.mock('./report-template-card', () => ({
 }));
 
 describe('StandardReportsConfigPanel', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockFilterOptions: any = {
     categories: [], locations: [], statuses: [], assignmentStates: [],
     returnConditions: [], maintenanceStatuses: [], disposalStatuses: [],
@@ -56,7 +62,7 @@ describe('StandardReportsConfigPanel', () => {
     );
 
     expect(screen.getByText('Template 1')).toBeInTheDocument();
-    
+
     fireEvent.click(screen.getAllByText('Select Source Assets')[0]);
     expect(mockOnFilterChange).toHaveBeenCalledWith('source', 'Assets');
 

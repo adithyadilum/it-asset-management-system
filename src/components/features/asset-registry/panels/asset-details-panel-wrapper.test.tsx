@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AssetDetailsPanelWrapper } from './asset-details-panel-wrapper';
 
 // Mock the child to simplify
@@ -8,6 +8,12 @@ vi.mock('./asset-details-panel', () => ({
 }));
 
 describe('AssetDetailsPanelWrapper', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders wrapper', () => {
     // @ts-ignore
     render(<AssetDetailsPanelWrapper assetId="1" onEdit={vi.fn()} onAssign={vi.fn()} onPrintTag={vi.fn()} />);

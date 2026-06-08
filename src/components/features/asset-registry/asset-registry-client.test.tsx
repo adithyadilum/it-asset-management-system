@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { AssetRegistryClient } from './asset-registry-client';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { getAllAssetsUnified } from '@/actions/asset-registry';
@@ -37,10 +37,14 @@ vi.mock('use-debounce', () => ({
 }));
 
 // Mock ResizeObserver
-class ResizeObserver { observe() {} unobserve() {} disconnect() {} }
-window.ResizeObserver = ResizeObserver;
+class ResizeObserver { observe() { } unobserve() { } disconnect() { } }
+vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('AssetRegistryClient', () => {
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const mockConfig = { view: 'unified', title: 'All Assets', defaultCategoryLabel: 'All Assets', defaultPageSize: 50, filters: [], filterFieldOptions: [] } as any;
   const mockInitialResult = {
     data: [
@@ -60,10 +64,10 @@ describe('AssetRegistryClient', () => {
 
   it('renders the title and asset count', () => {
     render(
-      <AssetRegistryClient 
-        config={mockConfig} 
-        initialCategories={[]} 
-        initialResult={mockInitialResult} 
+      <AssetRegistryClient
+        config={mockConfig}
+        initialCategories={[]}
+        initialResult={mockInitialResult}
       />
     );
     expect(screen.getByText('All Assets')).toBeInTheDocument();
@@ -71,10 +75,10 @@ describe('AssetRegistryClient', () => {
 
   it('renders the asset in the table', () => {
     render(
-      <AssetRegistryClient 
-        config={mockConfig} 
-        initialCategories={[]} 
-        initialResult={mockInitialResult} 
+      <AssetRegistryClient
+        config={mockConfig}
+        initialCategories={[]}
+        initialResult={mockInitialResult}
       />
     );
     expect(screen.getByText('TAG-1')).toBeInTheDocument();
@@ -83,16 +87,16 @@ describe('AssetRegistryClient', () => {
 
   it('handles search input', async () => {
     render(
-      <AssetRegistryClient 
-        config={mockConfig} 
-        initialCategories={[]} 
-        initialResult={mockInitialResult} 
+      <AssetRegistryClient
+        config={mockConfig}
+        initialCategories={[]}
+        initialResult={mockInitialResult}
       />
     );
-    
+
     const searchInput = screen.getByPlaceholderText(/Search/i);
     fireEvent.change(searchInput, { target: { value: 'test' } });
-    
+
     await waitFor(() => {
       expect(getAllAssetsUnified).toHaveBeenCalledWith(
         expect.objectContaining({ query: 'test' })

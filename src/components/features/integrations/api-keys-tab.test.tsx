@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ApiKeysTab } from './api-keys-tab';
 
 vi.mock('next/navigation', () => ({
@@ -19,6 +19,12 @@ vi.mock('./revoke-key-dialog', () => ({
 }));
 
 describe('ApiKeysTab', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockApiKeys: any[] = [
     { id: '1', name: 'Test Key', lastUsedAt: new Date('2023-01-01'), createdAt: new Date('2022-01-01'), prefix: 'test_', permissions: ['read'] },
   ];

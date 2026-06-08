@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AssetEditForm } from './asset-edit-form';
 
 describe('AssetEditForm', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders edit form', () => {
     const mockData = {
       asset: { id: '1', assetTag: 'AST-1', name: 'MacBook Pro', status: 'Available', condition: 'New' },

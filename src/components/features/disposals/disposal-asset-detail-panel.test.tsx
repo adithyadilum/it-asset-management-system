@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DisposalAssetDetailPanel } from './disposal-asset-detail-panel';
 
 vi.mock('@/components/features/asset-registry/panels/asset-details-panel-wrapper', () => ({
@@ -21,6 +21,12 @@ vi.mock('@/components/features/asset-registry/panels/asset-details-panel-wrapper
 }));
 
 describe('DisposalAssetDetailPanel', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockDisposalDetails: any = {
     status: 'Completed',
     disposalDate: '2023-01-01',

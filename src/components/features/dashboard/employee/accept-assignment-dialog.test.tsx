@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AcceptAssignmentDialog } from './accept-assignment-dialog';
 
 vi.mock('@/components/ui/dialog', () => ({
@@ -29,6 +29,12 @@ vi.mock('@/components/ui/checkbox', () => ({
 }));
 
 describe('AcceptAssignmentDialog', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders and calls onConfirm when accepted', async () => {
     const mockOnConfirm = vi.fn();
     
