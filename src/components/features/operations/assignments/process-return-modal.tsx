@@ -16,6 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type ReturnAssetItem = {
   assetId: string;
@@ -38,6 +45,7 @@ export function ProcessReturnModal({
 }: ProcessReturnModalProps) {
   const router = useRouter();
   const [condition, setCondition] = React.useState("");
+  const [physicalCondition, setPhysicalCondition] = React.useState("Excellent");
   const [notes, setNotes] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -45,6 +53,7 @@ export function ProcessReturnModal({
     (open: boolean) => {
       if (!open) {
         setCondition("");
+        setPhysicalCondition("Excellent");
         setNotes("");
       }
       onOpenChange(open);
@@ -60,7 +69,12 @@ export function ProcessReturnModal({
     }
 
     if (!condition) {
-      tiqriToast.warning("Please select a condition.");
+      tiqriToast.warning("Please select a status outcome condition.");
+      return;
+    }
+
+    if (!physicalCondition) {
+      tiqriToast.warning("Please select a physical condition.");
       return;
     }
 
@@ -70,6 +84,7 @@ export function ProcessReturnModal({
       const payload: ProcessReturnPayload = {
         assetId: asset.assetId,
         condition: condition as ProcessReturnPayload["condition"],
+        physicalCondition: physicalCondition as ProcessReturnPayload["physicalCondition"],
         notes: notes.trim(),
       };
       
@@ -101,7 +116,7 @@ export function ProcessReturnModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 pt-4">
           <div className="flex flex-col gap-3">
-            <Label>Condition</Label>
+            <Label>Routing Action (Status Outcome)</Label>
             <div className="flex flex-col gap-2">
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -144,6 +159,22 @@ export function ProcessReturnModal({
                 Beyond Repair
               </label>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Label>Physical Condition</Label>
+            <Select value={physicalCondition} onValueChange={setPhysicalCondition}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select physical condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="New">New</SelectItem>
+                <SelectItem value="Excellent">Excellent</SelectItem>
+                <SelectItem value="Fair">Fair</SelectItem>
+                <SelectItem value="Poor">Poor</SelectItem>
+                <SelectItem value="Damaged">Damaged</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-col gap-3">

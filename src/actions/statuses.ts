@@ -14,6 +14,7 @@ export interface CustomStatusRow {
   iconName: string;
   colorTheme: string;
   isActive: boolean;
+  allowedActions: string[] | null;
   createdAt: Date;
 }
 
@@ -30,6 +31,7 @@ export async function getCustomStatuses(): Promise<CustomStatusRow[]> {
         iconName: customStatuses.iconName,
         colorTheme: customStatuses.colorTheme,
         isActive: customStatuses.isActive,
+        allowedActions: customStatuses.allowedActions,
         createdAt: customStatuses.createdAt,
       })
       .from(customStatuses)
@@ -45,14 +47,14 @@ export async function getCustomStatuses(): Promise<CustomStatusRow[]> {
   }
 }
 
-export async function createCustomStatus(name: string, colorTheme: string, iconName: string) {
+export async function createCustomStatus(name: string, colorTheme: string, iconName: string, allowedActions: string[] = ['edit']) {
   const timer = startLatencyTimer();
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('UNAUTHENTICATED');
   if (user.role !== 'GlobalAdmin') throw new Error('FORBIDDEN');
 
   // Validate inputs with Zod
-  const parsed = customStatusSchema.safeParse({ name, colorTheme, iconName, isActive: true });
+  const parsed = customStatusSchema.safeParse({ name, colorTheme, iconName, isActive: true, allowedActions: JSON.stringify(allowedActions) });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
   }
@@ -64,6 +66,7 @@ export async function createCustomStatus(name: string, colorTheme: string, iconN
         name: parsed.data.name,
         colorTheme: parsed.data.colorTheme,
         iconName: parsed.data.iconName,
+        allowedActions: parsed.data.allowedActions,
         createdById: user.id,
       })
       .returning({
@@ -72,6 +75,7 @@ export async function createCustomStatus(name: string, colorTheme: string, iconN
         colorTheme: customStatuses.colorTheme,
         iconName: customStatuses.iconName,
         isActive: customStatuses.isActive,
+        allowedActions: customStatuses.allowedActions,
         createdAt: customStatuses.createdAt,
       });
 
@@ -129,7 +133,8 @@ export async function getManualOverrideStatuses() {
       .select({ 
         name: customStatuses.name, 
         colorTheme: customStatuses.colorTheme, 
-        iconName: customStatuses.iconName 
+        iconName: customStatuses.iconName,
+        allowedActions: customStatuses.allowedActions
       })
       .from(customStatuses)
       .where(eq(customStatuses.isActive, true));
@@ -143,6 +148,7 @@ export async function getManualOverrideStatuses() {
       label: r.name,
       colorTheme: r.colorTheme,
       iconName: r.iconName,
+      allowedActions: r.allowedActions,
     }));
 
     return [...builtInOptions, ...customOptions];

@@ -61,3 +61,27 @@ export const completeRepairSchema = z.object({
 });
 
 export type CompleteRepairInput = z.infer<typeof completeRepairSchema>;
+
+// ---------------------------------------------------------------------------
+// reportDefectiveFromPanel (dispatch repair directly from detail panel)
+// ---------------------------------------------------------------------------
+
+export const panelRepairSchema = z.object({
+  assetId: z.string().uuid('Invalid asset ID format.'),
+  vendorId: z.coerce.number().int().positive('A valid vendor must be selected.'),
+  rmaNumber: z
+    .string()
+    .trim()
+    .max(100, 'RMA number must be 100 characters or fewer.')
+    .optional(),
+  estimatedCost: z.coerce
+    .number()
+    .nonnegative('Estimated cost must be 0 or more.')
+    .optional(),
+  expectedReturnDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected return date must be in YYYY-MM-DD format.')
+    .optional(),
+});
+
+export type PanelRepairInput = z.infer<typeof panelRepairSchema>;

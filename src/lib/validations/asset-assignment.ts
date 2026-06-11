@@ -50,6 +50,7 @@ export const processReturnPayloadSchema = z.object({
     'Needs Repair',
     'Beyond Repair'
   ]),
+  physicalCondition: z.enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged']),
   notes: z.string().optional(),
 });
 

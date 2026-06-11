@@ -67,6 +67,7 @@ const UI_CATEGORIES = [
     icon: Activity,
     ruleKeys: [
       'RETURN_OVERDUE',
+      'RETURN_REQUESTED',
       'MAINTENANCE_COMPLETED',
       'ASSIGNMENT_PENDING',
       'DISPOSAL_REQUEST',
@@ -90,6 +91,7 @@ const CUSTOM_DISPLAY_NAMES: Record<string, string> = {
   WARRANTY_EXPIRY_WARNING: 'Warranty Expiration Warning',
   SOFTWARE_LICENSE_RENEWAL: 'Software License Renewal Warning',
   ASSIGNMENT_PENDING: 'Pending Asset Assignment',
+  RETURN_REQUESTED: 'Asset Return Requested',
   RETURN_OVERDUE: 'Repair Ticket Past Due (Expected Return Date Missed)',
   MAINTENANCE_COMPLETED: 'Maintenance Ticket Completed',
   ASSET_DEFECTIVE_REPORTED: 'Asset Defect Reported',

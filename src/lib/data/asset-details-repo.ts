@@ -74,6 +74,7 @@ export interface AssetDetailsData {
     companyName: string;
   } | null;
   assignment: {
+    id: number;
     assignedToUser: {
       id: string;
       name: string;
@@ -82,6 +83,7 @@ export interface AssetDetailsData {
     assignedDate: string;
     expectedReturnDate: string | null;
     notes: string | null;
+    state: string | null;
   } | null;
   softwareLicense?: {
     id: string;
@@ -392,12 +394,14 @@ export async function getAssetDetailsById(
       : null,
     assignment: assignmentRecord
       ? {
+          id: assignmentRecord.id,
           assignedToUser: assignmentRecord.assignedToUser,
           assignedDate: formatSafeISO(assignmentRecord.assignedDate),
           expectedReturnDate: assignmentRecord.expectedReturnDate
             ? formatSafeISO(assignmentRecord.expectedReturnDate)
             : null,
           notes: assignmentRecord.notes,
+          state: assignmentRecord.state,
         }
       : null,
     softwareLicense: assetRecord.softwareLicense

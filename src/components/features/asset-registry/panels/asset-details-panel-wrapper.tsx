@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AssetDetailsPanel } from "./asset-details-panel";
 import { AssetEditForm } from "./asset-edit-form";
 import { AddSoftwareUsersModal } from "./add-software-users-modal";
+import { AssetAssignmentModal } from "@/components/features/operations/assignments/asset-assignment-modal";
+import { DisposeAssetsRequestDialog } from "@/components/features/disposals/dispose-assets-request-dialog";
+import { InitiateRepairDialog } from "@/components/features/maintenance/initiate-repair-dialog";
+import { RequestReturnDialog } from "@/components/features/operations/assignments/request-return-dialog";
+import { RemindReturnDialog } from "@/components/features/operations/assignments/remind-return-dialog";
+import { MarkReturnedDialog } from "@/components/features/operations/assignments/mark-returned-dialog";
 import {
   getAssetDetailsByIdAction,
   getAssetHistoryByIdAction,
@@ -12,6 +19,8 @@ import {
   getEditDropdownOptionsAction,
 } from "@/actions/asset-registry-panels";
 import { getAssetFinancialVitals, type AssetFinancialVitals } from "@/actions/asset-financial-vitals";
+import { getVendors, reportDefectiveFromPanel } from "@/actions/maintenance";
+import { requestAssetReturnAction } from "@/actions/assignments";
 import { tiqriToast } from "@/components/shared/sonner";
 import {
   type AssetDetailsData,
@@ -20,6 +29,7 @@ import {
   type AllocationData,
 } from "@/lib/data/asset-details-repo";
 import type { TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
+import type { Vendor } from "@/types/maintenance";
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
@@ -84,6 +94,7 @@ export function AssetDetailsPanelWrapper({
   hideActions,
   additionalTabs,
 }: AssetDetailsPanelWrapperProps) {
+  const router = useRouter();
   const [data, setData] = useState<AssetDetailsData | null>(null);
   const [displayCurrencyOverride, setDisplayCurrencyOverride] = useState<string | null>(null);
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[]>([]);
@@ -91,7 +102,6 @@ export function AssetDetailsPanelWrapper({
   const [allocations, setAllocations] = useState<AllocationData[]>([]);
   const [financialVitals, setFinancialVitals] = useState<AssetFinancialVitals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   // ---- Edit Mode State ----
@@ -100,6 +110,17 @@ export function AssetDetailsPanelWrapper({
     locations: { value: string; label: string }[];
     owners: { value: string; label: string }[];
   }>({ locations: [], owners: [] });
+
+  // ---- Dialog States ----
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isDisposalDialogOpen, setIsDisposalDialogOpen] = useState(false);
+  const [isRepairDialogOpen, setIsRepairDialogOpen] = useState(false);
+  const [isRequestReturnDialogOpen, setIsRequestReturnDialogOpen] = useState(false);
+  const [isRemindReturnDialogOpen, setIsRemindReturnDialogOpen] = useState(false);
+  const [isMarkReturnedDialogOpen, setIsMarkReturnedDialogOpen] = useState(false);
+  const [repairVendors, setRepairVendors] = useState<Vendor[]>([]);
+  const [isRepairLoading, setIsRepairLoading] = useState(false);
 
   const sourceCurrency = data?.purchase?.currencyCode?.trim() || 'USD';
   const displayCurrency = displayCurrencyOverride ?? sourceCurrency;
@@ -178,6 +199,53 @@ export function AssetDetailsPanelWrapper({
     onRefreshRef?.current?.();
   }, [onRefreshRef]);
 
+  // ---- Action Handlers ----
+
+  const handleAssignClick = useCallback(() => {
+    setIsAssignModalOpen(true);
+  }, []);
+
+  const handleRequestReturnClick = useCallback(() => {
+    setIsRequestReturnDialogOpen(true);
+  }, []);
+
+  const handleRemindReturnClick = useCallback(() => {
+    setIsRemindReturnDialogOpen(true);
+  }, []);
+
+  const handleMarkReturnedClick = useCallback(() => {
+    setIsMarkReturnedDialogOpen(true);
+  }, []);
+
+  const handleSendForRepairClick = useCallback(async () => {
+    // Lazy-fetch vendors on button click
+    setIsRepairLoading(true);
+    try {
+      const vendorList = await getVendors();
+      setRepairVendors(vendorList as Vendor[]);
+      setIsRepairDialogOpen(true);
+    } catch {
+      tiqriToast.error("Failed to load vendors.");
+    } finally {
+      setIsRepairLoading(false);
+    }
+  }, []);
+
+  const handleRequestDisposalClick = useCallback(() => {
+    setIsDisposalDialogOpen(true);
+  }, []);
+
+  const handleProcessReturnClick = useCallback(() => {
+    if (data?.asset.id) {
+      router.push(`/operations/assignments?tab=returned-assets&processReturnId=${data.asset.id}`);
+      onClose(); // close the panel so they are redirected nicely
+    }
+  }, [data?.asset.id, router, onClose]);
+
+  // Derive pillar info for conditional logic
+  const pillar = data?.model.category.pillar ?? "";
+  const assetLabel = data?.asset.name || data?.model.name || data?.asset.assetTag || "Asset";
+
   return (
     <>
     {/* ---- Edit Mode: Replaces the read-only panel in the same position ---- */}
@@ -210,6 +278,7 @@ export function AssetDetailsPanelWrapper({
         location={data?.location?.name ?? ""}
         condition={data?.asset.condition ?? ""}
         status={data?.asset.status ?? ""}
+        assignmentState={data?.assignment?.state ?? undefined}
         dateCreated={formatDisplayDateTime(data?.asset.createdAt)}
         updatedAt={formatDisplayDateTime(data?.asset.updatedAt)}
         note={data?.assignment?.notes ?? ""}
@@ -253,6 +322,13 @@ export function AssetDetailsPanelWrapper({
         onCurrencyChange={setDisplayCurrencyOverride}
         manualStatuses={manualStatuses}
         onEdit={handleEditClick}
+        onAssign={handleAssignClick}
+        onRequestReturn={handleRequestReturnClick}
+        onRemindReturn={handleRemindReturnClick}
+        onMarkReturned={handleMarkReturnedClick}
+        onSendForRepair={handleSendForRepairClick}
+        onRequestDisposal={handleRequestDisposalClick}
+        onProcessReturn={handleProcessReturnClick}
         onStatusChanged={(nextStatus) => {
           setData((prev) => {
             if (!prev) return null;
@@ -275,13 +351,14 @@ export function AssetDetailsPanelWrapper({
         hideActions={hideActions}
         additionalTabs={additionalTabs}
         onActionButtonClick={() => {
-          if (data?.model.category.pillar === 'Software') {
+          if (pillar === 'Software') {
             setIsAddUserModalOpen(true);
           }
         }}
       />
     )}
     
+    {/* ---- Software: Add User Modal ---- */}
     {data?.model.category.pillar === 'Software' && (
       <AddSoftwareUsersModal
         isOpen={isAddUserModalOpen}
@@ -295,6 +372,121 @@ export function AssetDetailsPanelWrapper({
         assetId={data.asset.id}
         availableSeats={data.softwareLicense?.availableSeats ?? 0}
         existingAllocations={allocations}
+      />
+    )}
+
+    {/* ---- Assignment Modal ---- */}
+    {data && (
+      <AssetAssignmentModal
+        isOpen={isAssignModalOpen}
+        assetId={data.asset.id}
+        assetLabel={assetLabel}
+        assetGroup={pillar}
+        onOpenChange={(open) => {
+          setIsAssignModalOpen(open);
+          if (!open) {
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
+          }
+        }}
+      />
+    )}
+
+    {/* ---- Return Workflow Dialogs ---- */}
+    {data?.assignment?.id && (
+      <>
+        <RequestReturnDialog
+          isOpen={isRequestReturnDialogOpen}
+          onClose={() => setIsRequestReturnDialogOpen(false)}
+          assignmentId={data.assignment.id}
+          assetLabel={assetLabel}
+          onSuccess={() => {
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
+          }}
+        />
+        <RemindReturnDialog
+          isOpen={isRemindReturnDialogOpen}
+          onClose={() => setIsRemindReturnDialogOpen(false)}
+          assignmentId={data.assignment.id}
+          assetLabel={assetLabel}
+          onSuccess={() => {
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
+          }}
+        />
+        <MarkReturnedDialog
+          isOpen={isMarkReturnedDialogOpen}
+          onClose={() => setIsMarkReturnedDialogOpen(false)}
+          assignmentId={data.assignment.id}
+          assetLabel={assetLabel}
+          onSuccess={() => {
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
+          }}
+        />
+      </>
+    )}
+
+    {/* ---- Disposal Request Dialog ---- */}
+    {data && (
+      <DisposeAssetsRequestDialog
+        open={isDisposalDialogOpen}
+        onOpenChange={(open) => {
+          setIsDisposalDialogOpen(open);
+        }}
+        selectedAssets={[{
+          id: data.asset.id,
+          assetTag: data.asset.assetTag,
+          assetName: data.asset.name || data.model.name || "Asset",
+        }]}
+        onSubmitted={({ inserted, skipped }) => {
+          setIsDisposalDialogOpen(false);
+          setRefreshNonce((n) => n + 1);
+          onRefreshRef?.current?.();
+
+          if (skipped > 0) {
+            tiqriToast.warning(
+              `Submitted ${inserted} request(s). Skipped ${skipped} already pending.`
+            );
+          } else {
+            tiqriToast.success(`Disposal request submitted.`);
+          }
+        }}
+      />
+    )}
+
+    {/* ---- Initiate Repair Dialog ---- */}
+    {data && (
+      <InitiateRepairDialog
+        isOpen={isRepairDialogOpen}
+        onClose={() => setIsRepairDialogOpen(false)}
+        onConfirm={async (formData) => {
+          try {
+            const result = await reportDefectiveFromPanel(
+              data.asset.id,
+              formData.vendorId,
+              formData.rmaNumber,
+              formData.estimatedCost || undefined,
+              formData.expectedReturnDate || undefined
+            );
+
+            if (!result.success) {
+              throw new Error(result.message || 'Failed to dispatch asset for repair');
+            }
+
+            tiqriToast.success("Asset dispatched for repair.");
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
+          } catch (error) {
+            throw error; // Let the dialog handle the error display
+          }
+        }}
+        vendors={repairVendors}
+        isLoading={isRepairLoading}
+        assetId={data.asset.assetTag}
+        assetName={data.asset.name || data.model.name || "Unknown Asset"}
+        assetSerial={data.asset.serialNumber || undefined}
       />
     )}
     </>

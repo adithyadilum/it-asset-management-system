@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -145,6 +145,35 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     () => [...availableRows, ...assignedRows, ...returnedRows],
     [availableRows, assignedRows, returnedRows]
   );
+
+  // Auto-open Process Return modal if navigating from Asset Details Panel
+  useEffect(() => {
+    const processReturnId = searchParams.get("processReturnId");
+    if (processReturnId && returnedRows.length > 0) {
+      const targetRowIndex = returnedRows.findIndex((r) => r.assetId === processReturnId);
+      if (targetRowIndex >= 0) {
+        const row = returnedRows[targetRowIndex];
+        
+        // 1. Select the row
+        setRowSelection({ [targetRowIndex]: true });
+        
+        // 2. Setup and open modal
+        setProcessReturnAsset({
+          assetId: row.assetId,
+          assetTag: row.assetTag,
+          assetName: row.assetName,
+          assignee: row.assignedTo,
+          assignmentId: row.assignmentId,
+        });
+        setIsProcessReturnModalOpen(true);
+
+        // 3. Clean up the URL to prevent reopening on refresh
+        const newParams = new URLSearchParams(searchParams.toString());
+        newParams.delete("processReturnId");
+        router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
+      }
+    }
+  }, [searchParams, returnedRows, pathname, router]);
 
   const categoryOptions = useMemo(() => {
     const categories = new Set<string>();

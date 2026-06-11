@@ -1059,6 +1059,7 @@ export async function createMasterDataRecord(
           iconName: formData.get('iconName'),
           colorTheme: formData.get('colorTheme'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
+          allowedActions: String(formData.get('allowedActions') ?? '["edit"]'),
         });
 
         if (!parsed.success) {
@@ -1076,6 +1077,7 @@ export async function createMasterDataRecord(
             iconName: parsed.data.iconName,
             colorTheme: parsed.data.colorTheme,
             isActive: parsed.data.isActive,
+            allowedActions: parsed.data.allowedActions,
             createdById: currentUser.id,
           })
           .returning({ id: customStatuses.id });
