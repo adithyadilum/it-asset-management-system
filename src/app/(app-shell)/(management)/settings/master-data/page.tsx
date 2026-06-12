@@ -327,6 +327,7 @@ const getStatusesData = cache(() =>
       name: customStatuses.name,
       iconName: customStatuses.iconName,
       colorTheme: customStatuses.colorTheme,
+      allowedActions: customStatuses.allowedActions,
       isActive: customStatuses.isActive,
       createdAt: customStatuses.createdAt,
       linkedAssets: sql<number>`0::int`,

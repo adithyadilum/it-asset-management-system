@@ -12,6 +12,7 @@ describe('Financial Math Utility', () => {
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
 

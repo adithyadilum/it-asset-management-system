@@ -12,5 +12,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    css: false,
+    
+    // --- MEMORY LEAK FIX (Modern Vitest API) ---
+    // Use isolated forks to completely flush RAM between files
+    pool: 'forks',
+    isolate: true, 
   },
 });

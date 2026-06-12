@@ -10,6 +10,7 @@ describe('SoftwareExpiryStatus', () => {
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
 

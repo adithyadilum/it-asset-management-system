@@ -1,3 +1,8 @@
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
+const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
@@ -31,7 +36,7 @@ vi.mock('@/components/ui/select', () => ({
 HTMLElement.prototype.scrollIntoView = vi.fn();
 
 // Mock PointerEvent for Radix UI Dialog and Select
-if (typeof global.PointerEvent === 'undefined') {
+if (typeof global.PointerEvent == 'undefined') {
   class MockPointerEvent extends Event {
     button: number;
     ctrlKey: boolean;
@@ -41,12 +46,22 @@ if (typeof global.PointerEvent === 'undefined') {
       this.ctrlKey = props?.ctrlKey || false;
     }
   }
-  global.PointerEvent = MockPointerEvent as any;
+  vi.stubGlobal('PointerEvent', MockPointerEvent as any);
 }
 HTMLElement.prototype.hasPointerCapture = vi.fn();
 HTMLElement.prototype.releasePointerCapture = vi.fn();
 
 describe('RejectDisposalDialog', () => {
+  afterAll(() => {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    HTMLElement.prototype.hasPointerCapture = originalHasPointerCapture;
+    HTMLElement.prototype.releasePointerCapture = originalReleasePointerCapture;
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const mockOnOpenChange = vi.fn();
   const mockOnSuccess = vi.fn();
   const mockAssets: any[] = [

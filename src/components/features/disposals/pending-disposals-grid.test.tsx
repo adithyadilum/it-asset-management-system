@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PendingDisposalsGrid } from './pending-disposals-grid';
 
 vi.mock('@/components/shared/data-table', () => ({
@@ -42,6 +42,12 @@ vi.mock('./reject-disposal-dialog', () => ({
 }));
 
 describe('PendingDisposalsGrid', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockData: any[] = [
     {
       id: 1,

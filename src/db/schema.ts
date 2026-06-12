@@ -47,6 +47,7 @@ export const assetStatusEnum = pgEnum('asset_status', [
   'Retired',
   'Pending Disposal',
   'Disposed',
+  'Returned',
 ]);
 export const assignmentStateEnum = pgEnum('assignment_state', [
   'pending approval',
@@ -91,6 +92,7 @@ export const customStatuses = pgTable('custom_statuses', {
   // New visual metadata columns
   iconName: varchar('icon_name', { length: 50 }).notNull().default('CircleDot'),
   colorTheme: varchar('color_theme', { length: 50 }).notNull().default('gray'),
+  allowedActions: jsonb('allowed_actions').$type<string[]>().default(['edit']).notNull(),
   createdById: uuid('created_by_id').references(() => users.id),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),

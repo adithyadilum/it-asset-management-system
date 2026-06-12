@@ -1,5 +1,10 @@
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
+const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { CreateTemplateDialog } from './create-template-dialog';
 import { createReportTemplate } from '@/actions/report-templates';
 
@@ -29,7 +34,7 @@ vi.mock('@/components/ui/select', () => ({
 }));
 
 HTMLElement.prototype.scrollIntoView = vi.fn();
-if (typeof global.PointerEvent === 'undefined') {
+if (typeof global.PointerEvent == 'undefined') {
   class MockPointerEvent extends Event {
     button: number;
     ctrlKey: boolean;
@@ -39,12 +44,16 @@ if (typeof global.PointerEvent === 'undefined') {
       this.ctrlKey = props?.ctrlKey || false;
     }
   }
-  global.PointerEvent = MockPointerEvent as any;
+  vi.stubGlobal('PointerEvent', MockPointerEvent as any);
 }
 HTMLElement.prototype.hasPointerCapture = vi.fn();
 HTMLElement.prototype.releasePointerCapture = vi.fn();
 
-describe.skip('CreateTemplateDialog', () => {
+describe('CreateTemplateDialog', () => {
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
   const mockOnOpenChange = vi.fn();
   const mockOnCreated = vi.fn();
   const mockFilterOptions: any = {
@@ -91,10 +100,6 @@ describe.skip('CreateTemplateDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Template' }));
 
     await waitFor(() => {
-      const errorEl = screen.queryByText(/is required|Please select/);
-      if (errorEl) {
-        throw new Error('Validation Error: ' + errorEl.textContent);
-      }
       expect(createReportTemplate).toHaveBeenCalled();
       expect(mockOnCreated).toHaveBeenCalled();
     });

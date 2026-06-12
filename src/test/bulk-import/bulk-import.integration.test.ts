@@ -17,6 +17,11 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock('@/lib/currency', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
+  convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
 vi.mock('@/db', () => ({
   db: {
     query: {

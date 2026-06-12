@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { AlertsSettingsClient } from './alerts-settings-client';
 import { getIntegrationStatus, saveIntegrationSettings, testIntegrationConnection } from '@/actions/notifications';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -22,17 +22,21 @@ vi.mock('@/components/shared/sonner', () => ({
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+vi.stubGlobal('fetch', mockFetch);
 
 // ResizeObserver mock for Radix UI Tooltips
 class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() { }
+  unobserve() { }
+  disconnect() { }
 }
-window.ResizeObserver = ResizeObserver;
+vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('AlertsSettingsClient', () => {
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const mockRules = [
     {
       id: 1,
@@ -51,7 +55,7 @@ describe('AlertsSettingsClient', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (getIntegrationStatus as any).mockResolvedValue({ success: true, data: { isAdmin: false, resendConfigured: false, teamsConfigured: false } });
-    
+
     mockFetch.mockResolvedValue({
       json: vi.fn().mockResolvedValue({ success: true, data: mockRules }),
     });
@@ -64,7 +68,7 @@ describe('AlertsSettingsClient', () => {
 
   it('fetches and renders rules', async () => {
     render(<AlertsSettingsClient />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Alerts & Notifications')).toBeInTheDocument();
       expect(screen.getByText('Hardware Lifecycle')).toBeInTheDocument();
@@ -80,7 +84,7 @@ describe('AlertsSettingsClient', () => {
       .mockResolvedValueOnce({ json: vi.fn().mockResolvedValue({ success: true }) });
 
     render(<AlertsSettingsClient />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Warranty Expiration Warning')).toBeInTheDocument();
     });
@@ -106,41 +110,41 @@ describe('AlertsSettingsClient', () => {
   });
 
   it('shows integration settings for admins', async () => {
-    (getIntegrationStatus as any).mockResolvedValue({ 
-      success: true, 
-      data: { isAdmin: true, resendConfigured: true, teamsConfigured: false } 
+    (getIntegrationStatus as any).mockResolvedValue({
+      success: true,
+      data: { isAdmin: true, resendConfigured: true, teamsConfigured: false }
     });
 
     render(<AlertsSettingsClient />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('External Service Integrations')).toBeInTheDocument();
     });
-    
+
     // Check if the input is masked for configured resend
     const resendInput = screen.getByPlaceholderText('••••••••');
     expect(resendInput).toBeInTheDocument();
   });
 
   it('handles testing email connection', async () => {
-    (getIntegrationStatus as any).mockResolvedValue({ 
-      success: true, 
-      data: { isAdmin: true, resendConfigured: false, teamsConfigured: false } 
+    (getIntegrationStatus as any).mockResolvedValue({
+      success: true,
+      data: { isAdmin: true, resendConfigured: false, teamsConfigured: false }
     });
     (testIntegrationConnection as any).mockResolvedValue({ success: true });
 
     render(<AlertsSettingsClient />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('External Service Integrations')).toBeInTheDocument();
     });
-    
+
     const resendInput = screen.getByPlaceholderText('re_...');
     fireEvent.change(resendInput, { target: { value: 're_testkey' } });
-    
+
     const testButton = screen.getByRole('button', { name: /Test Connection/i });
     fireEvent.click(testButton);
-    
+
     await waitFor(() => {
       expect(testIntegrationConnection).toHaveBeenCalledWith('email', { resendApiKey: 're_testkey' });
       expect(tiqriToast.success).toHaveBeenCalledWith(expect.stringContaining('successfully'));

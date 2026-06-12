@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DisposalHistoryGrid } from './disposal-history-grid';
 
 // Mock Next.js navigation
@@ -32,6 +32,12 @@ vi.mock('@/components/shared/data-table', () => ({
 }));
 
 describe('DisposalHistoryGrid', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockData: any[] = [
     {
       id: 1,

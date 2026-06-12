@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { IssueReviewPanel } from './issue-review-panel';
 
 vi.mock('@/components/shared/slide-panel', () => ({
@@ -44,6 +44,12 @@ vi.mock('./initiate-repair-dialog', () => ({
 }));
 
 describe('IssueReviewPanel', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockOnClose = vi.fn();
   const mockOnResolveInternally = vi.fn();
   const mockOnInitiateRepair = vi.fn();

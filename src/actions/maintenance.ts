@@ -23,6 +23,7 @@ import {
   resolveIssueSchema,
   initiateVendorRepairSchema,
   completeRepairSchema,
+  panelRepairSchema,
 } from '@/lib/validations/maintenance';
 import type {
   PendingReviewTicket,
@@ -808,5 +809,167 @@ export async function completeRepairTicket(
         ? error.message
         : 'Failed to complete repair ticket.'
     );
+  }
+}
+
+/**
+ * Dispatches an asset for vendor repair directly from the asset detail panel.
+ * Unlike `initiateVendorRepair`, this does not require an existing internal
+ * triage ticket — it creates a VENDOR maintenance ticket from scratch.
+ */
+export async function reportDefectiveFromPanel(
+  assetId: string,
+  vendorId: string,
+  rmaNumber: string,
+  estimatedCost?: string,
+  expectedReturnDate?: string
+): Promise<{ success: boolean; message: string; ticketId?: number }> {
+  // 1. Auth & Role Validation
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
+  // 2. Input Validation
+  const parsed = panelRepairSchema.safeParse({
+    assetId,
+    vendorId,
+    rmaNumber: rmaNumber || undefined,
+    estimatedCost: estimatedCost || undefined,
+    expectedReturnDate: expectedReturnDate || undefined,
+  });
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? 'Invalid input.',
+    };
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Verify asset exists
+      const currentAssetResult = await tx
+        .select()
+        .from(assets)
+        .where(eq(assets.id, parsed.data.assetId))
+        .limit(1);
+      if (currentAssetResult.length === 0)
+        throw new Error(`Asset ${parsed.data.assetId} not found`);
+      const currentAsset = currentAssetResult[0];
+
+      // Verify vendor exists
+      const vendorResult = await tx
+        .select()
+        .from(vendors)
+        .where(eq(vendors.id, parsed.data.vendorId))
+        .limit(1);
+      if (vendorResult.length === 0)
+        throw new Error(`Vendor ${parsed.data.vendorId} not found`);
+      const vendor = vendorResult[0];
+
+      const now = new Date();
+
+      // Update asset status to 'In Repair'
+      const updatedAsset = await tx
+        .update(assets)
+        .set({ status: 'In Repair', updatedAt: now })
+        .where(eq(assets.id, parsed.data.assetId))
+        .returning({ id: assets.id });
+      if (updatedAsset.length === 0)
+        throw new Error('Failed to update asset status');
+
+      // Terminate any active assignments
+      await tx
+        .update(assetAssignments)
+        .set({ returnedDate: now })
+        .where(
+          and(
+            eq(assetAssignments.assetId, parsed.data.assetId),
+            isNull(assetAssignments.returnedDate)
+          )
+        );
+
+      // Create vendor repair ticket
+      const newTicketValues = {
+        assetId: parsed.data.assetId,
+        ticketType: 'VENDOR' as const,
+        vendorName: vendor.companyName,
+        rmaNumber: parsed.data.rmaNumber ?? null,
+        reportedIssue: `Vendor repair dispatch — ${vendor.companyName}`,
+        estimatedCost:
+          parsed.data.estimatedCost != null
+            ? parsed.data.estimatedCost.toString()
+            : null,
+        estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
+        status: 'ACTIVE' as const,
+        dispatchedById: user.id,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const newTickets = await tx
+        .insert(maintenanceTickets)
+        .values(newTicketValues)
+        .returning();
+      if (!newTickets[0])
+        throw new Error('Failed to create vendor repair ticket');
+
+      // Audit Log
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: parsed.data.assetId,
+        actionType: 'UPDATE',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status },
+        newValue: {
+          status: 'In Repair',
+          vendor: vendor.companyName,
+          rmaNumber: parsed.data.rmaNumber ?? null,
+          estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
+          actionContext: 'MAINTENANCE_VENDOR_REPAIR_FROM_PANEL',
+        },
+        performedAt: now,
+      });
+
+      void dispatchWebhookEvent('maintenance.created', {
+        ticketId: newTickets[0].id,
+        assetId: parsed.data.assetId,
+        ticketType: newTicketValues.ticketType,
+        reportedIssue: newTicketValues.reportedIssue,
+      });
+
+      return {
+        success: true as const,
+        message: 'Asset dispatched for repair successfully.',
+        ticketId: newTickets[0].id,
+      };
+    });
+
+    // Revalidate relevant paths
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
+  } catch (error) {
+    const knownMessages = [
+      'Asset ',
+      'Vendor ',
+      'Failed to update asset status',
+      'Failed to create vendor repair ticket',
+    ];
+    const isKnown =
+      error instanceof Error &&
+      knownMessages.some((m) => error.message.startsWith(m));
+    return {
+      success: false,
+      message:
+        isKnown && error instanceof Error
+          ? error.message
+          : 'Failed to dispatch asset for repair.',
+    };
   }
 }

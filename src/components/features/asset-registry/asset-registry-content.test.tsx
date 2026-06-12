@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AssetRegistryContent } from './asset-registry-content';
 
 vi.mock('./asset-registry-client', () => ({
@@ -11,6 +11,12 @@ vi.mock('./asset-registry-panels', () => ({
 }));
 
 describe('AssetRegistryContent', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockConfig = { view: 'unified', pillar: '', defaultPageSize: 50 } as any;
 
   it('renders Client and Panels with provided props', () => {

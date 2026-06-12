@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TCOLedger } from './tco-ledger';
 
 vi.mock('@/actions/financials', () => ({
@@ -7,6 +7,12 @@ vi.mock('@/actions/financials', () => ({
 }));
 
 describe('TCOLedger', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockData = [
     {
       id: '1',

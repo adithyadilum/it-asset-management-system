@@ -122,6 +122,7 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
 

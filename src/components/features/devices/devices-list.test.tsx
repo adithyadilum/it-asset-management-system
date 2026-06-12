@@ -16,6 +16,10 @@ vi.mock('@/components/shared/sonner', () => ({
 }));
 
 describe('DevicesList', () => {
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const mockRouter = { refresh: vi.fn() };
 
   const mockDevices = [
@@ -40,7 +44,7 @@ describe('DevicesList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useRouter as any).mockReturnValue(mockRouter);
-    global.fetch = vi.fn();
+    vi.stubGlobal('fetch', vi.fn());
   });
 
   it('renders empty state when no devices', () => {

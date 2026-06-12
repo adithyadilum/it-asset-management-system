@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DeleteWebhookDialog } from './delete-webhook-dialog';
 
 vi.mock('next/navigation', () => ({
@@ -7,6 +7,12 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('DeleteWebhookDialog', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders correctly', () => {
     const mockWebhook = { id: '1', name: 'Test Hook', url: 'http://test' };
     render(
@@ -19,7 +25,7 @@ describe('DeleteWebhookDialog', () => {
       />
     );
     
-    expect(screen.getByText('Delete Webhook')).toBeInTheDocument();
-    expect(screen.getByText(/Test Hook/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Delete Webhook')[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Test Hook/i)[0]).toBeInTheDocument();
   });
 });

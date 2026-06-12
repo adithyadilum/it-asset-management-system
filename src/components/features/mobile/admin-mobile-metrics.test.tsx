@@ -1,21 +1,23 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AdminMobileMetrics } from './admin-mobile-metrics';
 
-describe.skip('AdminMobileMetrics', () => {
-  const mockMetrics = {
-    totalDevices: 100,
-    activeScansToday: 10,
-    pendingSyncs: 5,
-    offlineDevices: 2,
-    trend: {
-      total: 5,
-      scans: 2
-    }
-  };
+vi.mock('@/actions/mobile', () => ({
+  getAdminMobileMetrics: vi.fn().mockResolvedValue({
+    assignedAssetCount: 10,
+    pendingApprovalsCount: 5,
+    recentActivities: []
+  })
+}));
 
-  it('renders correctly', () => {
-    render(<AdminMobileMetrics />);
+describe('AdminMobileMetrics', () => {
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+  it('renders correctly', async () => {
+    const ui = await AdminMobileMetrics();
+    render(ui);
     expect(screen.getByText('Quick Metrics')).toBeInTheDocument();
   });
 });

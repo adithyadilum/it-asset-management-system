@@ -142,6 +142,7 @@ export type MasterDataCustomStatusRow = {
     iconName: string;
     colorTheme: string;
     isActive: boolean;
+    allowedActions: string[] | null;
     createdAt: Date | string;
     linkedAssets: number;
 };
@@ -763,6 +764,15 @@ export function MasterDataManagementClient({
                         value={row.original.isActive ? "active" : "inactive"}
                         showIcon={false}
                     />
+                ),
+            },
+            {
+                accessorKey: "allowedActions",
+                header: "Allowed Actions",
+                cell: ({ row }) => (
+                    <span className="text-xs text-muted-foreground">
+                        {row.original.allowedActions?.length ? row.original.allowedActions.join(", ") : "None"}
+                    </span>
                 ),
             },
             {

@@ -247,6 +247,7 @@ export function MasterDataCreatePanel({
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
     const [statusColorTheme, setStatusColorTheme] = useState<StatusTheme>("gray");
     const [statusIconName, setStatusIconName] = useState("CircleDot");
+    const [allowedActions, setAllowedActions] = useState<string[]>(["edit"]);
     const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
@@ -1603,6 +1604,43 @@ export function MasterDataCreatePanel({
                                         </p>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                                    Allowed Actions <span className="text-muted-foreground font-normal">(Edit is required)</span>
+                                </label>
+                                <div className="grid grid-cols-2 gap-3 rounded-md border p-4 bg-muted/20">
+                                    {[
+                                        { id: "edit", label: "Edit Asset" },
+                                        { id: "send-for-repair", label: "Send for Repair" },
+                                        { id: "request-disposal", label: "Request Disposal" },
+                                        { id: "assign", label: "Assign / Transfer" },
+                                        { id: "request-return", label: "Request Return" }
+                                    ].map((action) => (
+                                        <div key={action.id} className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id={`action-${action.id}`}
+                                                checked={allowedActions.includes(action.id)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setAllowedActions([...allowedActions, action.id]);
+                                                    } else {
+                                                        setAllowedActions(allowedActions.filter(a => a !== action.id));
+                                                    }
+                                                }}
+                                                disabled={action.id === "edit"} // Edit is always allowed
+                                            />
+                                            <label 
+                                                htmlFor={`action-${action.id}`}
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                {action.label}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                                <input type="hidden" name="allowedActions" value={JSON.stringify(allowedActions)} />
                             </div>
                         </div>
 

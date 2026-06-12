@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { KpiCard } from './kpi-card';
 
 describe('KpiCard', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders correctly with basic props', () => {
     render(<KpiCard title="Total Assets" value="1,234" subText1="Active" subText2="vs last month" />);
     

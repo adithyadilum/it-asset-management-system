@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MasterDataPanels } from './master-data-panels';
 
 vi.mock('@/components/features/master-data/master-data-create-panel', () => ({
@@ -19,6 +19,12 @@ vi.mock('@/components/features/master-data/master-data-record-panel', () => ({
 }));
 
 describe('MasterDataPanels', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const defaultProps = {
     closePanelUrl: '/settings/master-data',
     categories: [],

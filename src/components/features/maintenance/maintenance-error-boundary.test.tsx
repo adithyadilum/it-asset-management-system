@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll, afterEach } from 'vitest';
 import { MaintenanceErrorBoundary } from './maintenance-error-boundary';
 
 // Hide console.error during test to keep output clean
@@ -17,6 +17,12 @@ const ThrowError = () => {
 };
 
 describe('MaintenanceErrorBoundary', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   it('renders children when there is no error', () => {
     render(
       <MaintenanceErrorBoundary>

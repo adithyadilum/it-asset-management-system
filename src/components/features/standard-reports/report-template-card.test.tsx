@@ -1,5 +1,10 @@
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
+const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterAll, afterEach } from 'vitest';
 import { ReportTemplateCard } from './report-template-card';
 
 vi.mock('@/components/ui/dropdown-menu', () => ({
@@ -14,7 +19,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 }));
 
 // Mock PointerEvent for Radix UI AlertDialog
-if (typeof global.PointerEvent === 'undefined') {
+if (typeof global.PointerEvent == 'undefined') {
   class MockPointerEvent extends Event {
     button: number;
     ctrlKey: boolean;
@@ -24,12 +29,28 @@ if (typeof global.PointerEvent === 'undefined') {
       this.ctrlKey = props?.ctrlKey || false;
     }
   }
-  global.PointerEvent = MockPointerEvent as any;
+  vi.stubGlobal('PointerEvent', MockPointerEvent as any);
 }
 HTMLElement.prototype.hasPointerCapture = vi.fn();
 HTMLElement.prototype.releasePointerCapture = vi.fn();
 
 describe('ReportTemplateCard', () => {
+  afterAll(() => {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+    HTMLElement.prototype.hasPointerCapture = originalHasPointerCapture;
+    HTMLElement.prototype.releasePointerCapture = originalReleasePointerCapture;
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const mockTemplate: any = {
     id: 1,
     name: 'Test Template',

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { NotificationDropdown } from './notification-dropdown';
 
 // Mock NotificationItem
@@ -31,13 +31,17 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 
 // For JSDOM, Radix UI Dialogs/Dropdowns require ResizeObserver to be mocked
 class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() { }
+  unobserve() { }
+  disconnect() { }
 }
-window.ResizeObserver = ResizeObserver;
+vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('NotificationDropdown', () => {
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const mockOnFetchNotifications = vi.fn();
   const mockOnMarkAsRead = vi.fn();
   const mockOnMarkAllAsRead = vi.fn();
@@ -57,10 +61,10 @@ describe('NotificationDropdown', () => {
 
   it('renders bell icon and badge correctly when unreadCount > 0', () => {
     render(<NotificationDropdown {...defaultProps} unreadCount={5} />);
-    
+
     const trigger = screen.getByRole('button', { name: /Notifications/i });
     expect(trigger).toBeInTheDocument();
-    
+
     expect(trigger).toHaveTextContent('5');
   });
 
@@ -78,7 +82,7 @@ describe('NotificationDropdown', () => {
 
   it('calls onFetchNotifications when opened for the first time if notifications is empty', async () => {
     render(<NotificationDropdown {...defaultProps} />);
-    
+
     const trigger = screen.getByRole('button', { name: /Notifications/i });
     fireEvent.click(trigger);
     await waitFor(() => {
@@ -88,17 +92,17 @@ describe('NotificationDropdown', () => {
 
   it('displays loading state', () => {
     render(<NotificationDropdown {...defaultProps} isLoading={true} />);
-    
+
     fireEvent.click(screen.getByRole('button', { name: /Notifications/i }));
-    
+
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
   it('displays empty state', () => {
     render(<NotificationDropdown {...defaultProps} />);
-    
+
     fireEvent.click(screen.getByRole('button', { name: /Notifications/i }));
-    
+
     expect(screen.getByText('No notifications yet')).toBeInTheDocument();
   });
 
@@ -107,11 +111,11 @@ describe('NotificationDropdown', () => {
       { id: '1', title: 'Test 1', message: 'Msg 1', createdAt: new Date().toISOString(), isRead: false },
       { id: '2', title: 'Test 2', message: 'Msg 2', createdAt: new Date().toISOString(), isRead: true },
     ] as any;
-    
+
     render(<NotificationDropdown {...defaultProps} notifications={notifications} unreadCount={1} />);
-    
+
     fireEvent.click(screen.getByRole('button', { name: /Notifications/i }));
-    
+
     expect(screen.getByTestId('notif-item-1')).toBeInTheDocument();
     expect(screen.getByTestId('notif-item-2')).toBeInTheDocument();
     expect(screen.getByText('1 unread')).toBeInTheDocument();
@@ -119,14 +123,14 @@ describe('NotificationDropdown', () => {
 
   it('calls onMarkAllAsRead when Mark all as read button is clicked', () => {
     const notifications = [{ id: '1', title: 'Test 1', isRead: false }] as any;
-    
+
     render(<NotificationDropdown {...defaultProps} notifications={notifications} unreadCount={1} />);
-    
+
     fireEvent.click(screen.getByRole('button', { name: /Notifications/i }));
-    
+
     const markAllBtn = screen.getByRole('button', { name: /Mark all as read/i });
     fireEvent.click(markAllBtn);
-    
+
     expect(mockOnMarkAllAsRead).toHaveBeenCalled();
   });
 });

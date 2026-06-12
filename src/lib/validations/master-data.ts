@@ -154,4 +154,18 @@ export const customStatusSchema = z.object({
   iconName: z.string().min(1, 'Icon is required'),
   colorTheme: z.string().min(1, 'Color theme is required'),
   isActive: z.boolean(),
+  allowedActions: z
+    .string()
+    .transform((value, ctx) => {
+      try {
+        return JSON.parse(value);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid allowed actions JSON',
+        });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(z.string())),
 });

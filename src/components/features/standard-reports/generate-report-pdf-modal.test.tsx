@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { GenerateReportPdfModal } from './generate-report-pdf-modal';
 import { generateAndOpenReportPdf } from '@/lib/utils/report-print';
 import { fetchReportPreview } from '@/actions/standard-reports';
@@ -34,6 +34,12 @@ vi.mock('@/components/ui/standard-modal', () => ({
 }));
 
 describe('GenerateReportPdfModal', () => {
+  afterEach(async () => {
+    // Flush microtasks to prevent React Fiber act() leaks
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    vi.clearAllMocks();
+  });
+
   const defaultProps = {
     isOpen: true,
     onOpenChange: vi.fn(),
@@ -46,11 +52,11 @@ describe('GenerateReportPdfModal', () => {
 
   it('renders and allows generating preview PDF', async () => {
     render(<GenerateReportPdfModal {...defaultProps} />);
-    
+
     expect(screen.getByText('Generate PDF Report')).toBeInTheDocument();
-    
+
     fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
-    
+
     await waitFor(() => {
       expect(generateAndOpenReportPdf).toHaveBeenCalled();
     });
@@ -58,19 +64,19 @@ describe('GenerateReportPdfModal', () => {
 
   it('handles generating all records and large export warning', async () => {
     (fetchReportPreview as any).mockResolvedValue({ data: [{ id: 1 }, { id: 2 }], totalRows: 6000 });
-    
+
     render(<GenerateReportPdfModal {...defaultProps} />);
-    
+
     fireEvent.click(screen.getByText('All Matching Records'));
     fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Large export warning/i)).toBeInTheDocument();
     });
-    
+
     // Proceed anyway
     fireEvent.click(screen.getByRole('button', { name: 'Proceed Anyway' }));
-    
+
     await waitFor(() => {
       expect(generateAndOpenReportPdf).toHaveBeenCalled();
     });
