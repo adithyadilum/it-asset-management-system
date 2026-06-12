@@ -429,6 +429,7 @@ describe('processAssetReturnAction', () => {
   const validInput = {
     assetId: VALID_UUID,
     condition: 'Good Working Condition' as const,
+    physicalCondition: 'Excellent' as const,
     notes: 'Returned in great shape',
   };
 

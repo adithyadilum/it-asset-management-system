@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const { payload } = await jose.jwtVerify(token, MOBILE_SECRET);
     userId = payload.id;
     jti = payload.jti;
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Invalid or Expired Mobile Token' }, { status: 401 });
   }
 

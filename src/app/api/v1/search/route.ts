@@ -235,7 +235,7 @@ async function searchReportsByQuery(
     const queries: Promise<{ count: number }[]>[] = [];
     const reportQueryMapping: { index: number; id: string }[] = [];
 
-    matchedReports.forEach((report, i) => {
+    matchedReports.forEach((report) => {
       if (report.needsSoftwareCount) {
         queries.push(
           db
