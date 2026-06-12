@@ -154,23 +154,27 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
       if (targetRowIndex >= 0) {
         const row = returnedRows[targetRowIndex];
         
-        // 1. Select the row
-        setRowSelection({ [targetRowIndex]: true });
-        
-        // 2. Setup and open modal
-        setProcessReturnAsset({
-          assetId: row.assetId,
-          assetTag: row.assetTag,
-          assetName: row.assetName,
-          assignee: row.assignedTo,
-          assignmentId: row.assignmentId,
-        });
-        setIsProcessReturnModalOpen(true);
+        const t = setTimeout(() => {
+          // 1. Select the row
+          setRowSelection({ [targetRowIndex]: true });
+          
+          // 2. Setup and open modal
+          setProcessReturnAsset({
+            assetId: row.assetId,
+            assetTag: row.assetTag,
+            assetName: row.assetName,
+            assignee: row.assignedTo,
+            assignmentId: row.assignmentId,
+          });
+          setIsProcessReturnModalOpen(true);
+        }, 0);
 
         // 3. Clean up the URL to prevent reopening on refresh
         const newParams = new URLSearchParams(searchParams.toString());
         newParams.delete("processReturnId");
         router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
+
+        return () => clearTimeout(t);
       }
     }
   }, [searchParams, returnedRows, pathname, router]);

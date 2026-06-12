@@ -8,7 +8,7 @@ vi.mock('@/db', () => ({
         where: vi.fn(() => Promise.resolve([
           { id: 1, name: 'Model A', brandId: 1, isActive: true },
         ])),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         then: function (resolve: any) {
           resolve([{ id: 1, name: 'Item', isActive: true }]);
         },

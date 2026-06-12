@@ -427,7 +427,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     }
 
     return list;
-  }, [activeTabId, isExporting, handleExportCSV, props.hideActions, props.status, props.assetCategory, isSoftware, actionHandlers]);
+  }, [activeTabId, isExporting, handleExportCSV, props.hideActions, props.status, props.assetCategory, isSoftware, actionHandlers, props.isLoading, props.assignmentState]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">

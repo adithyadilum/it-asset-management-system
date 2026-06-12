@@ -49,7 +49,7 @@ export function DashboardRefreshProvider({
 
   // Trigger refresh on mount (landing from another page) and tab focus
   useEffect(() => {
-    refresh()
+    const t = setTimeout(() => refresh(), 0)
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -67,6 +67,7 @@ export function DashboardRefreshProvider({
     window.addEventListener('focus', handleFocus)
 
     return () => {
+      clearTimeout(t)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
     }

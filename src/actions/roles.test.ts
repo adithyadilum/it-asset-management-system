@@ -170,7 +170,7 @@ describe('assignUserRole', () => {
 
   it('throws for invalid role value', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await expect(assignUserRole(TARGET_USER.id, 'SuperUser' as any)).rejects.toThrow(
       'Invalid role value'
     );
@@ -227,7 +227,7 @@ describe('assignUsersRoleBulk', () => {
 
   it('throws for invalid role value', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await expect(assignUsersRoleBulk([TARGET_USER.id], 'BadRole' as any)).rejects.toThrow(
       'Invalid role value'
     );

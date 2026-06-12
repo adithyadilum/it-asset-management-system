@@ -240,7 +240,7 @@ export function AssetDetailsPanelWrapper({
       router.push(`/operations/assignments?tab=returned-assets&processReturnId=${data.asset.id}`);
       onClose(); // close the panel so they are redirected nicely
     }
-  }, [data?.asset.id, router, onClose]);
+  }, [data, router, onClose]);
 
   // Derive pillar info for conditional logic
   const pillar = data?.model.category.pillar ?? "";

@@ -10,7 +10,6 @@ import {
   type RegistrationOption,
 } from '../form-field-primitives';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -45,7 +44,6 @@ type PurchaseDetailsSectionProps = {
   tax: string;
   setTax: (v: string) => void;
   totalCost: number;
-  totalSeats: string;
   costPerSeat: string;
   setCostPerSeat: (v: string) => void;
 
@@ -85,7 +83,6 @@ export function PurchaseDetailsSection({
   tax,
   setTax,
   totalCost,
-  totalSeats,
   costPerSeat,
   setCostPerSeat,
   warrantyMonths,
