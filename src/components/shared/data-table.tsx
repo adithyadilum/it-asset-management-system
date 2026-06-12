@@ -318,7 +318,7 @@ export function DataTable<TData, TValue>({
                         (table.getIsSomeRowsSelected() ? "indeterminate" : false)
                       }
                       onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
-                      className="border-primary-foreground/70 data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=indeterminate]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary"
+                      className="border-primary-foreground/70 data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=indeterminate]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary dark:border-white/70 dark:data-[state=checked]:border-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-primary dark:data-[state=indeterminate]:border-white dark:data-[state=indeterminate]:bg-white dark:data-[state=indeterminate]:text-primary"
                     />
                   </div>
                   <p className="truncate text-sm font-medium text-primary-foreground ml-3">
@@ -357,10 +357,10 @@ export function DataTable<TData, TValue>({
                         className={cn(
                           "h-9 rounded-md px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]",
                           action.tone === "destructive"
-                            ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-destructive dark:text-destructive-foreground dark:hover:bg-destructive/80"
                             : action.tone === "primary"
-                              ? "border-primary-foreground/20 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                              : "border-border bg-muted text-foreground hover:bg-muted/80"
+                              ? "border-primary-foreground/20 bg-primary-foreground text-primary hover:bg-primary-foreground/90 dark:bg-white dark:text-primary dark:border-white/20 dark:hover:bg-white/90"
+                              : "border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25 dark:border-white/30 dark:bg-white/15 dark:text-white dark:hover:bg-white/25"
                         )}
                       >
                         {action.label}
