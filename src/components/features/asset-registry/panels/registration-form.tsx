@@ -551,7 +551,7 @@ export function RegistrationForm({
         tax={tax}
         setTax={setTax}
         totalCost={totalCost}
-        totalSeats={totalSeats}
+
         costPerSeat={costPerSeat}
         setCostPerSeat={handleCostPerSeatChange}
         warrantyMonths={warrantyMonths}

@@ -1109,6 +1109,7 @@ export async function createMasterDataRecord(
       success: true,
       message: 'Record created successfully.',
     };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     logError({
       scope: 'ACTION',
@@ -1619,6 +1620,7 @@ export async function updateMasterDataRecord(
       success: true,
       message: 'Record updated successfully.',
     };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     logError({
       scope: 'ACTION',
