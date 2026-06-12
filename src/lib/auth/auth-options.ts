@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { users, userRefreshTokens } from '@/db/schema';
+import { users, userRefreshTokens, departments } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
 
 function normalizeRole(role: unknown): UserRole {
@@ -193,25 +193,85 @@ export const authOptions: NextAuthOptions = {
         where: eq(users.email, normalizedEmail),
       });
 
+      // ── Sync Department from Keycloak Profile ──────────────────────────────
+      let userDepartmentId: number | undefined;
+
+      // Type assertion because NextAuth Profile type doesn't know about custom claims
+      const profileDepartment = (profile as Record<string, unknown>)?.department || (user as unknown as Record<string, unknown>)?.department;
+      
+      if (typeof profileDepartment === 'string' && profileDepartment.trim()) {
+        const deptName = profileDepartment.trim();
+        
+        let deptId: number | undefined;
+
+        const dept = await db.query.departments.findFirst({
+          where: eq(departments.name, deptName),
+        });
+
+        if (dept) {
+          deptId = dept.id;
+        } else {
+          try {
+            // Get max ID to generate incremental identifiers
+            const [result] = await db.select({ maxId: sql<number>`max(id)::int` }).from(departments);
+            const nextId = (result?.maxId || 0) + 1;
+            
+            const shortCode = `DEP-${String(nextId).padStart(4, '0')}`;
+            const costCenterId = `CC-${nextId}00`;
+            
+            const [insertedDept] = await db.insert(departments).values({
+              name: deptName,
+              shortCode: shortCode,
+              costCenterId: costCenterId,
+              isActive: true,
+            }).returning({ id: departments.id });
+            
+            deptId = insertedDept.id;
+            console.log(`[AUTH] Auto-provisioned new department: ${deptName} (${shortCode})`);
+          } catch (error) {
+            console.error('Failed to auto-provision department:', error);
+          }
+        }
+        
+        if (deptId !== undefined) {
+          userDepartmentId = deptId;
+        }
+      }
+
       // JIT Provisioning
       if (!existingUser) {
         try {
           await db.insert(users).values({
             email: normalizedEmail,
             // Fallback to preferred_username if name isn't set in Keycloak/Entra
-            name: profile?.name || profile?.preferred_username || user?.name || 'New User',
+            name: profile?.name || (profile as Record<string, unknown>)?.preferred_username as string || user?.name || 'New User',
             // CRITICAL: Always default to the lowest privilege tier
             role: 'Employee',
             isActive: true,
+            departmentId: userDepartmentId,
           });
           console.log(`[AUTH] JIT Provisioned new user: ${normalizedEmail}`);
         } catch (error) {
           console.error('Failed to auto-provision user:', error);
           return false; // Reject login if DB insert fails
         }
-      } else if (!existingUser.isActive) {
-        console.error(`Login rejected: User ${normalizedEmail} is inactive.`);
-        return false; // Reject login if user is inactive
+      } else {
+        if (!existingUser.isActive) {
+          console.error(`Login rejected: User ${normalizedEmail} is inactive.`);
+          return false; // Reject login if user is inactive
+        }
+
+        // Keep user department in sync
+        if (userDepartmentId && existingUser.departmentId !== userDepartmentId) {
+          try {
+            await db.update(users)
+              .set({ departmentId: userDepartmentId })
+              .where(eq(users.id, existingUser.id));
+            console.log(`[AUTH] Synced department for existing user: ${normalizedEmail}`);
+          } catch(error) {
+            console.error('Failed to sync user department:', error);
+          }
+        }
       }
 
       return true; // Let them in!

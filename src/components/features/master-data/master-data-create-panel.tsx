@@ -18,6 +18,9 @@ import { createMasterDataRecord } from "@/actions/master-data";
 import {
     INITIAL_CREATE_MASTER_DATA_STATE,
     MASTER_DATA_RECORD_ENTITIES,
+    type CustomAttribute,
+    createCustomAttribute,
+    buildSchemaSectionPayload,
 } from "@/lib/master-data/shared";
 import type {
     LocationType,
@@ -71,15 +74,6 @@ type Pillar =
     | "Software"
     | "Office Furniture"
     | "Office Electronics";
-
-type InputType = "Text" | "Number" | "Date" | "Dropdown" | "Boolean";
-
-type CustomAttribute = {
-    id: string;
-    fieldName: string;
-    inputType: InputType;
-    required: boolean;
-};
 
 interface MasterDataCreatePanelProps {
     isOpen: boolean;
@@ -180,27 +174,6 @@ function formatPreviewId(prefix: string, nextId: number) {
     return `${prefix}-${String(nextId).padStart(4, "0")}`;
 }
 
-function createCustomAttribute(): CustomAttribute {
-    return {
-        id: crypto.randomUUID(),
-        fieldName: "",
-        inputType: "Text",
-        required: false,
-    };
-}
-
-function buildSchemaSectionPayload(attributes: CustomAttribute[]) {
-    const payload = attributes.map((attribute) => ({
-        fieldName: attribute.fieldName,
-        inputType: attribute.inputType,
-        required: attribute.required,
-    }));
-
-    const hasOnlyDefaultEmptyRow =
-        payload.length === 1 && payload[0].fieldName.trim().length === 0;
-
-    return hasOnlyDefaultEmptyRow ? [] : payload;
-}
 
 function isRecordEntity(value: string | undefined): value is MasterDataRecordEntity {
     return MASTER_DATA_RECORD_ENTITIES.includes(value as MasterDataRecordEntity);
@@ -718,7 +691,7 @@ export function MasterDataCreatePanel({
                                         updateModelSpecAttribute(
                                             attribute.id,
                                             "inputType",
-                                            value as InputType
+                                            value as CustomAttribute["inputType"]
                                         )
                                     }
                                 >
@@ -840,7 +813,7 @@ export function MasterDataCreatePanel({
                                         updateAssetTrackingAttribute(
                                             attribute.id,
                                             "inputType",
-                                            value as InputType
+                                            value as CustomAttribute["inputType"]
                                         )
                                     }
                                 >
@@ -1412,7 +1385,7 @@ export function MasterDataCreatePanel({
                                     Website
                                 </label>
                                 <Input
-                                    type="url"
+                                    type="text"
                                     name="website"
                                     placeholder="https://acme.com"
                                 />

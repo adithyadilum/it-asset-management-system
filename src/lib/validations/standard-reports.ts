@@ -13,14 +13,28 @@ export const reportPreviewFiltersSchema = z.object({
   masterDataType: z.string().trim().optional(),
   dateFrom: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'dateFrom must be in YYYY-MM-DD format.')
-    .optional(),
+    .trim()
+    .optional()
+    .transform((v) => (v === '' ? undefined : v))
+    .pipe(
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'dateFrom must be in YYYY-MM-DD format.')
+        .optional()
+    ),
   dateTo: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'dateTo must be in YYYY-MM-DD format.')
-    .optional(),
+    .trim()
+    .optional()
+    .transform((v) => (v === '' ? undefined : v))
+    .pipe(
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'dateTo must be in YYYY-MM-DD format.')
+        .optional()
+    ),
   page: z.coerce.number().int().min(0).optional().default(0),
-  pageSize: z.coerce.number().int().min(1).max(200).optional().default(16),
+  pageSize: z.coerce.number().int().min(1).max(100000).optional().default(16),
 });
 
 export type ReportPreviewFilters = z.infer<typeof reportPreviewFiltersSchema>;

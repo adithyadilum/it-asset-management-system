@@ -202,6 +202,18 @@ describe('vendorSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('prepends https:// to website URLs missing protocol', () => {
+    const result = vendorSchema.safeParse({
+      companyName: 'LG',
+      website: 'www.lg.com/us/business',
+      isActive: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.website).toBe('https://www.lg.com/us/business');
+    }
+  });
+
   it('accepts empty string website (optional field)', () => {
     const result = vendorSchema.safeParse({
       companyName: 'Dell',
@@ -609,6 +621,7 @@ describe('customStatusSchema', () => {
       iconName: 'Clock',
       colorTheme: 'blue',
       isActive: true,
+      allowedActions: '["edit", "delete"]',
     });
     expect(result.success).toBe(true);
   });
@@ -619,6 +632,7 @@ describe('customStatusSchema', () => {
       iconName: 'Clock',
       colorTheme: 'blue',
       isActive: true,
+      allowedActions: '["edit", "delete"]',
     });
     expect(result.success).toBe(false);
   });
@@ -629,6 +643,7 @@ describe('customStatusSchema', () => {
       iconName: '',
       colorTheme: 'blue',
       isActive: true,
+      allowedActions: '["edit", "delete"]',
     });
     expect(result.success).toBe(false);
   });
@@ -639,6 +654,7 @@ describe('customStatusSchema', () => {
       iconName: 'Clock',
       colorTheme: '',
       isActive: true,
+      allowedActions: '["edit", "delete"]',
     });
     expect(result.success).toBe(false);
   });
@@ -649,6 +665,7 @@ describe('customStatusSchema', () => {
       iconName: 'Activity',
       colorTheme: 'green',
       isActive: false,
+      allowedActions: '["edit", "delete"]',
     });
     expect(result.success).toBe(true);
     if (result.success) {

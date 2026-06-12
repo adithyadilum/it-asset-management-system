@@ -187,6 +187,7 @@ export function RegistrationForm({
   const [warrantyMonths, setWarrantyMonths] = React.useState('');
   const [purchaseDate, setPurchaseDate] = React.useState(getTodayDateValue);
   const [basePrice, setBasePrice] = React.useState('');
+  const [costPerSeat, setCostPerSeat] = React.useState('');
   const [shippingCost, setShippingCost] = React.useState('');
   const [tax, setTax] = React.useState('');
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
@@ -196,6 +197,37 @@ export function RegistrationForm({
 
   const [licenseType, setLicenseType] = React.useState('');
   const [totalSeats, setTotalSeats] = React.useState('');
+
+  const handleBasePriceChange = React.useCallback((val: string) => {
+    setBasePrice(val);
+    const parsedBase = parseCurrencyAmount(val);
+    const seats = parseInt(totalSeats, 10);
+    if (seats > 0) {
+      setCostPerSeat((parsedBase / seats).toFixed(2));
+    } else {
+      setCostPerSeat('');
+    }
+  }, [totalSeats]);
+
+  const handleCostPerSeatChange = React.useCallback((val: string) => {
+    setCostPerSeat(val);
+    const parsedCost = parseCurrencyAmount(val);
+    const seats = parseInt(totalSeats, 10);
+    if (seats > 0) {
+      setBasePrice((parsedCost * seats).toFixed(2));
+    }
+  }, [totalSeats]);
+
+  const handleTotalSeatsChange = React.useCallback((val: string) => {
+    setTotalSeats(val);
+    const seats = parseInt(val, 10);
+    const parsedBase = parseCurrencyAmount(basePrice);
+    if (seats > 0 && parsedBase > 0) {
+      setCostPerSeat((parsedBase / seats).toFixed(2));
+    } else {
+      setCostPerSeat('');
+    }
+  }, [basePrice]);
   const [licenseStartDate, setLicenseStartDate] = React.useState('');
   const [licenseExpiryDate, setLicenseExpiryDate] = React.useState('');
   const [condition, setCondition] = React.useState('');
@@ -483,7 +515,7 @@ export function RegistrationForm({
         setLicenseType={setLicenseType}
         LICENSE_TYPE_OPTIONS={LICENSE_TYPE_OPTIONS}
         totalSeats={totalSeats}
-        setTotalSeats={setTotalSeats}
+        setTotalSeats={handleTotalSeatsChange}
         licenseStartDate={licenseStartDate}
         setLicenseStartDate={setLicenseStartDate}
         licenseStartDateLabel={licenseStartDateLabel}
@@ -513,13 +545,15 @@ export function RegistrationForm({
         setVendorId={setVendorId}
         vendorOptions={vendorOptions}
         basePrice={basePrice}
-        setBasePrice={setBasePrice}
+        setBasePrice={handleBasePriceChange}
         shippingCost={shippingCost}
         setShippingCost={setShippingCost}
         tax={tax}
         setTax={setTax}
         totalCost={totalCost}
         totalSeats={totalSeats}
+        costPerSeat={costPerSeat}
+        setCostPerSeat={handleCostPerSeatChange}
         warrantyMonths={warrantyMonths}
         setWarrantyMonths={setWarrantyMonths}
         WARRANTY_MONTH_OPTIONS={WARRANTY_MONTH_OPTIONS}
