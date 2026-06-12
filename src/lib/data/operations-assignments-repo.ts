@@ -19,6 +19,8 @@ import {
   locations,
   models,
   users,
+  assetDisposals,
+  maintenanceTickets,
 } from '@/db/schema';
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
@@ -56,8 +58,8 @@ export interface AssignmentsDashboardData {
 }
 
 const DASHBOARD_PILLARS: Array<
-  'IT & Digital' | 'Office Furniture' | 'Office Electronics'
-> = ['IT & Digital', 'Office Furniture', 'Office Electronics'];
+  'Hardware' | 'Office Furniture' | 'Office Electronics'
+> = ['Hardware', 'Office Furniture', 'Office Electronics'];
 
 export type AssignmentTargetType = 'user' | 'location';
 
@@ -823,6 +825,7 @@ export async function triggerAssignmentReminders(
       assetTag: assets.assetTag,
       assetName: assets.name,
       userEmail: users.email,
+      assignedToUserId: assetAssignments.assignedToUserId,
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -838,6 +841,20 @@ export async function triggerAssignmentReminders(
         assetTag: a.assetTag,
         assetName: a.assetName || a.assetTag,
       });
+
+      if (a.assignedToUserId) {
+        try {
+          await dispatchAlert({
+            eventType: 'RETURN_REQUESTED',
+            userId: a.assignedToUserId,
+            title: 'Return Reminder',
+            message: `Reminder: IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
+            targetUrl: '/dashboard',
+          });
+        } catch (error) {
+          console.error('Failed to dispatch in-app return reminder alert:', error);
+        }
+      }
 
       // Log reminder action
       await logAuditAction({
@@ -1126,10 +1143,14 @@ export async function processAssetReturn(
   }
 
   await db.transaction(async (tx) => {
-    // 1. Update asset status
+    // 1. Update asset status and physical condition
     const updated = await tx
       .update(assets)
-      .set({ status: newStatus, updatedAt: new Date() })
+      .set({ 
+        status: newStatus, 
+        condition: input.physicalCondition,
+        updatedAt: new Date() 
+      })
       .where(and(eq(assets.id, input.assetId), eq(assets.status, 'Returned')))
       .returning({ id: assets.id });
 
@@ -1139,6 +1160,26 @@ export async function processAssetReturn(
         400,
         'UPDATE_FAILED'
       );
+    }
+
+    // 2. Create routing tickets if needed
+    if (newStatus === 'In Repair') {
+      await tx.insert(maintenanceTickets).values({
+        assetId: input.assetId,
+        ticketType: 'INTERNAL',
+        reportedIssue: `Post-return condition check: ${input.condition}. Notes: ${input.notes || 'None'}`,
+        status: 'ACTIVE',
+        dispatchedById: performedById,
+      });
+    } else if (newStatus === 'Pending Disposal') {
+      await tx.insert(assetDisposals).values({
+        assetId: input.assetId,
+        requestedById: performedById,
+        reason: 'Post-return Condition Check',
+        justification: `Condition: ${input.condition}. Notes: ${input.notes || 'None'}`,
+        status: 'Pending Approval',
+        requestedAt: new Date(),
+      });
     }
 
     // 2. We assume the asset assignment is already in 'returned' state, or we update it here.

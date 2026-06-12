@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { LOCATION_TYPES } from '@/types/master-data';
 
 const pillarSchema = z.enum([
-  'IT & Digital',
+  'Hardware',
   'Software',
   'Office Furniture',
   'Office Electronics',
@@ -88,9 +88,16 @@ export const vendorSchema = z.object({
   website: z
     .string()
     .trim()
-    .url('Enter a valid website URL')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => {
+      if (!val) return val;
+      if (!/^https?:\/\//i.test(val) && val.includes('.')) {
+        return `https://${val}`;
+      }
+      return val;
+    })
+    .pipe(z.string().url('Enter a valid website URL').optional().or(z.literal(''))),
   isActive: z.boolean(),
 });
 
@@ -154,4 +161,18 @@ export const customStatusSchema = z.object({
   iconName: z.string().min(1, 'Icon is required'),
   colorTheme: z.string().min(1, 'Color theme is required'),
   isActive: z.boolean(),
+  allowedActions: z
+    .string()
+    .transform((value, ctx) => {
+      try {
+        return JSON.parse(value);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid allowed actions JSON',
+        });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(z.string())),
 });

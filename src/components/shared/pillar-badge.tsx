@@ -14,7 +14,7 @@ export function PillarBadge({ pillar, className }: PillarBadgeProps) {
   let Icon = Laptop;
 
   switch (pillar as RegistryPillar) {
-    case 'IT & Digital':
+    case 'Hardware':
       colorClass = 'bg-indigo-50 text-indigo-700 border-indigo-300 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800 dark:hover:bg-indigo-900/40';
       Icon = Laptop;
       break;

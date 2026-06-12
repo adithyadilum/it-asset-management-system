@@ -58,7 +58,7 @@ const DEFAULT_CONFIG: PillarFormConfig = {
 };
 
 export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
-  'IT & Digital': {
+  'Hardware': {
     ...DEFAULT_CONFIG,
     panelDescription: 'Hardware',
   },
@@ -97,6 +97,6 @@ export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
 };
 
 export function getPillarFormConfig(pillar?: string | null): PillarFormConfig {
-  if (!pillar) return PILLAR_FORM_CONFIGS['IT & Digital'];
-  return PILLAR_FORM_CONFIGS[pillar as DbPillar] ?? PILLAR_FORM_CONFIGS['IT & Digital'];
+  if (!pillar) return PILLAR_FORM_CONFIGS['Hardware'];
+  return PILLAR_FORM_CONFIGS[pillar as DbPillar] ?? PILLAR_FORM_CONFIGS['Hardware'];
 }

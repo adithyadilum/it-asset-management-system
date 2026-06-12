@@ -17,6 +17,11 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock('@/lib/currency', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
+  convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
 vi.mock('@/db', () => ({
   db: {
     query: {
@@ -32,7 +37,7 @@ vi.mock('@/db', () => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn(() => Promise.resolve([{ value: 10 }])),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         then: function (resolve: any) {
           resolve([]);
         },
@@ -45,7 +50,7 @@ vi.mock('@/db', () => ({
         insert: vi.fn(() => ({
           values: vi.fn(() => ({
             returning: vi.fn(() => [{ id: 1, assetTag: 'HRW-LAP-011' }]),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             then: function (resolve: any) { resolve([{ id: 1 }]); },
           })),
         })),
@@ -65,7 +70,7 @@ describe('Bulk Import Integration', () => {
   });
 
   it('rejects users without proper permissions', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ id: 'user-1', role: 'Employee' } as any);
     vi.mocked(canManageAssets).mockReturnValueOnce(false);
     
@@ -76,20 +81,20 @@ describe('Bulk Import Integration', () => {
   });
 
   it('executes bulk import successfully when lock is acquired', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'admin', role: 'GlobalAdmin' } as any);
     vi.mocked(canManageAssets).mockReturnValue(true);
 
     vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce({
       id: 1,
       name: 'Laptops',
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       prefix: 'LAP',
       isActive: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     } as any);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const resolvedRows: any[] = [
       {
         rowNumber: 2,
@@ -115,15 +120,15 @@ describe('Bulk Import Integration', () => {
   });
 
   it('fails execute if lock is not granted', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'admin', role: 'GlobalAdmin' } as any);
     vi.mocked(canManageAssets).mockReturnValue(true);
 
     // Mock lock failure
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     vi.mocked(db.execute).mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: false }] } as any);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const result = await executeBulkImport(1, [{}] as any, 'import.csv');
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/currently in progress/i);

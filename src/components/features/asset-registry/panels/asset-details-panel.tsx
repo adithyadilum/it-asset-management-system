@@ -12,6 +12,8 @@ import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-re
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { InteractiveStatusBadge } from '@/components/shared/interactive-status-badge';
+import { getActionsForStatus, type AssetActionId } from './asset-action-config';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Epic 15: Imports for Maintenance Integration
 import { getAllAssetAuditHistory } from '@/actions/audit-log';
@@ -28,7 +30,7 @@ export interface AssetDetailsPanelProps {
   assetId: string;
   assetTag: string;
   assetName?: string;
-  assetCategory: 'IT & Digital' | 'Software' | 'Office Furniture' | 'Office Electronics' | string;
+  assetCategory: 'Hardware' | 'Software' | 'Office Furniture' | 'Office Electronics' | string;
   model: string;
   brand: string;
   serialNumber?: string;
@@ -43,6 +45,7 @@ export interface AssetDetailsPanelProps {
   updatedAt: string;
   note?: string;
   status: string;
+  assignmentState?: string;
   imageUrl?: string;
 
   specs?: Record<string, string | number | undefined>;
@@ -77,6 +80,13 @@ export interface AssetDetailsPanelProps {
 
   // Actions
   onEdit?: () => void;
+  onAssign?: () => void;
+  onSendForRepair?: () => void;
+  onRequestDisposal?: () => void;
+  onRequestReturn?: () => void;
+  onRemindReturn?: () => void;
+  onMarkReturned?: () => void;
+  onProcessReturn?: () => void;
   onActionButtonClick?: () => void;
   onViewAllHistory?: () => void;
   onViewAllMaintenance?: () => void;
@@ -102,23 +112,6 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
   const isSoftware = props.assetCategory === 'Software';
   const isFurniture = props.assetCategory === 'Office Furniture';
-
-  const actionState = useMemo(() => {
-    if (!isSoftware) {
-      return {
-        label: isFurniture ? 'Transfer' : 'Request Return',
-        disabled: false
-      };
-    }
-
-    if (props.status === 'Expired') {
-      return { label: 'License Expired', disabled: true };
-    }
-    if (props.status === 'Full') {
-      return { label: 'Seats Full', disabled: true };
-    }
-    return { label: 'Add User', disabled: false };
-  }, [isSoftware, isFurniture, props.status]);
 
   const tabs: TabbedPanelTab[] = useMemo(() => {
     const tabsList: TabbedPanelTab[] = [];
@@ -371,6 +364,19 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     }
   }, [props.assetId, props.assetTag]);
 
+  // Map action IDs to their handler callbacks
+  const actionHandlers = useMemo<Record<AssetActionId, (() => void) | undefined>>(() => ({
+    'edit': props.onEdit,
+    'assign': props.onAssign,
+    'request-return': props.onRequestReturn,
+    'remind-return': props.onRemindReturn,
+    'mark-returned': props.onMarkReturned,
+    'send-for-repair': props.onSendForRepair,
+    'request-disposal': props.onRequestDisposal,
+    'add-user': props.onActionButtonClick,
+    'process-return': props.onProcessReturn,
+  }), [props.onEdit, props.onAssign, props.onRequestReturn, props.onRemindReturn, props.onMarkReturned, props.onSendForRepair, props.onRequestDisposal, props.onActionButtonClick, props.onProcessReturn]);
+
   const actions: SlidePanelAction[] = useMemo(() => {
     const list: SlidePanelAction[] = [];
 
@@ -387,27 +393,41 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     if (props.hideActions) return [];
 
-    const isDisposed = props.status === 'Disposed';
-    const isPendingDisposal = props.status === 'Pending Disposal';
-
-    // Disposed assets cannot be edited
-    if (!isDisposed) {
-      list.push({ id: 'edit', label: 'Edit', variant: 'outline', onClick: props.onEdit });
+    if (props.isLoading) {
+      list.push(
+        { id: 'skel-1', label: <Skeleton className="h-9 w-20 bg-muted-foreground/20" />, disabled: true },
+        { id: 'skel-2', label: <Skeleton className="h-9 w-28 bg-muted-foreground/20" />, disabled: true }
+      );
+      return list;
     }
 
-    // Disposed and Pending Disposal assets cannot be assigned/returned
-    if (!isDisposed && !isPendingDisposal) {
+    // Determine software-specific states
+    const statusLower = props.status?.toLowerCase() ?? '';
+    const isExpired = statusLower === 'expired';
+    const isFull = statusLower === 'full';
+    const seatsAvailable = !isFull;
+
+    // Get dynamic actions from config
+    const dynamicActions = getActionsForStatus({
+      status: props.status,
+      pillar: props.assetCategory,
+      seatsAvailable: isSoftware ? seatsAvailable : undefined,
+      isExpired: isSoftware ? isExpired : undefined,
+      assignmentState: props.assignmentState,
+    });
+
+    for (const action of dynamicActions) {
       list.push({
-        id: 'action',
-        label: actionState.label,
-        disabled: actionState.disabled,
-        variant: 'default',
-        onClick: props.onActionButtonClick
+        id: action.id,
+        label: action.label,
+        variant: action.variant,
+        disabled: action.disabled,
+        onClick: actionHandlers[action.id],
       });
     }
 
     return list;
-  }, [activeTabId, isExporting, props.onEdit, props.onActionButtonClick, actionState, handleExportCSV, props.status, props.hideActions]);
+  }, [activeTabId, isExporting, handleExportCSV, props.hideActions, props.status, props.assetCategory, isSoftware, actionHandlers, props.isLoading, props.assignmentState]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">

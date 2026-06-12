@@ -18,6 +18,9 @@ import { createMasterDataRecord } from "@/actions/master-data";
 import {
     INITIAL_CREATE_MASTER_DATA_STATE,
     MASTER_DATA_RECORD_ENTITIES,
+    type CustomAttribute,
+    createCustomAttribute,
+    buildSchemaSectionPayload,
 } from "@/lib/master-data/shared";
 import type {
     LocationType,
@@ -67,19 +70,10 @@ import {
 } from "@/lib/constants";
 
 type Pillar =
-    | "IT & Digital"
+    | "Hardware"
     | "Software"
     | "Office Furniture"
     | "Office Electronics";
-
-type InputType = "Text" | "Number" | "Date" | "Dropdown" | "Boolean";
-
-type CustomAttribute = {
-    id: string;
-    fieldName: string;
-    inputType: InputType;
-    required: boolean;
-};
 
 interface MasterDataCreatePanelProps {
     isOpen: boolean;
@@ -97,7 +91,7 @@ interface MasterDataCreatePanelProps {
 }
 
 const PILLAR_OPTIONS: Array<{ label: string; value: Pillar }> = [
-    { label: "IT & Digital", value: "IT & Digital" },
+    { label: "Hardware", value: "Hardware" },
     { label: "Software", value: "Software" },
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },
@@ -180,27 +174,6 @@ function formatPreviewId(prefix: string, nextId: number) {
     return `${prefix}-${String(nextId).padStart(4, "0")}`;
 }
 
-function createCustomAttribute(): CustomAttribute {
-    return {
-        id: crypto.randomUUID(),
-        fieldName: "",
-        inputType: "Text",
-        required: false,
-    };
-}
-
-function buildSchemaSectionPayload(attributes: CustomAttribute[]) {
-    const payload = attributes.map((attribute) => ({
-        fieldName: attribute.fieldName,
-        inputType: attribute.inputType,
-        required: attribute.required,
-    }));
-
-    const hasOnlyDefaultEmptyRow =
-        payload.length === 1 && payload[0].fieldName.trim().length === 0;
-
-    return hasOnlyDefaultEmptyRow ? [] : payload;
-}
 
 function isRecordEntity(value: string | undefined): value is MasterDataRecordEntity {
     return MASTER_DATA_RECORD_ENTITIES.includes(value as MasterDataRecordEntity);
@@ -226,8 +199,8 @@ export function MasterDataCreatePanel({
         INITIAL_CREATE_MASTER_DATA_STATE
     );
     const [isActive, setIsActive] = useState(true);
-    const [categoryPillar, setCategoryPillar] = useState<Pillar>("IT & Digital");
-    const [modelPillar, setModelPillar] = useState<Pillar>("IT & Digital");
+    const [categoryPillar, setCategoryPillar] = useState<Pillar>("Hardware");
+    const [modelPillar, setModelPillar] = useState<Pillar>("Hardware");
     const [selectedLocationType, setSelectedLocationType] = useState<LocationType | "">("");
     const [selectedParentLocationId, setSelectedParentLocationId] = useState(
         TOP_LEVEL_PARENT_LOCATION_VALUE
@@ -247,6 +220,7 @@ export function MasterDataCreatePanel({
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>({});
     const [statusColorTheme, setStatusColorTheme] = useState<StatusTheme>("gray");
     const [statusIconName, setStatusIconName] = useState("CircleDot");
+    const [allowedActions, setAllowedActions] = useState<string[]>(["edit"]);
     const modelImageInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedEntity = isRecordEntity(entity) ? entity : null;
@@ -431,8 +405,8 @@ export function MasterDataCreatePanel({
     const resetCreateFormState = useCallback(() => {
         setState(INITIAL_CREATE_MASTER_DATA_STATE);
         setIsActive(true);
-        setCategoryPillar("IT & Digital");
-        setModelPillar("IT & Digital");
+        setCategoryPillar("Hardware");
+        setModelPillar("Hardware");
         setSelectedLocationType("");
         setSelectedParentLocationId(TOP_LEVEL_PARENT_LOCATION_VALUE);
         setSelectedBrandId("");
@@ -717,7 +691,7 @@ export function MasterDataCreatePanel({
                                         updateModelSpecAttribute(
                                             attribute.id,
                                             "inputType",
-                                            value as InputType
+                                            value as CustomAttribute["inputType"]
                                         )
                                     }
                                 >
@@ -839,7 +813,7 @@ export function MasterDataCreatePanel({
                                         updateAssetTrackingAttribute(
                                             attribute.id,
                                             "inputType",
-                                            value as InputType
+                                            value as CustomAttribute["inputType"]
                                         )
                                     }
                                 >
@@ -1411,7 +1385,7 @@ export function MasterDataCreatePanel({
                                     Website
                                 </label>
                                 <Input
-                                    type="url"
+                                    type="text"
                                     name="website"
                                     placeholder="https://acme.com"
                                 />
@@ -1603,6 +1577,43 @@ export function MasterDataCreatePanel({
                                         </p>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                                    Allowed Actions <span className="text-muted-foreground font-normal">(Edit is required)</span>
+                                </label>
+                                <div className="grid grid-cols-2 gap-3 rounded-md border p-4 bg-muted/20">
+                                    {[
+                                        { id: "edit", label: "Edit Asset" },
+                                        { id: "send-for-repair", label: "Send for Repair" },
+                                        { id: "request-disposal", label: "Request Disposal" },
+                                        { id: "assign", label: "Assign / Transfer" },
+                                        { id: "request-return", label: "Request Return" }
+                                    ].map((action) => (
+                                        <div key={action.id} className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id={`action-${action.id}`}
+                                                checked={allowedActions.includes(action.id)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setAllowedActions([...allowedActions, action.id]);
+                                                    } else {
+                                                        setAllowedActions(allowedActions.filter(a => a !== action.id));
+                                                    }
+                                                }}
+                                                disabled={action.id === "edit"} // Edit is always allowed
+                                            />
+                                            <label 
+                                                htmlFor={`action-${action.id}`}
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                {action.label}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                                <input type="hidden" name="allowedActions" value={JSON.stringify(allowedActions)} />
                             </div>
                         </div>
 

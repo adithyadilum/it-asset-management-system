@@ -15,7 +15,7 @@ import { redirect } from "next/navigation"
 // ── Asset icon resolver using category pillar ────────────────────────────────
 
 const PILLAR_ICON_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
-    "IT & Digital": { label: "Device", icon: <Laptop className="h-8 w-8" /> },
+    "Hardware": { label: "Device", icon: <Laptop className="h-8 w-8" /> },
     "Software": { label: "Software", icon: <Code className="h-8 w-8" /> },
     "Office Furniture": { label: "Furniture", icon: <Armchair className="h-8 w-8" /> },
     "Office Electronics": { label: "Electronics", icon: <Speaker className="h-8 w-8" /> },

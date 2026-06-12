@@ -33,7 +33,7 @@ export function NotificationItem({
       onClick={handleClick}
       className={`w-full text-left border-b border-border px-4 py-3 transition-colors focus:outline-none ${
         !notification.isRead
-          ? 'bg-blue-50 hover:bg-blue-100 focus:bg-blue-100/80'
+          ? 'bg-accent hover:bg-accent/80 focus:bg-accent/80 dark:bg-accent/50 dark:hover:bg-accent/70 dark:focus:bg-accent/70'
           : 'bg-background hover:bg-muted focus:bg-muted'
       }`}
     >

@@ -113,7 +113,7 @@ function formatPurchaseDateLabel(inputValue: string) {
 function resolveStartingPillar(
   initialPillar?: RegistrationPillarInput
 ): RegistrationPillarInput {
-  return initialPillar ?? 'IT & Digital';
+  return initialPillar ?? 'Hardware';
 }
 
 function RegistrationFormSkeleton() {
@@ -187,6 +187,7 @@ export function RegistrationForm({
   const [warrantyMonths, setWarrantyMonths] = React.useState('');
   const [purchaseDate, setPurchaseDate] = React.useState(getTodayDateValue);
   const [basePrice, setBasePrice] = React.useState('');
+  const [costPerSeat, setCostPerSeat] = React.useState('');
   const [shippingCost, setShippingCost] = React.useState('');
   const [tax, setTax] = React.useState('');
   const [invoiceFileName, setInvoiceFileName] = React.useState('');
@@ -196,6 +197,37 @@ export function RegistrationForm({
 
   const [licenseType, setLicenseType] = React.useState('');
   const [totalSeats, setTotalSeats] = React.useState('');
+
+  const handleBasePriceChange = React.useCallback((val: string) => {
+    setBasePrice(val);
+    const parsedBase = parseCurrencyAmount(val);
+    const seats = parseInt(totalSeats, 10);
+    if (seats > 0) {
+      setCostPerSeat((parsedBase / seats).toFixed(2));
+    } else {
+      setCostPerSeat('');
+    }
+  }, [totalSeats]);
+
+  const handleCostPerSeatChange = React.useCallback((val: string) => {
+    setCostPerSeat(val);
+    const parsedCost = parseCurrencyAmount(val);
+    const seats = parseInt(totalSeats, 10);
+    if (seats > 0) {
+      setBasePrice((parsedCost * seats).toFixed(2));
+    }
+  }, [totalSeats]);
+
+  const handleTotalSeatsChange = React.useCallback((val: string) => {
+    setTotalSeats(val);
+    const seats = parseInt(val, 10);
+    const parsedBase = parseCurrencyAmount(basePrice);
+    if (seats > 0 && parsedBase > 0) {
+      setCostPerSeat((parsedBase / seats).toFixed(2));
+    } else {
+      setCostPerSeat('');
+    }
+  }, [basePrice]);
   const [licenseStartDate, setLicenseStartDate] = React.useState('');
   const [licenseExpiryDate, setLicenseExpiryDate] = React.useState('');
   const [condition, setCondition] = React.useState('');
@@ -238,20 +270,29 @@ export function RegistrationForm({
     setPillar(resolveStartingPillar(initialPillar));
   }
 
-  const filteredModelOptions = React.useMemo(
-    () =>
-      modelOptions
-        .filter((option) => {
-          const matchesCategory =
-            categoryId.length === 0 || option.categoryId === categoryId;
-          const matchesBrand =
-            brandId.length === 0 || option.brandId === brandId;
+  const filteredModelOptions = React.useMemo(() => {
+    if (categoryId.length === 0) return [];
+    
+    return modelOptions
+      .filter((option) => {
+        const matchesCategory = option.categoryId === categoryId;
+        const matchesBrand = brandId.length === 0 || option.brandId === brandId;
+        return matchesCategory && matchesBrand;
+      })
+      .map(({ value, label }) => ({ value, label }));
+  }, [brandId, categoryId, modelOptions]);
 
-          return matchesCategory && matchesBrand;
-        })
-        .map(({ value, label }) => ({ value, label })),
-    [brandId, categoryId, modelOptions]
-  );
+  const filteredBrandOptions = React.useMemo(() => {
+    if (categoryId.length === 0) return [];
+
+    const validBrandIds = new Set(
+      modelOptions
+        .filter((option) => option.categoryId === categoryId)
+        .map((option) => option.brandId)
+    );
+
+    return brandOptions.filter((option) => validBrandIds.has(option.value));
+  }, [categoryId, modelOptions, brandOptions]);
 
   const [prevFilteredModelOptions, setPrevFilteredModelOptions] = React.useState(filteredModelOptions);
   if (filteredModelOptions !== prevFilteredModelOptions) {
@@ -262,6 +303,19 @@ export function RegistrationForm({
       );
       if (!stillValidModel) {
         setModelId('');
+      }
+    }
+  }
+
+  const [prevFilteredBrandOptions, setPrevFilteredBrandOptions] = React.useState(filteredBrandOptions);
+  if (filteredBrandOptions !== prevFilteredBrandOptions) {
+    setPrevFilteredBrandOptions(filteredBrandOptions);
+    if (brandId.length > 0) {
+      const stillValidBrand = filteredBrandOptions.some(
+        (option) => option.value === brandId
+      );
+      if (!stillValidBrand) {
+        setBrandId('');
       }
     }
   }
@@ -305,9 +359,15 @@ export function RegistrationForm({
 
   const formError = state.errors?.form?.[0];
   const modelEmptyMessage =
-    brandId.length > 0 || categoryId.length > 0
+    categoryId.length === 0
+      ? 'Please select a category first.'
+      : brandId.length > 0
       ? config.modelFilteredEmptyMessage
       : config.modelEmptyMessage;
+  const brandEmptyMessage =
+    categoryId.length === 0
+      ? 'Please select a category first.'
+      : 'No brands found.';
   const selectedModelLabel =
     modelOptions.find((option) => option.value === modelId)?.label ?? '';
   const selectedBrandLabel =
@@ -416,11 +476,12 @@ export function RegistrationForm({
         modelId={modelId}
         onModelChange={setModelId}
         categoryOptions={categoryOptions}
-        brandOptions={brandOptions}
+        brandOptions={filteredBrandOptions}
         filteredModelOptions={filteredModelOptions}
         selectedModel={selectedModel}
         selectedModelLabel={selectedModelLabel}
         modelEmptyMessage={modelEmptyMessage}
+        brandEmptyMessage={brandEmptyMessage}
         derivedAssetName={derivedAssetName}
       />
 
@@ -454,7 +515,7 @@ export function RegistrationForm({
         setLicenseType={setLicenseType}
         LICENSE_TYPE_OPTIONS={LICENSE_TYPE_OPTIONS}
         totalSeats={totalSeats}
-        setTotalSeats={setTotalSeats}
+        setTotalSeats={handleTotalSeatsChange}
         licenseStartDate={licenseStartDate}
         setLicenseStartDate={setLicenseStartDate}
         licenseStartDateLabel={licenseStartDateLabel}
@@ -484,13 +545,15 @@ export function RegistrationForm({
         setVendorId={setVendorId}
         vendorOptions={vendorOptions}
         basePrice={basePrice}
-        setBasePrice={setBasePrice}
+        setBasePrice={handleBasePriceChange}
         shippingCost={shippingCost}
         setShippingCost={setShippingCost}
         tax={tax}
         setTax={setTax}
         totalCost={totalCost}
         totalSeats={totalSeats}
+        costPerSeat={costPerSeat}
+        setCostPerSeat={handleCostPerSeatChange}
         warrantyMonths={warrantyMonths}
         setWarrantyMonths={setWarrantyMonths}
         WARRANTY_MONTH_OPTIONS={WARRANTY_MONTH_OPTIONS}

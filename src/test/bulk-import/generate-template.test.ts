@@ -35,7 +35,7 @@ describe('generateTemplateWorkbook', () => {
   });
 
   it('throws an error if category is inactive', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce({ isActive: false } as any);
     await expect(generateTemplateWorkbook(1)).rejects.toThrow('Category not found or is inactive');
   });
@@ -46,7 +46,7 @@ describe('generateTemplateWorkbook', () => {
       name: 'Standard Category',
       isActive: true,
       customSchema: {},
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     } as any);
 
     const { buffer, fileName } = await generateTemplateWorkbook(1);
@@ -82,7 +82,7 @@ describe('generateTemplateWorkbook', () => {
           { fieldName: 'Touch Screen', inputType: 'Boolean' },
         ],
       },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     } as any);
 
     const { buffer } = await generateTemplateWorkbook(2);

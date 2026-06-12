@@ -47,6 +47,32 @@ export function DashboardRefreshProvider({
     }
   }, [refresh])
 
+  // Trigger refresh on mount (landing from another page) and tab focus
+  useEffect(() => {
+    const t = setTimeout(() => refresh(), 0)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refresh()
+      }
+    }
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        refresh()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      clearTimeout(t)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [refresh])
+
   return (
     <DashboardRefreshContext.Provider value={{ lastRefreshedAt, refresh }}>
       {children}

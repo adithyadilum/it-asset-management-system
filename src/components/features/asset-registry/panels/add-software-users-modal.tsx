@@ -160,7 +160,7 @@ export function AddSoftwareUsersModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose(false)}>
-      <DialogContent className="sm:max-w-125">
+      <DialogContent className="sm:max-w-125 max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Allocate Software License</DialogTitle>
           <DialogDescription>
@@ -168,14 +168,14 @@ export function AddSoftwareUsersModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-4">
+        <div className="flex flex-col gap-4 py-4 min-h-0 overflow-y-auto">
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 role="combobox"
                 aria-expanded={open}
-                className="w-full justify-between"
+                className="w-full justify-between shrink-0"
               >
                 {selectedUsers.length > 0
                   ? `${selectedUsers.length} user(s) selected`
@@ -190,7 +190,7 @@ export function AddSoftwareUsersModal({
                   value={searchQuery}
                   onValueChange={setSearchQuery}
                 />
-                <CommandList>
+                <CommandList className="max-h-60">
                   {isSearching && (
                     <div className="p-4 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -242,14 +242,14 @@ export function AddSoftwareUsersModal({
 
           {/* Selected Users List using Avatars */}
           {selectedUsers.length > 0 && (
-            <div className="flex flex-col gap-2 max-h-50 overflow-y-auto pr-2 rounded-md border p-2">
-              <div className="text-xs font-semibold text-muted-foreground mb-1 px-1">
+            <div className="flex flex-col gap-2 min-h-0 max-h-40 overflow-y-auto pr-2 rounded-md border p-2">
+              <div className="text-xs font-semibold text-muted-foreground mb-1 px-1 shrink-0">
                 Selected Users ({selectedUsers.length}/{availableSeats})
               </div>
               {selectedUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/50 border bg-card"
+                  className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/50 border bg-card shrink-0"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar className="h-8 w-8">
@@ -280,7 +280,7 @@ export function AddSoftwareUsersModal({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onClose(false)} disabled={isSubmitting}>
             Cancel
           </Button>

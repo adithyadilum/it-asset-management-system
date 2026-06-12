@@ -184,8 +184,8 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
           <DetailRow label="Purchase Date" value={formatDateString(props.purchaseDate)} />
-          <DetailRow label="Original Cost" value={props.originalCost ? `$${props.originalCost.toFixed(0)}` : '-'} />
-          <DetailRow label="Current Book Value" value={props.currentBookValue ? `$${props.currentBookValue.toFixed(0)}` : '-'} />
+          <DetailRow label="Original Cost" value={props.originalCost !== undefined && props.originalCost !== null ? `$${props.originalCost.toFixed(0)}` : '-'} />
+          <DetailRow label="Current Book Value" value={props.currentBookValue !== undefined && props.currentBookValue !== null ? `$${props.currentBookValue.toFixed(0)}` : '-'} />
           <div className="flex items-start text-sm leading-5">
             <span className="w-40 font-semibold text-foreground">Warranty Status:</span>
             <WarrantyStatusBadge status={props.warrantyStatus} />

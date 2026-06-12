@@ -326,7 +326,7 @@ export async function seedAssets() {
     const categorySeeds = [
       {
         name: 'Laptop',
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         prefix: 'LAP',
         requiresSerial: true,
         isConsumable: false,
@@ -339,7 +339,7 @@ export async function seedAssets() {
       },
       {
         name: 'Desktop Computer',
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         prefix: 'DSK',
         requiresSerial: true,
         isConsumable: false,
@@ -351,7 +351,7 @@ export async function seedAssets() {
       },
       {
         name: 'Mobile Device',
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         prefix: 'MOB',
         requiresSerial: true,
         isConsumable: false,

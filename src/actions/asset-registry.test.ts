@@ -72,7 +72,7 @@ describe('getAssetsByPillar', () => {
     });
 
     expect(mockGetAssetsByPillarRepo).toHaveBeenCalledWith({
-      pillar: 'IT & Digital', // Hardware is normalized to IT & Digital
+      pillar: 'Hardware', // Hardware is normalized to Hardware
       query: undefined,
       categoryId: undefined,
       status: 'Available',
@@ -102,7 +102,7 @@ describe('getAllAssetsUnified', () => {
     });
 
     expect(mockGetAllAssetsUnifiedRepo).toHaveBeenCalledWith({
-      pillar: 'IT & Digital',
+      pillar: 'Hardware',
       query: 'test',
       status: undefined,
       page: 3,

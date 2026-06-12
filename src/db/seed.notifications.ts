@@ -86,6 +86,16 @@ async function seedNotificationRules() {
       channelEmail: true,
       channelTeams: false,
     },
+    {
+      ruleKey: 'RETURN_REQUESTED',
+      displayName: 'Asset Return Requested',
+      category: 'OPERATIONAL' as const,
+      isEnabled: true,
+      thresholdDays: null,
+      channelInApp: true,
+      channelEmail: true,
+      channelTeams: false,
+    },
 
     // SECURITY
     {

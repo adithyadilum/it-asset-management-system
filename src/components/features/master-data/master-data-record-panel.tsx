@@ -12,7 +12,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImagePlus, Pencil, Upload } from "lucide-react";
+import { ImagePlus, Pencil, Upload, Info, Plus, Trash2 } from "lucide-react";
 
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
 import {
     INITIAL_UPDATE_MASTER_DATA_STATE,
     MASTER_DATA_RECORD_ENTITIES,
+    type CustomAttribute,
+    createCustomAttribute,
+    buildSchemaSectionPayload,
 } from "@/lib/master-data/shared";
 import { LOCATION_TYPE_OPTIONS } from "@/types/master-data";
 import type { MasterDataRecordEntity } from "@/types/master-data";
@@ -42,6 +45,9 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { tiqriToast } from "@/components/shared/sonner";
 import { isModelImageFile, MODEL_IMAGE_ACCEPT } from "@/lib/file-types";
 
@@ -100,11 +106,14 @@ const ENTITY_ID_PREFIX: Record<MasterDataRecordEntity, string> = {
 };
 
 const PILLAR_OPTIONS = [
-    { label: "IT & Digital", value: "IT & Digital" },
+    { label: "Hardware", value: "Hardware" },
     { label: "Software", value: "Software" },
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },
 ] as const;
+
+const SCHEMA_CHECKBOX_CLASSNAME =
+    "size-5 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground";
 
 const READ_ONLY_INPUT_CLASSNAME =
     "h-9 bg-muted font-mono tracking-wide text-foreground pointer-events-none";
@@ -400,11 +409,37 @@ export function MasterDataRecordPanel({
         return normalizeModelTechnicalDetails(model.technicalDetails);
     }, [normalizedEntity, selectedRecord]);
 
+    const initialModelSpecAttributes = useMemo<CustomAttribute[]>(() => {
+        if (!selectedRecord || normalizedEntity !== "asset-categories") return [createCustomAttribute()];
+        const cat = selectedRecord as MasterDataCategoryRow;
+        if (!cat.customSchema?.modelSpecs || cat.customSchema.modelSpecs.length === 0) return [createCustomAttribute()];
+        return cat.customSchema.modelSpecs.map((spec) => ({
+            id: crypto.randomUUID(),
+            fieldName: spec.fieldName,
+            inputType: spec.inputType as CustomAttribute["inputType"],
+            required: spec.required,
+        }));
+    }, [normalizedEntity, selectedRecord]);
+
+    const initialAssetTrackingAttributes = useMemo<CustomAttribute[]>(() => {
+        if (!selectedRecord || normalizedEntity !== "asset-categories") return [createCustomAttribute()];
+        const cat = selectedRecord as MasterDataCategoryRow;
+        if (!cat.customSchema?.assetTracking || cat.customSchema.assetTracking.length === 0) return [createCustomAttribute()];
+        return cat.customSchema.assetTracking.map((spec) => ({
+            id: crypto.randomUUID(),
+            fieldName: spec.fieldName,
+            inputType: spec.inputType as CustomAttribute["inputType"],
+            required: spec.required,
+        }));
+    }, [normalizedEntity, selectedRecord]);
+
     const [mode, setMode] = useState<PanelMode>(normalizePanelMode(initialMode));
     const [draft, setDraft] = useState<DraftState>(initialDraft);
     const [modelSpecValues, setModelSpecValues] = useState<Record<string, string>>(
         initialModelSpecValues
     );
+    const [modelSpecAttributes, setModelSpecAttributes] = useState<CustomAttribute[]>(initialModelSpecAttributes);
+    const [assetTrackingAttributes, setAssetTrackingAttributes] = useState<CustomAttribute[]>(initialAssetTrackingAttributes);
 
     useEffect(() => {
         let cancelled = false;
@@ -418,6 +453,8 @@ export function MasterDataRecordPanel({
             setMode(normalizePanelMode(initialMode));
             setDraft(initialDraft);
             setModelSpecValues(initialModelSpecValues);
+            setModelSpecAttributes(initialModelSpecAttributes);
+            setAssetTrackingAttributes(initialAssetTrackingAttributes);
             setModelImageFile(null);
             setIsModelImageDragOver(false);
             setShowModelImageUploader(false);
@@ -429,7 +466,7 @@ export function MasterDataRecordPanel({
         return () => {
             cancelled = true;
         };
-    }, [initialDraft, initialModelSpecValues, initialMode]);
+    }, [initialDraft, initialModelSpecValues, initialModelSpecAttributes, initialAssetTrackingAttributes, initialMode]);
 
     const fieldError = useCallback(
         (fieldName: string) => state.errors?.[fieldName]?.[0],
@@ -464,7 +501,7 @@ export function MasterDataRecordPanel({
         return location?.name ?? "Unknown";
     }, [draft.parentId, locations]);
 
-    const modelPillar = asString(draft.pillar) || "IT & Digital";
+    const modelPillar = asString(draft.pillar) || "Hardware";
     const selectedModelCategoryId = asString(draft.categoryId);
 
     const categoryOptionsForModel = useMemo(
@@ -534,6 +571,273 @@ export function MasterDataRecordPanel({
             [fieldName]: value,
         }));
     }, []);
+
+    const categorySchemaPayload = useMemo(() => {
+        return {
+            modelSpecs: buildSchemaSectionPayload(modelSpecAttributes),
+            assetTracking: buildSchemaSectionPayload(assetTrackingAttributes),
+        };
+    }, [modelSpecAttributes, assetTrackingAttributes]);
+
+    const addModelSpecAttribute = useCallback(() => {
+        setModelSpecAttributes((previous) => [...previous, createCustomAttribute()]);
+    }, []);
+
+    const removeModelSpecAttribute = useCallback((id: string) => {
+        setModelSpecAttributes((previous) => {
+            if (previous.length === 1) return previous;
+            return previous.filter((attribute) => attribute.id !== id);
+        });
+    }, []);
+
+    const updateModelSpecAttribute = useCallback(
+        <TKey extends keyof CustomAttribute>(id: string, key: TKey, value: CustomAttribute[TKey]) => {
+            setModelSpecAttributes((previous) =>
+                previous.map((attribute) => (attribute.id === id ? { ...attribute, [key]: value } : attribute))
+            );
+        },
+        []
+    );
+
+    const addAssetTrackingAttribute = useCallback(() => {
+        setAssetTrackingAttributes((previous) => [...previous, createCustomAttribute()]);
+    }, []);
+
+    const removeAssetTrackingAttribute = useCallback((id: string) => {
+        setAssetTrackingAttributes((previous) => {
+            if (previous.length === 1) return previous;
+            return previous.filter((attribute) => attribute.id !== id);
+        });
+    }, []);
+
+    const updateAssetTrackingAttribute = useCallback(
+        <TKey extends keyof CustomAttribute>(id: string, key: TKey, value: CustomAttribute[TKey]) => {
+            setAssetTrackingAttributes((previous) =>
+                previous.map((attribute) => (attribute.id === id ? { ...attribute, [key]: value } : attribute))
+            );
+        },
+        []
+    );
+
+    const renderEditableModelSpecificationsSection = (
+        <div className="space-y-4 border-t pt-4">
+            <div className="flex items-center gap-2">
+                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+                    Model Specifications (Common)
+                </h3>
+                <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label="Model specifications help"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                            >
+                                <Info className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
+                            Technical specs shared by every unit of this model.
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </div>
+
+            <div className="rounded-md border bg-muted/50">
+                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
+                    <div className="col-span-5">Field Name</div>
+                    <div className="col-span-4">Input Type</div>
+                    <div className="col-span-2 text-center">Required?</div>
+                    <div className="col-span-1"></div>
+                </div>
+
+                <div className="space-y-2 p-2">
+                    {modelSpecAttributes.map((attribute) => (
+                        <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
+                            <div className="col-span-5">
+                                <Input
+                                    value={attribute.fieldName}
+                                    onChange={(event) =>
+                                        updateModelSpecAttribute(attribute.id, "fieldName", event.target.value)
+                                    }
+                                    placeholder="e.g., RAM"
+                                    className="h-9 bg-background"
+                                />
+                            </div>
+                            <div className="col-span-4">
+                                <Select
+                                    value={attribute.inputType}
+                                    onValueChange={(value) =>
+                                        updateModelSpecAttribute(attribute.id, "inputType", value as CustomAttribute["inputType"])
+                                    }
+                                >
+                                    <SelectTrigger className="h-9 bg-background">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Text">Text</SelectItem>
+                                        <SelectItem value="Number">Number</SelectItem>
+                                        <SelectItem value="Date">Date</SelectItem>
+                                        <SelectItem value="Dropdown">Dropdown</SelectItem>
+                                        <SelectItem value="Boolean">Yes/No</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="col-span-2 flex justify-center">
+                                <Checkbox
+                                    checked={attribute.required}
+                                    className={SCHEMA_CHECKBOX_CLASSNAME}
+                                    onCheckedChange={(checked) =>
+                                        updateModelSpecAttribute(attribute.id, "required", checked === true)
+                                    }
+                                />
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeModelSpecAttribute(attribute.id)}
+                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                    disabled={modelSpecAttributes.length === 1}
+                                    aria-label="Remove field"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="border-t p-2">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={addModelSpecAttribute}
+                        className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} w-full text-primary hover:text-primary/90`}
+                    >
+                        <Plus className="mr-2 h-4 w-4" /> Add Field
+                    </Button>
+                </div>
+            </div>
+            {fieldError("customSchema") && (
+                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                    {fieldError("customSchema")}
+                </p>
+            )}
+        </div>
+    );
+
+    const renderEditableAssetTrackingSection = (
+        <div className="space-y-4 border-t pt-4">
+            <div className="flex items-center gap-2">
+                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+                    Asset Tracking Fields (Unique)
+                </h3>
+                <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label="Asset tracking fields help"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                            >
+                                <Info className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
+                            Data unique to each physical item.
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </div>
+
+            <div className="rounded-md border bg-muted/50">
+                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
+                    <div className="col-span-5">Field Name</div>
+                    <div className="col-span-4">Input Type</div>
+                    <div className="col-span-2 text-center">Required?</div>
+                    <div className="col-span-1"></div>
+                </div>
+
+                <div className="space-y-2 p-2">
+                    {assetTrackingAttributes.map((attribute) => (
+                        <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
+                            <div className="col-span-5">
+                                <Input
+                                    value={attribute.fieldName}
+                                    onChange={(event) =>
+                                        updateAssetTrackingAttribute(attribute.id, "fieldName", event.target.value)
+                                    }
+                                    placeholder="e.g., MAC Address"
+                                    className="h-9 bg-background"
+                                />
+                            </div>
+                            <div className="col-span-4">
+                                <Select
+                                    value={attribute.inputType}
+                                    onValueChange={(value) =>
+                                        updateAssetTrackingAttribute(attribute.id, "inputType", value as CustomAttribute["inputType"])
+                                    }
+                                >
+                                    <SelectTrigger className="h-9 bg-background">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Text">Text</SelectItem>
+                                        <SelectItem value="Number">Number</SelectItem>
+                                        <SelectItem value="Date">Date</SelectItem>
+                                        <SelectItem value="Dropdown">Dropdown</SelectItem>
+                                        <SelectItem value="Boolean">Yes/No</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="col-span-2 flex justify-center">
+                                <Checkbox
+                                    checked={attribute.required}
+                                    className={SCHEMA_CHECKBOX_CLASSNAME}
+                                    onCheckedChange={(checked) =>
+                                        updateAssetTrackingAttribute(attribute.id, "required", checked === true)
+                                    }
+                                />
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeAssetTrackingAttribute(attribute.id)}
+                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                    disabled={assetTrackingAttributes.length === 1}
+                                    aria-label="Remove field"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="border-t p-2">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={addAssetTrackingAttribute}
+                        className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} w-full text-primary hover:text-primary/90`}
+                    >
+                        <Plus className="mr-2 h-4 w-4" /> Add Field
+                    </Button>
+                </div>
+            </div>
+            {fieldError("customSchema") && (
+                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                    {fieldError("customSchema")}
+                </p>
+            )}
+        </div>
+    );
 
     const panelTitle = useMemo(() => {
         if (!normalizedEntity || !selectedRecord) {
@@ -958,17 +1262,29 @@ export function MasterDataRecordPanel({
                             })}
                         </div>
 
-                        {renderSchemaRows(
-                            "Model Specifications (Common)",
-                            "Fields used when creating models.",
-                            category.customSchema.modelSpecs
+                        {!isDetailMode && (
+                            <input
+                                type="hidden"
+                                name="customSchema"
+                                value={JSON.stringify(categorySchemaPayload)}
+                            />
                         )}
 
-                        {renderSchemaRows(
-                            "Asset Tracking Fields (Unique)",
-                            "Fields captured for each physical asset instance.",
-                            category.customSchema.assetTracking
-                        )}
+                        {isDetailMode
+                            ? renderSchemaRows(
+                                  "Model Specifications (Common)",
+                                  "Fields used when creating models.",
+                                  category.customSchema?.modelSpecs
+                              )
+                            : renderEditableModelSpecificationsSection}
+
+                        {isDetailMode
+                            ? renderSchemaRows(
+                                  "Asset Tracking Fields (Unique)",
+                                  "Fields captured for each physical asset instance.",
+                                  category.customSchema?.assetTracking
+                              )
+                            : renderEditableAssetTrackingSection}
 
                         {renderActiveStatus()}
                     </>
@@ -1449,7 +1765,7 @@ export function MasterDataRecordPanel({
 
                             {renderTextField("website", "Website", asString(draft.website), {
                                 placeholder: "https://acme.com",
-                                type: "url",
+                                type: "text",
                             })}
                         </div>
 

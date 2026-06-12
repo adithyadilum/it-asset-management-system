@@ -45,8 +45,8 @@ function normalizePillar(pillar: unknown): RegistryPillar | null {
 
   const normalizedPillar = pillar.trim().toLowerCase();
 
-  if (normalizedPillar === 'it & digital' || normalizedPillar === 'hardware') {
-    return 'IT & Digital';
+  if (normalizedPillar === 'Hardware' || normalizedPillar === 'hardware') {
+    return 'Hardware';
   }
 
   if (normalizedPillar === 'software') {

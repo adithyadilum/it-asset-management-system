@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 process.env.ENCRYPTION_SECRET = 'IUr+UelUGH0oEhuAoI63Uvbcd+7Ra5o7Uo8PU2PaUHE=';
 
@@ -122,6 +122,7 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
 

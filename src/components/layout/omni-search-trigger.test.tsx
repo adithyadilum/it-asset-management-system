@@ -38,8 +38,8 @@ describe('OmniSearchTrigger', () => {
     const user = userEvent.setup();
     render(<OmniSearchTrigger userRole="GlobalAdmin" />);
 
-    const input = screen.getByRole('textbox', { name: 'Omni Search' });
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    const input = screen.getByPlaceholderText('Search...');
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
 
     await user.click(input);
     expect(
@@ -56,7 +56,7 @@ describe('OmniSearchTrigger', () => {
     const user = userEvent.setup();
     render(<OmniSearchTrigger userRole="GlobalAdmin" />);
 
-    const input = screen.getByRole('textbox', { name: 'Omni Search' });
+    const input = screen.getByPlaceholderText('Search...');
     await user.type(input, 'zz');
 
     await waitFor(() => {
@@ -94,7 +94,7 @@ describe('OmniSearchTrigger', () => {
 
     render(<OmniSearchTrigger userRole="GlobalAdmin" />);
 
-    const input = screen.getByRole('textbox', { name: 'Omni Search' });
+    const input = screen.getByPlaceholderText('Search...');
     await user.type(input, 'lap');
 
     await waitFor(() => {

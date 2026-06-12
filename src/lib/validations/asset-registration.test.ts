@@ -3,7 +3,7 @@ import { assetRegistrationSchema } from '@/lib/validations/asset-registration';
 
 describe('assetRegistrationSchema', () => {
   const baseValidHardwareAsset = {
-    pillar: 'IT & Digital',
+    pillar: 'Hardware',
     categoryId: 1,
     brandId: 1,
     modelId: 1,

@@ -10,7 +10,6 @@ import {
   type RegistrationOption,
 } from '../form-field-primitives';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -45,7 +44,8 @@ type PurchaseDetailsSectionProps = {
   tax: string;
   setTax: (v: string) => void;
   totalCost: number;
-  totalSeats: string;
+  costPerSeat: string;
+  setCostPerSeat: (v: string) => void;
 
   warrantyMonths: string;
   setWarrantyMonths: (v: string) => void;
@@ -83,7 +83,8 @@ export function PurchaseDetailsSection({
   tax,
   setTax,
   totalCost,
-  totalSeats,
+  costPerSeat,
+  setCostPerSeat,
   warrantyMonths,
   setWarrantyMonths,
   WARRANTY_MONTH_OPTIONS,
@@ -219,22 +220,14 @@ export function PurchaseDetailsSection({
 
         {config.showCostPerSeat && (
           <InlineFieldRow label="Cost Per Seat :" htmlFor="costPerSeat" alignTop>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                {currencySymbol}
-              </span>
-              <Input
-                id="costPerSeat"
-                value={
-                  parseInt(totalSeats, 10) > 0
-                    ? (totalCost / parseInt(totalSeats, 10)).toFixed(2)
-                    : '—'
-                }
-                readOnly
-                aria-readonly="true"
-                className="bg-muted/40 pl-11"
-              />
-            </div>
+            <CurrencyInput
+              id="costPerSeat"
+              name="costPerSeat"
+              value={costPerSeat}
+              onChange={setCostPerSeat}
+              currencySymbol={currencySymbol}
+              error={getError(state, 'costPerSeat')}
+            />
           </InlineFieldRow>
         )}
 

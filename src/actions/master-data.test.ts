@@ -320,7 +320,7 @@ describe('createCategory', () => {
     const result = await createCategory(
       { success: false, message: '' },
       formData({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: 'Laptops',
         prefix: 'LAP',
         customSchema: '{"modelSpecs":[],"assetTracking":[]}',
@@ -335,7 +335,7 @@ describe('createCategory', () => {
     const result = await createCategory(
       { success: false, message: '' },
       formData({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: 'Laptops',
         prefix: 'XX', // Too short
         customSchema: '{"modelSpecs":[],"assetTracking":[]}',
@@ -348,13 +348,13 @@ describe('createCategory', () => {
   it('successfully creates category with audit log', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockDb.insert.mockReturnValue(
-      chain([{ id: 1, pillar: 'IT & Digital', name: 'Laptops', prefix: 'LAP', customSchema: {}, requiresSerial: true }])
+      chain([{ id: 1, pillar: 'Hardware', name: 'Laptops', prefix: 'LAP', customSchema: {}, requiresSerial: true }])
     );
 
     const result = await createCategory(
       { success: false, message: '' },
       formData({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: 'Laptops',
         prefix: 'LAP',
         customSchema: '{"modelSpecs":[],"assetTracking":[]}',
@@ -394,7 +394,7 @@ describe('createCategory', () => {
     const result = await createCategory(
       { success: false, message: '' },
       formData({
-        pillar: 'IT & Digital',
+        pillar: 'Hardware',
         name: 'Laptops',
         prefix: 'LAP',
         customSchema: '{"modelSpecs":[],"assetTracking":[]}',

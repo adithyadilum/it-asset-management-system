@@ -29,6 +29,7 @@ import { DisposeAssetsRequestDialog } from '@/components/features/disposals/disp
 import { StatusBadge } from '@/components/shared/status-badge';
 import { PillarBadge } from '@/components/shared/pillar-badge';
 import { SoftwareExpiryStatus } from '@/components/shared/software-expiry-status';
+import { AssetPillarSelectionDialog } from '@/components/shared/asset-pillar-selection-dialog';
 import { FilterBar, type AppliedFilter as FilterBarAppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
 import { tiqriToast } from '@/components/shared/sonner';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
@@ -247,6 +248,8 @@ export function AssetRegistryClient({
   const isPanelOpen = Boolean(currentPanel);
   const activeRecordId =
     currentPanel === 'record' ? searchParams.get('id') : null;
+
+  const [isPillarDialogOpen, setIsPillarDialogOpen] = useState(false);
 
   const [rows, setRows] = useState<AssetRegistryRow[]>(initialResult.data);
   const [searchValue, setSearchValue] = useState('');
@@ -1008,11 +1011,15 @@ export function AssetRegistryClient({
           : ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'];
 
   const openRegistrationPanel = useCallback(() => {
+    if (config.view === 'unified') {
+      setIsPillarDialogOpen(true);
+      return;
+    }
     const params = new URLSearchParams(searchParams.toString());
     params.set('panel', 'registration');
     params.set('animate', isPanelOpen ? '0' : '1');
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [isPanelOpen, pathname, router, searchParams]);
+  }, [config.view, isPanelOpen, pathname, router, searchParams]);
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
@@ -1110,7 +1117,7 @@ export function AssetRegistryClient({
                 title: 'No assets found',
                 description: 'Add your first asset to start managing this registry.',
                 action: canManage ? {
-                  label: config.addAssetLabel,
+                  label: 'Add Asset',
                   onClick: openRegistrationPanel,
                 } : undefined,
               }}
@@ -1303,6 +1310,15 @@ export function AssetRegistryClient({
             } catch {
               tiqriToast.error('Failed to generate PDF for printing.');
             }
+          }}
+        />
+
+        <AssetPillarSelectionDialog
+          open={isPillarDialogOpen}
+          onOpenChange={setIsPillarDialogOpen}
+          onSelect={(slug) => {
+            setIsPillarDialogOpen(false);
+            router.push(`/assets/${slug}?panel=registration`);
           }}
         />
       </div>
