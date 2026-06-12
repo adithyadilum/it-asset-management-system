@@ -137,17 +137,18 @@ export function KpiMetricsRow({ metrics, currencyCode = 'LKR', exchangeRate = 1,
               </p>
 
               <div className="space-y-2">
-                <h4 className="font-semibold text-foreground">Key Factors:</h4>
+                <h4 className="font-semibold text-foreground">Calculation Weights:</h4>
                 <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                  <li><strong>Utilization Rate:</strong> Measures the ratio of active, assigned assets against idle inventory. High idle counts lower the score.</li>
-                  <li><strong>Warranty Coverage:</strong> Tracks the percentage of active hardware still protected by vendor warranties, reducing out-of-pocket repair risks.</li>
-                  <li><strong>Maintenance Overhead:</strong> Penalizes fleets with disproportionately high repair frequencies or excessive cumulative maintenance spend.</li>
-                  <li><strong>Software Compliance:</strong> Monitors license allocations to prevent costly over-provisioning (idle seats) or compliance breaches.</li>
+                  <li><strong>Utilization (30%):</strong> Percentage of active assets currently assigned to users or locations.</li>
+                  <li><strong>Overdue Returns (20%):</strong> Inverse ratio of overdue returns compared to total assigned assets.</li>
+                  <li><strong>Repairs & Maintenance (20%):</strong> Inverse ratio of high-maintenance assets (3 or more tickets).</li>
+                  <li><strong>Warranty Coverage (15%):</strong> Percentage of active hardware protected by vendor warranties.</li>
+                  <li><strong>Software Allocation (15%):</strong> Percentage of purchased software seats actively allocated.</li>
                 </ul>
               </div>
 
               <div className="bg-muted p-3 rounded-md text-xs text-muted-foreground mt-4">
-                <strong>Why it&apos;s needed:</strong> This single metric helps IT Directors quickly gauge if the asset fleet is optimized or if intervention (e.g., renewing warranties, downgrading software tiers, retiring broken hardware) is required.
+                <strong>Why it&apos;s a standard:</strong> This composite index provides a unified, quantifiable snapshot of operational efficiency, reliability, and financial risk. It empowers IT leadership to rapidly determine whether the asset fleet is optimized or requires immediate intervention—such as reclaiming idle hardware, redistributing software licenses, or retiring frequently repaired devices.
               </div>
             </div>
           </DialogContent>

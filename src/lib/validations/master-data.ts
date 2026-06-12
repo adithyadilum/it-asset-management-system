@@ -88,9 +88,16 @@ export const vendorSchema = z.object({
   website: z
     .string()
     .trim()
-    .url('Enter a valid website URL')
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .transform((val) => {
+      if (!val) return val;
+      if (!/^https?:\/\//i.test(val) && val.includes('.')) {
+        return `https://${val}`;
+      }
+      return val;
+    })
+    .pipe(z.string().url('Enter a valid website URL').optional().or(z.literal(''))),
   isActive: z.boolean(),
 });
 

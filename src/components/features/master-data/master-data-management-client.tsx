@@ -1080,8 +1080,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={categoryColumns}
                             data={filteredCategories}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("asset-categories")}
                             onRowClick={(row) => openRecordPanel("asset-categories", row.id)}
@@ -1095,8 +1095,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={locationColumns}
                             data={filteredLocations}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("locations")}
                             onRowClick={(row) => openRecordPanel("locations", row.id)}
@@ -1110,8 +1110,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={brandColumns}
                             data={filteredBrands}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("brands")}
                             onRowClick={(row) => openRecordPanel("brands", row.id)}
@@ -1125,8 +1125,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={deviceModelColumns}
                             data={filteredModels}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("device-models")}
                             onRowClick={(row) => openRecordPanel("device-models", row.id)}
@@ -1140,8 +1140,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={vendorColumns}
                             data={filteredVendors}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("vendors")}
                             onRowClick={(row) => openRecordPanel("vendors", row.id)}
@@ -1155,8 +1155,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={ownerColumns}
                             data={filteredOwners}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("owners")}
                             onRowClick={(row) => openRecordPanel("owners", row.id)}
@@ -1170,8 +1170,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={departmentColumns}
                             data={filteredDepartments}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("departments")}
                             onRowClick={(row) => openRecordPanel("departments", row.id)}
@@ -1185,8 +1185,8 @@ export function MasterDataManagementClient({
                         <DataTable
                             columns={customStatusColumns}
                             data={filteredCustomStatuses}
-                            initialPageSize={10}
-                            pageSizeOptions={[10, 20, 50]}
+                            initialPageSize={16}
+                            pageSizeOptions={[16, 32, 64, 100]}
                             defaultSorting={[{ id: 'id', desc: true }]}
                             selectionActions={buildSelectionActions("statuses")}
                             onRowClick={(row) => openRecordPanel("statuses", row.id)}

@@ -1109,16 +1109,28 @@ export async function createMasterDataRecord(
       success: true,
       message: 'Record created successfully.',
     };
-  } catch (error) {
+  } catch (error: any) {
     logError({
       scope: 'ACTION',
       label: 'masterData.createMasterDataRecord',
       error,
     });
 
+    let errorMessage = 'Database error: failed to create record.';
+
+    const errCode = error?.code || error?.cause?.code;
+    const errMsg = error?.message || error?.cause?.message || '';
+
+    if (
+      errCode === '23505' ||
+      errMsg.includes('duplicate key value violates unique constraint')
+    ) {
+      errorMessage = 'A record with this name or code already exists.';
+    }
+
     return {
       success: false,
-      message: 'Database error: failed to create record.',
+      message: errorMessage,
     };
   }
 }
@@ -1221,6 +1233,9 @@ export async function updateMasterDataRecord(
           2
         );
         const pillar = String(formData.get('pillar') ?? '').trim();
+        const customSchemaRaw = String(
+          formData.get('customSchema') ?? '{"modelSpecs":[],"assetTracking":[]}'
+        );
 
         if (!name.ok) {
           return {
@@ -1240,6 +1255,15 @@ export async function updateMasterDataRecord(
           };
         }
 
+        const parsedSchema = categorySchema.shape.customSchema.safeParse(customSchemaRaw);
+        if (!parsedSchema.success) {
+          return {
+            success: false,
+            message: 'Validation failed.',
+            errors: { customSchema: ['Invalid custom schema format.'] },
+          };
+        }
+
         const oldRecord = await db.query.categories.findFirst({
           where: eq(categories.id, idRaw),
         });
@@ -1253,6 +1277,7 @@ export async function updateMasterDataRecord(
               | 'Software'
               | 'Office Furniture'
               | 'Office Electronics',
+            customSchema: parsedSchema.data,
             isActive: parseBooleanFormValue(formData.get('isActive')),
           })
           .where(eq(categories.id, idRaw))
@@ -1594,10 +1619,28 @@ export async function updateMasterDataRecord(
       success: true,
       message: 'Record updated successfully.',
     };
-  } catch {
+  } catch (error: any) {
+    logError({
+      scope: 'ACTION',
+      label: 'masterData.updateMasterDataRecord',
+      error,
+    });
+
+    let errorMessage = 'Database error: failed to update record.';
+
+    const errCode = error?.code || error?.cause?.code;
+    const errMsg = error?.message || error?.cause?.message || '';
+
+    if (
+      errCode === '23505' ||
+      errMsg.includes('duplicate key value violates unique constraint')
+    ) {
+      errorMessage = 'A record with this name or code already exists.';
+    }
+
     return {
       success: false,
-      message: 'Database error: failed to update record.',
+      message: errorMessage,
     };
   }
 }
