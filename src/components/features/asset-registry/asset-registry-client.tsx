@@ -8,8 +8,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
-import {
-} from '@/lib/constants';
+import { } from '@/lib/constants';
 import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
@@ -860,10 +859,10 @@ export function AssetRegistryClient({
             return (
               <div className="flex items-center gap-2">
                 <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${available === 0
-                    ? "bg-red-50 text-red-700 ring-red-600/10"
-                    : isLow
-                      ? "bg-amber-50 text-amber-700 ring-amber-600/10"
-                      : "bg-green-50 text-green-700 ring-green-600/10"
+                  ? "bg-red-50 text-red-700 ring-red-600/10"
+                  : isLow
+                    ? "bg-amber-50 text-amber-700 ring-amber-600/10"
+                    : "bg-green-50 text-green-700 ring-green-600/10"
                   }`}>
                   {available} / {total} Available
                 </span>

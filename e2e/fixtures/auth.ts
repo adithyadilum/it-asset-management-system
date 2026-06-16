@@ -1,4 +1,5 @@
 import { test as base, Page } from '@playwright/test';
+import { encode } from 'next-auth/jwt';
 
 type AuthFixtures = {
   adminPage: Page;
@@ -6,49 +7,45 @@ type AuthFixtures = {
 };
 
 export const test = base.extend<AuthFixtures>({
-  adminPage: async ({ page, context, request }, use) => {
-    // 1. Call the bypass API route
-    const res = await request.post('/api/test/auth', {
-      data: { role: 'GlobalAdmin' },
+  adminPage: async ({ page, context }, use) => {
+    const token = await encode({
+      token: { 
+        id: '00000000-0000-0000-0000-000000000001', 
+        email: 'admin@tiqri.test', 
+        role: 'GlobalAdmin', 
+        name: 'Test Admin',
+        accessTokenExpires: Date.now() + 1000 * 60 * 60 * 24 * 30, // Future date to bypass refresh
+      },
+      secret: process.env.NEXTAUTH_SECRET!,
     });
-    
-    if (!res.ok()) {
-      const errorText = await res.text();
-      throw new Error(`Failed to bypass auth for GlobalAdmin: ${errorText}`);
-    }
-    
-    // 2. Extract the generated cookie
-    const data = await res.json();
-    
-    // 3. Inject the cookie into the browser context
+
     await context.addCookies([{
-      name: data.cookieName,
-      value: data.token,
+      name: 'next-auth.session-token',
+      value: token,
       domain: 'localhost',
       path: '/',
       httpOnly: true,
       sameSite: 'Lax',
     }]);
 
-    // 4. Provide the authenticated page to the test
     await use(page);
   },
   
-  employeePage: async ({ page, context, request }, use) => {
-    const res = await request.post('/api/test/auth', {
-      data: { role: 'Employee' },
+  employeePage: async ({ page, context }, use) => {
+    const token = await encode({
+      token: { 
+        id: '00000000-0000-0000-0000-000000000002', 
+        email: 'employee@tiqri.test', 
+        role: 'Employee', 
+        name: 'Test Employee',
+        accessTokenExpires: Date.now() + 1000 * 60 * 60 * 24 * 30, // Future date to bypass refresh
+      },
+      secret: process.env.NEXTAUTH_SECRET!,
     });
-    
-    if (!res.ok()) {
-      const errorText = await res.text();
-      throw new Error(`Failed to bypass auth for Employee: ${errorText}`);
-    }
-    
-    const data = await res.json();
-    
+
     await context.addCookies([{
-      name: data.cookieName,
-      value: data.token,
+      name: 'next-auth.session-token',
+      value: token,
       domain: 'localhost',
       path: '/',
       httpOnly: true,
