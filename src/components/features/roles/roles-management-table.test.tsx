@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { RolesManagementTable } from './roles-management-table';
@@ -23,6 +24,17 @@ vi.mock('./add-users-to-role-modal', () => ({
     isOpen ? (
       <div data-testid="mock-add-modal">
         Add User Mock Modal
+        <button onClick={() => onOpenChange(false)}>Close Mock</button>
+      </div>
+    ) : null
+  ),
+}));
+
+vi.mock('./edit-user-role-modal', () => ({
+  EditUserRoleModal: ({ isOpen, onOpenChange, user }: any) => (
+    isOpen ? (
+      <div data-testid="mock-edit-modal">
+        Edit User Role Mock Modal for {user?.name}
         <button onClick={() => onOpenChange(false)}>Close Mock</button>
       </div>
     ) : null
@@ -130,5 +142,24 @@ describe('RolesManagementTable', () => {
 
     fireEvent.click(addButton);
     expect(screen.getByTestId('mock-add-modal')).toBeInTheDocument();
+  });
+
+  it('opens the edit modal when edit is clicked', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="IT Operator"
+        currentUserId="3"
+        selectedRole="ITOperator"
+      />
+    );
+
+    const editButtons = screen.getAllByRole('button', { name: /Edit role and status for/i });
+    fireEvent.click(editButtons[0]); // Click Alice's edit button
+
+    expect(screen.getByTestId('mock-edit-modal')).toBeInTheDocument();
+    expect(screen.getByText(/Edit User Role Mock Modal for Alice Smith/)).toBeInTheDocument();
   });
 });
