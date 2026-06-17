@@ -77,6 +77,7 @@ describe('ProcessReturnModal', () => {
       expect(processAssetReturnAction).toHaveBeenCalledWith({
         assetId: 'asset-1',
         condition: 'Good Working Condition',
+        physicalCondition: 'Excellent',
         notes: 'Looks fine'
       });
       expect(mockRouterRefresh).toHaveBeenCalled();
