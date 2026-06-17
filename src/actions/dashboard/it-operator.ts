@@ -1,19 +1,21 @@
 'use server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
+import { assertAdminOrOperator } from './queries/auth';
+import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
-  assertAdminOrOperator,
-  getCachedDashboardKpiMetrics,
   getCachedInventoryStatus,
   getCachedDepartmentAllocation,
   getOverdueReturnsInternal,
   getHighMaintenanceAssetsInternal,
-  type DashboardKpiMetrics,
-  type InventoryStatusResponse,
-  type DepartmentAllocationItem,
-  type OverdueReturnRow,
-  type HighMaintenanceRow,
-} from './shared';
+} from './queries/inventory';
+import type {
+  DashboardKpiMetrics,
+  InventoryStatusResponse,
+  DepartmentAllocationItem,
+  OverdueReturnRow,
+  HighMaintenanceRow,
+} from '@/types/dashboard';
 
 export interface ITDashboardBatchData {
   kpiMetrics: DashboardKpiMetrics;

@@ -1,4 +1,9 @@
-export * from './shared';
+export * from '@/types/dashboard';
+export * from './queries/auth';
+export * from './queries/inventory';
+export * from './queries/financials';
+export * from './queries/kpis';
+export * from './queries/activities';
 export * from './admin';
 export * from './it-operator';
 export * from './finance';
@@ -7,7 +12,7 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { getAdminDashboardData } from './admin';
 import { getITDashboardData } from './it-operator';
 import { getFinanceDashboardData } from './finance';
-import type { DashboardBatchData } from './shared';
+import type { DashboardBatchData } from '@/types/dashboard';
 
 /**
  * Backward-compatible batch fetcher that delegates to role-specific
