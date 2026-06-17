@@ -10,6 +10,9 @@ import { executeAssetDisposal } from '@/actions/disposals/execute';
 
 vi.mock('@/actions/disposals/execute', () => ({
   executeAssetDisposal: vi.fn(),
+}));
+
+vi.mock('@/actions/disposals/upload-receipt', () => ({
   uploadDisposalReceipt: vi.fn(),
 }));
 

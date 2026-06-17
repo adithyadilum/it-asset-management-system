@@ -88,6 +88,8 @@ export function requireAccess(
   predicate: (role: UserRole) => boolean
 ): void {
   if (!predicate(user.role)) {
-    throw new Error('Forbidden');
+    // Include both a stable error code and the human-readable message to keep
+    // server-action and test expectations consistent across modules.
+    throw new Error('FORBIDDEN: Forbidden');
   }
 }

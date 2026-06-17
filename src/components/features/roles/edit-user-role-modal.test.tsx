@@ -52,9 +52,20 @@ describe('EditUserRoleModal', () => {
       />
     );
 
-    // Change role select value (since role is already Employee, let's select a different one or test the action call if state changes)
-    // Actually, in the test it calls assignUserRole if selectedRole !== user.role. Since mockUser.role is Employee, let's test that changing role triggers it.
-    // Wait, the select trigger is tested by default or we can just mock role change.
+    const roleSelect = screen.getByLabelText('Role');
+    fireEvent.click(roleSelect);
+    
+    const newRoleOption = await screen.findByText('IT Operator');
+    fireEvent.click(newRoleOption);
+
+    const updateButton = screen.getByText('Update Details');
+    fireEvent.click(updateButton);
+
+    await waitFor(() => {
+      expect(roleActions.assignUserRole).toHaveBeenCalledWith('user-1', 'ITOperator');
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      expect(onUpdated).toHaveBeenCalled();
+    });
   });
 
   it('calls setUserActiveStatus when submitted with changed active status', async () => {

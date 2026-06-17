@@ -26,8 +26,15 @@ export async function executeAssetDisposal(
   const actionTimer = startLatencyTimer();
   const user = await getAuthenticatedUser();
 
-  if (!user) throw new Error('UNAUTHENTICATED');
-  requireAccess(user, isGlobalAdmin);
+  if (!user) return { success: false, message: 'UNAUTHENTICATED' };
+  try {
+    requireAccess(user, isGlobalAdmin);
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Forbidden',
+    };
+  }
 
   try {
     // Parse and validate JSON payloads
