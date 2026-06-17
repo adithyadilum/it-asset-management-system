@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { tiqriToast } from '@/components/shared/sonner';
 
-import type { PendingDisposalRow } from './pending-disposals-grid';
+import type { PendingDisposalRow } from '@/types/disposals';
 
 interface RejectDisposalDialogProps {
   isOpen: boolean;

@@ -23,11 +23,7 @@ import {
 } from '@/components/ui/select';
 import { tiqriToast } from '@/components/shared/sonner';
 
-export type SelectedAssetLite = {
-  id: string;        
-  assetTag: string;  
-  assetName: string; 
-};
+import type { SelectedAssetLite } from '@/types/disposals';
 
 export function DisposeAssetsRequestDialog({
   open,

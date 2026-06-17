@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import type { PendingDisposalRow } from './pending-disposals-grid';
+import type { PendingDisposalRow } from '@/types/disposals';
 
 interface ExecuteDisposalDialogProps {
   isOpen: boolean;

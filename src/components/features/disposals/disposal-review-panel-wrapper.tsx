@@ -7,7 +7,7 @@ import type { DisposalReviewDetails } from '@/types/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
-import type { PendingDisposalRow } from './pending-disposals-grid';
+import type { PendingDisposalRow } from '@/types/disposals';
 
 export interface DisposalReviewPanelWrapperProps {
   isOpen: boolean;

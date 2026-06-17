@@ -7,8 +7,9 @@ import { TabsContent } from '@/components/ui/tabs';
 import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs';
 
 
-import { PendingDisposalsGrid, type PendingDisposalRow } from './pending-disposals-grid';
-import { DisposalHistoryGrid, type HistoryDisposalRow } from './disposal-history-grid';
+import { PendingDisposalsGrid } from './pending-disposals-grid';
+import { DisposalHistoryGrid } from './disposal-history-grid';
+import type { PendingDisposalRow, HistoryDisposalRow } from '@/types/disposals';
 import { DisposalReviewPanelWrapper } from '@/components/features/disposals/disposal-review-panel-wrapper';
 import { DisposalAssetDetailPanel } from './disposal-asset-detail-panel';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
