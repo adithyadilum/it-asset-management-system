@@ -13,7 +13,8 @@ import {
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
-import { assertAllowed, normalizeAssetIds } from '@/actions/disposals/utils';
+import { normalizeAssetIds } from '@/actions/disposals/utils';
+import { assertAdminOrOperator } from '@/lib/auth/roles';
 
 export async function createBulkDisposalRequests(input: {
   assetIds: string[];
@@ -24,7 +25,7 @@ export async function createBulkDisposalRequests(input: {
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAllowed(user.role, ['ITOperator', 'GlobalAdmin']);
+  assertAdminOrOperator(user);
 
   const normalizedAssetIds = normalizeAssetIds(input.assetIds);
   const reason = input.reason?.trim();

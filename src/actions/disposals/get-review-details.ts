@@ -16,7 +16,7 @@ import {
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
 import type { DisposalReviewDetails } from '@/types/disposals';
-import { assertAllowed } from '@/actions/disposals/utils';
+import { assertAdmin } from '@/lib/auth/roles';
 
 export async function getDisposalReviewDetails(
   disposalId: number
@@ -25,7 +25,7 @@ export async function getDisposalReviewDetails(
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAllowed(user.role, ['GlobalAdmin']);
+  assertAdmin(user);
 
   if (!Number.isFinite(disposalId) || disposalId <= 0) {
     throw new Error('Invalid disposal id.');

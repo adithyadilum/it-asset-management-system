@@ -4,6 +4,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
+import { assertAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -25,12 +26,8 @@ export async function executeAssetDisposal(
   const actionTimer = startLatencyTimer();
   const user = await getAuthenticatedUser();
 
-  if (!user || user.role !== 'GlobalAdmin') {
-    return {
-      success: false,
-      message: 'FORBIDDEN: Only admins can execute disposals.',
-    };
-  }
+  if (!user) throw new Error('UNAUTHENTICATED');
+  assertAdmin(user);
 
   try {
     // Parse and validate JSON payloads

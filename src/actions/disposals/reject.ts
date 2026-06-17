@@ -4,6 +4,7 @@ import { inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
+import { assertAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -60,12 +61,8 @@ export async function rejectDisposalRequest(
 
   const user = await getAuthenticatedUser();
 
-  if (!user || user.role !== 'GlobalAdmin') {
-    return {
-      success: false,
-      message: 'FORBIDDEN: Only admins can reject disposals.',
-    };
-  }
+  if (!user) throw new Error('UNAUTHENTICATED');
+  assertAdmin(user);
 
   // Normalize and deduplicate
   const normalizedDisposalIds = normalizeDisposalIds(validDisposalIds);

@@ -1,6 +1,7 @@
 'use server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
+import { assertAdmin } from '@/lib/auth/roles';
 import { uploadFileToStorage } from '@/lib/storage';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 
@@ -8,12 +9,8 @@ export async function uploadDisposalReceipt(formData: FormData) {
   const actionTimer = startLatencyTimer();
   const user = await getAuthenticatedUser();
 
-  if (!user || user.role !== 'GlobalAdmin') {
-    return {
-      success: false,
-      message: 'FORBIDDEN: Only admins can upload disposal receipts.',
-    };
-  }
+  if (!user) throw new Error('UNAUTHENTICATED');
+  assertAdmin(user);
 
   try {
     const file = formData.get('file') as File | null;
