@@ -25,6 +25,7 @@ import {
   type DataTableSelectionAction,
 } from '@/components/shared/data-table';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
+import { BulkTransferDialog } from '@/components/features/asset-registry/bulk-transfer-dialog';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { PillarBadge } from '@/components/shared/pillar-badge';
 import { SoftwareExpiryStatus } from '@/components/shared/software-expiry-status';
@@ -291,9 +292,6 @@ export function AssetRegistryClient({
 
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
 
-  const [destinationLocationId, setDestinationLocationId] = useState<number | null>(null);
-  const [transferDate, setTransferDate] = useState('');
-
   const requestSequenceRef = useRef(0);
 
   useEffect(() => {
@@ -536,16 +534,6 @@ export function AssetRegistryClient({
     return [...merged.entries()].map(([id, name]) => ({ id, name }));
   }, [rows]);
 
-  const uniqueSelectedLocations = useMemo(() => {
-    const merged = new Set<string>();
-
-    for (const row of transferSelectionRows) {
-      merged.add(row.location ?? '-');
-    }
-
-    return [...merged];
-  }, [transferSelectionRows]);
-
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => {
     return config.filterFieldOptions.map((opt) => {
       let options: string[] = [];
@@ -661,10 +649,10 @@ export function AssetRegistryClient({
     }
   };
 
-  const performBulkTransfer = async () => {
+  const performBulkTransfer = async (targetLocationId: number) => {
     const selectedAssetIds = transferSelectionRows.map((selectedRow) => selectedRow.id);
 
-    if (selectedAssetIds.length === 0 || !destinationLocationId) {
+    if (selectedAssetIds.length === 0 || !targetLocationId) {
       return;
     }
 
@@ -675,7 +663,7 @@ export function AssetRegistryClient({
       const result = await bulkUpdateAssets({
         assetIds: selectedAssetIds,
         updates: {
-          locationId: destinationLocationId,
+          locationId: targetLocationId,
         },
         actionType: 'BULK_TRANSFER',
       });
@@ -687,7 +675,6 @@ export function AssetRegistryClient({
 
       setIsTransferDialogOpen(false);
       setTransferSelectionRows([]);
-      setDestinationLocationId(null);
       setRefreshNonce((currentNonce) => currentNonce + 1);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Bulk transfer failed.');
@@ -979,8 +966,6 @@ export function AssetRegistryClient({
           hidden: (selectedRows) => config.view === 'unified' && selectedRows.some(row => row.pillar === 'Software'),
           onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
             setTransferSelectionRows(selectedRowsForAction);
-            setDestinationLocationId(null);
-            setTransferDate('');
             setIsTransferDialogOpen(true);
           },
         } as DataTableSelectionAction<AssetRegistryRow>,
@@ -1159,127 +1144,17 @@ export function AssetRegistryClient({
           }}
         />
 
-        <Dialog
+        <BulkTransferDialog
           open={isTransferDialogOpen}
           onOpenChange={(open) => {
             setIsTransferDialogOpen(open);
-
-            if (!open) {
-              setTransferSelectionRows([]);
-              setDestinationLocationId(null);
-              setTransferDate('');
-            }
+            if (!open) setTransferSelectionRows([]);
           }}
-        >
-          <DialogContent className="max-w-90 rounded-xl border border-border bg-background p-0">
-            <DialogTitle className="sr-only">Transfer assets</DialogTitle>
-            <DialogDescription className="sr-only">
-              Transfer selected assets to a destination location.
-            </DialogDescription>
-
-            <div className="border-b border-border px-4 py-3">
-              <h3 className="text-2xl font-semibold text-foreground">
-                Transfer {transferSelectionRows.length} Assets
-              </h3>
-            </div>
-
-            <div className="space-y-3 px-4 py-3">
-              <ScrollArea className="max-h-24 rounded-lg border border-border bg-muted p-2">
-                <div className="space-y-1">
-                  {transferSelectionRows.map((selectedRow) => (
-                    <div
-                      key={selectedRow.id}
-                      className="grid grid-cols-[88px_1fr] gap-2 text-sm text-foreground"
-                    >
-                      <span className="font-medium text-foreground">
-                        {selectedRow.assetTag}
-                      </span>
-                      <span className="truncate">{toCellText(selectedRow.name)}</span>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-foreground">Current Location</label>
-                <Input
-                  value={
-                    uniqueSelectedLocations.length === 0
-                      ? '-'
-                      : uniqueSelectedLocations.length === 1
-                        ? uniqueSelectedLocations[0]
-                        : 'Multiple locations'
-                  }
-                  disabled
-                  className="h-9 rounded-lg border-border bg-muted"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-foreground">
-                  Destination Location
-                </label>
-                <select
-                  value={destinationLocationId ?? ''}
-                  onChange={(event) => {
-                    const parsedValue = Number(event.target.value);
-                    setDestinationLocationId(
-                      Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null
-                    );
-                  }}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground"
-                >
-                  <option value="">Select destination</option>
-                  {locationOptions.map((locationOption) => (
-                    <option key={locationOption.id} value={locationOption.id}>
-                      {locationOption.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-foreground">Transfer Date</label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    value={transferDate}
-                    onChange={(event) => setTransferDate(event.target.value)}
-                    className="h-9 rounded-lg border-border pr-9"
-                  />
-                  <CalendarDays className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-lg border-border px-3 text-sm"
-                onClick={() => {
-                  setIsTransferDialogOpen(false);
-                  setTransferSelectionRows([]);
-                  setDestinationLocationId(null);
-                  setTransferDate('');
-                }}
-                disabled={isMutating}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 rounded-lg bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
-                onClick={() => void performBulkTransfer()}
-                disabled={!destinationLocationId || transferSelectionRows.length === 0 || isMutating}
-              >
-                Confirm Transfer
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+          selectedAssets={transferSelectionRows}
+          locationOptions={locationOptions}
+          onConfirm={performBulkTransfer}
+          isMutating={isMutating}
+        />
 
         <BulkImportWizard
           isOpen={isBulkImportOpen}
