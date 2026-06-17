@@ -11,7 +11,7 @@ import { redirect } from "next/navigation"
 // Role-specific action fetchers
 import { getAdminDashboardData } from "@/actions/dashboard/admin"
 import { getITDashboardData } from "@/actions/dashboard/it-operator"
-import { getFinanceDashboardData } from "@/actions/dashboard/finance"
+import { getFinanceDashboardData } from "@/actions/dashboard/finance-auditor"
 
 // Role-specific view components
 import { AdminDashboardView } from "@/components/features/dashboard/admin/admin-dashboard-view"

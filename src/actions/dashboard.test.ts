@@ -18,7 +18,7 @@ vi.mock('@/actions/dashboard/it-operator', () => ({
 }));
 
 const mockGetFinanceDashboardData = vi.fn();
-vi.mock('@/actions/dashboard/finance', () => ({
+vi.mock('@/actions/dashboard/finance-auditor', () => ({
   getFinanceDashboardData: () => mockGetFinanceDashboardData(),
 }));
 

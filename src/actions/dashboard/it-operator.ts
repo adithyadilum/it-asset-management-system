@@ -1,7 +1,7 @@
 'use server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
-import { requireAccess, canManageAssets } from '@/lib/auth/roles';
+import { requireAccess, isITOperator } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -34,7 +34,7 @@ export interface ITDashboardBatchData {
 export async function getITDashboardData(): Promise<ITDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  requireAccess(user, canManageAssets);
+  requireAccess(user, isITOperator);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

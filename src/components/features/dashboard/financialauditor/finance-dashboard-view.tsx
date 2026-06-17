@@ -14,7 +14,7 @@ import {
   useWriteOffsColumns,
   useSoftwareOptimizationColumns,
 } from "../shared/dashboard-table-columns"
-import type { FinanceDashboardBatchData } from "@/actions/dashboard/finance"
+import type { FinanceDashboardBatchData } from "@/actions/dashboard/finance-auditor"
 
 interface FinanceDashboardViewProps {
   data: FinanceDashboardBatchData

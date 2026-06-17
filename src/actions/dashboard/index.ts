@@ -6,12 +6,12 @@ export * from './queries/kpis';
 export * from './queries/activities';
 export * from './admin';
 export * from './it-operator';
-export * from './finance';
+export * from './finance-auditor';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getAdminDashboardData } from './admin';
 import { getITDashboardData } from './it-operator';
-import { getFinanceDashboardData } from './finance';
+import { getFinanceDashboardData } from './finance-auditor';
 import type { DashboardBatchData } from '@/types/dashboard';
 
 /**
