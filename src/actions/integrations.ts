@@ -17,6 +17,7 @@ import {
 import { createApiKeySchema } from '@/lib/validations/integrations';
 import { revalidatePath } from 'next/cache';
 import { isValidUuid } from '@/lib/auth/uuid';
+import { serverEnv } from '@/lib/env';
 
 type WebhookSubscriptionResult =
   | { success: true; secret: string }
@@ -68,7 +69,7 @@ function parseOptionalBooleanField(
 }
 
 function getQStashClient() {
-  const token = process.env.QSTASH_TOKEN;
+  const token = serverEnv.QSTASH_TOKEN;
 
   if (!token) {
     throw new Error('QSTASH_TOKEN not set in environment variables');

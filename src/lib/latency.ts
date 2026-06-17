@@ -1,6 +1,8 @@
+import { serverEnv } from '@/lib/env';
+
 const DEFAULT_SLOW_THRESHOLD_MS = 50;
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const FORCE_ENABLE_RUNTIME_LOGS = process.env.ENABLE_RUNTIME_LOGS === 'true';
+const IS_PRODUCTION = serverEnv.NODE_ENV === 'production';
+const FORCE_ENABLE_RUNTIME_LOGS = serverEnv.ENABLE_RUNTIME_LOGS === 'true';
 const RUNTIME_LOGS_ENABLED = !IS_PRODUCTION || FORCE_ENABLE_RUNTIME_LOGS;
 
 type LatencyMetadataValue = string | number | boolean | null | undefined;

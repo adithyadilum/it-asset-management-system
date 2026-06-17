@@ -15,14 +15,16 @@ describe('crypto module', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    process.env.ENCRYPTION_SECRET = VALID_SECRET_BASE64;
+    vi.doMock('@/lib/env', () => ({
+      serverEnv: { ENCRYPTION_SECRET: VALID_SECRET_BASE64 }
+    }));
     const mod = await import('@/lib/crypto');
     encrypt = mod.encrypt;
     decrypt = mod.decrypt;
   });
 
   afterEach(() => {
-    delete process.env.ENCRYPTION_SECRET;
+    vi.doUnmock('@/lib/env');
   });
 
   it('encrypt returns a string in the format iv:authTag:ciphertext', () => {
@@ -85,7 +87,9 @@ describe('crypto module', () => {
 describe('crypto module - missing key', () => {
   it('throws when ENCRYPTION_SECRET is unset', async () => {
     vi.resetModules();
-    delete process.env.ENCRYPTION_SECRET;
+    vi.doMock('@/lib/env', () => ({
+      serverEnv: { ENCRYPTION_SECRET: undefined }
+    }));
 
     const mod = await import('@/lib/crypto');
     expect(() => mod.encrypt('test')).toThrow('ENCRYPTION_SECRET not set');
@@ -93,7 +97,9 @@ describe('crypto module - missing key', () => {
 
   it('throws when ENCRYPTION_SECRET is not 32 bytes', async () => {
     vi.resetModules();
-    process.env.ENCRYPTION_SECRET = Buffer.from('tooshort').toString('base64');
+    vi.doMock('@/lib/env', () => ({
+      serverEnv: { ENCRYPTION_SECRET: Buffer.from('tooshort').toString('base64') }
+    }));
 
     const mod = await import('@/lib/crypto');
     expect(() => mod.encrypt('test')).toThrow('must be exactly 32 bytes');

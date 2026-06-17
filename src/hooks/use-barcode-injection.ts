@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { clientEnv } from '@/lib/env.client';
 import { useSession } from 'next-auth/react';
 import Pusher from 'pusher-js';
 
@@ -10,8 +11,8 @@ export function useBarcodeInjection(onInject: (barcode: string) => void) {
     if (!userId) return;
 
     // Initialize Pusher
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    const pusher = new Pusher(clientEnv.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER,
     });
 
     // Subscribe to user-specific channel

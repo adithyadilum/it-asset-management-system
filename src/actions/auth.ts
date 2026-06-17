@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { logAuditAction } from '@/lib/audit';
 import type { UserRole } from '@/types/auth';
+import { serverEnv } from '@/lib/env';
 
 function normalizeRole(role: unknown): UserRole {
   if (
@@ -82,10 +83,10 @@ export async function getFederatedLogoutUrl() {
   }
 
   const idToken = session?.idToken || '';
-  const endSessionUrl = `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/logout`;
+  const endSessionUrl = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/logout`;
   
   // Use NEXT_PUBLIC_SITE_URL or NEXTAUTH_URL to dynamically determine the callback origin
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = serverEnv.NEXTAUTH_URL || 'http://localhost:3000';
   const redirectUri = encodeURIComponent(`${baseUrl}/login`);
 
   return `${endSessionUrl}?id_token_hint=${idToken}&post_logout_redirect_uri=${redirectUri}`;

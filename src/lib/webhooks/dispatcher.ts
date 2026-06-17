@@ -1,4 +1,5 @@
 import 'server-only';
+import { serverEnv } from '@/lib/env';
 
 import { Client } from '@upstash/qstash';
 import { and, eq, sql } from 'drizzle-orm';
@@ -12,7 +13,7 @@ import type { WebhookEnvelope, WebhookEventType } from '@/types/integrations';
 import { calculateHmacSignature } from './signature';
 
 function getQStashClient() {
-  const token = process.env.QSTASH_TOKEN;
+  const token = serverEnv.QSTASH_TOKEN;
 
   if (!token) {
     throw new Error('QSTASH_TOKEN not set in environment variables');

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverEnv } from '@/lib/env';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import * as jose from 'jose';
@@ -7,7 +8,7 @@ import { linkedDevices, maintenanceTickets, assets, assetAssignments, systemAudi
 import { eq, and, isNull } from 'drizzle-orm';
 
 const MOBILE_SECRET = new TextEncoder().encode(
-  process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET
 );
 
 export async function POST(req: Request) {
