@@ -1,3 +1,5 @@
+import { serverEnv } from '@/lib/env';
+import { clientEnv } from '@/lib/env.client';
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { linkedDevices } from '@/db/schema';
@@ -7,7 +9,7 @@ import Pusher from 'pusher';
 import * as jose from 'jose';
 
 const MOBILE_SECRET = new TextEncoder().encode(
-  process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET
 );
 
 export async function POST(req: Request) {
@@ -60,10 +62,10 @@ export async function POST(req: Request) {
   // 4. Trigger a Pusher event to update the Web UI
   try {
     const pusher = new Pusher({
-      appId: process.env.PUSHER_APP_ID!,
-      key: process.env.NEXT_PUBLIC_PUSHER_KEY!,
-      secret: process.env.PUSHER_SECRET!,
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+      appId: serverEnv.PUSHER_APP_ID!,
+      key: clientEnv.NEXT_PUBLIC_PUSHER_KEY!,
+      secret: serverEnv.PUSHER_SECRET!,
+      cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER,
       useTLS: true,
     });
     

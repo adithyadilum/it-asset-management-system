@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+import './src/lib/env';
+
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,

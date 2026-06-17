@@ -1,3 +1,5 @@
+import { clientEnv } from '@/lib/env.client';
+import { serverEnv } from '@/lib/env';
 import { NextRequest, NextResponse } from 'next/server';
 import { encode } from 'next-auth/jwt';
 import { db } from '@/db';
@@ -6,7 +8,7 @@ import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
-  if (process.env.NEXT_PUBLIC_ENABLE_SANDBOX !== 'true') {
+  if (clientEnv.NEXT_PUBLIC_ENABLE_SANDBOX !== 'true') {
     return NextResponse.json({ error: 'Sandbox mode not enabled' }, { status: 403 });
   }
 
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest) {
       accessTokenExpires: Date.now() + 1000 * 60 * 60 * 24, // 1 day
     };
 
-    const secret = process.env.NEXTAUTH_SECRET;
+    const secret = serverEnv.NEXTAUTH_SECRET;
     if (!secret) {
       return NextResponse.json({ error: 'Missing NEXTAUTH_SECRET' }, { status: 500 });
     }
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
       secret,
     });
 
-    const cookieName = process.env.NODE_ENV === 'production' 
+    const cookieName = serverEnv.NODE_ENV === 'production' 
       ? '__Secure-next-auth.session-token' 
       : 'next-auth.session-token';
 
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
-      secure: process.env.NODE_ENV === 'production',
+      secure: serverEnv.NODE_ENV === 'production',
     });
 
     return NextResponse.json({ success: true, user: dbUser, cookieName, token: encodedToken });
