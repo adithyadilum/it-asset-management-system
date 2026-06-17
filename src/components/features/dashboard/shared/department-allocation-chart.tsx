@@ -5,7 +5,7 @@ import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { cn } from "@/lib/utils"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts"
 import { TrendingUp } from "lucide-react"
-import type { DepartmentAllocationItem } from "@/actions/dashboard/shared"
+import type { DepartmentAllocationItem } from "@/types/dashboard"
 
 interface DepartmentAllocationChartProps {
   allocationData: DepartmentAllocationItem[]

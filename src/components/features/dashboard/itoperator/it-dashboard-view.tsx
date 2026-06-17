@@ -14,7 +14,7 @@ import { InventoryStatusChart } from "../shared/inventory-status-chart"
 import { DataTablesContainer } from "../shared/data-tables-container"
 import { useOverdueColumns, useHighMaintenanceColumns } from "../shared/dashboard-table-columns"
 import type { ITDashboardBatchData } from "@/actions/dashboard/it-operator"
-import type { OverdueReturnRow, HighMaintenanceRow } from "@/actions/dashboard/shared"
+import type { OverdueReturnRow, HighMaintenanceRow } from "@/types/dashboard"
 
 interface ITDashboardViewProps {
   data: ITDashboardBatchData

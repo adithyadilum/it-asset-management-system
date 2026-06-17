@@ -15,7 +15,7 @@ import { RecentActivitiesList } from "../shared/recent-activities-list"
 import { DataTablesContainer } from "../shared/data-tables-container"
 import { useOverdueColumns, usePendingDisposalColumns, useHighMaintenanceColumns } from "../shared/dashboard-table-columns"
 import type { AdminDashboardBatchData } from "@/actions/dashboard/admin"
-import type { OverdueReturnRow, HighMaintenanceRow } from "@/actions/dashboard/shared"
+import type { OverdueReturnRow, HighMaintenanceRow } from "@/types/dashboard"
 
 interface AdminDashboardViewProps {
   data: AdminDashboardBatchData

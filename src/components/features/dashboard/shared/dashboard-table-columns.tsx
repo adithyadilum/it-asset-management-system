@@ -16,7 +16,7 @@ import type {
   SoftwareOptimizationRow,
   DepreciationLedgerRow,
   WriteOffLedgerRow,
-} from "@/actions/dashboard/shared"
+} from "@/types/dashboard"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
