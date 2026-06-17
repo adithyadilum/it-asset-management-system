@@ -1,7 +1,7 @@
 'use server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
-import { assertAdminOrOperator } from './queries/auth';
+import { assertAdminOrOperator } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,

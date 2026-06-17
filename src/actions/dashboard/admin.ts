@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import { assertAdmin } from './queries/auth';
+import { assertAdmin } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
