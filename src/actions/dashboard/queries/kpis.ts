@@ -24,6 +24,66 @@ function getFleetHealthLabel(score: number): string {
   return 'Poor';
 }
 
+export interface FleetHealthInputs {
+  totalActiveAssets: number;
+  assignedCountHealth: number;
+  overdueCountHealth: number;
+  highRepairCount: number;
+  warrantyCovered: number;
+  totalSWSeats: number;
+  allocatedSWSeats: number;
+}
+
+export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
+  const {
+    totalActiveAssets,
+    assignedCountHealth,
+    overdueCountHealth,
+    highRepairCount,
+    warrantyCovered,
+    totalSWSeats,
+    allocatedSWSeats,
+  } = inputs;
+
+  const components = [
+    {
+      applicable: totalActiveAssets > 0,
+      weight: FLEET_HEALTH_WEIGHTS.utilization,
+      value: totalActiveAssets > 0 ? Math.min(1, assignedCountHealth / totalActiveAssets) : 0,
+    },
+    {
+      applicable: assignedCountHealth > 0,
+      weight: FLEET_HEALTH_WEIGHTS.overdue,
+      value: assignedCountHealth > 0 ? Math.max(0, 1 - overdueCountHealth / assignedCountHealth) : 1,
+    },
+    {
+      applicable: totalActiveAssets > 0,
+      weight: FLEET_HEALTH_WEIGHTS.repairs,
+      value: totalActiveAssets > 0 ? Math.max(0, 1 - highRepairCount / totalActiveAssets) : 1,
+    },
+    {
+      applicable: totalActiveAssets > 0,
+      weight: FLEET_HEALTH_WEIGHTS.warranty,
+      value: totalActiveAssets > 0 ? Math.min(1, warrantyCovered / totalActiveAssets) : 0,
+    },
+    {
+      applicable: totalSWSeats > 0,
+      weight: FLEET_HEALTH_WEIGHTS.software,
+      value: totalSWSeats > 0 ? Math.min(1, allocatedSWSeats / totalSWSeats) : 1,
+    },
+  ];
+
+  const applicableComponents = components.filter((c) => c.applicable);
+  if (applicableComponents.length === 0) {
+    return 100; // Default when no components are applicable (clean slate)
+  }
+
+  const totalWeight = applicableComponents.reduce((sum, c) => sum + c.weight, 0);
+  const weightedSum = applicableComponents.reduce((sum, c) => sum + c.value * c.weight, 0);
+
+  return Math.round((weightedSum / totalWeight) * 100);
+}
+
 export const getCachedDashboardKpiMetrics = unstable_cache(
   async (): Promise<DashboardKpiMetrics> => {
     const thirtyDaysAgo = new Date();
@@ -233,29 +293,15 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     const overdueCountHealth = overdueCountRes[0]?.count || 0;
     const highRepairCount = highRepairCountRes[0]?.count || 0;
 
-    const utilizationRate =
-      totalActiveAssets > 0 ? assignedCountHealth / totalActiveAssets : 0;
-    const overdueRate =
-      assignedCountHealth > 0
-        ? 1 - overdueCountHealth / assignedCountHealth
-        : 1;
-    const repairRate =
-      totalActiveAssets > 0
-        ? 1 - highRepairCount / totalActiveAssets
-        : 1;
-    const warrantyRate =
-      totalActiveAssets > 0 ? warrantyCovered / totalActiveAssets : 0;
-    const softwareRate =
-      totalSWSeats > 0 ? allocatedSWSeats / totalSWSeats : 1;
-
-    const fleetHealthScore = Math.round(
-      (FLEET_HEALTH_WEIGHTS.utilization * Math.min(1, utilizationRate) +
-        FLEET_HEALTH_WEIGHTS.overdue * Math.max(0, overdueRate) +
-        FLEET_HEALTH_WEIGHTS.repairs * Math.max(0, repairRate) +
-        FLEET_HEALTH_WEIGHTS.warranty * Math.min(1, warrantyRate) +
-        FLEET_HEALTH_WEIGHTS.software * Math.min(1, softwareRate)) *
-        100
-    );
+    const fleetHealthScore = calculateFleetHealthScore({
+      totalActiveAssets,
+      assignedCountHealth,
+      overdueCountHealth,
+      highRepairCount,
+      warrantyCovered,
+      totalSWSeats,
+      allocatedSWSeats,
+    });
 
     return {
       totalActiveAssets,
