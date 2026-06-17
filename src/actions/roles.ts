@@ -6,7 +6,7 @@ import { eq, ilike, or, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { logAuditAction, logAuditActionTx } from '@/lib/audit';
+import { logAuditActionTx } from '@/lib/audit';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { getAuthenticatedUser } from '@/actions/auth';
 import type { UserRole } from '@/types/auth';

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { cn, getInitials } from "@/lib/utils"
-import type { UserRole, SystemUser } from "@/types/auth"
+import type { SystemUser } from "@/types/auth"
 
 interface RemoveUserModalProps {
   isOpen: boolean
@@ -38,8 +38,10 @@ export function RemoveUserModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setIsSubmitting(false)
-      setError(null)
+      setTimeout(() => {
+        setIsSubmitting(false)
+        setError(null)
+      }, 0)
     }
   }, [isOpen])
 

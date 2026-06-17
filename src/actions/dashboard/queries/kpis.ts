@@ -1,4 +1,4 @@
-import { and, count, eq, isNull, ne, sql, inArray } from 'drizzle-orm';
+import { and, count, eq, isNull, sql, inArray } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   assets,
