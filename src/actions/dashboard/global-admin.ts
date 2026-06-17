@@ -29,7 +29,7 @@ import type {
   WriteOffLedgerRow,
 } from '@/types/dashboard';
 
-export interface AdminDashboardBatchData {
+export interface GlobalAdminDashboardBatchData {
   kpiMetrics: DashboardKpiMetrics;
   inventoryStatus: InventoryStatusResponse;
   departmentAllocation: DepartmentAllocationItem[];
@@ -48,7 +48,7 @@ export interface AdminDashboardBatchData {
  *
  * Strictly locks entry point to GlobalAdmin.
  */
-export async function getAdminDashboardData(): Promise<AdminDashboardBatchData> {
+export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
   requireAccess(user, isGlobalAdmin);

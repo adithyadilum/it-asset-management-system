@@ -7,9 +7,9 @@ vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
 }));
 
-const mockGetAdminDashboardData = vi.fn();
-vi.mock('@/actions/dashboard/admin', () => ({
-  getAdminDashboardData: () => mockGetAdminDashboardData(),
+const mockGetGlobalAdminDashboardData = vi.fn();
+vi.mock('@/actions/dashboard/global-admin', () => ({
+  getGlobalAdminDashboardData: () => mockGetGlobalAdminDashboardData(),
 }));
 
 const mockGetITDashboardData = vi.fn();
@@ -40,14 +40,14 @@ describe('Dashboard Action: getDashboardBatchData', () => {
 
   it('returns full metrics for GlobalAdmin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockGetAdminDashboardData.mockResolvedValue({
+    mockGetGlobalAdminDashboardData.mockResolvedValue({
       kpiMetrics: { totalActiveAssets: 100 },
       inventoryStatus: { inventoryData: [] },
     });
 
     const result = await getDashboardBatchData();
     expect(result.kpiMetrics.totalActiveAssets).toBe(100);
-    expect(mockGetAdminDashboardData).toHaveBeenCalledTimes(1);
+    expect(mockGetGlobalAdminDashboardData).toHaveBeenCalledTimes(1);
   });
 
   it('returns IT-specific metrics for ITOperator', async () => {

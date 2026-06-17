@@ -4,12 +4,12 @@ export * from './queries/inventory';
 export * from './queries/financials';
 export * from './queries/kpis';
 export * from './queries/activities';
-export * from './admin';
+export * from './global-admin';
 export * from './it-operator';
 export * from './finance-auditor';
 
 import { getAuthenticatedUser } from '@/actions/auth';
-import { getAdminDashboardData } from './admin';
+import { getGlobalAdminDashboardData } from './global-admin';
 import { getITDashboardData } from './it-operator';
 import { getFinanceDashboardData } from './finance-auditor';
 import type { DashboardBatchData } from '@/types/dashboard';
@@ -23,7 +23,7 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
   if (!user) throw new Error('Unauthorized');
 
   if (user.role === 'GlobalAdmin') {
-    return getAdminDashboardData();
+    return getGlobalAdminDashboardData();
   }
 
   if (user.role === 'ITOperator') {

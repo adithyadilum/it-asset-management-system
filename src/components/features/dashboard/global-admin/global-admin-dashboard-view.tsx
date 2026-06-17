@@ -14,20 +14,20 @@ import { InventoryStatusChart } from "../shared/inventory-status-chart"
 import { RecentActivitiesList } from "../shared/recent-activities-list"
 import { DataTablesContainer } from "../shared/data-tables-container"
 import { useOverdueColumns, usePendingDisposalColumns, useHighMaintenanceColumns } from "../shared/dashboard-table-columns"
-import type { AdminDashboardBatchData } from "@/actions/dashboard/admin"
+import type { GlobalAdminDashboardBatchData } from "@/actions/dashboard/global-admin"
 import type { OverdueReturnRow, HighMaintenanceRow } from "@/types/dashboard"
 
-interface AdminDashboardViewProps {
-  data: AdminDashboardBatchData
+interface GlobalAdminDashboardViewProps {
+  data: GlobalAdminDashboardBatchData
   currencyCode?: string
   exchangeRate?: number
 }
 
-export function AdminDashboardView({
+export function GlobalAdminDashboardView({
   data,
   currencyCode = "LKR",
   exchangeRate = 1,
-}: AdminDashboardViewProps) {
+}: GlobalAdminDashboardViewProps) {
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<number[]>([])
