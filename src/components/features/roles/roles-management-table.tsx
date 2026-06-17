@@ -1,51 +1,53 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DataTable } from '@/components/shared/data-table';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn, getInitials } from '@/lib/utils';
+import type { UserRole, RoleUser } from '@/types/auth';
 
 import { RemoveUserModal } from './remove-user-modal';
-import type { RoleUser } from './user-role-assignment-modal';
+import { AddUsersToRoleModal } from './add-users-to-role-modal';
 
 type RolesManagementTableProps = {
   users: RoleUser[];
   roleLabel: string;
   currentUserId: string;
+  selectedRole: UserRole;
 };
 
 const SSO_SYNC_STATUS_LABEL = 'Active - Azure AD';
-
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .map((part) => part[0] ?? '')
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 export function RolesManagementTable({
   users,
   roleLabel,
   currentUserId,
+  selectedRole,
 }: RolesManagementTableProps) {
   const router = useRouter();
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
   const [selectedUserForRemoval, setSelectedUserForRemoval] =
     useState<RoleUser | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const openRemoveModal = (user: RoleUser) => {
     setSelectedUserForRemoval(user);
     setIsRemoveModalOpen(true);
   };
 
-  const handleRemoved = () => {
+  const handleUpdated = () => {
     router.refresh();
   };
 
@@ -109,15 +111,26 @@ export function RolesManagementTable({
           const isSelf = user.id === currentUserId;
 
           return (
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => openRemoveModal(user)}
-              aria-label={`Remove ${user.name} from ${roleLabel}`}
-              disabled={isSelf}
-            >
-              <Trash2 className="h-4 w-4 text-red-500" />
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => openRemoveModal(user)}
+                    aria-label={`Remove ${user.name} from ${roleLabel}`}
+                    disabled={isSelf}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSelf
+                    ? 'You cannot remove your own role'
+                    : `Remove ${user.name} from ${roleLabel}`}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 80,
@@ -128,6 +141,20 @@ export function RolesManagementTable({
 
   return (
     <>
+      <div className="flex w-full justify-end mb-4">
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 w-32 justify-between rounded-lg bg-primary px-2.5 text-primary-foreground shadow-box-shadow-shadow-xs hover:bg-primary/90"
+          onClick={() => setIsAddModalOpen(true)}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className={cn("flex flex-1 items-center justify-center", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
+            Add User
+          </span>
+        </Button>
+      </div>
+
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
         <DataTable
           columns={columns}
@@ -149,7 +176,16 @@ export function RolesManagementTable({
         onOpenChange={setIsRemoveModalOpen}
         user={selectedUserForRemoval}
         targetRole={roleLabel}
-        onRemoved={handleRemoved}
+        onRemoved={handleUpdated}
+      />
+
+      <AddUsersToRoleModal
+        isOpen={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        defaultRole={selectedRole}
+        mappedUsers={users}
+        onUpdated={handleUpdated}
+        currentUserId={currentUserId}
       />
     </>
   );

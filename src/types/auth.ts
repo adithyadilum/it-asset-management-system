@@ -10,3 +10,19 @@ export interface AuthUser {
   name: string;
   role: UserRole;
 }
+
+export interface SystemUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface RoleUser {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: UserRole;
+}
+

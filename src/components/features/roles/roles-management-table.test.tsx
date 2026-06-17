@@ -7,13 +7,22 @@ vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
 }));
 
-// We only need to mock the external data-table if it uses ResizeObserver or features that crash in JSDOM,
-// but usually @tanstack/react-table with simple UI works fine. We mock the remove modal.
 vi.mock('./remove-user-modal', () => ({
   RemoveUserModal: ({ isOpen, onOpenChange, user }: any) => (
     isOpen ? (
       <div data-testid="mock-remove-modal">
         Remove Mock Modal for {user?.name}
+        <button onClick={() => onOpenChange(false)}>Close Mock</button>
+      </div>
+    ) : null
+  ),
+}));
+
+vi.mock('./add-users-to-role-modal', () => ({
+  AddUsersToRoleModal: ({ isOpen, onOpenChange }: any) => (
+    isOpen ? (
+      <div data-testid="mock-add-modal">
+        Add User Mock Modal
         <button onClick={() => onOpenChange(false)}>Close Mock</button>
       </div>
     ) : null
@@ -52,6 +61,7 @@ describe('RolesManagementTable', () => {
         users={mockUsers}
         roleLabel="IT Operator"
         currentUserId="3"
+        selectedRole="ITOperator"
       />
     );
 
@@ -68,6 +78,7 @@ describe('RolesManagementTable', () => {
         users={mockUsers}
         roleLabel="IT Operator"
         currentUserId="1"
+        selectedRole="ITOperator"
       />
     );
 
@@ -85,6 +96,7 @@ describe('RolesManagementTable', () => {
         users={mockUsers}
         roleLabel="IT Operator"
         currentUserId="3"
+        selectedRole="ITOperator"
       />
     );
 
@@ -93,5 +105,24 @@ describe('RolesManagementTable', () => {
 
     expect(screen.getByTestId('mock-remove-modal')).toBeInTheDocument();
     expect(screen.getByText(/Remove Mock Modal for Alice Smith/)).toBeInTheDocument();
+  });
+
+  it('opens the assignment modal when Add User is clicked', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="IT Operator"
+        currentUserId="3"
+        selectedRole="ITOperator"
+      />
+    );
+
+    const addButton = screen.getByRole('button', { name: /Add User/i });
+    expect(addButton).toBeInTheDocument();
+
+    fireEvent.click(addButton);
+    expect(screen.getByTestId('mock-add-modal')).toBeInTheDocument();
   });
 });
