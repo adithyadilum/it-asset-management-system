@@ -24,6 +24,7 @@ const serverEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   JWT_SECRET: z.string().min(1).optional(),
   ENABLE_RUNTIME_LOGS: z.enum(['true', 'false']).default('false'),
+  RESEND_FROM: z.string().email().optional(),
 
   // ── QStash (Notification Queue) ───────────────────────────
   QSTASH_URL: z.string().url().optional(),

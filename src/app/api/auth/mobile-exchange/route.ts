@@ -7,15 +7,16 @@ import { db } from '@/db';
 import { linkedDevices } from '@/db/schema';
 import { logAuditAction } from '@/lib/audit';
 import { isGlobalAdmin } from '@/lib/auth/roles';
+import { serverEnv } from '@/lib/env';
 
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  url: serverEnv.UPSTASH_REDIS_REST_URL,
+  token: serverEnv.UPSTASH_REDIS_REST_TOKEN,
 });
 
 // A separate secret just for signing mobile companion app tokens
 const MOBILE_SECRET = new TextEncoder().encode(
-  process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
 );
 
 export async function POST(req: Request) {

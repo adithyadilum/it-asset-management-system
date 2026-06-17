@@ -19,6 +19,7 @@ process.env.MOBILE_JWT_SECRET = 'test-secret-min-16-chars!';
 process.env.KEYCLOAK_CLIENT_ID = 'test-client';
 process.env.KEYCLOAK_CLIENT_SECRET = 'test-secret';
 process.env.KEYCLOAK_ISSUER = 'http://localhost:8080/realms/test';
+// @ts-ignore - TS thinks NODE_ENV is readonly
 process.env.NODE_ENV = 'test';
 process.env.ENABLE_RUNTIME_LOGS = 'false';
 process.env.API_RATE_LIMIT_MAX = '100';

@@ -27,6 +27,7 @@ import {
 } from 'drizzle-orm';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
 import { formatDate } from '@/lib/date';
+import { serverEnv } from '@/lib/env';
 
 /**
  * Handle incoming POST requests from Upstash QStash native scheduler.
@@ -34,8 +35,8 @@ import { formatDate } from '@/lib/date';
 export async function POST(req: NextRequest) {
   try {
     // 1. Verify QStash signature for security
-    const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-    const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+    const currentKey = serverEnv.QSTASH_CURRENT_SIGNING_KEY;
+    const nextKey = serverEnv.QSTASH_NEXT_SIGNING_KEY;
 
     if (!currentKey || !nextKey) {
       console.error('QStash signing keys are missing in environment variables');

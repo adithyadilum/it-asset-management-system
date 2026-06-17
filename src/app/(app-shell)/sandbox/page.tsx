@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation"
 import { asc, and, desc, eq, isNull } from "drizzle-orm"
 
+import { serverEnv } from '@/lib/env';
+import { clientEnv } from '@/lib/env.client';
 import { SandboxSharedIntegrationSuiteClient } from "@/components/features/sandbox/sandbox-shared-integration-suite-client"
 import { SandboxToastPageClient } from "@/components/features/sandbox/sandbox-toast-page-client"
 import { SandboxUiPlaygroundClient } from "@/components/features/sandbox/sandbox-ui-playground-client"
@@ -104,8 +106,8 @@ function mapAssetIcon(categoryName: string): SandboxAssetCard["iconKey"] {
 
 export default async function SandboxPage() {
     const isSandboxEnabled =
-        process.env.NODE_ENV !== "production" ||
-        process.env.ENABLE_SANDBOX === "true"
+        serverEnv.NODE_ENV !== "production" ||
+        clientEnv.NEXT_PUBLIC_ENABLE_SANDBOX === "true"
 
     if (!isSandboxEnabled) {
         notFound()
