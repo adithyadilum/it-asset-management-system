@@ -66,3 +66,39 @@ export function canAccessFinancials(role: UserRole): boolean {
 export function canAccessOperations(role: UserRole): boolean {
   return role === 'GlobalAdmin' || role === 'ITOperator';
 }
+
+// ─── Assert Guards ────────────────────────────────────────────────────────────
+// Throw-style guards for use in server actions. Accept the full user object
+// so call-sites can pass `user` directly without extracting the role.
+
+/**
+ * Asserts that the user is a GlobalAdmin.
+ * Throws 'Forbidden' otherwise.
+ */
+export function assertAdmin(user: { role: UserRole }): void {
+  if (!isGlobalAdmin(user.role)) throw new Error('Forbidden');
+}
+
+/**
+ * Asserts that the user is a GlobalAdmin or ITOperator.
+ * Throws 'Forbidden' otherwise.
+ */
+export function assertAdminOrOperator(user: { role: UserRole }): void {
+  if (!canManageAssets(user.role)) throw new Error('Forbidden');
+}
+
+/**
+ * Asserts that the user is a GlobalAdmin or FinanceAuditor.
+ * Throws 'Forbidden' otherwise.
+ */
+export function assertAdminOrAuditor(user: { role: UserRole }): void {
+  if (!canAccessFinancials(user.role)) throw new Error('Forbidden');
+}
+
+/**
+ * Asserts that the user is not a plain Employee (i.e. any privileged role).
+ * Throws 'Forbidden' otherwise.
+ */
+export function assertPrivilegedUser(user: { role: UserRole }): void {
+  if (!isPrivilegedUser(user.role)) throw new Error('Forbidden');
+}
