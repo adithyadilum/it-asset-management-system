@@ -16,11 +16,11 @@ import { useOverdueColumns, useHighMaintenanceColumns } from "../shared/dashboar
 import type { ITDashboardBatchData } from "@/actions/dashboard/it-operator"
 import type { OverdueReturnRow, HighMaintenanceRow } from "@/types/dashboard"
 
-interface ITDashboardViewProps {
+interface ITOperatorDashboardViewProps {
   data: ITDashboardBatchData
 }
 
-export function ITDashboardView({ data }: ITDashboardViewProps) {
+export function ITOperatorDashboardView({ data }: ITOperatorDashboardViewProps) {
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<number[]>([])

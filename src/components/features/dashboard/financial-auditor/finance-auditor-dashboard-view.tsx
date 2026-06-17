@@ -16,19 +16,19 @@ import {
 } from "../shared/dashboard-table-columns"
 import type { FinanceDashboardBatchData } from "@/actions/dashboard/finance-auditor"
 
-interface FinanceDashboardViewProps {
+interface FinanceAuditorDashboardViewProps {
   data: FinanceDashboardBatchData
   currencyCode?: string
   exchangeRate?: number
   apiRates?: Record<string, number>
 }
 
-export function FinanceDashboardView({
+export function FinanceAuditorDashboardView({
   data,
   currencyCode = "LKR",
   exchangeRate = 1,
   apiRates,
-}: FinanceDashboardViewProps) {
+}: FinanceAuditorDashboardViewProps) {
   const topHighValueColumns = useTopHighValueAssetsColumns(currencyCode, exchangeRate)
   const writeOffsColumns = useWriteOffsColumns(currencyCode, apiRates)
   const softwareOptimizationColumns = useSoftwareOptimizationColumns(currencyCode, exchangeRate)
