@@ -47,7 +47,7 @@ jobs:
       env:
         # Pass test environment variables to the Next.js server and Playwright
         DATABASE_URL: postgresql://test_user:test_password@localhost:54322/eitams_test?sslmode=disable
-        NEXT_PUBLIC_ENABLE_SANDBOX: "true"
+        ENABLE_SANDBOX: "true"
         NEXTAUTH_SECRET: "ci_dummy_secret"
         NEXTAUTH_URL: "http://localhost:3000"
         KEYCLOAK_CLIENT_ID: "ci_dummy"

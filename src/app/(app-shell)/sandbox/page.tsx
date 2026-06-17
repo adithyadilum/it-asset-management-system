@@ -105,8 +105,7 @@ function mapAssetIcon(categoryName: string): SandboxAssetCard["iconKey"] {
 export default async function SandboxPage() {
     const isSandboxEnabled =
         process.env.NODE_ENV !== "production" ||
-        process.env.ENABLE_SANDBOX === "true" ||
-        process.env.NEXT_PUBLIC_ENABLE_SANDBOX === "true"
+        process.env.ENABLE_SANDBOX === "true"
 
     if (!isSandboxEnabled) {
         notFound()
