@@ -13,6 +13,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { cn, getInitials } from "@/lib/utils"
@@ -252,16 +258,25 @@ export function AddUsersToRoleModal({
                         </div>
                       </div>
 
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        className="text-foreground hover:bg-muted"
-                        onClick={() => addUserToSelection(directoryUser)}
-                        disabled={isSubmitting}
-                      >
-                        <CirclePlus className="h-4 w-4" />
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              className="text-foreground hover:bg-muted"
+                              onClick={() => addUserToSelection(directoryUser)}
+                              disabled={isSubmitting}
+                            >
+                              <CirclePlus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Add {directoryUser.name} to selection
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   ))}
                 </div>
@@ -294,16 +309,25 @@ export function AddUsersToRoleModal({
                       </div>
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      className="text-red-400 hover:bg-red-50 hover:text-red-500"
-                      onClick={() => removeUserFromSelection(selection.id)}
-                      disabled={isSubmitting}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-red-400 hover:bg-red-50 hover:text-red-500"
+                            onClick={() => removeUserFromSelection(selection.id)}
+                            disabled={isSubmitting}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Remove {selection.name} from selection
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 ))}
               </div>
