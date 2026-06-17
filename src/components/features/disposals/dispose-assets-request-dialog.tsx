@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { AlertCircle, MonitorX } from 'lucide-react';
 
-import { createBulkDisposalRequests } from '@/actions/disposals';
+import { createBulkDisposalRequests } from '@/actions/disposals/create-bulk';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

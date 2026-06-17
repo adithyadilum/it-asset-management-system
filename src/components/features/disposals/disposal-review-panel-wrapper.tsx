@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { getDisposalReviewDetails } from '@/actions/disposals';
+import { getDisposalReviewDetails } from '@/actions/disposals/get-review-details';
 import type { DisposalReviewDetails } from '@/types/disposals';
 import { DisposalReviewPanel } from './disposal-review-panel';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
