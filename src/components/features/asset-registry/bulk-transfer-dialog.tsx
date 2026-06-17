@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,12 +37,13 @@ export function BulkTransferDialog({
   const [destinationLocationId, setDestinationLocationId] = useState<number | null>(null);
   const [transferDate, setTransferDate] = useState('');
 
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
       setDestinationLocationId(null);
       setTransferDate('');
     }
-  }, [open]);
+    onOpenChange(newOpen);
+  };
 
   const uniqueSelectedLocations = useMemo(() => {
     const merged = new Set<string>();
@@ -53,7 +54,7 @@ export function BulkTransferDialog({
   }, [selectedAssets]);
 
   const handleClose = () => {
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   const handleConfirm = async () => {
@@ -67,7 +68,7 @@ export function BulkTransferDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-90 rounded-xl border border-border bg-background p-0">
         <DialogTitle className="sr-only">Transfer assets</DialogTitle>
         <DialogDescription className="sr-only">

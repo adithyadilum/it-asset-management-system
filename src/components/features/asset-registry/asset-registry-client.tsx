@@ -2,7 +2,6 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import {
-  CalendarDays,
   ChevronDown,
   Plus,
   Upload,
@@ -36,13 +35,6 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { CopyableField } from '@/components/shared/copyable-field';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
@@ -54,7 +46,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 type FilterField = RegistryFilterField;
 
