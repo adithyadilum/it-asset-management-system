@@ -88,6 +88,10 @@ describe('RolesManagementTable', () => {
     // Assuming buttons are rendered in order
     expect(removeButtons[0]).toBeDisabled(); // Alice (id=1)
     expect(removeButtons[1]).not.toBeDisabled(); // Bob (id=2)
+
+    const editButtons = screen.getAllByRole('button', { name: /Edit role and status for/i });
+    expect(editButtons[0]).toBeDisabled(); // Alice (id=1)
+    expect(editButtons[1]).not.toBeDisabled(); // Bob (id=2)
   });
 
   it('opens the remove modal when remove is clicked', () => {

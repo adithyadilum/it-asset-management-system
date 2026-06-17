@@ -136,12 +136,15 @@ export function RolesManagementTable({
                       className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={() => openEditModal(user)}
                       aria-label={`Edit role and status for ${user.name}`}
+                      disabled={isSelf}
                     >
                       <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Edit role and status
+                    {isSelf
+                      ? 'You cannot modify your own role or status'
+                      : 'Edit role and status'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
