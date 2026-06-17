@@ -31,7 +31,7 @@ describe('AddUsersToRoleModal', () => {
   it('searches for users when typing', async () => {
     const user = userEvent.setup();
     vi.mocked(roleActions.searchUsers).mockResolvedValue([
-      { id: 'user-1', name: 'Jane Doe', email: 'jane@example.com', department: 'HR', role: 'Employee' },
+      { id: 'user-1', name: 'Jane Doe', email: 'jane@example.com', department: 'HR', role: 'Employee', isActive: true },
     ]);
 
     render(

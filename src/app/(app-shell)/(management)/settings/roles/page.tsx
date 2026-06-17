@@ -82,6 +82,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
         email: users.email,
         department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
         role: users.role,
+        isActive: users.isActive,
       })
       .from(users)
       .leftJoin(departments, eq(users.departmentId, departments.id))

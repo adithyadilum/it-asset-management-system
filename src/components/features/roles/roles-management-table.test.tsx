@@ -43,6 +43,7 @@ describe('RolesManagementTable', () => {
       email: 'alice@example.com',
       department: 'IT',
       role: 'ITOperator' as const,
+      isActive: true,
     },
     {
       id: '2',
@@ -50,6 +51,7 @@ describe('RolesManagementTable', () => {
       email: 'bob@example.com',
       department: 'Finance',
       role: 'ITOperator' as const,
+      isActive: true,
     }
   ];
 

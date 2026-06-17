@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 
@@ -20,6 +20,7 @@ import type { UserRole, RoleUser } from '@/types/auth';
 
 import { RemoveUserModal } from './remove-user-modal';
 import { AddUsersToRoleModal } from './add-users-to-role-modal';
+import { EditUserRoleModal } from './edit-user-role-modal';
 
 type RolesManagementTableProps = {
   users: RoleUser[];
@@ -27,8 +28,6 @@ type RolesManagementTableProps = {
   currentUserId: string;
   selectedRole: UserRole;
 };
-
-const SSO_SYNC_STATUS_LABEL = 'Active - Azure AD';
 
 export function RolesManagementTable({
   users,
@@ -41,10 +40,18 @@ export function RolesManagementTable({
   const [selectedUserForRemoval, setSelectedUserForRemoval] =
     useState<RoleUser | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] =
+    useState<RoleUser | null>(null);
 
   const openRemoveModal = (user: RoleUser) => {
     setSelectedUserForRemoval(user);
     setIsRemoveModalOpen(true);
+  };
+
+  const openEditModal = (user: RoleUser) => {
+    setSelectedUserForEdit(user);
+    setIsEditModalOpen(true);
   };
 
   const handleUpdated = () => {
@@ -93,16 +100,25 @@ export function RolesManagementTable({
         ),
       },
       {
-        id: 'ssoStatus',
-        header: 'SSO Sync Status',
-        cell: () => (
-          <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-success bg-success/10 px-1.5 py-0.5">
-            <span className={cn('text-success', TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
-              {SSO_SYNC_STATUS_LABEL}
-            </span>
-          </div>
-        ),
+        id: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const user = row.original;
+          return (
+            <div className={cn(
+              "inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border px-1.5 py-0.5",
+              user.isActive 
+                ? "border-success bg-success/10 text-success" 
+                : "border-muted-foreground/30 bg-muted-foreground/10 text-muted-foreground"
+            )}>
+              <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                {user.isActive ? 'Active' : 'Disabled'}
+              </span>
+            </div>
+          );
+        },
       },
+
       {
         id: 'actions',
         header: '',
@@ -111,29 +127,49 @@ export function RolesManagementTable({
           const isSelf = user.id === currentUserId;
 
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => openRemoveModal(user)}
-                    aria-label={`Remove ${user.name} from ${roleLabel}`}
-                    disabled={isSelf}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSelf
-                    ? 'You cannot remove your own role'
-                    : `Remove ${user.name} from ${roleLabel}`}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => openEditModal(user)}
+                      aria-label={`Edit role and status for ${user.name}`}
+                    >
+                      <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Edit role and status
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => openRemoveModal(user)}
+                      aria-label={`Remove ${user.name} from ${roleLabel}`}
+                      disabled={isSelf}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isSelf
+                      ? 'You cannot remove your own role'
+                      : `Remove ${user.name} from ${roleLabel}`}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           );
         },
-        size: 80,
+        size: 100,
       },
     ],
     [currentUserId, roleLabel]
@@ -184,6 +220,14 @@ export function RolesManagementTable({
         onOpenChange={setIsAddModalOpen}
         defaultRole={selectedRole}
         mappedUsers={users}
+        onUpdated={handleUpdated}
+        currentUserId={currentUserId}
+      />
+
+      <EditUserRoleModal
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        user={selectedUserForEdit}
         onUpdated={handleUpdated}
         currentUserId={currentUserId}
       />

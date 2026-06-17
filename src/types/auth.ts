@@ -16,6 +16,7 @@ export interface SystemUser {
   name: string;
   email: string;
   role: UserRole;
+  isActive: boolean;
 }
 
 export interface RoleUser {
@@ -24,5 +25,6 @@ export interface RoleUser {
   email: string;
   department: string;
   role: UserRole;
+  isActive: boolean;
 }
 
