@@ -3,6 +3,7 @@ import type { JWT } from 'next-auth/jwt';
 import KeycloakProvider from 'next-auth/providers/keycloak';
 import { eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
+import { serverEnv } from '@/lib/env';
 
 import { db } from '@/db';
 import { users, userRefreshTokens, departments } from '@/db/schema';
@@ -89,14 +90,14 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
       // ── 3. Hit Keycloak — we are the one worker that won the lock ────────
       const refreshTokenToUse = stored?.refreshToken ?? (token.refreshToken as string);
-      const url = `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
+      const url = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: process.env.KEYCLOAK_CLIENT_ID!,
-          client_secret: process.env.KEYCLOAK_CLIENT_SECRET!,
+          client_id: serverEnv.KEYCLOAK_CLIENT_ID,
+          client_secret: serverEnv.KEYCLOAK_CLIENT_SECRET,
           grant_type: 'refresh_token',
           refresh_token: refreshTokenToUse,
         }),
@@ -163,9 +164,9 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 export const authOptions: NextAuthOptions = {
   providers: [
     KeycloakProvider({
-      clientId: process.env.KEYCLOAK_CLIENT_ID!,
-      clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
-      issuer: process.env.KEYCLOAK_ISSUER,
+      clientId: serverEnv.KEYCLOAK_CLIENT_ID,
+      clientSecret: serverEnv.KEYCLOAK_CLIENT_SECRET,
+      issuer: serverEnv.KEYCLOAK_ISSUER,
     }),
   ],
 

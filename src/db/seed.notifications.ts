@@ -3,11 +3,12 @@ import * as dotenv from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { notificationRules } from './schema';
+import { serverEnv } from '@/lib/env';
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 
-const sql = neon(process.env.DATABASE_URL!);
+const sql = neon(serverEnv.DATABASE_URL);
 const db = drizzle(sql);
 
 

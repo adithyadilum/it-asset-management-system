@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { serverEnv } from '@/lib/env';
 
 export function PwaRegistration() {
   React.useEffect(() => {
     if (
-      process.env.NODE_ENV !== "development" &&
+      serverEnv.NODE_ENV !== "development" &&
       typeof window !== "undefined" &&
       "serviceWorker" in navigator
     ) {

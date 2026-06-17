@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverEnv } from '@/lib/env';
 import * as jose from 'jose';
 import { db } from '@/db';
 import { systemAuditLogs, users, linkedDevices } from '@/db/schema';
@@ -6,7 +7,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { extractLabelFromValues } from '@/lib/audit';
 
 const MOBILE_SECRET = new TextEncoder().encode(
-  process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET
 );
 
 /** Humanise camelCase / snake_case entity type strings into readable words. */

@@ -6,6 +6,8 @@ import { linkedDevices } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
 import Pusher from 'pusher';
+import { serverEnv } from '@/lib/env';
+import { clientEnv } from '@/lib/env.client';
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -49,10 +51,10 @@ export async function POST(req: Request) {
   // Trigger real-time revocation event via Pusher
   try {
     const pusher = new Pusher({
-      appId: process.env.PUSHER_APP_ID!,
-      key: process.env.NEXT_PUBLIC_PUSHER_KEY!,
-      secret: process.env.PUSHER_SECRET!,
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+      appId: serverEnv.PUSHER_APP_ID!,
+      key: clientEnv.NEXT_PUBLIC_PUSHER_KEY!,
+      secret: serverEnv.PUSHER_SECRET!,
+      cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER!,
       useTLS: true,
     });
     await pusher.trigger(`device-${device.jwtId}`, 'device_unlinked', {
