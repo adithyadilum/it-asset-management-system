@@ -1,4 +1,3 @@
-import 'server-only';
 import { z } from 'zod';
 import * as dotenv from 'dotenv';
 import path from 'path';
