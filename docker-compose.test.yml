@@ -3,7 +3,7 @@ version: '3.8'
 
 services:
   postgres-test:
-    image: postgres:16-alpine # Alpine is much faster to boot
+    image: postgres:17-alpine # Alpine is much faster to boot
     environment:
       POSTGRES_USER: test_user
       POSTGRES_PASSWORD: test_password
