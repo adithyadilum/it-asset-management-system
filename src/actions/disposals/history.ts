@@ -14,7 +14,7 @@ import {
   assetDocuments,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import { assertAdminOrAuditor } from '@/lib/auth/roles';
+import { requireAccess, canViewDisposalHistory } from '@/lib/auth/roles';
 
 export async function getDisposalHistory(params: {
   search?: string;
@@ -25,7 +25,7 @@ export async function getDisposalHistory(params: {
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAdminOrAuditor(user);
+  requireAccess(user, canViewDisposalHistory);
 
   const searchQuery = params.search || '';
   const page = params.page && params.page > 0 ? params.page : 1;

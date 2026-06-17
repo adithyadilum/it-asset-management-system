@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import { assertAdmin } from '@/lib/auth/roles';
+import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -51,7 +51,7 @@ export interface AdminDashboardBatchData {
 export async function getAdminDashboardData(): Promise<AdminDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  assertAdmin(user);
+  requireAccess(user, isGlobalAdmin);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

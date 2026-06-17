@@ -14,7 +14,7 @@ import {
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { normalizeAssetIds } from '@/actions/disposals/utils';
-import { assertAdminOrOperator } from '@/lib/auth/roles';
+import { requireAccess, canManageAssets } from '@/lib/auth/roles';
 
 export async function createBulkDisposalRequests(input: {
   assetIds: string[];
@@ -25,7 +25,7 @@ export async function createBulkDisposalRequests(input: {
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAdminOrOperator(user);
+  requireAccess(user, canManageAssets);
 
   const normalizedAssetIds = normalizeAssetIds(input.assetIds);
   const reason = input.reason?.trim();

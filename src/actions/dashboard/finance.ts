@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import { assertAdminOrAuditor } from '@/lib/auth/roles';
+import { requireAccess, canAccessFinancials } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -42,7 +42,7 @@ export interface FinanceDashboardBatchData {
 export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  assertAdminOrAuditor(user);
+  requireAccess(user, canAccessFinancials);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

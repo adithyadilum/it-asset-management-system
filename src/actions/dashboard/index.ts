@@ -1,5 +1,5 @@
 export * from '@/types/dashboard';
-export { assertAdmin, assertAdminOrOperator, assertAdminOrAuditor, assertPrivilegedUser } from '@/lib/auth/roles';
+export { requireAccess } from '@/lib/auth/roles';
 export * from './queries/inventory';
 export * from './queries/financials';
 export * from './queries/kpis';

@@ -1,7 +1,7 @@
 'use server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
-import { assertAdmin } from '@/lib/auth/roles';
+import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 import { uploadFileToStorage } from '@/lib/storage';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 
@@ -10,7 +10,7 @@ export async function uploadDisposalReceipt(formData: FormData) {
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAdmin(user);
+  requireAccess(user, isGlobalAdmin);
 
   try {
     const file = formData.get('file') as File | null;

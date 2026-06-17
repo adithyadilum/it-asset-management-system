@@ -4,7 +4,7 @@ import { inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
-import { assertAdmin } from '@/lib/auth/roles';
+import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -62,7 +62,7 @@ export async function rejectDisposalRequest(
   const user = await getAuthenticatedUser();
 
   if (!user) throw new Error('UNAUTHENTICATED');
-  assertAdmin(user);
+  requireAccess(user, isGlobalAdmin);
 
   // Normalize and deduplicate
   const normalizedDisposalIds = normalizeDisposalIds(validDisposalIds);
