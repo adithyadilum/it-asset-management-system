@@ -15,7 +15,7 @@ const serverEnvSchema = z.object({
   // ── Auth (NextAuth + Keycloak) ────────────────────────────
   NEXTAUTH_URL: z.string().url(),
   NEXTAUTH_SECRET: z.string().min(1),
-  MOBILE_JWT_SECRET: z.string().min(16).default('default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'),
+  MOBILE_JWT_SECRET: z.string().min(16),
   KEYCLOAK_CLIENT_ID: z.string().min(1),
   KEYCLOAK_CLIENT_SECRET: z.string().min(1),
   KEYCLOAK_ISSUER: z.string().url(),

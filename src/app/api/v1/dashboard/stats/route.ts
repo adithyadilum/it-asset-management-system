@@ -13,8 +13,7 @@ import { eq, and, count, isNull, gte, lte, ne, sql } from 'drizzle-orm';
 import { serverEnv } from '@/lib/env';
 
 const MOBILE_SECRET = new TextEncoder().encode(
-  serverEnv.MOBILE_JWT_SECRET ||
-    'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET
 );
 
 /**

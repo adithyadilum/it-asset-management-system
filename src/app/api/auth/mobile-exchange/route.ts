@@ -16,7 +16,7 @@ const redis = new Redis({
 
 // A separate secret just for signing mobile companion app tokens
 const MOBILE_SECRET = new TextEncoder().encode(
-  serverEnv.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET
 );
 
 export async function POST(req: Request) {
@@ -109,4 +109,4 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ accessToken: mobileJwt });
 }
-
+
