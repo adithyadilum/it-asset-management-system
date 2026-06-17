@@ -6,10 +6,10 @@ const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCaptur
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
-import { rejectDisposalRequest } from '@/actions/disposals';
+import { rejectDisposalRequest } from '@/actions/disposals/reject';
 import { tiqriToast } from '@/components/shared/sonner';
 
-vi.mock('@/actions/disposals', () => ({
+vi.mock('@/actions/disposals/reject', () => ({
   rejectDisposalRequest: vi.fn(),
 }));
 

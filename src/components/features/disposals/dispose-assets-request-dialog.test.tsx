@@ -6,10 +6,10 @@ const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCaptur
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DisposeAssetsRequestDialog } from './dispose-assets-request-dialog';
-import { createBulkDisposalRequests } from '@/actions/disposals';
+import { createBulkDisposalRequests } from '@/actions/disposals/create-bulk';
 import { tiqriToast } from '@/components/shared/sonner';
 
-vi.mock('@/actions/disposals', () => ({
+vi.mock('@/actions/disposals/create-bulk', () => ({
   createBulkDisposalRequests: vi.fn(),
 }));
 

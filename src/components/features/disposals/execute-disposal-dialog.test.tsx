@@ -6,9 +6,9 @@ const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCaptur
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
-import { executeAssetDisposal } from '@/actions/disposals';
+import { executeAssetDisposal } from '@/actions/disposals/execute';
 
-vi.mock('@/actions/disposals', () => ({
+vi.mock('@/actions/disposals/execute', () => ({
   executeAssetDisposal: vi.fn(),
   uploadDisposalReceipt: vi.fn(),
 }));
