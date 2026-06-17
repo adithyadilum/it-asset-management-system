@@ -6,11 +6,11 @@ const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCaptur
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DisposeAssetsRequestDialog } from './dispose-assets-request-dialog';
-import { createBulkDisposalRequests } from '@/actions/disposals/create-bulk';
+import { createDisposalRequest } from '@/actions/disposals/create-request';
 import { tiqriToast } from '@/components/shared/sonner';
 
-vi.mock('@/actions/disposals/create-bulk', () => ({
-  createBulkDisposalRequests: vi.fn(),
+vi.mock('@/actions/disposals/create-request', () => ({
+  createDisposalRequest: vi.fn(),
 }));
 
 vi.mock('@/components/shared/sonner', () => ({
@@ -87,7 +87,7 @@ describe('DisposeAssetsRequestDialog', () => {
   });
 
   it('validates and submits successfully', async () => {
-    (createBulkDisposalRequests as any).mockResolvedValue({ inserted: 1, skipped: 0 });
+    (createDisposalRequest as any).mockResolvedValue({ inserted: 1, skipped: 0 });
 
     render(
       <DisposeAssetsRequestDialog
@@ -113,7 +113,7 @@ describe('DisposeAssetsRequestDialog', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(createBulkDisposalRequests).toHaveBeenCalledWith({
+      expect(createDisposalRequest).toHaveBeenCalledWith({
         assetIds: ['1'],
         reason: 'Damaged beyond repair', // Assuming it's the first option
         justification: '',
@@ -124,7 +124,7 @@ describe('DisposeAssetsRequestDialog', () => {
   });
 
   it('handles error on submit', async () => {
-    (createBulkDisposalRequests as any).mockRejectedValue(new Error('Submit failed'));
+    (createDisposalRequest as any).mockRejectedValue(new Error('Submit failed'));
 
     render(
       <DisposeAssetsRequestDialog

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { AlertCircle, MonitorX } from 'lucide-react';
 
-import { createBulkDisposalRequests } from '@/actions/disposals/create-bulk';
+import { createDisposalRequest } from '@/actions/disposals/create-request';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -54,7 +54,7 @@ export function DisposeAssetsRequestDialog({
   const handleSubmit = () => {
     startTransition(async () => {
       try {
-        const result = await createBulkDisposalRequests({
+        const result = await createDisposalRequest({
           assetIds,
           reason,
           justification,

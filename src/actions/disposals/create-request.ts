@@ -16,7 +16,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { normalizeAssetIds } from '@/actions/disposals/utils';
 import { requireAccess, canManageAssets } from '@/lib/auth/roles';
 
-export async function createBulkDisposalRequests(input: {
+export async function createDisposalRequest(input: {
   assetIds: string[];
   reason: string;
   justification?: string;
