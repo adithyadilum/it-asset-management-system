@@ -15,6 +15,7 @@ export type DisposalReviewDetails = {
   dateCreated: string | null;
   purchaseDate: string | null; // ISO date string if present
   originalCost: number | null;
+  currencyCode?: string;
   currentBookValue?: number | null;
   warrantyStatus: 'Valid' | 'Expired' | 'Unknown';
 };

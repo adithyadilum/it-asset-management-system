@@ -51,6 +51,7 @@ export async function getDisposalReviewDetails(
         purchaseDate: assetPurchases.purchaseDate,
         totalCost: assetPurchases.totalCost,
         basePrice: assetPurchases.basePrice,
+        currencyCode: assetPurchases.currencyCode,
         warrantyExpiry: assetPurchases.warrantyExpiry,
       })
       .from(assetDisposals)
@@ -103,6 +104,7 @@ export async function getDisposalReviewDetails(
         ? new Date(row.purchaseDate).toISOString()
         : null,
       originalCost,
+      currencyCode: row.currencyCode ?? 'LKR',
       currentBookValue: null, // Placeholder
       warrantyStatus,
     };

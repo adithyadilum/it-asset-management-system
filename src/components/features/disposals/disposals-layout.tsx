@@ -22,6 +22,7 @@ interface DisposalsLayoutProps {
   historyPageSize?: number;
   historySearchQuery?: string;
   userRole?: string;
+  preferredCurrency?: string;
 }
 
 export function DisposalsLayout({
@@ -32,6 +33,7 @@ export function DisposalsLayout({
   historyPageSize = 10,
   historySearchQuery = '',
   userRole,
+  preferredCurrency = 'LKR',
 }: DisposalsLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -158,6 +160,7 @@ export function DisposalsLayout({
         isOpen={isReviewOpen}
         onClose={closeReviewPanel}
         row={selectedRow}
+        preferredCurrency={preferredCurrency}
       />
 
       <DisposalAssetDetailPanel

@@ -8,17 +8,20 @@ import { DisposalReviewPanel } from './disposal-review-panel';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
 import type { PendingDisposalRow } from '@/types/disposals';
+import { convertCurrencyAmount } from '@/lib/currency';
 
 export interface DisposalReviewPanelWrapperProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
   row: PendingDisposalRow | null;
+  preferredCurrency?: string;
 }
 
 export function DisposalReviewPanelWrapper({
   isOpen,
   onClose,
   row,
+  preferredCurrency = 'LKR',
 }: DisposalReviewPanelWrapperProps) {
   const [extendedData, setExtendedData] =
     useState<DisposalReviewDetails | null>(null);
@@ -70,6 +73,14 @@ export function DisposalReviewPanelWrapper({
     onClose(false);
   };
 
+  const convertedOriginalCost = extendedData?.originalCost != null
+    ? convertCurrencyAmount(extendedData.originalCost, extendedData.currencyCode || 'LKR', preferredCurrency)
+    : undefined;
+
+  const convertedBookValue = extendedData?.currentBookValue != null
+    ? convertCurrencyAmount(extendedData.currentBookValue, extendedData.currencyCode || 'LKR', preferredCurrency)
+    : undefined;
+
   return (
     <>
       <DisposalReviewPanel
@@ -90,8 +101,9 @@ export function DisposalReviewPanelWrapper({
         reason={row?.reason ?? ''}
         justification={extendedData?.justification ?? ''}
         purchaseDate={extendedData?.purchaseDate ?? ''}
-        originalCost={extendedData?.originalCost ?? undefined}
-        currentBookValue={extendedData?.currentBookValue ?? undefined}
+        originalCost={convertedOriginalCost}
+        currentBookValue={convertedBookValue}
+        currencyCode={preferredCurrency}
         warrantyStatus={
           extendedData?.warrantyStatus === 'Expired'
             ? 'Expired'
