@@ -690,13 +690,6 @@ export async function createMasterDataRecord(
   try {
     switch (entity) {
       case 'locations': {
-        const nextLocationIdResult = await db
-          .select({
-            nextId: sql<number>`coalesce(max(${locations.id}), 0)::int + 1`,
-          })
-          .from(locations);
-        const nextLocationId = nextLocationIdResult[0]?.nextId ?? 1;
-
         const parsed = locationSchema.safeParse({
           name: formData.get('name'),
           type: formData.get('type'),
@@ -715,10 +708,6 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(locations)
           .values({
-            locationCode: formatMasterDataCode(
-              MASTER_DATA_CODE_PREFIX['locations'],
-              nextLocationId
-            ),
             name: parsed.data.name,
             type: parsed.data.type,
             parentId: parsed.data.parentId ?? null,
@@ -734,17 +723,16 @@ export async function createMasterDataRecord(
         }
 
         insertedId = inserted[0].id;
+
+        await db
+          .update(locations)
+          .set({ locationCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['locations'], insertedId) })
+          .where(eq(locations.id, insertedId));
+
         break;
       }
 
       case 'asset-categories': {
-        const nextCategoryIdResult = await db
-          .select({
-            nextId: sql<number>`coalesce(max(${categories.id}), 0)::int + 1`,
-          })
-          .from(categories);
-        const nextCategoryId = nextCategoryIdResult[0]?.nextId ?? 1;
-
         const parsed = categorySchema.safeParse({
           pillar: formData.get('pillar'),
           name: formData.get('name'),
@@ -766,10 +754,6 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(categories)
           .values({
-            categoryCode: formatMasterDataCode(
-              MASTER_DATA_CODE_PREFIX['asset-categories'],
-              nextCategoryId
-            ),
             pillar: parsed.data.pillar,
             name: parsed.data.name,
             prefix: parsed.data.prefix,
@@ -787,17 +771,16 @@ export async function createMasterDataRecord(
         }
 
         insertedId = inserted[0].id;
+
+        await db
+          .update(categories)
+          .set({ categoryCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['asset-categories'], insertedId) })
+          .where(eq(categories.id, insertedId));
+
         break;
       }
 
       case 'brands': {
-        const nextBrandIdResult = await db
-          .select({
-            nextId: sql<number>`coalesce(max(${brands.id}), 0)::int + 1`,
-          })
-          .from(brands);
-        const nextBrandId = nextBrandIdResult[0]?.nextId ?? 1;
-
         const parsed = brandSchema.safeParse({
           name: formData.get('name'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
@@ -814,10 +797,6 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(brands)
           .values({
-            brandCode: formatMasterDataCode(
-              MASTER_DATA_CODE_PREFIX['brands'],
-              nextBrandId
-            ),
             name: parsed.data.name,
             isActive: parsed.data.isActive,
           })
@@ -831,17 +810,16 @@ export async function createMasterDataRecord(
         }
 
         insertedId = inserted[0].id;
+
+        await db
+          .update(brands)
+          .set({ brandCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['brands'], insertedId) })
+          .where(eq(brands.id, insertedId));
+
         break;
       }
 
       case 'device-models': {
-        const nextModelIdResult = await db
-          .select({
-            nextId: sql<number>`coalesce(max(${models.id}), 0)::int + 1`,
-          })
-          .from(models);
-        const nextModelId = nextModelIdResult[0]?.nextId ?? 1;
-
         const modelImageEntry = formData.get('modelImage');
         let uploadedImageUrl = '';
 
@@ -872,10 +850,6 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(models)
           .values({
-            modelCode: formatMasterDataCode(
-              MASTER_DATA_CODE_PREFIX['device-models'],
-              nextModelId
-            ),
             name: parsed.data.name,
             brandId: parsed.data.brandId,
             categoryId: parsed.data.categoryId,
@@ -897,17 +871,16 @@ export async function createMasterDataRecord(
         }
 
         insertedId = inserted[0].id;
+
+        await db
+          .update(models)
+          .set({ modelCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['device-models'], insertedId) })
+          .where(eq(models.id, insertedId));
+
         break;
       }
 
       case 'vendors': {
-        const nextVendorIdResult = await db
-          .select({
-            nextId: sql<number>`coalesce(max(${vendors.id}), 0)::int + 1`,
-          })
-          .from(vendors);
-        const nextVendorId = nextVendorIdResult[0]?.nextId ?? 1;
-
         const parsed = vendorSchema.safeParse({
           companyName: formData.get('companyName'),
           email: String(formData.get('email') ?? ''),
@@ -927,10 +900,6 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(vendors)
           .values({
-            vendorCode: formatMasterDataCode(
-              MASTER_DATA_CODE_PREFIX['vendors'],
-              nextVendorId
-            ),
             companyName: parsed.data.companyName,
             email:
               parsed.data.email && parsed.data.email.length > 0
@@ -956,23 +925,20 @@ export async function createMasterDataRecord(
         }
 
         insertedId = inserted[0].id;
+
+        await db
+          .update(vendors)
+          .set({ vendorCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['vendors'], insertedId) })
+          .where(eq(vendors.id, insertedId));
+
         break;
       }
 
       case 'departments': {
-        const nextDepartmentIdResult = await db
-          .select({
-            nextId: sql<number>`coalesce(max(${departments.id}), 0)::int + 1`,
-          })
-          .from(departments);
-
-        const nextDepartmentId = nextDepartmentIdResult[0]?.nextId ?? 1;
-        const autoCostCenterId = `CC-${String(nextDepartmentId).padStart(4, '0')}`;
-
         const parsed = departmentSchema.safeParse({
           name: formData.get('name'),
           shortCode: formData.get('shortCode'),
-          costCenterId: autoCostCenterId,
+          costCenterId: 'CC-TEMP',
           isActive: parseBooleanFormValue(formData.get('isActive')),
         });
 
@@ -987,13 +953,9 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(departments)
           .values({
-            departmentCode: formatMasterDataCode(
-              MASTER_DATA_CODE_PREFIX['departments'],
-              nextDepartmentId
-            ),
             name: parsed.data.name,
             shortCode: parsed.data.shortCode,
-            costCenterId: parsed.data.costCenterId,
+            costCenterId: 'CC-TEMP',
             isActive: parsed.data.isActive,
           })
           .returning({ id: departments.id });
@@ -1006,17 +968,19 @@ export async function createMasterDataRecord(
         }
 
         insertedId = inserted[0].id;
+
+        await db
+          .update(departments)
+          .set({
+            departmentCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['departments'], insertedId),
+            costCenterId: `CC-${String(insertedId).padStart(4, '0')}`,
+          })
+          .where(eq(departments.id, insertedId));
+
         break;
       }
 
       case 'owners': {
-        const nextOwnerIdResult = await db
-          .select({
-            nextId: sql<number>`coalesce(max(${owners.id}), 0)::int + 1`,
-          })
-          .from(owners);
-        const nextOwnerId = nextOwnerIdResult[0]?.nextId ?? 1;
-
         const parsed = ownerSchema.safeParse({
           companyName: formData.get('companyName'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
@@ -1033,10 +997,6 @@ export async function createMasterDataRecord(
         const inserted = await db
           .insert(owners)
           .values({
-            ownerCode: formatMasterDataCode(
-              MASTER_DATA_CODE_PREFIX['owners'],
-              nextOwnerId
-            ),
             companyName: parsed.data.companyName,
             isActive: parsed.data.isActive,
           })
@@ -1050,6 +1010,12 @@ export async function createMasterDataRecord(
         }
 
         insertedId = inserted[0].id;
+
+        await db
+          .update(owners)
+          .set({ ownerCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['owners'], insertedId) })
+          .where(eq(owners.id, insertedId));
+
         break;
       }
 
@@ -1573,6 +1539,7 @@ export async function updateMasterDataRecord(
           iconName: formData.get('iconName'),
           colorTheme: formData.get('colorTheme'),
           isActive: parseBooleanFormValue(formData.get('isActive')),
+          allowedActions: String(formData.get('allowedActions') ?? '["edit"]'),
         });
 
         if (!parsed.success) {
@@ -1594,6 +1561,7 @@ export async function updateMasterDataRecord(
             iconName: parsed.data.iconName,
             colorTheme: parsed.data.colorTheme,
             isActive: parsed.data.isActive,
+            allowedActions: parsed.data.allowedActions,
           })
           .where(eq(customStatuses.id, idRaw))
           .returning();

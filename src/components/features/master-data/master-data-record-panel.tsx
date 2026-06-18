@@ -12,7 +12,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImagePlus, Pencil, Upload, Info, Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Pencil, Upload } from "lucide-react";
 
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
@@ -37,6 +37,7 @@ import { DestructiveConfirmationDialog } from "@/components/shared/destructive-c
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -45,11 +46,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { tiqriToast } from "@/components/shared/sonner";
 import { isModelImageFile, MODEL_IMAGE_ACCEPT } from "@/lib/file-types";
+import { EditableSchemaSection } from "./editable-schema-section";
+import { ActiveStatusToggle } from "./active-status-toggle";
 
 import type {
     MasterDataBrandRow,
@@ -111,9 +111,6 @@ const PILLAR_OPTIONS = [
     { label: "Office Furniture", value: "Office Furniture" },
     { label: "Office Electronics", value: "Office Electronics" },
 ] as const;
-
-const SCHEMA_CHECKBOX_CLASSNAME =
-    "size-5 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground";
 
 const READ_ONLY_INPUT_CLASSNAME =
     "h-9 bg-muted font-mono tracking-wide text-foreground pointer-events-none";
@@ -620,223 +617,26 @@ export function MasterDataRecordPanel({
     );
 
     const renderEditableModelSpecificationsSection = (
-        <div className="space-y-4 border-t pt-4">
-            <div className="flex items-center gap-2">
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
-                    Model Specifications (Common)
-                </h3>
-                <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                aria-label="Model specifications help"
-                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
-                            Technical specs shared by every unit of this model.
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-
-            <div className="rounded-md border bg-muted/50">
-                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
-                    <div className="col-span-5">Field Name</div>
-                    <div className="col-span-4">Input Type</div>
-                    <div className="col-span-2 text-center">Required?</div>
-                    <div className="col-span-1"></div>
-                </div>
-
-                <div className="space-y-2 p-2">
-                    {modelSpecAttributes.map((attribute) => (
-                        <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
-                            <div className="col-span-5">
-                                <Input
-                                    value={attribute.fieldName}
-                                    onChange={(event) =>
-                                        updateModelSpecAttribute(attribute.id, "fieldName", event.target.value)
-                                    }
-                                    placeholder="e.g., RAM"
-                                    className="h-9 bg-background"
-                                />
-                            </div>
-                            <div className="col-span-4">
-                                <Select
-                                    value={attribute.inputType}
-                                    onValueChange={(value) =>
-                                        updateModelSpecAttribute(attribute.id, "inputType", value as CustomAttribute["inputType"])
-                                    }
-                                >
-                                    <SelectTrigger className="h-9 bg-background">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Text">Text</SelectItem>
-                                        <SelectItem value="Number">Number</SelectItem>
-                                        <SelectItem value="Date">Date</SelectItem>
-                                        <SelectItem value="Dropdown">Dropdown</SelectItem>
-                                        <SelectItem value="Boolean">Yes/No</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-2 flex justify-center">
-                                <Checkbox
-                                    checked={attribute.required}
-                                    className={SCHEMA_CHECKBOX_CLASSNAME}
-                                    onCheckedChange={(checked) =>
-                                        updateModelSpecAttribute(attribute.id, "required", checked === true)
-                                    }
-                                />
-                            </div>
-                            <div className="col-span-1 flex justify-end">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeModelSpecAttribute(attribute.id)}
-                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                    disabled={modelSpecAttributes.length === 1}
-                                    aria-label="Remove field"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="border-t p-2">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={addModelSpecAttribute}
-                        className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} w-full text-primary hover:text-primary/90`}
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Add Field
-                    </Button>
-                </div>
-            </div>
-            {fieldError("customSchema") && (
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                    {fieldError("customSchema")}
-                </p>
-            )}
-        </div>
+        <EditableSchemaSection
+            title="Model Specifications (Common)"
+            description="Technical specs shared by every unit of this model."
+            attributes={modelSpecAttributes}
+            onUpdate={updateModelSpecAttribute}
+            onAdd={addModelSpecAttribute}
+            onRemove={removeModelSpecAttribute}
+            fieldError={fieldError("customSchema")}
+        />
     );
 
     const renderEditableAssetTrackingSection = (
-        <div className="space-y-4 border-t pt-4">
-            <div className="flex items-center gap-2">
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
-                    Asset Tracking Fields (Unique)
-                </h3>
-                <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                aria-label="Asset tracking fields help"
-                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
-                            Data unique to each physical item.
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-
-            <div className="rounded-md border bg-muted/50">
-                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
-                    <div className="col-span-5">Field Name</div>
-                    <div className="col-span-4">Input Type</div>
-                    <div className="col-span-2 text-center">Required?</div>
-                    <div className="col-span-1"></div>
-                </div>
-
-                <div className="space-y-2 p-2">
-                    {assetTrackingAttributes.map((attribute) => (
-                        <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
-                            <div className="col-span-5">
-                                <Input
-                                    value={attribute.fieldName}
-                                    onChange={(event) =>
-                                        updateAssetTrackingAttribute(attribute.id, "fieldName", event.target.value)
-                                    }
-                                    placeholder="e.g., MAC Address"
-                                    className="h-9 bg-background"
-                                />
-                            </div>
-                            <div className="col-span-4">
-                                <Select
-                                    value={attribute.inputType}
-                                    onValueChange={(value) =>
-                                        updateAssetTrackingAttribute(attribute.id, "inputType", value as CustomAttribute["inputType"])
-                                    }
-                                >
-                                    <SelectTrigger className="h-9 bg-background">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Text">Text</SelectItem>
-                                        <SelectItem value="Number">Number</SelectItem>
-                                        <SelectItem value="Date">Date</SelectItem>
-                                        <SelectItem value="Dropdown">Dropdown</SelectItem>
-                                        <SelectItem value="Boolean">Yes/No</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-2 flex justify-center">
-                                <Checkbox
-                                    checked={attribute.required}
-                                    className={SCHEMA_CHECKBOX_CLASSNAME}
-                                    onCheckedChange={(checked) =>
-                                        updateAssetTrackingAttribute(attribute.id, "required", checked === true)
-                                    }
-                                />
-                            </div>
-                            <div className="col-span-1 flex justify-end">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeAssetTrackingAttribute(attribute.id)}
-                                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                    disabled={assetTrackingAttributes.length === 1}
-                                    aria-label="Remove field"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="border-t p-2">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={addAssetTrackingAttribute}
-                        className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} w-full text-primary hover:text-primary/90`}
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Add Field
-                    </Button>
-                </div>
-            </div>
-            {fieldError("customSchema") && (
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                    {fieldError("customSchema")}
-                </p>
-            )}
-        </div>
+        <EditableSchemaSection
+            title="Asset Tracking Fields (Unique)"
+            description="Data unique to each physical item."
+            attributes={assetTrackingAttributes}
+            onUpdate={updateAssetTrackingAttribute}
+            onAdd={addAssetTrackingAttribute}
+            onRemove={removeAssetTrackingAttribute}
+        />
     );
 
     const panelTitle = useMemo(() => {
@@ -975,106 +775,7 @@ export function MasterDataRecordPanel({
         }
     }, [normalizedEntity, selectedRecord, onCloseUrl, router]);
 
-    const renderRecordIdPreview = () => {
-        if (!normalizedEntity || !selectedRecord || !Number.isFinite(numericRecordId)) {
-            return null;
-        }
-
-        return (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                        {ENTITY_LABELS[normalizedEntity]} ID
-                    </label>
-                    <Input
-                        value={resolveRecordCode(normalizedEntity, selectedRecord.code, numericRecordId)}
-                        readOnly
-                        tabIndex={-1}
-                        onFocus={(event) => event.currentTarget.blur()}
-                        className={READ_ONLY_INPUT_CLASSNAME}
-                    />
-                </div>
-            </div>
-        );
-    };
-
-    const renderTextField = (
-        key: string,
-        label: string,
-        value: string,
-        options?: {
-            required?: boolean;
-            readOnly?: boolean;
-            placeholder?: string;
-            type?: "text" | "email" | "url";
-            forceReadOnlyInEdit?: boolean;
-            autoUppercase?: boolean;
-        }
-    ) => {
-        const readOnly = options?.readOnly ?? false;
-        const forceReadOnlyInEdit = options?.forceReadOnlyInEdit ?? false;
-        const disabledEditing = isDetailMode || forceReadOnlyInEdit;
-        const className = [
-            disabledEditing ? READ_ONLY_INPUT_CLASSNAME : "",
-            options?.autoUppercase ? "uppercase" : "",
-        ].join(" ").trim();
-
-        return (
-            <div className="space-y-2">
-                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                    {label}
-                    {options?.required && !forceReadOnlyInEdit ? (
-                        <span className="text-red-500"> *</span>
-                    ) : null}
-                </label>
-                <Input
-                    name={forceReadOnlyInEdit ? undefined : key}
-                    type={options?.type ?? "text"}
-                    value={value}
-                    placeholder={options?.placeholder}
-                    readOnly={readOnly || disabledEditing}
-                    tabIndex={disabledEditing ? -1 : undefined}
-                    onFocus={
-                        disabledEditing
-                            ? (event) => event.currentTarget.blur()
-                            : undefined
-                    }
-                    onChange={(event) => setDraftField(key, event.target.value)}
-                    className={className.length > 0 ? className : undefined}
-                />
-                {!isDetailMode && fieldError(key) ? (
-                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                        {fieldError(key)}
-                    </p>
-                ) : null}
-            </div>
-        );
-    };
-
-    const renderActiveStatus = () => {
-        const isActive = asBoolean(draft.isActive);
-
-        return (
-            <div className="flex items-center justify-between rounded-lg border p-4">
-                {!isDetailMode ? <input type="hidden" name="isActive" value={String(isActive)} /> : null}
-                <div className="space-y-0.5">
-                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                        Active Status
-                    </label>
-                    <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-                        Keep this value selectable for new records.
-                    </p>
-                </div>
-                <Switch
-                    checked={isActive}
-                    disabled={isDetailMode}
-                    onCheckedChange={(checked) => setDraftField("isActive", checked)}
-                />
-            </div>
-        );
-    };
-
-    const renderEntityFields = () => {
+        const renderEntityFields = () => {
         if (!normalizedEntity || !selectedRecord) {
             return (
                 <div className={`rounded-md bg-muted p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
@@ -1090,13 +791,13 @@ export function MasterDataRecordPanel({
 
                 return (
                     <>
-                        {renderRecordIdPreview()}
+                        <RecordIdPreview entity={normalizedEntity} record={selectedRecord} numericRecordId={numericRecordId} />
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            {renderTextField("name", "Location Name", asString(draft.name), {
+                            <EditableTextField fieldKey={"name"} label={"Location Name"} value={asString(draft.name)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 required: true,
                                 placeholder: "Colombo HQ",
-                            })}
+                            }} />
 
                             <div className="space-y-2">
                                 <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
@@ -1182,7 +883,7 @@ export function MasterDataRecordPanel({
                             ) : null}
                         </div>
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -1249,17 +950,17 @@ export function MasterDataRecordPanel({
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            {renderTextField("name", "Category Name", asString(draft.name), {
+                            <EditableTextField fieldKey={"name"} label={"Category Name"} value={asString(draft.name)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 required: true,
                                 placeholder: "Wireless Keyboards",
-                            })}
+                            }} />
 
-                            {renderTextField("prefix", "Prefix Code", asString(draft.prefix), {
+                            <EditableTextField fieldKey={"prefix"} label={"Prefix Code"} value={asString(draft.prefix)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 required: true,
                                 placeholder: "WKE",
                                 autoUppercase: true,
                                 readOnly: true,
-                            })}
+                            }} />
                         </div>
 
                         {!isDetailMode && (
@@ -1286,7 +987,7 @@ export function MasterDataRecordPanel({
                               )
                             : renderEditableAssetTrackingSection}
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -1296,12 +997,12 @@ export function MasterDataRecordPanel({
 
                 return (
                     <>
-                        {renderRecordIdPreview()}
+                        <RecordIdPreview entity={normalizedEntity} record={selectedRecord} numericRecordId={numericRecordId} />
 
-                        {renderTextField("name", "Brand Name", asString(draft.name), {
+                        <EditableTextField fieldKey={"name"} label={"Brand Name"} value={asString(draft.name)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                             required: true,
                             placeholder: "Apple",
-                        })}
+                        }} />
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
@@ -1316,7 +1017,7 @@ export function MasterDataRecordPanel({
                             />
                         </div>
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -1335,7 +1036,7 @@ export function MasterDataRecordPanel({
                             />
                         ) : null}
 
-                        {renderRecordIdPreview()}
+                        <RecordIdPreview entity={normalizedEntity} record={selectedRecord} numericRecordId={numericRecordId} />
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
@@ -1602,10 +1303,10 @@ export function MasterDataRecordPanel({
                             </div>
                         </div>
 
-                        {renderTextField("name", "Model Name", asString(draft.name), {
+                        <EditableTextField fieldKey={"name"} label={"Model Name"} value={asString(draft.name)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                             required: true,
                             placeholder: "ThinkPad T14",
-                        })}
+                        }} />
 
                         <div className="space-y-4 border-t pt-4">
                             <div>
@@ -1736,7 +1437,7 @@ export function MasterDataRecordPanel({
                             ) : null}
                         </div>
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -1744,32 +1445,32 @@ export function MasterDataRecordPanel({
             case "vendors": {
                 return (
                     <>
-                        {renderRecordIdPreview()}
+                        <RecordIdPreview entity={normalizedEntity} record={selectedRecord} numericRecordId={numericRecordId} />
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            {renderTextField("companyName", "Vendor Name", asString(draft.companyName), {
+                            <EditableTextField fieldKey={"companyName"} label={"Vendor Name"} value={asString(draft.companyName)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 required: true,
                                 placeholder: "Acme Supplies",
-                            })}
+                            }} />
 
-                            {renderTextField("email", "Email", asString(draft.email), {
+                            <EditableTextField fieldKey={"email"} label={"Email"} value={asString(draft.email)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 placeholder: "ops@acme.com",
                                 type: "email",
-                            })}
+                            }} />
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            {renderTextField("phone", "Phone", asString(draft.phone), {
+                            <EditableTextField fieldKey={"phone"} label={"Phone"} value={asString(draft.phone)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 placeholder: "+94 11 555 0000",
-                            })}
+                            }} />
 
-                            {renderTextField("website", "Website", asString(draft.website), {
+                            <EditableTextField fieldKey={"website"} label={"Website"} value={asString(draft.website)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 placeholder: "https://acme.com",
                                 type: "text",
-                            })}
+                            }} />
                         </div>
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -1777,19 +1478,19 @@ export function MasterDataRecordPanel({
             case "departments": {
                 return (
                     <>
-                        {renderRecordIdPreview()}
+                        <RecordIdPreview entity={normalizedEntity} record={selectedRecord} numericRecordId={numericRecordId} />
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            {renderTextField("name", "Department Name", asString(draft.name), {
+                            <EditableTextField fieldKey={"name"} label={"Department Name"} value={asString(draft.name)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 required: true,
                                 placeholder: "Finance",
-                            })}
+                            }} />
 
-                            {renderTextField("shortCode", "Department Code", asString(draft.shortCode), {
+                            <EditableTextField fieldKey={"shortCode"} label={"Department Code"} value={asString(draft.shortCode)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 required: true,
                                 placeholder: "FIN",
                                 autoUppercase: true,
-                            })}
+                            }} />
                         </div>
 
                         <div className="space-y-2">
@@ -1808,7 +1509,7 @@ export function MasterDataRecordPanel({
                             />
                         </div>
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -1818,12 +1519,12 @@ export function MasterDataRecordPanel({
 
                 return (
                     <>
-                        {renderRecordIdPreview()}
+                        <RecordIdPreview entity={normalizedEntity} record={selectedRecord} numericRecordId={numericRecordId} />
 
-                        {renderTextField("companyName", "Owner Name", asString(draft.companyName), {
+                        <EditableTextField fieldKey={"companyName"} label={"Owner Name"} value={asString(draft.companyName)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                             required: true,
                             placeholder: "TIQRI LK",
-                        })}
+                        }} />
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
@@ -1838,7 +1539,7 @@ export function MasterDataRecordPanel({
                             />
                         </div>
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -1846,16 +1547,20 @@ export function MasterDataRecordPanel({
             case "statuses": {
                 const iconName = asString(draft.iconName);
                 const colorTheme = asString(draft.colorTheme) as StatusTheme;
+                const allowedActionsRaw = draft.allowedActions;
+                const allowedActions: string[] = Array.isArray(allowedActionsRaw) 
+                    ? allowedActionsRaw 
+                    : (typeof allowedActionsRaw === "string" ? JSON.parse(allowedActionsRaw) : ["edit"]);
 
                 return (
                     <>
-                        {renderRecordIdPreview()}
+                        <RecordIdPreview entity={normalizedEntity} record={selectedRecord} numericRecordId={numericRecordId} />
 
                         <div className="space-y-4">
-                            {renderTextField("name", "Status Name", asString(draft.name), {
+                            <EditableTextField fieldKey={"name"} label={"Status Name"} value={asString(draft.name)} draft={draft} isDetailMode={isDetailMode} fieldError={fieldError} setDraftField={setDraftField} options={{
                                 required: true,
                                 placeholder: "e.g., In Transit",
-                            })}
+                            }} />
 
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
@@ -1953,9 +1658,79 @@ export function MasterDataRecordPanel({
                                     )}
                                 </div>
                             </div>
+
+                            <div className="space-y-2">
+                                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                                    Allowed Actions <span className="text-muted-foreground font-normal">(Edit is required)</span>
+                                </label>
+                                {isDetailMode ? (
+                                    <div className="grid grid-cols-2 gap-3 rounded-md border p-4 bg-muted/20">
+                                        {[
+                                            { id: "edit", label: "Edit Asset" },
+                                            { id: "send-for-repair", label: "Send for Repair" },
+                                            { id: "request-disposal", label: "Request Disposal" },
+                                            { id: "assign", label: "Assign / Transfer" },
+                                            { id: "request-return", label: "Request Return" }
+                                        ].map((action) => (
+                                            <div key={action.id} className="flex items-center space-x-2">
+                                                <Checkbox 
+                                                    id={`action-${action.id}-view`}
+                                                    checked={allowedActions.includes(action.id)}
+                                                    disabled
+                                                />
+                                                <label 
+                                                    htmlFor={`action-${action.id}-view`}
+                                                    className="text-sm font-medium leading-none opacity-70"
+                                                >
+                                                    {action.label}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-3 rounded-md border p-4 bg-muted/20">
+                                            {[
+                                                { id: "edit", label: "Edit Asset" },
+                                                { id: "send-for-repair", label: "Send for Repair" },
+                                                { id: "request-disposal", label: "Request Disposal" },
+                                                { id: "assign", label: "Assign / Transfer" },
+                                                { id: "request-return", label: "Request Return" }
+                                            ].map((action) => (
+                                                <div key={action.id} className="flex items-center space-x-2">
+                                                    <Checkbox 
+                                                        id={`action-${action.id}-edit`}
+                                                        checked={allowedActions.includes(action.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            if (checked) {
+                                                                setDraftField("allowedActions", JSON.stringify([...allowedActions, action.id]));
+                                                            } else {
+                                                                setDraftField("allowedActions", JSON.stringify(allowedActions.filter(a => a !== action.id)));
+                                                            }
+                                                        }}
+                                                        disabled={action.id === "edit"} // Edit is always allowed
+                                                    />
+                                                    <label 
+                                                        htmlFor={`action-${action.id}-edit`}
+                                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                    >
+                                                        {action.label}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <input type="hidden" name="allowedActions" value={JSON.stringify(allowedActions)} />
+                                        {fieldError("allowedActions") && (
+                                            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                                                {fieldError("allowedActions")}
+                                            </p>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {renderActiveStatus()}
+                        <ActiveStatusToggle isActive={asBoolean(draft.isActive)} isDetailMode={isDetailMode} onChange={(checked) => setDraftField("isActive", checked)} />
                     </>
                 );
             }
@@ -2110,4 +1885,107 @@ export function MasterDataRecordPanel({
             />
         </>
     );
+
+function RecordIdPreview({
+    entity,
+    record,
+    numericRecordId
+}: {
+    entity: MasterDataRecordEntity;
+    record: Record<string, unknown>;
+    numericRecordId: number;
+}) {
+    if (!entity || !record || !Number.isFinite(numericRecordId)) {
+        return null;
+    }
+
+    return (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                    {ENTITY_LABELS[entity]} ID
+                </label>
+                <Input
+                    value={resolveRecordCode(entity, (record.code as string | undefined), numericRecordId)}
+                    readOnly
+                    tabIndex={-1}
+                    onFocus={(event) => event.currentTarget.blur()}
+                    className={READ_ONLY_INPUT_CLASSNAME}
+                />
+            </div>
+        </div>
+    );
+}
+
+function EditableTextField({
+    fieldKey,
+    label,
+    value,
+    draft,
+    isDetailMode,
+    fieldError,
+    setDraftField,
+    options
+}: {
+    fieldKey: string;
+    label: string;
+    value: string;
+    draft: Record<string, unknown>;
+    isDetailMode: boolean;
+    fieldError: (field: string) => string | undefined;
+    setDraftField: (field: string, value: DraftValue) => void;
+    options?: {
+        required?: boolean;
+        readOnly?: boolean;
+        placeholder?: string;
+        type?: "text" | "email" | "url";
+        forceReadOnlyInEdit?: boolean;
+        autoUppercase?: boolean;
+    };
+}) {
+    const isActuallyReadOnly =
+        isDetailMode ||
+        options?.readOnly ||
+        (options?.forceReadOnlyInEdit && !isDetailMode && draft.id !== undefined);
+
+    return (
+        <div className="space-y-2">
+            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                {label} {options?.required && !isActuallyReadOnly ? <span className="text-red-500">*</span> : null}
+            </label>
+            {isActuallyReadOnly ? (
+                <Input
+                    type={options?.type || "text"}
+                    value={value || "N/A"}
+                    readOnly
+                    tabIndex={-1}
+                    onFocus={(event) => event.currentTarget.blur()}
+                    className={READ_ONLY_INPUT_CLASSNAME}
+                />
+            ) : (
+                <>
+                    <Input
+                        type={options?.type || "text"}
+                        name={fieldKey}
+                        value={value}
+                        onChange={(event) => {
+                            let val = event.target.value;
+                            if (options?.autoUppercase) {
+                                val = val.toUpperCase();
+                            }
+                            setDraftField(fieldKey, val);
+                        }}
+                        placeholder={options?.placeholder}
+                        required={options?.required}
+                    />
+                    {fieldError(fieldKey) ? (
+                        <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
+                            {fieldError(fieldKey)}
+                        </p>
+                    ) : null}
+                </>
+            )}
+        </div>
+    );
+}
 }

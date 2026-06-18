@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ImagePlus, Info, Pencil, Plus, Trash2, Upload, CircleDot, type LucideIcon } from "lucide-react";
+import { ImagePlus, Info, Pencil, Upload, CircleDot, type LucideIcon } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 
 import { createMasterDataRecord } from "@/actions/master-data";
@@ -50,6 +50,8 @@ import {
 } from "@/components/ui/tooltip";
 import { tiqriToast } from "@/components/shared/sonner";
 import { isModelImageFile, MODEL_IMAGE_ACCEPT } from "@/lib/file-types";
+import { EditableSchemaSection } from "./editable-schema-section";
+import { ActiveStatusToggle } from "./active-status-toggle";
 
 import type {
     CategoryCustomSchemaField,
@@ -152,27 +154,7 @@ const PANEL_META: Record<MasterDataRecordEntity, {
         submittingLabel: "Saving Status...",
     },
 };
-
-const SCHEMA_CHECKBOX_CLASSNAME =
-    "size-5 border-slate-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground";
 const TOP_LEVEL_PARENT_LOCATION_VALUE = "none";
-const READ_ONLY_PREVIEW_INPUT_CLASSNAME =
-    "h-9 bg-muted font-mono tracking-wide text-foreground pointer-events-none";
-
-const NEXT_ID_LABELS: Record<MasterDataRecordEntity, string> = {
-    locations: "Location ID (Preview)",
-    "asset-categories": "Category ID (Preview)",
-    brands: "Brand ID (Preview)",
-    "device-models": "Model ID (Preview)",
-    vendors: "Vendor ID (Preview)",
-    owners: "Owner ID (Preview)",
-    departments: "Department ID (Preview)",
-    statuses: "Status ID (Preview)",
-};
-
-function formatPreviewId(prefix: string, nextId: number) {
-    return `${prefix}-${String(nextId).padStart(4, "0")}`;
-}
 
 
 function isRecordEntity(value: string | undefined): value is MasterDataRecordEntity {
@@ -186,11 +168,6 @@ export function MasterDataCreatePanel({
     categories,
     locations,
     brands,
-    deviceModels,
-    vendors,
-    owners,
-    departments,
-    customStatuses,
     disableTransition = false,
 }: MasterDataCreatePanelProps) {
     const router = useRouter();
@@ -249,79 +226,7 @@ export function MasterDataCreatePanel({
         [locations]
     );
 
-    const nextLocationRecordId = useMemo(
-        () => locations.reduce((max, location) => Math.max(max, location.id), 0) + 1,
-        [locations]
-    );
 
-    const nextCategoryRecordId = useMemo(
-        () => categories.reduce((max, category) => Math.max(max, category.id), 0) + 1,
-        [categories]
-    );
-
-    const nextBrandRecordId = useMemo(
-        () => brands.reduce((max, brand) => Math.max(max, brand.id), 0) + 1,
-        [brands]
-    );
-
-    const nextDeviceModelRecordId = useMemo(
-        () =>
-            deviceModels.reduce(
-                (max, model) => Math.max(max, model.id),
-                0
-            ) + 1,
-        [deviceModels]
-    );
-
-    const nextVendorRecordId = useMemo(
-        () => vendors.reduce((max, vendor) => Math.max(max, vendor.id), 0) + 1,
-        [vendors]
-    );
-
-    const nextOwnerRecordId = useMemo(
-        () => owners.reduce((max, owner) => Math.max(max, owner.id), 0) + 1,
-        [owners]
-    );
-
-    const nextDepartmentRecordId = useMemo(
-        () =>
-            departments.reduce((max, department) => Math.max(max, department.id), 0) + 1,
-        [departments]
-    );
-
-    const nextStatusRecordId = useMemo(
-        () =>
-            customStatuses.reduce((max, status) => Math.max(max, status.id), 0) + 1,
-        [customStatuses]
-    );
-
-    const nextIdPreviewByEntity = useMemo<Record<MasterDataRecordEntity, string>>(
-        () => ({
-            locations: formatPreviewId("LOC", nextLocationRecordId),
-            "asset-categories": formatPreviewId("CAT", nextCategoryRecordId),
-            brands: formatPreviewId("BRD", nextBrandRecordId),
-            "device-models": formatPreviewId("MDL", nextDeviceModelRecordId),
-            vendors: formatPreviewId("VND", nextVendorRecordId),
-            owners: formatPreviewId("OWN", nextOwnerRecordId),
-            departments: formatPreviewId("DEP", nextDepartmentRecordId),
-            statuses: formatPreviewId("STS", nextStatusRecordId),
-        }),
-        [
-            nextBrandRecordId,
-            nextCategoryRecordId,
-            nextDepartmentRecordId,
-            nextDeviceModelRecordId,
-            nextLocationRecordId,
-            nextOwnerRecordId,
-            nextStatusRecordId,
-            nextVendorRecordId,
-        ]
-    );
-
-    const nextDepartmentCostCenterIdPreview = useMemo(
-        () => `CC-${String(nextDepartmentRecordId).padStart(4, "0")}`,
-        [nextDepartmentRecordId]
-    );
 
     const categorySchemaPayload = useMemo(
         () => ({
@@ -387,20 +292,7 @@ export function MasterDataCreatePanel({
         [state.errors]
     );
 
-    const nextIdPreviewField = normalizedEntity ? (
-        <div className="space-y-2">
-            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                {NEXT_ID_LABELS[normalizedEntity]}
-            </label>
-            <Input
-                value={nextIdPreviewByEntity[normalizedEntity]}
-                readOnly
-                tabIndex={-1}
-                onFocus={(event) => event.currentTarget.blur()}
-                className={READ_ONLY_PREVIEW_INPUT_CLASSNAME}
-            />
-        </div>
-    ) : null;
+
 
     const resetCreateFormState = useCallback(() => {
         setState(INITIAL_CREATE_MASTER_DATA_STATE);
@@ -622,256 +514,33 @@ export function MasterDataCreatePanel({
     );
 
     const renderActiveSwitch = (
-        <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-                <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                    Active Status
-                </label>
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-                    Keep this value selectable for new records.
-                </p>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-        </div>
+        <ActiveStatusToggle
+            isActive={isActive}
+            onChange={setIsActive}
+        />
     );
 
     const renderModelSpecificationsSection = (
-        <div className="space-y-4 border-t pt-4">
-            <div className="flex items-center gap-2">
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
-                    Model Specifications (Common)
-                </h3>
-                <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                aria-label="Model specifications help"
-                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
-                            Technical specs shared by every unit of this model, such as Processor, RAM, and Resolution. These are collected once when adding a Model.
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-
-            <div className="rounded-md border bg-muted/50">
-                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
-                    <div className="col-span-5">Field Name</div>
-                    <div className="col-span-4">Input Type</div>
-                    <div className="col-span-2 text-center">Required?</div>
-                    <div className="col-span-1"></div>
-                </div>
-
-                <div className="space-y-2 p-2">
-                    {modelSpecAttributes.map((attribute) => (
-                        <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
-                            <div className="col-span-5">
-                                <Input
-                                    value={attribute.fieldName}
-                                    onChange={(event) =>
-                                        updateModelSpecAttribute(
-                                            attribute.id,
-                                            "fieldName",
-                                            event.target.value
-                                        )
-                                    }
-                                    placeholder="e.g., RAM"
-                                    className="h-9 bg-background"
-                                />
-                            </div>
-                            <div className="col-span-4">
-                                <Select
-                                    value={attribute.inputType}
-                                    onValueChange={(value) =>
-                                        updateModelSpecAttribute(
-                                            attribute.id,
-                                            "inputType",
-                                            value as CustomAttribute["inputType"]
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger className="h-9 bg-background">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Text">Text</SelectItem>
-                                        <SelectItem value="Number">Number</SelectItem>
-                                        <SelectItem value="Date">Date</SelectItem>
-                                        <SelectItem value="Dropdown">Dropdown</SelectItem>
-                                        <SelectItem value="Boolean">Yes/No</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-2 flex justify-center">
-                                <Checkbox
-                                    checked={attribute.required}
-                                    className={SCHEMA_CHECKBOX_CLASSNAME}
-                                    onCheckedChange={(checked) =>
-                                        updateModelSpecAttribute(
-                                            attribute.id,
-                                            "required",
-                                            checked === true
-                                        )
-                                    }
-                                />
-                            </div>
-                            <div className="col-span-1 flex justify-end">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeModelSpecAttribute(attribute.id)}
-                                    disabled={modelSpecAttributes.length === 1}
-                                    className="text-muted-foreground hover:text-red-500"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="border-t bg-muted p-3">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={addModelSpecAttribute}
-                        className="w-full text-muted-foreground hover:bg-muted"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add more
-                    </Button>
-                </div>
-            </div>
-            {getFieldError("customSchema") && (
-                <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-red-600`}>
-                    {getFieldError("customSchema")}
-                </p>
-            )}
-        </div>
+        <EditableSchemaSection
+            title="Model Specifications (Common)"
+            description="Technical specs shared by every unit of this model, such as Processor, RAM, and Resolution. These are collected once when adding a Model."
+            attributes={modelSpecAttributes}
+            onUpdate={updateModelSpecAttribute}
+            onAdd={addModelSpecAttribute}
+            onRemove={removeModelSpecAttribute}
+            fieldError={getFieldError("customSchema")}
+        />
     );
 
     const renderAssetTrackingSection = (
-        <div className="space-y-4 border-t pt-4">
-            <div className="flex items-center gap-2">
-                <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
-                    Asset Tracking Fields (Unique)
-                </h3>
-                <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                aria-label="Asset tracking fields help"
-                                className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-                            >
-                                <Info className="h-4 w-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" sideOffset={6} className="max-w-xs text-xs leading-relaxed">
-                            Data unique to each physical item, such as MAC Address, IMEI, and Condition Notes. These are collected whenever a new Asset is registered.
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-
-            <div className="rounded-md border bg-muted/50">
-                <div className="grid grid-cols-12 gap-4 border-b bg-muted p-3 text-xs font-medium text-muted-foreground">
-                    <div className="col-span-5">Field Name</div>
-                    <div className="col-span-4">Input Type</div>
-                    <div className="col-span-2 text-center">Required?</div>
-                    <div className="col-span-1"></div>
-                </div>
-
-                <div className="space-y-2 p-2">
-                    {assetTrackingAttributes.map((attribute) => (
-                        <div key={attribute.id} className="grid grid-cols-12 items-center gap-4 p-1">
-                            <div className="col-span-5">
-                                <Input
-                                    value={attribute.fieldName}
-                                    onChange={(event) =>
-                                        updateAssetTrackingAttribute(
-                                            attribute.id,
-                                            "fieldName",
-                                            event.target.value
-                                        )
-                                    }
-                                    placeholder="e.g., MAC Address"
-                                    className="h-9 bg-background"
-                                />
-                            </div>
-                            <div className="col-span-4">
-                                <Select
-                                    value={attribute.inputType}
-                                    onValueChange={(value) =>
-                                        updateAssetTrackingAttribute(
-                                            attribute.id,
-                                            "inputType",
-                                            value as CustomAttribute["inputType"]
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger className="h-9 bg-background">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Text">Text</SelectItem>
-                                        <SelectItem value="Number">Number</SelectItem>
-                                        <SelectItem value="Date">Date</SelectItem>
-                                        <SelectItem value="Dropdown">Dropdown</SelectItem>
-                                        <SelectItem value="Boolean">Yes/No</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-2 flex justify-center">
-                                <Checkbox
-                                    checked={attribute.required}
-                                    className={SCHEMA_CHECKBOX_CLASSNAME}
-                                    onCheckedChange={(checked) =>
-                                        updateAssetTrackingAttribute(
-                                            attribute.id,
-                                            "required",
-                                            checked === true
-                                        )
-                                    }
-                                />
-                            </div>
-                            <div className="col-span-1 flex justify-end">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removeAssetTrackingAttribute(attribute.id)}
-                                    disabled={assetTrackingAttributes.length === 1}
-                                    className="text-muted-foreground hover:text-red-500"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="border-t bg-muted p-3">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={addAssetTrackingAttribute}
-                        className="w-full text-muted-foreground hover:bg-muted"
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add more
-                    </Button>
-                </div>
-            </div>
-        </div>
+        <EditableSchemaSection
+            title="Asset Tracking Fields (Unique)"
+            description="Data unique to each physical item, such as MAC Address, IMEI, and Condition Notes. These are collected whenever a new Asset is registered."
+            attributes={assetTrackingAttributes}
+            onUpdate={updateAssetTrackingAttribute}
+            onAdd={addAssetTrackingAttribute}
+            onRemove={removeAssetTrackingAttribute}
+        />
     );
 
     const formBody = (() => {
@@ -898,7 +567,6 @@ export function MasterDataCreatePanel({
                             }
                         />
 
-                        {nextIdPreviewField}
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
@@ -971,7 +639,6 @@ export function MasterDataCreatePanel({
                             value={JSON.stringify(categorySchemaPayload)}
                         />
 
-                        {nextIdPreviewField}
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
@@ -1048,7 +715,6 @@ export function MasterDataCreatePanel({
             case "brands":
                 return (
                     <>
-                        {nextIdPreviewField}
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
@@ -1084,7 +750,6 @@ export function MasterDataCreatePanel({
                             value={normalizedSelectedCategoryId}
                         />
 
-                        {nextIdPreviewField}
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
@@ -1337,7 +1002,6 @@ export function MasterDataCreatePanel({
             case "vendors":
                 return (
                     <>
-                        {nextIdPreviewField}
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
@@ -1403,7 +1067,6 @@ export function MasterDataCreatePanel({
             case "departments":
                 return (
                     <>
-                        {nextIdPreviewField}
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
@@ -1431,19 +1094,6 @@ export function MasterDataCreatePanel({
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
-                                Cost Center ID (Auto Assigned)
-                            </label>
-                            <Input
-                                value={nextDepartmentCostCenterIdPreview}
-                                readOnly
-                                tabIndex={-1}
-                                onFocus={(event) => event.currentTarget.blur()}
-                                className={READ_ONLY_PREVIEW_INPUT_CLASSNAME}
-                            />
-                        </div>
-
                         {renderActiveSwitch}
                     </>
                 );
@@ -1451,7 +1101,6 @@ export function MasterDataCreatePanel({
             case "owners":
                 return (
                     <>
-                        {nextIdPreviewField}
 
                         <div className="space-y-2">
                             <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
@@ -1476,7 +1125,6 @@ export function MasterDataCreatePanel({
             case "statuses":
                 return (
                     <>
-                        {nextIdPreviewField}
 
                         <div className="space-y-4">
                             <div className="space-y-2">

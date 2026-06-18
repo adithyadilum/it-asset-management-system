@@ -87,6 +87,44 @@ function SectionSkeletonRows({ count = 2 }: { count?: number }) {
   );
 }
 
+
+function OmniStaticResultItem({ item, group, onSelect }: { item: OmniStaticItem, group: 'page' | 'report', onSelect: () => void }) {
+    const Icon = group === 'page' ? SquareMenu : ClipboardList;
+    return (
+      <CommandItem
+        value={`${item.label} ${item.description} ${item.keywords}`}
+        onSelect={onSelect}
+        className={resultItemClass}
+      >
+        <Icon className="size-4 text-muted-foreground" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm text-foreground">{item.label}</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {item.description}
+          </span>
+        </div>
+      </CommandItem>
+    );
+}
+
+function OmniReportResultItem({ item, onSelect }: { item: OmniSearchReportResult, onSelect: () => void }) {
+    return (
+      <CommandItem
+        value={`${item.label} ${item.description}`}
+        onSelect={onSelect}
+        className={resultItemClass}
+      >
+        <ClipboardList className="size-4 text-muted-foreground" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm text-foreground">{item.label}</span>
+          <span className="truncate text-xs text-muted-foreground">
+            {item.description}
+          </span>
+        </div>
+      </CommandItem>
+    );
+}
+
 export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -278,48 +316,8 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
     usersResults.length === 0 &&
     !searchError;
 
-  const renderStaticItem = (item: OmniStaticItem, group: 'page' | 'report') => {
-    const Icon = group === 'page' ? SquareMenu : ClipboardList;
-
-    return (
-      <CommandItem
-        key={item.id}
-        value={`${item.label} ${item.description} ${item.keywords}`}
-        onSelect={() => handleSelectHref(item.href)}
-        className={resultItemClass}
-      >
-        <Icon className="size-4 text-muted-foreground" />
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm text-foreground">{item.label}</span>
-          <span className="truncate text-xs text-muted-foreground">
-            {item.description}
-          </span>
-        </div>
-      </CommandItem>
-    );
-  };
-
-  const renderReportItem = (item: OmniSearchReportResult) => {
-    return (
-      <CommandItem
-        key={item.id}
-        value={`${item.label} ${item.description}`}
-        onSelect={() => handleSelectHref(item.href)}
-        className={resultItemClass}
-      >
-        <ClipboardList className="size-4 text-muted-foreground" />
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm text-foreground">{item.label}</span>
-          <span className="truncate text-xs text-muted-foreground">
-            {item.description}
-          </span>
-        </div>
-      </CommandItem>
-    );
-  };
-
+  
+  
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <Command shouldFilter={false} className="bg-transparent overflow-visible">
@@ -389,7 +387,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                   heading="Pages"
                   className={`px-0 ${sectionHeadingClass}`}
                 >
-                  {pageResults.map((item) => renderStaticItem(item, 'page'))}
+                  {pageResults.map((item) => <OmniStaticResultItem key={item.id} item={item} group="page" onSelect={() => handleSelectHref(item.href)} />)}
 
                   {shouldShowPagesEmptyState ? (
                     <SectionEmptyState query={normalizedQuery} entity="pages" />
@@ -447,7 +445,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                       {isSearching ? <SectionSkeletonRows count={1} /> : null}
 
                       {!isSearching
-                        ? reportsResults.map((item) => renderReportItem(item))
+                        ? reportsResults.map((item) => <OmniReportResultItem key={item.id} item={item} onSelect={() => handleSelectHref(item.href)} />)
                         : null}
 
                       {shouldShowReportsEmptyState ? (

@@ -213,19 +213,21 @@ export const authOptions: NextAuthOptions = {
           deptId = dept.id;
         } else {
           try {
-            // Get max ID to generate incremental identifiers
-            const [result] = await db.select({ maxId: sql<number>`max(id)::int` }).from(departments);
-            const nextId = (result?.maxId || 0) + 1;
-            
-            const shortCode = `DEP-${String(nextId).padStart(4, '0')}`;
-            const costCenterId = `CC-${nextId}00`;
-            
             const [insertedDept] = await db.insert(departments).values({
               name: deptName,
-              shortCode: shortCode,
-              costCenterId: costCenterId,
+              shortCode: 'DEP-TEMP',
+              costCenterId: 'CC-TEMP',
               isActive: true,
             }).returning({ id: departments.id });
+
+            const shortCode = `DEP-${String(insertedDept.id).padStart(4, '0')}`;
+            const costCenterId = `CC-${insertedDept.id}00`;
+
+            await db.update(departments).set({
+              shortCode: shortCode,
+              costCenterId: costCenterId,
+              departmentCode: `DEP-${String(insertedDept.id).padStart(4, '0')}`,
+            }).where(eq(departments.id, insertedDept.id));
             
             deptId = insertedDept.id;
             console.log(`[AUTH] Auto-provisioned new department: ${deptName} (${shortCode})`);
