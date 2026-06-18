@@ -1,5 +1,3 @@
-import { serverEnv } from '@/lib/env';
-
 // lib/constants.ts
 
 // These values MUST match the PostgreSQL `asset_status` enum exactly:
@@ -131,6 +129,6 @@ export const AVAILABLE_STATUS_ICONS = [
 
 export const API_KEY_PREFIX = 'eitams_live_';
 
-// Rate limit: reads from env, falls back to 100 req/min
-export const API_RATE_LIMIT_MAX = serverEnv.API_RATE_LIMIT_MAX;
-export const API_RATE_LIMIT_WINDOW_SECONDS = serverEnv.API_RATE_LIMIT_WINDOW_SECONDS;
+// Rate limit: defaults to 100 req/min if not configured
+export const API_RATE_LIMIT_MAX = 100;
+export const API_RATE_LIMIT_WINDOW_SECONDS = 60;
