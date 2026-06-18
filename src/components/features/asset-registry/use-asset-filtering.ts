@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { AssetRegistryRow, AppliedFilter, CategoryOption } from './asset-registry-client';
+import type { AssetRegistryRow, AppliedFilter, CategoryOption } from './asset-registry.types';
 
 function normalizeCategoryLabel(value: string) {
   return value

@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useAssetFiltering } from './use-asset-filtering';
-import type { AssetRegistryRow } from './asset-registry-client';
+import type { AssetRegistryRow } from './asset-registry.types';
 
 const mockRows: AssetRegistryRow[] = [
   {

@@ -7,7 +7,7 @@ import { PillarBadge } from '@/components/shared/pillar-badge';
 import { SoftwareExpiryStatus } from '@/components/shared/software-expiry-status';
 import { CopyableField } from '@/components/shared/copyable-field';
 import type { RegistryView } from './registry-config';
-import type { AssetRegistryRow } from './asset-registry-client';
+import type { AssetRegistryRow } from './asset-registry.types';
 
 export interface ManualStatus {
   value: string;

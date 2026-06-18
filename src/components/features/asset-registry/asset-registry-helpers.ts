@@ -1,18 +1,7 @@
 import type { RegistryFilterField, RegistryViewConfig } from './registry-config';
 import type { DataTableSelectionAction } from '@/components/shared/data-table';
-import type { AssetRegistryRow, CategoryOption } from './asset-registry-client';
+import type { AssetRegistryRow, CategoryOption, AssetRegistryCategory } from './asset-registry.types';
 import { DEFAULT_STATUS_OPTIONS } from './asset-registry-constants';
-
-// ---------------------------------------------------------------------------
-// Types used only by helpers
-// ---------------------------------------------------------------------------
-
-type AssetRegistryCategory = {
-  id: number;
-  name: string;
-  prefix: string;
-  pillar: string;
-};
 
 // ---------------------------------------------------------------------------
 // Cell display

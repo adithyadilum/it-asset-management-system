@@ -5,21 +5,14 @@ import {
   Plus,
   Upload,
 } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState, useEffect, useTransition } from 'react';
-import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { bulkUpdateAssets, getAssetsByPillar, getAllAssetsUnified } from '@/actions/asset-registry';
 import { BulkImportWizard } from '@/components/features/bulk-import/bulk-import-wizard';
 import { PrintConfigurationModal } from '@/components/features/asset-registry/tags/print-configuration-modal';
 import { generateAndPrintTagPdf } from '@/lib/utils/tag-print';
-import {
-  type RegistryViewConfig,
-  type RegistryFilterField,
-} from '@/components/features/asset-registry/registry-config';
-import {
-  DataTable,
-} from '@/components/shared/data-table';
+import { type RegistryViewConfig } from '@/components/features/asset-registry/registry-config';
+import { DataTable } from '@/components/shared/data-table';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
 import { BulkTransferDialog } from '@/components/features/asset-registry/bulk-transfer-dialog';
 import { AssetPillarSelectionDialog } from '@/components/shared/asset-pillar-selection-dialog';
@@ -42,8 +35,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import type { AssetRegistryCategory, AssetRegistryResult, AssetRegistryRow, AppliedFilter } from './asset-registry.types';
 import {
-  BULK_FETCH_PAGE_SIZE,
   SEARCH_DEBOUNCE_MS,
   DEFAULT_MODEL_FALLBACK,
   SKELETON_COLUMN_WIDTHS,
@@ -54,64 +47,8 @@ import {
   buildCategoryOptions,
   buildSelectionActions,
 } from './asset-registry-helpers';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type FilterField = RegistryFilterField;
-
-type AssetRegistryCategory = {
-  id: number;
-  name: string;
-  prefix: string;
-  pillar: string;
-};
-
-export type AssetRegistryRow = {
-  id: string;
-  assetTag: string;
-  name: string | null;
-  serialNumber: string | null;
-  status: string;
-  condition: string | null;
-  categoryId: number;
-  category: string;
-  pillar: string;
-  model: string;
-  locationId: number | null;
-  location: string | null;
-  assignedTo: string | null;
-  instanceAttributes: Record<string, unknown> | null;
-  updatedAt: Date | string;
-  // SAM fields
-  totalSeats?: number | null;
-  availableSeats?: number | null;
-  expiryDate?: string | null;
-  licenseType?: string | null;
-};
-
-type AssetRegistryResult = {
-  data: AssetRegistryRow[];
-  meta: {
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  };
-};
-
-export type AppliedFilter = {
-  field: FilterField;
-  operator: 'is' | 'is not';
-  value: string;
-};
-
-export type CategoryOption = {
-  id?: number;
-  name: string;
-  isAll?: boolean;
-};
+import { useAssetRegistryData } from './use-asset-registry-data';
+import { useAssetMutations } from './use-asset-mutations';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -143,16 +80,6 @@ export function AssetRegistryClient({
   const searchParams = useSearchParams();
 
   // -------------------------------------------------------------------------
-  // Core data state
-  // -------------------------------------------------------------------------
-
-  const [rows, setRows] = useState<AssetRegistryRow[]>(initialResult.data);
-  const [isPending, startTransition] = useTransition();
-  const [refreshNonce, setRefreshNonce] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isMutating, setIsMutating] = useState(false);
-
-  // -------------------------------------------------------------------------
   // Search & filter state
   // -------------------------------------------------------------------------
 
@@ -163,7 +90,7 @@ export function AssetRegistryClient({
     config.defaultCategoryLabel
   );
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
-  const [customStatuses, setCustomStatuses] = useState<string[]>([]);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   // -------------------------------------------------------------------------
   // Dialog visibility state
@@ -179,12 +106,11 @@ export function AssetRegistryClient({
   const [disposalSelectionRows, setDisposalSelectionRows] = useState<AssetRegistryRow[]>([]);
 
   // -------------------------------------------------------------------------
-  // Derived values
+  // Derived filter values
   // -------------------------------------------------------------------------
 
   const isPanelOpen = Boolean(currentPanel);
-  const activeRecordId =
-    currentPanel === 'record' ? searchParams.get('id') : null;
+  const activeRecordId = currentPanel === 'record' ? searchParams.get('id') : null;
 
   const categoryOptions = useMemo(
     () => buildCategoryOptions(config, initialCategories),
@@ -207,8 +133,50 @@ export function AssetRegistryClient({
       : undefined;
 
   const statusFilter = appliedFilters.find((filter) => filter.field === 'Status');
-  const backendStatusFilter =
-    statusFilter?.operator === 'is' ? statusFilter.value : undefined;
+  const backendStatusFilter = statusFilter?.operator === 'is' ? statusFilter.value : undefined;
+
+  // Debounce search input
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setDebouncedQuery(searchValue.trim());
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchValue]);
+
+  // -------------------------------------------------------------------------
+  // Data Fetching & Mutations
+  // -------------------------------------------------------------------------
+
+  const {
+    rows,
+    isPending,
+    errorMessage,
+    setErrorMessage,
+    customStatuses,
+    manuallyUpdateRowStatus,
+  } = useAssetRegistryData({
+    initialResult,
+    view: config.view,
+    pillar: config.pillar,
+    debouncedQuery,
+    selectedCategoryId,
+    backendStatusFilter,
+    refreshNonce,
+  });
+
+  const { isMutating, performBulkStatusChange, performBulkTransfer } = useAssetMutations({
+    setErrorMessage,
+    onSuccess: () => setRefreshNonce((n) => n + 1),
+    onTransferSuccess: () => {
+      setIsTransferDialogOpen(false);
+      setTransferSelectionRows([]);
+    },
+  });
+
+  // -------------------------------------------------------------------------
+  // Local Filtering & Formatting
+  // -------------------------------------------------------------------------
 
   const filteredRows = useAssetFiltering(rows, appliedFilters, selectedCategoryOption);
   const tableColumns = useAssetColumns(config.view, manualStatuses);
@@ -216,13 +184,11 @@ export function AssetRegistryClient({
 
   const locationOptions = useMemo(() => {
     const merged = new Map<number, string>();
-
     for (const row of rows) {
       if (row.locationId && row.location) {
         merged.set(row.locationId, row.location);
       }
     }
-
     return [...merged.entries()].map(([id, name]) => ({ id, name }));
   }, [rows]);
 
@@ -239,22 +205,10 @@ export function AssetRegistryClient({
   // -------------------------------------------------------------------------
 
   const handleStatusUpdate = useCallback((assetId: string, nextStatus: string) => {
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.id === assetId) {
-          return {
-            ...row,
-            status: nextStatus,
-            assignedTo: null, // Manual override always clears current assignment
-          };
-        }
-        return row;
-      })
-    );
+    manuallyUpdateRowStatus(assetId, nextStatus);
     setRefreshNonce((n) => n + 1);
-  }, []);
+  }, [manuallyUpdateRowStatus]);
 
-  // Expose the status update handler via ref so detail panel can call it
   useEffect(() => {
     if (onStatusUpdateRef) {
       onStatusUpdateRef.current = handleStatusUpdate;
@@ -266,108 +220,6 @@ export function AssetRegistryClient({
       onRefreshRef.current = () => setRefreshNonce((n) => n + 1);
     }
   }, [onRefreshRef]);
-
-  // -------------------------------------------------------------------------
-  // Data fetching effects
-  // -------------------------------------------------------------------------
-
-  // Fetch custom statuses once on mount
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const rows = await getCustomStatuses();
-        if (!mounted) return;
-        setCustomStatuses(rows.map((r: CustomStatusRow) => r.name));
-      } catch {
-        // ignore non-fatal
-      }
-    })();
-
-    return () => { mounted = false; };
-  }, []);
-
-  // Debounce search input
-  const requestSequenceRef = useRef(0);
-
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      setDebouncedQuery(searchValue.trim());
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      clearTimeout(debounceTimer);
-    };
-  }, [searchValue]);
-
-  // Load asset rows whenever filters/search/category change
-  useEffect(() => {
-    const requestSequence = ++requestSequenceRef.current;
-    setErrorMessage(null);
-
-    const loadRows = async () => {
-      try {
-        const requestParams = {
-          pillar: config.pillar,
-          query: debouncedQuery,
-          categoryId: selectedCategoryId,
-          status: backendStatusFilter,
-        };
-
-        const fetchFn = config.view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
-
-        const firstPage = await fetchFn({
-          ...requestParams,
-          page: 1,
-          pageSize: BULK_FETCH_PAGE_SIZE,
-        });
-
-        if (requestSequence !== requestSequenceRef.current) {
-          return;
-        }
-
-        let aggregatedRows = [...firstPage.data];
-
-        for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
-          const nextPage = await fetchFn({
-            ...requestParams,
-            page,
-            pageSize: BULK_FETCH_PAGE_SIZE,
-          });
-
-          if (requestSequence !== requestSequenceRef.current) {
-            return;
-          }
-
-          aggregatedRows = aggregatedRows.concat(nextPage.data);
-        }
-
-        startTransition(() => {
-          setRows(aggregatedRows);
-        });
-      } catch (error) {
-        if (requestSequence !== requestSequenceRef.current) {
-          return;
-        }
-
-        startTransition(() => {
-          setRows([]);
-          setErrorMessage(error instanceof Error ? error.message : 'Failed to load assets.');
-        });
-      }
-    };
-
-    startTransition(() => {
-      void loadRows();
-    });
-  }, [
-    backendStatusFilter,
-    config.pillar,
-    config.view,
-    debouncedQuery,
-    refreshNonce,
-    selectedCategoryId,
-  ]);
 
   // -------------------------------------------------------------------------
   // Event handlers — filtering
@@ -393,90 +245,10 @@ export function AssetRegistryClient({
     );
   };
 
-  const clearAllFilters = () => {
-    setAppliedFilters([]);
-  };
+  const clearAllFilters = () => setAppliedFilters([]);
 
   // -------------------------------------------------------------------------
-  // Event handlers — bulk mutations
-  // -------------------------------------------------------------------------
-
-  const performBulkStatusChange = async (
-    status:
-      | 'Available'
-      | 'Assigned'
-      | 'In Repair'
-      | 'Defective'
-      | 'Lost'
-      | 'Retired'
-      | 'Disposed',
-    selectedAssetIds: string[]
-  ) => {
-    if (selectedAssetIds.length === 0) {
-      return;
-    }
-
-    setIsMutating(true);
-    setErrorMessage(null);
-
-    try {
-      const result = await bulkUpdateAssets({
-        assetIds: selectedAssetIds,
-        updates: {
-          status,
-        },
-        actionType: 'BULK_STATUS_UPDATE',
-      });
-
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Bulk status update failed.');
-        return;
-      }
-
-      setRefreshNonce((currentNonce) => currentNonce + 1);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Bulk status update failed.');
-    } finally {
-      setIsMutating(false);
-    }
-  };
-
-  const performBulkTransfer = async (targetLocationId: number) => {
-    const selectedAssetIds = transferSelectionRows.map((selectedRow) => selectedRow.id);
-
-    if (selectedAssetIds.length === 0 || !targetLocationId) {
-      return;
-    }
-
-    setIsMutating(true);
-    setErrorMessage(null);
-
-    try {
-      const result = await bulkUpdateAssets({
-        assetIds: selectedAssetIds,
-        updates: {
-          locationId: targetLocationId,
-        },
-        actionType: 'BULK_TRANSFER',
-      });
-
-      if (!result.success) {
-        setErrorMessage(result.error ?? 'Bulk transfer failed.');
-        return;
-      }
-
-      setIsTransferDialogOpen(false);
-      setTransferSelectionRows([]);
-      setRefreshNonce((currentNonce) => currentNonce + 1);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Bulk transfer failed.');
-    } finally {
-      setIsMutating(false);
-    }
-  };
-
-  // -------------------------------------------------------------------------
-  // Event handlers — navigation
+  // Event handlers — navigation & print
   // -------------------------------------------------------------------------
 
   const openRegistrationPanel = useCallback(() => {
@@ -497,10 +269,6 @@ export function AssetRegistryClient({
     params.set('animate', isPanelOpen ? '0' : '1');
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }, [isPanelOpen, pathname, router, searchParams]);
-
-  // -------------------------------------------------------------------------
-  // Event handlers — print
-  // -------------------------------------------------------------------------
 
   const handlePrintGenerate = useCallback(async (format: 'a4' | 'thermal') => {
     const assetIds = printSelectionRows.map((row) => row.assetTag);
@@ -539,6 +307,7 @@ export function AssetRegistryClient({
           setIsDisposalDialogOpen(true);
         },
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [config, isMutating]
   );
 
@@ -694,7 +463,7 @@ export function AssetRegistryClient({
           }}
           selectedAssets={transferSelectionRows}
           locationOptions={locationOptions}
-          onConfirm={performBulkTransfer}
+          onConfirm={(targetLocationId) => performBulkTransfer(targetLocationId, transferSelectionRows.map(r => r.id))}
           isMutating={isMutating}
         />
 
