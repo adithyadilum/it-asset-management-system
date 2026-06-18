@@ -485,13 +485,32 @@ export function useWriteOffsColumns(
       },
     },
     {
-      id: "salvageValue",
-      header: "Salvage Recouped",
+      id: "estimatedSalvageValue",
+      header: "Estimated Salvage",
       size: 140,
       minSize: 120,
       cell: ({ row }) => {
         const converted = convertCurrencyAmount(
-          row.original.salvageValue,
+          row.original.estimatedSalvageValue,
+          row.original.currencyCode,
+          currencyCode,
+          apiRates
+        )
+        return (
+          <span className="text-xs text-muted-foreground font-medium">
+            {formatMoneyByCurrency(converted, currencyCode)}
+          </span>
+        )
+      },
+    },
+    {
+      id: "actualSalvageValue",
+      header: "Actual Salvage",
+      size: 140,
+      minSize: 120,
+      cell: ({ row }) => {
+        const converted = convertCurrencyAmount(
+          row.original.actualSalvageValue,
           row.original.currencyCode,
           currencyCode,
           apiRates

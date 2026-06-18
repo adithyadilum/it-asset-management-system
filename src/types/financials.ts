@@ -30,5 +30,6 @@ export interface WriteOffsLedgerRecord {
   originalPrice: number;
   currencyCode: string; // Source currency of the purchase
   bookValue: number;
-  salvageValue: number;
+  estimatedSalvageValue: number;
+  actualSalvageValue: number;
 }

@@ -39,7 +39,8 @@ export interface WriteOffLedgerRow {
   originalPrice: number;
   currencyCode: string;
   bookValue: number;
-  salvageValue: number;
+  estimatedSalvageValue: number;
+  actualSalvageValue: number;
 }
 
 export interface HighMaintenanceRow {
