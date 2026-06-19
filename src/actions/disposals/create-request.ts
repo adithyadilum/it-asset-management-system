@@ -1,6 +1,6 @@
 'use server';
 
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { getAuthenticatedUser } from '@/actions/auth';
@@ -37,6 +37,24 @@ export async function createDisposalRequest(input: {
 
   try {
     const checkTimer = startLatencyTimer();
+
+    const invalidAssets = await db
+      .select({ id: assets.id, assetTag: assets.assetTag })
+      .from(assets)
+      .where(
+        and(
+          inArray(assets.id, normalizedAssetIds),
+          or(
+            eq(assets.status, 'Disposed'),
+            eq(assets.isArchived, true)
+          )
+        )
+      );
+
+    if (invalidAssets.length > 0) {
+      const tags = invalidAssets.map(a => a.assetTag).join(', ');
+      throw new Error(`Cannot request disposal: Assets [${tags}] are already disposed or archived.`);
+    }
 
     const existing = await db
       .select({ assetId: assetDisposals.assetId })

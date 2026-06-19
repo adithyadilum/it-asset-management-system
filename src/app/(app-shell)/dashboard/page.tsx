@@ -5,7 +5,8 @@ import { DashboardRefreshProvider } from "@/components/features/dashboard/shared
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { UserRole } from "@/types/auth"
 import { cookies } from "next/headers"
-import { fetchLiveExchangeRates, convertCurrencyAmount } from "@/lib/currency"
+import { convertCurrencyAmount } from "@/lib/currency"
+import { fetchLiveExchangeRates } from "@/lib/currency-server"
 import { redirect } from "next/navigation"
 
 // Role-specific action fetchers

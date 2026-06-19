@@ -18,8 +18,11 @@ vi.mock('next/cache', () => ({
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
   convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/db', () => ({

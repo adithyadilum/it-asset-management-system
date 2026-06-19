@@ -10,7 +10,8 @@ import {
 import { assetRegistrationSchema, PILLAR_PREFIX_MAP } from '@/lib/validations/asset-registration';
 import { logAuditAction } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
-import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
+import { convertCurrencyAmount } from '@/lib/currency';
+import { fetchLiveExchangeRates } from '@/lib/currency-server';
 
 function apiError(status: number, code: string, message: string, details?: unknown) {
   return NextResponse.json(

@@ -7,7 +7,6 @@ import { AppSidebar } from "@/components/layout/app-sidebar"
 import { TopHeader } from "@/components/layout/top-header"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { OfflineBanner } from "@/components/shared/offline-banner"
-import { MobileRouteHandler } from "@/components/features/mobile/mobile-route-handler"
 import { BottomNavigation } from "@/components/layout/bottom-navigation"
 
 export default async function AppShellLayout({
@@ -25,7 +24,6 @@ export default async function AppShellLayout({
   return (
     <>
       <OfflineBanner />
-      <MobileRouteHandler role={user.role} />
       <SidebarProvider
         defaultOpen
         style={{ "--sidebar-width": "260px" } as CSSProperties}

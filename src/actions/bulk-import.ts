@@ -17,7 +17,8 @@ import { validateRows } from '@/lib/bulk-import/validate-rows';
 import { eq, like, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import Papa from 'papaparse';
-import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
+import { convertCurrencyAmount } from '@/lib/currency';
+import { fetchLiveExchangeRates } from '@/lib/currency-server';
 
 function addMonths(value: Date, months: number) {
   const nextDate = new Date(value);

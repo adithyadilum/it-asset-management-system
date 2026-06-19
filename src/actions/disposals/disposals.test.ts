@@ -190,7 +190,9 @@ describe('createDisposalRequest', () => {
 
   it('allows ITOperator to create request', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
-    mockDb.select.mockReturnValueOnce(chain([])); // no existing
+    mockDb.select
+      .mockReturnValueOnce(chain([])) // invalid check
+      .mockReturnValueOnce(chain([])); // no existing
     mockDb.insert.mockReturnValue(chain([{ id: 1, assetId: VALID_UUID }]));
     mockDb.update.mockReturnValue(chain([{ id: VALID_UUID }]));
     
@@ -205,14 +207,18 @@ describe('createDisposalRequest', () => {
 
   it('skips existing pending requests and throws if all are pending', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.select.mockReturnValueOnce(chain([{ assetId: VALID_UUID }])); // existing
+    mockDb.select
+      .mockReturnValueOnce(chain([])) // invalid check
+      .mockReturnValueOnce(chain([{ assetId: VALID_UUID }])); // existing
     
     await expect(createDisposalRequest(validInput)).rejects.toThrow('All selected assets already have a pending disposal request');
   });
 
   it('inserts disposals, updates asset status, logs audit, and dispatches webhook', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.select.mockReturnValueOnce(chain([])); // no existing
+    mockDb.select
+      .mockReturnValueOnce(chain([])) // invalid check
+      .mockReturnValueOnce(chain([])); // no existing
     mockDb.insert.mockReturnValue(chain([{ id: 1, assetId: VALID_UUID }]));
     mockDb.update.mockReturnValue(chain([{ id: VALID_UUID }]));
     
