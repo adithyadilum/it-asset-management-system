@@ -1,9 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DisposalReviewPanelWrapper } from './disposal-review-panel-wrapper';
-import { getDisposalReviewDetails } from '@/actions/disposals';
+import { getDisposalReviewDetails } from '@/actions/disposals/get-review-details';
 
-vi.mock('@/actions/disposals', () => ({
+vi.mock('@/actions/disposals/get-review-details', () => ({
   getDisposalReviewDetails: vi.fn(),
 }));
 

@@ -11,15 +11,7 @@ import { FilterBar, type AppliedFilter, type FilterFieldConfig } from '@/compone
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
 
-export interface PendingDisposalRow {
-  id: number;
-  assetId: string;
-  assetTag: string;
-  assetName: string | null;
-  flaggedBy: string;
-  reason: string;
-  requestedAt: Date;
-}
+import type { PendingDisposalRow } from '@/types/disposals';
 
 interface PendingDisposalsGridProps {
   initialData: PendingDisposalRow[];

@@ -14,7 +14,8 @@ import {
   X,
 } from 'lucide-react';
 
-import { executeAssetDisposal, uploadDisposalReceipt } from '@/actions/disposals';
+import { executeAssetDisposal } from '@/actions/disposals/execute';
+import { uploadDisposalReceipt } from '@/actions/disposals/upload-receipt';
 import { FileUploadZone } from '@/components/shared/file-upload-zone';
 import { tiqriToast } from '@/components/shared/sonner';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import type { PendingDisposalRow } from './pending-disposals-grid';
+import type { PendingDisposalRow } from '@/types/disposals';
 
 interface ExecuteDisposalDialogProps {
   isOpen: boolean;

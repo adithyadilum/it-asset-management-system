@@ -2,30 +2,34 @@
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
+import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
+import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
-  assertAdmin,
-  getCachedDashboardKpiMetrics,
   getCachedInventoryStatus,
   getCachedDepartmentAllocation,
   getOverdueReturnsInternal,
   getPendingDisposalsInternal,
   getHighMaintenanceAssetsInternal,
-  getRecentActivitiesInternal,
+} from './queries/inventory';
+import { getRecentActivitiesInternal } from './queries/activities';
+import {
   getDashboardTopHighValueAssetsInternal,
   getDashboardSoftwareOptimizationInternal,
-  type DashboardKpiMetrics,
-  type InventoryStatusResponse,
-  type DepartmentAllocationItem,
-  type OverdueReturnRow,
-  type PendingDisposalRow,
-  type HighMaintenanceRow,
-  type RecentActivity,
-  type TopHighValueAssetRow,
-  type SoftwareOptimizationRow,
-  type WriteOffLedgerRow,
-} from './shared';
+} from './queries/financials';
+import type {
+  DashboardKpiMetrics,
+  InventoryStatusResponse,
+  DepartmentAllocationItem,
+  OverdueReturnRow,
+  PendingDisposalRow,
+  HighMaintenanceRow,
+  RecentActivity,
+  TopHighValueAssetRow,
+  SoftwareOptimizationRow,
+  WriteOffLedgerRow,
+} from '@/types/dashboard';
 
-export interface AdminDashboardBatchData {
+export interface GlobalAdminDashboardBatchData {
   kpiMetrics: DashboardKpiMetrics;
   inventoryStatus: InventoryStatusResponse;
   departmentAllocation: DepartmentAllocationItem[];
@@ -44,10 +48,10 @@ export interface AdminDashboardBatchData {
  *
  * Strictly locks entry point to GlobalAdmin.
  */
-export async function getAdminDashboardData(): Promise<AdminDashboardBatchData> {
+export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  assertAdmin(user);
+  requireAccess(user, isGlobalAdmin);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

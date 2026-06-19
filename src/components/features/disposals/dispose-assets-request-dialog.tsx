@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { AlertCircle, MonitorX } from 'lucide-react';
 
-import { createBulkDisposalRequests } from '@/actions/disposals';
+import { createDisposalRequest } from '@/actions/disposals/create-request';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,11 +23,7 @@ import {
 } from '@/components/ui/select';
 import { tiqriToast } from '@/components/shared/sonner';
 
-export type SelectedAssetLite = {
-  id: string;        
-  assetTag: string;  
-  assetName: string; 
-};
+import type { SelectedAssetLite } from '@/types/disposals';
 
 export function DisposeAssetsRequestDialog({
   open,
@@ -54,7 +50,7 @@ export function DisposeAssetsRequestDialog({
   const handleSubmit = () => {
     startTransition(async () => {
       try {
-        const result = await createBulkDisposalRequests({
+        const result = await createDisposalRequest({
           assetIds,
           reason,
           justification,

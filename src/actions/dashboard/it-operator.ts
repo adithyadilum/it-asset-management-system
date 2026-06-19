@@ -1,19 +1,21 @@
 'use server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
+import { requireAccess, isITOperator } from '@/lib/auth/roles';
+import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
-  assertAdminOrOperator,
-  getCachedDashboardKpiMetrics,
   getCachedInventoryStatus,
   getCachedDepartmentAllocation,
   getOverdueReturnsInternal,
   getHighMaintenanceAssetsInternal,
-  type DashboardKpiMetrics,
-  type InventoryStatusResponse,
-  type DepartmentAllocationItem,
-  type OverdueReturnRow,
-  type HighMaintenanceRow,
-} from './shared';
+} from './queries/inventory';
+import type {
+  DashboardKpiMetrics,
+  InventoryStatusResponse,
+  DepartmentAllocationItem,
+  OverdueReturnRow,
+  HighMaintenanceRow,
+} from '@/types/dashboard';
 
 export interface ITDashboardBatchData {
   kpiMetrics: DashboardKpiMetrics;
@@ -32,7 +34,7 @@ export interface ITDashboardBatchData {
 export async function getITDashboardData(): Promise<ITDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  assertAdminOrOperator(user);
+  requireAccess(user, isITOperator);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

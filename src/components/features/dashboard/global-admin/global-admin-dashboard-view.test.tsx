@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { AdminDashboardView } from './admin-dashboard-view';
+import { GlobalAdminDashboardView } from './global-admin-dashboard-view';
 
 vi.mock('server-only', () => ({}));
 vi.mock('next/navigation', () => ({
@@ -27,7 +27,7 @@ vi.mock('@/actions/assignments', () => ({
   sendAssignmentReminderAction: vi.fn().mockResolvedValue({ success: true })
 }));
 
-describe('AdminDashboardView', () => {
+describe('GlobalAdminDashboardView', () => {
   afterEach(async () => {
     // Flush microtasks to prevent React Fiber act() leaks
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -45,7 +45,7 @@ describe('AdminDashboardView', () => {
       highMaintenance: []
     };
     
-    render(<AdminDashboardView data={mockData as any} />);
+    render(<GlobalAdminDashboardView data={mockData as any} currencyCode="USD" exchangeRate={1.5} />);
     
     expect(screen.getByTestId('department-chart')).toBeInTheDocument();
     expect(screen.getByTestId('inventory-chart')).toBeInTheDocument();

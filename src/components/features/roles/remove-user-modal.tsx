@@ -1,20 +1,15 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Info, X } from "lucide-react"
 
 import { removeUserFromManagedRole } from "@/actions/roles"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import type { UserRole } from "@/types/auth"
-
-export interface SystemUser {
-  id: string
-  name: string
-  email: string
-  role: UserRole
-}
+import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
+import { cn, getInitials } from "@/lib/utils"
+import type { SystemUser } from "@/types/auth"
 
 interface RemoveUserModalProps {
   isOpen: boolean
@@ -24,24 +19,11 @@ interface RemoveUserModalProps {
   onRemoved?: () => void
 }
 
-const textXsRegularClass =
-  "font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) [font-style:var(--text-xs-regular-font-style)]"
-const textXsSemiBoldClass =
-  "font-text-xs-semi-bold text-(length:--text-xs-semi-bold-font-size) leading-(--text-xs-semi-bold-line-height) tracking-(--text-xs-semi-bold-letter-spacing) [font-style:var(--text-xs-semi-bold-font-style)]"
-const textSmRegularClass =
-  "font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]"
-const textSmMediumClass =
-  "font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]"
-const textSmSemiBoldClass =
-  "font-text-sm-semi-bold text-(length:--text-sm-semi-bold-font-size) leading-(--text-sm-semi-bold-line-height) tracking-(--text-sm-semi-bold-letter-spacing) [font-style:var(--text-sm-semi-bold-font-style)]"
-const textLgBoldClass =
-  "font-text-lg-bold text-(length:--text-lg-bold-font-size) leading-(--text-lg-bold-line-height) tracking-(--text-lg-bold-letter-spacing) [font-style:var(--text-lg-bold-font-style)]"
-
 export function RemoveUserModal({
   isOpen,
   onOpenChange,
   user,
-  targetRole = "IT Operations",
+  targetRole,
   onRemoved,
 }: RemoveUserModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -51,23 +33,17 @@ export function RemoveUserModal({
     if (!user) {
       return "?"
     }
-
-    return user.name
-      .split(" ")
-      .map((part) => part[0] ?? "")
-      .join("")
-      .slice(0, 2)
-      .toUpperCase()
+    return getInitials(user.name)
   }, [user])
 
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
-  if (!isOpen && prevIsOpen) {
-    setPrevIsOpen(false)
-    setIsSubmitting(false)
-    setError(null)
-  } else if (isOpen && !prevIsOpen) {
-    setPrevIsOpen(true)
-  }
+  useEffect(() => {
+    if (!isOpen) {
+      setTimeout(() => {
+        setIsSubmitting(false)
+        setError(null)
+      }, 0)
+    }
+  }, [isOpen])
 
   const handleRemove = async () => {
     if (!user) {
@@ -102,7 +78,7 @@ export function RemoveUserModal({
           <div className="mb-2 flex items-start justify-between">
             <div className="flex items-center gap-2">
               <Info className="mt-0.5 h-5 w-5 text-muted-foreground" />
-              <DialogTitle className={`${textLgBoldClass} text-foreground`}>
+              <DialogTitle className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, "text-foreground")}>
                 Remove User from {targetRole}
               </DialogTitle>
             </div>
@@ -118,35 +94,35 @@ export function RemoveUserModal({
             </Button>
           </div>
 
-          <DialogDescription className={`mb-6 ml-7 text-muted-foreground ${textSmRegularClass}`}>
+          <DialogDescription className={cn("mb-6 ml-7 text-muted-foreground", TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
             This user will lose all privileges associated with the {targetRole} role.
           </DialogDescription>
 
           <div className="mx-1 mb-6 flex items-center gap-3 rounded-lg border border-border bg-muted/80 p-3">
             <Avatar className="h-10 w-10 overflow-hidden rounded-full bg-muted">
-              <AvatarFallback className={`rounded-full bg-muted text-foreground ${textXsSemiBoldClass}`}>
+              <AvatarFallback className={cn("rounded-full bg-muted text-foreground", TYPOGRAPHY_CLASSNAMES.textXsMedium)}>
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="text-left">
-              <p className={`${textSmSemiBoldClass} text-foreground`}>{user?.name ?? "Unknown User"}</p>
-              <p className={`${textXsRegularClass} text-muted-foreground`}>{user?.email ?? ""}</p>
+              <p className={cn("text-foreground", TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>{user?.name ?? "Unknown User"}</p>
+              <p className={cn("text-muted-foreground", TYPOGRAPHY_CLASSNAMES.textXsRegular)}>{user?.email ?? ""}</p>
             </div>
           </div>
 
-          {error ? <p className={`mb-3 text-red-600 ${textSmMediumClass}`}>{error}</p> : null}
+          {error ? <p className={cn("mb-3 text-red-600", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>{error}</p> : null}
 
           <div className="flex justify-end gap-3 pt-2">
             <Button
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className={`px-6 hover:bg-muted ${textSmMediumClass}`}
+              className={cn("px-6 hover:bg-muted", TYPOGRAPHY_CLASSNAMES.textSmMedium)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
-              className={`bg-destructive px-6 text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90 ${textSmMediumClass}`}
+              className={cn("bg-destructive px-6 text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90", TYPOGRAPHY_CLASSNAMES.textSmMedium)}
               onClick={handleRemove}
               disabled={isSubmitting || !user}
             >

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { AlertCircle } from 'lucide-react'; 
 
-import { rejectDisposalRequest } from '@/actions/disposals';
+import { rejectDisposalRequest } from '@/actions/disposals/reject';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { tiqriToast } from '@/components/shared/sonner';
 
-import type { PendingDisposalRow } from './pending-disposals-grid';
+import type { PendingDisposalRow } from '@/types/disposals';
 
 interface RejectDisposalDialogProps {
   isOpen: boolean;

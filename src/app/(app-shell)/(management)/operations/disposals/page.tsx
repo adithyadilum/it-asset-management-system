@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { db } from '@/db';
 import { assetDisposals, assets, users, models, categories, assetDocuments } from '@/db/schema';
@@ -22,6 +23,9 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
     redirect('/403');
   }
+
+  const cookieStore = await cookies();
+  const preferredCurrency = cookieStore.get('preferred_currency')?.value || 'LKR';
 
   // Aliases for users table since we join it twice for requester and approver
   const requester = alias(users, 'requester');
@@ -142,6 +146,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
       historyPageSize={validPageSize}
       historySearchQuery={searchQuery}
       userRole={user.role}
+      preferredCurrency={preferredCurrency}
     />
   );
 }

@@ -21,7 +21,8 @@ describe('WriteOffsLedger', () => {
       disposalDate: new Date('2024-01-20T00:00:00Z'),
       originalPrice: 300,
       bookValue: 0,
-      salvageValue: 50,
+      estimatedSalvageValue: 30,
+      actualSalvageValue: 50,
       currencyCode: 'USD',
     },
   ];

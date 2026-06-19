@@ -77,14 +77,12 @@ vi.mock('@/lib/latency', () => ({
   logLatency: vi.fn(),
   logError: vi.fn(),
 }));
-import {
-  getDisposalReviewDetails,
-  getDisposalHistory,
-  createBulkDisposalRequests,
-  rejectDisposalRequest,
-  uploadDisposalReceipt,
-  executeAssetDisposal,
-} from '@/actions/disposals';
+import { getDisposalReviewDetails } from '@/actions/disposals/get-review-details';
+import { getDisposalHistory } from '@/actions/disposals/history';
+import { createDisposalRequest } from '@/actions/disposals/create-request';
+import { rejectDisposalRequest } from '@/actions/disposals/reject';
+import { uploadDisposalReceipt } from '@/actions/disposals/upload-receipt';
+import { executeAssetDisposal } from '@/actions/disposals/execute';
 
 const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -175,19 +173,19 @@ describe('getDisposalHistory', () => {
   });
 });
 
-describe('createBulkDisposalRequests', () => {
+describe('createDisposalRequest', () => {
   const validInput = { assetIds: [VALID_UUID], reason: 'EOL' };
   
   beforeEach(() => vi.clearAllMocks());
 
   it('throws UNAUTHENTICATED when user is not logged in', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(createBulkDisposalRequests(validInput)).rejects.toThrow('UNAUTHENTICATED');
+    await expect(createDisposalRequest(validInput)).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws FORBIDDEN for Employee', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    await expect(createBulkDisposalRequests(validInput)).rejects.toThrow('FORBIDDEN');
+    await expect(createDisposalRequest(validInput)).rejects.toThrow('FORBIDDEN');
   });
 
   it('allows ITOperator to create request', async () => {
@@ -196,20 +194,20 @@ describe('createBulkDisposalRequests', () => {
     mockDb.insert.mockReturnValue(chain([{ id: 1, assetId: VALID_UUID }]));
     mockDb.update.mockReturnValue(chain([{ id: VALID_UUID }]));
     
-    const result = await createBulkDisposalRequests(validInput);
+    const result = await createDisposalRequest(validInput);
     expect(result.success).toBe(true);
   });
 
   it('throws if no valid asset ids', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    await expect(createBulkDisposalRequests({ ...validInput, assetIds: [] })).rejects.toThrow('Select at least one asset');
+    await expect(createDisposalRequest({ ...validInput, assetIds: [] })).rejects.toThrow('Select at least one asset');
   });
 
   it('skips existing pending requests and throws if all are pending', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockDb.select.mockReturnValueOnce(chain([{ assetId: VALID_UUID }])); // existing
     
-    await expect(createBulkDisposalRequests(validInput)).rejects.toThrow('All selected assets already have a pending disposal request');
+    await expect(createDisposalRequest(validInput)).rejects.toThrow('All selected assets already have a pending disposal request');
   });
 
   it('inserts disposals, updates asset status, logs audit, and dispatches webhook', async () => {
@@ -218,7 +216,7 @@ describe('createBulkDisposalRequests', () => {
     mockDb.insert.mockReturnValue(chain([{ id: 1, assetId: VALID_UUID }]));
     mockDb.update.mockReturnValue(chain([{ id: VALID_UUID }]));
     
-    const result = await createBulkDisposalRequests(validInput);
+    const result = await createDisposalRequest(validInput);
     expect(result.success).toBe(true);
     expect(result.inserted).toBe(1);
     

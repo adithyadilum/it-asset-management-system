@@ -2,22 +2,26 @@
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
+import { requireAccess, isFinanceAuditor } from '@/lib/auth/roles';
+import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
-  assertAdminOrAuditor,
-  getCachedDashboardKpiMetrics,
   getCachedInventoryStatus,
   getCachedDepartmentAllocation,
+} from './queries/inventory';
+import { getRecentActivitiesInternal } from './queries/activities';
+import {
   getDashboardTopHighValueAssetsInternal,
   getDashboardSoftwareOptimizationInternal,
-  getRecentActivitiesInternal,
-  type DashboardKpiMetrics,
-  type InventoryStatusResponse,
-  type DepartmentAllocationItem,
-  type TopHighValueAssetRow,
-  type SoftwareOptimizationRow,
-  type RecentActivity,
-  type WriteOffLedgerRow,
-} from './shared';
+} from './queries/financials';
+import type {
+  DashboardKpiMetrics,
+  InventoryStatusResponse,
+  DepartmentAllocationItem,
+  TopHighValueAssetRow,
+  SoftwareOptimizationRow,
+  RecentActivity,
+  WriteOffLedgerRow,
+} from '@/types/dashboard';
 
 export interface FinanceDashboardBatchData {
   kpiMetrics: DashboardKpiMetrics;
@@ -38,7 +42,7 @@ export interface FinanceDashboardBatchData {
 export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  assertAdminOrAuditor(user);
+  requireAccess(user, isFinanceAuditor);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

@@ -32,7 +32,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
 
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
 
-  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]'];
+  const tableSkeletonColumnWidths = ['w-[14%]', 'w-[14%]', 'w-[14%]', 'w-[16%]', 'w-[14%]', 'w-[14%]', 'w-[14%]'];
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -109,7 +109,8 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       "Disposal Date",
       `Original Purchase Price (${currency})`,
       `Book Value at Time of Disposal (${currency})`,
-      `Salvage Value (${currency})`,
+      `Estimated Salvage Value (${currency})`,
+      `Actual Salvage Value (${currency})`,
     ];
 
     const csvRows = response.data.map((row) => [
@@ -118,7 +119,8 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       row.disposalDate ? format(new Date(row.disposalDate), "MM/dd/yyyy") : "N/A",
       convertCurrencyAmount(row.originalPrice, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
       convertCurrencyAmount(row.bookValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
-      convertCurrencyAmount(row.salvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.estimatedSalvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.actualSalvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
     ]);
 
     const csvContent = [
@@ -167,9 +169,14 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.bookValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
     {
-      accessorKey: "salvageValue",
-      header: "Salvage Value",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.salvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
+      accessorKey: "estimatedSalvageValue",
+      header: "Estimated Salvage Value",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.estimatedSalvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
+    },
+    {
+      accessorKey: "actualSalvageValue",
+      header: "Actual Salvage Value",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.actualSalvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
   ];
 

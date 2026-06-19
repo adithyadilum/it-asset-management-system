@@ -1,0 +1,313 @@
+'use server';
+
+import { eq, inArray } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+
+import { getAuthenticatedUser } from '@/actions/auth';
+import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
+import { db } from '@/db';
+import {
+  assetDisposals,
+  assets,
+  systemAuditLogs,
+  assetDocuments,
+} from '@/db/schema';
+import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
+import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
+import { executeDisposalSchema } from '@/lib/validations/disposals';
+import type { DisposalFormState } from '@/types/disposals';
+import { normalizeDisposalIds, normalizeAssetIds } from '@/actions/disposals/utils';
+
+export async function executeAssetDisposal(
+  _prevState: DisposalFormState,
+  formData: FormData
+): Promise<DisposalFormState> {
+  const actionTimer = startLatencyTimer();
+  const user = await getAuthenticatedUser();
+
+  if (!user) return { success: false, message: 'UNAUTHENTICATED' };
+  try {
+    requireAccess(user, isGlobalAdmin);
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Forbidden',
+    };
+  }
+
+  try {
+    // Parse and validate JSON payloads
+    let parsedDisposalIds: number[];
+    let parsedAssetIds: string[];
+    let parsedReceiptUrls: string[];
+
+    try {
+      parsedDisposalIds = JSON.parse(
+        String(formData.get('disposalIds') || '[]')
+      );
+      parsedAssetIds = JSON.parse(String(formData.get('assetIds') || '[]'));
+      parsedReceiptUrls = JSON.parse(
+        String(formData.get('receiptUrls') || '[]')
+      );
+    } catch {
+      return { success: false, message: 'Invalid payload format.' };
+    }
+
+    // Validate schema
+    const parsed = executeDisposalSchema.safeParse({
+      disposalIds: parsedDisposalIds,
+      assetIds: parsedAssetIds,
+      reason: formData.get('reason')?.toString() || '',
+      disposalDate: formData.get('disposalDate')?.toString() || undefined,
+      disposalMethod: formData.get('disposalMethod')?.toString() || '',
+      dataWiped: formData.get('dataWiped') === 'true',
+      tagsRemoved: formData.get('tagsRemoved') === 'true',
+      actualSalvageValue: formData.get('actualSalvageValue')?.toString() || undefined,
+      receiptUrls: parsedReceiptUrls,
+    });
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Validation failed.',
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const validData = parsed.data;
+
+    // Normalize and deduplicate
+    const normalizedDisposalIds = normalizeDisposalIds(validData.disposalIds);
+    const normalizedAssetIds = normalizeAssetIds(validData.assetIds);
+
+    if (normalizedDisposalIds.length === 0 || normalizedAssetIds.length === 0) {
+      return {
+        success: false,
+        message: 'No valid disposal or asset IDs provided.',
+      };
+    }
+
+    if (normalizedDisposalIds.length !== normalizedAssetIds.length) {
+      return {
+        success: false,
+        message: 'Disposal and asset ID counts do not match.',
+      };
+    }
+
+    const dbTimer = startLatencyTimer();
+
+    // Atomic transaction: verify, execute, audit
+    const result = await db.transaction(async (tx) => {
+      const allowedExecutionStatuses: readonly string[] = [
+        'Pending Approval',
+        'Approved',
+      ];
+
+      // 1. Fetch and verify all disposal records
+      const disposalRecords = await tx
+        .select({
+          disposalId: assetDisposals.id,
+          assetId: assetDisposals.assetId,
+          status: assetDisposals.status,
+        })
+        .from(assetDisposals)
+        .where(inArray(assetDisposals.id, normalizedDisposalIds));
+
+      if (disposalRecords.length !== normalizedDisposalIds.length) {
+        throw new Error('One or more disposal requests could not be found.');
+      }
+
+      // 2. Verify disposal status and asset ID mapping
+      const allEligible = disposalRecords.every((d) =>
+        allowedExecutionStatuses.includes(d.status)
+      );
+
+      if (!allEligible) {
+        throw new Error(
+          'One or more disposal requests are not in an eligible status.'
+        );
+      }
+
+      // Asset ID mapping verification
+      const disposalAssetIds = disposalRecords.map((d) => d.assetId);
+      const requestedAssetIdSet = new Set(normalizedAssetIds);
+
+      if (
+        disposalAssetIds.length !== normalizedAssetIds.length ||
+        !disposalAssetIds.every((id) => requestedAssetIdSet.has(id))
+      ) {
+        throw new Error(
+          'Submitted assets do not match the selected disposal requests.'
+        );
+      }
+
+      // 3. Fetch current asset data for audit
+      const currentAssets = await tx
+        .select({
+          id: assets.id,
+          status: assets.status,
+          isArchived: assets.isArchived,
+        })
+        .from(assets)
+        .where(inArray(assets.id, disposalAssetIds));
+
+      const assetStatusMap = new Map(
+        currentAssets.map((a) => [a.id, a.status])
+      );
+
+      // Get book value for the assets at the time of disposal
+      const bookValuesMap = new Map<string, number>();
+      for (const assetId of normalizedAssetIds) {
+        try {
+          const vitals = await getAssetFinancialVitals(assetId);
+          bookValuesMap.set(assetId, vitals.currentBookValue);
+        } catch {
+          bookValuesMap.set(assetId, 0);
+        }
+      }
+
+      const totalSalvage = validData.actualSalvageValue ?? 0;
+      const salvagePerAsset = normalizedAssetIds.length > 0 ? (totalSalvage / normalizedAssetIds.length) : 0;
+
+      // 4. Execute disposal: update disposal records individually
+      const updatedDisposalIds: number[] = [];
+      for (const record of disposalRecords) {
+        const bookValue = bookValuesMap.get(record.assetId) ?? 0;
+        const res = await tx
+          .update(assetDisposals)
+          .set({
+            status: 'Completed',
+            approvedById: user.id,
+            resolvedAt: validData.disposalDate
+              ? new Date(validData.disposalDate)
+              : new Date(),
+            reason: validData.reason,
+            actualSalvageValue: String(salvagePerAsset.toFixed(2)),
+            bookValueAtDisposal: String(bookValue.toFixed(2)),
+          })
+          .where(eq(assetDisposals.id, record.disposalId))
+          .returning({ disposalId: assetDisposals.id });
+
+        if (res.length > 0) {
+          updatedDisposalIds.push(res[0].disposalId);
+        }
+      }
+
+      if (updatedDisposalIds.length !== normalizedDisposalIds.length) {
+        throw new Error('Failed to update all disposal requests.');
+      }
+
+      // 5. Execute disposal: update asset statuses + SET is_archived = true
+      // ⭐ KEY UPDATE: Set is_archived = true when disposal is completed
+      const updatedAssets = await tx
+        .update(assets)
+        .set({
+          status: 'Disposed',
+          isArchived: true, // ⭐ Soft delete - archive the asset
+          updatedAt: new Date(),
+        })
+        .where(inArray(assets.id, normalizedAssetIds))
+        .returning({ assetId: assets.id });
+
+      if (updatedAssets.length !== normalizedAssetIds.length) {
+        throw new Error('Failed to update all assets.');
+      }
+
+      // 5b. Save uploaded disposal certificates/receipts
+      const documentEntries = normalizedAssetIds.flatMap((assetId) =>
+        validData.receiptUrls.map((url) => ({
+          assetId,
+          documentType: 'disposal-certificate',
+          fileUrl: url,
+          uploadedById: user.id,
+          uploadedAt: new Date(),
+        }))
+      );
+
+      if (documentEntries.length > 0) {
+        await tx.insert(assetDocuments).values(documentEntries);
+      }
+
+      // 6. Log comprehensive audit trail
+      const auditEntries = normalizedAssetIds.map((assetId) => ({
+        entityType: 'Asset' as const,
+        entityId: assetId,
+        actionType: 'ASSET_DISPOSED',
+        performedById: user.id,
+        oldValue: {
+          status: assetStatusMap.get(assetId) || 'Unknown',
+          isArchived: false, // Was active
+        },
+        newValue: {
+          status: 'Disposed',
+          isArchived: true, // ⭐ Now archived
+          disposalMethod: validData.disposalMethod,
+          disposalDate: validData.disposalDate || new Date().toISOString(),
+          dataWiped: validData.dataWiped,
+          tagsRemoved: validData.tagsRemoved,
+          receiptUrl: validData.receiptUrl,
+          reason: validData.reason,
+        },
+        performedAt: new Date(),
+      }));
+
+      await tx.insert(systemAuditLogs).values(auditEntries);
+
+      return {
+        disposedCount: updatedAssets.length,
+        disposalRecords,
+      };
+    });
+
+    logLatency({
+      scope: 'DB ACTION',
+      label: 'disposals.executeAssetDisposal',
+      startTime: dbTimer,
+    });
+
+    revalidatePath('/operations/disposals');
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/assets/software');
+
+    result.disposalRecords.forEach((disposal) => {
+      void dispatchWebhookEvent('disposal.approved', {
+        disposalId: disposal.disposalId,
+        assetId: disposal.assetId,
+        approvedById: user.id,
+        disposalMethod: validData.disposalMethod,
+      });
+    });
+
+    return {
+      success: true,
+      message: `${result.disposedCount} asset(s) disposed successfully.`,
+    };
+  } catch (error) {
+    logError({ scope: 'ACTION', label: 'disposals.executeAssetDisposal', error });
+    const KNOWN_EXECUTE_ERRORS = [
+      'One or more disposal requests are not in an eligible status.',
+      'Failed to update all disposal requests.',
+      'Failed to update all assets.',
+      'One or more disposal requests could not be found.',
+      'Submitted assets do not match the selected disposal requests.',
+    ];
+    const isKnown =
+      error instanceof Error && KNOWN_EXECUTE_ERRORS.includes(error.message);
+    return {
+      success: false,
+      message: isKnown && error instanceof Error
+        ? error.message
+        : 'Failed to execute asset disposal.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'disposals.executeAssetDisposal',
+      startTime: actionTimer,
+    });
+  }
+}

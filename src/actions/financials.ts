@@ -373,7 +373,8 @@ export async function getWriteOffsLedger(
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
         bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
-        salvageValue: assetDisposals.actualSalvageValue,
+        estimatedSalvageValue: assets.salvageValue,
+        actualSalvageValue: assetDisposals.actualSalvageValue,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
@@ -393,7 +394,8 @@ export async function getWriteOffsLedger(
       originalPrice: parseFloat(row.originalPrice?.toString() || '0'),
       currencyCode: row.currencyCode || 'LKR',
       bookValue: parseFloat(row.bookValueAtDisposal?.toString() || '0'),
-      salvageValue: parseFloat(row.salvageValue?.toString() || '0'),
+      estimatedSalvageValue: parseFloat(row.estimatedSalvageValue?.toString() || '0'),
+      actualSalvageValue: parseFloat(row.actualSalvageValue?.toString() || '0'),
     }));
 
     return {

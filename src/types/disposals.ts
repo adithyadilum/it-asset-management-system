@@ -15,6 +15,7 @@ export type DisposalReviewDetails = {
   dateCreated: string | null;
   purchaseDate: string | null; // ISO date string if present
   originalCost: number | null;
+  currencyCode?: string;
   currentBookValue?: number | null;
   warrantyStatus: 'Valid' | 'Expired' | 'Unknown';
 };
@@ -34,3 +35,32 @@ export type DisposalHistoryDetails = {
   status: string;
   documentUrls: string[];
 };
+
+export interface PendingDisposalRow {
+  id: number;
+  assetId: string;
+  assetTag: string;
+  assetName: string | null;
+  flaggedBy: string;
+  reason: string;
+  requestedAt: Date;
+}
+
+export interface HistoryDisposalRow {
+  id: number;
+  assetId: string;
+  assetTag: string;
+  category: string;
+  reason: string;
+  flaggedBy: string;
+  disposedBy: string | null;
+  disposalDate: Date | null;
+  status: string;
+  documentUrls: string[];
+}
+
+export type SelectedAssetLite = {
+  id: string;
+  assetTag: string;
+  assetName: string;
+};

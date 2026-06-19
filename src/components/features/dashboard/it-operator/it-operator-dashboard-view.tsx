@@ -5,29 +5,23 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { DataTable } from "@/components/shared/data-table"
 import { cn } from "@/lib/utils"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import { DisposeAssetsRequestDialog, type SelectedAssetLite } from "@/components/features/disposals/dispose-assets-request-dialog"
+import { DisposeAssetsRequestDialog } from "@/components/features/disposals/dispose-assets-request-dialog"
+import type { SelectedAssetLite } from "@/types/disposals"
 import { tiqriToast } from "@/components/shared/sonner"
 import { sendAssignmentReminderAction } from "@/actions/assignments"
 import { KpiMetricsRow } from "../shared/kpi-metrics-row"
 import { DepartmentAllocationChart } from "../shared/department-allocation-chart"
 import { InventoryStatusChart } from "../shared/inventory-status-chart"
-import { RecentActivitiesList } from "../shared/recent-activities-list"
 import { DataTablesContainer } from "../shared/data-tables-container"
-import { useOverdueColumns, usePendingDisposalColumns, useHighMaintenanceColumns } from "../shared/dashboard-table-columns"
-import type { AdminDashboardBatchData } from "@/actions/dashboard/admin"
-import type { OverdueReturnRow, HighMaintenanceRow } from "@/actions/dashboard/shared"
+import { useOverdueColumns, useHighMaintenanceColumns } from "../shared/dashboard-table-columns"
+import type { ITDashboardBatchData } from "@/actions/dashboard/it-operator"
+import type { OverdueReturnRow, HighMaintenanceRow } from "@/types/dashboard"
 
-interface AdminDashboardViewProps {
-  data: AdminDashboardBatchData
-  currencyCode?: string
-  exchangeRate?: number
+interface ITOperatorDashboardViewProps {
+  data: ITDashboardBatchData
 }
 
-export function AdminDashboardView({
-  data,
-  currencyCode = "LKR",
-  exchangeRate = 1,
-}: AdminDashboardViewProps) {
+export function ITOperatorDashboardView({ data }: ITOperatorDashboardViewProps) {
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<number[]>([])
@@ -58,7 +52,6 @@ export function AdminDashboardView({
   }
 
   const overdueColumns = useOverdueColumns("Send Reminder", handleSendReminder, sendingReminderIds)
-  const pendingColumns = usePendingDisposalColumns("GlobalAdmin")
   const lemonsColumns = useHighMaintenanceColumns(handleFlagClick)
 
   const tableProps = {
@@ -86,19 +79,6 @@ export function AdminDashboardView({
             {data.overdueReturns.length}
           </span>
         </TabsTrigger>
-        <TabsTrigger
-          value="pending"
-          className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
-        >
-          Pending Disposals
-          <span className={cn(
-            "text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors",
-            "group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground",
-            "group-data-[state=inactive]:bg-background group-data-[state=inactive]:text-primary border border-primary/30"
-          )}>
-            {data.pendingDisposals.length}
-          </span>
-        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="overdue">
@@ -109,17 +89,6 @@ export function AdminDashboardView({
           emptyState={{
             title: "No overdue returns",
             description: "All assets have been returned on time.",
-          }}
-        />
-      </TabsContent>
-      <TabsContent value="pending">
-        <DataTable
-          {...tableProps}
-          columns={pendingColumns}
-          data={data.pendingDisposals}
-          emptyState={{
-            title: "No pending disposals",
-            description: "There are no disposal requests awaiting review.",
           }}
         />
       </TabsContent>
@@ -148,25 +117,21 @@ export function AdminDashboardView({
   return (
     <div className="px-6 py-1 pb-5 flex flex-col gap-6">
       {/* KPIs */}
-      <KpiMetricsRow
-        metrics={data.kpiMetrics}
-        currencyCode={currencyCode}
-        exchangeRate={exchangeRate}
-      />
+      <KpiMetricsRow metrics={data.kpiMetrics} />
 
       {/* Charts Grid */}
-      <div className="grid gap-4 min-h-[280px] grid-cols-1 lg:grid-cols-3">
+      <div className="grid gap-4 min-h-[280px] grid-cols-1 lg:grid-cols-2">
         <DepartmentAllocationChart allocationData={data.departmentAllocation} />
         <InventoryStatusChart
           inventoryData={data.inventoryStatus.inventoryData}
           utilizationRate={data.inventoryStatus.utilizationRate}
         />
-        <RecentActivitiesList activities={data.recentActivities} />
       </div>
 
       {/* Tables Container */}
       <DataTablesContainer leftSection={leftTables} rightSection={rightTables} />
 
+      {/* Disposal dialogue */}
       <DisposeAssetsRequestDialog
         open={isFlagDialogOpen}
         onOpenChange={setIsFlagDialogOpen}

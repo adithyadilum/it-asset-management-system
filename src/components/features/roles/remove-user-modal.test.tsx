@@ -12,7 +12,8 @@ describe('RemoveUserModal', () => {
     id: 'user-1',
     name: 'John Doe',
     email: 'john@example.com',
-    role: 'ITOperator' as const
+    role: 'ITOperator' as const,
+    isActive: true
   };
 
   const mockOnOpenChange = vi.fn();

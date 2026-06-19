@@ -7,7 +7,6 @@ import { db } from '@/db';
 import { departments, users } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
 
-import { RolesAddUserButton } from '../../../../../components/features/roles/roles-add-user-button';
 import { RolesManagementTable } from '../../../../../components/features/roles/roles-management-table';
 
 const ROLE_CONFIG: Array<{
@@ -83,6 +82,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
         email: users.email,
         department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
         role: users.role,
+        isActive: users.isActive,
       })
       .from(users)
       .leftJoin(departments, eq(users.departmentId, departments.id))
@@ -167,18 +167,13 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
           <p className={`max-w-175 text-muted-foreground ${textSmRegularClass}`}>
             {selectedRoleInfo.description}
           </p>
-
-          <RolesAddUserButton
-            selectedRole={selectedRole}
-            mappedUsers={usersInRole}
-            currentUserId={currentUser.id}
-          />
         </div>
 
         <RolesManagementTable
           users={usersInRole}
           roleLabel={selectedRoleInfo.name}
           currentUserId={currentUser.id}
+          selectedRole={selectedRole}
         />
       </section>
     </div>
