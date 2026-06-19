@@ -129,6 +129,6 @@ export const AVAILABLE_STATUS_ICONS = [
 
 export const API_KEY_PREFIX = 'eitams_live_';
 
-// Rate limit: reads from env, falls back to 100 req/min
-export const API_RATE_LIMIT_MAX = Number(process.env.API_RATE_LIMIT_MAX) || 100;
-export const API_RATE_LIMIT_WINDOW_SECONDS = Number(process.env.API_RATE_LIMIT_WINDOW_SECONDS) || 60;
+// Rate limit: defaults to 100 req/min if not configured
+export const API_RATE_LIMIT_MAX = 100;
+export const API_RATE_LIMIT_WINDOW_SECONDS = 60;

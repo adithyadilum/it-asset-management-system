@@ -4,10 +4,10 @@ import { db } from '@/db';
 import { assetAssignments, linkedDevices, notificationQueue } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logAuditActionTx } from '@/lib/audit';
+import { serverEnv } from '@/lib/env';
 
 const MOBILE_SECRET = new TextEncoder().encode(
-  process.env.MOBILE_JWT_SECRET ||
-    'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET
 );
 
 /**

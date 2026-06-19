@@ -18,6 +18,37 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+interface DetailFieldProps {
+  label: string;
+  value: React.ReactNode;
+  isMono?: boolean;
+  isLong?: boolean;
+}
+
+function DetailField({ label, value, isMono = false, isLong = false }: DetailFieldProps) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between border-b border-border/40 py-2.5',
+        isLong && 'col-span-full'
+      )}
+    >
+      <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
+        {label}
+      </div>
+      <div
+        className={cn(
+          TYPOGRAPHY_CLASSNAMES.textSmMedium,
+          'text-right text-foreground',
+          isMono && 'font-mono tabular-nums tracking-wide'
+        )}
+      >
+        {(value !== null && value !== undefined && value !== '') ? value : '-'}
+      </div>
+    </div>
+  );
+}
+
 export interface PurchaseDetailsTabProps {
   currency: string;
   sourceCurrency?: string;
@@ -117,28 +148,6 @@ export function PurchaseDetailsTab({
     ? formatConvertedMoney(String(totalTCO))
     : undefined;
 
-  const renderField = (label: string, value: React.ReactNode, isMono: boolean = false, isLong: boolean = false) => (
-    <div
-      className={cn(
-        'flex items-center justify-between border-b border-border/40 py-2.5',
-        isLong && 'col-span-full'
-      )}
-    >
-      <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
-        {label}
-      </div>
-      <div
-        className={cn(
-          TYPOGRAPHY_CLASSNAMES.textSmMedium,
-          'text-right text-foreground',
-          isMono && 'font-mono tabular-nums tracking-wide'
-        )}
-      >
-        {(value !== null && value !== undefined && value !== '') ? value : '-'}
-      </div>
-    </div>
-  );
-
   return (
     <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
       {/* Currency Selector */}
@@ -159,18 +168,18 @@ export function PurchaseDetailsTab({
 
       {/* Purchase Information */}
       <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-        {renderField('Purchase Date', formatDate(purchaseDate))}
-        {renderField('Base Price', formattedBasePrice, true)}
-        {renderField('Shipping Cost', formattedShippingCost, true)}
-        {renderField('Tax', formattedTax, true)}
-        {renderField('Total Cost', formattedTotalCost, true)}
-        {!hideWarranty && renderField('Warranty Period', warrantyPeriod)}
+        <DetailField label="Purchase Date" value={formatDate(purchaseDate)} />
+        <DetailField label="Base Price" value={formattedBasePrice} isMono />
+        <DetailField label="Shipping Cost" value={formattedShippingCost} isMono />
+        <DetailField label="Tax" value={formattedTax} isMono />
+        <DetailField label="Total Cost" value={formattedTotalCost} isMono />
+        {!hideWarranty && <DetailField label="Warranty Period" value={warrantyPeriod} />}
         {formattedTotalRepairCost &&
-          renderField('Total Repair Cost', formattedTotalRepairCost, true)}
+          <DetailField label="Total Repair Cost" value={formattedTotalRepairCost} isMono />}
         {formattedBookValue &&
-          renderField('Current Book Value', formattedBookValue, true)}
+          <DetailField label="Current Book Value" value={formattedBookValue} isMono />}
         {formattedTCO &&
-          renderField('Total Cost of Ownership (TCO)', formattedTCO, true)}
+          <DetailField label="Total Cost of Ownership (TCO)" value={formattedTCO} isMono />}
 
         <div className="flex items-center justify-between border-b border-border/40 py-2.5">
           <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
@@ -199,13 +208,13 @@ export function PurchaseDetailsTab({
       <div className="flex w-full flex-col gap-6 rounded-lg border border-border bg-muted/30 p-6 shadow-sm">
         <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-foreground')}>Vendor Details</h3>
         <div className="grid grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-          {renderField('Vendor ID', vendor.vendorCode ?? vendor.vendorId, true)}
-          {renderField('Vendor Name', vendor.vendorName)}
-          {renderField('Contact Person', vendor.contactPerson)}
-          {renderField('Contact Number', vendor.contactNumber)}
-          {renderField('Email', vendor.email)}
-          {renderField('Website', vendor.website)}
-          {renderField('Address', vendor.address, false, true)}
+          <DetailField label="Vendor ID" value={vendor.vendorCode ?? vendor.vendorId} isMono />
+          <DetailField label="Vendor Name" value={vendor.vendorName} />
+          <DetailField label="Contact Person" value={vendor.contactPerson} />
+          <DetailField label="Contact Number" value={vendor.contactNumber} />
+          <DetailField label="Email" value={vendor.email} />
+          <DetailField label="Website" value={vendor.website} />
+          <DetailField label="Address" value={vendor.address} isLong />
         </div>
       </div>
     </div>

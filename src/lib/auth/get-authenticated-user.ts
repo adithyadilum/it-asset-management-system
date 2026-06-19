@@ -1,3 +1,4 @@
+import { serverEnv } from '@/lib/env';
 import * as jose from 'jose';
 import { db } from '@/db';
 import { users, linkedDevices } from '@/db/schema';
@@ -11,7 +12,7 @@ export type { AuthenticatedUser };
 export type { UserRole } from '@/types/auth';
 
 const MOBILE_SECRET = new TextEncoder().encode(
-  process.env.MOBILE_JWT_SECRET || 'default-fallback-mobile-jwt-secret-key-32bytes-minimum-length-for-hs256'
+  serverEnv.MOBILE_JWT_SECRET
 );
 
 export async function getAuthenticatedUserFromRequest(req?: Request): Promise<AuthenticatedUser | null> {

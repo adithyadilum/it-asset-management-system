@@ -1,4 +1,6 @@
 // src/app/api/qstash/teams/route.ts
+import { serverEnv } from '@/lib/env';
+import { clientEnv } from '@/lib/env.client';
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { db } from '@/db';
@@ -16,8 +18,8 @@ import {
 export async function POST(req: NextRequest) {
   try {
     // 1. Verify QStash signature
-    const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-    const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+    const currentKey = serverEnv.QSTASH_CURRENT_SIGNING_KEY;
+    const nextKey = serverEnv.QSTASH_NEXT_SIGNING_KEY;
 
     if (!currentKey || !nextKey) {
       console.error('QStash signing keys are missing in environment variables');
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = clientEnv.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const rawActionUrl = targetUrl
       ? targetUrl.startsWith('http')
         ? targetUrl

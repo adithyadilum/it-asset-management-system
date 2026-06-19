@@ -1,6 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
-import { API_RATE_LIMIT_MAX, API_RATE_LIMIT_WINDOW_SECONDS } from '@/lib/constants'
+import { serverEnv } from '@/lib/env'
 
 let ratelimitInstance: Ratelimit | null = null
 
@@ -9,7 +9,7 @@ export function getRateLimiter(): Ratelimit {
     const redis = Redis.fromEnv()
     ratelimitInstance = new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(API_RATE_LIMIT_MAX, `${API_RATE_LIMIT_WINDOW_SECONDS} s`),
+      limiter: Ratelimit.slidingWindow(serverEnv.API_RATE_LIMIT_MAX, `${serverEnv.API_RATE_LIMIT_WINDOW_SECONDS} s`),
       analytics: true,
       prefix: 'eitams:ratelimit',
     })
@@ -29,7 +29,7 @@ export async function applyRateLimit(identifier: string): Promise<RateLimitResul
   const res = await limiter.limit(identifier)
 
   // upstash result fields vary; normalize to our shape
-  const limit = Number(res.limit ?? API_RATE_LIMIT_MAX)
+  const limit = Number(res.limit ?? serverEnv.API_RATE_LIMIT_MAX)
   const remaining = Number(res.remaining ?? 0)
   const reset = Math.floor(Number(res.reset ?? 0) / 1000) // seconds
 

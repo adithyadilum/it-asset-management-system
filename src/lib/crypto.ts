@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { serverEnv } from '@/lib/env';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // Standard for GCM
@@ -8,7 +9,7 @@ let cachedKey: Buffer | null = null;
 function getKey(): Buffer {
   if (cachedKey) return cachedKey;
 
-  const secret = process.env.ENCRYPTION_SECRET;
+  const secret = serverEnv.ENCRYPTION_SECRET;
   if (!secret) {
     throw new Error('ENCRYPTION_SECRET not set in environment variables');
   }

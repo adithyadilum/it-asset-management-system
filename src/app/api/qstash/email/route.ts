@@ -1,4 +1,6 @@
 // src/app/api/qstash/email/route.ts
+import { serverEnv } from '@/lib/env';
+import { clientEnv } from '@/lib/env.client';
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { Resend } from 'resend';
@@ -24,8 +26,8 @@ import {
 export async function POST(req: NextRequest) {
   try {
     // 1. Verify QStash signature
-    const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
-    const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY;
+    const currentKey = serverEnv.QSTASH_CURRENT_SIGNING_KEY;
+    const nextKey = serverEnv.QSTASH_NEXT_SIGNING_KEY;
 
     if (!currentKey || !nextKey) {
       console.error('QStash signing keys are missing in environment variables');
@@ -171,7 +173,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = clientEnv.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const actionUrl = targetUrl
       ? targetUrl.startsWith('http')
         ? targetUrl
@@ -194,7 +196,7 @@ export async function POST(req: NextRequest) {
 
     const resend = new Resend(decryptedKey);
 
-    const fromEmail = process.env.RESEND_FROM || 'onboarding@resend.dev';
+    const fromEmail = serverEnv.RESEND_FROM || 'onboarding@resend.dev';
     // 7. Dispatch the Email with custom backoff retry loop
     await sendEmailWithRetry({
       resend,
@@ -241,7 +243,7 @@ function escapeHtml(unsafe: string): string {
  */
 function validateAndEscapeUrl(url: string): string {
   if (!url) return '';
-  const baseUrlStr = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrlStr = clientEnv.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   let cleanUrl = url;
 
   if (url.startsWith('http://') || url.startsWith('https://')) {

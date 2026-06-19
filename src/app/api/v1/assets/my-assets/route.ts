@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverEnv } from '@/lib/env';
 import * as jose from 'jose';
 import { db } from '@/db';
 import {
@@ -12,10 +13,7 @@ import {
 } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 
-if (!process.env.MOBILE_JWT_SECRET) {
-  throw new Error('MOBILE_JWT_SECRET environment variable is required');
-}
-const MOBILE_SECRET = new TextEncoder().encode(process.env.MOBILE_JWT_SECRET);
+const MOBILE_SECRET = new TextEncoder().encode(serverEnv.MOBILE_JWT_SECRET);
 
 /**
  * Maps a backend asset status string to the mobile enum value.

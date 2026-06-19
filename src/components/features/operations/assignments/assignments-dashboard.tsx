@@ -28,7 +28,7 @@ import { FilterBar, type AppliedFilter, type FilterFieldConfig } from "@/compone
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
 import { TabsContent } from "@/components/ui/tabs";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { RowSelectionState } from "@tanstack/react-table";
+import type { RowSelectionState, OnChangeFn } from "@tanstack/react-table";
 import type { AssignmentsDashboardData, AssignmentsDashboardRow } from "@/lib/data/operations-assignments-repo";
 
 // --- Types ---
@@ -81,6 +81,74 @@ function formatDate(date: Date | string | null | undefined) {
 }
 
 // --- Component ---
+
+interface AssignmentsTableProps {
+  rows: AssetAssignmentRow[];
+  columns: ColumnDef<AssetAssignmentRow>[];
+  selectionActions?: DataTableSelectionAction<AssetAssignmentRow>[];
+  showStatusColumn?: boolean;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  filterFieldConfigs: FilterFieldConfig[];
+  appliedFilters: AppliedFilter[];
+  onApplyFilter: (filter: AppliedFilter) => void;
+  onClearFilter: (field: string) => void;
+  onClearAllFilters: () => void;
+  onRowClick: (row: AssetAssignmentRow, rowIndex: number) => void;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
+  disableSelectionHeader?: boolean;
+}
+
+function AssignmentsTable({
+  rows,
+  columns,
+  selectionActions,
+  showStatusColumn = false,
+  searchValue,
+  onSearchChange,
+  filterFieldConfigs,
+  appliedFilters,
+  onApplyFilter,
+  onClearFilter,
+  onClearAllFilters,
+  onRowClick,
+  rowSelection,
+  onRowSelectionChange,
+  disableSelectionHeader = false,
+}: AssignmentsTableProps) {
+  const tableColumns = showStatusColumn
+    ? columns
+    : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
+
+  return (
+    <div className="flex flex-col gap-4 flex-1 overflow-hidden min-h-0 mt-1">
+      <FilterBar
+        searchQuery={searchValue}
+        onSearchChange={onSearchChange}
+        searchPlaceholder="Search assets..."
+        fields={filterFieldConfigs}
+        appliedFilters={appliedFilters}
+        onApplyFilter={onApplyFilter}
+        onClearFilter={onClearFilter}
+        onClearAllFilters={onClearAllFilters}
+      />
+
+      <DataTable<AssetAssignmentRow, unknown>
+        columns={tableColumns}
+        data={rows}
+        onRowClick={onRowClick}
+        initialPageSize={10}
+        className="flex-1 min-h-0 rounded-lg border border-border"
+        selectionActions={selectionActions}
+        selectionLabel={(count) => `${count} Assets Selected`}
+        rowSelection={rowSelection}
+        onRowSelectionChange={onRowSelectionChange}
+        disableSelectionHeader={disableSelectionHeader}
+      />
+    </div>
+  );
+}
 
 export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
   const router = useRouter();
@@ -531,46 +599,6 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     }
   };
 
-  const renderTable = (
-    rows: AssetAssignmentRow[],
-    actions?: DataTableSelectionAction<AssetAssignmentRow>[],
-    showStatusColumn = false,
-    customRowClick?: (row: AssetAssignmentRow, rowIndex: number) => void,
-    disableSelectionHeader = false
-  ) => {
-    const tableColumns = showStatusColumn
-      ? columns
-      : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
-
-    return (
-      <div className="flex flex-col gap-4 flex-1 overflow-hidden min-h-0 mt-1">
-        <FilterBar
-          searchQuery={searchValue}
-          onSearchChange={setSearchValue}
-          searchPlaceholder="Search assets..."
-          fields={filterFieldConfigs}
-          appliedFilters={appliedFilters}
-          onApplyFilter={applyFilter}
-          onClearFilter={clearFilter}
-          onClearAllFilters={clearAllFilters}
-        />
-
-        <DataTable<AssetAssignmentRow, unknown>
-          columns={tableColumns}
-          data={rows}
-          onRowClick={customRowClick ?? handleRowClick}
-          initialPageSize={10}
-          className="flex-1 min-h-0 rounded-lg border border-border"
-          selectionActions={actions}
-          selectionLabel={(count) => `${count} Assets Selected`}
-          rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
-          disableSelectionHeader={disableSelectionHeader}
-        />
-      </div>
-    );
-  };
-
   return (
     <div className="flex h-full w-full overflow-hidden bg-muted">
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
@@ -594,15 +622,58 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
               containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
             >
                 <TabsContent value="available-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
-                  {renderTable(filteredAvailableRows, selectionActionsAvailable, false)}
+                  <AssignmentsTable
+                    rows={filteredAvailableRows}
+                    columns={columns}
+                    selectionActions={selectionActionsAvailable}
+                    searchValue={searchValue}
+                    onSearchChange={setSearchValue}
+                    filterFieldConfigs={filterFieldConfigs}
+                    appliedFilters={appliedFilters}
+                    onApplyFilter={applyFilter}
+                    onClearFilter={clearFilter}
+                    onClearAllFilters={clearAllFilters}
+                    onRowClick={handleRowClick}
+                    rowSelection={rowSelection}
+                    onRowSelectionChange={setRowSelection}
+                  />
                 </TabsContent>
 
                 <TabsContent value="assigned-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
-                  {renderTable(filteredAssignedRows, selectionActionsAssigned, true)}
+                  <AssignmentsTable
+                    rows={filteredAssignedRows}
+                    columns={columns}
+                    selectionActions={selectionActionsAssigned}
+                    showStatusColumn
+                    searchValue={searchValue}
+                    onSearchChange={setSearchValue}
+                    filterFieldConfigs={filterFieldConfigs}
+                    appliedFilters={appliedFilters}
+                    onApplyFilter={applyFilter}
+                    onClearFilter={clearFilter}
+                    onClearAllFilters={clearAllFilters}
+                    onRowClick={handleRowClick}
+                    rowSelection={rowSelection}
+                    onRowSelectionChange={setRowSelection}
+                  />
                 </TabsContent>
 
                 <TabsContent value="returned-assets" className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden outline-none data-[state=active]:flex data-[state=inactive]:hidden">
-                {renderTable(filteredReturnedRows, undefined, false, handleReturnedAssetClick, true)}
+                <AssignmentsTable
+                    rows={filteredReturnedRows}
+                    columns={columns}
+                    searchValue={searchValue}
+                    onSearchChange={setSearchValue}
+                    filterFieldConfigs={filterFieldConfigs}
+                    appliedFilters={appliedFilters}
+                    onApplyFilter={applyFilter}
+                    onClearFilter={clearFilter}
+                    onClearAllFilters={clearAllFilters}
+                    onRowClick={handleReturnedAssetClick}
+                    rowSelection={rowSelection}
+                    onRowSelectionChange={setRowSelection}
+                    disableSelectionHeader
+                  />
               </TabsContent>
             </ModuleNavigationTabs>
           </div>

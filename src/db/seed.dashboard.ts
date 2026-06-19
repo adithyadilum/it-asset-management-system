@@ -11,6 +11,7 @@
 import * as dotenv from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
+import { serverEnv } from '../lib/env';
 import { eq, and, isNull } from 'drizzle-orm';
 import {
   assetAssignments,
@@ -27,7 +28,7 @@ async function first<T>(query: Promise<T[]>): Promise<T | null> {
 }
 
 async function seedDashboard() {
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = serverEnv.DATABASE_URL;
   if (!databaseUrl) throw new Error('DATABASE_URL is missing in .env.local');
 
   const db = drizzle(neon(databaseUrl));

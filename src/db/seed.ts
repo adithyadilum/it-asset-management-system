@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
+import { serverEnv } from '../lib/env';
 
 import { seedAssets } from './seed.assets';
 
@@ -31,7 +32,7 @@ async function enableAuditImmutabilityTrigger(db: Db) {
 }
 
 async function seed() {
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = serverEnv.DATABASE_URL;
 
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is required in .env.local');
