@@ -99,7 +99,7 @@ export function RejectionDialog({
               </div>
               <div className="space-y-1">
                 <DialogTitle className="text-lg font-semibold text-foreground">
-                  Report Issue / Did Not Receive
+                  Report Issue
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground">
                   Use this form if the asset was not received or there is a blocking issue with the assignment.
