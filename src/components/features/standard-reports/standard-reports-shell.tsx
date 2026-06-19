@@ -23,68 +23,24 @@ interface StandardReportsShellProps {
   generatedBy: string;
 }
 
+import { useReportData } from './use-report-data';
+
 export function StandardReportsShell({ filterOptions, templates, generatedBy }: StandardReportsShellProps) {
   const router = useRouter();
 
   const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
   const [resetKey, setResetKey] = useState(0);
   const [showDataGrid, setShowDataGrid] = useState(false);
-  const [previewData, setPreviewData] = useState<ReportPreviewRow[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { previewData, pageCount, isLoading, errorMessage, loadPreview, clearData, setErrorMessage } = useReportData();
 
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [templateName, setTemplateName] = useState<string | undefined>(undefined);
   const [templateDescription, setTemplateDescription] = useState<string | undefined>(undefined);
-  const [pageCount, setPageCount] = useState<number>(1);
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 16,
   });
-
-  // Fetch report data using the current filter state
-  // loadPreview requires an explicit pagination context to avoid
-  // triggering server actions during render (see useEffect below).
-  const loadPreview = useCallback(
-    async (filters: FilterState, pageCtx: PaginationState) => {
-      // debug: log when fetching preview
-      console.debug('loadPreview called', { filters, pageCtx });
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      const pIndex = pageCtx?.pageIndex ?? 0;
-      const pSize = pageCtx?.pageSize ?? 16;
-
-      try {
-        const result = await fetchReportPreview({
-          source: filters.source,
-          assetType: filters.assetType,
-          category: filters.category,
-          location: filters.location,
-          status: filters.status,
-          masterDataType: filters.masterDataType,
-          dateFrom: filters.dateFrom,
-          dateTo: filters.dateTo,
-          page: pIndex,
-          pageSize: pSize,
-        });
-        setPreviewData(result.data);
-        setPageCount(result.pageCount);
-        setShowDataGrid(true);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to fetch report preview';
-        setErrorMessage(message);
-        console.error('Failed to fetch report preview:', error);
-        setPreviewData([]);
-        setShowDataGrid(true);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
 
   // Called when a template card's "Preview report" button is clicked
   const handleTemplatePreview = useCallback(
@@ -128,9 +84,8 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
     setResetKey((prev) => prev + 1);
     setPagination({ pageIndex: 0, pageSize: 16 });
     setShowDataGrid(false);
-    setPreviewData([]);
-    setErrorMessage(null);
-  }, []);
+    clearData();
+  }, [clearData]);
 
   // Called when any individual filter changes
   const handleFilterChange = useCallback(
