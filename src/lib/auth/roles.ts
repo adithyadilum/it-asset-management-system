@@ -34,7 +34,7 @@ export function isEmployee(role: UserRole): boolean {
  * Returns true if the user is a privileged member (Admin, IT, Finance) and NOT a standard Employee.
  */
 export function isPrivilegedUser(role: UserRole): boolean {
-  return role !== 'Employee';
+  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinanceAuditor';
 }
 
 /**
