@@ -61,7 +61,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start text-sm leading-5">
-      <span className={`w-40 ${bold ? 'font-semibold text-foreground' : 'font-semibold text-foreground'}`}>
+      <span className="w-40 font-semibold text-foreground">
         {label}:
       </span>
       <span className={`flex-1 ${bold ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground'}`}>
@@ -108,7 +108,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
     },
     {
       id: 'approve',
-      label: 'Approve',
+      label: props.isLoading ? 'Processing...' : 'Approve',
       variant: 'destructive',
       onClick: props.onApprove,
       disabled: props.isLoading,
