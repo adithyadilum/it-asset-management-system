@@ -116,16 +116,20 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
           nbv: sql<number>`
             SUM(
               CASE WHEN ${assets.status} != 'Disposed' THEN
-                GREATEST(0,
-                  ${assetPurchases.totalCost}::numeric - (
-                    ${assetPurchases.totalCost}::numeric
-                    / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
-                    * GREATEST(0,
-                       EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
-                       + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
+                CASE WHEN ${assetPurchases.purchaseDate} IS NULL THEN
+                  COALESCE(${assetPurchases.totalCost}::numeric, 0)
+                ELSE
+                  GREATEST(0,
+                    ${assetPurchases.totalCost}::numeric - (
+                      ${assetPurchases.totalCost}::numeric
+                      / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
+                      * GREATEST(0,
+                         EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
+                         + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
+                      )
                     )
                   )
-                )
+                END
               ELSE 0 END
             )
           `,

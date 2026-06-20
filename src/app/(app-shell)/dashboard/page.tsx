@@ -33,19 +33,21 @@ export default async function DashboardPage() {
     const cookieStore = await cookies();
     const currencyCode = cookieStore.get('preferred_currency')?.value || 'LKR';
     const apiRates = (await fetchLiveExchangeRates()) || undefined;
-    const usdToTargetRate = convertCurrencyAmount(1, 'USD', currencyCode, apiRates);
+    // DB values are stored in LKR. Compute a LKR→selectedCurrency multiplier so
+    // the KPI component only needs to multiply raw values by this rate.
+    const lkrToTargetRate = convertCurrencyAmount(1, 'LKR', currencyCode, apiRates);
 
     let dashboardView: React.ReactNode = null
 
     if (userRole === 'GlobalAdmin') {
         const data = await getGlobalAdminDashboardData()
-        dashboardView = <GlobalAdminDashboardView data={data} currencyCode={currencyCode} exchangeRate={usdToTargetRate} />
+        dashboardView = <GlobalAdminDashboardView data={data} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} />
     } else if (userRole === 'ITOperator') {
         const itData = await getITDashboardData()
         dashboardView = <ITOperatorDashboardView data={itData} />
     } else if (userRole === 'FinanceAuditor') {
         const financeData = await getFinanceDashboardData()
-        dashboardView = <FinanceAuditorDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={usdToTargetRate} apiRates={apiRates} />
+        dashboardView = <FinanceAuditorDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} apiRates={apiRates} />
     } else {
         dashboardView = (
             <div className="px-6 py-8 text-center text-muted-foreground text-sm">
