@@ -108,7 +108,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
     },
     {
       id: 'approve',
-      label: 'Initiate Disposal',
+      label: 'Approve',
       variant: 'destructive',
       onClick: props.onApprove,
       disabled: props.isLoading,

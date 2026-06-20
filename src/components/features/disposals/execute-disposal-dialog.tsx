@@ -91,7 +91,6 @@ export function ExecuteDisposalDialog({
     method !== '' &&
     dataWiped &&
     tagsRemoved &&
-    receiptUrls.length > 0 &&
     confirmText.trim() === expectedConfirmText.trim();
 
   const handleRemoveReceipt = (indexToRemove: number) => {
@@ -271,7 +270,7 @@ export function ExecuteDisposalDialog({
                   className="mt-0.5 border-primary data-[state=checked]:bg-primary"
                 />
                 <Label htmlFor="data-wipe" className="cursor-pointer text-sm font-medium text-foreground">
-                  Data wiped and factory reset confirmed.
+                  Data wiped and factory reset confirmed. <span className="text-destructive">*</span>
                 </Label>
               </div>
               <div className="flex items-start gap-3">
@@ -282,14 +281,14 @@ export function ExecuteDisposalDialog({
                   className="mt-0.5 border-primary data-[state=checked]:bg-primary"
                 />
                 <Label htmlFor="tags-removed" className="cursor-pointer text-sm font-medium text-foreground">
-                  All physical TIQRI asset tags removed.
+                  All physical TIQRI asset tags removed. <span className="text-destructive">*</span>
                 </Label>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
               <Label className="text-sm font-medium text-foreground">
-                {isBulk ? "Upload Certificates or Receipts" : "Upload E-Waste Certificate or Receipt"} <span className="text-destructive">*</span>
+                {isBulk ? "Upload Certificates or Receipts" : "Upload E-Waste Certificate or Receipt"} <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
               </Label>
               
               <FileUploadZone
@@ -377,7 +376,7 @@ export function ExecuteDisposalDialog({
             onClick={handleExecute}
             className="h-10 px-6 font-semibold shadow-md transition-all active:scale-95 disabled:opacity-50"
           >
-            {isPending ? 'Processing...' : (isBulk ? 'Confirm Bulk Disposal' : 'Confirm Disposal')}
+            {isPending ? 'Processing...' : (isBulk ? 'Execute Bulk Disposal' : 'Execute Disposal')}
           </Button>
         </div>
       </DialogContent>
