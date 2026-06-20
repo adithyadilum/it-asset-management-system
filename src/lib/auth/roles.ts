@@ -30,12 +30,6 @@ export function isEmployee(role: UserRole): boolean {
   return role === 'Employee';
 }
 
-/**
- * Returns true if the user is a privileged member (Admin, IT, Finance) and NOT a standard Employee.
- */
-export function isPrivilegedUser(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinanceAuditor';
-}
 
 /**
  * Returns true if the user role is authorized to view the asset registry.

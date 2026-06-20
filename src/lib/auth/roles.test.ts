@@ -5,7 +5,6 @@ import {
   isITOperator,
   isFinanceAuditor,
   isEmployee,
-  isPrivilegedUser,
   canViewAssetRegistry,
   canManageAssets,
   canAccessFinancials,
@@ -50,17 +49,6 @@ describe('isEmployee', () => {
   });
 });
 
-describe('isPrivilegedUser', () => {
-  it('returns true for GlobalAdmin, ITOperator, and FinanceAuditor', () => {
-    expect(isPrivilegedUser('GlobalAdmin')).toBe(true);
-    expect(isPrivilegedUser('ITOperator')).toBe(true);
-    expect(isPrivilegedUser('FinanceAuditor')).toBe(true);
-  });
-
-  it('returns false for Employee', () => {
-    expect(isPrivilegedUser('Employee')).toBe(false);
-  });
-});
 
 describe('canViewAssetRegistry', () => {
   it('allows GlobalAdmin, ITOperator, and FinanceAuditor', () => {
@@ -117,7 +105,6 @@ describe('exhaustive role coverage', () => {
       isITOperator,
       isFinanceAuditor,
       isEmployee,
-      isPrivilegedUser,
       canViewAssetRegistry,
       canManageAssets,
       canAccessFinancials,
