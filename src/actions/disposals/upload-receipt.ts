@@ -1,7 +1,7 @@
 'use server';
 
 import { getAuthenticatedUser } from '@/actions/auth';
-import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
+import { requireAccess, canManageAssets } from '@/lib/auth/roles';
 import { uploadFileToStorage } from '@/lib/storage';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 
@@ -11,7 +11,7 @@ export async function uploadDisposalReceipt(formData: FormData) {
 
   if (!user) return { success: false, message: 'UNAUTHENTICATED' };
   try {
-    requireAccess(user, isGlobalAdmin);
+    requireAccess(user, canManageAssets);
   } catch (error) {
     return {
       success: false,
