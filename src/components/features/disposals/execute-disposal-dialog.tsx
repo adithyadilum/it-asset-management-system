@@ -173,10 +173,10 @@ export function ExecuteDisposalDialog({
             
             {isBulk ? (
               <div className="flex flex-col rounded-lg border border-border/50 bg-muted/40 p-4 shadow-sm">
-                <div className="flex flex-col gap-3">
+                <div className="max-h-48 overflow-y-auto flex flex-col gap-3">
                   {selectedAssets.map((row) => (
-                    <div 
-                      key={row.id} 
+                    <div
+                      key={row.id}
                       className="grid grid-cols-[120px_1fr] gap-4 border-b border-border/50 pb-3 last:border-0 last:pb-0 text-[14px] text-foreground"
                     >
                       <span className="font-medium text-muted-foreground">{row.assetTag}</span>
@@ -300,38 +300,35 @@ export function ExecuteDisposalDialog({
                 subLabel="Supports .PDF, .JPG, .PNG up to 4.5MB. You can upload multiple."
               />
               
-              {receiptUrls.length > 0 && (
-  <div className="rounded-md bg-muted/40 p-3">
-    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
-      Attached Files ({receiptUrls.length})
-    </span>
-    <div className="flex flex-col gap-2">
-      {receiptUrls.map((url, idx) => {
-        const fileName = url.split('/').pop() || `File ${idx + 1}`;
-        return (
-          <div key={idx} className="flex items-start justify-between gap-2 text-sm text-foreground bg-background border border-border/50 p-2 rounded-md">
-            {/* CHANGED: items-center to items-start, removed overflow-hidden */}
-            <div className="flex items-start gap-2">
-              {/* CHANGED: Added mt-0.5 so the icon aligns with the first line of text */}
-              <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
-              {/* CHANGED: Replaced 'truncate' with 'break-all' */}
-              <span className="break-all">{fileName}</span>
-            </div>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
-              onClick={() => handleRemoveReceipt(idx)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
+            {receiptUrls.length > 0 && (
+              <div className="rounded-md bg-muted/40 p-3">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+                  Attached Files ({receiptUrls.length})
+                </span>
+                <div className="flex flex-col gap-2">
+                  {receiptUrls.map((url, idx) => {
+                    const fileName = url.split('/').pop() || `File ${idx + 1}`;
+                    return (
+                      <div key={idx} className="flex items-start justify-between gap-2 text-sm text-foreground bg-background border border-border/50 p-2 rounded-md">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+                          <span className="break-all">{fileName}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => handleRemoveReceipt(idx)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             </div>
 
             <div className="mt-2 flex flex-col gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
@@ -344,7 +341,7 @@ export function ExecuteDisposalDialog({
               </label>
               <Input
                 value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
+                onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
                 placeholder={expectedConfirmText}
                 className="h-10 border-destructive/30 bg-background uppercase"
               />
