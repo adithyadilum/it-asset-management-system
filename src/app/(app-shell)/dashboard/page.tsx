@@ -40,14 +40,41 @@ export default async function DashboardPage() {
     let dashboardView: React.ReactNode = null
 
     if (userRole === 'GlobalAdmin') {
-        const data = await getGlobalAdminDashboardData()
-        dashboardView = <GlobalAdminDashboardView data={data} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} />
+        try {
+            const data = await getGlobalAdminDashboardData()
+            dashboardView = <GlobalAdminDashboardView data={data} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} />
+        } catch (error) {
+            console.error('[Dashboard] GlobalAdmin data fetch failed:', error)
+            dashboardView = (
+                <div className="mx-6 mt-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    Failed to load dashboard data. Please refresh the page or contact support if the issue persists.
+                </div>
+            )
+        }
     } else if (userRole === 'ITOperator') {
-        const itData = await getITDashboardData()
-        dashboardView = <ITOperatorDashboardView data={itData} />
+        try {
+            const itData = await getITDashboardData()
+            dashboardView = <ITOperatorDashboardView data={itData} />
+        } catch (error) {
+            console.error('[Dashboard] ITOperator data fetch failed:', error)
+            dashboardView = (
+                <div className="mx-6 mt-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    Failed to load dashboard data. Please refresh the page or contact support if the issue persists.
+                </div>
+            )
+        }
     } else if (userRole === 'FinanceAuditor') {
-        const financeData = await getFinanceDashboardData()
-        dashboardView = <FinanceAuditorDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} apiRates={apiRates} />
+        try {
+            const financeData = await getFinanceDashboardData()
+            dashboardView = <FinanceAuditorDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} apiRates={apiRates} />
+        } catch (error) {
+            console.error('[Dashboard] FinanceAuditor data fetch failed:', error)
+            dashboardView = (
+                <div className="mx-6 mt-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    Failed to load dashboard data. Please refresh the page or contact support if the issue persists.
+                </div>
+            )
+        }
     } else {
         dashboardView = (
             <div className="px-6 py-8 text-center text-muted-foreground text-sm">
