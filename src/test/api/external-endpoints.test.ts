@@ -55,8 +55,11 @@ vi.mock('@/lib/webhooks/dispatcher', () => ({
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn(() => Promise.resolve({ USD: 0.003 })),
   convertCurrencyAmount: vi.fn(() => 300),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn(() => Promise.resolve({ USD: 0.003 })),
 }));
 
 // Generates a mock select chain that works with await regardless of the last method called (thenable)

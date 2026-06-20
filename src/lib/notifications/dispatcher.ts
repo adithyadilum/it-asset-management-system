@@ -1,4 +1,6 @@
 // src/lib/notifications/dispatcher.ts
+import { serverEnv } from '@/lib/env';
+import { clientEnv } from '@/lib/env.client';
 import { db } from '@/db';
 import {
   appNotifications,
@@ -14,7 +16,7 @@ let qstashClient: Client | null = null;
 
 function getQStashClient() {
   if (qstashClient) return qstashClient;
-  const token = process.env.QSTASH_TOKEN;
+  const token = serverEnv.QSTASH_TOKEN;
   if (!token) {
     console.warn(
       'QSTASH_TOKEN is not configured. QStash queueing will be unavailable.'
@@ -115,7 +117,7 @@ export async function dispatchAlert(payload: NotificationPayload) {
     }
 
     // Determine the base URL for route handlers
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = clientEnv.NEXT_PUBLIC_APP_URL;
     const qstash = getQStashClient();
 
     // 4. Dispatch Email channel (QStash queueing)

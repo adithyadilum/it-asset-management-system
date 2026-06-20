@@ -133,13 +133,15 @@ describe('Financials Actions', () => {
         originalPrice: '2000',
         currencyCode: 'USD',
         bookValueAtDisposal: '500',
-        salvageValue: '100',
+        estimatedSalvageValue: '80',
+        actualSalvageValue: '100',
       }]));
 
       const result = await getWriteOffsLedger();
       
       expect(result.data.length).toBe(1);
-      expect(result.data[0].salvageValue).toBe(100);
+      expect(result.data[0].estimatedSalvageValue).toBe(80);
+      expect(result.data[0].actualSalvageValue).toBe(100);
       expect(result.data[0].bookValue).toBe(500);
     });
   });

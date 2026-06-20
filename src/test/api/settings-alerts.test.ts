@@ -49,6 +49,11 @@ vi.mock('@/db', () => ({
     update: vi.fn(() => ({
       set: mockSet,
     })),
+    insert: vi.fn(() => ({
+      values: vi.fn(() => ({
+        returning: mockReturning,
+      })),
+    })),
   },
 }));
 
@@ -93,6 +98,7 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
         { id: 2, ruleKey: 'RETURN_OVERDUE', isEnabled: false },
       ];
       mockOrderBy.mockResolvedValue(mockRules);
+      mockReturning.mockResolvedValue([]);
 
       const response = await getHandler();
 

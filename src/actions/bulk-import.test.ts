@@ -13,8 +13,11 @@ vi.mock('@/actions/auth', () => ({
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
   convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
 }));
 
 const { mockDb, chain } = vi.hoisted(() => {

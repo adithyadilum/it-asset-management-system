@@ -425,6 +425,10 @@ export async function resolveIssueInternally(
         throw new Error(`Asset with ID ${ticket.assetId} not found`);
       const currentAsset = currentAssetResult[0];
 
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
+
       const now = new Date();
 
       const updatedAssets = await tx
@@ -550,6 +554,10 @@ export async function initiateVendorRepair(
       if (currentAssetResult.length === 0)
         throw new Error(`Asset ${parsed.data.assetId} not found`);
       const currentAsset = currentAssetResult[0];
+
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
 
       const vendorResult = await tx
         .select()
@@ -712,6 +720,10 @@ export async function completeRepairTicket(
         throw new Error(`Asset ${assetId} not found`);
       const currentAsset = currentAssetResult[0];
 
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
+
       const now = new Date();
 
       const updatedTickets = await tx
@@ -856,6 +868,10 @@ export async function reportDefectiveFromPanel(
       if (currentAssetResult.length === 0)
         throw new Error(`Asset ${parsed.data.assetId} not found`);
       const currentAsset = currentAssetResult[0];
+
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
 
       // Verify vendor exists
       const vendorResult = await tx

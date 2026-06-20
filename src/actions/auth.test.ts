@@ -18,6 +18,17 @@ vi.mock('@/lib/audit', () => ({
   logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
 }));
 
+vi.mock('@/lib/env', () => ({
+  serverEnv: {
+    get KEYCLOAK_ISSUER() {
+      return process.env.KEYCLOAK_ISSUER;
+    },
+    get NEXTAUTH_URL() {
+      return process.env.NEXTAUTH_URL;
+    },
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Import under test (after mocks are wired)
 // ---------------------------------------------------------------------------

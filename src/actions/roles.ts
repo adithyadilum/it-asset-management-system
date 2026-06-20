@@ -6,37 +6,19 @@ import { eq, ilike, or, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { logAuditAction } from '@/lib/audit';
+import { logAuditActionTx } from '@/lib/audit';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { getAuthenticatedUser } from '@/actions/auth';
-
-type UserRole = typeof users.$inferSelect.role;
+import type { UserRole } from '@/types/auth';
+import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 
 function normalizeTokenRole(role: unknown): UserRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
-  }
-
-  return null;
+  const validRoles: UserRole[] = ['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee'];
+  return validRoles.includes(role as UserRole) ? (role as UserRole) : null;
 }
 
-function normalizeTargetUserIds(targetUserIds: string[]) {
-  const normalizedTargetUserIds = new Set<string>();
-
-  for (const targetUserId of targetUserIds) {
-    if (!isValidUuid(targetUserId)) {
-      continue;
-    }
-
-    normalizedTargetUserIds.add(targetUserId);
-  }
-
-  return [...normalizedTargetUserIds];
+function normalizeTargetUserIds(targetUserIds: string[]): string[] {
+  return [...new Set(targetUserIds.filter(isValidUuid))];
 }
 
 /**
@@ -46,9 +28,10 @@ export async function searchUsers(query: string) {
   const actionTimer = startLatencyTimer();
 
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
-    throw new Error('Forbidden: You do not have permission to search users.');
+  if (!currentUser) {
+    throw new Error('Forbidden');
   }
+  requireAccess(currentUser, isGlobalAdmin);
 
   const trimmedQuery = query.trim();
   if (!trimmedQuery) return [];
@@ -63,6 +46,7 @@ export async function searchUsers(query: string) {
           email: users.email,
           department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
           role: users.role,
+          isActive: users.isActive,
         })
         .from(users)
         .leftJoin(departments, eq(users.departmentId, departments.id))
@@ -113,9 +97,10 @@ export async function assignUsersRoleBulk(
   const currentUser = await getAuthenticatedUser();
 
   // Authorization Guard.
-  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
-    throw new Error('Forbidden: Only Global Administrators can modify roles.');
+  if (!currentUser) {
+    throw new Error('Forbidden');
   }
+  requireAccess(currentUser, isGlobalAdmin);
 
   const normalizedNewRole = normalizeTokenRole(newRole);
   if (!normalizedNewRole) {
@@ -136,52 +121,53 @@ export async function assignUsersRoleBulk(
   }
 
   try {
-    const previousUsers = await db.query.users.findMany({
-      where: inArray(users.id, normalizedTargetUserIds),
-      columns: {
-        id: true,
-        role: true,
-      },
+    const updatedUsers = await db.transaction(async (tx) => {
+      const previousUsers = await tx.query.users.findMany({
+        where: inArray(users.id, normalizedTargetUserIds),
+        columns: {
+          id: true,
+          role: true,
+        },
+      });
+
+      const updateUsersTimer = startLatencyTimer();
+      const updated = await tx
+        .update(users)
+        .set({ role: normalizedNewRole })
+        .where(inArray(users.id, normalizedTargetUserIds))
+        .returning({ updatedId: users.id, updatedRole: users.role });
+
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'roles.assignUsersRoleBulk.update_users',
+        startTime: updateUsersTimer,
+        metadata: {
+          requestedCount: normalizedTargetUserIds.length,
+          updatedCount: updated.length,
+        },
+      });
+
+      const previousUserById = new Map(
+        previousUsers.map((previousUser) => [previousUser.id, previousUser])
+      );
+
+      await Promise.all(
+        updated.map((updatedUser) => {
+          const previousUser = previousUserById.get(updatedUser.updatedId);
+
+          return logAuditActionTx(tx, {
+            entityType: 'users',
+            entityId: updatedUser.updatedId,
+            actionType: 'UPDATE',
+            performedById: currentUser.id,
+            oldData: previousUser ? { role: previousUser.role } : { role: null },
+            newData: { role: updatedUser.updatedRole },
+          });
+        })
+      );
+
+      return updated;
     });
-
-    const updateUsersTimer = startLatencyTimer();
-    const updatedUsers = await db
-      .update(users)
-      .set({ role: normalizedNewRole })
-      .where(inArray(users.id, normalizedTargetUserIds))
-      .returning({ updatedId: users.id, updatedRole: users.role });
-
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'roles.assignUsersRoleBulk.update_users',
-      startTime: updateUsersTimer,
-      metadata: {
-        requestedCount: normalizedTargetUserIds.length,
-        updatedCount: updatedUsers.length,
-      },
-    });
-
-    const previousUserById = new Map(
-      previousUsers.map((previousUser) => [previousUser.id, previousUser])
-    );
-
-    await Promise.all(
-      updatedUsers.map((updatedUser) => {
-        const previousUser = previousUserById.get(updatedUser.updatedId);
-
-        return logAuditAction({
-          entityType: 'users',
-          entityId: updatedUser.updatedId,
-          actionType: 'UPDATE',
-          performedById: currentUser.id,
-          oldData: previousUser ? { role: previousUser.role } : { role: null },
-          newData: { role: updatedUser.updatedRole },
-        });
-      })
-    );
-
-
-
 
     revalidatePath('/settings/roles');
     return {
@@ -223,9 +209,10 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   const currentUser = await getAuthenticatedUser();
 
   // Authorization Guard.
-  if (!currentUser || currentUser.role !== 'GlobalAdmin') {
-    throw new Error('Forbidden: Only Global Administrators can modify roles.');
+  if (!currentUser) {
+    throw new Error('Forbidden');
   }
+  requireAccess(currentUser, isGlobalAdmin);
 
   if (!isValidUuid(targetUserId)) {
     throw new Error('Invalid target user id.');
@@ -242,44 +229,50 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   }
 
   try {
-    const previousUser = await db.query.users.findFirst({
-      where: eq(users.id, targetUserId),
-      columns: {
-        id: true,
-        role: true,
-      },
+    const success = await db.transaction(async (tx) => {
+      const previousUser = await tx.query.users.findFirst({
+        where: eq(users.id, targetUserId),
+        columns: {
+          id: true,
+          role: true,
+        },
+      });
+
+      // Use .returning() to verify a row was actually affected.
+      const updateUserTimer = startLatencyTimer();
+      const updatedUsers = await tx
+        .update(users)
+        .set({ role: normalizedNewRole })
+        .where(eq(users.id, targetUserId))
+        .returning({ updatedId: users.id, updatedRole: users.role });
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'roles.assignUserRole.update_user_role',
+        startTime: updateUserTimer,
+        metadata: {
+          targetUserId,
+        },
+      });
+
+      if (updatedUsers.length === 0) {
+        return false;
+      }
+
+      await logAuditActionTx(tx, {
+        entityType: 'users',
+        entityId: targetUserId,
+        actionType: 'UPDATE',
+        performedById: currentUser.id,
+        oldData: previousUser ? { role: previousUser.role } : { role: null },
+        newData: { role: updatedUsers[0].updatedRole },
+      });
+
+      return true;
     });
 
-    // Use .returning() to verify a row was actually affected.
-    const updateUserTimer = startLatencyTimer();
-    const updatedUsers = await db
-      .update(users)
-      .set({ role: normalizedNewRole })
-      .where(eq(users.id, targetUserId))
-      .returning({ updatedId: users.id, updatedRole: users.role });
-    logLatency({
-      scope: 'DB ACTION',
-      label: 'roles.assignUserRole.update_user_role',
-      startTime: updateUserTimer,
-      metadata: {
-        targetUserId,
-      },
-    });
-
-    if (updatedUsers.length === 0) {
+    if (!success) {
       return { success: false, error: 'User not found or no changes made.' };
     }
-
-    await logAuditAction({
-      entityType: 'users',
-      entityId: targetUserId,
-      actionType: 'UPDATE',
-      performedById: currentUser.id,
-      oldData: previousUser ? { role: previousUser.role } : { role: null },
-      newData: { role: updatedUsers[0].updatedRole },
-    });
-
-
 
     revalidatePath('/settings/roles');
     return { success: true };
@@ -311,3 +304,101 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
 export async function removeUserFromManagedRole(targetUserId: string) {
   return assignUserRole(targetUserId, 'Employee');
 }
+
+/**
+ * Activates or deactivates a user account.
+ */
+export async function setUserActiveStatus(targetUserId: string, isActive: boolean) {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  // Authorization Guard.
+  if (!currentUser) {
+    throw new Error('Forbidden');
+  }
+  requireAccess(currentUser, isGlobalAdmin);
+
+  if (!isValidUuid(targetUserId)) {
+    throw new Error('Invalid target user id.');
+  }
+
+  // Anti-Lockout Guard
+  if (targetUserId === currentUser.id) {
+    throw new Error('Action Prohibited: You cannot modify your own active status.');
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      const previousUser = await tx.query.users.findFirst({
+        where: eq(users.id, targetUserId),
+        columns: {
+          id: true,
+          isActive: true,
+        },
+      });
+
+      if (!previousUser) {
+        return { success: false, error: 'User not found.' };
+      }
+
+      const updateUserTimer = startLatencyTimer();
+      const updatedUsers = await tx
+        .update(users)
+        .set({ isActive })
+        .where(eq(users.id, targetUserId))
+        .returning({ updatedId: users.id, updatedIsActive: users.isActive });
+
+      logLatency({
+        scope: 'DB ACTION',
+        label: 'roles.setUserActiveStatus.update_user_status',
+        startTime: updateUserTimer,
+        metadata: {
+          targetUserId,
+          isActive,
+        },
+      });
+
+      if (updatedUsers.length === 0) {
+        return { success: false, error: 'Failed to update user status.' };
+      }
+
+      await logAuditActionTx(tx, {
+        entityType: 'users',
+        entityId: targetUserId,
+        actionType: 'UPDATE',
+        performedById: currentUser.id,
+        oldData: { isActive: previousUser.isActive },
+        newData: { isActive: updatedUsers[0].updatedIsActive },
+      });
+
+      return { success: true };
+    });
+
+    if (result.success) {
+      revalidatePath('/settings/roles');
+    }
+    return result;
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'roles.setUserActiveStatus',
+      error,
+      metadata: {
+        targetUserId,
+        isActive,
+      },
+    });
+    return { success: false, error: 'Database update failed.' };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'roles.setUserActiveStatus',
+      startTime: actionTimer,
+      metadata: {
+        targetUserId,
+        isActive,
+      },
+    });
+  }
+}
+

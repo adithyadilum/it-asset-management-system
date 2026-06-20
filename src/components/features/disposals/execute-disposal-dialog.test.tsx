@@ -4,12 +4,16 @@ const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
 const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@testing-library/jest-dom';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
-import { executeAssetDisposal } from '@/actions/disposals';
+import { executeAssetDisposal } from '@/actions/disposals/execute';
 
-vi.mock('@/actions/disposals', () => ({
+vi.mock('@/actions/disposals/execute', () => ({
   executeAssetDisposal: vi.fn(),
+}));
+
+vi.mock('@/actions/disposals/upload-receipt', () => ({
   uploadDisposalReceipt: vi.fn(),
 }));
 

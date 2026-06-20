@@ -9,6 +9,7 @@ import type { LinkedDevice } from '@/lib/data/devices-repo';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Pusher from 'pusher-js';
+import { clientEnv } from '@/lib/env.client';
 
 interface DevicesPageClientProps {
   devices: LinkedDevice[];
@@ -22,8 +23,8 @@ export function DevicesPageClient({ devices }: DevicesPageClientProps) {
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    const pusher = new Pusher(clientEnv.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER!,
     });
 
     const channelName = `user-${session.user.id}`;

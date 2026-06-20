@@ -33,7 +33,8 @@ import {
   editAssetSchema,
   type EditAssetActionState,
 } from '@/lib/validations/asset-edit';
-import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
+import { convertCurrencyAmount } from '@/lib/currency';
+import { fetchLiveExchangeRates } from '@/lib/currency-server';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -442,7 +443,7 @@ export async function updateAsset(
       throw new Error('Asset not found');
     }
 
-    if (currentAsset.status === 'Disposed') {
+    if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
       throw new Error('Disposed assets cannot be edited.');
     }
 
@@ -572,11 +573,12 @@ export async function manualStatusOverrideAction(
 
     if (
       currentAsset.status === 'Disposed' ||
-      currentAsset.status === 'Pending Disposal'
+      currentAsset.status === 'Pending Disposal' ||
+      currentAsset.isArchived
     ) {
       return {
         success: false,
-        message: `Assets in "${currentAsset.status}" status cannot have their status changed manually.`,
+        message: `Assets in "${currentAsset.status}" status or archived assets cannot have their status changed manually.`,
       };
     }
 
@@ -707,7 +709,7 @@ export async function editAssetDetailsAction(
       return { success: false, message: 'Asset not found.' };
     }
 
-    if (currentAsset.status === 'Disposed') {
+    if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
       return {
         success: false,
         message: 'Disposed assets cannot be edited.',

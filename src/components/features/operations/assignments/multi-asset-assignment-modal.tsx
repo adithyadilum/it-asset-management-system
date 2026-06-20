@@ -4,14 +4,10 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { bulkAssignAssetsAction } from "@/actions/assignments";
-import { searchUsers } from "@/actions/users";
-import { searchLocations } from "@/actions/locations";
 import { tiqriToast } from "@/components/shared/sonner";
 import {
   DURATION_OPTIONS,
   isPresetDuration,
-  calculateExpectedReturnDate,
-  calculateDurationFromDate,
 } from "@/lib/assignment-date-utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +29,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { useAssignmentModalState } from "./use-assignment-modal-state";
+
 export type MultiAssetAssignmentItem = {
   assetId: string;
   assetTag: string;
@@ -46,11 +44,6 @@ interface MultiAssetAssignmentModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type AssigneeOption = {
-  id: string;
-  label: string;
-};
-
 export function MultiAssetAssignmentModal({
   isOpen,
   assets,
@@ -60,72 +53,24 @@ export function MultiAssetAssignmentModal({
   const disableUserAssignment = assets.some(
     (asset) => asset.assetGroup === "Office Furniture" || asset.assetGroup === "Office Electronics"
   );
-  const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">(() =>
-    disableUserAssignment ? "location" : "user"
-  );
-  const [assignee, setAssignee] = React.useState("");
-  const [duration, setDuration] = React.useState("");
-  const [expectedReturn, setExpectedReturn] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [userOptions, setUserOptions] = React.useState<AssigneeOption[]>([]);
-  const [locationOptions, setLocationOptions] = React.useState<AssigneeOption[]>([]);
 
-  const activeOptions = assignmentMode === "user" ? userOptions : locationOptions;
-
-  const loadOptions = React.useCallback(async () => {
-    try {
-      const [usersResult, locationsResult] = await Promise.all([
-        searchUsers(),
-        searchLocations(),
-      ]);
-
-      if (!usersResult.success || !locationsResult.success) {
-        throw new Error("Failed to load assignment options.");
-      }
-
-      setUserOptions(
-        (usersResult.data ?? []).map((user) => ({
-          id: user.id,
-          label: user.name,
-        }))
-      );
-
-      setLocationOptions(
-        (locationsResult.data ?? []).map((location) => ({
-          id: String(location.id),
-          label: location.name,
-        }))
-      );
-    } catch {
-      tiqriToast.error("Failed to load assignment options.");
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    let mounted = true;
-
-    (async () => {
-      if (!mounted) return;
-      await loadOptions();
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isOpen, loadOptions]);
-
-  const resetState = React.useCallback(() => {
-    setAssignmentMode(disableUserAssignment ? "location" : "user");
-    setAssignee("");
-    setDuration("");
-    setExpectedReturn("");
-    setNotes("");
-  }, [disableUserAssignment]);
+  const {
+    assignmentMode,
+    assignee,
+    setAssignee,
+    duration,
+    expectedReturn,
+    notes,
+    setNotes,
+    isSubmitting,
+    setIsSubmitting,
+    activeOptions,
+    resetState,
+    handleAssignmentModeChange,
+    handleDurationChange,
+    handleExpectedReturnChange,
+    validateAssignment,
+  } = useAssignmentModalState({ isOpen, disableUserAssignment });
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
@@ -139,36 +84,17 @@ export function MultiAssetAssignmentModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
-
+    
     if (assets.length === 0) {
       tiqriToast.warning("Select at least one asset.");
       return;
     }
 
-    if (!assignee) {
-      tiqriToast.warning(
-        resolvedAssignmentMode === "user"
-          ? "Please select a user."
-          : "Please select a location."
-      );
-      return;
-    }
-
-    if (resolvedAssignmentMode === "user" && expectedReturn) {
-      const [year, month, day] = expectedReturn.split("-").map(Number);
-      const selectedDate = new Date(year, month - 1, day);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (selectedDate < today) {
-        tiqriToast.error("Select a valid date");
-        return;
-      }
-    }
+    if (!validateAssignment()) return;
 
     setIsSubmitting(true);
 
+    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
     const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;
     const bulkAssignInput = {
       assetIds: assets.map((asset) => asset.assetId),
@@ -197,31 +123,6 @@ export function MultiAssetAssignmentModal({
         setIsSubmitting(false);
       });
   };
-
-  const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
-    setAssignmentMode(mode);
-    setDuration("");
-    setExpectedReturn("");
-  }, []);
-
-  const handleDurationChange = React.useCallback((value: string) => {
-    setDuration(`${value}`);
-
-    const durationDays = Number(value);
-    if (Number.isFinite(durationDays) && durationDays > 0) {
-      setExpectedReturn(calculateExpectedReturnDate(durationDays));
-      return;
-    }
-
-    setExpectedReturn("");
-  }, []);
-
-  const handleExpectedReturnChange = React.useCallback((value: string) => {
-    setExpectedReturn(value);
-
-    const calculatedDuration = calculateDurationFromDate(value);
-    setDuration(`${calculatedDuration}`);
-  }, []);
 
   const assetCount = assets.length;
 
@@ -295,7 +196,7 @@ export function MultiAssetAssignmentModal({
               <SelectContent>
                 {activeOptions.length > 0 ? (
                   activeOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
+                    <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
                   ))

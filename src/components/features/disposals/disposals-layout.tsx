@@ -7,8 +7,9 @@ import { TabsContent } from '@/components/ui/tabs';
 import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs';
 
 
-import { PendingDisposalsGrid, type PendingDisposalRow } from './pending-disposals-grid';
-import { DisposalHistoryGrid, type HistoryDisposalRow } from './disposal-history-grid';
+import { PendingDisposalsGrid } from './pending-disposals-grid';
+import { DisposalHistoryGrid } from './disposal-history-grid';
+import type { PendingDisposalRow, HistoryDisposalRow } from '@/types/disposals';
 import { DisposalReviewPanelWrapper } from '@/components/features/disposals/disposal-review-panel-wrapper';
 import { DisposalAssetDetailPanel } from './disposal-asset-detail-panel';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -21,6 +22,7 @@ interface DisposalsLayoutProps {
   historyPageSize?: number;
   historySearchQuery?: string;
   userRole?: string;
+  preferredCurrency?: string;
 }
 
 export function DisposalsLayout({
@@ -31,6 +33,7 @@ export function DisposalsLayout({
   historyPageSize = 10,
   historySearchQuery = '',
   userRole,
+  preferredCurrency = 'LKR',
 }: DisposalsLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -157,6 +160,7 @@ export function DisposalsLayout({
         isOpen={isReviewOpen}
         onClose={closeReviewPanel}
         row={selectedRow}
+        preferredCurrency={preferredCurrency}
       />
 
       <DisposalAssetDetailPanel

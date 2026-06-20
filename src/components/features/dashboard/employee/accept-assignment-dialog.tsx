@@ -115,12 +115,12 @@ export function AcceptAssignmentDialog({
 
                 <DialogFooter className="gap-2 rounded-b-none border-t-0 bg-transparent p-0">
                     <Button
-                        variant="outline"
+                        variant="destructive"
                         type="button"
-                        className="h-9 rounded-lg px-4 text-sm font-medium text-secondary-foreground"
+                        className="h-9 rounded-lg px-4 text-sm font-medium"
                         onClick={onReportIssue}
                     >
-                        Report Issue / Did Not Receive
+                        Report Issue
                     </Button>
                     <Button
                         type="button"

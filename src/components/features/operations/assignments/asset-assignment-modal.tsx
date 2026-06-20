@@ -4,14 +4,10 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { assignAssetAction } from "@/actions/assignments";
-import { searchUsers } from "@/actions/users";
-import { searchLocations } from "@/actions/locations";
 import { tiqriToast } from "@/components/shared/sonner";
 import {
   DURATION_OPTIONS,
   isPresetDuration,
-  calculateExpectedReturnDate,
-  calculateDurationFromDate,
 } from "@/lib/assignment-date-utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +29,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+import { useAssignmentModalState } from "./use-assignment-modal-state";
+
 interface AssetAssignmentModalProps {
   isOpen: boolean;
   assetId: string;
@@ -40,11 +38,6 @@ interface AssetAssignmentModalProps {
   assetGroup: string;
   onOpenChange: (open: boolean) => void;
 }
-
-type AssigneeOption = {
-  value: string;
-  label: string;
-};
 
 export function AssetAssignmentModal({
   isOpen,
@@ -56,74 +49,24 @@ export function AssetAssignmentModal({
   const router = useRouter();
   const disableUserAssignment =
     assetGroup === "Office Furniture" || assetGroup === "Office Electronics";
-  const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">(() =>
-    disableUserAssignment ? "location" : "user"
-  );
-  const [assignee, setAssignee] = React.useState("");
-  const [duration, setDuration] = React.useState("");
-  const [expectedReturn, setExpectedReturn] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [userOptions, setUserOptions] = React.useState<AssigneeOption[]>([]);
-  const [locationOptions, setLocationOptions] = React.useState<AssigneeOption[]>([]);
 
-  const activeOptions = assignmentMode === "user" ? userOptions : locationOptions;
-
-  const loadOptions = React.useCallback(async () => {
-    try {
-      const [usersResult, locationsResult] = await Promise.all([
-        searchUsers("", 1000),
-        searchLocations("", 1000),
-      ]);
-
-      if (!usersResult.success || !locationsResult.success) {
-        throw new Error("Failed to load assignment options.");
-      }
-
-      setUserOptions(
-        (usersResult.data ?? []).map((user) => ({
-          value: user.id,
-          label: user.name,
-        }))
-      );
-
-      setLocationOptions(
-        (locationsResult.data ?? []).map((location) => ({
-          value: String(location.id),
-          label: location.name,
-        }))
-      );
-    } catch {
-      tiqriToast.error("Failed to load assignment options.");
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    let mounted = true;
-
-    (async () => {
-      if (!mounted) return;
-      await loadOptions();
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isOpen, loadOptions]);
-
-
-
-  const resetState = React.useCallback(() => {
-    setAssignmentMode(disableUserAssignment ? "location" : "user");
-    setAssignee("");
-    setDuration("");
-    setExpectedReturn("");
-    setNotes("");
-  }, [disableUserAssignment]);
+  const {
+    assignmentMode,
+    assignee,
+    setAssignee,
+    duration,
+    expectedReturn,
+    notes,
+    setNotes,
+    isSubmitting,
+    setIsSubmitting,
+    activeOptions,
+    resetState,
+    handleAssignmentModeChange,
+    handleDurationChange,
+    handleExpectedReturnChange,
+    validateAssignment,
+  } = useAssignmentModalState({ isOpen, disableUserAssignment });
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
@@ -137,37 +80,19 @@ export function AssetAssignmentModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
 
     if (!assetId) {
       tiqriToast.error("Invalid asset id.");
       return;
     }
 
-    if (!assignee) {
-      tiqriToast.warning(
-        resolvedAssignmentMode === "user"
-          ? "Please select a user."
-          : "Please select a location."
-      );
-      return;
-    }
-
-    if (resolvedAssignmentMode === "user" && expectedReturn) {
-      const [year, month, day] = expectedReturn.split("-").map(Number);
-      const selectedDate = new Date(year, month - 1, day);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (selectedDate < today) {
-        tiqriToast.error("Select a valid date");
-        return;
-      }
-    }
+    if (!validateAssignment()) return;
 
     setIsSubmitting(true);
 
+    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
     const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;
+    
     const assignInput = {
       assetId,
       assignmentType: resolvedAssignmentMode,
@@ -195,32 +120,6 @@ export function AssetAssignmentModal({
         setIsSubmitting(false);
       });
   };
-
-  const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
-    setAssignmentMode(mode);
-    setAssignee("");
-    setDuration("");
-    setExpectedReturn("");
-  }, []);
-
-  const handleDurationChange = React.useCallback((value: string) => {
-    setDuration(`${value}`);
-
-    const durationDays = Number(value);
-    if (Number.isFinite(durationDays) && durationDays > 0) {
-      setExpectedReturn(calculateExpectedReturnDate(durationDays));
-      return;
-    }
-
-    setExpectedReturn("");
-  }, []);
-
-  const handleExpectedReturnChange = React.useCallback((value: string) => {
-    setExpectedReturn(value);
-
-    const calculatedDuration = calculateDurationFromDate(value);
-    setDuration(`${calculatedDuration}`);
-  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

@@ -157,6 +157,7 @@ describe('processReturnPayloadSchema', () => {
   const validReturn = {
     assetId: VALID_UUID,
     condition: 'Good Working Condition' as const,
+    physicalCondition: 'Excellent' as const,
   };
 
   it('requires a valid UUID assetId', () => {

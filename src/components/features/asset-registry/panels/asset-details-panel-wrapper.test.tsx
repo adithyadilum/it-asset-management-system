@@ -7,6 +7,13 @@ vi.mock('./asset-details-panel', () => ({
   AssetDetailsPanel: () => <div data-testid="asset-details-panel" />
 }));
 
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  })),
+}));
+
 describe('AssetDetailsPanelWrapper', () => {
   afterEach(async () => {
     // Flush microtasks to prevent React Fiber act() leaks

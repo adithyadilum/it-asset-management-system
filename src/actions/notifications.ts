@@ -9,6 +9,7 @@ import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
 import { Resend } from 'resend';
+import { serverEnv } from '@/lib/env';
 
 /**
  * Validate Teams Webhook URL scheme and host
@@ -323,7 +324,7 @@ export async function testIntegrationConnection(
       }
 
       const resend = new Resend(key);
-      const fromEmail = process.env.RESEND_FROM || 'onboarding@resend.dev';
+      const fromEmail = serverEnv.RESEND_FROM || 'onboarding@resend.dev';
       const testResult = await resend.emails.send({
         from: fromEmail,
         to: user.email,
