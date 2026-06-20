@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { AlertCircle, MonitorX } from 'lucide-react';
 
 import { createDisposalRequest } from '@/actions/disposals/create-request';
@@ -46,6 +46,13 @@ export function DisposeAssetsRequestDialog({
     setReason('');
     setJustification('');
   }
+
+  // Reset form state whenever the dialog is closed externally
+  // (e.g. parent sets open=false without going through onOpenChange)
+  useEffect(() => {
+    if (!open) reset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSubmit = () => {
     startTransition(async () => {
