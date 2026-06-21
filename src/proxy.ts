@@ -78,7 +78,7 @@ async function verifyTokenAndRole(request: NextRequest) {
       return null;
     }
 
-    return { role, sub: token.id as string | undefined, isAccessTokenFresh };
+    return { role, sub: token.id as string | undefined, isAccessTokenFresh, isActive: token.isActive as boolean ?? true };
   } finally {
     logLatency({
       scope: 'PROXY AUTH',
@@ -189,8 +189,10 @@ export async function proxy(request: NextRequest) {
     !isPublicAssetPath(pathname) &&
     pathname !== '/login' &&
     pathname !== '/403' &&
+    pathname !== '/account-disabled' &&
     !pathname.startsWith('/api');
   const isLoginRoute = pathname === '/login';
+  const isAccountDisabledRoute = pathname === '/account-disabled';
 
   try {
     const payload = await verifyTokenAndRole(request);
@@ -220,6 +222,18 @@ export async function proxy(request: NextRequest) {
       );
 
       return NextResponse.redirect(new URL(redirectTo, request.url));
+    }
+
+    // ── Account-status gate ──────────────────────────────────────────────────
+    // If the user's account has been disabled by an admin, send them to the
+    // account-disabled page regardless of what route they requested.
+    if (payload && !payload.isActive && !isAccountDisabledRoute) {
+      return NextResponse.redirect(new URL('/account-disabled', request.url));
+    }
+
+    // If a re-enabled user somehow still hits /account-disabled, send them home.
+    if (payload && payload.isActive && isAccountDisabledRoute) {
+      return NextResponse.redirect(new URL(DEFAULT_POST_LOGIN_REDIRECT, request.url));
     }
 
     if (payload && isProtectedRoute) {

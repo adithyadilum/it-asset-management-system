@@ -31,6 +31,12 @@ const ROLE_CONFIG: Array<{
       description:
         'These users have read-only access to financial ledgers and audit records.',
     },
+    {
+      id: 'Employee',
+      name: 'Employee',
+      description:
+        'Standard users who can view their assigned assets and submit requests.',
+    },
   ];
 
 const textSmRegularClass =
@@ -52,12 +58,13 @@ function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
   if (
     selected === 'GlobalAdmin' ||
     selected === 'ITOperator' ||
-    selected === 'FinanceAuditor'
+    selected === 'FinanceAuditor' ||
+    selected === 'Employee'
   ) {
     return selected;
   }
 
-  return 'ITOperator';
+  return 'GlobalAdmin';
 }
 
 export default async function RolesPage({ searchParams }: RolesPageProps) {

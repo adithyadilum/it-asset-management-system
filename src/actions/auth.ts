@@ -26,6 +26,7 @@ export type AuthenticatedUser = {
   email: string;
   name: string;
   role: UserRole;
+  isActive: boolean;
 };
 
 /**
@@ -43,6 +44,9 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   }
 
   const { id, email, name, role } = session.user;
+  // isActive is stored in the session by the NextAuth session callback.
+  // Default true so callers that don't check it are unaffected (e.g. legacy tokens).
+  const isActive = session.user.isActive ?? true;
 
   // Explicitly validate every field — NextAuth fields can be null/undefined.
   if (
@@ -61,6 +65,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     email,
     name,
     role: normalizeRole(role),
+    isActive,
   };
 }
 
