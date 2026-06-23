@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
-import Papa from 'papaparse';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -89,7 +88,7 @@ export function StandardReportsPreviewPanel({
     [columns]
   );
 
-  const generateCsv = (dataToExport: ReportPreviewRow[]) => {
+  const generateCsv = async (dataToExport: ReportPreviewRow[]) => {
     const rows = dataToExport.map((r) => {
       const obj: Record<string, unknown> = {};
       for (const h of headers) {
@@ -98,6 +97,7 @@ export function StandardReportsPreviewPanel({
       return obj;
     });
 
+    const Papa = (await import('papaparse')).default;
     const csv = Papa.unparse({ fields: headers, data: rows });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -129,7 +129,7 @@ export function StandardReportsPreviewPanel({
         dataToExport = result.data;
       }
 
-      generateCsv(dataToExport);
+      await generateCsv(dataToExport);
       setExportModalOpen(false);
     } catch (err) {
       console.error('Failed to export data:', err);

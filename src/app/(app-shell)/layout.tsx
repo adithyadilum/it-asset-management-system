@@ -9,6 +9,8 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { OfflineBanner } from "@/components/shared/offline-banner"
 import { BottomNavigation } from "@/components/layout/bottom-navigation"
 
+export const unstable_instant = false;
+
 export default async function AppShellLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {

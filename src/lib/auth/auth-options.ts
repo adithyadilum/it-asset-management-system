@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import KeycloakProvider from 'next-auth/providers/keycloak';
-import { eq } from 'drizzle-orm';
+import { eq, ilike } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { serverEnv } from '@/lib/env';
 
@@ -142,6 +142,19 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       // Lock is automatically released when the transaction commits here.
       console.log(`[AUTH] Successfully refreshed token for user ${userId}`);
 
+      // ── 5. Re-read isActive so disabled accounts are reflected at the next
+      //       refresh cycle (~5 min window) without a DB call on every request.
+      let isActive = token.isActive as boolean | undefined;
+      try {
+        const freshUser = await db.query.users.findFirst({
+          where: eq(users.id, userId),
+          columns: { isActive: true },
+        });
+        if (freshUser) isActive = freshUser.isActive;
+      } catch {
+        // Non-fatal: keep the previous value from the token
+      }
+
       return {
         ...token,
         accessToken: refreshedTokens.access_token as string,
@@ -149,6 +162,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         refreshToken: newRefreshToken,
         accessTokenExpires: newExpires.getTime(),
         refreshTokenExpires: newRefreshExpires,
+        isActive,
         error: undefined,
       };
     });
@@ -203,41 +217,66 @@ export const authOptions: NextAuthOptions = {
       if (typeof profileDepartment === 'string' && profileDepartment.trim()) {
         const deptName = profileDepartment.trim();
         
-        let deptId: number | undefined;
+        try {
+          // ── 1. Case-insensitive lookup so "Engineering" and "engineering" resolve
+          //       to the same department record.
+          const existingDept = await db.query.departments.findFirst({
+            where: ilike(departments.name, deptName),
+          });
 
-        const dept = await db.query.departments.findFirst({
-          where: eq(departments.name, deptName),
-        });
+          if (existingDept) {
+            userDepartmentId = existingDept.id;
+          } else {
+            // ── 2. Generate a temporary stable shortCode/costCenterId using a
+            //       timestamp-based suffix to avoid the unique constraint conflict
+            //       that occurred when two concurrent logins both tried to insert
+            //       with the literal placeholder 'DEP-TEMP' / 'CC-TEMP'.
+            //
+            //       We use ON CONFLICT DO NOTHING + a re-fetch so that if two
+            //       workers race on the same new department name, only one INSERT
+            //       wins and the loser safely reads the winner's row.
+            const tempSuffix = Date.now().toString(36).toUpperCase();
+            const tempShortCode = `DEP-${tempSuffix}`.slice(0, 50);
+            const tempCostCenterId = `CC-${tempSuffix}`.slice(0, 100);
 
-        if (dept) {
-          deptId = dept.id;
-        } else {
-          try {
-            const [insertedDept] = await db.insert(departments).values({
-              name: deptName,
-              shortCode: 'DEP-TEMP',
-              costCenterId: 'CC-TEMP',
-              isActive: true,
-            }).returning({ id: departments.id });
+            const inserted = await db
+              .insert(departments)
+              .values({
+                name: deptName,
+                shortCode: tempShortCode,
+                costCenterId: tempCostCenterId,
+                isActive: true,
+              })
+              .onConflictDoNothing({ target: departments.name })
+              .returning({ id: departments.id });
 
-            const shortCode = `DEP-${String(insertedDept.id).padStart(4, '0')}`;
-            const costCenterId = `CC-${insertedDept.id}00`;
+            if (inserted.length > 0) {
+              // We won the race – update with canonical, ID-based codes.
+              const newId = inserted[0].id;
+              const shortCode = `DEP-${String(newId).padStart(4, '0')}`;
+              const costCenterId = `CC-${newId}00`;
+              const departmentCode = `DEP-${String(newId).padStart(4, '0')}`;
 
-            await db.update(departments).set({
-              shortCode: shortCode,
-              costCenterId: costCenterId,
-              departmentCode: `DEP-${String(insertedDept.id).padStart(4, '0')}`,
-            }).where(eq(departments.id, insertedDept.id));
-            
-            deptId = insertedDept.id;
-            console.log(`[AUTH] Auto-provisioned new department: ${deptName} (${shortCode})`);
-          } catch (error) {
-            console.error('Failed to auto-provision department:', error);
+              await db
+                .update(departments)
+                .set({ shortCode, costCenterId, departmentCode })
+                .where(eq(departments.id, newId));
+
+              userDepartmentId = newId;
+              console.log(`[AUTH] Auto-provisioned new department: ${deptName} (${shortCode})`);
+            } else {
+              // Another worker inserted the row first – re-fetch it.
+              const raceDept = await db.query.departments.findFirst({
+                where: ilike(departments.name, deptName),
+              });
+              if (raceDept) {
+                userDepartmentId = raceDept.id;
+                console.log(`[AUTH] Department "${deptName}" already inserted by peer worker, using id=${raceDept.id}`);
+              }
+            }
           }
-        }
-        
-        if (deptId !== undefined) {
-          userDepartmentId = deptId;
+        } catch (error) {
+          console.error('[AUTH] Failed to sync department from Keycloak profile:', error);
         }
       }
 
@@ -261,7 +300,9 @@ export const authOptions: NextAuthOptions = {
       } else {
         if (!existingUser.isActive) {
           console.error(`Login rejected: User ${normalizedEmail} is inactive.`);
-          return false; // Reject login if user is inactive
+          // Returning a URL string redirects the user to that page AND still
+          // blocks session creation — avoids NextAuth's generic /api/auth/error.
+          return '/account-disabled';
         }
 
         // Keep user department in sync
@@ -305,13 +346,14 @@ export const authOptions: NextAuthOptions = {
         if (email) {
           const dbUser = await db.query.users.findFirst({
             where: eq(users.email, email),
-            columns: { id: true, role: true, name: true },
+            columns: { id: true, role: true, name: true, isActive: true },
           });
 
           if (dbUser) {
             token.id = dbUser.id;
             token.role = normalizeRole(dbUser.role);
             token.name = dbUser.name;
+            token.isActive = dbUser.isActive;
 
             // Persist the initial refresh token to the authoritative DB store
             if (account.refresh_token && account.expires_at) {
@@ -377,6 +419,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as UserRole;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
+        session.user.isActive = (token.isActive as boolean | undefined) ?? true;
       }
 
       session.idToken = token.idToken;
