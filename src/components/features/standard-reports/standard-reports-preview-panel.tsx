@@ -1,17 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { DataTable } from '@/components/shared/data-table';
-import { StatusBadge } from '@/components/shared/status-badge';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { StandardModal } from '@/components/ui/standard-modal';
-import { getPrimaryIdColumn, type FilterState, type ReportPreviewRow } from '@/types/standard-reports';
+import { type FilterState, type ReportPreviewRow } from '@/types/standard-reports';
 import { fetchReportPreview } from '@/actions/standard-reports';
 import { GenerateReportPdfModal } from './generate-report-pdf-modal';
 
@@ -31,13 +29,6 @@ interface StandardReportsPreviewPanelProps {
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
   pageCount: number;
-}
-
-function toCellText(value: unknown) {
-  if (value === null || value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
-    return '-';
-  }
-  return String(value);
 }
 
 import { useReportColumns } from './use-report-columns';
