@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 
 import { DataTable } from '@/components/shared/data-table';
@@ -53,6 +54,7 @@ export function PendingDisposalsGrid({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkExecuteModalOpen, setIsBulkExecuteModalOpen] = useState(false);
   const [isBulkRejectModalOpen, setIsBulkRejectModalOpen] = useState(false);
+  const router = useRouter();
 
   const filterFieldConfigs: FilterFieldConfig[] = [
     { value: 'assetTag', label: 'Asset ID' },
@@ -246,6 +248,7 @@ export function PendingDisposalsGrid({
         onSuccess={() => {
           setIsBulkRejectModalOpen(false);
           setRowSelection({}); // Clear checkboxes after success
+          router.refresh();
         }}
       />
 
@@ -256,6 +259,7 @@ export function PendingDisposalsGrid({
         onSuccess={() => {
           setIsBulkExecuteModalOpen(false);
           setRowSelection({}); // Clear checkboxes after success
+          router.refresh();
         }}
       />
     </div>

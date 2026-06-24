@@ -13,6 +13,7 @@ import type { PendingDisposalRow, HistoryDisposalRow } from '@/types/disposals';
 import { DisposalReviewPanelWrapper } from '@/components/features/disposals/disposal-review-panel-wrapper';
 import { DisposalAssetDetailPanel } from './disposal-asset-detail-panel';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import type { UserRole } from '@/types/auth';
 
 interface DisposalsLayoutProps {
   pendingData: PendingDisposalRow[];
@@ -21,7 +22,7 @@ interface DisposalsLayoutProps {
   historyCurrentPage?: number;
   historyPageSize?: number;
   historySearchQuery?: string;
-  userRole?: string;
+  userRole?: UserRole;
   preferredCurrency?: string;
 }
 
@@ -90,9 +91,10 @@ export function DisposalsLayout({
     if (isReviewOpen || isRecordOpen) {
       closeReviewPanel();
 
+      const PANEL_CLOSE_ANIMATION_MS = 450;
       setTimeout(() => {
         setActiveTab(val);
-      }, 450);
+      }, PANEL_CLOSE_ANIMATION_MS);
     } else {
       setActiveTab(val);
     }
