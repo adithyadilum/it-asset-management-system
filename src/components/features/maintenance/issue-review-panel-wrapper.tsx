@@ -50,7 +50,10 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
         })
         .catch((err) => {
           if (isMounted) {
-            console.error(err);
+            console.error(
+              '[IssueReviewPanelWrapper] Failed to load panel data:',
+              err instanceof Error ? err.message : 'Unknown error'
+            );
             // FIX: Extract specific error for initial load
             const errorMessage = err instanceof Error ? err.message : "Failed to load issue review data";
             toast.error(`Failed: ${errorMessage}`);
