@@ -12,17 +12,17 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { USER_ROLES, type UserRole } from '@/types/auth';
 import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 
+/** Safely casts an unknown value to a valid UserRole or returns null. */
 function normalizeTokenRole(role: unknown): UserRole | null {
   return typeof role === 'string' && USER_ROLES.includes(role as UserRole) ? (role as UserRole) : null;
 }
 
+/** Deduplicates and validates an array of user IDs. */
 function normalizeTargetUserIds(targetUserIds: string[]): string[] {
   return [...new Set(targetUserIds.filter(isValidUuid))];
 }
 
-/**
- * Retrieves the users and counts for the roles settings page.
- */
+/** Fetches users in a given role and per-role user counts for the settings page. GlobalAdmin only. */
 export async function getRolesPageData(selectedRole: UserRole) {
   const currentUser = await getAuthenticatedUser();
   if (!currentUser) throw new Error('Forbidden');
@@ -56,9 +56,7 @@ export async function getRolesPageData(selectedRole: UserRole) {
   return { usersInRole, roleCountsRows };
 }
 
-/**
- * Search for users by name or email.
- */
+/** Searches the user directory by name or email. Capped at 100 chars, min 2 chars. */
 export async function searchUsers(query: string) {
   const actionTimer = startLatencyTimer();
 
@@ -121,9 +119,7 @@ export async function searchUsers(query: string) {
   }
 }
 
-/**
- * Assigns a role to multiple users via a single atomic update.
- */
+/** Assigns a role to multiple users in a single atomic transaction. GlobalAdmin only. */
 export async function assignUsersRoleBulk(
   targetUserIds: string[],
   newRole: UserRole
@@ -131,7 +127,6 @@ export async function assignUsersRoleBulk(
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  // Authorization Guard.
   if (!currentUser) {
     throw new Error('Forbidden');
   }
@@ -150,7 +145,7 @@ export async function assignUsersRoleBulk(
     };
   }
 
-  // Anti-Lockout Guard.
+  // Prevent admins from modifying their own role (anti-lockout).
   if (normalizedTargetUserIds.includes(currentUser.id)) {
     throw new Error('Action Prohibited: You cannot modify your own role.');
   }
@@ -236,14 +231,11 @@ export async function assignUsersRoleBulk(
   }
 }
 
-/**
- * Assigns a new role to a user.
- */
+/** Assigns a new role to a single user. GlobalAdmin only. */
 export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  // Authorization Guard.
   if (!currentUser) {
     throw new Error('Forbidden');
   }
@@ -273,7 +265,6 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
         },
       });
 
-      // Use .returning() to verify a row was actually affected.
       const updateUserTimer = startLatencyTimer();
       const updatedUsers = await tx
         .update(users)
@@ -333,21 +324,16 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   }
 }
 
-/**
- * Removes a user from a managed role by assigning the baseline Employee role.
- */
+/** Demotes a user back to the baseline Employee role. */
 export async function removeUserFromManagedRole(targetUserId: string) {
   return assignUserRole(targetUserId, 'Employee');
 }
 
-/**
- * Activates or deactivates a user account.
- */
+/** Activates or deactivates a user account. GlobalAdmin only. */
 export async function setUserActiveStatus(targetUserId: string, isActive: boolean) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  // Authorization Guard.
   if (!currentUser) {
     throw new Error('Forbidden');
   }

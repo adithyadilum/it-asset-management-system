@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { asc, eq, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
 import { getAuthenticatedUser } from '@/actions/auth';
@@ -47,9 +46,9 @@ type RolesPageProps = {
   }>;
 };
 
-// Derives the valid set from the single source of truth — no manual duplication.
 const VALID_ROLES = new Set<string>(USER_ROLES);
 
+/** Extracts and validates the ?role= query param, defaulting to GlobalAdmin. */
 function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
   const selected = Array.isArray(value) ? value[0] : value ?? '';
   return VALID_ROLES.has(selected) ? (selected as UserRole) : 'GlobalAdmin';

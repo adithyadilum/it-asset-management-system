@@ -48,8 +48,7 @@ export function RolesManagementTable({
   const [selectedUserForEdit, setSelectedUserForEdit] =
     useState<RoleUser | null>(null);
 
-  // Optimistic active-status overrides: userId → isActive
-  // Applied immediately on toggle click; cleared when the server data refreshes.
+  // Optimistic UI overrides for toggle switches (cleared on role tab change or server refresh).
   const [optimisticStatus, setOptimisticStatus] = useState<
     Record<string, boolean>
   >({});
@@ -75,13 +74,13 @@ export function RolesManagementTable({
 
   const handleToggleActive = useCallback(
     (user: RoleUser, newValue: boolean) => {
-      // Optimistically flip the toggle immediately
+      // Optimistic update: flip instantly, revert on server failure.
       setOptimisticStatus((prev) => ({ ...prev, [user.id]: newValue }));
 
       startTransition(async () => {
         const result = await setUserActiveStatus(user.id, newValue);
         if (!result.success) {
-          // Revert on failure
+          // Revert optimistic toggle on server failure.
           setOptimisticStatus((prev) => ({ ...prev, [user.id]: !newValue }));
           console.error('[Roles] Failed to toggle user active status:', result.error);
         } else {
@@ -140,7 +139,7 @@ export function RolesManagementTable({
           cell: ({ row }) => {
             const user = row.original;
             const isSelf = user.id === currentUserId;
-            // Use the optimistic override if set, otherwise fall back to server data
+            // Prefer optimistic override; fall back to server data.
             const isActiveDisplay =
               user.id in optimisticStatus
                 ? optimisticStatus[user.id]
