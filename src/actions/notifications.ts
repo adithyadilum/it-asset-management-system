@@ -408,7 +408,7 @@ export async function testIntegrationConnection(
 
     throw new Error('Invalid channel selected');
   } catch (error: unknown) {
-    console.error(`Failed to test ${channel} integration:`, error);
+    console.error('Failed to test %s integration:', channel, error);
     const errMsg = error instanceof Error ? error.message : String(error);
     return { success: false, error: errMsg };
   } finally {
