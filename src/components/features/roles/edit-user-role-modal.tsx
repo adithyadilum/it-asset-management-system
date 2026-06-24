@@ -33,7 +33,7 @@ interface EditUserRoleModalProps {
 const ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
   { value: "GlobalAdmin", label: "Global Admin" },
   { value: "ITOperator", label: "IT Operator" },
-  { value: "FinanceAuditor", label: "Finance Auditor" },
+  { value: "FinanceAuditor", label: "Financial Auditor" },
   { value: "Employee", label: "Employee" },
 ]
 
@@ -188,7 +188,7 @@ export function EditUserRoleModal({
                 onClick={handleSubmit}
                 disabled={isSubmitting || !user || isSelf}
               >
-                {isSubmitting ? "Updating..." : "Update Details"}
+                {isSubmitting ? "Updating..." : "Update"}
               </Button>
             </div>
             

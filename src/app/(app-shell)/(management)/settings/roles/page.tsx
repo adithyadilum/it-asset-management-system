@@ -27,7 +27,7 @@ const ROLE_CONFIG: Array<{
     },
     {
       id: 'FinanceAuditor',
-      name: 'Auditor',
+      name: 'Financial Auditor',
       description:
         'These users have read-only access to financial ledgers and audit records.',
     },

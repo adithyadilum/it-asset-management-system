@@ -135,7 +135,7 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
     const roleLabelMap: Record<typeof user.role, string> = {
         GlobalAdmin: 'Global Admin',
         ITOperator: 'IT Ops',
-        FinanceAuditor: 'Finance Audit',
+        FinanceAuditor: 'Financial Auditor',
         Employee: 'Employee',
     };
     const roleLabel = roleLabelMap[user.role];
