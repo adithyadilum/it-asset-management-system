@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist_Mono, Noto_Sans } from "next/font/google";
 import { Toaster } from "@/components/shared/sonner";
 import { ThemeProvider } from "@/components/shared/theme-provider";
@@ -47,10 +48,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NextAuthSessionProvider>
-            <GlobalBarcodeListener />
-            {children}
-          </NextAuthSessionProvider>
+          <Suspense fallback={null}>
+            <NextAuthSessionProvider>
+              <GlobalBarcodeListener />
+              {children}
+            </NextAuthSessionProvider>
+          </Suspense>
           <Toaster position="bottom-center" />
         </ThemeProvider>
       </body>

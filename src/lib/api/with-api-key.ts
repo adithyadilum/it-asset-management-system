@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { unstable_rethrow } from 'next/navigation';
 import { createHash } from 'node:crypto';
 import { db } from '@/db';
 import { apiKeys } from '@/db/schema';
@@ -125,6 +126,7 @@ export function withApiKey<TContext extends Record<string, unknown>>(
       injectRateLimitHeaders(response, rl);
       return response;
     } catch (err) {
+      unstable_rethrow(err);
       console.error('Unhandled fault in withApiKey middleware:', err);
       return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
     }

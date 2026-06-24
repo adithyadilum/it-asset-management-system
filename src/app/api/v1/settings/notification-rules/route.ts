@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unstable_rethrow } from 'next/navigation';
 import { db } from '@/db';
 import { notificationRules } from '@/db/schema';
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
@@ -182,6 +183,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
+    unstable_rethrow(error);
     console.error('GET /api/v1/settings/notification-rules error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

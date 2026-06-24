@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { unstable_rethrow } from 'next/navigation';
 import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
 import { getUnreadCount } from '@/lib/notifications/services';
 
@@ -23,6 +24,7 @@ export async function GET(request?: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    unstable_rethrow(error);
     console.error('GET /api/v1/notifications/unread-count error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
