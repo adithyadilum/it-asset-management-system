@@ -100,7 +100,7 @@ export function DisposalsLayout({
     }
   };
 
-  // Ensure the app sidebar is closed when a review panel is active to provide more space
+  // Collapse the sidebar when a detail panel is open to maximize workspace area.
   useEffect(() => {
     if (isReviewOpen || isRecordOpen) {
       setOpen(false);
@@ -109,17 +109,17 @@ export function DisposalsLayout({
 
   return (
     <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-muted">
-      {/* Main Workspace Shell */}
+
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
-          {/* Header */}
+
           <div className="mb-4 shrink-0">
             <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
               Disposals
             </h1>
           </div>
 
-          {/* Tabs Container */}
+
           <ModuleNavigationTabs
             tabs={[
               ...(userRole !== 'FinancialAuditor' ? [{ id: 'pending', label: `Pending Disposal (${pendingData.length})` }] : []),
@@ -129,7 +129,7 @@ export function DisposalsLayout({
             onTabChange={handleTabChange}
             containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
           >
-            {/* Tab Content - Pending */}
+
             {userRole !== 'FinancialAuditor' && (
             <TabsContent
               value="pending"
@@ -142,7 +142,7 @@ export function DisposalsLayout({
             </TabsContent>
             )}
 
-            {/* Tab Content - History */}
+
             <TabsContent value="history" className="m-0 flex flex-1 flex-col min-h-0 outline-none">
               <DisposalHistoryGrid
                 initialData={historyData}

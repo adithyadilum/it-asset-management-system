@@ -48,6 +48,7 @@ interface ExecuteDisposalDialogProps {
   singleCategory?: string; 
 }
 
+/** Maps an asset category string to its corresponding Lucide icon. */
 function getDeviceIcon(category: string, className?: string) {
   const lowerCat = category.toLowerCase().trim();
   if (/\b(laptop|macbook)\b/.test(lowerCat)) return <Laptop className={className} />;
@@ -97,7 +98,7 @@ export function ExecuteDisposalDialog({
     setReceiptUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  /** Builds the FormData payload and calls the server action. */
+  /** Constructs the FormData payload and invokes the disposal server action. */
   async function runDisposal(): Promise<{ success: boolean; message: string }> {
     const formData = new FormData();
     formData.set('disposalIds', JSON.stringify(selectedAssets.map((a) => a.id)));

@@ -47,7 +47,7 @@ export function RejectDisposalDialog({
   const isBulk = selectedAssets.length > 1;
   const singleAsset = selectedAssets[0];
 
-  // UPDATED: Enforce maintenanceIssue if status is 'In Repair'
+  // 'In Repair' requires a maintenance description to be valid.
   const isValid = 
     selectedAssets.length > 0 && 
     reason.trim().length >= 10 && 
@@ -171,7 +171,6 @@ export function RejectDisposalDialog({
               )}
             </div>
 
-            {/* UPDATED: Made mandatory visually and strictly */}
             {status === 'In Repair' && (
               <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                 <Label htmlFor="maintenanceIssue" className="text-[13px] font-semibold text-foreground">
