@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -24,7 +24,7 @@ export class MaintenanceErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error) {
     console.error(
       '[MaintenanceErrorBoundary]',
       error instanceof Error ? error.message : 'Unknown error'
