@@ -1,7 +1,7 @@
 'use server';
 
 import { Client } from '@upstash/qstash';
-import { randomBytes, createHash, createHmac, randomUUID } from 'node:crypto';
+import { randomBytes, createHmac, randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db';
@@ -18,6 +18,7 @@ import { createApiKeySchema } from '@/lib/validations/integrations';
 import { revalidatePath } from 'next/cache';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { serverEnv } from '@/lib/env';
+import { hashApiKey } from '@/lib/api/api-key-hash';
 
 type WebhookSubscriptionResult =
   | { success: true; secret: string }
@@ -121,7 +122,7 @@ export async function createApiKey(
 
     const bytes = randomBytes(32);
     const plainText = `${API_KEY_PREFIX}${bytes.toString('hex')}`;
-    const keyHash = createHash('sha256').update(plainText).digest('hex');
+    const keyHash = await hashApiKey(plainText);
     const keyPrefix = plainText.slice(0, API_KEY_PREFIX.length);
     const keySuffix = plainText.slice(-4);
 

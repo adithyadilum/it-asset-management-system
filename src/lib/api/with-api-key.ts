@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash } from 'node:crypto';
+import { unstable_rethrow } from 'next/navigation';
 import { db } from '@/db';
 import { apiKeys } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
 import { applyRateLimit, injectRateLimitHeaders } from '@/lib/api/rate-limiter';
 import type { ApiKeyScope } from '@/types/integrations';
+import { hashApiKey } from '@/lib/api/api-key-hash';
 
 export type ApiKeyRecord = {
   id: string;
@@ -62,7 +63,7 @@ export function withApiKey<TContext extends Record<string, unknown>>(
           'Missing or invalid API key. Provide via Authorization header as a Bearer token or via x-api-key header.'
         );
       }
-      const hash = createHash('sha256').update(token).digest('hex');
+      const hash = await hashApiKey(token);
 
       const found = (await db.query.apiKeys.findFirst({
         where: eq(apiKeys.keyHash, hash),
@@ -125,6 +126,7 @@ export function withApiKey<TContext extends Record<string, unknown>>(
       injectRateLimitHeaders(response, rl);
       return response;
     } catch (err) {
+      unstable_rethrow(err);
       console.error('Unhandled fault in withApiKey middleware:', err);
       return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
     }

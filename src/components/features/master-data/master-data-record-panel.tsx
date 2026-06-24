@@ -10,7 +10,6 @@ import {
     type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
 
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
