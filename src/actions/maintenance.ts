@@ -24,6 +24,8 @@ import {
   initiateVendorRepairSchema,
   completeRepairSchema,
   panelRepairSchema,
+  getRepairHistoryParamsSchema,
+  getAssetMaintenanceHistoryParamsSchema,
 } from '@/lib/validations/maintenance';
 import type {
   PendingReviewTicket,
@@ -49,6 +51,7 @@ const DEFAULT_HISTORY_LIMIT = 3;
 // ============================================================================
 
 export async function getPendingMaintenanceTickets(searchTerm = '') {
+  // Fix A — FinanceAuditor must not access operational pending tickets
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
   if (
@@ -58,138 +61,45 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
   )
     throw new Error('Forbidden');
 
-  const baseCondition = and(
-    eq(maintenanceTickets.status, 'ACTIVE'),
-    eq(maintenanceTickets.ticketType, 'INTERNAL')
-  );
-
-  const searchCondition = searchTerm.trim()
-    ? or(
-        ilike(assets.assetTag, `%${searchTerm}%`),
-        ilike(assets.name, `%${searchTerm}%`),
-        ilike(maintenanceTickets.reportedIssue, `%${searchTerm}%`)
-      )
-    : undefined;
-
-  const result = await db
-    .select({
-      ticket: maintenanceTickets,
-      asset: assets,
-      model: models,
-      brand: brands,
-      category: categories,
-      purchase: assetPurchases,
-      reportedBy: users,
-    })
-    .from(maintenanceTickets)
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    )
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(brands, eq(models.brandId, brands.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-    .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
-    .limit(MAX_QUERY_LIMIT);
-
-  if (result.length === 0) return { tickets: [], total: 0 };
-
-  const tickets = result.map((row) => ({
-    ...row.ticket,
-    asset: row.asset,
-    model: row.model,
-    brand: row.brand,
-    category: row.category,
-    purchase: row.purchase,
-    reportedBy: row.reportedBy,
-  })) as unknown as PendingReviewTicket[];
-
-  return { tickets, total: tickets.length };
-}
-
-export async function getTicketForIssueReview(
-  ticketId: number
-): Promise<IssueReviewPanelData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinancialAuditor'
-  )
-    throw new Error('Forbidden');
-
-  const result = await db
-    .select({
-      ticket: maintenanceTickets,
-      asset: assets,
-      model: models,
-      brand: brands,
-      category: categories,
-      purchase: assetPurchases,
-      reportedBy: users,
-    })
-    .from(maintenanceTickets)
-    .where(
-      and(
-        eq(maintenanceTickets.id, ticketId),
-        eq(maintenanceTickets.status, 'ACTIVE')
-      )
-    )
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(brands, eq(models.brandId, brands.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-    .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
-    .limit(1);
-
-  if (result.length === 0) throw new Error('Ticket not found');
-
-  const row = result[0];
-  const purchase = row.purchase;
-
-  // Calculate Depreciation & Book Value from available purchase data
-  const totalCost = purchase?.totalCost
-    ? parseFloat(purchase.totalCost.toString())
-    : 0;
-  const bookValue = calculateStraightLineDepreciation(
-    totalCost,
-    row.asset.usefulLifeMonths,
-    purchase?.purchaseDate ?? null
-  );
-
-  // Calculate Total Cost of Ownership (add repair costs)
-  const repairResult = await db
-    .select({
-      totalRepair:
-        sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
-          'totalRepair'
-        ),
-    })
-    .from(maintenanceTickets)
-    .where(
-      and(
-        eq(maintenanceTickets.assetId, row.asset.id),
-        eq(maintenanceTickets.status, 'COMPLETED')
-      )
+  try {
+    const baseCondition = and(
+      eq(maintenanceTickets.status, 'ACTIVE'),
+      eq(maintenanceTickets.ticketType, 'INTERNAL')
     );
 
-  const totalRepairCosts = parseFloat(
-    repairResult[0]?.totalRepair?.toString() || '0'
-  );
-  const totalTCO = Math.round((totalCost + totalRepairCosts) * 100) / 100;
+    const searchCondition = searchTerm.trim()
+      ? or(
+          ilike(assets.assetTag, `%${searchTerm}%`),
+          ilike(assets.name, `%${searchTerm}%`),
+          ilike(maintenanceTickets.reportedIssue, `%${searchTerm}%`)
+        )
+      : undefined;
 
-  // Determine Warranty Status
-  let warrantyStatus: 'Active' | 'Expired' = 'Expired';
-  if (purchase?.warrantyExpiry) {
-    const expiryDate = new Date(purchase.warrantyExpiry);
-    warrantyStatus = expiryDate > new Date() ? 'Active' : 'Expired';
-  }
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+        model: models,
+        brand: brands,
+        category: categories,
+        purchase: assetPurchases,
+        reportedBy: users,
+      })
+      .from(maintenanceTickets)
+      .where(
+        searchCondition ? and(baseCondition, searchCondition) : baseCondition
+      )
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
+      .limit(MAX_QUERY_LIMIT);
 
-  return {
-    ticket: {
+    if (result.length === 0) return { tickets: [], total: 0 };
+
+    const tickets = result.map((row) => ({
       ...row.ticket,
       asset: row.asset,
       model: row.model,
@@ -197,15 +107,121 @@ export async function getTicketForIssueReview(
       category: row.category,
       purchase: row.purchase,
       reportedBy: row.reportedBy,
-    },
-    warrantyStatus,
-    bookValue: Math.round(bookValue * 100) / 100,
-    originalCost: totalCost,
-    totalTCO,
-  } as unknown as IssueReviewPanelData;
+    })) as unknown as PendingReviewTicket[];
+
+    return { tickets, total: tickets.length };
+  } catch (error) {
+    console.error('[getPendingMaintenanceTickets]', error instanceof Error ? error.message : 'Unknown error');
+    throw new Error('Failed to load maintenance data.');
+  }
+}
+
+export async function getTicketForIssueReview(
+  ticketId: number
+): Promise<IssueReviewPanelData> {
+  // Fix A — FinanceAuditor must not access individual operational ticket details
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Unauthorized');
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
+    throw new Error('Forbidden');
+
+  try {
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+        model: models,
+        brand: brands,
+        category: categories,
+        purchase: assetPurchases,
+        reportedBy: users,
+      })
+      .from(maintenanceTickets)
+      .where(
+        and(
+          eq(maintenanceTickets.id, ticketId),
+          eq(maintenanceTickets.status, 'ACTIVE')
+        )
+      )
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
+      .limit(1);
+
+    if (result.length === 0) throw new Error('Ticket not found');
+
+    const row = result[0];
+    const purchase = row.purchase;
+
+    // Calculate Depreciation & Book Value from available purchase data
+    const totalCost = purchase?.totalCost
+      ? parseFloat(purchase.totalCost.toString())
+      : 0;
+    const bookValue = calculateStraightLineDepreciation(
+      totalCost,
+      row.asset.usefulLifeMonths,
+      purchase?.purchaseDate ?? null
+    );
+
+    // Calculate Total Cost of Ownership (add repair costs)
+    const repairResult = await db
+      .select({
+        totalRepair:
+          sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+            'totalRepair'
+          ),
+      })
+      .from(maintenanceTickets)
+      .where(
+        and(
+          eq(maintenanceTickets.assetId, row.asset.id),
+          eq(maintenanceTickets.status, 'COMPLETED')
+        )
+      );
+
+    const totalRepairCosts = parseFloat(
+      repairResult[0]?.totalRepair?.toString() || '0'
+    );
+    const totalTCO = Math.round((totalCost + totalRepairCosts) * 100) / 100;
+
+    // Determine Warranty Status
+    let warrantyStatus: 'Active' | 'Expired' = 'Expired';
+    if (purchase?.warrantyExpiry) {
+      const expiryDate = new Date(purchase.warrantyExpiry);
+      warrantyStatus = expiryDate > new Date() ? 'Active' : 'Expired';
+    }
+
+    return {
+      ticket: {
+        ...row.ticket,
+        asset: row.asset,
+        model: row.model,
+        brand: row.brand,
+        category: row.category,
+        purchase: row.purchase,
+        reportedBy: row.reportedBy,
+      },
+      warrantyStatus,
+      bookValue: Math.round(bookValue * 100) / 100,
+      originalCost: totalCost,
+      totalTCO,
+    } as unknown as IssueReviewPanelData;
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Ticket not found') throw error;
+    console.error('[getTicketForIssueReview]', error instanceof Error ? error.message : 'Unknown error');
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 export async function getVendors() {
+  // Fix A — FinanceAuditor must not access vendor operational data
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
   if (
@@ -215,21 +231,27 @@ export async function getVendors() {
   )
     throw new Error('Forbidden');
 
-  return await db
-    .select({
-      id: vendors.id,
-      companyName: vendors.companyName,
-      email: vendors.email,
-      phone: vendors.phone,
-      website: vendors.website,
-      isActive: vendors.isActive,
-    })
-    .from(vendors)
-    .where(eq(vendors.isActive, true))
-    .orderBy(vendors.companyName);
+  try {
+    return await db
+      .select({
+        id: vendors.id,
+        companyName: vendors.companyName,
+        email: vendors.email,
+        phone: vendors.phone,
+        website: vendors.website,
+        isActive: vendors.isActive,
+      })
+      .from(vendors)
+      .where(eq(vendors.isActive, true))
+      .orderBy(vendors.companyName);
+  } catch (error) {
+    console.error('[getVendors]', error instanceof Error ? error.message : 'Unknown error');
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 export async function getActiveRepairTickets(searchTerm = '') {
+  // Fix A — FinanceAuditor must not access active repair operational data
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
   if (
@@ -239,36 +261,41 @@ export async function getActiveRepairTickets(searchTerm = '') {
   )
     throw new Error('Forbidden');
 
-  const baseCondition = and(
-    eq(maintenanceTickets.status, 'ACTIVE'),
-    eq(maintenanceTickets.ticketType, 'VENDOR')
-  );
+  try {
+    const baseCondition = and(
+      eq(maintenanceTickets.status, 'ACTIVE'),
+      eq(maintenanceTickets.ticketType, 'VENDOR')
+    );
 
-  const searchCondition = searchTerm.trim()
-    ? or(
-        ilike(maintenanceTickets.rmaNumber, `%${searchTerm}%`),
-        ilike(maintenanceTickets.vendorName, `%${searchTerm}%`)
+    const searchCondition = searchTerm.trim()
+      ? or(
+          ilike(maintenanceTickets.rmaNumber, `%${searchTerm}%`),
+          ilike(maintenanceTickets.vendorName, `%${searchTerm}%`)
+        )
+      : undefined;
+
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(
+        searchCondition ? and(baseCondition, searchCondition) : baseCondition
       )
-    : undefined;
+      .limit(MAX_QUERY_LIMIT);
 
-  const result = await db
-    .select({
-      ticket: maintenanceTickets,
-      asset: assets,
-    })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    )
-    .limit(MAX_QUERY_LIMIT);
+    const tickets = result.map((row) => ({
+      ...row.ticket,
+      asset: row.asset,
+    })) as unknown as ActiveRepairTicket[];
 
-  const tickets = result.map((row) => ({
-    ...row.ticket,
-    asset: row.asset,
-  })) as unknown as ActiveRepairTicket[];
-
-  return { tickets, total: tickets.length };
+    return { tickets, total: tickets.length };
+  } catch (error) {
+    console.error('[getActiveRepairTickets]', error instanceof Error ? error.message : 'Unknown error');
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 export async function getRepairHistory(
@@ -276,6 +303,7 @@ export async function getRepairHistory(
   pageSize = 10,
   searchTerm = ''
 ) {
+  // FinanceAuditor allowed — history is their permitted view
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
   if (
@@ -285,64 +313,77 @@ export async function getRepairHistory(
   )
     throw new Error('Forbidden');
 
-  const offset = (page - 1) * pageSize;
-  const baseCondition = eq(maintenanceTickets.status, 'COMPLETED');
+  // Fix B — Validate and bound pagination parameters
+  const paramsResult = getRepairHistoryParamsSchema.safeParse({ page, pageSize, searchTerm });
+  if (!paramsResult.success) {
+    throw new Error(paramsResult.error.issues[0]?.message ?? 'Invalid pagination parameters.');
+  }
+  const safeParams = paramsResult.data;
 
-  const searchCondition = searchTerm.trim()
-    ? or(
-        ilike(assets.assetTag, `%${searchTerm}%`),
-        ilike(maintenanceTickets.vendorName, `%${searchTerm}%`)
+  try {
+    const offset = (safeParams.page - 1) * safeParams.pageSize;
+    const baseCondition = eq(maintenanceTickets.status, 'COMPLETED');
+
+    const searchCondition = safeParams.searchTerm.trim()
+      ? or(
+          ilike(assets.assetTag, `%${safeParams.searchTerm}%`),
+          ilike(maintenanceTickets.vendorName, `%${safeParams.searchTerm}%`)
+        )
+      : undefined;
+
+    const countResult = await db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(
+        searchCondition ? and(baseCondition, searchCondition) : baseCondition
+      );
+
+    const total = countResult[0]?.count || 0;
+
+    const result = await db
+      .select({
+        ticket: {
+          id: maintenanceTickets.id,
+          assetId: assets.assetTag,
+          vendorName: maintenanceTickets.vendorName,
+          actualCompletionDate: maintenanceTickets.actualCompletionDate,
+          actualCost: maintenanceTickets.actualCost,
+          resolutionNotes: maintenanceTickets.resolutionNotes,
+          status: maintenanceTickets.status,
+          createdAt: maintenanceTickets.createdAt,
+          updatedAt: maintenanceTickets.updatedAt,
+        },
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(
+        searchCondition ? and(baseCondition, searchCondition) : baseCondition
       )
-    : undefined;
+      .orderBy(desc(maintenanceTickets.actualCompletionDate))
+      .limit(safeParams.pageSize)
+      .offset(offset);
 
-  const countResult = await db
-    .select({ count: sql<number>`cast(count(*) as integer)` })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    );
+    const tickets = result.map((row) => row.ticket) as RepairHistoryTicket[];
 
-  const total = countResult[0]?.count || 0;
-
-  const result = await db
-    .select({
-      ticket: {
-        id: maintenanceTickets.id,
-        assetId: assets.assetTag,
-        vendorName: maintenanceTickets.vendorName,
-        actualCompletionDate: maintenanceTickets.actualCompletionDate,
-        actualCost: maintenanceTickets.actualCost,
-        resolutionNotes: maintenanceTickets.resolutionNotes,
-        status: maintenanceTickets.status,
-        createdAt: maintenanceTickets.createdAt,
-        updatedAt: maintenanceTickets.updatedAt,
-      },
-    })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    )
-    .orderBy(desc(maintenanceTickets.actualCompletionDate))
-    .limit(pageSize)
-    .offset(offset);
-
-  const tickets = result.map((row) => row.ticket) as RepairHistoryTicket[];
-
-  return {
-    tickets,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.ceil(total / pageSize),
-  };
+    return {
+      tickets,
+      total,
+      page: safeParams.page,
+      pageSize: safeParams.pageSize,
+      totalPages: Math.ceil(total / safeParams.pageSize),
+    };
+  } catch (error) {
+    console.error('[getRepairHistory]', error instanceof Error ? error.message : 'Unknown error');
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 export async function getAssetMaintenanceHistory(
   assetId: string,
   limit = DEFAULT_HISTORY_LIMIT
 ) {
+  // FinanceAuditor allowed — this is the asset detail panel history view (last 3 records)
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
   if (
@@ -352,35 +393,48 @@ export async function getAssetMaintenanceHistory(
   )
     throw new Error('Forbidden');
 
-  const assetRecord = await db
-    .select({ id: assets.id })
-    .from(assets)
-    .where(eq(assets.assetTag, assetId))
-    .limit(1);
+  // Fix B — Validate and bound assetId and limit parameters
+  const paramsResult = getAssetMaintenanceHistoryParamsSchema.safeParse({ assetId, limit });
+  if (!paramsResult.success) {
+    throw new Error(paramsResult.error.issues[0]?.message ?? 'Invalid parameters.');
+  }
+  const safeParams = paramsResult.data;
 
-  if (assetRecord.length === 0) throw new Error('Asset not found');
+  try {
+    const assetRecord = await db
+      .select({ id: assets.id })
+      .from(assets)
+      .where(eq(assets.assetTag, safeParams.assetId))
+      .limit(1);
 
-  const numericAssetId = assetRecord[0].id;
+    if (assetRecord.length === 0) throw new Error('Asset not found');
 
-  const result = await db
-    .select({
-      id: maintenanceTickets.id,
-      assetId: assets.assetTag,
-      ticketType: maintenanceTickets.ticketType,
-      vendorName: maintenanceTickets.vendorName,
-      reportedIssue: maintenanceTickets.reportedIssue,
-      resolutionNotes: maintenanceTickets.resolutionNotes,
-      actualCost: maintenanceTickets.actualCost,
-      actualCompletionDate: maintenanceTickets.actualCompletionDate,
-      status: maintenanceTickets.status,
-    })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(eq(maintenanceTickets.assetId, numericAssetId))
-    .orderBy(desc(maintenanceTickets.createdAt))
-    .limit(limit);
+    const numericAssetId = assetRecord[0].id;
 
-  return result as AssetMaintenanceRecord[];
+    const result = await db
+      .select({
+        id: maintenanceTickets.id,
+        assetId: assets.assetTag,
+        ticketType: maintenanceTickets.ticketType,
+        vendorName: maintenanceTickets.vendorName,
+        reportedIssue: maintenanceTickets.reportedIssue,
+        resolutionNotes: maintenanceTickets.resolutionNotes,
+        actualCost: maintenanceTickets.actualCost,
+        actualCompletionDate: maintenanceTickets.actualCompletionDate,
+        status: maintenanceTickets.status,
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(eq(maintenanceTickets.assetId, numericAssetId))
+      .orderBy(desc(maintenanceTickets.createdAt))
+      .limit(safeParams.limit);
+
+    return result as AssetMaintenanceRecord[];
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Asset not found') throw error;
+    console.error('[getAssetMaintenanceHistory]', error instanceof Error ? error.message : 'Unknown error');
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 // ============================================================================
@@ -439,16 +493,23 @@ export async function resolveIssueInternally(
       if (updatedAssets.length === 0)
         throw new Error('Failed to update asset status');
 
-      // Terminate any active assignments since the asset is now Available
-      await tx
-        .update(assetAssignments)
-        .set({ returnedDate: now })
-        .where(
-          and(
-            eq(assetAssignments.assetId, ticket.assetId),
-            isNull(assetAssignments.returnedDate)
-          )
+      // Fix C — Terminate any active assignments since the asset is now Available
+      // No row-count check required (0 open assignments is valid), but DB errors must surface
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, ticket.assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${assignErr instanceof Error ? assignErr.message : 'Unknown error'}`
         );
+      }
 
       const updatedTickets = await tx
         .update(maintenanceTickets)
@@ -749,16 +810,23 @@ export async function completeRepairTicket(
         .returning({ id: assets.id });
       if (updatedAssets.length === 0) throw new Error('Failed to update asset');
 
-      // Terminate any active assignments since the asset is now Available or Disposed
-      await tx
-        .update(assetAssignments)
-        .set({ returnedDate: now })
-        .where(
-          and(
-            eq(assetAssignments.assetId, assetId),
-            isNull(assetAssignments.returnedDate)
-          )
+      // Fix C — Terminate any active assignments since the asset is now Available or Disposed
+      // No row-count check required (0 open assignments is valid), but DB errors must surface
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${assignErr instanceof Error ? assignErr.message : 'Unknown error'}`
         );
+      }
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
@@ -894,16 +962,23 @@ export async function reportDefectiveFromPanel(
       if (updatedAsset.length === 0)
         throw new Error('Failed to update asset status');
 
-      // Terminate any active assignments
-      await tx
-        .update(assetAssignments)
-        .set({ returnedDate: now })
-        .where(
-          and(
-            eq(assetAssignments.assetId, parsed.data.assetId),
-            isNull(assetAssignments.returnedDate)
-          )
+      // Fix C — Terminate any active assignments
+      // No row-count check required (0 open assignments is valid), but DB errors must surface
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, parsed.data.assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${assignErr instanceof Error ? assignErr.message : 'Unknown error'}`
         );
+      }
 
       // Create vendor repair ticket
       const newTicketValues = {

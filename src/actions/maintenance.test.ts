@@ -119,11 +119,9 @@ describe('Read Operations: getPendingMaintenanceTickets', () => {
     expect(result.tickets).toHaveLength(1);
   });
 
-  it('returns tickets for FinancialAuditor', async () => {
+  it('throws Forbidden for FinanceAuditor (no longer allowed on pending tickets)', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
-    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
-    const result = await getPendingMaintenanceTickets();
-    expect(result.tickets).toHaveLength(1);
+    await expect(getPendingMaintenanceTickets()).rejects.toThrow('Forbidden');
   });
 
   it('applies search filter on asset tag, name, or issue', async () => {
@@ -158,10 +156,18 @@ describe('Read Operations: getTicketForIssueReview', () => {
 
   it('returns full review panel data for valid ticket', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    // Supply usefulLifeMonths so calculateStraightLineDepreciation doesn't crash
     mockDb.select.mockReturnValueOnce(chain([{
       ticket: { id: 1 },
-      asset: { id: 'a1', status: 'Available' },
+      asset: { id: 'a1', status: 'Available', usefulLifeMonths: 36 },
+      model: {},
+      brand: {},
+      category: {},
+      purchase: null,
+      reportedBy: { id: 'u1', name: 'Admin', email: 'admin@test.com' },
     }]));
+    // Second select: repair cost aggregation
+    mockDb.select.mockReturnValueOnce(chain([{ totalRepair: 0 }]));
     const result = await getTicketForIssueReview(1);
     expect(result).not.toBeNull();
   });

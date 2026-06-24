@@ -785,9 +785,21 @@ export async function editAssetDetailsAction(
           .returning({ id: assetPurchases.id });
 
         if (result.length === 0) {
-          throw new Error(
-            'Failed to update asset purchase. Row not found or not updated.'
-          );
+          // If no purchase record exists, insert a new one
+          const inserted = await tx
+            .insert(assetPurchases)
+            .values({
+              assetId,
+              warrantyExpiry,
+              updatedAt: new Date(),
+            })
+            .returning({ id: assetPurchases.id });
+
+          if (inserted.length === 0) {
+            throw new Error(
+              'Failed to create asset purchase record.'
+            );
+          }
         }
       }
 

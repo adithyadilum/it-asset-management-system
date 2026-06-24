@@ -14,6 +14,11 @@ import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import {
+  depreciationLedgerParamsSchema,
+  tcoLedgerParamsSchema,
+  writeOffsLedgerParamsSchema,
+} from '@/lib/validations/financials';
 
 /**
  * Reusable RBAC guard for all financial endpoints
@@ -28,24 +33,7 @@ async function enforceFinanceAccess() {
   return user;
 }
 
-/**
- * Validates and normalizes pagination parameters to prevent abuse.
- * Enforces server-side limits on page size.
- */
-function validatePaginationParams(
-  page?: number,
-  pageSize?: number
-): { page: number; pageSize: number } {
-  const MAX_PAGE_SIZE = 1000; // Prevent excessive DB load
 
-  const validPage = Math.max(1, Math.floor(page || 1));
-  const validPageSize = Math.min(
-    Math.max(1, Math.floor(pageSize || 16)),
-    MAX_PAGE_SIZE
-  );
-
-  return { page: validPage, pageSize: validPageSize };
-}
 
 // --- Pagination Interface ---
 export interface LedgerPaginationParams {
@@ -65,9 +53,11 @@ export async function getDepreciationLedger(
   try {
     await enforceFinanceAccess();
 
-    const { page: validPage, pageSize: validPageSize } =
-      validatePaginationParams(params.page, params.pageSize);
-    const { search, category, ageFilter } = params;
+    const resultParse = depreciationLedgerParamsSchema.safeParse(params);
+    if (!resultParse.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { page: validPage, pageSize: validPageSize, search, category, ageFilter } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
@@ -167,8 +157,16 @@ export async function getDepreciationLedger(
     };
   } catch (error) {
     unstable_rethrow(error);
-    console.error('[getDepreciationLedger] Error:', error);
-    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+    console.error(
+      '[getDepreciationLedger] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    if (
+      error instanceof Error &&
+      (error.message === 'Unauthorized' ||
+        error.message === 'Forbidden' ||
+        error.message === 'Invalid query parameters.')
+    ) {
       throw error;
     }
     throw new Error('Failed to load depreciation ledger.');
@@ -185,9 +183,11 @@ export async function getTCOLedger(
   try {
     await enforceFinanceAccess();
 
-    const { page: validPage, pageSize: validPageSize } =
-      validatePaginationParams(params.page, params.pageSize);
-    const { search, category, costFilter } = params;
+    const resultParse = tcoLedgerParamsSchema.safeParse(params);
+    if (!resultParse.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { page: validPage, pageSize: validPageSize, search, category, costFilter } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     const repairCostsSq = db.$with('repair_costs_sq').as(
@@ -294,8 +294,16 @@ export async function getTCOLedger(
     };
   } catch (error) {
     unstable_rethrow(error);
-    console.error('[getTCOLedger] Error:', error);
-    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+    console.error(
+      '[getTCOLedger] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    if (
+      error instanceof Error &&
+      (error.message === 'Unauthorized' ||
+        error.message === 'Forbidden' ||
+        error.message === 'Invalid query parameters.')
+    ) {
       throw error;
     }
     throw new Error('Failed to load TCO ledger.');
@@ -312,9 +320,11 @@ export async function getWriteOffsLedger(
   try {
     await enforceFinanceAccess();
 
-    const { page: validPage, pageSize: validPageSize } =
-      validatePaginationParams(params.page, params.pageSize);
-    const { search, category, salvageFilter } = params;
+    const resultParse = writeOffsLedgerParamsSchema.safeParse(params);
+    if (!resultParse.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { page: validPage, pageSize: validPageSize, search, category, salvageFilter } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
@@ -412,8 +422,16 @@ export async function getWriteOffsLedger(
     };
   } catch (error) {
     unstable_rethrow(error);
-    console.error('[getWriteOffsLedger] Error:', error);
-    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+    console.error(
+      '[getWriteOffsLedger] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    if (
+      error instanceof Error &&
+      (error.message === 'Unauthorized' ||
+        error.message === 'Forbidden' ||
+        error.message === 'Invalid query parameters.')
+    ) {
       throw error;
     }
     throw new Error('Failed to load write-offs ledger.');

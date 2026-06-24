@@ -153,7 +153,7 @@ export async function getAssetFinancialVitals(
     console.error(
       '[getAssetFinancialVitals] Error for asset %s:',
       assetId,
-      error
+      error instanceof Error ? error.message : 'Unknown error'
     );
     throw new Error('Failed to load financial vitals.');
   }
