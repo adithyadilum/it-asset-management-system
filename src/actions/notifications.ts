@@ -50,7 +50,7 @@ function escapeHtml(unsafe: string): string {
  */
 function escapeMarkdown(unsafe: string): string {
   if (!unsafe) return '';
-  return unsafe.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+  return unsafe.replace(/([\\_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
 }
 
 export async function getUnreadCount() {
