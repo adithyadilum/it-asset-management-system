@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useTransition } from 'react';
+import { useState, useMemo, useCallback, useTransition, useEffect } from 'react';
 import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
@@ -53,6 +53,10 @@ export function RolesManagementTable({
   const [optimisticStatus, setOptimisticStatus] = useState<
     Record<string, boolean>
   >({});
+
+  useEffect(() => {
+    setOptimisticStatus({});
+  }, [selectedRole]);
 
   const openRemoveModal = (user: RoleUser) => {
     setSelectedUserForRemoval(user);
@@ -143,30 +147,28 @@ export function RolesManagementTable({
                 : user.isActive;
 
             return (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex items-center">
-                      <Switch
-                        checked={isActiveDisplay}
-                        onCheckedChange={(checked) =>
-                          handleToggleActive(user, checked)
-                        }
-                        disabled={isSelf || isPending}
-                        aria-label={`${isActiveDisplay ? 'Deactivate' : 'Activate'} ${user.name}`}
-                        size="sm"
-                      />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isSelf
-                      ? 'You cannot disable your own account'
-                      : isActiveDisplay
-                      ? `Deactivate ${user.name}`
-                      : `Activate ${user.name}`}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center">
+                    <Switch
+                      checked={isActiveDisplay}
+                      onCheckedChange={(checked) =>
+                        handleToggleActive(user, checked)
+                      }
+                      disabled={isSelf || isPending}
+                      aria-label={`${isActiveDisplay ? 'Deactivate' : 'Activate'} ${user.name}`}
+                      size="sm"
+                    />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSelf
+                    ? 'You cannot disable your own account'
+                    : isActiveDisplay
+                    ? `Deactivate ${user.name}`
+                    : `Activate ${user.name}`}
+                </TooltipContent>
+              </Tooltip>
             );
           },
           size: 80,
@@ -182,48 +184,44 @@ export function RolesManagementTable({
 
           return (
             <div className="flex items-center gap-2">
-              <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => openEditModal(user)}
+                    aria-label={`Edit role and status for ${user.name}`}
+                    disabled={isSelf}
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSelf
+                    ? 'You cannot modify your own role or status'
+                    : 'Edit role and status'}
+                </TooltipContent>
+              </Tooltip>
+
+              {selectedRole !== 'Employee' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => openEditModal(user)}
-                      aria-label={`Edit role and status for ${user.name}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => openRemoveModal(user)}
+                      aria-label={`Remove ${user.name} from ${roleLabel}`}
                       disabled={isSelf}
                     >
-                      <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      <Trash2 className="h-4 w-4 text-red-500" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     {isSelf
-                      ? 'You cannot modify your own role or status'
-                      : 'Edit role and status'}
+                      ? 'You cannot remove your own role'
+                      : `Remove ${user.name} from ${roleLabel}`}
                   </TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
-
-              {selectedRole !== 'Employee' && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() => openRemoveModal(user)}
-                        aria-label={`Remove ${user.name} from ${roleLabel}`}
-                        disabled={isSelf}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {isSelf
-                        ? 'You cannot remove your own role'
-                        : `Remove ${user.name} from ${roleLabel}`}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               )}
             </div>
           );
@@ -237,7 +235,7 @@ export function RolesManagementTable({
   );
 
   return (
-    <>
+    <TooltipProvider>
       {selectedRole !== 'Employee' && (
         <div className="flex w-full justify-end mb-4">
           <Button
@@ -294,6 +292,6 @@ export function RolesManagementTable({
         onUpdated={handleUpdated}
         currentUserId={currentUserId}
       />
-    </>
+    </TooltipProvider>
   );
 }
