@@ -2,8 +2,6 @@
 import { WriteOffsLedger } from "@/components/features/financials/write-offs-ledger";
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
-export const dynamic = "force-dynamic";
-
 export const metadata = {
   title: "Write-Offs & Salvage | Tiqri Assets",
 };

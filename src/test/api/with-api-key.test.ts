@@ -5,13 +5,13 @@
  
 
 import { NextRequest, NextResponse } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { db } from '@/db';
 import { withApiKey } from '@/lib/api/with-api-key';
 import { applyRateLimit } from '@/lib/api/rate-limiter';
 import { logAuditAction } from '@/lib/audit';
-import { createHash } from 'node:crypto';
+import { hashApiKey } from '@/lib/api/api-key-hash';
 
 vi.mock('@/db', () => ({
   db: {
@@ -45,7 +45,7 @@ describe('withApiKey middleware', () => {
   const mockHandler = vi.fn().mockResolvedValue(NextResponse.json({ success: true }));
   const requiredScope = 'read:assets';
   const validToken = 'test-token-123';
-  const hashedToken = createHash('sha256').update(validToken).digest('hex');
+  let hashedToken = '';
 
   const wrappedHandler = withApiKey(requiredScope, mockHandler);
 
@@ -54,7 +54,7 @@ const mockApiKeyRecord: any = {
     name: 'Test Key',
     keyHash: hashedToken,
     keyPrefix: 'eitams_live_',
-    keySuffix: 'abcd',
+    keySuffix: validToken.slice(-4),
     isRevoked: false,
     expiresAt: null,
     createdAt: new Date(),
@@ -62,6 +62,11 @@ const mockApiKeyRecord: any = {
     scopes: ['read:assets'],
     createdById: 'user-id',
   };
+
+  beforeAll(async () => {
+    hashedToken = await hashApiKey(validToken);
+    mockApiKeyRecord.keyHash = hashedToken;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

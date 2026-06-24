@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import { connection } from "next/server"
 
 import { getAuthenticatedUser } from "@/actions/auth"
 import { AppSidebar } from "@/components/layout/app-sidebar"
@@ -14,6 +15,8 @@ export const unstable_instant = false;
 export default async function AppShellLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
+  await connection()
+
   const user = await getAuthenticatedUser()
 
   if (!user) {

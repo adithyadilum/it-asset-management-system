@@ -4,12 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PaginationState } from '@tanstack/react-table';
 
-import { fetchReportPreview } from '@/actions/standard-reports';
 import { deleteReportTemplate } from '@/actions/report-templates';
 import {
   DEFAULT_FILTER_STATE,
   type FilterState,
-  type ReportPreviewRow,
   type ReportTemplateData,
   type FilterOptions,
 } from '@/types/standard-reports';
@@ -134,7 +132,7 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
         setErrorMessage(message);
       }
     },
-    [router]
+    [router, setErrorMessage]
   );
 
   // Called after a new template is created — refresh server data
@@ -157,7 +155,6 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
   // This avoids invoking server actions during render.
   useEffect(() => {
     if (!showDataGrid) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: fetch and set state when pagination/filters change
     void loadPreview(filterState, pagination);
   }, [filterState, pagination, showDataGrid, loadPreview]);
 
