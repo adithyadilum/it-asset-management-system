@@ -11,22 +11,19 @@ import { logAuditAction } from '@/lib/audit';
 import { USER_ROLES, type UserRole } from '@/types/auth';
 import { canAccessMobile } from '@/lib/auth/roles';
 
-type TokenRole = UserRole;
-
-function normalizeTokenRole(role: unknown): TokenRole | null {
+/** Validates an unknown JWT claim against the known role enum. */
+function normalizeTokenRole(role: unknown): UserRole | null {
   if (typeof role === 'string' && USER_ROLES.includes(role as UserRole)) {
-    return role as TokenRole;
+    return role as UserRole;
   }
   return null;
 }
 
+/** Decrypts the JWT cookie and extracts auth metadata (stateless — no Keycloak refresh). */
 async function verifyTokenAndRole(request: NextRequest) {
   const authTimer = startLatencyTimer();
 
   try {
-    // getToken() decrypts the JWT cookie but does NOT call the jwt callback
-    // and does NOT attempt a Keycloak token refresh. It returns the raw
-    // cookie payload. This keeps the proxy stateless and low-latency.
     const token = await getToken({ req: request });
 
     if (!token) {
@@ -39,31 +36,17 @@ async function verifyTokenAndRole(request: NextRequest) {
       return null;
     }
 
-    // ── Determine whether the access token is still fresh ────────────────────
-    // accessTokenExpires is milliseconds-since-epoch stored in the JWT cookie.
-    // We do NOT block access here — getServerSession() in the app-shell layout
-    // will attempt a silent refresh via the jwt() callback when the access
-    // token is expired. Blocking here would kick the user out every 5 minutes
-    // (the typical Keycloak access token lifetime) even when the refresh token
-    // is still perfectly valid.
-    //
-    // What we DO use this flag for: deciding whether to redirect an already-
-    // authenticated user AWAY from /login. We only bounce them if the access
-    // token is still fresh — if it's expired we let them stay on /login so
-    // that the app-shell's failed-refresh → redirect("/login") flow lands
-    // cleanly without bouncing back and creating the redirect loop.
-    const EXPIRY_BUFFER_MS = 30 * 1000; // 30-second safety margin
+    // Used to decide if we should redirect authenticated users away from /login.
+    // We do NOT block access on expiry — the app-shell handles silent refresh.
+    // Blocking here would kick users out every ~5 min even with valid refresh tokens.
+    const EXPIRY_BUFFER_MS = 30_000;
     const accessTokenExpires = token.accessTokenExpires as number | undefined;
     const isAccessTokenFresh =
       typeof accessTokenExpires === 'number'
         ? Date.now() < accessTokenExpires - EXPIRY_BUFFER_MS
-        : true; // no expiry stored → assume fresh (legacy token)
+        : true;
 
-    // ── Detect truly dead sessions ────────────────────────────────────────────
-    // refreshTokenExpires is stored in the JWT when auth-options.ts is updated
-    // to persist it. If both the access token AND the refresh token are past
-    // their expiry, there is no way to recover the session silently. We return
-    // null so the caller clears the cookie and sends the user to /login.
+    // Both tokens expired — session is unrecoverable, force re-login.
     const refreshTokenExpires = token.refreshTokenExpires as number | undefined;
     if (
       !isAccessTokenFresh &&
@@ -83,13 +66,13 @@ async function verifyTokenAndRole(request: NextRequest) {
   }
 }
 
-// Session revocation checks run in server actions / RSC boundaries,
-// keeping edge interception stateless and low-latency.
+
 
 function getTopLevelSegment(pathname: string) {
   return pathname.split('/').filter(Boolean)[0] ?? null;
 }
 
+/** Static assets, build output, and metadata files that bypass auth. */
 function isPublicAssetPath(pathname: string) {
   return (
     pathname.startsWith('/_next/') ||
@@ -101,14 +84,12 @@ function isPublicAssetPath(pathname: string) {
   );
 }
 
-/*
- * RBAC Matrix (top-level protected route segments):
- * - GlobalAdmin: all routes
- * - ITOperator: all except /settings/* and /financials/*
- * - FinancialAuditor: all except /settings/* and /operations/*
- * - Employee: /dashboard only
+/**
+ * Edge RBAC gate — controls which top-level route segments each role can reach.
+ * GlobalAdmin: all | ITOperator: no /settings, /financials
+ * FinancialAuditor: no /settings, limited /operations | Employee: /dashboard only
  */
-function canAccessRoute(role: TokenRole, pathname: string) {
+function canAccessRoute(role: UserRole, pathname: string) {
   if (
     pathname === '/' ||
     pathname === '/dashboard' ||
@@ -151,6 +132,7 @@ function canAccessRoute(role: TokenRole, pathname: string) {
   return true;
 }
 
+/** Redirects to /login with a ?redirectTo param and clears stale session cookies. */
 function getLoginRedirectResponse(request: NextRequest) {
   const loginUrl = new URL('/login', request.url);
   const requestedPath = sanitizeRedirectPath(
@@ -161,11 +143,7 @@ function getLoginRedirectResponse(request: NextRequest) {
   loginUrl.searchParams.set('redirectTo', requestedPath);
   const response = NextResponse.redirect(loginUrl);
 
-  // Clear the stale NextAuth session cookie so the browser doesn't keep
-  // replaying the broken JWT on every subsequent request, which would
-  // re-trigger the RefreshAccessTokenError → redirect loop even after the
-  // fix above. Deleting the cookie here gives the user a clean slate and
-  // forces NextAuth to issue a fresh sign-in flow.
+  // Clear stale cookies to prevent redirect loops from broken JWTs.
   const secureCookieName = '__Secure-next-auth.session-token';
   const plainCookieName = 'next-auth.session-token';
 
@@ -177,6 +155,7 @@ function getLoginRedirectResponse(request: NextRequest) {
 
   return response;
 }
+/** Main edge proxy — handles auth, RBAC, mobile routing, and account-status gates. */
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
   const { pathname } = request.nextUrl;
@@ -197,17 +176,9 @@ export async function proxy(request: NextRequest) {
     }
 
     if (payload && isLoginRoute) {
-      // Only redirect an already-authenticated user away from /login when the
-      // access token is STILL FRESH. If it is expired (but possibly refreshable)
-      // we must NOT redirect — the app-shell's failed-refresh path will
-      // redirect here anyway, and bouncing them back would create the loop:
-      //   /dashboard → refresh fails → /login → proxy bounces → /dashboard → …
+      // Only bounce authenticated users away from /login if their token is fresh.
+      // Expired tokens must stay — redirecting would create an infinite loop.
       if (!payload.isAccessTokenFresh) {
-        // Access token is expired; let /login render. getServerSession() hasn't
-        // run yet so we don't know whether the refresh token is still good.
-        // If it is, the user just needs to click "Sign in" once — Keycloak
-        // will return a fresh session immediately. If it isn't, the sign-in
-        // flow will show a proper Keycloak error.
         return NextResponse.next();
       }
 
@@ -219,14 +190,12 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(redirectTo, request.url));
     }
 
-    // ── Account-status gate ──────────────────────────────────────────────────
-    // If the user's account has been disabled by an admin, send them to the
-    // account-disabled page regardless of what route they requested.
+    // Disabled accounts are always sent to /account-disabled.
     if (payload && !payload.isActive && !isAccountDisabledRoute) {
       return NextResponse.redirect(new URL('/account-disabled', request.url));
     }
 
-    // If a re-enabled user somehow still hits /account-disabled, send them home.
+    // Re-enabled users shouldn't stay on the disabled page.
     if (payload && payload.isActive && isAccountDisabledRoute) {
       return NextResponse.redirect(new URL(DEFAULT_POST_LOGIN_REDIRECT, request.url));
     }
@@ -236,24 +205,20 @@ export async function proxy(request: NextRequest) {
       const isMobile = device.type === 'mobile';
       const canUseMobile = canAccessMobile(payload.role);
 
-      // Mobile routing
+      // Redirect eligible mobile users to /mobile; block desktop or unauthorized roles.
       if (canUseMobile && isMobile && !pathname.startsWith('/mobile')) {
         return NextResponse.redirect(new URL('/mobile', request.url));
       }
-
-      // Block desktop users or unauthorized roles from accessing /mobile
-      if (pathname.startsWith('/mobile')) {
-        if (!isMobile || !canUseMobile) {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-        }
+      if (pathname.startsWith('/mobile') && (!isMobile || !canUseMobile)) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
       }
 
-      // Employee Dashboard Redirect
+      // Employees don't have a dashboard — send them to /my-assets.
       if (payload.role === 'Employee' && (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/')) {
         return NextResponse.redirect(new URL('/my-assets', request.url));
       }
 
-      // Check RBAC
+      // Log and block unauthorized route access.
       if (!canAccessRoute(payload.role, pathname)) {
         await logAuditAction({
           entityType: 'URL',
@@ -278,16 +243,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - manifest.json (PWA manifest)
-     * - sw.js (Service Worker)
-     * - icons (PWA icons folder)
-     */
+    // All paths except API routes, static assets, and PWA files.
     '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons).*)',
   ],
 };
