@@ -3,6 +3,7 @@
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
 import { requireAccess, isFinancialAuditor } from '@/lib/auth/roles';
+import { logError } from '@/lib/latency';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -54,33 +55,28 @@ export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchDa
     getRecentActivitiesInternal(),
   ]);
 
+  const [kpiResult, invResult, deptResult, topAssetResult, writeOffResult, swOptResult, activityResult] = results;
+
+  if (kpiResult.status === 'rejected') {
+    logError({ scope: 'DASHBOARD', label: 'kpi_metrics_fetch', error: kpiResult.reason });
+    throw kpiResult.reason;
+  }
+
   return {
-    kpiMetrics:
-      results[0].status === 'fulfilled'
-        ? results[0].value
-        : {
-            totalActiveAssets: 0,
-            totalActiveAssetsChange: 0,
-            fleetHealthScore: 0,
-            fleetHealthLabel: 'Unknown',
-            inactiveSoftwareSeats: 0,
-            warrantyExpiries30Days: 0,
-            softwareRenewals30Days: 0,
-            impactedSoftwareEmployees: 0,
-          },
+    kpiMetrics: kpiResult.value,
     inventoryStatus:
-      results[1].status === 'fulfilled'
-        ? results[1].value
+      invResult.status === 'fulfilled'
+        ? invResult.value
         : { inventoryData: [], utilizationRate: 0 },
     departmentAllocation:
-      results[2].status === 'fulfilled' ? (results[2].value as DepartmentAllocationItem[]) : [],
+      deptResult.status === 'fulfilled' ? (deptResult.value as DepartmentAllocationItem[]) : [],
     topHighValueAssets:
-      results[3].status === 'fulfilled' ? (results[3].value as TopHighValueAssetRow[]) : [],
+      topAssetResult.status === 'fulfilled' ? (topAssetResult.value as TopHighValueAssetRow[]) : [],
     writeOffsLedger:
-      results[4].status === 'fulfilled' ? (results[4].value as WriteOffLedgerRow[]) : [],
+      writeOffResult.status === 'fulfilled' ? (writeOffResult.value as WriteOffLedgerRow[]) : [],
     softwareOptimization:
-      results[5].status === 'fulfilled' ? (results[5].value as SoftwareOptimizationRow[]) : [],
+      swOptResult.status === 'fulfilled' ? (swOptResult.value as SoftwareOptimizationRow[]) : [],
     recentActivities:
-      results[6].status === 'fulfilled' ? (results[6].value as RecentActivity[]) : [],
+      activityResult.status === 'fulfilled' ? (activityResult.value as RecentActivity[]) : [],
   };
 }

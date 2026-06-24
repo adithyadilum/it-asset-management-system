@@ -59,5 +59,9 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
     };
   }
 
-  throw new Error('Forbidden');
+  if (user.role === 'Employee') {
+    throw new Error('FORBIDDEN: Employee role has no dashboard batch data.');
+  }
+
+  throw new Error('FORBIDDEN: Unexpected role.');
 }
