@@ -34,7 +34,9 @@ export async function getRolesPageData(selectedRole: UserRole) {
         id: users.id,
         name: users.name,
         email: users.email,
-        department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
+        // .as() alias is required — without it Drizzle maps the result column
+        // as 'coalesce' (the Postgres auto-name) instead of 'department'.
+        department: sql<string>`coalesce(${departments.name}, 'Unassigned')`.as('department'),
         role: users.role,
         isActive: users.isActive,
       })
@@ -55,6 +57,7 @@ export async function getRolesPageData(selectedRole: UserRole) {
 
   return { usersInRole, roleCountsRows };
 }
+
 
 /** Searches the user directory by name or email. Capped at 100 chars, min 2 chars. */
 export async function searchUsers(query: string) {
@@ -77,7 +80,7 @@ export async function searchUsers(query: string) {
           id: users.id,
           name: users.name,
           email: users.email,
-          department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
+          department: sql<string>`coalesce(${departments.name}, 'Unassigned')`.as('department'),
           role: users.role,
           isActive: users.isActive,
         })

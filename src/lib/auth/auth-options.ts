@@ -211,10 +211,23 @@ export const authOptions: NextAuthOptions = {
       // ── Sync Department from Keycloak Profile ──────────────────────────────
       let userDepartmentId: number | undefined;
 
-      // Type assertion because NextAuth Profile type doesn't know about custom claims
-      const profileDepartment = (profile as Record<string, unknown>)?.department || (user as unknown as Record<string, unknown>)?.department;
-      
-      if (typeof profileDepartment === 'string' && profileDepartment.trim()) {
+      // Keycloak sends user-attributes as arrays in the OIDC profile
+      // (e.g. { "department": ["Engineering"] }).  Some mappers also nest
+      // them under profile.attributes.  We normalise both shapes to a string.
+      const profileRecord = profile as Record<string, unknown>;
+      const rawDept =
+        // flat claim — Keycloak "User Attribute" mapper with token claim name "department"
+        profileRecord?.department ??
+        // nested under "attributes" — some realm configs use this path
+        (profileRecord?.attributes as Record<string, unknown> | undefined)?.department;
+
+      // Normalise array → first element, then coerce to string
+      const deptRaw = Array.isArray(rawDept) ? rawDept[0] : rawDept;
+      const profileDepartment = typeof deptRaw === 'string' ? deptRaw : undefined;
+
+      console.log('[AUTH] Keycloak raw dept claim:', rawDept, '→ resolved:', profileDepartment);
+
+      if (profileDepartment && profileDepartment.trim()) {
         const deptName = profileDepartment.trim();
         
         try {
