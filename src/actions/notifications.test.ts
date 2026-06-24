@@ -98,14 +98,14 @@ describe('Notifications Actions', () => {
   describe('markAsRead & markAllAsRead', () => {
     it('markAsRead successfully updates the isRead flag for a notification', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      mockDb.update.mockReturnValueOnce(chain([]));
-      await markAsRead('notif-123');
+      mockDb.update.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000001' }]));
+      await markAsRead('00000000-0000-4000-a000-000000000001');
       expect(mockDb.update).toHaveBeenCalled();
     });
 
     it('markAllAsRead updates all unread notifications', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      mockDb.update.mockReturnValueOnce(chain([]));
+      mockDb.update.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000001' }]));
       await markAllAsRead();
       expect(mockDb.update).toHaveBeenCalled();
     });
