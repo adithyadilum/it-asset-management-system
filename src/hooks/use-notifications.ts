@@ -52,6 +52,9 @@ export function useNotifications() {
 
   const handleMarkAsRead = useCallback(
     async (notificationId: string) => {
+      const prevNotifications = notifications;
+      const prevUnreadCount = unreadCount;
+
       // Optimistic update
       mutateNotifications(
         (prev = []) =>
@@ -62,17 +65,27 @@ export function useNotifications() {
       );
       mutateUnreadCount((prev = 0) => Math.max(0, prev - 1), false);
 
-      // Server Action
-      await markAsRead(notificationId);
+      try {
+        // Server Action
+        await markAsRead(notificationId);
+      } catch (err) {
+        // Rollback on failure
+        mutateNotifications(prevNotifications, false);
+        mutateUnreadCount(prevUnreadCount, false);
+        throw err;
+      }
 
       // Re-validate
       mutateNotifications();
       mutateUnreadCount();
     },
-    [mutateNotifications, mutateUnreadCount]
+    [notifications, unreadCount, mutateNotifications, mutateUnreadCount]
   );
 
   const handleMarkAllAsRead = useCallback(async () => {
+    const prevNotifications = notifications;
+    const prevUnreadCount = unreadCount;
+
     // Optimistic update
     mutateNotifications(
       (prev = []) => prev.map((notif) => ({ ...notif, isRead: true })),
@@ -80,13 +93,20 @@ export function useNotifications() {
     );
     mutateUnreadCount(0, false);
 
-    // Server Action
-    await markAllAsRead();
+    try {
+      // Server Action
+      await markAllAsRead();
+    } catch (err) {
+      // Rollback on failure
+      mutateNotifications(prevNotifications, false);
+      mutateUnreadCount(prevUnreadCount, false);
+      throw err;
+    }
 
     // Re-validate
     mutateNotifications();
     mutateUnreadCount();
-  }, [mutateNotifications, mutateUnreadCount]);
+  }, [notifications, unreadCount, mutateNotifications, mutateUnreadCount]);
 
   return {
     notifications,
