@@ -39,7 +39,7 @@ export type LedgerQueryParams = z.infer<typeof ledgerQueryParamsSchema>;
 export const depreciationLedgerParamsSchema = ledgerQueryParamsSchema.extend({
   ageFilter: z
     .enum(['All', 'This Year', 'Last Year', 'Older than 3 Years'], {
-      errorMap: () => ({ message: 'Invalid age filter.' }),
+      message: 'Invalid age filter.',
     })
     .optional(),
 });
@@ -60,7 +60,7 @@ export const tcoLedgerParamsSchema = ledgerQueryParamsSchema.extend({
         'Low Value (<$500)',
       ],
       {
-        errorMap: () => ({ message: 'Invalid cost filter.' }),
+        message: 'Invalid cost filter.',
       }
     )
     .optional(),
@@ -82,7 +82,7 @@ export const writeOffsLedgerParamsSchema = ledgerQueryParamsSchema.extend({
         'High Salvage (>$100)',
       ],
       {
-        errorMap: () => ({ message: 'Invalid salvage filter.' }),
+        message: 'Invalid salvage filter.',
       }
     )
     .optional(),
