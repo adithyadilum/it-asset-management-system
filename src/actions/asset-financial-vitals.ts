@@ -144,13 +144,15 @@ export async function getAssetFinancialVitals(
     
     if (isAuthError) {
       console.debug(
-        `[getAssetFinancialVitals] Authorization denied for asset ${assetId}`
+        '[getAssetFinancialVitals] Authorization denied for asset %s',
+        assetId
       );
       throw error;
     }
 
     console.error(
-      `[getAssetFinancialVitals] Error for asset ${assetId}:`,
+      '[getAssetFinancialVitals] Error for asset %s:',
+      assetId,
       error
     );
     throw new Error('Failed to load financial vitals.');
