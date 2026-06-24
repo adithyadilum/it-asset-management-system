@@ -2,23 +2,58 @@
 
 import { db } from '@/db';
 import { departments, users } from '@/db/schema';
-import { eq, ilike, or, inArray, sql } from 'drizzle-orm';
+import { eq, ilike, or, inArray, sql, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { logAuditActionTx } from '@/lib/audit';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { getAuthenticatedUser } from '@/actions/auth';
-import type { UserRole } from '@/types/auth';
+import { USER_ROLES, type UserRole } from '@/types/auth';
 import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 
 function normalizeTokenRole(role: unknown): UserRole | null {
-  const validRoles: UserRole[] = ['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee'];
-  return validRoles.includes(role as UserRole) ? (role as UserRole) : null;
+  return typeof role === 'string' && USER_ROLES.includes(role as UserRole) ? (role as UserRole) : null;
 }
 
 function normalizeTargetUserIds(targetUserIds: string[]): string[] {
   return [...new Set(targetUserIds.filter(isValidUuid))];
+}
+
+/**
+ * Retrieves the users and counts for the roles settings page.
+ */
+export async function getRolesPageData(selectedRole: UserRole) {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) throw new Error('Forbidden');
+  requireAccess(currentUser, isGlobalAdmin);
+
+  const [usersInRole, roleCountsRows] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
+        role: users.role,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .leftJoin(departments, eq(users.departmentId, departments.id))
+      .where(eq(users.role, selectedRole))
+      .orderBy(asc(users.name))
+      .limit(100),
+
+    db
+      .select({
+        role: users.role,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(users)
+      .groupBy(users.role),
+  ]);
+
+  return { usersInRole, roleCountsRows };
 }
 
 /**
@@ -33,8 +68,8 @@ export async function searchUsers(query: string) {
   }
   requireAccess(currentUser, isGlobalAdmin);
 
-  const trimmedQuery = query.trim();
-  if (!trimmedQuery) return [];
+  const trimmedQuery = query.trim().slice(0, 100);
+  if (trimmedQuery.length < 2) return [];
 
   try {
     const queryTimer = startLatencyTimer();
