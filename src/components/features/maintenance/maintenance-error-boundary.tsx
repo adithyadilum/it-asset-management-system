@@ -24,8 +24,11 @@ export class MaintenanceErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Maintenance Module Error Captured:', error, errorInfo);
+  public componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
+    console.error(
+      '[MaintenanceErrorBoundary]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 
   public render() {
