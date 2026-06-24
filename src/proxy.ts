@@ -8,20 +8,15 @@ import {
 } from '@/lib/auth/auth-redirect';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { logAuditAction } from '@/lib/audit';
-import type { UserRole } from '@/types/auth';
+import { USER_ROLES, type UserRole } from '@/types/auth';
+import { canAccessMobile } from '@/lib/auth/roles';
 
 type TokenRole = UserRole;
 
 function normalizeTokenRole(role: unknown): TokenRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinancialAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
+  if (typeof role === 'string' && USER_ROLES.includes(role as UserRole)) {
+    return role as TokenRole;
   }
-
   return null;
 }
 
@@ -239,16 +234,16 @@ export async function proxy(request: NextRequest) {
     if (payload && isProtectedRoute) {
       const { device } = userAgent(request);
       const isMobile = device.type === 'mobile';
-      const isAdmin = payload.role === 'GlobalAdmin' || payload.role === 'ITOperator';
+      const canUseMobile = canAccessMobile(payload.role);
 
-      // Admin mobile routing
-      if (isAdmin && isMobile && !pathname.startsWith('/mobile')) {
+      // Mobile routing
+      if (canUseMobile && isMobile && !pathname.startsWith('/mobile')) {
         return NextResponse.redirect(new URL('/mobile', request.url));
       }
 
-      // Block desktop users or non-admins from accessing /mobile
+      // Block desktop users or unauthorized roles from accessing /mobile
       if (pathname.startsWith('/mobile')) {
-        if (!isMobile || !isAdmin) {
+        if (!isMobile || !canUseMobile) {
           return NextResponse.redirect(new URL('/dashboard', request.url));
         }
       }

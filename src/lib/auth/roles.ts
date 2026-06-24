@@ -71,6 +71,13 @@ export function canViewDisposalHistory(role: UserRole): boolean {
   return role === 'GlobalAdmin' || role === 'FinancialAuditor';
 }
 
+/**
+ * Returns true if the user role is authorized to use the mobile application.
+ */
+export function canAccessMobile(role: UserRole): boolean {
+  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinancialAuditor';
+}
+
 // ─── Assert Guards ────────────────────────────────────────────────────────────
 // A generic guard for use in server actions. Evaluates the user's role against
 // a provided predicate (e.g. `isGlobalAdmin` or `canManageAssets`).
