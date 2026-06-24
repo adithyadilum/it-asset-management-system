@@ -89,90 +89,93 @@ export function RolesManagementTable({
   );
 
   const columns = useMemo<ColumnDef<RoleUser>[]>(
-    () => [
-      {
-        accessorKey: 'name',
-        header: 'User',
-        cell: ({ row }) => {
-          const user = row.original;
-          return (
-            <div className="flex items-center gap-4 py-1">
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarFallback
-                  className={cn(
-                    'rounded-lg bg-muted text-foreground',
-                    TYPOGRAPHY_CLASSNAMES.textXsMedium
-                  )}
-                >
-                  {getInitials(user.name)}
-                </AvatarFallback>
-              </Avatar>
+    () => {
+      const baseCols: ColumnDef<RoleUser>[] = [
+        {
+          accessorKey: 'name',
+          header: 'User',
+          cell: ({ row }) => {
+            const user = row.original;
+            return (
+              <div className="flex items-center gap-4 py-1">
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarFallback
+                    className={cn(
+                      'rounded-lg bg-muted text-foreground',
+                      TYPOGRAPHY_CLASSNAMES.textXsMedium
+                    )}
+                  >
+                    {getInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
 
-              <div className="min-w-0">
-                <p className={cn('truncate text-foreground', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
-                  {user.name}
-                </p>
-                <p className={cn('truncate text-muted-foreground', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
-                  {user.email}
-                </p>
+                <div className="min-w-0">
+                  <p className={cn('truncate text-foreground', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
+                    {user.name}
+                  </p>
+                  <p className={cn('truncate text-muted-foreground', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
+                    {user.email}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
+            );
+          },
         },
-      },
-      {
-        accessorKey: 'department',
-        header: 'Department',
-        cell: ({ row }) => (
-          <span className={cn('text-foreground', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
-            {row.original.department}
-          </span>
-        ),
-      },
-      {
-        id: 'status',
-        header: 'Active',
-        cell: ({ row }) => {
-          const user = row.original;
-          const isSelf = user.id === currentUserId;
-          // Use the optimistic override if set, otherwise fall back to server data
-          const isActiveDisplay =
-            user.id in optimisticStatus
-              ? optimisticStatus[user.id]
-              : user.isActive;
+        {
+          accessorKey: 'department',
+          header: 'Department',
+          cell: ({ row }) => (
+            <span className={cn('text-foreground', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
+              {row.original.department}
+            </span>
+          ),
+        },
+        {
+          id: 'status',
+          header: 'Active',
+          cell: ({ row }) => {
+            const user = row.original;
+            const isSelf = user.id === currentUserId;
+            // Use the optimistic override if set, otherwise fall back to server data
+            const isActiveDisplay =
+              user.id in optimisticStatus
+                ? optimisticStatus[user.id]
+                : user.isActive;
 
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center">
-                    <Switch
-                      checked={isActiveDisplay}
-                      onCheckedChange={(checked) =>
-                        handleToggleActive(user, checked)
-                      }
-                      disabled={isSelf || isPending}
-                      aria-label={`${isActiveDisplay ? 'Deactivate' : 'Activate'} ${user.name}`}
-                      size="sm"
-                    />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSelf
-                    ? 'You cannot disable your own account'
-                    : isActiveDisplay
-                    ? `Deactivate ${user.name}`
-                    : `Activate ${user.name}`}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center">
+                      <Switch
+                        checked={isActiveDisplay}
+                        onCheckedChange={(checked) =>
+                          handleToggleActive(user, checked)
+                        }
+                        disabled={isSelf || isPending}
+                        aria-label={`${isActiveDisplay ? 'Deactivate' : 'Activate'} ${user.name}`}
+                        size="sm"
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isSelf
+                      ? 'You cannot disable your own account'
+                      : isActiveDisplay
+                      ? `Deactivate ${user.name}`
+                      : `Activate ${user.name}`}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          },
+          size: 80,
         },
-        size: 80,
-      },
-      {
+      ];
+
+      baseCols.push({
         id: 'actions',
-        header: '',
+        header: 'Actions',
         cell: ({ row }) => {
           const user = row.original;
           const isSelf = user.id === currentUserId;
@@ -200,50 +203,56 @@ export function RolesManagementTable({
                 </Tooltip>
               </TooltipProvider>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => openRemoveModal(user)}
-                      aria-label={`Remove ${user.name} from ${roleLabel}`}
-                      disabled={isSelf}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isSelf
-                      ? 'You cannot remove your own role'
-                      : `Remove ${user.name} from ${roleLabel}`}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {selectedRole !== 'Employee' && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        onClick={() => openRemoveModal(user)}
+                        aria-label={`Remove ${user.name} from ${roleLabel}`}
+                        disabled={isSelf}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isSelf
+                        ? 'You cannot remove your own role'
+                        : `Remove ${user.name} from ${roleLabel}`}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           );
         },
         size: 100,
-      },
-    ],
-    [currentUserId, roleLabel, optimisticStatus, handleToggleActive, isPending]
+      });
+
+      return baseCols;
+    },
+    [currentUserId, roleLabel, selectedRole, optimisticStatus, handleToggleActive, isPending]
   );
 
   return (
     <>
-      <div className="flex w-full justify-end mb-4">
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 w-32 justify-between rounded-lg bg-primary px-2.5 text-primary-foreground shadow-box-shadow-shadow-xs hover:bg-primary/90"
-          onClick={() => setIsAddModalOpen(true)}
-        >
-          <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className={cn("flex flex-1 items-center justify-center", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
-            Add User
-          </span>
-        </Button>
-      </div>
+      {selectedRole !== 'Employee' && (
+        <div className="flex w-full justify-end mb-4">
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 w-32 justify-between rounded-lg bg-primary px-2.5 text-primary-foreground shadow-box-shadow-shadow-xs hover:bg-primary/90"
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className={cn("flex flex-1 items-center justify-center", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
+              Add User
+            </span>
+          </Button>
+        </div>
+      )}
 
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
         <DataTable
