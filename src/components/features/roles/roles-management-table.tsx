@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useTransition } from 'react';
 import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DataTable } from '@/components/shared/data-table';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn, getInitials } from '@/lib/utils';
 import type { UserRole, RoleUser } from '@/types/auth';
+import { setUserActiveStatus } from '@/actions/roles';
 
 import { RemoveUserModal } from './remove-user-modal';
 import { AddUsersToRoleModal } from './add-users-to-role-modal';
@@ -36,6 +38,8 @@ export function RolesManagementTable({
   selectedRole,
 }: RolesManagementTableProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
   const [selectedUserForRemoval, setSelectedUserForRemoval] =
     useState<RoleUser | null>(null);
@@ -43,6 +47,12 @@ export function RolesManagementTable({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUserForEdit, setSelectedUserForEdit] =
     useState<RoleUser | null>(null);
+
+  // Optimistic active-status overrides: userId → isActive
+  // Applied immediately on toggle click; cleared when the server data refreshes.
+  const [optimisticStatus, setOptimisticStatus] = useState<
+    Record<string, boolean>
+  >({});
 
   const openRemoveModal = (user: RoleUser) => {
     setSelectedUserForRemoval(user);
@@ -55,8 +65,28 @@ export function RolesManagementTable({
   };
 
   const handleUpdated = () => {
+    setOptimisticStatus({});
     router.refresh();
   };
+
+  const handleToggleActive = useCallback(
+    (user: RoleUser, newValue: boolean) => {
+      // Optimistically flip the toggle immediately
+      setOptimisticStatus((prev) => ({ ...prev, [user.id]: newValue }));
+
+      startTransition(async () => {
+        const result = await setUserActiveStatus(user.id, newValue);
+        if (!result.success) {
+          // Revert on failure
+          setOptimisticStatus((prev) => ({ ...prev, [user.id]: !newValue }));
+          console.error('[Roles] Failed to toggle user active status:', result.error);
+        } else {
+          router.refresh();
+        }
+      });
+    },
+    [router]
+  );
 
   const columns = useMemo<ColumnDef<RoleUser>[]>(
     () => [
@@ -101,24 +131,45 @@ export function RolesManagementTable({
       },
       {
         id: 'status',
-        header: 'Status',
+        header: 'Active',
         cell: ({ row }) => {
           const user = row.original;
+          const isSelf = user.id === currentUserId;
+          // Use the optimistic override if set, otherwise fall back to server data
+          const isActiveDisplay =
+            user.id in optimisticStatus
+              ? optimisticStatus[user.id]
+              : user.isActive;
+
           return (
-            <div className={cn(
-              "inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border px-1.5 py-0.5",
-              user.isActive 
-                ? "border-success bg-success/10 text-success" 
-                : "border-muted-foreground/30 bg-muted-foreground/10 text-muted-foreground"
-            )}>
-              <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
-                {user.isActive ? 'Active' : 'Disabled'}
-              </span>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center">
+                    <Switch
+                      checked={isActiveDisplay}
+                      onCheckedChange={(checked) =>
+                        handleToggleActive(user, checked)
+                      }
+                      disabled={isSelf || isPending}
+                      aria-label={`${isActiveDisplay ? 'Deactivate' : 'Activate'} ${user.name}`}
+                      size="sm"
+                    />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSelf
+                    ? 'You cannot disable your own account'
+                    : isActiveDisplay
+                    ? `Deactivate ${user.name}`
+                    : `Activate ${user.name}`}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
+        size: 80,
       },
-
       {
         id: 'actions',
         header: '',
@@ -175,7 +226,7 @@ export function RolesManagementTable({
         size: 100,
       },
     ],
-    [currentUserId, roleLabel]
+    [currentUserId, roleLabel, optimisticStatus, handleToggleActive, isPending]
   );
 
   return (

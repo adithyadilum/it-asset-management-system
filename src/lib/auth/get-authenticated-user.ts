@@ -50,6 +50,7 @@ export async function getAuthenticatedUserFromRequest(req?: Request): Promise<Au
               name: users.name,
               email: users.email,
               role: users.role,
+              isActive: users.isActive,
             })
             .from(users)
             .where(eq(users.id, userId))
@@ -61,6 +62,7 @@ export async function getAuthenticatedUserFromRequest(req?: Request): Promise<Au
               name: user.name,
               email: user.email,
               role: user.role,
+              isActive: user.isActive,
             };
           }
         }

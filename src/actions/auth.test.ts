@@ -101,6 +101,7 @@ describe('getAuthenticatedUser', () => {
       email: 'a@b.com',
       name: 'Admin',
       role: 'GlobalAdmin',
+      isActive: true,
     });
   });
 

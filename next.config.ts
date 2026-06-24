@@ -12,7 +12,9 @@ const nextConfig = {
     '127.0.0.1',
   ],
   reactCompiler: true,
+  cacheComponents: true,
   experimental: {
+    instantNavigationDevToolsToggle: true,
     serverActions: {
       bodySizeLimit: '10mb',
       allowedOrigins: ['localhost:3000', '*.ngrok-free.app'],

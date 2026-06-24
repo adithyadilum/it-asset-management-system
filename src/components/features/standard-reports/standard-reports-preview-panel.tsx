@@ -1,18 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
-import Papa from 'papaparse';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { DataTable } from '@/components/shared/data-table';
-import { StatusBadge } from '@/components/shared/status-badge';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { StandardModal } from '@/components/ui/standard-modal';
-import { getPrimaryIdColumn, type FilterState, type ReportPreviewRow } from '@/types/standard-reports';
+import { type FilterState, type ReportPreviewRow } from '@/types/standard-reports';
 import { fetchReportPreview } from '@/actions/standard-reports';
 import { GenerateReportPdfModal } from './generate-report-pdf-modal';
 
@@ -32,13 +29,6 @@ interface StandardReportsPreviewPanelProps {
   pagination: PaginationState;
   setPagination: OnChangeFn<PaginationState>;
   pageCount: number;
-}
-
-function toCellText(value: unknown) {
-  if (value === null || value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
-    return '-';
-  }
-  return String(value);
 }
 
 import { useReportColumns } from './use-report-columns';
@@ -89,7 +79,7 @@ export function StandardReportsPreviewPanel({
     [columns]
   );
 
-  const generateCsv = (dataToExport: ReportPreviewRow[]) => {
+  const generateCsv = async (dataToExport: ReportPreviewRow[]) => {
     const rows = dataToExport.map((r) => {
       const obj: Record<string, unknown> = {};
       for (const h of headers) {
@@ -98,6 +88,7 @@ export function StandardReportsPreviewPanel({
       return obj;
     });
 
+    const Papa = (await import('papaparse')).default;
     const csv = Papa.unparse({ fields: headers, data: rows });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -129,7 +120,7 @@ export function StandardReportsPreviewPanel({
         dataToExport = result.data;
       }
 
-      generateCsv(dataToExport);
+      await generateCsv(dataToExport);
       setExportModalOpen(false);
     } catch (err) {
       console.error('Failed to export data:', err);
