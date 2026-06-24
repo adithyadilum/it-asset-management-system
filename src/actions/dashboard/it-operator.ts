@@ -25,12 +25,7 @@ export interface ITDashboardBatchData {
   highMaintenanceAssets: HighMaintenanceRow[];
 }
 
-/**
- * Fetches all IT-related dashboard data in a single call, performing auth once
- * and running all queries in parallel.
- *
- * Strictly locks entry point to GlobalAdmin or ITOperator.
- */
+/** Fetches all IT-related dashboard data in parallel. Restricted to ITOperator / GlobalAdmin. */
 export async function getITDashboardData(): Promise<ITDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
@@ -44,7 +39,7 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
     getHighMaintenanceAssetsInternal(),
   ]);
 
-  // Handle promise resolution with fallbacks if queries fail
+
   const kpiMetrics: DashboardKpiMetrics =
     results[0].status === 'fulfilled'
       ? results[0].value
@@ -59,7 +54,7 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
           impactedSoftwareEmployees: 0,
         };
 
-  // Strictly filter out any financial values to keep Operator view isolated from price/financial details
+
   const filteredKpiMetrics: DashboardKpiMetrics = {
     totalActiveAssets: kpiMetrics.totalActiveAssets,
     totalActiveAssetsChange: kpiMetrics.totalActiveAssetsChange,

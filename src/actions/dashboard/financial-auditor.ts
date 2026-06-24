@@ -34,12 +34,7 @@ export interface FinanceDashboardBatchData {
   recentActivities: RecentActivity[];
 }
 
-/**
- * Fetches all financial-related dashboard data in a single call, performing auth once
- * and running all queries in parallel.
- *
- * Strictly locks entry point to GlobalAdmin or FinancialAuditor.
- */
+/** Fetches all financial dashboard data in parallel. Restricted to FinancialAuditor / GlobalAdmin. */
 export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');

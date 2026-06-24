@@ -44,12 +44,7 @@ export interface GlobalAdminDashboardBatchData {
   dataErrors: string[];
 }
 
-/**
- * Fetches all dashboard data in a single call, performing auth once
- * and running all queries in parallel.
- *
- * Strictly locks entry point to GlobalAdmin.
- */
+/** Fetches all dashboard data in parallel. Restricted to GlobalAdmin. */
 export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');

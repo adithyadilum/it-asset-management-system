@@ -14,10 +14,7 @@ import { getITDashboardData } from './it-operator';
 import { getFinanceDashboardData } from './financial-auditor';
 import type { DashboardBatchData } from '@/types/dashboard';
 
-/**
- * Backward-compatible batch fetcher that delegates to role-specific
- * operations and safely zeroes out data in unauthorized partitions.
- */
+/** Delegates to the role-specific dashboard fetcher, zeroing out unauthorized partitions. */
 export async function getDashboardBatchData(): Promise<DashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
