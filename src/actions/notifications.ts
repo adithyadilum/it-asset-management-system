@@ -12,23 +12,38 @@ import { Resend } from 'resend';
 import { serverEnv } from '@/lib/env';
 
 /**
- * Validate Teams Webhook URL scheme and host
+ * Microsoft Teams webhook endpoints must stay on this host allow-list.
+ * Add new Microsoft-owned webhook hosts here when Teams changes endpoint formats.
  */
-function isValidTeamsWebhookUrl(urlStr: string): boolean {
+const TEAMS_WEBHOOK_ALLOWED_ORIGINS = {
+  'outlook.office.com': 'https://outlook.office.com',
+  'outlook.office365.com': 'https://outlook.office365.com',
+  'webhook.office.com': 'https://webhook.office.com',
+} as const;
+
+/**
+ * Normalize a Teams Webhook URL so fetch never receives a user-controlled host.
+ */
+function toSafeTeamsWebhookUrl(urlStr: string): string | null {
   try {
     const url = new URL(urlStr);
-    if (url.protocol !== 'https:') return false;
+    if (url.protocol !== 'https:') return null;
+    if (url.username || url.password) return null;
+
     const hostname = url.hostname.toLowerCase();
-    const allowed = [
-      'outlook.office.com',
-      'outlook.office365.com',
-      'webhook.office.com',
-    ];
-    return (
-      allowed.includes(hostname) || hostname.endsWith('.webhook.office.com')
-    );
+    const allowedOrigin =
+      TEAMS_WEBHOOK_ALLOWED_ORIGINS[
+        hostname as keyof typeof TEAMS_WEBHOOK_ALLOWED_ORIGINS
+      ];
+
+    if (!allowedOrigin) return null;
+
+    const safeUrl = new URL(allowedOrigin);
+    safeUrl.pathname = url.pathname;
+    safeUrl.search = url.search;
+    return safeUrl.toString();
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -217,12 +232,13 @@ export async function saveIntegrationSettings(data: {
       valuesToUpdate.resendApiKey = encrypt(resendApiKey);
     }
     if (teamsWebhookUrl && teamsWebhookUrl !== '••••••••') {
-      if (!isValidTeamsWebhookUrl(teamsWebhookUrl)) {
+      const safeTeamsWebhookUrl = toSafeTeamsWebhookUrl(teamsWebhookUrl);
+      if (!safeTeamsWebhookUrl) {
         throw new Error(
           'Invalid Teams Webhook URL. Must be an HTTPS outlook or office.com webhook URL.'
         );
       }
-      valuesToUpdate.teamsWebhookUrl = encrypt(teamsWebhookUrl);
+      valuesToUpdate.teamsWebhookUrl = encrypt(safeTeamsWebhookUrl);
     }
 
     if (Object.keys(valuesToUpdate).length === 0) {
@@ -357,14 +373,16 @@ export async function testIntegrationConnection(
         url = decrypt(settings.teamsWebhookUrl);
       }
 
-      if (!isValidTeamsWebhookUrl(url)) {
+      const safeTeamsWebhookUrl = toSafeTeamsWebhookUrl(url);
+      if (!safeTeamsWebhookUrl) {
         throw new Error(
           'Invalid Teams Webhook URL. Must be an HTTPS outlook or office.com webhook URL.'
         );
       }
 
-      const response = await fetch(url, {
+      const response = await fetch(safeTeamsWebhookUrl, {
         method: 'POST',
+        redirect: 'error',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           '@type': 'MessageCard',
