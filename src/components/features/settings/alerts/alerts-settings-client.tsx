@@ -212,7 +212,19 @@ export function AlertsSettingsClient() {
         const response = await fetch('/api/v1/settings/notification-rules');
         const json = await response.json();
         if (json.success) {
-          setRules(json.data);
+          if (json.data.length === 0) {
+            const seedResponse = await fetch('/api/v1/settings/notification-rules', {
+              method: 'POST',
+            });
+            const seedJson = await seedResponse.json();
+            if (seedJson.success) {
+              setRules(seedJson.data);
+            } else {
+              tiqriToast.error('Failed to auto-seed alert configurations');
+            }
+          } else {
+            setRules(json.data);
+          }
         } else {
           tiqriToast.error('Failed to load alert configurations');
         }
