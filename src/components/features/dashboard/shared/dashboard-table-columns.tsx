@@ -179,7 +179,7 @@ export function usePendingDisposalColumns(userRole: string): ColumnDef<PendingDi
       minSize: 130,
       meta: { noTruncate: true },
       cell: ({ row }) => {
-        if (userRole === 'FinanceAuditor') {
+        if (userRole === 'FinancialAuditor') {
           return <span className="text-xs text-muted-foreground italic">Awaiting Admin Sign-Off</span>
         }
         return (

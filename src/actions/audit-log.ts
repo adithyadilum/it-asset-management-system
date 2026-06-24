@@ -191,7 +191,7 @@ export async function resolveAuditValueLabels(
   if (
     !currentUser ||
     (currentUser.role !== 'GlobalAdmin' &&
-      currentUser.role !== 'FinanceAuditor' &&
+      currentUser.role !== 'FinancialAuditor' &&
       !canManageAssets(currentUser.role))
   ) {
     throw new Error('Unauthorized access to audit metadata.');
@@ -369,7 +369,7 @@ export async function resolveTargetEntityLabels(
   if (
     !currentUser ||
     (currentUser.role !== 'GlobalAdmin' &&
-      currentUser.role !== 'FinanceAuditor' &&
+      currentUser.role !== 'FinancialAuditor' &&
       !canManageAssets(currentUser.role))
   ) {
     throw new Error('Unauthorized access to audit metadata.');
@@ -627,7 +627,7 @@ export async function getAuditLogs(
     if (
       !currentUser ||
       (currentUser.role !== 'GlobalAdmin' &&
-        currentUser.role !== 'FinanceAuditor')
+        currentUser.role !== 'FinancialAuditor')
     ) {
       throw new Error('Unauthorized access to audit logs.');
     }

@@ -36,7 +36,7 @@ interface AddUsersToRoleModalProps {
 const ROLE_ASSIGNMENT_LABELS: Record<UserRole, string> = {
   GlobalAdmin: "Global Admin",
   ITOperator: "IT Operations",
-  FinanceAuditor: "Auditor",
+  FinancialAuditor: "Financial Auditor",
   Employee: "Employee",
 }
 
@@ -102,20 +102,20 @@ export function AddUsersToRoleModal({
     )
   }
 
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (!isOpen) {
-      setTimeout(() => {
-        setIsSubmitting(false)
-        setError(null)
-        setSearchQuery("")
-        setSearchResults([])
-        setIsSearching(false)
-        setSearchError(null)
-        setHideUsersAlreadyInRole(false)
-        setMappedSelection([])
-      }, 0)
+      setIsSubmitting(false)
+      setError(null)
+      setSearchQuery("")
+      setSearchResults([])
+      setIsSearching(false)
+      setSearchError(null)
+      setHideUsersAlreadyInRole(false)
+      setMappedSelection([])
     }
-  }, [isOpen])
+  }
 
   useEffect(() => {
     if (!isOpen || !normalizedQuery) {

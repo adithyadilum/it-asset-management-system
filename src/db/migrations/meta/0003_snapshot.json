@@ -2295,7 +2295,7 @@
       "values": [
         "GlobalAdmin",
         "ITOperator",
-        "FinanceAuditor",
+        "FinancialAuditor",
         "Employee"
       ]
     }

@@ -34,7 +34,7 @@ describe('EditUserRoleModal', () => {
       />
     );
     expect(screen.getAllByText('Change User Details')[0]).toBeInTheDocument();
-    expect(screen.getByText('Update Details')).toBeInTheDocument();
+    expect(screen.getByText('Update')).toBeInTheDocument();
   });
 
   it('calls assignUserRole when submitted with changed role', async () => {
@@ -58,7 +58,7 @@ describe('EditUserRoleModal', () => {
     const newRoleOption = await screen.findByText('IT Operator');
     fireEvent.click(newRoleOption);
 
-    const updateButton = screen.getByText('Update Details');
+    const updateButton = screen.getByText('Update');
     fireEvent.click(updateButton);
 
     await waitFor(() => {
@@ -93,7 +93,7 @@ describe('EditUserRoleModal', () => {
     const disabledOption = await screen.findByText('Disabled');
     fireEvent.click(disabledOption);
 
-    const updateButton = screen.getByText('Update Details');
+    const updateButton = screen.getByText('Update');
     fireEvent.click(updateButton);
 
     await waitFor(() => {
@@ -113,7 +113,7 @@ describe('EditUserRoleModal', () => {
       />
     );
 
-    const updateButton = screen.getByText('Update Details');
+    const updateButton = screen.getByText('Update');
     expect(updateButton).toBeDisabled();
     expect(screen.getByText('You cannot modify your own role or status.')).toBeInTheDocument();
   });

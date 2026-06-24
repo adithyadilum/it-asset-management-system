@@ -103,8 +103,8 @@ describe('MaintenanceTabs', () => {
     expect(screen.getByText('No pending maintenance tickets found')).toBeInTheDocument();
   });
 
-  it('renders only history tab for FinanceAuditor', () => {
-    renderTabs({ userRole: 'FinanceAuditor' });
+  it('renders only history tab for FinancialAuditor', () => {
+    renderTabs({ userRole: 'FinancialAuditor' });
     
     expect(screen.queryByText(/Pending Review/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Active Repairs/)).not.toBeInTheDocument();

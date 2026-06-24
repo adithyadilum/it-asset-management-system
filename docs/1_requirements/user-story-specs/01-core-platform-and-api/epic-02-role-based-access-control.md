@@ -8,7 +8,7 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 - A split-view Administrator Control Panel for bulk and manual role mapping.
 - Interactive UI modals for granting and revoking access.
-- Enforcement of the four core system roles: Global Admin, IT Operator, Finance Auditor, and Standard Employee.
+- Enforcement of the four core system roles: Global Admin, IT Operator, Financial Auditor, and Standard Employee.
 - UI/UX adjustments based on roles (hiding unauthorized sidebar navigation and action buttons via authorization utilities).
 
 ## Out of Scope / Limitations
@@ -28,7 +28,7 @@ This epic governs what authenticated users are allowed to do inside the system. 
 - [US-2.1 — Administrator Control Panel for System Permissions](#user-story-us-21--administrator-control-panel-for-system-permissions)
 - [US-2.2 — Global Admin Role Capabilities](#user-story-us-22--global-admin-role-capabilities)
 - [US-2.3 — IT Operator Role Capabilities](#user-story-us-23--it-operator-role-capabilities)
-- [US-2.4 — Finance Auditor Role Capabilities](#user-story-us-24--finance-auditor-role-capabilities)
+- [US-2.4 — Financial Auditor Role Capabilities](#user-story-us-24--financial-auditor-role-capabilities)
 - [US-2.5 — Default "Least Privilege" Access Assignment](#user-story-us-25--default-least-privilege-access-assignment)
 
 ---
@@ -89,7 +89,7 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 #### Backend
 
-- [x] Integrate roles into the `Users` table (`role` column enum: 'GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee').
+- [x] Integrate roles into the `Users` table (`role` column enum: 'GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee').
 - [x] Create an `assignUsersRoleBulk` server action accepting an array of user IDs.
 - [x] Create a `removeUserFromManagedRole` server action to gracefully revert users to the `Employee` role.
 - [x] Write backend validation to reject any request targeting the active user's own role (anti-lockout fail-safe).
@@ -170,21 +170,21 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 ---
 
-## User Story: US-2.4 — Finance Auditor Role Capabilities
+## User Story: US-2.4 — Financial Auditor Role Capabilities
 
-- **As a** Finance Auditor,
+- **As a** Financial Auditor,
 - **I want** global read-only access to all hardware registries and financial ledgers,
 - **So that** I can review depreciation, warranty statuses, and Total Cost of Ownership (TCO) without the risk of accidentally deleting or re-assigning physical hardware.
 
 ### Acceptance Criteria (Gherkin)
 
 - **Scenario: Global Read Access**
-  - **Given** I am logged in as a "Finance Auditor" (`canViewAssetRegistry = true`, `canAccessFinancials = true`)
+  - **Given** I am logged in as a "Financial Auditor" (`canViewAssetRegistry = true`, `canAccessFinancials = true`)
   - **When** I navigate to the Asset Registry or Financials tabs
   - **Then** I can view all hardware data across all locations globally.
 
 - **Scenario: Action Restriction (No Write Access)**
-  - **Given** I am logged in as a "Finance Auditor" (`canManageAssets = false`, `canAccessOperations = false`)
+  - **Given** I am logged in as a "Financial Auditor" (`canManageAssets = false`, `canAccessOperations = false`)
   - **When** I open an Asset Details panel
   - **Then** the "Edit", "Dispose", "Assign", and "Delete" buttons are hidden from the UI.
 
@@ -202,7 +202,7 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 #### Backend
 
-- [x] Enforce authorization inside operational Server Actions to ensure they return a `Forbidden` rejection if a `FinanceAuditor` tries to bypass the UI to execute an asset mutation.
+- [x] Enforce authorization inside operational Server Actions to ensure they return a `Forbidden` rejection if a `FinancialAuditor` tries to bypass the UI to execute an asset mutation.
 
 ---
 
@@ -238,4 +238,4 @@ This epic governs what authenticated users are allowed to do inside the system. 
 
 #### Database
 
-- [x] Structure the `UserRole` type and database enum to enforce only `GlobalAdmin`, `ITOperator`, `FinanceAuditor`, or `Employee` values.
+- [x] Structure the `UserRole` type and database enum to enforce only `GlobalAdmin`, `ITOperator`, `FinancialAuditor`, or `Employee` values.

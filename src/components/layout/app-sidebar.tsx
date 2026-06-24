@@ -37,7 +37,7 @@ type NavItem = {
     allowedRoles?: UserRole[]
 }
 
-const privilegedRoles: UserRole[] = ["GlobalAdmin", "ITOperator", "FinanceAuditor"]
+const privilegedRoles: UserRole[] = ["GlobalAdmin", "ITOperator", "FinancialAuditor"]
 
 const assetsItems: NavItem[] = [
     {
@@ -71,18 +71,18 @@ const managementItems: NavItem[] = [
         label: "Operations",
         icon: Activity,
         href: "/operations",
-        allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"],
+        allowedRoles: ["GlobalAdmin", "ITOperator", "FinancialAuditor"],
         children: [
             { label: "Assignments & Returns", href: "/operations/assignments", allowedRoles: ["GlobalAdmin", "ITOperator"] },
-            { label: "Maintenance & Repairs", href: "/operations/maintenance", allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"] },
-            { label: "Disposals", href: "/operations/disposals", allowedRoles: ["GlobalAdmin", "FinanceAuditor"] },
+            { label: "Maintenance & Repairs", href: "/operations/maintenance", allowedRoles: ["GlobalAdmin", "ITOperator", "FinancialAuditor"] },
+            { label: "Disposals", href: "/operations/disposals", allowedRoles: ["GlobalAdmin", "FinancialAuditor"] },
         ],
     },
     {
         label: "Financials",
         icon: DollarSign,
         href: "/financials",
-        allowedRoles: ["GlobalAdmin", "FinanceAuditor"],
+        allowedRoles: ["GlobalAdmin", "FinancialAuditor"],
         children: [
             { label: "Depreciation Ledger", href: "/financials/depreciation" },
             { label: "Total Cost of Ownership", href: "/financials/tco" },
@@ -93,10 +93,10 @@ const managementItems: NavItem[] = [
         label: "Reports & Audits",
         icon: FileBarChart,
         href: "/reports/standard-reports",
-        allowedRoles: ["GlobalAdmin", "ITOperator", "FinanceAuditor"],
+        allowedRoles: ["GlobalAdmin", "ITOperator", "FinancialAuditor"],
         children: [
             { label: "Standard Reports", href: "/reports/standard-reports" },
-            { label: "System Audit Log", href: "/reports/audit-log", allowedRoles: ["GlobalAdmin", "FinanceAuditor"] },
+            { label: "System Audit Log", href: "/reports/audit-log", allowedRoles: ["GlobalAdmin", "FinancialAuditor"] },
         ],
     },
     {

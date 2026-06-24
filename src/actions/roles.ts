@@ -2,28 +2,61 @@
 
 import { db } from '@/db';
 import { departments, users } from '@/db/schema';
-import { eq, ilike, or, inArray, sql } from 'drizzle-orm';
+import { eq, ilike, or, inArray, sql, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { logAuditActionTx } from '@/lib/audit';
 import { isValidUuid } from '@/lib/auth/uuid';
 import { getAuthenticatedUser } from '@/actions/auth';
-import type { UserRole } from '@/types/auth';
+import { USER_ROLES, type UserRole } from '@/types/auth';
 import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 
+/** Safely casts an unknown value to a valid UserRole or returns null. */
 function normalizeTokenRole(role: unknown): UserRole | null {
-  const validRoles: UserRole[] = ['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee'];
-  return validRoles.includes(role as UserRole) ? (role as UserRole) : null;
+  return typeof role === 'string' && USER_ROLES.includes(role as UserRole) ? (role as UserRole) : null;
 }
 
+/** Deduplicates and validates an array of user IDs. */
 function normalizeTargetUserIds(targetUserIds: string[]): string[] {
   return [...new Set(targetUserIds.filter(isValidUuid))];
 }
 
-/**
- * Search for users by name or email.
- */
+/** Fetches users in a given role and per-role user counts for the settings page. GlobalAdmin only. */
+export async function getRolesPageData(selectedRole: UserRole) {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) throw new Error('Forbidden');
+  requireAccess(currentUser, isGlobalAdmin);
+
+  const [usersInRole, roleCountsRows] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
+        role: users.role,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .leftJoin(departments, eq(users.departmentId, departments.id))
+      .where(eq(users.role, selectedRole))
+      .orderBy(asc(users.name))
+      .limit(100),
+
+    db
+      .select({
+        role: users.role,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(users)
+      .groupBy(users.role),
+  ]);
+
+  return { usersInRole, roleCountsRows };
+}
+
+/** Searches the user directory by name or email. Capped at 100 chars, min 2 chars. */
 export async function searchUsers(query: string) {
   const actionTimer = startLatencyTimer();
 
@@ -33,8 +66,8 @@ export async function searchUsers(query: string) {
   }
   requireAccess(currentUser, isGlobalAdmin);
 
-  const trimmedQuery = query.trim();
-  if (!trimmedQuery) return [];
+  const trimmedQuery = query.trim().slice(0, 100);
+  if (trimmedQuery.length < 2) return [];
 
   try {
     const queryTimer = startLatencyTimer();
@@ -86,9 +119,7 @@ export async function searchUsers(query: string) {
   }
 }
 
-/**
- * Assigns a role to multiple users via a single atomic update.
- */
+/** Assigns a role to multiple users in a single atomic transaction. GlobalAdmin only. */
 export async function assignUsersRoleBulk(
   targetUserIds: string[],
   newRole: UserRole
@@ -96,7 +127,6 @@ export async function assignUsersRoleBulk(
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  // Authorization Guard.
   if (!currentUser) {
     throw new Error('Forbidden');
   }
@@ -115,7 +145,7 @@ export async function assignUsersRoleBulk(
     };
   }
 
-  // Anti-Lockout Guard.
+  // Prevent admins from modifying their own role (anti-lockout).
   if (normalizedTargetUserIds.includes(currentUser.id)) {
     throw new Error('Action Prohibited: You cannot modify your own role.');
   }
@@ -201,14 +231,11 @@ export async function assignUsersRoleBulk(
   }
 }
 
-/**
- * Assigns a new role to a user.
- */
+/** Assigns a new role to a single user. GlobalAdmin only. */
 export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  // Authorization Guard.
   if (!currentUser) {
     throw new Error('Forbidden');
   }
@@ -238,7 +265,6 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
         },
       });
 
-      // Use .returning() to verify a row was actually affected.
       const updateUserTimer = startLatencyTimer();
       const updatedUsers = await tx
         .update(users)
@@ -298,21 +324,16 @@ export async function assignUserRole(targetUserId: string, newRole: UserRole) {
   }
 }
 
-/**
- * Removes a user from a managed role by assigning the baseline Employee role.
- */
+/** Demotes a user back to the baseline Employee role. */
 export async function removeUserFromManagedRole(targetUserId: string) {
   return assignUserRole(targetUserId, 'Employee');
 }
 
-/**
- * Activates or deactivates a user account.
- */
+/** Activates or deactivates a user account. GlobalAdmin only. */
 export async function setUserActiveStatus(targetUserId: string, isActive: boolean) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
-  // Authorization Guard.
   if (!currentUser) {
     throw new Error('Forbidden');
   }

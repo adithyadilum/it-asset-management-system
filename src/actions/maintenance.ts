@@ -54,7 +54,11 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
   // Fix A — FinanceAuditor must not access operational pending tickets
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
     throw new Error('Forbidden');
 
   try {
@@ -118,7 +122,11 @@ export async function getTicketForIssueReview(
   // Fix A — FinanceAuditor must not access individual operational ticket details
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
     throw new Error('Forbidden');
 
   try {
@@ -216,7 +224,11 @@ export async function getVendors() {
   // Fix A — FinanceAuditor must not access vendor operational data
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
     throw new Error('Forbidden');
 
   try {
@@ -242,7 +254,11 @@ export async function getActiveRepairTickets(searchTerm = '') {
   // Fix A — FinanceAuditor must not access active repair operational data
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
     throw new Error('Forbidden');
 
   try {
@@ -293,7 +309,7 @@ export async function getRepairHistory(
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
@@ -373,7 +389,7 @@ export async function getAssetMaintenanceHistory(
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 

@@ -14,21 +14,21 @@ import {
   useWriteOffsColumns,
   useSoftwareOptimizationColumns,
 } from "../shared/dashboard-table-columns"
-import type { FinanceDashboardBatchData } from "@/actions/dashboard/finance-auditor"
+import type { FinanceDashboardBatchData } from "@/actions/dashboard/financial-auditor"
 
-interface FinanceAuditorDashboardViewProps {
+interface FinancialAuditorDashboardViewProps {
   data: FinanceDashboardBatchData
   currencyCode?: string
   exchangeRate?: number
   apiRates?: Record<string, number>
 }
 
-export function FinanceAuditorDashboardView({
+export function FinancialAuditorDashboardView({
   data,
   currencyCode = "LKR",
   exchangeRate = 1,
   apiRates,
-}: FinanceAuditorDashboardViewProps) {
+}: FinancialAuditorDashboardViewProps) {
   const topHighValueColumns = useTopHighValueAssetsColumns(currencyCode, exchangeRate)
   const writeOffsColumns = useWriteOffsColumns(currencyCode, apiRates)
   const softwareOptimizationColumns = useSoftwareOptimizationColumns(currencyCode, exchangeRate)

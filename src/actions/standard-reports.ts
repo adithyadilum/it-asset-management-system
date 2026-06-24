@@ -265,8 +265,8 @@ export async function fetchReportPreview(
     throw new Error('Unauthorized: Please log in.');
   }
 
-  // Allow GlobalAdmin, ITOperator, and FinanceAuditor for report viewing
-  const allowedRoles = ['GlobalAdmin', 'ITOperator', 'FinanceAuditor'];
+  // Allow GlobalAdmin, ITOperator, and FinancialAuditor for report viewing
+  const allowedRoles = ['GlobalAdmin', 'ITOperator', 'FinancialAuditor'];
   if (!allowedRoles.includes(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to generate reports.'

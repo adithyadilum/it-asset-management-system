@@ -40,14 +40,11 @@ export interface GlobalAdminDashboardBatchData {
   topHighValueAssets: TopHighValueAssetRow[];
   writeOffsLedger: WriteOffLedgerRow[];
   softwareOptimization: SoftwareOptimizationRow[];
+  /** Non-empty when one or more dashboard queries failed. Show a warning banner. */
+  dataErrors: string[];
 }
 
-/**
- * Fetches all dashboard data in a single call, performing auth once
- * and running all queries in parallel.
- *
- * Strictly locks entry point to GlobalAdmin.
- */
+/** Fetches all dashboard data in parallel. Restricted to GlobalAdmin. */
 export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
@@ -65,6 +62,31 @@ export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboar
     getWriteOffsLedger({ pageSize: 100 }).then((res) => res.data),
     getDashboardSoftwareOptimizationInternal(),
   ]);
+
+  const QUERY_LABELS = [
+    'kpiMetrics',
+    'inventoryStatus',
+    'departmentAllocation',
+    'overdueReturns',
+    'pendingDisposals',
+    'highMaintenanceAssets',
+    'recentActivities',
+    'topHighValueAssets',
+    'writeOffsLedger',
+    'softwareOptimization',
+  ] as const;
+
+  const dataErrors: string[] = results
+    .map((r, i) =>
+      r.status === 'rejected'
+        ? `${QUERY_LABELS[i]}: ${r.reason instanceof Error ? r.reason.message : 'Unknown error'}`
+        : null
+    )
+    .filter((e): e is string => e !== null);
+
+  if (dataErrors.length > 0) {
+    console.error('[GlobalAdminDashboard] Some queries failed:', dataErrors);
+  }
 
   return {
     kpiMetrics:
@@ -100,5 +122,6 @@ export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboar
       results[8].status === 'fulfilled' ? (results[8].value as WriteOffLedgerRow[]) : [],
     softwareOptimization:
       results[9].status === 'fulfilled' ? (results[9].value as SoftwareOptimizationRow[]) : [],
+    dataErrors,
   };
 }

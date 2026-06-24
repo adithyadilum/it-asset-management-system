@@ -21,7 +21,7 @@ This epic acts as the system's black box flight recorder. To meet strict ISO 270
 
 - Relies on the NextAuth.js session from Epic 1 to accurately tag the `performedById` to the event.
 - The production hosting infrastructure (e.g., Vercel, Azure) is configured to pass the true client IP address via `x-forwarded-for` headers.
-- Relies on the RBAC middleware from Epic 2, restricting access to `GlobalAdmin` and `FinanceAuditor`.
+- Relies on the RBAC middleware from Epic 2, restricting access to `GlobalAdmin` and `FinancialAuditor`.
 
 ---
 
@@ -81,7 +81,7 @@ This epic acts as the system's black box flight recorder. To meet strict ISO 270
 ### Acceptance Criteria (Gherkin)
 
 - **Scenario: High-Density Log Viewing & Authorization**
-  - **Given** I am logged in as a Global Admin or Finance Auditor
+  - **Given** I am logged in as a Global Admin or Financial Auditor
   - **When** I navigate to the `/reports/audit-log` route
   - **Then** I am presented with a chronologically ordered table of all system events.
   - **But if** I navigate to this page as an IT Operator or Employee, I am redirected to the `/403` error page.

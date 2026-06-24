@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { asc, eq, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
 import { getAuthenticatedUser } from '@/actions/auth';
-import { db } from '@/db';
-import { departments, users } from '@/db/schema';
+import { getRolesPageData } from '@/actions/roles';
+import { USER_ROLES } from '@/types/auth';
 import type { UserRole } from '@/types/auth';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 import { RolesManagementTable } from '../../../../../components/features/roles/roles-management-table';
 
@@ -26,8 +26,8 @@ const ROLE_CONFIG: Array<{
         'These users have full read/write access to the Asset Registry and Maintenance modules.',
     },
     {
-      id: 'FinanceAuditor',
-      name: 'Auditor',
+      id: 'FinancialAuditor',
+      name: 'Financial Auditor',
       description:
         'These users have read-only access to financial ledgers and audit records.',
     },
@@ -39,12 +39,6 @@ const ROLE_CONFIG: Array<{
     },
   ];
 
-const textSmRegularClass =
-  'font-text-sm-regular text-(length:--text-sm-regular-font-size) leading-(--text-sm-regular-line-height) tracking-(--text-sm-regular-letter-spacing) [font-style:var(--text-sm-regular-font-style)]';
-const textSmMediumClass =
-  'font-text-sm-medium text-(length:--text-sm-medium-font-size) leading-(--text-sm-medium-line-height) tracking-(--text-sm-medium-letter-spacing) [font-style:var(--text-sm-medium-font-style)]';
-const textBaseSemiBoldClass =
-  'font-text-base-semi-bold text-(length:--text-base-semi-bold-font-size) leading-(--text-base-semi-bold-line-height) tracking-(--text-base-semi-bold-letter-spacing) [font-style:var(--text-base-semi-bold-font-style)]';
 
 type RolesPageProps = {
   searchParams: Promise<{
@@ -52,19 +46,12 @@ type RolesPageProps = {
   }>;
 };
 
+const VALID_ROLES = new Set<string>(USER_ROLES);
+
+/** Extracts and validates the ?role= query param, defaulting to GlobalAdmin. */
 function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
-  const selected = Array.isArray(value) ? value[0] : value;
-
-  if (
-    selected === 'GlobalAdmin' ||
-    selected === 'ITOperator' ||
-    selected === 'FinanceAuditor' ||
-    selected === 'Employee'
-  ) {
-    return selected;
-  }
-
-  return 'GlobalAdmin';
+  const selected = Array.isArray(value) ? value[0] : value ?? '';
+  return VALID_ROLES.has(selected) ? (selected as UserRole) : 'GlobalAdmin';
 }
 
 export default async function RolesPage({ searchParams }: RolesPageProps) {
@@ -81,36 +68,12 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
   const params = await searchParams;
   const selectedRole = normalizeSelectedRole(params.role);
 
-  const [usersInRole, roleCountsRows] = await Promise.all([
-    db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        department: sql<string>`coalesce(${departments.name}, 'Unassigned')`,
-        role: users.role,
-        isActive: users.isActive,
-      })
-      .from(users)
-      .leftJoin(departments, eq(users.departmentId, departments.id))
-      .where(eq(users.role, selectedRole))
-      .orderBy(asc(users.name))
-      .limit(100),
-
-    // Count users per role using the DB (fast + small payload)
-    db
-      .select({
-        role: users.role,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(users)
-      .groupBy(users.role),
-  ]);
+  const { usersInRole, roleCountsRows } = await getRolesPageData(selectedRole);
 
   const roleCounts: Record<UserRole, number> = {
     GlobalAdmin: 0,
     ITOperator: 0,
-    FinanceAuditor: 0,
+    FinancialAuditor: 0,
     Employee: 0,
   };
 
@@ -142,14 +105,12 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                 ].join(' ')}
               >
                 <div className="flex w-full items-center gap-2.5 px-6 py-0">
-                  <span
-                    className={`flex-1 text-left ${textBaseSemiBoldClass}`}
-                  >
+                  <span className={`flex-1 text-left ${TYPOGRAPHY_CLASSNAMES.textBaseSemiBold}`}>
                     {role.name}
                   </span>
 
                   <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-primary bg-transparent px-1.5 py-0.5">
-                    <span className={`${textSmMediumClass} text-primary`}>
+                    <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-primary`}>
                       {roleCounts[role.id]} Users
                     </span>
                   </div>
@@ -162,16 +123,16 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
 
       <section className="flex min-h-0 flex-1 flex-col items-start gap-2.5 rounded-lg bg-card text-card-foreground p-6 shadow-box-shadow-shadow-sm border border-border">
         <h2>
-          <span className="font-text-lg-semi-bold text-(length:--text-lg-semi-bold-font-size) leading-(--text-lg-semi-bold-line-height) tracking-(--text-lg-semi-bold-letter-spacing) [font-style:var(--text-lg-semi-bold-font-style)]">
+          <span className={TYPOGRAPHY_CLASSNAMES.textLgSemiBold}>
             Users in{' '}
           </span>
-          <span className="font-text-lg-bold text-(length:--text-lg-bold-font-size) leading-(--text-lg-bold-line-height) tracking-(--text-lg-bold-letter-spacing) [font-style:var(--text-lg-bold-font-style)]">
+          <span className={TYPOGRAPHY_CLASSNAMES.textLgBold}>
             {selectedRoleInfo.name}
           </span>
         </h2>
 
         <div className="flex w-full flex-col items-start justify-between gap-3 lg:flex-row lg:items-center">
-          <p className={`max-w-175 text-muted-foreground ${textSmRegularClass}`}>
+          <p className={`max-w-175 text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
             {selectedRoleInfo.description}
           </p>
         </div>

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { FilterBar, type AppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
 
-// Import our new unified dialogs
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
 
@@ -18,6 +18,7 @@ interface PendingDisposalsGridProps {
   onRowClick: (row: PendingDisposalRow) => void;
 }
 
+/** Returns a dash for empty/null cell values. */
 function toCellText(value: string | null | undefined) {
   if (!value || value.trim().length === 0) {
     return '-';
@@ -53,6 +54,7 @@ export function PendingDisposalsGrid({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkExecuteModalOpen, setIsBulkExecuteModalOpen] = useState(false);
   const [isBulkRejectModalOpen, setIsBulkRejectModalOpen] = useState(false);
+  const router = useRouter();
 
   const filterFieldConfigs: FilterFieldConfig[] = [
     { value: 'assetTag', label: 'Asset ID' },
@@ -77,7 +79,7 @@ export function PendingDisposalsGrid({
   const filteredData = useMemo(() => {
     let result = [...initialData];
 
-    // 1. Search
+    // Apply search filter across all visible columns.
     if (searchValue.trim()) {
       const lowerQuery = searchValue.toLowerCase();
       result = result.filter(
@@ -89,7 +91,7 @@ export function PendingDisposalsGrid({
       );
     }
 
-    // 2. Filters
+    // Apply field-specific filters (is / is not).
     appliedFilters.forEach((filter) => {
       const { field, operator, value } = filter;
       const lowerValue = value.toLowerCase();
@@ -109,15 +111,12 @@ export function PendingDisposalsGrid({
     return result;
   }, [initialData, searchValue, appliedFilters]);
 
-  // Derive the actual selected row objects based on the rowSelection state
+  /** Maps TanStack's rowSelection indices back to the actual data objects. */
   const selectedRows = useMemo(() => {
-    // Extract the selected keys (TanStack stores selection state as {"0": true, "2": true})
     const selectedKeys = Object.keys(rowSelection).filter((key) => rowSelection[key]);
-
-    //Map those stringified keys back to the original filteredData array
     return selectedKeys
       .map((key) => filteredData[parseInt(key, 10)])
-      .filter((row) => row !== undefined); // Safety filter to ensure no undefined rows are passed
+      .filter((row) => row !== undefined);
   }, [rowSelection, filteredData]);
 
   const columns = useMemo<ColumnDef<PendingDisposalRow>[]>(
@@ -175,7 +174,7 @@ export function PendingDisposalsGrid({
 
   return (
     <div className="flex flex-1 flex-col min-h-0 gap-4">
-      {/* Toolbar (Standardized) */}
+      {/* Toolbar */}
       <FilterBar
         searchQuery={searchValue}
         onSearchChange={setSearchValue}
@@ -187,7 +186,7 @@ export function PendingDisposalsGrid({
         onClearAllFilters={clearAllFilters}
       />
 
-      {/* Data Table Container */}
+
       <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-background">
         <DataTable<PendingDisposalRow, unknown>
           columns={columns}
@@ -206,7 +205,7 @@ export function PendingDisposalsGrid({
               id: 'cancel',
               label: 'Cancel',
               tone: 'secondary',
-              onClick: () => setRowSelection({}), // Immediately clears all checkboxes!
+              onClick: () => setRowSelection({}),
             },
             {
               id: 'reject',
@@ -238,7 +237,7 @@ export function PendingDisposalsGrid({
         />
       </div>
 
-      {/* Render our new Unified Dialogs */}
+
       <RejectDisposalDialog
         isOpen={isBulkRejectModalOpen}
         onOpenChange={setIsBulkRejectModalOpen}
@@ -246,6 +245,7 @@ export function PendingDisposalsGrid({
         onSuccess={() => {
           setIsBulkRejectModalOpen(false);
           setRowSelection({}); // Clear checkboxes after success
+          router.refresh();
         }}
       />
 
@@ -256,6 +256,7 @@ export function PendingDisposalsGrid({
         onSuccess={() => {
           setIsBulkExecuteModalOpen(false);
           setRowSelection({}); // Clear checkboxes after success
+          router.refresh();
         }}
       />
     </div>

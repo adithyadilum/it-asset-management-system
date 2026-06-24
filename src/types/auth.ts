@@ -1,8 +1,11 @@
-export type UserRole =
-  | 'GlobalAdmin'
-  | 'ITOperator'
-  | 'FinanceAuditor'
-  | 'Employee';
+export const USER_ROLES = [
+  'GlobalAdmin',
+  'ITOperator',
+  'FinancialAuditor',
+  'Employee',
+] as const;
+
+export type UserRole = (typeof USER_ROLES)[number];
 
 export interface AuthUser {
   id: string;

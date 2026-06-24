@@ -48,11 +48,16 @@ export function RolesManagementTable({
   const [selectedUserForEdit, setSelectedUserForEdit] =
     useState<RoleUser | null>(null);
 
-  // Optimistic active-status overrides: userId → isActive
-  // Applied immediately on toggle click; cleared when the server data refreshes.
+  // Optimistic UI overrides for toggle switches (cleared on role tab change or server refresh).
   const [optimisticStatus, setOptimisticStatus] = useState<
     Record<string, boolean>
   >({});
+
+  const [prevRole, setPrevRole] = useState(selectedRole);
+  if (selectedRole !== prevRole) {
+    setPrevRole(selectedRole);
+    setOptimisticStatus({});
+  }
 
   const openRemoveModal = (user: RoleUser) => {
     setSelectedUserForRemoval(user);
@@ -71,13 +76,13 @@ export function RolesManagementTable({
 
   const handleToggleActive = useCallback(
     (user: RoleUser, newValue: boolean) => {
-      // Optimistically flip the toggle immediately
+      // Optimistic update: flip instantly, revert on server failure.
       setOptimisticStatus((prev) => ({ ...prev, [user.id]: newValue }));
 
       startTransition(async () => {
         const result = await setUserActiveStatus(user.id, newValue);
         if (!result.success) {
-          // Revert on failure
+          // Revert optimistic toggle on server failure.
           setOptimisticStatus((prev) => ({ ...prev, [user.id]: !newValue }));
           console.error('[Roles] Failed to toggle user active status:', result.error);
         } else {
@@ -89,60 +94,60 @@ export function RolesManagementTable({
   );
 
   const columns = useMemo<ColumnDef<RoleUser>[]>(
-    () => [
-      {
-        accessorKey: 'name',
-        header: 'User',
-        cell: ({ row }) => {
-          const user = row.original;
-          return (
-            <div className="flex items-center gap-4 py-1">
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarFallback
-                  className={cn(
-                    'rounded-lg bg-muted text-foreground',
-                    TYPOGRAPHY_CLASSNAMES.textXsMedium
-                  )}
-                >
-                  {getInitials(user.name)}
-                </AvatarFallback>
-              </Avatar>
+    () => {
+      const baseCols: ColumnDef<RoleUser>[] = [
+        {
+          accessorKey: 'name',
+          header: 'User',
+          cell: ({ row }) => {
+            const user = row.original;
+            return (
+              <div className="flex items-center gap-4 py-1">
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarFallback
+                    className={cn(
+                      'rounded-lg bg-muted text-foreground',
+                      TYPOGRAPHY_CLASSNAMES.textXsMedium
+                    )}
+                  >
+                    {getInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
 
-              <div className="min-w-0">
-                <p className={cn('truncate text-foreground', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
-                  {user.name}
-                </p>
-                <p className={cn('truncate text-muted-foreground', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
-                  {user.email}
-                </p>
+                <div className="min-w-0">
+                  <p className={cn('truncate text-foreground', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
+                    {user.name}
+                  </p>
+                  <p className={cn('truncate text-muted-foreground', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
+                    {user.email}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
+            );
+          },
         },
-      },
-      {
-        accessorKey: 'department',
-        header: 'Department',
-        cell: ({ row }) => (
-          <span className={cn('text-foreground', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
-            {row.original.department}
-          </span>
-        ),
-      },
-      {
-        id: 'status',
-        header: 'Active',
-        cell: ({ row }) => {
-          const user = row.original;
-          const isSelf = user.id === currentUserId;
-          // Use the optimistic override if set, otherwise fall back to server data
-          const isActiveDisplay =
-            user.id in optimisticStatus
-              ? optimisticStatus[user.id]
-              : user.isActive;
+        {
+          accessorKey: 'department',
+          header: 'Department',
+          cell: ({ row }) => (
+            <span className={cn('text-foreground', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
+              {row.original.department}
+            </span>
+          ),
+        },
+        {
+          id: 'status',
+          header: 'Active',
+          cell: ({ row }) => {
+            const user = row.original;
+            const isSelf = user.id === currentUserId;
+            // Prefer optimistic override; fall back to server data.
+            const isActiveDisplay =
+              user.id in optimisticStatus
+                ? optimisticStatus[user.id]
+                : user.isActive;
 
-          return (
-            <TooltipProvider>
+            return (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-flex items-center">
@@ -165,42 +170,41 @@ export function RolesManagementTable({
                     : `Activate ${user.name}`}
                 </TooltipContent>
               </Tooltip>
-            </TooltipProvider>
-          );
+            );
+          },
+          size: 80,
         },
-        size: 80,
-      },
-      {
+      ];
+
+      baseCols.push({
         id: 'actions',
-        header: '',
+        header: 'Actions',
         cell: ({ row }) => {
           const user = row.original;
           const isSelf = user.id === currentUserId;
 
           return (
             <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => openEditModal(user)}
-                      aria-label={`Edit role and status for ${user.name}`}
-                      disabled={isSelf}
-                    >
-                      <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isSelf
-                      ? 'You cannot modify your own role or status'
-                      : 'Edit role and status'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => openEditModal(user)}
+                    aria-label={`Edit role and status for ${user.name}`}
+                    disabled={isSelf}
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSelf
+                    ? 'You cannot modify your own role or status'
+                    : 'Edit role and status'}
+                </TooltipContent>
+              </Tooltip>
 
-              <TooltipProvider>
+              {selectedRole !== 'Employee' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -219,31 +223,35 @@ export function RolesManagementTable({
                       : `Remove ${user.name} from ${roleLabel}`}
                   </TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
+              )}
             </div>
           );
         },
         size: 100,
-      },
-    ],
-    [currentUserId, roleLabel, optimisticStatus, handleToggleActive, isPending]
+      });
+
+      return baseCols;
+    },
+    [currentUserId, roleLabel, selectedRole, optimisticStatus, handleToggleActive, isPending]
   );
 
   return (
-    <>
-      <div className="flex w-full justify-end mb-4">
-        <Button
-          type="button"
-          size="sm"
-          className="h-8 w-32 justify-between rounded-lg bg-primary px-2.5 text-primary-foreground shadow-box-shadow-shadow-xs hover:bg-primary/90"
-          onClick={() => setIsAddModalOpen(true)}
-        >
-          <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className={cn("flex flex-1 items-center justify-center", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
-            Add User
-          </span>
-        </Button>
-      </div>
+    <TooltipProvider>
+      {selectedRole !== 'Employee' && (
+        <div className="flex w-full justify-end mb-4">
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 w-32 justify-between rounded-lg bg-primary px-2.5 text-primary-foreground shadow-box-shadow-shadow-xs hover:bg-primary/90"
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className={cn("flex flex-1 items-center justify-center", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
+              Add User
+            </span>
+          </Button>
+        </div>
+      )}
 
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
         <DataTable
@@ -285,6 +293,6 @@ export function RolesManagementTable({
         onUpdated={handleUpdated}
         currentUserId={currentUserId}
       />
-    </>
+    </TooltipProvider>
   );
 }

@@ -144,6 +144,41 @@ describe('RolesManagementTable', () => {
     expect(screen.getByTestId('mock-add-modal')).toBeInTheDocument();
   });
 
+  it('does not render the Add User button when selectedRole is Employee', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="Employee"
+        currentUserId="3"
+        selectedRole="Employee"
+      />
+    );
+
+    const addButton = screen.queryByRole('button', { name: /Add User/i });
+    expect(addButton).not.toBeInTheDocument();
+  });
+
+  it('renders edit but not remove action buttons when selectedRole is Employee', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="Employee"
+        currentUserId="3"
+        selectedRole="Employee"
+      />
+    );
+
+    const editButtons = screen.queryAllByRole('button', { name: /Edit role and status for/i });
+    expect(editButtons).toHaveLength(2);
+
+    const removeButtons = screen.queryAllByRole('button', { name: /Remove .* from Employee/i });
+    expect(removeButtons).toHaveLength(0);
+  });
+
   it('opens the edit modal when edit is clicked', () => {
     (useRouter as any).mockReturnValue({ refresh: vi.fn() });
 

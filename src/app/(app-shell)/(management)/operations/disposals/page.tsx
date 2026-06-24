@@ -20,7 +20,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   if (!user) {
     redirect('/login');
   }
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
+  if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     redirect('/403');
   }
 

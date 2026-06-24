@@ -12,7 +12,7 @@ function normalizeRole(role: unknown): UserRole {
   if (
     role === 'GlobalAdmin' ||
     role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
+    role === 'FinancialAuditor' ||
     role === 'Employee'
   ) {
     return role;

@@ -11,6 +11,7 @@ import {
 import { unstable_cache } from 'next/cache';
 import {
   DEFAULT_USEFUL_LIFE_MONTHS,
+  DEFAULT_SOFTWARE_SEAT_COST,
   DASHBOARD_KPI_CACHE_TTL,
   HIGH_MAINTENANCE_TICKET_THRESHOLD,
   FLEET_HEALTH_WEIGHTS,
@@ -89,16 +90,31 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    // Fetch all active licenses upfront so we can determine software asset IDs
+    // and include software purchases as the 10th parallel query.
+    const allLicenses = await db
+      .select({
+        id: softwareLicenses.id,
+        totalSeats: softwareLicenses.totalSeats,
+        assetId: softwareLicenses.assetId,
+      })
+      .from(softwareLicenses)
+      .where(eq(softwareLicenses.isActive, true));
+
+    const softwareAssetIds = allLicenses
+      .map((l) => l.assetId)
+      .filter(Boolean) as string[];
+
     const [
       assetMetricsRes,
       financialMetricsRes,
       maintenanceMetricsRes,
       softwareMetricsRes,
-      licenses,
       expiringLicensesRes,
       allocationsCountRes,
       overdueCountRes,
       highRepairCountRes,
+      softwarePurchasesRes,
     ] = await Promise.all([
       db
         .select({
@@ -116,16 +132,20 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
           nbv: sql<number>`
             SUM(
               CASE WHEN ${assets.status} != 'Disposed' THEN
-                GREATEST(0,
-                  ${assetPurchases.totalCost}::numeric - (
-                    ${assetPurchases.totalCost}::numeric
-                    / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
-                    * GREATEST(0,
-                       EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
-                       + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
+                CASE WHEN ${assetPurchases.purchaseDate} IS NULL THEN
+                  COALESCE(${assetPurchases.totalCost}::numeric, 0)
+                ELSE
+                  GREATEST(0,
+                    ${assetPurchases.totalCost}::numeric - (
+                      ${assetPurchases.totalCost}::numeric
+                      / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
+                      * GREATEST(0,
+                         EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
+                         + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
+                      )
                     )
                   )
-                )
+                END
               ELSE 0 END
             )
           `,
@@ -148,15 +168,6 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       db
         .select({
           totalSeats: sql<number>`SUM(${softwareLicenses.totalSeats})`,
-        })
-        .from(softwareLicenses)
-        .where(eq(softwareLicenses.isActive, true)),
-
-      db
-        .select({
-          id: softwareLicenses.id,
-          totalSeats: softwareLicenses.totalSeats,
-          assetId: softwareLicenses.assetId,
         })
         .from(softwareLicenses)
         .where(eq(softwareLicenses.isActive, true)),
@@ -201,6 +212,17 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
             .having(sql`COUNT(*) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`)
             .as('high_repair_assets')
         ),
+
+      // 10th parallel query: software purchase costs (previously a sequential post-query)
+      softwareAssetIds.length > 0
+        ? db
+            .select({
+              assetId: assetPurchases.assetId,
+              totalCost: assetPurchases.totalCost,
+            })
+            .from(assetPurchases)
+            .where(inArray(assetPurchases.assetId, softwareAssetIds))
+        : Promise.resolve([]),
     ]);
 
     const totalActiveAssets = Number(assetMetricsRes[0]?.totalActive || 0);
@@ -233,27 +255,15 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       allocationsCountRes.map((a) => [a.licenseId, a.count])
     );
 
-    const softwareAssetIds = licenses
-      .map((l) => l.assetId)
-      .filter(Boolean) as string[];
-    let softwarePurchasesMap = new Map<string, number>();
+    // Build software purchases map from the parallel query result
+    const softwarePurchasesMap = new Map<string, number>(
+      softwarePurchasesRes.map((p) => [
+        p.assetId,
+        parseFloat(p.totalCost?.toString() || '0'),
+      ])
+    );
 
-    if (softwareAssetIds.length > 0) {
-      const purchases = await db
-        .select({
-          assetId: assetPurchases.assetId,
-          totalCost: assetPurchases.totalCost,
-        })
-        .from(assetPurchases)
-        .where(inArray(assetPurchases.assetId, softwareAssetIds));
-
-      softwarePurchasesMap = new Map(
-        purchases.map((p) => [
-          p.assetId,
-          parseFloat(p.totalCost?.toString() || '0'),
-        ])
-      );
-    }
+    const licenses = allLicenses;
 
     let inactiveSoftwareSeats = 0;
     let inactiveSoftwareCostLeak = 0;
@@ -269,7 +279,7 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       const costPerSeat =
         lic.totalSeats > 0 ? licenseCost / lic.totalSeats : 0;
       const activeCostPerSeat =
-        costPerSeat > 0 ? costPerSeat : 10; // Default to $10 per seat
+        costPerSeat > 0 ? costPerSeat : DEFAULT_SOFTWARE_SEAT_COST;
       inactiveSoftwareCostLeak += inactive * activeCostPerSeat;
     });
 
