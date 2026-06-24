@@ -49,12 +49,12 @@ interface ExecuteDisposalDialogProps {
 }
 
 function getDeviceIcon(category: string, className?: string) {
-  const lowerCat = category.toLowerCase();
-  if (lowerCat.includes('laptop') || lowerCat.includes('macbook')) return <Laptop className={className} />;
-  if (lowerCat.includes('phone') || lowerCat.includes('mobile') || lowerCat.includes('tablet')) return <Smartphone className={className} />;
-  if (lowerCat.includes('server') || lowerCat.includes('network')) return <Server className={className} />;
-  if (lowerCat.includes('keyboard') || lowerCat.includes('mouse') || lowerCat.includes('peripheral')) return <Keyboard className={className} />;
-  if (lowerCat.includes('monitor') || lowerCat.includes('display') || lowerCat.includes('desktop')) return <Monitor className={className} />;
+  const lowerCat = category.toLowerCase().trim();
+  if (/\b(laptop|macbook)\b/.test(lowerCat)) return <Laptop className={className} />;
+  if (/\b(phone|mobile|tablet)\b/.test(lowerCat)) return <Smartphone className={className} />;
+  if (/\b(server|network)\b/.test(lowerCat)) return <Server className={className} />;
+  if (/\b(keyboard|mouse|peripheral)\b/.test(lowerCat)) return <Keyboard className={className} />;
+  if (/\b(monitor|display|desktop)\b/.test(lowerCat)) return <Monitor className={className} />;
   return <Package className={className} />;
 }
 
@@ -97,28 +97,32 @@ export function ExecuteDisposalDialog({
     setReceiptUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  /** Builds the FormData payload and calls the server action. */
+  async function runDisposal(): Promise<{ success: boolean; message: string }> {
+    const formData = new FormData();
+    formData.set('disposalIds', JSON.stringify(selectedAssets.map((a) => a.id)));
+    formData.set('assetIds', JSON.stringify(selectedAssets.map((a) => a.assetId)));
+    formData.set('reason', reason);
+    formData.set('disposalMethod', method);
+    formData.set('actualSalvageValue', salvageValue);
+    formData.set('dataWiped', String(dataWiped));
+    formData.set('tagsRemoved', String(tagsRemoved));
+    formData.set('receiptUrls', JSON.stringify(receiptUrls));
+    return executeAssetDisposal({ success: false, message: '' }, formData);
+  }
+
   const handleExecute = () => {
     if (!isFormValid) return;
     setError(null);
 
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        formData.set('disposalIds', JSON.stringify(selectedAssets.map((a) => a.id)));
-        formData.set('assetIds', JSON.stringify(selectedAssets.map((a) => a.assetId)));
-        formData.set('reason', reason);
-        formData.set('disposalMethod', method);
-        formData.set('actualSalvageValue', salvageValue);
-        formData.set('dataWiped', String(dataWiped));
-        formData.set('tagsRemoved', String(tagsRemoved));
-        formData.set('receiptUrls', JSON.stringify(receiptUrls));
-
-        const result = await executeAssetDisposal({ success: false, message: '' }, formData);
+        const result = await runDisposal();
 
         if (result.success) {
           tiqriToast.success(
-            isBulk 
-              ? `Successfully disposed ${selectedAssets.length} assets.` 
+            isBulk
+              ? `Successfully disposed ${selectedAssets.length} assets.`
               : 'Asset successfully disposed.'
           );
           onSuccess();
@@ -127,6 +131,7 @@ export function ExecuteDisposalDialog({
           setError(result.message);
         }
       } catch (err) {
+        console.error('[ExecuteDisposalDialog] Unexpected error:', err);
         setError(err instanceof Error ? err.message : 'Failed to execute disposal.');
       }
     });

@@ -161,7 +161,7 @@ export function RejectDisposalDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="In Repair">Maintenance</SelectItem>
+                  <SelectItem value="In Repair">In Repair</SelectItem>
                 </SelectContent>
               </Select>
               {isBulk && (
