@@ -15,9 +15,9 @@ export const ledgerQueryParamsSchema = z.object({
     .number()
     .int()
     .min(1, 'Page size must be at least 1.')
-    .max(500, 'Page size must not exceed 500.')
     .optional()
-    .default(16),
+    .default(16)
+    .transform((value) => Math.min(value, 1000)),
   search: z
     .string()
     .trim()
