@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unstable_rethrow } from 'next/navigation';
 
 import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 import { getPortalAlerts } from '@/lib/data/portal-repo';
@@ -28,6 +29,7 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
+    unstable_rethrow(error);
     console.error('GET /api/v1/portal/notifications error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

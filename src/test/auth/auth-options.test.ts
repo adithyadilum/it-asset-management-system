@@ -136,7 +136,7 @@ describe('authOptions callbacks', () => {
         profile: { email: 'inactive@tiqri.com' },
       } as any);
 
-      expect(result).toBe(false);
+      expect(result).toBe('/account-disabled');
       expect(insertMock).not.toHaveBeenCalled();
     });
 

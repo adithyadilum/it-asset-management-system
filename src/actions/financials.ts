@@ -11,6 +11,7 @@ import {
   assetDisposals,
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
+import { unstable_rethrow } from 'next/navigation';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { calculateStraightLineDepreciation } from '@/lib/financial-math';
 
@@ -165,6 +166,7 @@ export async function getDepreciationLedger(
       },
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error('[getDepreciationLedger] Error:', error);
     if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
       throw error;
@@ -291,6 +293,7 @@ export async function getTCOLedger(
       },
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error('[getTCOLedger] Error:', error);
     if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
       throw error;
@@ -408,6 +411,7 @@ export async function getWriteOffsLedger(
       },
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error('[getWriteOffsLedger] Error:', error);
     if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
       throw error;

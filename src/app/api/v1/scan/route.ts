@@ -12,6 +12,16 @@ const MOBILE_SECRET = new TextEncoder().encode(
   serverEnv.MOBILE_JWT_SECRET 
 );
 
+function trimTrailingSlashes(value: string) {
+  let end = value.length;
+
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end -= 1;
+  }
+
+  return value.slice(0, end);
+}
+
 export async function POST(req: Request) {
   let userId = null;
   let userRole = null;
@@ -85,7 +95,7 @@ export async function POST(req: Request) {
         rawTag = rawTag.split('/assets/').pop()?.split('?')[0] || rawTag;
       }
       // Clean up any trailing slashes or spaces
-      assetTag = rawTag.trim().replace(/\/+$/, '');
+      assetTag = trimTrailingSlashes(rawTag.trim());
     }
   } catch {
     // ignore
