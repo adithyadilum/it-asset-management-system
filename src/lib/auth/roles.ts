@@ -17,10 +17,10 @@ export function isITOperator(role: UserRole): boolean {
 }
 
 /**
- * Returns true if the user has the FinanceAuditor role.
+ * Returns true if the user has the FinancialAuditor role.
  */
-export function isFinanceAuditor(role: UserRole): boolean {
-  return role === 'FinanceAuditor';
+export function isFinancialAuditor(role: UserRole): boolean {
+  return role === 'FinancialAuditor';
 }
 
 /**
@@ -33,10 +33,10 @@ export function isEmployee(role: UserRole): boolean {
 
 /**
  * Returns true if the user role is authorized to view the asset registry.
- * GlobalAdmin, ITOperator, and FinanceAuditor have access.
+ * GlobalAdmin, ITOperator, and FinancialAuditor have access.
  */
 export function canViewAssetRegistry(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinanceAuditor';
+  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinancialAuditor';
 }
 
 /**
@@ -49,10 +49,10 @@ export function canManageAssets(role: UserRole): boolean {
 
 /**
  * Returns true if the user role has access to financial ledgers and audits.
- * GlobalAdmin and FinanceAuditor have access.
+ * GlobalAdmin and FinancialAuditor have access.
  */
 export function canAccessFinancials(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'FinanceAuditor';
+  return role === 'GlobalAdmin' || role === 'FinancialAuditor';
 }
 
 /**
@@ -65,10 +65,10 @@ export function canAccessOperations(role: UserRole): boolean {
 
 /**
  * Returns true if the user role has access to view disposal history.
- * GlobalAdmin and FinanceAuditor have access.
+ * GlobalAdmin and FinancialAuditor have access.
  */
 export function canViewDisposalHistory(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'FinanceAuditor';
+  return role === 'GlobalAdmin' || role === 'FinancialAuditor';
 }
 
 // ─── Assert Guards ────────────────────────────────────────────────────────────

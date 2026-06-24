@@ -76,8 +76,8 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
     try {
       setIsLoading(true);
       const [ticketsResult, activeResult, historyResult] = await Promise.all([
-        userRole !== 'FinanceAuditor' ? getPendingMaintenanceTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
-        userRole !== 'FinanceAuditor' ? getActiveRepairTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
+        userRole !== 'FinancialAuditor' ? getPendingMaintenanceTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
+        userRole !== 'FinancialAuditor' ? getActiveRepairTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
         getRepairHistory(1, 100, query)
       ]);
       setPendingTickets(ticketsResult.tickets);

@@ -7,7 +7,7 @@ export default async function OperationsPage() {
     redirect("/login");
   }
 
-  if (user.role === 'FinanceAuditor') {
+  if (user.role === 'FinancialAuditor') {
     redirect("/operations/maintenance");
   }
   

@@ -28,7 +28,7 @@ import { LOCATION_TYPES } from '@/types/master-data';
 export const roleEnum = pgEnum('role', [
   'GlobalAdmin',
   'ITOperator',
-  'FinanceAuditor',
+  'FinancialAuditor',
   'Employee',
 ]);
 export const pillarEnum = pgEnum('pillar', [

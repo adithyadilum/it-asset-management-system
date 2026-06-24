@@ -119,7 +119,7 @@ describe('Read Operations: getPendingMaintenanceTickets', () => {
     expect(result.tickets).toHaveLength(1);
   });
 
-  it('returns tickets for FinanceAuditor', async () => {
+  it('returns tickets for FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
     mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
     const result = await getPendingMaintenanceTickets();

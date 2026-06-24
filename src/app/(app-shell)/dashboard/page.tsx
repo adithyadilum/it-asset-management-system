@@ -12,12 +12,12 @@ import { redirect } from "next/navigation"
 // Role-specific action fetchers
 import { getGlobalAdminDashboardData } from "@/actions/dashboard/global-admin"
 import { getITDashboardData } from "@/actions/dashboard/it-operator"
-import { getFinanceDashboardData } from "@/actions/dashboard/finance-auditor"
+import { getFinanceDashboardData } from "@/actions/dashboard/financial-auditor"
 
 // Role-specific view components
 import { GlobalAdminDashboardView } from "@/components/features/dashboard/global-admin/global-admin-dashboard-view"
 import { ITOperatorDashboardView } from "@/components/features/dashboard/it-operator/it-operator-dashboard-view"
-import { FinanceAuditorDashboardView } from "@/components/features/dashboard/financial-auditor/finance-auditor-dashboard-view"
+import { FinancialAuditorDashboardView } from "@/components/features/dashboard/financial-auditor/financial-auditor-dashboard-view"
 
 export default async function DashboardPage() {
     const user = await getAuthenticatedUser()
@@ -63,12 +63,12 @@ export default async function DashboardPage() {
                 </div>
             )
         }
-    } else if (userRole === 'FinanceAuditor') {
+    } else if (userRole === 'FinancialAuditor') {
         try {
             const financeData = await getFinanceDashboardData()
-            dashboardView = <FinanceAuditorDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} apiRates={apiRates} />
+            dashboardView = <FinancialAuditorDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} apiRates={apiRates} />
         } catch (error) {
-            console.error('[Dashboard] FinanceAuditor data fetch failed:', error)
+            console.error('[Dashboard] FinancialAuditor data fetch failed:', error)
             dashboardView = (
                 <div className="mx-6 mt-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                     Failed to load dashboard data. Please refresh the page or contact support if the issue persists.

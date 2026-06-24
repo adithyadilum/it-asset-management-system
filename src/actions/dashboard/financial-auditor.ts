@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import { requireAccess, isFinanceAuditor } from '@/lib/auth/roles';
+import { requireAccess, isFinancialAuditor } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -37,12 +37,12 @@ export interface FinanceDashboardBatchData {
  * Fetches all financial-related dashboard data in a single call, performing auth once
  * and running all queries in parallel.
  *
- * Strictly locks entry point to GlobalAdmin or FinanceAuditor.
+ * Strictly locks entry point to GlobalAdmin or FinancialAuditor.
  */
 export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  requireAccess(user, isFinanceAuditor);
+  requireAccess(user, isFinancialAuditor);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

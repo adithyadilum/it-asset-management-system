@@ -163,8 +163,8 @@ describe('getDisposalHistory', () => {
     expect(result.pagination.totalRecords).toBe(1);
   });
 
-  it('returns history for FinanceAuditor', async () => {
-    mockGetAuthenticatedUser.mockResolvedValue({ id: 'finance', role: 'FinanceAuditor' });
+  it('returns history for FinancialAuditor', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue({ id: 'finance', role: 'FinancialAuditor' });
     mockDb.select.mockReturnValueOnce(chain([{ count: 1 }]));
     mockDb.select.mockReturnValueOnce(chain([{ id: 1, status: 'Completed', documentUrls: [] }]));
     

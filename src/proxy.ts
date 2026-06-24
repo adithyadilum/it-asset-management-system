@@ -16,7 +16,7 @@ function normalizeTokenRole(role: unknown): TokenRole | null {
   if (
     role === 'GlobalAdmin' ||
     role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
+    role === 'FinancialAuditor' ||
     role === 'Employee'
   ) {
     return role;
@@ -110,7 +110,7 @@ function isPublicAssetPath(pathname: string) {
  * RBAC Matrix (top-level protected route segments):
  * - GlobalAdmin: all routes
  * - ITOperator: all except /settings/* and /financials/*
- * - FinanceAuditor: all except /settings/* and /operations/*
+ * - FinancialAuditor: all except /settings/* and /operations/*
  * - Employee: /dashboard only
  */
 function canAccessRoute(role: TokenRole, pathname: string) {
@@ -141,7 +141,7 @@ function canAccessRoute(role: TokenRole, pathname: string) {
     return !isSettingsRoute && !isFinancialsRoute;
   }
 
-  if (role === 'FinanceAuditor') {
+  if (role === 'FinancialAuditor') {
     if (isSettingsRoute) return false;
     if (isOperationsRoute) {
       return (

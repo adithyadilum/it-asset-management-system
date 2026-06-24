@@ -18,7 +18,7 @@ vi.mock('@/actions/dashboard/it-operator', () => ({
 }));
 
 const mockGetFinanceDashboardData = vi.fn();
-vi.mock('@/actions/dashboard/finance-auditor', () => ({
+vi.mock('@/actions/dashboard/financial-auditor', () => ({
   getFinanceDashboardData: () => mockGetFinanceDashboardData(),
 }));
 
@@ -67,10 +67,10 @@ describe('Dashboard Action: getDashboardBatchData', () => {
     expect(result.depreciationLedger).toEqual([]);
   });
 
-  it('returns Finance-specific metrics for FinanceAuditor', async () => {
+  it('returns Finance-specific metrics for FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue({
       id: 'finance1',
-      role: 'FinanceAuditor',
+      role: 'FinancialAuditor',
     });
     mockGetFinanceDashboardData.mockResolvedValue({
       kpiMetrics: { totalActiveAssets: 150 },

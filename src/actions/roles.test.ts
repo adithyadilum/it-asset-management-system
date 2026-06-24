@@ -119,7 +119,7 @@ describe('searchUsers', () => {
     await expect(searchUsers('test')).rejects.toThrow('Forbidden');
   });
 
-  it('throws when user is FinanceAuditor', async () => {
+  it('throws when user is FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
     await expect(searchUsers('test')).rejects.toThrow('Forbidden');
   });

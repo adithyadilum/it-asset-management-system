@@ -6,7 +6,7 @@ This epic builds a highly secured, dedicated sandbox for the Finance department.
 
 ## In Scope
 
-- Role-Based Access Control (RBAC) specifically locking the `Financials` module to `FinanceAuditor` and `GlobalAdmin` roles.
+- Role-Based Access Control (RBAC) specifically locking the `Financials` module to `FinancialAuditor` and `GlobalAdmin` roles.
 - The `Depreciation Ledger` data grid and backend calculation engine.
 - The `Total Cost of Ownership` (TCO) aggregation ledger.
 - The `Salvage & Write-Offs` ledger for finalized asset reconciliation.
@@ -41,7 +41,7 @@ This epic builds a highly secured, dedicated sandbox for the Finance department.
   - And if I attempt to manually navigate to the corresponding URLs, the backend strictly returns a `403 Forbidden` error.
 
 - Scenario: Authorized Access
-  - Given I log in as a `Finance Auditor` or `Global Admin`
+  - Given I log in as a `Financial Auditor` or `Global Admin`
   - When I look at the sidebar
   - Then the `Financials` module is fully visible and accessible.
 
@@ -49,7 +49,7 @@ This epic builds a highly secured, dedicated sandbox for the Finance department.
 
 #### Frontend
 
-- [x] Update the global Sidebar component with conditional rendering: hide the `Financials` accordion menu entirely when `user.role` is not `FinanceAuditor` or `GlobalAdmin`.
+- [x] Update the global Sidebar component with conditional rendering: hide the `Financials` accordion menu entirely when `user.role` is not `FinancialAuditor` or `GlobalAdmin`.
 - [x] Wrap all Financial module routes with role guards, redirecting unauthorized users to the 403 page.
 
 #### Backend

@@ -40,7 +40,7 @@ The platform is organised across **five architectural Modules comprising 23 Epic
 
 - **Web Interface:** A responsive Next.js 16 (App Router) web application with React 19, Tailwind CSS 4, and desktop-optimised data grids (TanStack Table).
 - **Authentication & Authorisation (Epics 1, 2):** 
-  - *Current Status:* Stateless Edge Proxy (`src/proxy.ts`) using JSON Web Tokens (JWT) signed via the `jose` library, mapping database-driven roles (`GlobalAdmin`, `ITOperator`, `FinanceAuditor`, and `Employee`) in the `Users` table.
+  - *Current Status:* Stateless Edge Proxy (`src/proxy.ts`) using JSON Web Tokens (JWT) signed via the `jose` library, mapping database-driven roles (`GlobalAdmin`, `ITOperator`, `FinancialAuditor`, and `Employee`) in the `Users` table.
   - *In Scope / Yet to be Built:* Production integration with **Azure Active Directory (Entra ID)** via OAuth 2.0 / OIDC for SSO, mapping automated baseline permissions from Azure AD Group attributes to EITAMS application roles.
 - **Dynamic Category Schemas (Epic 3):** Admin-configurable dynamic category schemas with specific custom attributes for `modelSpecs` (specifications common to a model) and `assetTracking` (attributes unique to an asset instance), rendering custom fields on-the-fly during creation.
 - **Bulk Import (Epic 10):** CSV importer with partial-success logic — valid rows committed, invalid rows skipped with a downloadable CSV error report detailing row-by-row validation issues.

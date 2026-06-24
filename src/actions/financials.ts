@@ -22,7 +22,7 @@ async function enforceFinanceAccess() {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
 
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
+  if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     throw new Error('Forbidden');
   }
   return user;

@@ -36,7 +36,7 @@ interface AddUsersToRoleModalProps {
 const ROLE_ASSIGNMENT_LABELS: Record<UserRole, string> = {
   GlobalAdmin: "Global Admin",
   ITOperator: "IT Operations",
-  FinanceAuditor: "Financial Auditor",
+  FinancialAuditor: "Financial Auditor",
   Employee: "Employee",
 }
 

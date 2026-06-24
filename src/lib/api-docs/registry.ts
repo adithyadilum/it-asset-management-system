@@ -84,7 +84,7 @@ registry.registerPath({
               id: z.string(),
               name: z.string(),
               email: z.string().email(),
-              role: z.enum(['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee']),
+              role: z.enum(['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee']),
             }),
           }),
         },

@@ -33,7 +33,7 @@ interface EditUserRoleModalProps {
 const ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
   { value: "GlobalAdmin", label: "Global Admin" },
   { value: "ITOperator", label: "IT Operator" },
-  { value: "FinanceAuditor", label: "Financial Auditor" },
+  { value: "FinancialAuditor", label: "Financial Auditor" },
   { value: "Employee", label: "Employee" },
 ]
 

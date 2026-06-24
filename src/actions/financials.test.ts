@@ -52,7 +52,7 @@ describe('Financials Actions', () => {
   });
 
   describe('RBAC Guards', () => {
-    it('restricts access to FinanceAuditor and GlobalAdmin for getDepreciationLedger', async () => {
+    it('restricts access to FinancialAuditor and GlobalAdmin for getDepreciationLedger', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
       await expect(getDepreciationLedger()).rejects.toThrow('Forbidden');
 
@@ -60,7 +60,7 @@ describe('Financials Actions', () => {
       await expect(getDepreciationLedger()).rejects.toThrow('Forbidden');
     });
 
-    it('allows FinanceAuditor and GlobalAdmin', async () => {
+    it('allows FinancialAuditor and GlobalAdmin', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
       mockDb.select.mockReturnValueOnce(chain([{ value: 0 }])); // count
       mockDb.select.mockReturnValueOnce(chain([])); // data
@@ -96,7 +96,7 @@ describe('Financials Actions', () => {
 
   describe('getTCOLedger', () => {
     it('calculates Total TCO (Purchase + Maintenance)', async () => {
-      mockGetAuthenticatedUser.mockResolvedValue({ id: 'f', role: 'FinanceAuditor' });
+      mockGetAuthenticatedUser.mockResolvedValue({ id: 'f', role: 'FinancialAuditor' });
       
       // We mocked `db.with()` properly
       mockDb.with.mockReturnValue({

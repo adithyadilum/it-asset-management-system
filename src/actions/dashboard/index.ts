@@ -6,12 +6,12 @@ export * from './queries/kpis';
 export * from './queries/activities';
 export * from './global-admin';
 export * from './it-operator';
-export * from './finance-auditor';
+export * from './financial-auditor';
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getGlobalAdminDashboardData } from './global-admin';
 import { getITDashboardData } from './it-operator';
-import { getFinanceDashboardData } from './finance-auditor';
+import { getFinanceDashboardData } from './financial-auditor';
 import type { DashboardBatchData } from '@/types/dashboard';
 
 /**
@@ -43,7 +43,7 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
     };
   }
 
-  if (user.role === 'FinanceAuditor') {
+  if (user.role === 'FinancialAuditor') {
     const data = await getFinanceDashboardData();
     return {
       kpiMetrics: data.kpiMetrics,

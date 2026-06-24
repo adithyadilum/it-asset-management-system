@@ -29,7 +29,7 @@ function normalizeTokenRole(role: unknown): UserRole | null {
   if (
     role === 'GlobalAdmin' ||
     role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
+    role === 'FinancialAuditor' ||
     role === 'Employee'
   ) {
     return role;

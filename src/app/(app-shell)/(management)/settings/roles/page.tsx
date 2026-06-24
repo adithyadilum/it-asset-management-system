@@ -26,7 +26,7 @@ const ROLE_CONFIG: Array<{
         'These users have full read/write access to the Asset Registry and Maintenance modules.',
     },
     {
-      id: 'FinanceAuditor',
+      id: 'FinancialAuditor',
       name: 'Financial Auditor',
       description:
         'These users have read-only access to financial ledgers and audit records.',
@@ -58,7 +58,7 @@ function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
   if (
     selected === 'GlobalAdmin' ||
     selected === 'ITOperator' ||
-    selected === 'FinanceAuditor' ||
+    selected === 'FinancialAuditor' ||
     selected === 'Employee'
   ) {
     return selected;
@@ -110,7 +110,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
   const roleCounts: Record<UserRole, number> = {
     GlobalAdmin: 0,
     ITOperator: 0,
-    FinanceAuditor: 0,
+    FinancialAuditor: 0,
     Employee: 0,
   };
 

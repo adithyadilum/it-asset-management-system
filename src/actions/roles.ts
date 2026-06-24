@@ -13,7 +13,7 @@ import type { UserRole } from '@/types/auth';
 import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 
 function normalizeTokenRole(role: unknown): UserRole | null {
-  const validRoles: UserRole[] = ['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee'];
+  const validRoles: UserRole[] = ['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee'];
   return validRoles.includes(role as UserRole) ? (role as UserRole) : null;
 }
 

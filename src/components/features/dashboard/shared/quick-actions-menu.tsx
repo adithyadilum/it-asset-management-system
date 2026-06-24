@@ -35,7 +35,7 @@ export function QuickActionsMenu({ userRole }: QuickActionsMenuProps) {
 
   const isAdmin = userRole === 'GlobalAdmin'
   const isOperator = userRole === 'ITOperator'
-  const isAuditor = userRole === 'FinanceAuditor'
+  const isAuditor = userRole === 'FinancialAuditor'
   const canRegister = isAdmin || isOperator
   const canAssign = isAdmin || isOperator
   const canMaintenance = isAdmin || isOperator

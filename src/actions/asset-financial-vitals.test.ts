@@ -62,7 +62,7 @@ describe('getAssetFinancialVitals', () => {
     vi.clearAllMocks();
   });
 
-  it('restricts access to FinanceAuditor and GlobalAdmin', async () => {
+  it('restricts access to FinancialAuditor and GlobalAdmin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
     await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow('Forbidden');
 

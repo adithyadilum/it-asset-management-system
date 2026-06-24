@@ -47,7 +47,7 @@ export function DisposalsLayout({
   const isRecordOpen = currentPanel === 'record';
   const numericRecordId = recordId ? Number(recordId) : null;
 
-  const defaultTab = userRole === 'FinanceAuditor' ? 'history' : 'pending';
+  const defaultTab = userRole === 'FinancialAuditor' ? 'history' : 'pending';
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   const selectedRow = isReviewOpen && numericRecordId
@@ -120,7 +120,7 @@ export function DisposalsLayout({
           {/* Tabs Container */}
           <ModuleNavigationTabs
             tabs={[
-              ...(userRole !== 'FinanceAuditor' ? [{ id: 'pending', label: `Pending Disposal (${pendingData.length})` }] : []),
+              ...(userRole !== 'FinancialAuditor' ? [{ id: 'pending', label: `Pending Disposal (${pendingData.length})` }] : []),
               { id: 'history', label: 'Disposal History' }
             ]}
             defaultTab={activeTab}
@@ -128,7 +128,7 @@ export function DisposalsLayout({
             containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
           >
             {/* Tab Content - Pending */}
-            {userRole !== 'FinanceAuditor' && (
+            {userRole !== 'FinancialAuditor' && (
             <TabsContent
               value="pending"
               className="m-0 flex flex-1 flex-col min-h-0 outline-none"

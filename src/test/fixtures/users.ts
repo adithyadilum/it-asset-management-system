@@ -26,7 +26,7 @@ export const FINANCE_AUDITOR_USER: AuthenticatedUser = {
   id: '00000000-0000-4000-a000-000000000003',
   email: 'auditor@tiqri.com',
   name: 'Test Auditor',
-  role: 'FinanceAuditor',
+  role: 'FinancialAuditor',
   isActive: true,
 };
 

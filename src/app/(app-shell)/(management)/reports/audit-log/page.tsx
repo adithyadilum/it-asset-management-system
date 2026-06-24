@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 export default async function AuditLogPage() {
   const currentUser = await getAuthenticatedUser();
 
-  if (!currentUser || (currentUser.role !== "GlobalAdmin" && currentUser.role !== "FinanceAuditor")) {
+  if (!currentUser || (currentUser.role !== "GlobalAdmin" && currentUser.role !== "FinancialAuditor")) {
     redirect("/403");
   }
 

@@ -54,7 +54,7 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
@@ -116,7 +116,7 @@ export async function getTicketForIssueReview(
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
@@ -211,7 +211,7 @@ export async function getVendors() {
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
@@ -235,7 +235,7 @@ export async function getActiveRepairTickets(searchTerm = '') {
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
@@ -281,7 +281,7 @@ export async function getRepairHistory(
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
@@ -348,7 +348,7 @@ export async function getAssetMaintenanceHistory(
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 

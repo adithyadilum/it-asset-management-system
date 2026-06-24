@@ -1,7 +1,7 @@
 export type UserRole =
   | 'GlobalAdmin'
   | 'ITOperator'
-  | 'FinanceAuditor'
+  | 'FinancialAuditor'
   | 'Employee';
 
 export interface AuthUser {
