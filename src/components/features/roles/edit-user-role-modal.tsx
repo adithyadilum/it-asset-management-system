@@ -51,15 +51,11 @@ export function EditUserRoleModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setTimeout(() => {
-        setIsSubmitting(false)
-        setError(null)
-      }, 0)
+      setIsSubmitting(false)
+      setError(null)
     } else if (user) {
-      setTimeout(() => {
-        setSelectedRole(user.role)
-        setIsActive(user.isActive)
-      }, 0)
+      setSelectedRole(user.role)
+      setIsActive(user.isActive)
     }
   }, [isOpen, user])
 

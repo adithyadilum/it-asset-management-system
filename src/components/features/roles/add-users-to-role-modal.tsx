@@ -104,16 +104,14 @@ export function AddUsersToRoleModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setTimeout(() => {
-        setIsSubmitting(false)
-        setError(null)
-        setSearchQuery("")
-        setSearchResults([])
-        setIsSearching(false)
-        setSearchError(null)
-        setHideUsersAlreadyInRole(false)
-        setMappedSelection([])
-      }, 0)
+      setIsSubmitting(false)
+      setError(null)
+      setSearchQuery("")
+      setSearchResults([])
+      setIsSearching(false)
+      setSearchError(null)
+      setHideUsersAlreadyInRole(false)
+      setMappedSelection([])
     }
   }, [isOpen])
 
