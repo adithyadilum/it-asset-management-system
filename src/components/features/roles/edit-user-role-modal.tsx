@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { X } from "lucide-react"
 
 import { assignUserRole, setUserActiveStatus } from "@/actions/roles"
@@ -48,8 +48,10 @@ export function EditUserRoleModal({
   const [isActive, setIsActive] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
+  
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (!isOpen) {
       setIsSubmitting(false)
       setError(null)
@@ -57,7 +59,18 @@ export function EditUserRoleModal({
       setSelectedRole(user.role)
       setIsActive(user.isActive)
     }
-  }, [isOpen, user])
+  }
+
+  // Also need to handle when 'user' changes while open, or we can just rely on the open toggle
+  // The original useEffect watched [isOpen, user]
+  const [prevUser, setPrevUser] = useState(user);
+  if (user !== prevUser) {
+    setPrevUser(user);
+    if (isOpen && user) {
+      setSelectedRole(user.role)
+      setIsActive(user.isActive)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!user) {

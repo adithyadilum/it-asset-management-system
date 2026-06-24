@@ -102,7 +102,9 @@ export function AddUsersToRoleModal({
     )
   }
 
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (!isOpen) {
       setIsSubmitting(false)
       setError(null)
@@ -113,7 +115,7 @@ export function AddUsersToRoleModal({
       setHideUsersAlreadyInRole(false)
       setMappedSelection([])
     }
-  }, [isOpen])
+  }
 
   useEffect(() => {
     if (!isOpen || !normalizedQuery) {

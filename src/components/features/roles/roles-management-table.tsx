@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useTransition, useEffect } from 'react';
+import { useState, useMemo, useCallback, useTransition } from 'react';
 import { PlusCircle, Trash2, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
@@ -53,9 +53,11 @@ export function RolesManagementTable({
     Record<string, boolean>
   >({});
 
-  useEffect(() => {
+  const [prevRole, setPrevRole] = useState(selectedRole);
+  if (selectedRole !== prevRole) {
+    setPrevRole(selectedRole);
     setOptimisticStatus({});
-  }, [selectedRole]);
+  }
 
   const openRemoveModal = (user: RoleUser) => {
     setSelectedUserForRemoval(user);
