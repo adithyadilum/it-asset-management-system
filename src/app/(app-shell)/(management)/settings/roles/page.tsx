@@ -1,7 +1,5 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-
-import { getAuthenticatedUser } from '@/actions/auth';
+import { requirePageAuth } from '@/lib/auth/page-guard';
 import { getRolesPageData } from '@/actions/roles';
 import { USER_ROLES } from '@/types/auth';
 import type { UserRole } from '@/types/auth';
@@ -55,15 +53,7 @@ function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
 }
 
 export default async function RolesPage({ searchParams }: RolesPageProps) {
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser) {
-    redirect('/login');
-  }
-
-  if (currentUser.role !== 'GlobalAdmin') {
-    redirect('/403');
-  }
+  const currentUser = await requirePageAuth((role) => role === 'GlobalAdmin');
 
   const params = await searchParams;
   const selectedRole = normalizeSelectedRole(params.role);
@@ -87,7 +77,7 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-stretch gap-2.5 bg-muted lg:flex-row">
       <section className="flex w-full flex-col items-start gap-4 rounded-lg bg-card text-card-foreground p-6 shadow-box-shadow-shadow-sm lg:max-w-100 border border-border">
-        <h1 className="font-text-2xl-semi-bold text-(length:--text-2xl-semi-bold-font-size) leading-(--text-2xl-semi-bold-line-height) tracking-(--text-2xl-semi-bold-letter-spacing) [font-style:var(--text-text-2xl-semi-bold-font-style,var(--text-2xl-semi-bold-font-style))]">
+        <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
           Role Assignment
         </h1>
 
