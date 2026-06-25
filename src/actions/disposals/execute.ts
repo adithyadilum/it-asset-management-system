@@ -4,7 +4,7 @@ import { eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { enforceFormAccess } from '@/actions/auth';
-import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
+import {  isGlobalAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -314,4 +314,4 @@ export async function executeAssetDisposal(
       startTime: actionTimer,
     });
   }
-}
+}

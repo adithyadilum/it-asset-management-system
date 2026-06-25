@@ -8,7 +8,7 @@ export * from './global-admin';
 export * from './it-operator';
 export * from './financial-auditor';
 
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { getGlobalAdminDashboardData } from './global-admin';
 import { getITDashboardData } from './it-operator';
 import { getFinanceDashboardData } from './financial-auditor';
@@ -60,4 +60,4 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
   }
 
   throw new Error('FORBIDDEN: Unexpected role.');
-}
+}

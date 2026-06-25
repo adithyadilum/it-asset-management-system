@@ -10,7 +10,7 @@ import {
 } from '@/db/schema';
 import { unstable_cache } from 'next/cache';
 import {
-  DEFAULT_USEFUL_LIFE_MONTHS,
+  
   DEFAULT_SOFTWARE_SEAT_COST,
   DASHBOARD_KPI_CACHE_TTL,
   HIGH_MAINTENANCE_TICKET_THRESHOLD,
@@ -339,4 +339,4 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     revalidate: DASHBOARD_KPI_CACHE_TTL,
     tags: ['dashboard-kpis'],
   }
-);
+);

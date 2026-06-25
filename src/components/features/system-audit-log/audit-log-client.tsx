@@ -7,7 +7,6 @@ import { Download } from "lucide-react";
 import { getAuditLogs, type AuditLogRow, type PaginatedAuditLogsResult } from "@/actions/audit-log";
 import type { PaginationState } from "@tanstack/react-table";
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { formatMoneyByCurrency } from "@/lib/currency";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -563,4 +562,4 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             </main>
         </TooltipProvider>
     );
-}
+}

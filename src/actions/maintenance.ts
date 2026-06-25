@@ -16,7 +16,7 @@ import {
   assetAssignments,
 } from '@/db/schema';
 import { eq, and, ilike, or, desc, sql, isNull } from 'drizzle-orm';
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import {
@@ -1056,4 +1056,4 @@ export async function reportDefectiveFromPanel(
           : 'Failed to dispatch asset for repair.',
     };
   }
-}
+}

@@ -8,7 +8,6 @@ import {
   softwareLicenses,
   softwareAllocations,
 } from '@/db/schema';
-import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/constants/dashboard';
 import type {
   TopHighValueAssetRow,
   SoftwareOptimizationRow,
@@ -134,4 +133,4 @@ export async function getDashboardSoftwareOptimizationInternal(): Promise<Softwa
     };
   });
 }
-
+

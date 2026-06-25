@@ -4,7 +4,7 @@
 import { db } from '@/db';
 import { assets, assetPurchases, maintenanceTickets } from '@/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
 
@@ -158,4 +158,4 @@ export async function getAssetFinancialVitals(
     );
     throw new Error('Failed to load financial vitals.');
   }
-}
+}

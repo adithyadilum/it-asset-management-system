@@ -251,7 +251,7 @@ export async function bulkAssignAssetsAction(
 
 export async function getOperationsAssignmentsDataAction() {
   const actionTimer = startLatencyTimer();
-  const currentUser = await enforceActionAccess(canManageAssets);
+  await enforceActionAccess(canManageAssets);
 
   try {
     return await getAssignmentsDashboardData();
@@ -406,4 +406,4 @@ export async function processAssetReturnAction(
       startTime: actionTimer,
     });
   }
-}
+}

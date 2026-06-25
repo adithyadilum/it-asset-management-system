@@ -12,7 +12,7 @@ import {
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 import {
   depreciationLedgerParamsSchema,
@@ -437,4 +437,4 @@ export async function getWriteOffsLedger(
     }
     throw new Error('Failed to load write-offs ledger.');
   }
-}
+}

@@ -3,7 +3,7 @@
 import { and, desc, eq, inArray, or, ilike, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,7 +14,7 @@ import {
   assetDocuments,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import { requireAccess, canViewDisposalHistory } from '@/lib/auth/roles';
+import {  canViewDisposalHistory } from '@/lib/auth/roles';
 
 export async function getDisposalHistory(params: {
   search?: string;
@@ -22,7 +22,7 @@ export async function getDisposalHistory(params: {
   pageSize?: number;
 }) {
   const actionTimer = startLatencyTimer();
-  const user = await enforceActionAccess(canViewDisposalHistory);
+  await enforceActionAccess(canViewDisposalHistory);
 
   const searchQuery = params.search || '';
   const page = params.page && params.page > 0 ? params.page : 1;
@@ -135,4 +135,4 @@ export async function getDisposalHistory(params: {
       startTime: actionTimer,
     });
   }
-}
+}

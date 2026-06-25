@@ -811,7 +811,7 @@ export async function getAssetAuditHistory(
   const timer = startLatencyTimer();
 
   try {
-    const currentUser = await enforceActionAccess(canViewAssetRegistry);
+    await enforceActionAccess(canViewAssetRegistry);
 
     // Keep paging bounded so history requests stay predictable.
     const validatedPage = Math.max(1, page);
@@ -918,7 +918,7 @@ export async function getAllAssetAuditHistory(
   const timer = startLatencyTimer();
 
   try {
-    const currentUser = await enforceActionAccess(canViewAssetRegistry);
+    await enforceActionAccess(canViewAssetRegistry);
 
     const whereCondition = and(
       eq(systemAuditLogs.entityType, 'Asset'),
@@ -1004,4 +1004,4 @@ export async function getAllAssetAuditHistory(
     });
     throw new Error('Failed to fetch all asset history.');
   }
-}
+}

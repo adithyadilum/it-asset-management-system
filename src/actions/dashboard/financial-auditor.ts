@@ -1,8 +1,8 @@
 'use server';
 
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import { requireAccess, isFinancialAuditor } from '@/lib/auth/roles';
+import {  isFinancialAuditor } from '@/lib/auth/roles';
 import { logError } from '@/lib/latency';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
@@ -36,7 +36,7 @@ export interface FinanceDashboardBatchData {
 
 /** Fetches all financial dashboard data in parallel. Restricted to FinancialAuditor / GlobalAdmin. */
 export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchData> {
-  const user = await enforceActionAccess(isFinancialAuditor);
+  await enforceActionAccess(isFinancialAuditor);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),
@@ -72,4 +72,4 @@ export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchDa
     recentActivities:
       activityResult.status === 'fulfilled' ? (activityResult.value as RecentActivity[]) : [],
   };
-}
+}

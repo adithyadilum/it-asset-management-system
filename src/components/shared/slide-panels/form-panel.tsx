@@ -2,7 +2,6 @@
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import * as React from "react";
-import { LoaderCircle } from "lucide-react";
 
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
@@ -85,4 +84,4 @@ export function FormPanel({
       showCloseButton={showCloseButton}
     />
   );
-}
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { formatMoneyByCurrency } from '@/lib/currency';
-import React, { useMemo } from 'react';
+import React, {} from 'react';
 import { format } from 'date-fns';
 import {
     CheckCircle2,

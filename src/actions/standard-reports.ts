@@ -72,7 +72,7 @@ export interface ReportPreviewFilters {
 export async function getStandardReportsFilterOptions() {
   const actionTimer = startLatencyTimer();
 
-  const currentUser = await enforceActionAccess(canManageAssets);
+  await enforceActionAccess(canManageAssets);
 
   try {
     const [dbLocations, dbCustomStatuses, dbCategories, dbVendors] =
@@ -1804,4 +1804,4 @@ export async function fetchReportPreview(
       startTime: actionTimer,
     });
   }
-}
+}

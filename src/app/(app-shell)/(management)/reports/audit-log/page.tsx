@@ -3,7 +3,7 @@ import { getAuditLogs } from "@/actions/audit-log";
 import { requirePageAuth } from "@/lib/auth/page-guard";
 
 export default async function AuditLogPage() {
-  const currentUser = await requirePageAuth(
+  await requirePageAuth(
     (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor',
   );
 
@@ -14,4 +14,4 @@ export default async function AuditLogPage() {
       <AuditLogClient initialResult={initialResult} />
     </div>
   );
-}
+}

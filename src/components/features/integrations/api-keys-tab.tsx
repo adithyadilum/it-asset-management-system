@@ -4,7 +4,6 @@ import { useState, useMemo } from "react"
 import { Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
 import { CreateApiKeyDialog } from "./create-api-key-dialog"
 import { ApiKeyTable } from "./api-key-table"
@@ -71,4 +70,4 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
       />
     </div>
   )
-}
+}

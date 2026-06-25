@@ -3,7 +3,7 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,7 +14,7 @@ import {
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { normalizeAssetIds } from '@/actions/disposals/utils';
-import { requireAccess, canManageAssets } from '@/lib/auth/roles';
+import {  canManageAssets } from '@/lib/auth/roles';
 import { createDisposalRequestSchema } from '@/lib/validations/disposals';
 
 export async function createDisposalRequest(input: {
@@ -217,4 +217,4 @@ export async function createDisposalRequest(input: {
       startTime: actionTimer,
     });
   }
-}
+}
