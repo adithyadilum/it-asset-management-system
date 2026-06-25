@@ -9,6 +9,7 @@ import { TopHeader } from "@/components/layout/top-header"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { OfflineBanner } from "@/components/shared/offline-banner"
 import { BottomNavigation } from "@/components/layout/bottom-navigation"
+import { CurrencyProvider } from "@/components/providers/currency-provider"
 
 export const unstable_instant = false;
 
@@ -29,25 +30,27 @@ export default async function AppShellLayout({
   return (
     <>
       <OfflineBanner />
-      <SidebarProvider
-        defaultOpen
-        style={{ "--sidebar-width": "260px" } as CSSProperties}
-      >
-        <div className="flex h-screen w-full md:items-center bg-white md:bg-muted md:p-3.5">
-          <AppSidebar userRole={user.role} />
+      <CurrencyProvider initialCurrency={preferredCurrency}>
+        <SidebarProvider
+          defaultOpen
+          style={{ "--sidebar-width": "260px" } as CSSProperties}
+        >
+          <div className="flex h-screen w-full md:items-center bg-white md:bg-muted md:p-3.5">
+            <AppSidebar userRole={user.role} />
 
-          <div className="flex h-full w-full min-w-0 flex-1 flex-col md:gap-2">
-            <TopHeader user={{ name: user.name, email: user.email, role: user.role }} preferredCurrency={preferredCurrency} />
+            <div className="flex h-full w-full min-w-0 flex-1 flex-col md:gap-2">
+              <TopHeader user={{ name: user.name, email: user.email, role: user.role }} />
 
-            <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-lg bg-background">
-              <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-md bg-background relative">
-                <div className="flex min-h-0 w-full flex-1 flex-col overflow-auto">{children}</div>
-                <BottomNavigation />
+              <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-lg bg-background">
+                <div className="flex min-h-0 w-full flex-1 flex-col md:rounded-md bg-background relative">
+                  <div className="flex min-h-0 w-full flex-1 flex-col overflow-auto">{children}</div>
+                  <BottomNavigation />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </CurrencyProvider>
     </>
   )
 }

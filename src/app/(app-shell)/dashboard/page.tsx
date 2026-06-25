@@ -4,8 +4,6 @@ import { DashboardHeader } from "@/components/features/dashboard/shared/dashboar
 import { DashboardRefreshProvider } from "@/components/features/dashboard/shared/dashboard-refresh-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { UserRole } from "@/types/auth"
-import { cookies } from "next/headers"
-import { convertCurrencyAmount } from "@/lib/currency"
 import { fetchLiveExchangeRates } from "@/lib/currency-server"
 import { redirect } from "next/navigation"
 
@@ -30,24 +28,19 @@ export default async function DashboardPage() {
     const userRole: UserRole = user?.role || 'Employee'
     const userName = user?.name || 'Admin'
 
-    const cookieStore = await cookies();
-    const currencyCode = cookieStore.get('preferred_currency')?.value || 'LKR';
     const apiRates = (await fetchLiveExchangeRates()) || undefined;
-    // DB values are stored in LKR. Compute a LKR→selectedCurrency multiplier so
-    // the KPI component only needs to multiply raw values by this rate.
-    const lkrToTargetRate = convertCurrencyAmount(1, 'LKR', currencyCode, apiRates);
 
     let dashboardView: React.ReactNode = null
 
     if (userRole === 'GlobalAdmin') {
         const adminData = await getGlobalAdminDashboardData()
-        dashboardView = <GlobalAdminDashboardView data={adminData} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} />
+        dashboardView = <GlobalAdminDashboardView data={adminData} apiRates={apiRates} />
     } else if (userRole === 'ITOperator') {
         const itData = await getITDashboardData()
         dashboardView = <ITOperatorDashboardView data={itData} />
     } else if (userRole === 'FinancialAuditor') {
         const financeData = await getFinanceDashboardData()
-        dashboardView = <FinancialAuditorDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={lkrToTargetRate} apiRates={apiRates} />
+        dashboardView = <FinancialAuditorDashboardView data={financeData} apiRates={apiRates} />
     } else {
         dashboardView = (
             <div className="px-6 py-8 text-center text-muted-foreground text-sm">

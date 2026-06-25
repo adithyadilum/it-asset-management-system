@@ -10,9 +10,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { DepreciationLedgerRecord } from "@/types/financials";
 import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
-import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
+import { convertCurrencyAmount, formatMoneyByCurrency, SUPPORTED_CURRENCIES, type SupportedCurrency } from "@/lib/currency";
 import { getDepreciationLedger } from "@/actions/financials";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
+import { useCurrency } from "@/components/providers/currency-provider";
 
 interface DepreciationLedgerProps {
   initialData: DepreciationLedgerRecord[];
@@ -28,7 +29,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currency, setCurrency] = useState<SupportedCurrency>('LKR');
+  const { currency, setCurrency } = useCurrency();
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
 
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
@@ -198,7 +199,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-40 p-2 bg-background border-border shadow-md rounded-lg">
             <div className="flex flex-col gap-1">
-              {(['USD', 'LKR', 'NOK'] as SupportedCurrency[]).map((c) => (
+              {(SUPPORTED_CURRENCIES as unknown as SupportedCurrency[]).map((c) => (
                 <Button
                   key={c}
                   variant={currency === c ? 'secondary' : 'ghost'}
