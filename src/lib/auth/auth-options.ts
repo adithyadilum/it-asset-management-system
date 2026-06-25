@@ -1,3 +1,5 @@
+import '@/lib/auth/patch-url-parse';
+
 import type { NextAuthOptions } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import KeycloakProvider from 'next-auth/providers/keycloak';
