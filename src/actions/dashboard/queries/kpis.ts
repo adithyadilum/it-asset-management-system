@@ -127,17 +127,17 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
 
       db
         .select({
-          totalAssetValue: sql<number>`SUM(${assetPurchases.totalCost})`,
-          totalAssetValuePrev: sql<number>`SUM(CASE WHEN ${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp THEN ${assetPurchases.totalCost} ELSE 0 END)`,
+          totalAssetValue: sql<number>`SUM(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1))`,
+          totalAssetValuePrev: sql<number>`SUM(CASE WHEN ${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp THEN ${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1) ELSE 0 END)`,
           nbv: sql<number>`
             SUM(
               CASE WHEN ${assets.status} != 'Disposed' THEN
                 CASE WHEN ${assetPurchases.purchaseDate} IS NULL THEN
-                  COALESCE(${assetPurchases.totalCost}::numeric, 0)
+                  COALESCE(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1), 0)
                 ELSE
                   GREATEST(0,
-                    ${assetPurchases.totalCost}::numeric - (
-                      ${assetPurchases.totalCost}::numeric
+                    (${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1)) - (
+                      (${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1))
                       / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
                       * GREATEST(0,
                          EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
@@ -218,7 +218,7 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
         ? db
             .select({
               assetId: assetPurchases.assetId,
-              totalCost: assetPurchases.totalCost,
+              totalCostLkr: sql<number>`${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1)`,
             })
             .from(assetPurchases)
             .where(inArray(assetPurchases.assetId, softwareAssetIds))
@@ -255,11 +255,11 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       allocationsCountRes.map((a) => [a.licenseId, a.count])
     );
 
-    // Build software purchases map from the parallel query result
+    // Build software purchases map from the parallel query result (values are LKR-normalized)
     const softwarePurchasesMap = new Map<string, number>(
       softwarePurchasesRes.map((p) => [
         p.assetId,
-        parseFloat(p.totalCost?.toString() || '0'),
+        parseFloat(p.totalCostLkr?.toString() || '0'),
       ])
     );
 
