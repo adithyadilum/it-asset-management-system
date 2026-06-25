@@ -85,7 +85,7 @@ describe('getFinanceDashboardData', () => {
     expect(result.kpiMetrics.totalActiveAssets).toBe(100);
     expect(result.writeOffsLedger.length).toBe(1);
     expect(result.recentActivities.length).toBe(1);
-    expect(result.departmentAllocation[0].dept).toBe('Finance');
+    expect(result.departmentAllocation[0].name).toBe('Finance');
   });
 
   it('throws error if kpi metrics reject', async () => {

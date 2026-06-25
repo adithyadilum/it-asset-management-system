@@ -55,7 +55,7 @@ describe('getITDashboardData', () => {
 
     const result = await getITDashboardData();
     expect(result.kpiMetrics.totalActiveAssets).toBe(100);
-    expect(result.departmentAllocation[0].dept).toBe('IT');
+    expect(result.departmentAllocation[0].name).toBe('IT');
     expect(result.overdueReturns.length).toBe(1);
     expect(result.highMaintenanceAssets.length).toBe(1);
   });

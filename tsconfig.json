@@ -41,11 +41,6 @@
   ],
   "exclude": [
     "node_modules",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "vitest.setup.ts",
     "playwright.config.ts"
   ]
 }

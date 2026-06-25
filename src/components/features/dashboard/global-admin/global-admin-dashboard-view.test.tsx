@@ -46,7 +46,7 @@ describe('GlobalAdminDashboardView', () => {
       highMaintenance: []
     };
     
-    render(<CurrencyProvider initialCurrency="USD"><GlobalAdminDashboardView data={mockData as any} currencyCode="USD" exchangeRate={1.5} /></CurrencyProvider>);
+    render(<CurrencyProvider initialCurrency="USD"><GlobalAdminDashboardView data={mockData as any} /></CurrencyProvider>);
     
     expect(screen.getByTestId('department-chart')).toBeInTheDocument();
     expect(screen.getByTestId('inventory-chart')).toBeInTheDocument();
