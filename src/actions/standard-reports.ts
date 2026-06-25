@@ -1,39 +1,34 @@
 'use server';
 
 import { eq } from 'drizzle-orm';
+
+import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
-import {
-  categories,
-  locations,
-  vendors,
-  customStatuses
-} from '@/db/schema';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { categories, locations, vendors, customStatuses } from '@/db/schema';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewRow, ReportPreviewFilters } from '@/types/standard-reports';
 import { reportPreviewFiltersSchema } from '@/lib/validations/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
-import { fetchMasterData } from './standard-reports/fetch-master-data';
 import { fetchActiveAssignments } from './standard-reports/fetch-active-assignments';
-import { fetchReturnHistory } from './standard-reports/fetch-return-history';
-import { fetchMaintenanceRecords } from './standard-reports/fetch-maintenance-records';
-import { fetchDisposalRecords } from './standard-reports/fetch-disposal-records';
-import { fetchPurchaseRecords } from './standard-reports/fetch-purchase-records';
-import { fetchDepreciationLedger } from './standard-reports/fetch-depreciation-ledger';
-import { fetchTcoOverview } from './standard-reports/fetch-tco-overview';
-import { fetchSoftwareLicenses } from './standard-reports/fetch-software-licenses';
-import { fetchAuditLogs } from './standard-reports/fetch-audit-logs';
 import { fetchAssetRegistry } from './standard-reports/fetch-asset-registry';
-
+import { fetchAuditLogs } from './standard-reports/fetch-audit-logs';
+import { fetchDepreciationLedger } from './standard-reports/fetch-depreciation-ledger';
+import { fetchDisposalRecords } from './standard-reports/fetch-disposal-records';
+import { fetchMaintenanceRecords } from './standard-reports/fetch-maintenance-records';
+import { fetchMasterData } from './standard-reports/fetch-master-data';
+import { fetchPurchaseRecords } from './standard-reports/fetch-purchase-records';
+import { fetchReturnHistory } from './standard-reports/fetch-return-history';
+import { fetchSoftwareLicenses } from './standard-reports/fetch-software-licenses';
+import { fetchTcoOverview } from './standard-reports/fetch-tco-overview';
 
 export async function getStandardReportsFilterOptions() {
   const actionTimer = startLatencyTimer();
 
-  const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) {
-    throw new Error('Forbidden: You do not have permission to access reports.');
-  }
+  await enforceActionAccess(canManageAssets);
 
   try {
     const [dbLocations, dbCustomStatuses, dbCategories, dbVendors] =
@@ -160,8 +155,7 @@ export async function fetchReportPreview(
     throw new Error('Unauthorized: Please log in.');
   }
 
-  // Allow GlobalAdmin, ITOperator, and FinanceAuditor for report viewing
-  const allowedRoles = ['GlobalAdmin', 'ITOperator', 'FinanceAuditor'];
+  const allowedRoles = ['GlobalAdmin', 'ITOperator', 'FinancialAuditor'];
   if (!allowedRoles.includes(currentUser.role)) {
     throw new Error(
       'Forbidden: You do not have permission to generate reports.'
@@ -169,7 +163,6 @@ export async function fetchReportPreview(
   }
 
   try {
-    // Validate and coerce filter params with Zod
     const parsedFilters = reportPreviewFiltersSchema.safeParse(filters);
     if (!parsedFilters.success) {
       throw new Error(
@@ -177,9 +170,9 @@ export async function fetchReportPreview(
       );
     }
     const validatedFilters = parsedFilters.data;
-    
-    const pageSize = validatedFilters.pageSize ?? 50;
-    const page = validatedFilters.page ?? 0;
+
+    const pageSize = validatedFilters.pageSize;
+    const page = validatedFilters.page;
     const offset = page * pageSize;
 
     switch (validatedFilters.source) {

@@ -8,7 +8,6 @@ export interface ShellUser {
 
 export interface TopHeaderProps {
     user: ShellUser
-    preferredCurrency?: string
 }
 
 export interface HeaderBreadcrumb {

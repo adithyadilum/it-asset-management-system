@@ -46,8 +46,8 @@ describe('DisposalsLayout', () => {
     expect(screen.getByTestId('pending-grid')).toBeInTheDocument();
   });
 
-  it('renders only history tab for FinanceAuditor', () => {
-    render(<DisposalsLayout pendingData={[]} historyData={[]} userRole="FinanceAuditor" />);
+  it('renders only history tab for FinancialAuditor', () => {
+    render(<DisposalsLayout pendingData={[]} historyData={[]} userRole="FinancialAuditor" />);
 
     expect(screen.queryByText(/Pending Disposal/)).not.toBeInTheDocument();
     expect(screen.getByText('Disposal History')).toBeInTheDocument();

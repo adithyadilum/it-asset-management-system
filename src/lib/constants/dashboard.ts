@@ -8,7 +8,7 @@
 
 // ── Cache TTLs (seconds) ─────────────────────────────────────────────
 /** Revalidation interval for KPI metrics cache. */
-export const DASHBOARD_KPI_CACHE_TTL = 30; // 5 minutes
+export const DASHBOARD_KPI_CACHE_TTL = 300; // 5 minutes
 
 /** Revalidation interval for inventory & allocation caches. */
 export const DASHBOARD_CHART_CACHE_TTL = 300; // 5 minutes

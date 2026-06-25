@@ -84,7 +84,7 @@ describe('POST /api/auth/generate-qr', () => {
 
   it.each([
     ['ITOperator'],
-    ['FinanceAuditor'],
+    ['FinancialAuditor'],
     ['Employee'],
   ])('returns 403 for role "%s" and logs the attempt', async (role) => {
     mockGetServerSession.mockResolvedValue(makeSession(role));

@@ -1,4 +1,4 @@
-import { getAuthenticatedUser } from "@/actions/auth"
+import { requirePageAuth } from "@/lib/auth/page-guard"
 import { getCurrentEmployeeAssets } from "@/actions/employee"
 import { getPortalAlerts } from "@/lib/data/portal-repo"
 import { EmployeeAlerts } from "@/components/features/dashboard/employee/employee-alerts"
@@ -10,7 +10,6 @@ import {
     EmptyTitle,
 } from "@/components/ui/empty"
 import { HardDrive, Laptop, Monitor, Smartphone, Code, Armchair, Speaker } from "lucide-react"
-import { redirect } from "next/navigation"
 
 // ── Asset icon resolver using category pillar ────────────────────────────────
 
@@ -41,11 +40,7 @@ function getAssetPresentation(pillar: string | undefined, modelName: string) {
 }
 
 export default async function MyAssetsPage() {
-    const user = await getAuthenticatedUser()
-
-    if (!user) {
-        redirect("/login")
-    }
+    const user = await requirePageAuth()
 
     const [employeeAssets, alerts] = await Promise.all([
         getCurrentEmployeeAssets(),

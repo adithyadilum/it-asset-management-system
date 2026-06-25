@@ -18,6 +18,17 @@ vi.mock('@/lib/audit', () => ({
   logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
 }));
 
+vi.mock('@/lib/env', () => ({
+  serverEnv: {
+    get KEYCLOAK_ISSUER() {
+      return process.env.KEYCLOAK_ISSUER;
+    },
+    get NEXTAUTH_URL() {
+      return process.env.NEXTAUTH_URL;
+    },
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Import under test (after mocks are wired)
 // ---------------------------------------------------------------------------
@@ -90,6 +101,7 @@ describe('getAuthenticatedUser', () => {
       email: 'a@b.com',
       name: 'Admin',
       role: 'GlobalAdmin',
+      isActive: true,
     });
   });
 
@@ -120,7 +132,7 @@ describe('getAuthenticatedUser', () => {
     expect(user?.role).toBe('Employee');
   });
 
-  it.each(['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee'] as const)(
+  it.each(['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee'] as const)(
     'preserves %s role exactly',
     async (role) => {
       mockGetServerSession.mockResolvedValue({

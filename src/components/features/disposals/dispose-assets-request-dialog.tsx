@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { AlertCircle, MonitorX } from 'lucide-react';
 
-import { createBulkDisposalRequests } from '@/actions/disposals';
+import { createDisposalRequest } from '@/actions/disposals/create-request';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -23,11 +23,7 @@ import {
 } from '@/components/ui/select';
 import { tiqriToast } from '@/components/shared/sonner';
 
-export type SelectedAssetLite = {
-  id: string;        
-  assetTag: string;  
-  assetName: string; 
-};
+import type { SelectedAssetLite } from '@/types/disposals';
 
 export function DisposeAssetsRequestDialog({
   open,
@@ -46,15 +42,19 @@ export function DisposeAssetsRequestDialog({
 
   const assetIds = useMemo(() => selectedAssets.map((a) => a.id), [selectedAssets]);
 
-  function reset() {
-    setReason('');
-    setJustification('');
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (!open) {
+      setReason('');
+      setJustification('');
+    }
   }
 
   const handleSubmit = () => {
     startTransition(async () => {
       try {
-        const result = await createBulkDisposalRequests({
+        const result = await createDisposalRequest({
           assetIds,
           reason,
           justification,
@@ -71,10 +71,7 @@ export function DisposeAssetsRequestDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) reset();
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="sm:max-w-140">
         <DialogHeader>

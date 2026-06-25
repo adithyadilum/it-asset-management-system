@@ -33,7 +33,7 @@ export function mockITOperator() {
   mockSessionAs(IT_OPERATOR_USER);
 }
 
-export function mockFinanceAuditor() {
+export function mockFinancialAuditor() {
   mockSessionAs(FINANCE_AUDITOR_USER);
 }
 

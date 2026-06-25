@@ -70,8 +70,11 @@ vi.mock('@/lib/webhooks/dispatcher', () => ({
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn().mockResolvedValue({}),
   convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('@/actions/statuses', () => ({

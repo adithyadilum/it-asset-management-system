@@ -12,7 +12,7 @@ function normalizeRole(role: unknown): UserRole {
   if (
     role === 'GlobalAdmin' ||
     role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
+    role === 'FinancialAuditor' ||
     role === 'Employee'
   ) {
     return role;
@@ -26,6 +26,7 @@ export type AuthenticatedUser = {
   email: string;
   name: string;
   role: UserRole;
+  isActive: boolean;
 };
 
 /**
@@ -43,6 +44,9 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   }
 
   const { id, email, name, role } = session.user;
+  // isActive is stored in the session by the NextAuth session callback.
+  // Default true so callers that don't check it are unaffected (e.g. legacy tokens).
+  const isActive = session.user.isActive ?? true;
 
   // Explicitly validate every field — NextAuth fields can be null/undefined.
   if (
@@ -61,6 +65,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     email,
     name,
     role: normalizeRole(role),
+    isActive,
   };
 }
 
@@ -90,4 +95,42 @@ export async function getFederatedLogoutUrl() {
   const redirectUri = encodeURIComponent(`${baseUrl}/login`);
 
   return `${endSessionUrl}?id_token_hint=${idToken}&post_logout_redirect_uri=${redirectUri}`;
+}
+
+/**
+ * Server action helper to enforce authentication and RBAC in a single call.
+ * If authentication fails, or if the role predicate fails, it throws a standard error.
+ * 
+ * @param predicate Optional function to check if the user's role has permission.
+ * @returns The authenticated user object.
+ */
+export async function enforceActionAccess(predicate?: (role: UserRole) => boolean): Promise<AuthenticatedUser> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('UNAUTHENTICATED');
+  
+  if (predicate && !predicate(user.role)) {
+    throw new Error('FORBIDDEN: Forbidden');
+  }
+  
+  return user;
+}
+
+/**
+ * Form action helper to enforce authentication and RBAC.
+ * Instead of throwing, it returns a standard failure payload.
+ * 
+ * @param predicate Optional function to check if the user's role has permission.
+ * @returns An object with { ok: true, user } or { ok: false, payload }
+ */
+export async function enforceFormAccess(predicate?: (role: UserRole) => boolean) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { ok: false as const, payload: { success: false, message: 'Unauthorized.' } };
+  }
+  
+  if (predicate && !predicate(user.role)) {
+    return { ok: false as const, payload: { success: false, message: 'Forbidden: insufficient permissions.' } };
+  }
+  
+  return { ok: true as const, user };
 }

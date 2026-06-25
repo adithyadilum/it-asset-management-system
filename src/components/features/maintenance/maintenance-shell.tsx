@@ -76,15 +76,15 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
     try {
       setIsLoading(true);
       const [ticketsResult, activeResult, historyResult] = await Promise.all([
-        userRole !== 'FinanceAuditor' ? getPendingMaintenanceTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
-        userRole !== 'FinanceAuditor' ? getActiveRepairTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
+        userRole !== 'FinancialAuditor' ? getPendingMaintenanceTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
+        userRole !== 'FinancialAuditor' ? getActiveRepairTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
         getRepairHistory(1, 100, query)
       ]);
       setPendingTickets(ticketsResult.tickets);
       setActiveRepairTickets(activeResult.tickets);
       setRepairHistoryTickets(historyResult.tickets);
     } catch (err) {
-      console.error('Failed to load data:', err);
+      console.error('[MaintenanceShell] Failed to load data:', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +133,7 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
       dispatch({ type: 'CLOSE_COMPLETE_DIALOG' });
       await loadData(debouncedSearch);
     } catch (err) {
-      console.error('Failed to complete repair:', err);
+      console.error('[MaintenanceShell] Failed to complete repair:', err instanceof Error ? err.message : 'Unknown error');
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
       toast.error(`Failed: ${errorMessage}`);
     } finally {

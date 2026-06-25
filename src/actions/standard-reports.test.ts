@@ -5,6 +5,12 @@ import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: async (predicate?: (role: string) => boolean) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('UNAUTHENTICATED');
+    if (predicate && !predicate(user.role)) throw new Error('FORBIDDEN: Forbidden');
+    return user;
+  },
 }));
 
 vi.mock('@/lib/latency', () => ({
@@ -65,6 +71,8 @@ vi.mock('@/db/schema', () => ({
 describe('Standard Reports Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDb.select.mockReset();
+    mockDb.select.mockReturnValue(chain([]));
   });
 
   describe('getStandardReportsFilterOptions', () => {

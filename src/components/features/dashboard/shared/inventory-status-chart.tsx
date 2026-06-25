@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import Link from "next/link"
 import { TrendingUp, ArrowUpRight } from "lucide-react"
-import type { InventoryStatusItem } from "@/actions/dashboard/shared"
+import type { InventoryStatusItem } from "@/types/dashboard"
 
 const STATUS_METRICS_META: Record<string, {
   metricLabel: string;

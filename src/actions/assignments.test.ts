@@ -129,7 +129,7 @@ describe('assignAssetAction', () => {
     expect(result.code).toBe('FORBIDDEN');
   });
 
-  it('returns forbidden when user is FinanceAuditor', async () => {
+  it('returns forbidden when user is FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
     const result = await assignAssetAction(validSingleInput);
     expect(result.success).toBe(false);
@@ -348,7 +348,7 @@ describe('requestAssetReturnAction', () => {
     expect(result.code).toBe('FORBIDDEN');
   });
 
-  it('returns forbidden when user is FinanceAuditor', async () => {
+  it('returns forbidden when user is FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
     const result = await requestAssetReturnAction([1]);
     expect(result.success).toBe(false);

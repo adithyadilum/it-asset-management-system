@@ -38,6 +38,7 @@ const { mockDb, chain } = vi.hoisted(() => {
     mockDb: {
       select: vi.fn(),
       update: vi.fn(),
+      transaction: vi.fn((cb) => cb(mockDb)),
       query: {
         users: {
           findFirst: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock('@/db/schema', () => ({
 const mockLogAuditAction = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/audit', () => ({
   logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
+  logAuditActionTx: (tx: any, ...args: unknown[]) => mockLogAuditAction(...args),
 }));
 
 vi.mock('next/cache', () => ({
@@ -117,7 +119,7 @@ describe('searchUsers', () => {
     await expect(searchUsers('test')).rejects.toThrow('Forbidden');
   });
 
-  it('throws when user is FinanceAuditor', async () => {
+  it('throws when user is FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
     await expect(searchUsers('test')).rejects.toThrow('Forbidden');
   });

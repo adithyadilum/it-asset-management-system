@@ -3,6 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { assets, assetPurchases, softwareLicenses, models } from '@/db/schema';
 import { withApiKey } from '@/lib/api/with-api-key';
+import { apiError, parseBoundedInt } from '@/lib/api/utils';
 import {
   countAssetsForExternalApi,
   getAssetsForExternalApi,
@@ -10,30 +11,10 @@ import {
 import { assetRegistrationSchema, PILLAR_PREFIX_MAP } from '@/lib/validations/asset-registration';
 import { logAuditAction } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
-import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
+import { convertCurrencyAmount } from '@/lib/currency';
+import { fetchLiveExchangeRates } from '@/lib/currency-server';
 
-function apiError(status: number, code: string, message: string, details?: unknown) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: { code, message, ...(details ? { details } : {}) },
-    },
-    { status }
-  );
-}
 
-function parseBoundedInt(value: string | null, defaultValue: number, min: number, max: number) {
-  if (value === null || value.trim() === '') {
-    return { ok: true as const, value: defaultValue };
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    return { ok: false as const };
-  }
-
-  return { ok: true as const, value: parsed };
-}
 
 function toDateString(date: Date) {
   return date.toISOString().split('T')[0];

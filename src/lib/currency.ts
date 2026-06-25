@@ -68,24 +68,6 @@ export function tryParseCurrencyAmount(
   return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
-export async function fetchLiveExchangeRates(): Promise<Record<string, number> | null> {
-  try {
-    const res = await fetch('https://open.er-api.com/v6/latest/USD', {
-      next: { revalidate: 86400 }, // Cache for 24 hours
-    });
-    
-    if (!res.ok) {
-      return null;
-    }
-    
-    const data = await res.json();
-    return data.rates as Record<string, number>;
-  } catch (error) {
-    console.error('Failed to fetch exchange rates:', error);
-    return null;
-  }
-}
-
 export function convertCurrencyAmount(
   amount: number,
   fromCurrency: string,

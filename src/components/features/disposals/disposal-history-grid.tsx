@@ -9,19 +9,7 @@ import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useDebounce } from '@/hooks/use-debounce';
 import { FilterBar, type AppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
-
-export interface HistoryDisposalRow {
-  id: number;
-  assetId: string;
-  assetTag: string;
-  category: string;
-  reason: string;
-  flaggedBy: string;
-  disposedBy: string | null;
-  disposalDate: Date | null;
-  status: string;
-  documentUrls: string[];
-}
+import type { HistoryDisposalRow } from '@/types/disposals';
 
 interface DisposalHistoryGridProps {
   initialData: HistoryDisposalRow[];

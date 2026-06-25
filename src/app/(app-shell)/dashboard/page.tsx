@@ -4,19 +4,18 @@ import { DashboardHeader } from "@/components/features/dashboard/shared/dashboar
 import { DashboardRefreshProvider } from "@/components/features/dashboard/shared/dashboard-refresh-provider"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { UserRole } from "@/types/auth"
-import { cookies } from "next/headers"
-import { fetchLiveExchangeRates, convertCurrencyAmount } from "@/lib/currency"
+import { fetchLiveExchangeRates } from "@/lib/currency-server"
 import { redirect } from "next/navigation"
 
 // Role-specific action fetchers
-import { getAdminDashboardData } from "@/actions/dashboard/admin"
+import { getGlobalAdminDashboardData } from "@/actions/dashboard/global-admin"
 import { getITDashboardData } from "@/actions/dashboard/it-operator"
-import { getFinanceDashboardData } from "@/actions/dashboard/finance"
+import { getFinanceDashboardData } from "@/actions/dashboard/financial-auditor"
 
 // Role-specific view components
-import { AdminDashboardView } from "@/components/features/dashboard/admin/admin-dashboard-view"
-import { ITDashboardView } from "@/components/features/dashboard/itoperator/it-dashboard-view"
-import { FinanceDashboardView } from "@/components/features/dashboard/financialauditor/finance-dashboard-view"
+import { GlobalAdminDashboardView } from "@/components/features/dashboard/global-admin/global-admin-dashboard-view"
+import { ITOperatorDashboardView } from "@/components/features/dashboard/it-operator/it-operator-dashboard-view"
+import { FinancialAuditorDashboardView } from "@/components/features/dashboard/financial-auditor/financial-auditor-dashboard-view"
 
 export default async function DashboardPage() {
     const user = await getAuthenticatedUser()
@@ -29,22 +28,19 @@ export default async function DashboardPage() {
     const userRole: UserRole = user?.role || 'Employee'
     const userName = user?.name || 'Admin'
 
-    const cookieStore = await cookies();
-    const currencyCode = cookieStore.get('preferred_currency')?.value || 'LKR';
     const apiRates = (await fetchLiveExchangeRates()) || undefined;
-    const usdToTargetRate = convertCurrencyAmount(1, 'USD', currencyCode, apiRates);
 
     let dashboardView: React.ReactNode = null
 
     if (userRole === 'GlobalAdmin') {
-        const adminData = await getAdminDashboardData()
-        dashboardView = <AdminDashboardView data={adminData} currencyCode={currencyCode} exchangeRate={usdToTargetRate} />
+        const adminData = await getGlobalAdminDashboardData()
+        dashboardView = <GlobalAdminDashboardView data={adminData} apiRates={apiRates} />
     } else if (userRole === 'ITOperator') {
         const itData = await getITDashboardData()
-        dashboardView = <ITDashboardView data={itData} />
-    } else if (userRole === 'FinanceAuditor') {
+        dashboardView = <ITOperatorDashboardView data={itData} />
+    } else if (userRole === 'FinancialAuditor') {
         const financeData = await getFinanceDashboardData()
-        dashboardView = <FinanceDashboardView data={financeData} currencyCode={currencyCode} exchangeRate={usdToTargetRate} apiRates={apiRates} />
+        dashboardView = <FinancialAuditorDashboardView data={financeData} apiRates={apiRates} />
     } else {
         dashboardView = (
             <div className="px-6 py-8 text-center text-muted-foreground text-sm">

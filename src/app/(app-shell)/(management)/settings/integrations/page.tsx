@@ -1,4 +1,4 @@
-import { getAuthenticatedUser } from '@/actions/auth'
+import { requirePageAuth } from '@/lib/auth/page-guard'
 import { getApiKeys, getWebhookSubscriptions } from '@/lib/data/integrations-repo'
 import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs'
 import { ApiKeysTab } from '@/components/features/integrations/api-keys-tab'
@@ -8,11 +8,7 @@ import { Button } from '@/components/ui/button'
 import { BookOpen } from 'lucide-react'
 
 export default async function IntegrationsPage() {
-  const user = await getAuthenticatedUser()
-
-  if (!user || user.role !== 'GlobalAdmin') {
-    return <div className="p-4 md:p-6 text-sm text-muted-foreground">You do not have permission to view this page.</div>
-  }
+  await requirePageAuth((role) => role === 'GlobalAdmin')
 
   const apiKeys = await getApiKeys()
   const webhookSubscriptions = await getWebhookSubscriptions()

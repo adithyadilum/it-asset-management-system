@@ -201,7 +201,7 @@ The panel acts as the operational hub for single assets, integrating data fetche
 
 ## User Story: US-8.6 — Purchase Details & History Mechanics
 
-- **As a** Finance Auditor or Security Admin,
+- **As a** Financial Auditor or Security Admin,
 - **I want** to review the financial lifecycle and audit history of the asset regardless of its pillar,
 - **So that** I can track depreciation and chronological user assignments across the entire system.
 

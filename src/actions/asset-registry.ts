@@ -14,7 +14,7 @@ import {
   type BulkAssetUpdatePayload,
   type RegistryPillar,
 } from '@/lib/data/asset-registry-repo';
-import { getAuthenticatedUser } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/auth/uuid';
@@ -209,13 +209,7 @@ function normalizeBulkUpdates(updates: Partial<BulkAssetUpdatePayload>) {
 
 export async function getCategoriesByPillar(pillarInput: unknown) {
   const actionTimer = startLatencyTimer();
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
-    throw new Error(
-      'Forbidden: You do not have permission to read asset categories.'
-    );
-  }
+  await enforceActionAccess(canViewAssetRegistry);
 
   const pillar = normalizePillar(pillarInput);
   if (!pillar) {
@@ -260,13 +254,7 @@ export async function getCategoriesByPillar(pillarInput: unknown) {
 
 export async function getAssetsByPillar(input: AssetsGridQueryInput) {
   const actionTimer = startLatencyTimer();
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
-    throw new Error(
-      'Forbidden: You do not have permission to read asset registry data.'
-    );
-  }
+  await enforceActionAccess(canViewAssetRegistry);
 
   const pillar = normalizePillar(input.pillar);
   if (!pillar) {
@@ -326,13 +314,7 @@ export async function getAssetsByPillar(input: AssetsGridQueryInput) {
 
 export async function getAllAssetsUnified(input: AssetsGridQueryInput) {
   const actionTimer = startLatencyTimer();
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
-    throw new Error(
-      'Forbidden: You do not have permission to read asset registry data.'
-    );
-  }
+  await enforceActionAccess(canViewAssetRegistry);
 
   const normalizedFilters: UnifiedRegistryFilters = {
     pillar: normalizePillar(input.pillar) ?? undefined,
@@ -384,11 +366,7 @@ export async function getAllAssetsUnified(input: AssetsGridQueryInput) {
 
 export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
   const actionTimer = startLatencyTimer();
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser || !canManageAssets(currentUser.role)) {
-    throw new Error('Forbidden: You do not have permission to update assets.');
-  }
+  const currentUser = await enforceActionAccess(canManageAssets);
 
   const normalizedAssetIds = normalizeBulkAssetIds(input.assetIds);
   if (normalizedAssetIds.length === 0) {
@@ -472,4 +450,4 @@ export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
       },
     });
   }
-}
+}

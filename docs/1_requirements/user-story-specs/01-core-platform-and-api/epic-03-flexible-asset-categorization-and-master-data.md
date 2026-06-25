@@ -20,7 +20,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ## Out of Scope / Limitations
 
 - Custom role creation for Master Data management (restricted strictly to GlobalAdmin).
-- IT Operators, Finance Auditors, and Standard Employees are restricted from mutating these endpoints.
+- IT Operators, Financial Auditors, and Standard Employees are restricted from mutating these endpoints.
 
 ## Assumptions & Dependencies
 
@@ -64,7 +64,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
   - **Then** the data table renders an empty state illustration stating "No records found. Click 'Add Brand' to get started."
 
 - **Scenario: Unauthorized Access Attempt**
-  - **Given** I am logged in as an IT Operator or Finance Auditor
+  - **Given** I am logged in as an IT Operator or Financial Auditor
   - **When** I attempt to bypass UI restrictions and trigger a Master Data Server Action directly
   - **Then** the Server Action immediately halts execution
   - **And** returns a strict error: "Forbidden: only Global Administrators can manage master data."

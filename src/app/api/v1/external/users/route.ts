@@ -3,29 +3,8 @@ import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { users, departments } from '@/db/schema';
 import { withApiKey } from '@/lib/api/with-api-key';
+import { apiError, parseBoundedInt } from '@/lib/api/utils';
 
-function apiError(status: number, code: string, message: string) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: { code, message },
-    },
-    { status }
-  );
-}
-
-function parseBoundedInt(value: string | null, defaultValue: number, min: number, max: number) {
-  if (value === null || value.trim() === '') {
-    return { ok: true as const, value: defaultValue };
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    return { ok: false as const };
-  }
-
-  return { ok: true as const, value: parsed };
-}
 
 export const GET = withApiKey('read:users', async (request: NextRequest) => {
   try {

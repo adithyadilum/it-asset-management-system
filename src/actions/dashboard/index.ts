@@ -1,24 +1,25 @@
-export * from './shared';
-export * from './admin';
+export * from '@/types/dashboard';
+export { requireAccess } from '@/lib/auth/roles';
+export * from './queries/inventory';
+export * from './queries/financials';
+export * from './queries/kpis';
+export * from './queries/activities';
+export * from './global-admin';
 export * from './it-operator';
-export * from './finance';
+export * from './financial-auditor';
 
-import { getAuthenticatedUser } from '@/actions/auth';
-import { getAdminDashboardData } from './admin';
+import {  enforceActionAccess } from '@/actions/auth';
+import { getGlobalAdminDashboardData } from './global-admin';
 import { getITDashboardData } from './it-operator';
-import { getFinanceDashboardData } from './finance';
-import type { DashboardBatchData } from './shared';
+import { getFinanceDashboardData } from './financial-auditor';
+import type { DashboardBatchData } from '@/types/dashboard';
 
-/**
- * Backward-compatible batch fetcher that delegates to role-specific
- * operations and safely zeroes out data in unauthorized partitions.
- */
+/** Delegates to the role-specific dashboard fetcher, zeroing out unauthorized partitions. */
 export async function getDashboardBatchData(): Promise<DashboardBatchData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
 
   if (user.role === 'GlobalAdmin') {
-    return getAdminDashboardData();
+    return getGlobalAdminDashboardData();
   }
 
   if (user.role === 'ITOperator') {
@@ -38,7 +39,7 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
     };
   }
 
-  if (user.role === 'FinanceAuditor') {
+  if (user.role === 'FinancialAuditor') {
     const data = await getFinanceDashboardData();
     return {
       kpiMetrics: data.kpiMetrics,
@@ -54,5 +55,9 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
     };
   }
 
-  throw new Error('Forbidden');
-}
+  if (user.role === 'Employee') {
+    throw new Error('FORBIDDEN: Employee role has no dashboard batch data.');
+  }
+
+  throw new Error('FORBIDDEN: Unexpected role.');
+}

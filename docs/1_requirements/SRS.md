@@ -610,7 +610,7 @@ The Platform Foundation is the architectural bedrock of the IDAMS system. It est
 - **Stimulus:** Unauthenticated user attempts to access the application URL.
   - **Response:** The system displays the NextAuth.js powered login screen, supporting both secure local credentials and Microsoft Entra ID (Azure AD) Single Sign-On (SSO).
 - **Stimulus:** User successfully authenticates using secure local credentials or Microsoft Entra ID.
-  - **Response:** The system establishes a secure session using cryptographically signed tokens. Baseline system permissions and specific application roles (GlobalAdmin, ITOperator, FinanceAuditor, Employee) are mapped from the database user profile, loading the appropriate Dashboard view.
+  - **Response:** The system establishes a secure session using cryptographically signed tokens. Baseline system permissions and specific application roles (GlobalAdmin, ITOperator, FinancialAuditor, Employee) are mapped from the database user profile, loading the appropriate Dashboard view.
 - **Stimulus:** A "Standard Employee" attempts to manually navigate to an Admin-only API route (e.g., `/api/v1/master-data/categories`).
   - **Response:** The RBAC middleware blocks the request, returns a `403 Forbidden` error, and logs the unauthorized access attempt in the Audit Log.
 - **Stimulus:** Global Admin navigates to the Role Assignment screen and searches for an employee.
@@ -639,8 +639,8 @@ The Platform Foundation is the architectural bedrock of the IDAMS system. It est
 - **REQ-FND-1.1 (Authentication & SSO):** Support user authentication via secure local credentials (email/password) and integrate with Azure Active Directory (Entra ID) using OAuth 2.0 / NextAuth.js.
 - **REQ-FND-1.2 (Web Security):** Enforce strict HTTPS (TLS 1.2+) for all system connections.
 - **REQ-FND-1.3 (Data Encryption):** Encrypt sensitive financial fields and software license keys at rest using AES-256.
-- **REQ-FND-1.4 (Role Mapping):** Maintain role-based access mapping for roles (GlobalAdmin, ITOperator, FinanceAuditor, Employee) dynamically linked to authenticated user sessions.
-- **REQ-FND-1.5 (Automated Access Control):** Automatically assign baseline system permissions (e.g., Finance Auditor, Employee) based on user directory group configurations.
+- **REQ-FND-1.4 (Role Mapping):** Maintain role-based access mapping for roles (GlobalAdmin, ITOperator, FinancialAuditor, Employee) dynamically linked to authenticated user sessions.
+- **REQ-FND-1.5 (Automated Access Control):** Automatically assign baseline system permissions (e.g., Financial Auditor, Employee) based on user directory group configurations.
 - **REQ-FND-1.6 (Dynamic Categories):** Allow admins to create custom asset categories and automatically generate a locked, unique 3-letter Prefix Code (e.g., `LAP` for Laptops) to standardize future Asset IDs.
 - **REQ-FND-1.7 (JSONB Schema Builder):** Provide a schema configuration interface allowing admins to define category-specific dynamic fields (specs/tracking) stored as JSONB metadata on categories.
 - **REQ-FND-1.8 (Non-IT Asset Support):** Support asset categories for Furniture and Facilities, allowing for physical attributes (Dimensions, Material) rather than technical specs.

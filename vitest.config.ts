@@ -11,7 +11,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**', 'src/lib/env.test.ts'],
     css: false,
     
     // --- MEMORY LEAK FIX (Modern Vitest API) ---

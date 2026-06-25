@@ -9,7 +9,7 @@ import Link from "next/link"
 import {
   CheckCircle2, AlertCircle, Wrench, Hash, ArrowUpRight,
 } from "lucide-react"
-import type { RecentActivity } from "@/actions/dashboard/shared"
+import type { RecentActivity } from "@/types/dashboard"
 
 function getActionStyles(actionType: string) {
   const type = actionType.toUpperCase()

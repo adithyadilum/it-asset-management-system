@@ -16,6 +16,11 @@ process.env.DATABASE_URL = 'postgresql://test:test@localhost/test';
 process.env.NEXTAUTH_URL = 'http://localhost:3000';
 process.env.NEXTAUTH_SECRET = 'test-secret-min-16-chars!';
 process.env.MOBILE_JWT_SECRET = 'test-secret-min-16-chars!';
+process.env.ENCRYPTION_SECRET = 'dGVzdC1zZWNyZXQtbWluLTE2LWNoYXJzLWZvci1lcmk=';
+process.env.QSTASH_CURRENT_SIGNING_KEY = 'mock-current-signing-key';
+process.env.QSTASH_NEXT_SIGNING_KEY = 'mock-next-signing-key';
+process.env.QSTASH_URL = 'https://qstash.upstash.io';
+process.env.QSTASH_TOKEN = 'mock-token';
 process.env.KEYCLOAK_CLIENT_ID = 'test-client';
 process.env.KEYCLOAK_CLIENT_SECRET = 'test-secret';
 process.env.KEYCLOAK_ISSUER = 'http://localhost:8080/realms/test';
@@ -37,3 +42,25 @@ import { afterEach, afterAll } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+  unstable_rethrow: vi.fn(),
+}));
+
+import React from 'react';
+
+vi.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ children, href, ...props }: any) => {
+    return React.createElement('a', { href, ...props }, children);
+  },
+}));

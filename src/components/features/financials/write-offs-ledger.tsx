@@ -10,9 +10,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { WriteOffsLedgerRecord } from "@/types/financials";
 import { format } from "date-fns";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
-import { convertCurrencyAmount, formatMoneyByCurrency, type SupportedCurrency } from "@/lib/currency";
+import { convertCurrencyAmount, formatMoneyByCurrency, SUPPORTED_CURRENCIES, type SupportedCurrency } from "@/lib/currency";
 import { getWriteOffsLedger } from "@/actions/financials";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
+import { useCurrency } from "@/components/providers/currency-provider";
 
 interface WriteOffsLedgerProps {
   initialData: WriteOffsLedgerRecord[];
@@ -27,12 +28,12 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currency, setCurrency] = useState<SupportedCurrency>('LKR');
+  const { currency, setCurrency } = useCurrency();
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
 
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
 
-  const tableSkeletonColumnWidths = ['w-[16%]', 'w-[16%]', 'w-[16%]', 'w-[20%]', 'w-[16%]', 'w-[16%]'];
+  const tableSkeletonColumnWidths = ['w-[14%]', 'w-[14%]', 'w-[14%]', 'w-[16%]', 'w-[14%]', 'w-[14%]', 'w-[14%]'];
 
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(initialData.map(item => item.category))).sort();
@@ -109,7 +110,8 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       "Disposal Date",
       `Original Purchase Price (${currency})`,
       `Book Value at Time of Disposal (${currency})`,
-      `Salvage Value (${currency})`,
+      `Estimated Salvage Value (${currency})`,
+      `Actual Salvage Value (${currency})`,
     ];
 
     const csvRows = response.data.map((row) => [
@@ -118,7 +120,8 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       row.disposalDate ? format(new Date(row.disposalDate), "MM/dd/yyyy") : "N/A",
       convertCurrencyAmount(row.originalPrice, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
       convertCurrencyAmount(row.bookValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
-      convertCurrencyAmount(row.salvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.estimatedSalvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
+      convertCurrencyAmount(row.actualSalvageValue, (row.currencyCode as SupportedCurrency) || 'USD', currency).toFixed(2),
     ]);
 
     const csvContent = [
@@ -167,9 +170,14 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
       cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.bookValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
     {
-      accessorKey: "salvageValue",
-      header: "Salvage Value",
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.salvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
+      accessorKey: "estimatedSalvageValue",
+      header: "Estimated Salvage Value",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.estimatedSalvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
+    },
+    {
+      accessorKey: "actualSalvageValue",
+      header: "Actual Salvage Value",
+      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{formatMoneyByCurrency(convertCurrencyAmount(row.original.actualSalvageValue, (row.original.currencyCode as SupportedCurrency) || 'USD', currency), currency)}</span>,
     },
   ];
 
@@ -194,7 +202,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-40 p-2 bg-background border-border shadow-md rounded-lg">
             <div className="flex flex-col gap-1">
-              {(['USD', 'LKR', 'NOK'] as SupportedCurrency[]).map((c) => (
+              {(SUPPORTED_CURRENCIES as unknown as SupportedCurrency[]).map((c) => (
                 <Button
                   key={c}
                   variant={currency === c ? 'secondary' : 'ghost'}

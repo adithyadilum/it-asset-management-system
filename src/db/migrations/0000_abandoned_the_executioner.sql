@@ -6,7 +6,7 @@ CREATE TYPE "public"."location_type" AS ENUM('HQ', 'Branch', 'Floor', 'Room', 'R
 CREATE TYPE "public"."maintenance_ticket_status" AS ENUM('ACTIVE', 'COMPLETED', 'CANCELLED');--> statement-breakpoint
 CREATE TYPE "public"."maintenance_ticket_type" AS ENUM('VENDOR', 'INTERNAL');--> statement-breakpoint
 CREATE TYPE "public"."pillar" AS ENUM('IT & Digital', 'Software', 'Office Furniture', 'Office Electronics');--> statement-breakpoint
-CREATE TYPE "public"."role" AS ENUM('GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee');--> statement-breakpoint
+CREATE TYPE "public"."role" AS ENUM('GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee');--> statement-breakpoint
 CREATE TABLE "asset_assignments" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"asset_id" uuid NOT NULL,

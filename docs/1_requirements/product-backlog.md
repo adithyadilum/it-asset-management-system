@@ -110,24 +110,24 @@ _To be executed after the core Asset CRUD operations are finalized._
 - [x] Write logic in the Next.js 16 Edge Proxy (`src/proxy.ts`) to extract and statelessly verify the JWT payload for the active request.
 - [x] Return a `NextResponse.redirect(new URL('/403'))` if an IT Operator attempts to access `pathname.startsWith('/settings')`.
 
-### US-2.4 — Finance Auditor Role Capabilities
+### US-2.4 — Financial Auditor Role Capabilities
 
 **Frontend**
 
 - [x] Configure the `AppSidebar` to display the Financial module and Reports module, but hide the Operations and Settings namespaces.
-- [x] Implement conditional rendering logic on data tables to completely remove write-action buttons (Edit, Assign, Dispose, Delete) from the DOM when `user.role === 'FinanceAuditor'`.
+- [x] Implement conditional rendering logic on data tables to completely remove write-action buttons (Edit, Assign, Dispose, Delete) from the DOM when `user.role === 'FinancialAuditor'`.
 
 **Backend / Infrastructure**
 
-- [x] Apply strict Zero-Trust Server Action enforcement for the `FinanceAuditor` role, ensuring they are blocked from executing state-mutating actions (e.g., `updateAsset`, `deleteAsset`).
-- [x] Ensure Edge Proxy routing allows `FinanceAuditor` access to `/financials/*` and `/reports/*`.
+- [x] Apply strict Zero-Trust Server Action enforcement for the `FinancialAuditor` role, ensuring they are blocked from executing state-mutating actions (e.g., `updateAsset`, `deleteAsset`).
+- [x] Ensure Edge Proxy routing allows `FinancialAuditor` access to `/financials/*` and `/reports/*`.
 
 ### US-2.5 — Default "Least Privilege" Access Assignment
 
 **Database & Seeding**
 
 - [x] Add a `.default("Employee")` constraint on the `role` column in `src/db/schema.ts` to enforce least-privilege strictly at the database schema level.
-- [x] Update the Drizzle seed script (`src/db/seed.ts`) to generate the exact 4 test personas (`GlobalAdmin`, `ITOperator`, `FinanceAuditor`, `Employee`) for frontend testing.
+- [x] Update the Drizzle seed script (`src/db/seed.ts`) to generate the exact 4 test personas (`GlobalAdmin`, `ITOperator`, `FinancialAuditor`, `Employee`) for frontend testing.
 
 **Backend / Infrastructure**
 
@@ -328,7 +328,7 @@ _To be executed after the core Asset CRUD operations are finalized._
 
 - [ ] Create an API endpoint `GET /api/v1/audit-logs` with support for complex query parameters: `dateFrom`, `dateTo`, `actorId`, `actionType[]`, `entityType`, `entityId`, and cursor-based or offset pagination.
 - [ ] Implement a backend CSV streaming/generation service that accepts the same filter parameters and returns the result set as a downloadable `.csv` file (`GET /api/v1/audit-logs/export`).
-- [ ] Ensure the endpoint enforces RBAC: only `GlobalAdmin` and `FinanceAuditor` roles can access the audit log API.
+- [ ] Ensure the endpoint enforces RBAC: only `GlobalAdmin` and `FinancialAuditor` roles can access the audit log API.
 
 ---
 

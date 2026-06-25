@@ -3,7 +3,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/db';
 import { GET as getUsers } from '@/app/api/v1/external/users/route';
 import { GET as getMaintenance } from '@/app/api/v1/external/maintenance/route';
@@ -11,7 +11,7 @@ import { GET as getDisposals } from '@/app/api/v1/external/disposals/route';
 import { GET as getFinancials } from '@/app/api/v1/external/financials/route';
 import { POST as postAssets } from '@/app/api/v1/external/assets/route';
 import { applyRateLimit } from '@/lib/api/rate-limiter';
-import { createHash } from 'node:crypto';
+import { hashApiKey } from '@/lib/api/api-key-hash';
 
 // Mock DB queries
 vi.mock('@/db', () => ({
@@ -55,8 +55,11 @@ vi.mock('@/lib/webhooks/dispatcher', () => ({
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn(() => Promise.resolve({ USD: 0.003 })),
   convertCurrencyAmount: vi.fn(() => 300),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn(() => Promise.resolve({ USD: 0.003 })),
 }));
 
 // Generates a mock select chain that works with await regardless of the last method called (thenable)
@@ -87,7 +90,7 @@ function createRequest(url: string, method = 'GET', authHeader?: string, body?: 
 
 describe('External API Endpoints Scoping', () => {
   const validToken = 'test-token-123';
-  const hashedToken = createHash('sha256').update(validToken).digest('hex');
+  let hashedToken = '';
   const authHeader = `Bearer ${validToken}`;
 
   const mockApiKeyRecord = {
@@ -100,9 +103,14 @@ describe('External API Endpoints Scoping', () => {
     createdById: 'user-id',
     createdAt: new Date(),
     keyPrefix: 'eitams_',
-    keySuffix: 'abcd',
+    keySuffix: validToken.slice(-4),
     lastUsedAt: null,
   };
+
+  beforeAll(async () => {
+    hashedToken = await hashApiKey(validToken);
+    mockApiKeyRecord.keyHash = hashedToken;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -14,7 +14,8 @@ import {
   X,
 } from 'lucide-react';
 
-import { executeAssetDisposal, uploadDisposalReceipt } from '@/actions/disposals';
+import { executeAssetDisposal } from '@/actions/disposals/execute';
+import { uploadDisposalReceipt } from '@/actions/disposals/upload-receipt';
 import { FileUploadZone } from '@/components/shared/file-upload-zone';
 import { tiqriToast } from '@/components/shared/sonner';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import type { PendingDisposalRow } from './pending-disposals-grid';
+import type { PendingDisposalRow } from '@/types/disposals';
 
 interface ExecuteDisposalDialogProps {
   isOpen: boolean;
@@ -47,13 +48,14 @@ interface ExecuteDisposalDialogProps {
   singleCategory?: string; 
 }
 
+/** Maps an asset category string to its corresponding Lucide icon. */
 function getDeviceIcon(category: string, className?: string) {
-  const lowerCat = category.toLowerCase();
-  if (lowerCat.includes('laptop') || lowerCat.includes('macbook')) return <Laptop className={className} />;
-  if (lowerCat.includes('phone') || lowerCat.includes('mobile') || lowerCat.includes('tablet')) return <Smartphone className={className} />;
-  if (lowerCat.includes('server') || lowerCat.includes('network')) return <Server className={className} />;
-  if (lowerCat.includes('keyboard') || lowerCat.includes('mouse') || lowerCat.includes('peripheral')) return <Keyboard className={className} />;
-  if (lowerCat.includes('monitor') || lowerCat.includes('display') || lowerCat.includes('desktop')) return <Monitor className={className} />;
+  const lowerCat = category.toLowerCase().trim();
+  if (/\b(laptop|macbook)\b/.test(lowerCat)) return <Laptop className={className} />;
+  if (/\b(phone|mobile|tablet)\b/.test(lowerCat)) return <Smartphone className={className} />;
+  if (/\b(server|network)\b/.test(lowerCat)) return <Server className={className} />;
+  if (/\b(keyboard|mouse|peripheral)\b/.test(lowerCat)) return <Keyboard className={className} />;
+  if (/\b(monitor|display|desktop)\b/.test(lowerCat)) return <Monitor className={className} />;
   return <Package className={className} />;
 }
 
@@ -90,12 +92,25 @@ export function ExecuteDisposalDialog({
     method !== '' &&
     dataWiped &&
     tagsRemoved &&
-    receiptUrls.length > 0 &&
     confirmText.trim() === expectedConfirmText.trim();
 
   const handleRemoveReceipt = (indexToRemove: number) => {
     setReceiptUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
+
+  /** Constructs the FormData payload and invokes the disposal server action. */
+  async function runDisposal(): Promise<{ success: boolean; message: string }> {
+    const formData = new FormData();
+    formData.set('disposalIds', JSON.stringify(selectedAssets.map((a) => a.id)));
+    formData.set('assetIds', JSON.stringify(selectedAssets.map((a) => a.assetId)));
+    formData.set('reason', reason);
+    formData.set('disposalMethod', method);
+    formData.set('actualSalvageValue', salvageValue);
+    formData.set('dataWiped', String(dataWiped));
+    formData.set('tagsRemoved', String(tagsRemoved));
+    formData.set('receiptUrls', JSON.stringify(receiptUrls));
+    return executeAssetDisposal({ success: false, message: '' }, formData);
+  }
 
   const handleExecute = () => {
     if (!isFormValid) return;
@@ -103,22 +118,12 @@ export function ExecuteDisposalDialog({
 
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        formData.set('disposalIds', JSON.stringify(selectedAssets.map((a) => a.id)));
-        formData.set('assetIds', JSON.stringify(selectedAssets.map((a) => a.assetId)));
-        formData.set('reason', reason);
-        formData.set('disposalMethod', method);
-        formData.set('actualSalvageValue', salvageValue);
-        formData.set('dataWiped', String(dataWiped));
-        formData.set('tagsRemoved', String(tagsRemoved));
-        formData.set('receiptUrls', JSON.stringify(receiptUrls));
-
-        const result = await executeAssetDisposal({ success: false, message: '' }, formData);
+        const result = await runDisposal();
 
         if (result.success) {
           tiqriToast.success(
-            isBulk 
-              ? `Successfully disposed ${selectedAssets.length} assets.` 
+            isBulk
+              ? `Successfully disposed ${selectedAssets.length} assets.`
               : 'Asset successfully disposed.'
           );
           onSuccess();
@@ -127,6 +132,7 @@ export function ExecuteDisposalDialog({
           setError(result.message);
         }
       } catch (err) {
+        console.error('[ExecuteDisposalDialog] Unexpected error:', err);
         setError(err instanceof Error ? err.message : 'Failed to execute disposal.');
       }
     });
@@ -173,10 +179,10 @@ export function ExecuteDisposalDialog({
             
             {isBulk ? (
               <div className="flex flex-col rounded-lg border border-border/50 bg-muted/40 p-4 shadow-sm">
-                <div className="flex flex-col gap-3">
+                <div className="max-h-48 overflow-y-auto flex flex-col gap-3">
                   {selectedAssets.map((row) => (
-                    <div 
-                      key={row.id} 
+                    <div
+                      key={row.id}
                       className="grid grid-cols-[120px_1fr] gap-4 border-b border-border/50 pb-3 last:border-0 last:pb-0 text-[14px] text-foreground"
                     >
                       <span className="font-medium text-muted-foreground">{row.assetTag}</span>
@@ -270,7 +276,7 @@ export function ExecuteDisposalDialog({
                   className="mt-0.5 border-primary data-[state=checked]:bg-primary"
                 />
                 <Label htmlFor="data-wipe" className="cursor-pointer text-sm font-medium text-foreground">
-                  Data wiped and factory reset confirmed.
+                  Data wiped and factory reset confirmed. <span className="text-destructive">*</span>
                 </Label>
               </div>
               <div className="flex items-start gap-3">
@@ -281,14 +287,14 @@ export function ExecuteDisposalDialog({
                   className="mt-0.5 border-primary data-[state=checked]:bg-primary"
                 />
                 <Label htmlFor="tags-removed" className="cursor-pointer text-sm font-medium text-foreground">
-                  All physical TIQRI asset tags removed.
+                  All physical TIQRI asset tags removed. <span className="text-destructive">*</span>
                 </Label>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
               <Label className="text-sm font-medium text-foreground">
-                {isBulk ? "Upload Certificates or Receipts" : "Upload E-Waste Certificate or Receipt"} <span className="text-destructive">*</span>
+                {isBulk ? "Upload Certificates or Receipts" : "Upload E-Waste Certificate or Receipt"} <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
               </Label>
               
               <FileUploadZone
@@ -300,38 +306,35 @@ export function ExecuteDisposalDialog({
                 subLabel="Supports .PDF, .JPG, .PNG up to 4.5MB. You can upload multiple."
               />
               
-              {receiptUrls.length > 0 && (
-  <div className="rounded-md bg-muted/40 p-3">
-    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
-      Attached Files ({receiptUrls.length})
-    </span>
-    <div className="flex flex-col gap-2">
-      {receiptUrls.map((url, idx) => {
-        const fileName = url.split('/').pop() || `File ${idx + 1}`;
-        return (
-          <div key={idx} className="flex items-start justify-between gap-2 text-sm text-foreground bg-background border border-border/50 p-2 rounded-md">
-            {/* CHANGED: items-center to items-start, removed overflow-hidden */}
-            <div className="flex items-start gap-2">
-              {/* CHANGED: Added mt-0.5 so the icon aligns with the first line of text */}
-              <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
-              {/* CHANGED: Replaced 'truncate' with 'break-all' */}
-              <span className="break-all">{fileName}</span>
-            </div>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
-              onClick={() => handleRemoveReceipt(idx)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
+            {receiptUrls.length > 0 && (
+              <div className="rounded-md bg-muted/40 p-3">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+                  Attached Files ({receiptUrls.length})
+                </span>
+                <div className="flex flex-col gap-2">
+                  {receiptUrls.map((url, idx) => {
+                    const fileName = url.split('/').pop() || `File ${idx + 1}`;
+                    return (
+                      <div key={idx} className="flex items-start justify-between gap-2 text-sm text-foreground bg-background border border-border/50 p-2 rounded-md">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-500 shrink-0" />
+                          <span className="break-all">{fileName}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => handleRemoveReceipt(idx)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             </div>
 
             <div className="mt-2 flex flex-col gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
@@ -344,7 +347,7 @@ export function ExecuteDisposalDialog({
               </label>
               <Input
                 value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
+                onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
                 placeholder={expectedConfirmText}
                 className="h-10 border-destructive/30 bg-background uppercase"
               />
@@ -376,7 +379,7 @@ export function ExecuteDisposalDialog({
             onClick={handleExecute}
             className="h-10 px-6 font-semibold shadow-md transition-all active:scale-95 disabled:opacity-50"
           >
-            {isPending ? 'Processing...' : (isBulk ? 'Confirm Bulk Disposal' : 'Confirm Disposal')}
+            {isPending ? 'Processing...' : (isBulk ? 'Execute Bulk Disposal' : 'Execute Disposal')}
           </Button>
         </div>
       </DialogContent>

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { AlertCircle } from 'lucide-react'; 
 
-import { rejectDisposalRequest } from '@/actions/disposals';
+import { rejectDisposalRequest } from '@/actions/disposals/reject';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { tiqriToast } from '@/components/shared/sonner';
 
-import type { PendingDisposalRow } from './pending-disposals-grid';
+import type { PendingDisposalRow } from '@/types/disposals';
 
 interface RejectDisposalDialogProps {
   isOpen: boolean;
@@ -47,7 +47,7 @@ export function RejectDisposalDialog({
   const isBulk = selectedAssets.length > 1;
   const singleAsset = selectedAssets[0];
 
-  // UPDATED: Enforce maintenanceIssue if status is 'In Repair'
+  // 'In Repair' requires a maintenance description to be valid.
   const isValid = 
     selectedAssets.length > 0 && 
     reason.trim().length >= 10 && 
@@ -161,7 +161,7 @@ export function RejectDisposalDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="In Repair">Maintenance</SelectItem>
+                  <SelectItem value="In Repair">In Repair</SelectItem>
                 </SelectContent>
               </Select>
               {isBulk && (
@@ -171,7 +171,6 @@ export function RejectDisposalDialog({
               )}
             </div>
 
-            {/* UPDATED: Made mandatory visually and strictly */}
             {status === 'In Repair' && (
               <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
                 <Label htmlFor="maintenanceIssue" className="text-[13px] font-semibold text-foreground">

@@ -1,5 +1,6 @@
 import { and, asc, eq, ilike, inArray, or, sql, ne } from 'drizzle-orm';
 import { getToken } from 'next-auth/jwt';
+import { unstable_rethrow } from 'next/navigation';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -28,7 +29,7 @@ function normalizeTokenRole(role: unknown): UserRole | null {
   if (
     role === 'GlobalAdmin' ||
     role === 'ITOperator' ||
-    role === 'FinanceAuditor' ||
+    role === 'FinancialAuditor' ||
     role === 'Employee'
   ) {
     return role;
@@ -293,10 +294,13 @@ async function searchReportsByQuery(
 
 export async function GET(request: NextRequest) {
   const requestTimer = startLatencyTimer();
+  let queryLength = 0;
 
   try {
+    const q = request.nextUrl.searchParams.get('q') ?? '';
+    queryLength = q.length;
     const parsedInput = omniSearchQuerySchema.safeParse({
-      q: request.nextUrl.searchParams.get('q') ?? '',
+      q,
     });
 
     if (!parsedInput.success) {
@@ -344,6 +348,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(responseBody, { status: 200 });
   } catch (error) {
+    unstable_rethrow(error);
     logError({
       scope: 'API',
       label: 'search.GET',
@@ -360,7 +365,7 @@ export async function GET(request: NextRequest) {
       label: '/api/v1/search',
       startTime: requestTimer,
       metadata: {
-        queryLength: request.nextUrl.searchParams.get('q')?.length ?? 0,
+        queryLength,
       },
     });
   }

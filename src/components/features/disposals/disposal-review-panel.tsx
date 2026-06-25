@@ -7,6 +7,7 @@ import { AlertCircle } from 'lucide-react';
 import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { AssetLoadingSkeleton } from '@/components/features/asset-registry/panels/asset-loading-skeleton';
+import { formatMoneyByCurrency } from '@/lib/currency';
 
 export interface DisposalReviewPanelProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export interface DisposalReviewPanelProps {
   purchaseDate?: string;
   originalCost?: number;
   currentBookValue?: number;
+  currencyCode?: string;
   warrantyStatus?: string;
 
   onReject?: () => void;
@@ -59,7 +61,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start text-sm leading-5">
-      <span className={`w-40 ${bold ? 'font-semibold text-foreground' : 'font-semibold text-foreground'}`}>
+      <span className="w-40 font-semibold text-foreground">
         {label}:
       </span>
       <span className={`flex-1 ${bold ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground'}`}>
@@ -106,7 +108,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
     },
     {
       id: 'approve',
-      label: 'Initiate Disposal',
+      label: props.isLoading ? 'Processing...' : 'Approve',
       variant: 'destructive',
       onClick: props.onApprove,
       disabled: props.isLoading,
@@ -184,8 +186,8 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
           <DetailRow label="Purchase Date" value={formatDateString(props.purchaseDate)} />
-          <DetailRow label="Original Cost" value={props.originalCost !== undefined && props.originalCost !== null ? `$${props.originalCost.toFixed(0)}` : '-'} />
-          <DetailRow label="Current Book Value" value={props.currentBookValue !== undefined && props.currentBookValue !== null ? `$${props.currentBookValue.toFixed(0)}` : '-'} />
+          <DetailRow label="Original Cost" value={props.originalCost !== undefined && props.originalCost !== null ? formatMoneyByCurrency(props.originalCost, props.currencyCode || 'LKR') : '-'} />
+          <DetailRow label="Current Book Value" value={props.currentBookValue !== undefined && props.currentBookValue !== null ? formatMoneyByCurrency(props.currentBookValue, props.currencyCode || 'LKR') : '-'} />
           <div className="flex items-start text-sm leading-5">
             <span className="w-40 font-semibold text-foreground">Warranty Status:</span>
             <WarrantyStatusBadge status={props.warrantyStatus} />

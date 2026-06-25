@@ -7,6 +7,7 @@ import { Download } from "lucide-react";
 import { getAuditLogs, type AuditLogRow, type PaginatedAuditLogsResult } from "@/actions/audit-log";
 import type { PaginationState } from "@tanstack/react-table";
 
+import { formatMoneyByCurrency } from "@/lib/currency";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -145,11 +146,7 @@ function formatAuditValue(field: string, value: unknown) {
 
     if (typeof value === "number") {
         if (/cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(field)) {
-            return new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-                maximumFractionDigits: 2,
-            }).format(value);
+            return formatMoneyByCurrency(value, "USD"); // Kept string for audit display
         }
 
         return new Intl.NumberFormat("en-US").format(value);
@@ -171,11 +168,7 @@ function formatAuditValue(field: string, value: unknown) {
     if (/cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(field)) {
         const parsed = Number(text.replace(/[^0-9.-]/g, ""));
         if (Number.isFinite(parsed) && text.trim().length > 0) {
-            return new Intl.NumberFormat("en-US", {
-                style: "currency",
-                currency: "USD",
-                maximumFractionDigits: 2,
-            }).format(parsed);
+            return formatMoneyByCurrency(parsed, "USD");
         }
     }
 
@@ -569,4 +562,4 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
             </main>
         </TooltipProvider>
     );
-}
+}
