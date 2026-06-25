@@ -30,7 +30,7 @@ import {
   softwareAllocations,
   systemAuditLogs,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import type { ReportPreviewRow } from '@/types/standard-reports';
@@ -72,10 +72,7 @@ export interface ReportPreviewFilters {
 export async function getStandardReportsFilterOptions() {
   const actionTimer = startLatencyTimer();
 
-  const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) {
-    throw new Error('Forbidden: You do not have permission to access reports.');
-  }
+  const currentUser = await enforceActionAccess(canManageAssets);
 
   try {
     const [dbLocations, dbCustomStatuses, dbCategories, dbVendors] =

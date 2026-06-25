@@ -12,7 +12,7 @@ import {
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 import {
   depreciationLedgerParamsSchema,
@@ -24,8 +24,7 @@ import {
  * Reusable RBAC guard for all financial endpoints
  */
 async function enforceFinanceAccess() {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
 
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     throw new Error('Forbidden');

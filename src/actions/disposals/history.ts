@@ -3,7 +3,7 @@
 import { and, desc, eq, inArray, or, ilike, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -22,10 +22,7 @@ export async function getDisposalHistory(params: {
   pageSize?: number;
 }) {
   const actionTimer = startLatencyTimer();
-  const user = await getAuthenticatedUser();
-
-  if (!user) throw new Error('UNAUTHENTICATED');
-  requireAccess(user, canViewDisposalHistory);
+  const user = await enforceActionAccess(canViewDisposalHistory);
 
   const searchQuery = params.search || '';
   const page = params.page && params.page > 0 ? params.page : 1;

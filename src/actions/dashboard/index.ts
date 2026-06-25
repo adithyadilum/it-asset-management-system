@@ -8,7 +8,7 @@ export * from './global-admin';
 export * from './it-operator';
 export * from './financial-auditor';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { getGlobalAdminDashboardData } from './global-admin';
 import { getITDashboardData } from './it-operator';
 import { getFinanceDashboardData } from './financial-auditor';
@@ -16,8 +16,7 @@ import type { DashboardBatchData } from '@/types/dashboard';
 
 /** Delegates to the role-specific dashboard fetcher, zeroing out unauthorized partitions. */
 export async function getDashboardBatchData(): Promise<DashboardBatchData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
 
   if (user.role === 'GlobalAdmin') {
     return getGlobalAdminDashboardData();

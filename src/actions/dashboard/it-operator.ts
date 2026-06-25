@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { requireAccess, isITOperator } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
@@ -27,9 +27,7 @@ export interface ITDashboardBatchData {
 
 /** Fetches all IT-related dashboard data in parallel. Restricted to ITOperator / GlobalAdmin. */
 export async function getITDashboardData(): Promise<ITDashboardBatchData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  requireAccess(user, isITOperator);
+  const user = await enforceActionAccess(isITOperator);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

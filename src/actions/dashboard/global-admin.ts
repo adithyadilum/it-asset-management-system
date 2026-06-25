@@ -1,6 +1,6 @@
 'use server';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
 import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
@@ -46,9 +46,7 @@ export interface GlobalAdminDashboardBatchData {
 
 /** Fetches all dashboard data in parallel. Restricted to GlobalAdmin. */
 export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboardBatchData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  requireAccess(user, isGlobalAdmin);
+  const user = await enforceActionAccess(isGlobalAdmin);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),

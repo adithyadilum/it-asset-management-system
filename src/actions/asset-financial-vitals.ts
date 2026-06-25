@@ -4,7 +4,7 @@
 import { db } from '@/db';
 import { assets, assetPurchases, maintenanceTickets } from '@/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
 
@@ -13,8 +13,7 @@ import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
  * Financial vitals are sensitive and restricted to Admins and Finance auditors.
  */
 async function enforceFinanceAccess() {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
 
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     throw new Error(

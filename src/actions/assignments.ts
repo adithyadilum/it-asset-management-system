@@ -20,7 +20,7 @@ import {
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import {
@@ -251,13 +251,7 @@ export async function bulkAssignAssetsAction(
 
 export async function getOperationsAssignmentsDataAction() {
   const actionTimer = startLatencyTimer();
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser || !canManageAssets(currentUser.role)) {
-    throw new Error(
-      'Forbidden: You do not have permission to read operations assignment data.'
-    );
-  }
+  const currentUser = await enforceActionAccess(canManageAssets);
 
   try {
     return await getAssignmentsDashboardData();

@@ -16,7 +16,7 @@ import {
   assetAssignments,
 } from '@/db/schema';
 import { eq, and, ilike, or, desc, sql, isNull } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import {
@@ -52,8 +52,7 @@ const DEFAULT_HISTORY_LIMIT = 3;
 
 export async function getPendingMaintenanceTickets(searchTerm = '') {
   // Fix A — FinanceAuditor must not access operational pending tickets
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -120,8 +119,7 @@ export async function getTicketForIssueReview(
   ticketId: number
 ): Promise<IssueReviewPanelData> {
   // Fix A — FinanceAuditor must not access individual operational ticket details
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -225,8 +223,7 @@ export async function getTicketForIssueReview(
 
 export async function getVendors() {
   // Fix A — FinanceAuditor must not access vendor operational data
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -255,8 +252,7 @@ export async function getVendors() {
 
 export async function getActiveRepairTickets(searchTerm = '') {
   // Fix A — FinanceAuditor must not access active repair operational data
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -307,8 +303,7 @@ export async function getRepairHistory(
   searchTerm = ''
 ) {
   // FinanceAuditor allowed — history is their permitted view
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -387,8 +382,7 @@ export async function getAssetMaintenanceHistory(
   limit = DEFAULT_HISTORY_LIMIT
 ) {
   // FinanceAuditor allowed — this is the asset detail panel history view (last 3 records)
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -449,8 +443,7 @@ export async function resolveIssueInternally(
   resolutionNote: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -589,8 +582,7 @@ export async function initiateVendorRepair(
   expectedReturnDate?: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -746,8 +738,7 @@ export async function completeRepairTicket(
   updateStatusTo: 'Available' | 'Disposed'
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -908,8 +899,7 @@ export async function reportDefectiveFromPanel(
   expectedReturnDate?: string
 ): Promise<{ success: boolean; message: string; ticketId?: number }> {
   // 1. Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
