@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { WriteOffsLedger } from './write-offs-ledger';
@@ -28,7 +29,7 @@ describe('WriteOffsLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<WriteOffsLedger initialData={mockData} />);
+    render(<CurrencyProvider initialCurrency="USD"><WriteOffsLedger initialData={mockData} /></CurrencyProvider>);
     expect(screen.getByText('AST-003')).toBeInTheDocument();
     expect(screen.getByText('Monitors')).toBeInTheDocument();
   });

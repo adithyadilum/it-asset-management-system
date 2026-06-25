@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -17,7 +18,7 @@ describe('DashboardExportButton', () => {
   it('renders and triggers print', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('print', vi.fn());
-    render(<DashboardExportButton />);
+    render(<CurrencyProvider initialCurrency="USD"><DashboardExportButton /></CurrencyProvider>);
     
     const btn = screen.getByRole('button', { name: /Export dashboard/i });
     expect(btn).toBeInTheDocument();

@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { FinancialAuditorDashboardView } from './financial-auditor-dashboard-view';
@@ -29,7 +30,7 @@ describe('FinancialAuditorDashboardView', () => {
       highValueAssets: []
     };
     
-    render(<FinancialAuditorDashboardView data={mockData as any} />);
+    render(<CurrencyProvider initialCurrency="USD"><FinancialAuditorDashboardView data={mockData as any} /></CurrencyProvider>);
     expect(screen.getByTestId('kpi-metrics')).toBeInTheDocument();
   });
 });

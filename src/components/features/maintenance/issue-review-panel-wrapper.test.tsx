@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IssueReviewPanelWrapper } from './issue-review-panel-wrapper';
@@ -47,13 +48,13 @@ describe('IssueReviewPanelWrapper', () => {
   });
 
   it('fetches data when opened with a ticketId', async () => {
-    render(
+    render(<CurrencyProvider initialCurrency="USD">
       <IssueReviewPanelWrapper
         isOpen={true}
         onClose={mockOnClose}
         ticketId={1}
       />
-    );
+    </CurrencyProvider>);
 
     await waitFor(() => {
       expect(getTicketForIssueReview).toHaveBeenCalledWith(1);
@@ -65,14 +66,14 @@ describe('IssueReviewPanelWrapper', () => {
   it('handles resolve internally successfully', async () => {
     (resolveIssueInternally as any).mockResolvedValue(true);
     
-    render(
+    render(<CurrencyProvider initialCurrency="USD">
       <IssueReviewPanelWrapper
         isOpen={true}
         onClose={mockOnClose}
         ticketId={1}
         onSuccess={mockOnSuccess}
       />
-    );
+    </CurrencyProvider>);
 
     await waitFor(() => {
       expect(screen.getByText('Data: Loaded')).toBeInTheDocument();
@@ -90,14 +91,14 @@ describe('IssueReviewPanelWrapper', () => {
   it('handles initiate repair successfully', async () => {
     (initiateVendorRepair as any).mockResolvedValue(true);
     
-    render(
+    render(<CurrencyProvider initialCurrency="USD">
       <IssueReviewPanelWrapper
         isOpen={true}
         onClose={mockOnClose}
         ticketId={1}
         onSuccess={mockOnSuccess}
       />
-    );
+    </CurrencyProvider>);
 
     await waitFor(() => {
       expect(screen.getByText('Data: Loaded')).toBeInTheDocument();

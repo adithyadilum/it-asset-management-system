@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DashboardHeader } from './dashboard-header';
@@ -35,14 +36,14 @@ describe('DashboardHeader', () => {
   });
 
   it('renders greeting and date correctly', () => {
-    render(<DashboardHeader userName="John Doe" userRole="GlobalAdmin" />);
+    render(<CurrencyProvider initialCurrency="USD"><DashboardHeader userName="John Doe" userRole="GlobalAdmin" /></CurrencyProvider>);
     
     expect(screen.getByText('Welcome back, John')).toBeInTheDocument();
     expect(screen.getByTestId('quick-actions')).toBeInTheDocument();
   });
 
   it('calls refresh when refresh button is clicked', () => {
-    render(<DashboardHeader userName="John Doe" userRole="GlobalAdmin" />);
+    render(<CurrencyProvider initialCurrency="USD"><DashboardHeader userName="John Doe" userRole="GlobalAdmin" /></CurrencyProvider>);
     
     const refreshBtn = screen.getByRole('button', { name: /Refresh dashboard data/i });
     fireEvent.click(refreshBtn);
@@ -51,7 +52,7 @@ describe('DashboardHeader', () => {
   });
 
   it('displays relative time based on lastRefreshedAt', async () => {
-    render(<DashboardHeader userName="John Doe" userRole="GlobalAdmin" />);
+    render(<CurrencyProvider initialCurrency="USD"><DashboardHeader userName="John Doe" userRole="GlobalAdmin" /></CurrencyProvider>);
     
     // advance timers by 1 tick so the timeout in useEffect executes and updates state
     act(() => {

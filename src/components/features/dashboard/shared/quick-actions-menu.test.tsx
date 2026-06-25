@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { QuickActionsMenu } from './quick-actions-menu';
@@ -14,7 +15,7 @@ describe('QuickActionsMenu', () => {
   });
 
   it('renders quick actions menu and responds to clicks', () => {
-    render(<QuickActionsMenu userRole="GlobalAdmin" />);
+    render(<CurrencyProvider initialCurrency="USD"><QuickActionsMenu userRole="GlobalAdmin" /></CurrencyProvider>);
     
     const triggerBtn = screen.getByRole('button', { name: /Quick Actions/i });
     expect(triggerBtn).toBeInTheDocument();

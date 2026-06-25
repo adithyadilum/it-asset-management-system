@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -38,7 +39,7 @@ describe('AcceptAssignmentDialog', () => {
   it('renders and calls onConfirm when accepted', async () => {
     const mockOnConfirm = vi.fn();
     
-    render(
+    render(<CurrencyProvider initialCurrency="USD">
       <AcceptAssignmentDialog 
         assetName="MacBook Pro"
         assetTag="AST-1"
@@ -50,7 +51,7 @@ describe('AcceptAssignmentDialog', () => {
         isOpen={true}
         onOpenChange={vi.fn()}
       />
-    );
+    </CurrencyProvider>);
     
     expect(screen.getByRole('button', { name: /Confirm Receipt/i })).toBeInTheDocument();
     

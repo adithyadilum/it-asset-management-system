@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AssignmentsDashboard } from './assignments-dashboard';
@@ -65,7 +66,7 @@ describe('AssignmentsDashboard', () => {
   });
 
   const renderDashboard = () => {
-    return render(<AssignmentsDashboard data={mockData} />);
+    return render(<CurrencyProvider initialCurrency="USD"><AssignmentsDashboard data={mockData} /></CurrencyProvider>);
   };
 
   it('renders correctly with tabs', () => {

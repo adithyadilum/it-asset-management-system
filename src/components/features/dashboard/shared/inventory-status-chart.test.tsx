@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { InventoryStatusChart } from './inventory-status-chart';
@@ -27,7 +28,7 @@ describe('InventoryStatusChart', () => {
     ];
     
     // @ts-ignore
-    render(<InventoryStatusChart inventoryData={mockData as any} totalAssets={100} />);
+    render(<CurrencyProvider initialCurrency="USD"><InventoryStatusChart inventoryData={mockData as any} totalAssets={100} /></CurrencyProvider>);
     expect(screen.getByText(/Inventory Status/i)).toBeInTheDocument();
   });
 });

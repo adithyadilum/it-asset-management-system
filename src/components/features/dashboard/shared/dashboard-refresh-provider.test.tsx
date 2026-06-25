@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DashboardRefreshProvider, useDashboardRefresh } from './dashboard-refresh-provider';
@@ -32,11 +33,11 @@ describe('DashboardRefreshProvider', () => {
   });
 
   it('provides refresh state to children', () => {
-    render(
+    render(<CurrencyProvider initialCurrency="USD">
       <DashboardRefreshProvider>
         <TestComponent />
       </DashboardRefreshProvider>
-    );
+    </CurrencyProvider>);
     expect(screen.getByText('Idle')).toBeInTheDocument();
   });
 });
