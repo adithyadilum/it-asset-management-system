@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { DataTable } from "@/components/shared/data-table"
 import { cn } from "@/lib/utils"
@@ -17,18 +17,23 @@ import { DataTablesContainer } from "../shared/data-tables-container"
 import { useOverdueColumns, usePendingDisposalColumns, useHighMaintenanceColumns } from "../shared/dashboard-table-columns"
 import type { GlobalAdminDashboardBatchData } from "@/actions/dashboard/global-admin"
 import type { OverdueReturnRow, HighMaintenanceRow } from "@/types/dashboard"
+import { useCurrency } from "@/components/providers/currency-provider"
+import { convertCurrencyAmount } from "@/lib/currency"
 
 interface GlobalAdminDashboardViewProps {
   data: GlobalAdminDashboardBatchData
-  currencyCode?: string
-  exchangeRate?: number
+  apiRates?: Record<string, number>
 }
 
 export function GlobalAdminDashboardView({
   data,
-  currencyCode = "LKR",
-  exchangeRate = 1,
+  apiRates,
 }: GlobalAdminDashboardViewProps) {
+  const { currency: currencyCode } = useCurrency();
+  const exchangeRate = useMemo(
+    () => convertCurrencyAmount(1, 'LKR', currencyCode, apiRates),
+    [currencyCode, apiRates],
+  );
   const [flaggedAsset, setFlaggedAsset] = useState<SelectedAssetLite | null>(null)
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false)
   const [sendingReminderIds, setSendingReminderIds] = useState<number[]>([])

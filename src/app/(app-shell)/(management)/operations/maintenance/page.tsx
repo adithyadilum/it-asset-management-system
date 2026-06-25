@@ -1,13 +1,9 @@
 import { MaintenanceShell } from '@/components/features/maintenance/maintenance-shell';
 import { MaintenanceErrorBoundary } from '@/components/features/maintenance/maintenance-error-boundary';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { redirect } from 'next/navigation';
+import { requirePageAuth } from '@/lib/auth/page-guard';
 
 export default async function MaintenanceAndRepairsPage() {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    redirect('/login');
-  }
+  const user = await requirePageAuth();
 
   return (
     <MaintenanceErrorBoundary>

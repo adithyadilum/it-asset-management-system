@@ -14,12 +14,12 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 
 import { getFederatedLogoutUrl } from '@/actions/auth';
 import { signOut } from 'next-auth/react';
-import { setPreferredCurrency } from '@/actions/currency';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
+import { useCurrency } from '@/components/providers/currency-provider';
 import { isGlobalAdmin } from '@/lib/auth/roles';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
@@ -103,13 +103,13 @@ function buildBreadcrumbs(pathname: string): HeaderBreadcrumb[] {
     });
 }
 
-export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
+export function TopHeader({ user }: TopHeaderProps) {
     const { state, toggleSidebar } = useSidebar();
     const pathname = usePathname();
     const { setTheme } = useTheme();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [isPending, startTransition] = useTransition();
     const [pairingModalOpen, setPairingModalOpen] = useState(false);
+    const { currency, isPending: isCurrencyPending, setCurrency } = useCurrency();
 
     const handleLogout = async () => {
         try {
@@ -314,22 +314,22 @@ export function TopHeader({ user, preferredCurrency = 'LKR' }: TopHeaderProps) {
                             {/* Currency Selector */}
                             <div className="p-2 border-b border-border">
                                 <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger className="h-9 rounded-lg text-xs" disabled={isPending}>
+                                    <DropdownMenuSubTrigger className="h-9 rounded-lg text-xs" disabled={isCurrencyPending}>
                                         <Banknote className="mr-2 h-4 w-4 text-muted-foreground" />
-                                        Currency ({preferredCurrency})
+                                        Currency ({currency})
                                     </DropdownMenuSubTrigger>
                                     <DropdownMenuPortal>
                                         <DropdownMenuSubContent>
-                                            {SUPPORTED_CURRENCIES.map((currency) => (
+                                            {SUPPORTED_CURRENCIES.map((c) => (
                                                 <DropdownMenuItem
-                                                    key={currency}
-                                                    onClick={() => startTransition(() => setPreferredCurrency(currency))}
+                                                    key={c}
+                                                    onClick={() => setCurrency(c)}
                                                     className="h-9 justify-start rounded-lg text-xs cursor-pointer focus:bg-muted relative pl-8"
                                                 >
-                                                    {preferredCurrency === currency && (
+                                                    {currency === c && (
                                                         <Check className="absolute left-2 h-4 w-4 text-foreground" />
                                                     )}
-                                                    {currency}
+                                                    {c}
                                                 </DropdownMenuItem>
                                             ))}
                                         </DropdownMenuSubContent>

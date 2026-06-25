@@ -1,16 +1,11 @@
 import { StandardReportsShell } from '@/components/features/standard-reports/standard-reports-shell';
 import { getStandardReportsFilterOptions } from '@/actions/standard-reports';
 import { getReportTemplates } from '@/actions/report-templates';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { redirect } from 'next/navigation';
+import { requirePageAuth } from '@/lib/auth/page-guard';
 import type { ReportTemplateData } from '@/types/standard-reports';
 
 export default async function Page() {
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser) {
-    redirect('/login');
-  }
+  const currentUser = await requirePageAuth();
 
   const [filterOptions, rawTemplates] = await Promise.all([
     getStandardReportsFilterOptions(),

@@ -1,11 +1,8 @@
 import { redirect } from "next/navigation";
-import { getAuthenticatedUser } from "@/actions/auth";
+import { requirePageAuth } from "@/lib/auth/page-guard";
 
 export default async function OperationsPage() {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    redirect("/login");
-  }
+  const user = await requirePageAuth();
 
   if (user.role === 'FinancialAuditor') {
     redirect("/operations/maintenance");
