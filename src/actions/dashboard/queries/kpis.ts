@@ -18,6 +18,7 @@ import {
 } from '@/lib/constants/dashboard';
 import type { DashboardKpiMetrics } from '@/types/dashboard';
 import { convertCurrencyAmount } from '@/lib/currency';
+import { straightLineNbvSqlFragment } from '@/lib/depreciation';
 
 function getFleetHealthLabel(score: number): string {
   if (score >= 85) return 'Excellent';
@@ -136,16 +137,13 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
                 CASE WHEN ${assetPurchases.purchaseDate} IS NULL THEN
                   COALESCE(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1), 0)
                 ELSE
-                  GREATEST(0,
-                    (${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1)) - (
-                      (${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1))
-                      / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
-                      * GREATEST(0,
-                         EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
-                         + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
-                      )
-                    )
-                  )
+                  ${sql.raw(straightLineNbvSqlFragment(
+                    'asset_purchases.total_cost',
+                    'asset_purchases.exchange_rate',
+                    'assets.salvage_value',
+                    'assets.useful_life_months',
+                    'asset_purchases.purchase_date'
+                  ))}
                 END
               ELSE 0 END
             )

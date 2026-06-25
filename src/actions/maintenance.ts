@@ -17,7 +17,7 @@ import {
 } from '@/db/schema';
 import { eq, and, ilike, or, desc, sql, isNull } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import {
   resolveIssueSchema,
@@ -160,15 +160,18 @@ export async function getTicketForIssueReview(
     const row = result[0];
     const purchase = row.purchase;
 
-    // Calculate Depreciation & Book Value from available purchase data
     const totalCost = purchase?.totalCost
       ? parseFloat(purchase.totalCost.toString())
       : 0;
-    const bookValue = calculateStraightLineDepreciation(
-      totalCost,
-      row.asset.usefulLifeMonths,
-      purchase?.purchaseDate ?? null
-    );
+    const salvage = row.asset.salvageValue
+      ? parseFloat(row.asset.salvageValue.toString())
+      : 0;
+    const bookValue = calculateCurrentBookValue({
+      cost: totalCost,
+      salvageValue: salvage,
+      usefulLifeMonths: row.asset.usefulLifeMonths,
+      purchaseDate: purchase?.purchaseDate ?? null,
+    });
 
     // Calculate Total Cost of Ownership (add repair costs)
     const repairResult = await db
