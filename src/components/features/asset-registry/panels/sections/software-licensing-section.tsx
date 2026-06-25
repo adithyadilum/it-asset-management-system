@@ -23,6 +23,10 @@ type SoftwareLicensingSectionProps = {
   setLicenseType: (v: string) => void;
   LICENSE_TYPE_OPTIONS: RegistrationOption[];
 
+  billingCycle: string;
+  setBillingCycle: (v: string) => void;
+  BILLING_CYCLE_OPTIONS: RegistrationOption[];
+
   totalSeats: string;
   setTotalSeats: (v: string) => void;
 
@@ -45,6 +49,9 @@ export function SoftwareLicensingSection({
   licenseType,
   setLicenseType,
   LICENSE_TYPE_OPTIONS,
+  billingCycle,
+  setBillingCycle,
+  BILLING_CYCLE_OPTIONS,
   totalSeats,
   setTotalSeats,
   licenseStartDate,
@@ -60,6 +67,8 @@ export function SoftwareLicensingSection({
   if (!config.showSoftwareLicensingSection) {
     return null;
   }
+
+  const isSubscription = licenseType === 'Subscription';
 
   return (
     <>
@@ -99,6 +108,19 @@ export function SoftwareLicensingSection({
             />
           </InlineFieldRow>
 
+          {isSubscription ? (
+            <SearchableFieldRow
+              label="Billing Cycle :"
+              name="billingCycle"
+              value={billingCycle}
+              onChange={setBillingCycle}
+              options={BILLING_CYCLE_OPTIONS}
+              placeholder="Select Billing Cycle.."
+              emptyMessage="No billing cycles found."
+              error={getError(state, 'billingCycle')}
+            />
+          ) : null}
+
           <InlineFieldRow
             label="Start Date :"
             error={getError(state, 'licenseStartDate')}
@@ -135,41 +157,45 @@ export function SoftwareLicensingSection({
             </>
           </InlineFieldRow>
 
-          <InlineFieldRow
-            label="Expiry Date :"
-            error={getError(state, 'licenseExpiryDate')}
-            alignTop
-          >
-            <>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      'h-9 w-full justify-between rounded-lg px-3 text-left font-normal',
-                      !licenseExpiryDate ? 'text-muted-foreground' : 'text-foreground'
-                    )}
-                    aria-invalid={Boolean(getError(state, 'licenseExpiryDate'))}
-                  >
-                    <span>{licenseExpiryDateLabel}</span>
-                    <CalendarDays className="size-4 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={licenseExpiryDateValue}
-                    onSelect={(date) =>
-                      setLicenseExpiryDate(date ? formatDateForInput(date) : '')
-                    }
-                    autoFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <input type="hidden" id="licenseExpiryDate" name="licenseExpiryDate" value={licenseExpiryDate} />
-            </>
-          </InlineFieldRow>
+          {isSubscription ? (
+            <InlineFieldRow
+              label="Expiry Date :"
+              error={getError(state, 'licenseExpiryDate')}
+              alignTop
+            >
+              <>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        'h-9 w-full justify-between rounded-lg px-3 text-left font-normal',
+                        !licenseExpiryDate ? 'text-muted-foreground' : 'text-foreground'
+                      )}
+                      aria-invalid={Boolean(getError(state, 'licenseExpiryDate'))}
+                    >
+                      <span>{licenseExpiryDateLabel}</span>
+                      <CalendarDays className="size-4 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={licenseExpiryDateValue}
+                      onSelect={(date) =>
+                        setLicenseExpiryDate(date ? formatDateForInput(date) : '')
+                      }
+                      autoFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <input type="hidden" id="licenseExpiryDate" name="licenseExpiryDate" value={licenseExpiryDate} />
+              </>
+            </InlineFieldRow>
+          ) : (
+            <input type="hidden" id="licenseExpiryDate" name="licenseExpiryDate" value="" />
+          )}
         </div>
       </section>
     </>

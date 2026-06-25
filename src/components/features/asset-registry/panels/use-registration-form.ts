@@ -98,6 +98,7 @@ export function useRegistrationForm({
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   const [licenseType, setLicenseType] = useState("");
+  const [billingCycle, setBillingCycle] = useState("");
   const [totalSeats, setTotalSeats] = useState("");
   const [licenseStartDate, setLicenseStartDate] = useState("");
   const [licenseExpiryDate, setLicenseExpiryDate] = useState("");
@@ -106,7 +107,15 @@ export function useRegistrationForm({
 
   const lastToastKeyRef = useRef<string>("");
 
+  const isFreeSoftwareLicense = licenseType === "Open Source / Free";
+
   const handleBasePriceChange = useCallback((val: string) => {
+    if (isFreeSoftwareLicense) {
+      setBasePrice("0.00");
+      setCostPerSeat("0.00");
+      return;
+    }
+
     setBasePrice(val);
     const parsedBase = parseCurrencyAmount(val);
     const seats = parseInt(totalSeats, 10);
@@ -115,19 +124,30 @@ export function useRegistrationForm({
     } else {
       setCostPerSeat("");
     }
-  }, [totalSeats]);
+  }, [isFreeSoftwareLicense, totalSeats]);
 
   const handleCostPerSeatChange = useCallback((val: string) => {
+    if (isFreeSoftwareLicense) {
+      setCostPerSeat("0.00");
+      setBasePrice("0.00");
+      return;
+    }
+
     setCostPerSeat(val);
     const parsedCost = parseCurrencyAmount(val);
     const seats = parseInt(totalSeats, 10);
     if (seats > 0) {
       setBasePrice((parsedCost * seats).toFixed(2));
     }
-  }, [totalSeats]);
+  }, [isFreeSoftwareLicense, totalSeats]);
 
   const handleTotalSeatsChange = useCallback((val: string) => {
     setTotalSeats(val);
+    if (isFreeSoftwareLicense) {
+      setCostPerSeat("0.00");
+      return;
+    }
+
     const seats = parseInt(val, 10);
     const parsedBase = parseCurrencyAmount(basePrice);
     if (seats > 0 && parsedBase > 0) {
@@ -135,7 +155,22 @@ export function useRegistrationForm({
     } else {
       setCostPerSeat("");
     }
-  }, [basePrice]);
+  }, [basePrice, isFreeSoftwareLicense]);
+
+  const handleLicenseTypeChange = useCallback((value: string) => {
+    setLicenseType(value);
+
+    if (value !== "Subscription") {
+      setBillingCycle("");
+      setLicenseExpiryDate("");
+    }
+
+    if (value === "Open Source / Free") {
+      setBasePrice("0.00");
+      setTax("0.00");
+      setCostPerSeat("0.00");
+    }
+  }, []);
 
   const handleInvoiceSelection = useCallback((files: FileList | null) => {
     const selectedFile = files?.[0] ?? null;
@@ -366,7 +401,9 @@ export function useRegistrationForm({
     customFieldValues,
     setCustomFieldValues,
     licenseType,
-    setLicenseType,
+    setLicenseType: handleLicenseTypeChange,
+    billingCycle,
+    setBillingCycle,
     totalSeats,
     setTotalSeats: handleTotalSeatsChange,
     licenseStartDate,
@@ -396,6 +433,7 @@ export function useRegistrationForm({
     licenseStartDateValue,
     licenseExpiryDateLabel,
     licenseExpiryDateValue,
+    isFreeSoftwareLicense,
     currencySymbol,
     totalCost,
   };

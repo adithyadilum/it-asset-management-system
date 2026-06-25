@@ -99,6 +99,14 @@ export const POST = withApiKey('write:assets', async (request: NextRequest, { ap
     }
 
     const input = parsed.data;
+    const instanceAttributes = {
+      ...(input.instanceAttributes ?? {}),
+      ...(input.pillar === 'Software' &&
+      input.licenseType === 'Subscription' &&
+      input.billingCycle
+        ? { billing_cycle: input.billingCycle }
+        : {}),
+    };
 
     // 2. Fetch the selected model to verify existence and get prefix
     const modelWithCategory = await db.query.models.findFirst({
@@ -155,7 +163,7 @@ export const POST = withApiKey('write:assets', async (request: NextRequest, { ap
               status: 'Available',
               condition: input.condition,
               usefulLifeMonths,
-              instanceAttributes: input.instanceAttributes,
+              instanceAttributes,
             })
             .returning({ id: assets.id, assetTag: assets.assetTag });
 
@@ -233,6 +241,10 @@ export const POST = withApiKey('write:assets', async (request: NextRequest, { ap
         ...(input.pillar === 'Software' && input.licenseType
           ? {
               licenseType: input.licenseType,
+              billingCycle:
+                input.licenseType === 'Subscription'
+                  ? input.billingCycle
+                  : undefined,
               totalSeats: input.totalSeats ?? 1,
             }
           : {}),

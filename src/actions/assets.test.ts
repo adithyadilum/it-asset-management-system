@@ -142,6 +142,8 @@ const validSoftwarePayload = {
   basePrice: '600',
   currencyCode: 'USD',
   licenseType: 'Subscription',
+  billingCycle: 'Annual',
+  licenseExpiryDate: '2024-01-01',
   totalSeats: '10',
   serialNumber: 'LIC-98765',
 };

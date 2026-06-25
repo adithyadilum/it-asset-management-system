@@ -27,6 +27,10 @@ import {
   systemAuditLogs,
   users,
 } from '@/db/schema';
+import {
+  SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT,
+  isSoftwareLicenseNearCapacity,
+} from '@/lib/software-license-status';
 
 export type RegistryPillar = typeof categories.$inferSelect.pillar;
 export type AssetStatus = typeof assets.$inferSelect.status;
@@ -167,6 +171,7 @@ export async function getAssetsByPillar(
       count: sql<number>`count(*)::int`.as('count'),
     })
     .from(softwareAllocations)
+    .where(isNull(softwareAllocations.revokedAt))
     .groupBy(softwareAllocations.licenseId)
     .as('assigned_seats');
 
@@ -189,15 +194,16 @@ export async function getAssetsByPillar(
         or(
           and(isNotNull(softwareLicenses.expiryDate), lt(softwareLicenses.expiryDate, warningDate)),
           and(
-            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`), 
-            lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+            sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 >= ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
           )
         )
       );
     } else if (filters.status === 'available') {
       softwareStatusCondition = and(
         or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, warningDate)),
-        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+        sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 < ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
       );
     }
   }
@@ -292,7 +298,7 @@ export async function getAssetsByPillar(
     const isExpired = expiryDate ? expiryDate < new Date() : false;
     const isNearExpiry = expiryDate ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
-    const isNearFull = totalSeats > 0 && availableSeats <= 2;
+    const isNearFull = isSoftwareLicenseNearCapacity(totalSeats, availableSeats);
 
     let calculatedStatus = row.status;
     if (row.pillar === 'Software') {
@@ -347,6 +353,7 @@ export async function getAllAssetsUnified(
       count: sql<number>`count(*)::int`.as('count'),
     })
     .from(softwareAllocations)
+    .where(isNull(softwareAllocations.revokedAt))
     .groupBy(softwareAllocations.licenseId)
     .as('assigned_seats');
 
@@ -369,15 +376,16 @@ export async function getAllAssetsUnified(
         or(
           and(isNotNull(softwareLicenses.expiryDate), lt(softwareLicenses.expiryDate, warningDate)),
           and(
-            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`), 
-            lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+            sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 >= ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
           )
         )
       );
     } else if (filters.status === 'available') {
       softwareStatusCondition = and(
         or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, warningDate)),
-        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0) + 2`)
+        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+        sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 < ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
       );
     }
   }
@@ -491,7 +499,7 @@ export async function getAllAssetsUnified(
     const isExpired = expiryDate ? expiryDate < new Date() : false;
     const isNearExpiry = expiryDate ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
-    const isNearFull = totalSeats > 0 && availableSeats <= 2;
+    const isNearFull = isSoftwareLicenseNearCapacity(totalSeats, availableSeats);
 
     let calculatedStatus = row.status;
     if (row.pillar === 'Software') {

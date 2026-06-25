@@ -46,6 +46,7 @@ type PurchaseDetailsSectionProps = {
   totalCost: number;
   costPerSeat: string;
   setCostPerSeat: (v: string) => void;
+  isFreeSoftwareLicense?: boolean;
 
   warrantyMonths: string;
   setWarrantyMonths: (v: string) => void;
@@ -85,6 +86,7 @@ export function PurchaseDetailsSection({
   totalCost,
   costPerSeat,
   setCostPerSeat,
+  isFreeSoftwareLicense = false,
   warrantyMonths,
   setWarrantyMonths,
   WARRANTY_MONTH_OPTIONS,
@@ -176,6 +178,7 @@ export function PurchaseDetailsSection({
             onChange={setBasePrice}
             currencySymbol={currencySymbol}
             error={getError(state, 'basePrice')}
+            readOnly={isFreeSoftwareLicense}
           />
         </InlineFieldRow>
 
@@ -204,6 +207,7 @@ export function PurchaseDetailsSection({
             onChange={setTax}
             currencySymbol={currencySymbol}
             error={getError(state, 'tax')}
+            readOnly={isFreeSoftwareLicense}
           />
         </InlineFieldRow>
 
@@ -227,6 +231,7 @@ export function PurchaseDetailsSection({
               onChange={setCostPerSeat}
               currencySymbol={currencySymbol}
               error={getError(state, 'costPerSeat')}
+              readOnly={isFreeSoftwareLicense}
             />
           </InlineFieldRow>
         )}
