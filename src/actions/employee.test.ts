@@ -40,6 +40,21 @@ vi.mock('@/db/schema', () => ({
   categories: { id: 'categories.id' },
   models: { id: 'models.id' },
   notificationQueue: { id: 'notificationQueue.id' },
+  softwareAllocations: {
+    id: 'softwareAllocations.id',
+    assignedToUserId: 'softwareAllocations.assignedToUserId',
+    licenseId: 'softwareAllocations.licenseId',
+    allocatedAt: 'softwareAllocations.allocatedAt',
+    revokedAt: 'softwareAllocations.revokedAt',
+  },
+  softwareLicenses: {
+    id: 'softwareLicenses.id',
+    assetId: 'softwareLicenses.assetId',
+    modelId: 'softwareLicenses.modelId',
+    licenseKey: 'softwareLicenses.licenseKey',
+    licenseType: 'softwareLicenses.licenseType',
+    isActive: 'softwareLicenses.isActive',
+  },
 }));
 
 const mockDispatchAlert = vi.fn().mockResolvedValue(undefined);
@@ -62,6 +77,7 @@ vi.mock('next/cache', () => ({
 
 import {
   getCurrentEmployeeAssets,
+  getCurrentEmployeeSoftwareAssets,
   acceptAssignmentAction,
   rejectAssignmentAction,
   getPortalAlertsAction,
@@ -94,6 +110,44 @@ describe('getCurrentEmployeeAssets', () => {
     const res = await getCurrentEmployeeAssets();
     expect(res).toHaveLength(1);
     expect(res[0].assignedDate).toBe(mockDate.toISOString());
+  });
+});
+
+describe('getCurrentEmployeeSoftwareAssets', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('throws unauthorized if user is not authenticated', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    await expect(getCurrentEmployeeSoftwareAssets()).rejects.toThrow('Unauthorized');
+  });
+
+  it('returns active software allocations for the current user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    const mockDate = new Date('2023-02-01');
+    mockDb.select.mockReturnValueOnce(chain([{
+      allocationId: 7,
+      assetId: 'software-asset-id',
+      assetTag: 'SFT-001',
+      licenseKey: 'LIC-123',
+      modelName: 'Microsoft 365',
+      allocatedDate: mockDate,
+      licenseType: 'Subscription',
+    }]));
+
+    const res = await getCurrentEmployeeSoftwareAssets();
+    expect(res).toEqual([{
+      allocationId: 7,
+      assetId: 'software-asset-id',
+      assetTag: 'SFT-001',
+      licenseKey: 'LIC-123',
+      modelName: 'Microsoft 365',
+      status: 'active',
+      allocatedDate: mockDate.toISOString(),
+      licenseType: 'Subscription',
+      pillar: 'Software',
+    }]);
   });
 });
 

@@ -13,6 +13,8 @@ import {
   categories,
   models,
   notificationQueue,
+  softwareAllocations,
+  softwareLicenses,
 } from '@/db/schema';
 import { getPortalAlerts, type PortalAlerts } from '@/lib/data/portal-repo';
 import {
@@ -31,6 +33,18 @@ export type EmployeeAssignedAsset = {
   status: string;
   assignedDate: string;
   pillar: string;
+};
+
+export type EmployeeSoftwareAsset = {
+  allocationId: number;
+  assetId: string;
+  assetTag: string;
+  licenseKey: string | null;
+  modelName: string;
+  status: string;
+  allocatedDate: string;
+  licenseType: string;
+  pillar: 'Software';
 };
 
 /**
@@ -86,6 +100,70 @@ export async function getCurrentEmployeeAssets(): Promise<
       error,
     });
     throw new Error('Failed to load your assigned assets.');
+  }
+}
+
+/**
+ * Returns active software license allocations for the currently authenticated employee.
+ */
+export async function getCurrentEmployeeSoftwareAssets(): Promise<
+  EmployeeSoftwareAsset[]
+> {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    throw new Error('Unauthorized');
+  }
+
+  const startTime = Date.now();
+  try {
+    const rows = await db
+      .select({
+        allocationId: softwareAllocations.id,
+        assetId: assets.id,
+        assetTag: assets.assetTag,
+        licenseKey: softwareLicenses.licenseKey,
+        modelName: models.name,
+        allocatedDate: softwareAllocations.allocatedAt,
+        licenseType: softwareLicenses.licenseType,
+      })
+      .from(softwareAllocations)
+      .innerJoin(softwareLicenses, eq(softwareAllocations.licenseId, softwareLicenses.id))
+      .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
+      .innerJoin(models, eq(softwareLicenses.modelId, models.id))
+      .where(
+        and(
+          eq(softwareAllocations.assignedToUserId, currentUser.id),
+          isNull(softwareAllocations.revokedAt),
+          eq(softwareLicenses.isActive, true)
+        )
+      )
+      .orderBy(desc(softwareAllocations.allocatedAt));
+
+    console.info('getCurrentEmployeeSoftwareAssets succeeded', {
+      userId: currentUser.id,
+      durationMs: Date.now() - startTime,
+      rowCount: rows.length,
+    });
+
+    return rows.map((row) => ({
+      allocationId: row.allocationId,
+      assetId: row.assetId,
+      assetTag: row.assetTag,
+      licenseKey: row.licenseKey,
+      modelName: row.modelName,
+      status: 'active',
+      allocatedDate: row.allocatedDate.toISOString(),
+      licenseType: row.licenseType,
+      pillar: 'Software',
+    }));
+  } catch (error) {
+    console.error('getCurrentEmployeeSoftwareAssets failed', {
+      userId: currentUser.id,
+      durationMs: Date.now() - startTime,
+      error,
+    });
+    throw new Error('Failed to load your software access.');
   }
 }
 
