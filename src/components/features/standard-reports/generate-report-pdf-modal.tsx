@@ -1,5 +1,5 @@
-import { LoadingSpinner } from '@/components/shared/loading-spinner';
 "use client";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import { useCallback, useMemo, useState } from 'react';
 import { AlertCircle, TriangleAlert } from 'lucide-react';

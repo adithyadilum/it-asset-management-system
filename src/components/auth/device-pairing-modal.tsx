@@ -1,5 +1,5 @@
-import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';

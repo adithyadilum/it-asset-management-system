@@ -1,5 +1,5 @@
-import { LoadingSpinner } from '@/components/shared/loading-spinner';
 "use client";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import * as React from "react";
 import { LoaderCircle } from "lucide-react";

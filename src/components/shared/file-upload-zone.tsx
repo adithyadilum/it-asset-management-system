@@ -1,5 +1,5 @@
-import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import React, { useCallback, useState, useTransition } from 'react';
 import { useDropzone, FileRejection } from 'react-dropzone';
