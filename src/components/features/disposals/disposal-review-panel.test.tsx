@@ -84,7 +84,7 @@ describe('DisposalReviewPanel', () => {
     render(<DisposalReviewPanel {...mockProps} />);
 
     const rejectBtn = screen.getByRole('button', { name: 'Reject' });
-    const approveBtn = screen.getByRole('button', { name: 'Initiate Disposal' });
+    const approveBtn = screen.getByRole('button', { name: 'Approve' });
 
     fireEvent.click(rejectBtn);
     expect(mockProps.onReject).toHaveBeenCalled();

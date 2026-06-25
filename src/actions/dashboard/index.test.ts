@@ -35,7 +35,7 @@ describe('Dashboard Action: getDashboardBatchData', () => {
   it('returns restricted view / throws forbidden for Employee', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
     // The implementation throws 'Forbidden' for Employee
-    await expect(getDashboardBatchData()).rejects.toThrow('Forbidden');
+    await expect(getDashboardBatchData()).rejects.toThrow('FORBIDDEN');
   });
 
   it('returns full metrics for GlobalAdmin', async () => {

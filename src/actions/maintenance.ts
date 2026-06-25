@@ -56,8 +56,7 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
   if (!user) throw new Error('Unauthorized');
   if (
     user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinancialAuditor'
+    user.role !== 'ITOperator'
   )
     throw new Error('Forbidden');
 
@@ -124,8 +123,7 @@ export async function getTicketForIssueReview(
   if (!user) throw new Error('Unauthorized');
   if (
     user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinancialAuditor'
+    user.role !== 'ITOperator'
   )
     throw new Error('Forbidden');
 
@@ -226,8 +224,7 @@ export async function getVendors() {
   if (!user) throw new Error('Unauthorized');
   if (
     user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinancialAuditor'
+    user.role !== 'ITOperator'
   )
     throw new Error('Forbidden');
 
@@ -256,8 +253,7 @@ export async function getActiveRepairTickets(searchTerm = '') {
   if (!user) throw new Error('Unauthorized');
   if (
     user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinancialAuditor'
+    user.role !== 'ITOperator'
   )
     throw new Error('Forbidden');
 

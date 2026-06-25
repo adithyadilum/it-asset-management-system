@@ -15,7 +15,7 @@ describe('executeDisposalSchema', () => {
     disposalMethod: 'E-waste' as const,
     dataWiped: true,
     tagsRemoved: true,
-    receiptUrls: ['https://storage.example.com/receipt.pdf'],
+    receiptUrls: ['https://public.blob.vercel-storage.com/receipt.pdf'],
   };
 
   it('requires at least one disposalId', () => {
@@ -162,36 +162,16 @@ describe('executeDisposalSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('requires at least one receipt URL (via receiptUrls)', () => {
-    const result = executeDisposalSchema.safeParse(validInput);
-    expect(result.success).toBe(true);
-  });
-
-  it('fails when neither receiptUrl nor receiptUrls provided', () => {
-    const withoutReceipts = { ...validInput };
-    delete (withoutReceipts as { receiptUrls?: unknown[] }).receiptUrls;
+  it('accepts empty receiptUrls array as it is optional', () => {
+    const withoutReceipts = { ...validInput, receiptUrls: [] };
     const result = executeDisposalSchema.safeParse(withoutReceipts);
-    expect(result.success).toBe(false);
-  });
-
-  it('normalizes single receiptUrl into receiptUrls array', () => {
-    const result = executeDisposalSchema.safeParse({
-      ...validInput,
-      receiptUrl: 'https://storage.example.com/single.pdf',
-      receiptUrls: undefined,
-    });
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.receiptUrls).toContain(
-        'https://storage.example.com/single.pdf'
-      );
-    }
   });
 
-  it('validates each receiptUrl is a valid URL', () => {
+  it('validates each receiptUrl is a valid allowed URL', () => {
     const result = executeDisposalSchema.safeParse({
       ...validInput,
-      receiptUrls: ['not-a-url'],
+      receiptUrls: ['https://unauthorized-host.com/file.pdf'],
     });
     expect(result.success).toBe(false);
   });

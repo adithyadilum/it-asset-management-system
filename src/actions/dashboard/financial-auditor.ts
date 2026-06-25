@@ -2,7 +2,7 @@
 
 import { getAuthenticatedUser } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import { requireAccess, isFinancialAuditor } from '@/lib/auth/roles';
+import { requireAccess, canAccessFinancials } from '@/lib/auth/roles';
 import { logError } from '@/lib/latency';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
@@ -38,7 +38,7 @@ export interface FinanceDashboardBatchData {
 export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchData> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  requireAccess(user, isFinancialAuditor);
+  requireAccess(user, canAccessFinancials);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),
