@@ -56,11 +56,6 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
           />
         </div>
         <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start gap-2">
-          <Button variant="outline" size="sm" asChild className={`flex-1 sm:flex-none ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}>
-            <a href="https://docs.tiqri.com/api" target="_blank" rel="noopener noreferrer">
-              View API Docs
-            </a>
-          </Button>
           <div className="flex-1 sm:flex-none">
             <CreateApiKeyDialog onCreated={handleCreated} />
           </div>
