@@ -16,8 +16,8 @@ import {
   assetAssignments,
 } from '@/db/schema';
 import { eq, and, ilike, or, desc, sql, isNull } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { enforceActionAccess } from '@/actions/auth';
+import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import {
   resolveIssueSchema,
@@ -52,12 +52,8 @@ const DEFAULT_HISTORY_LIMIT = 3;
 
 export async function getPendingMaintenanceTickets(searchTerm = '') {
   // Fix A — FinanceAuditor must not access operational pending tickets
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator'
-  )
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
   try {
@@ -110,7 +106,10 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
 
     return { tickets, total: tickets.length };
   } catch (error) {
-    console.error('[getPendingMaintenanceTickets]', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[getPendingMaintenanceTickets]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     throw new Error('Failed to load maintenance data.');
   }
 }
@@ -119,12 +118,8 @@ export async function getTicketForIssueReview(
   ticketId: number
 ): Promise<IssueReviewPanelData> {
   // Fix A — FinanceAuditor must not access individual operational ticket details
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator'
-  )
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
   try {
@@ -158,15 +153,18 @@ export async function getTicketForIssueReview(
     const row = result[0];
     const purchase = row.purchase;
 
-    // Calculate Depreciation & Book Value from available purchase data
     const totalCost = purchase?.totalCost
       ? parseFloat(purchase.totalCost.toString())
       : 0;
-    const bookValue = calculateStraightLineDepreciation(
-      totalCost,
-      row.asset.usefulLifeMonths,
-      purchase?.purchaseDate ?? null
-    );
+    const salvage = row.asset.salvageValue
+      ? parseFloat(row.asset.salvageValue.toString())
+      : 0;
+    const bookValue = calculateCurrentBookValue({
+      cost: totalCost,
+      salvageValue: salvage,
+      usefulLifeMonths: row.asset.usefulLifeMonths,
+      purchaseDate: purchase?.purchaseDate ?? null,
+    });
 
     // Calculate Total Cost of Ownership (add repair costs)
     const repairResult = await db
@@ -212,20 +210,20 @@ export async function getTicketForIssueReview(
       totalTCO,
     } as unknown as IssueReviewPanelData;
   } catch (error) {
-    if (error instanceof Error && error.message === 'Ticket not found') throw error;
-    console.error('[getTicketForIssueReview]', error instanceof Error ? error.message : 'Unknown error');
+    if (error instanceof Error && error.message === 'Ticket not found')
+      throw error;
+    console.error(
+      '[getTicketForIssueReview]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     throw new Error('Failed to load maintenance data.');
   }
 }
 
 export async function getVendors() {
   // Fix A — FinanceAuditor must not access vendor operational data
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator'
-  )
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
   try {
@@ -242,19 +240,18 @@ export async function getVendors() {
       .where(eq(vendors.isActive, true))
       .orderBy(vendors.companyName);
   } catch (error) {
-    console.error('[getVendors]', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[getVendors]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     throw new Error('Failed to load maintenance data.');
   }
 }
 
 export async function getActiveRepairTickets(searchTerm = '') {
   // Fix A — FinanceAuditor must not access active repair operational data
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator'
-  )
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
   try {
@@ -289,7 +286,10 @@ export async function getActiveRepairTickets(searchTerm = '') {
 
     return { tickets, total: tickets.length };
   } catch (error) {
-    console.error('[getActiveRepairTickets]', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[getActiveRepairTickets]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     throw new Error('Failed to load maintenance data.');
   }
 }
@@ -300,8 +300,7 @@ export async function getRepairHistory(
   searchTerm = ''
 ) {
   // FinanceAuditor allowed — history is their permitted view
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -310,9 +309,15 @@ export async function getRepairHistory(
     throw new Error('Forbidden');
 
   // Fix B — Validate and bound pagination parameters
-  const paramsResult = getRepairHistoryParamsSchema.safeParse({ page, pageSize, searchTerm });
+  const paramsResult = getRepairHistoryParamsSchema.safeParse({
+    page,
+    pageSize,
+    searchTerm,
+  });
   if (!paramsResult.success) {
-    throw new Error(paramsResult.error.issues[0]?.message ?? 'Invalid pagination parameters.');
+    throw new Error(
+      paramsResult.error.issues[0]?.message ?? 'Invalid pagination parameters.'
+    );
   }
   const safeParams = paramsResult.data;
 
@@ -370,7 +375,10 @@ export async function getRepairHistory(
       totalPages: Math.ceil(total / safeParams.pageSize),
     };
   } catch (error) {
-    console.error('[getRepairHistory]', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[getRepairHistory]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     throw new Error('Failed to load maintenance data.');
   }
 }
@@ -380,8 +388,7 @@ export async function getAssetMaintenanceHistory(
   limit = DEFAULT_HISTORY_LIMIT
 ) {
   // FinanceAuditor allowed — this is the asset detail panel history view (last 3 records)
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
@@ -390,9 +397,14 @@ export async function getAssetMaintenanceHistory(
     throw new Error('Forbidden');
 
   // Fix B — Validate and bound assetId and limit parameters
-  const paramsResult = getAssetMaintenanceHistoryParamsSchema.safeParse({ assetId, limit });
+  const paramsResult = getAssetMaintenanceHistoryParamsSchema.safeParse({
+    assetId,
+    limit,
+  });
   if (!paramsResult.success) {
-    throw new Error(paramsResult.error.issues[0]?.message ?? 'Invalid parameters.');
+    throw new Error(
+      paramsResult.error.issues[0]?.message ?? 'Invalid parameters.'
+    );
   }
   const safeParams = paramsResult.data;
 
@@ -427,8 +439,12 @@ export async function getAssetMaintenanceHistory(
 
     return result as AssetMaintenanceRecord[];
   } catch (error) {
-    if (error instanceof Error && error.message === 'Asset not found') throw error;
-    console.error('[getAssetMaintenanceHistory]', error instanceof Error ? error.message : 'Unknown error');
+    if (error instanceof Error && error.message === 'Asset not found')
+      throw error;
+    console.error(
+      '[getAssetMaintenanceHistory]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     throw new Error('Failed to load maintenance data.');
   }
 }
@@ -442,8 +458,7 @@ export async function resolveIssueInternally(
   resolutionNote: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -582,8 +597,7 @@ export async function initiateVendorRepair(
   expectedReturnDate?: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -739,8 +753,7 @@ export async function completeRepairTicket(
   updateStatusTo: 'Available' | 'Disposed'
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -901,8 +914,7 @@ export async function reportDefectiveFromPanel(
   expectedReturnDate?: string
 ): Promise<{ success: boolean; message: string; ticketId?: number }> {
   // 1. Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 

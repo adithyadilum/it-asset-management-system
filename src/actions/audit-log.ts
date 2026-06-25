@@ -16,7 +16,7 @@ import {
 } from '@/db/schema';
 import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { extractLabelFromValues } from '@/lib/audit';
 import { auditLogQuerySchema } from '@/lib/validations/audit-log';
@@ -811,10 +811,7 @@ export async function getAssetAuditHistory(
   const timer = startLatencyTimer();
 
   try {
-    const currentUser = await getAuthenticatedUser();
-    if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
-      throw new Error('Unauthorized access to asset history.');
-    }
+    await enforceActionAccess(canViewAssetRegistry);
 
     // Keep paging bounded so history requests stay predictable.
     const validatedPage = Math.max(1, page);
@@ -921,10 +918,7 @@ export async function getAllAssetAuditHistory(
   const timer = startLatencyTimer();
 
   try {
-    const currentUser = await getAuthenticatedUser();
-    if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
-      throw new Error('Unauthorized access to asset history.');
-    }
+    await enforceActionAccess(canViewAssetRegistry);
 
     const whereCondition = and(
       eq(systemAuditLogs.entityType, 'Asset'),
@@ -1010,4 +1004,4 @@ export async function getAllAssetAuditHistory(
     });
     throw new Error('Failed to fetch all asset history.');
   }
-}
+}

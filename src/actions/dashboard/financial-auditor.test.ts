@@ -5,6 +5,12 @@ import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/use
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: async (predicate?: (role: string) => boolean) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('UNAUTHENTICATED');
+    if (predicate && !predicate(user.role)) throw new Error('FORBIDDEN: Forbidden');
+    return user;
+  },
 }));
 
 const mockGetWriteOffsLedger = vi.fn();
@@ -49,7 +55,7 @@ describe('getFinanceDashboardData', () => {
 
   it('throws unauthorized for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getFinanceDashboardData()).rejects.toThrow('Unauthorized');
+    await expect(getFinanceDashboardData()).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws forbidden for Employee', async () => {

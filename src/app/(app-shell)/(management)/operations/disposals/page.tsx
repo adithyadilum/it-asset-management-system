@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { db } from '@/db';

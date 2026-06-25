@@ -4,7 +4,7 @@ import { desc, eq, and, count } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { appNotifications, integrationSettings } from '@/db/schema';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
@@ -131,8 +131,7 @@ export async function getNotifications(limit = 10, offset = 0) {
 export async function markAsRead(id: string) {
   const timer = startLatencyTimer();
   try {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error('Unauthorized');
+    const user = await enforceActionAccess();
 
     const validation = markAsReadParamsSchema.safeParse({ id });
     if (!validation.success) {
@@ -162,8 +161,7 @@ export async function markAsRead(id: string) {
 export async function markAllAsRead() {
   const timer = startLatencyTimer();
   try {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error('Unauthorized');
+    const user = await enforceActionAccess();
 
     await db
       .update(appNotifications)

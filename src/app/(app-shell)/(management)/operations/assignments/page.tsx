@@ -26,7 +26,7 @@ function serializeDatesForClient<T>(value: T): T {
 }
 
 export default async function AssignmentsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  const currentUser = await requirePageAuth(canManageAssets);
+  await requirePageAuth(canManageAssets);
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const tabParam = typeof resolvedSearchParams?.tab === 'string' ? resolvedSearchParams.tab : undefined;
@@ -37,4 +37,4 @@ export default async function AssignmentsPage({ searchParams }: { searchParams?:
   const serializedData = serializeDatesForClient(data);
 
   return <AssignmentsDashboard data={serializedData as never} />;
-}
+}

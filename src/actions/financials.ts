@@ -12,8 +12,8 @@ import {
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import {  enforceActionAccess } from '@/actions/auth';
+import { calculateCurrentBookValue } from '@/lib/depreciation';
 import {
   depreciationLedgerParamsSchema,
   tcoLedgerParamsSchema,
@@ -24,8 +24,7 @@ import {
  * Reusable RBAC guard for all financial endpoints
  */
 async function enforceFinanceAccess() {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
 
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     throw new Error('Forbidden');
@@ -115,6 +114,7 @@ export async function getDepreciationLedger(
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
         usefulLifeMonths: assets.usefulLifeMonths,
+        salvageValue: assets.salvageValue,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
@@ -125,14 +125,15 @@ export async function getDepreciationLedger(
       .limit(validPageSize)
       .offset(offset);
 
-    // 4. Perform math mapping on the small slice using shared helper
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
-      const bookValue = calculateStraightLineDepreciation(
-        price,
-        row.usefulLifeMonths,
-        row.purchaseDate
-      );
+      const salvage = parseFloat(row.salvageValue?.toString() || '0');
+      const bookValue = calculateCurrentBookValue({
+        cost: price,
+        salvageValue: salvage,
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      });
 
       return {
         id: row.id,
@@ -436,4 +437,4 @@ export async function getWriteOffsLedger(
     }
     throw new Error('Failed to load write-offs ledger.');
   }
-}
+}

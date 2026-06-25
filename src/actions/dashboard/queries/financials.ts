@@ -8,24 +8,21 @@ import {
   softwareLicenses,
   softwareAllocations,
 } from '@/db/schema';
-import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/constants/dashboard';
 import type {
   TopHighValueAssetRow,
   SoftwareOptimizationRow,
 } from '@/types/dashboard';
+import { straightLineNbvSqlFragment } from '@/lib/depreciation';
 
 export async function getDashboardTopHighValueAssetsInternal(): Promise<TopHighValueAssetRow[]> {
   const bookValueSql = sql<number>`
-    GREATEST(0,
-      ${assetPurchases.totalCost}::numeric - (
-        ${assetPurchases.totalCost}::numeric
-        / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
-        * GREATEST(0,
-            EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
-            + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
-        )
-      )
-    )
+    ${sql.raw(straightLineNbvSqlFragment(
+      'asset_purchases.total_cost',
+      '1', // no exchange rate needed for the row output (it gets handled per row)
+      'assets.salvage_value',
+      'assets.useful_life_months',
+      'asset_purchases.purchase_date'
+    ))}
   `;
 
   const rows = await db
@@ -136,4 +133,4 @@ export async function getDashboardSoftwareOptimizationInternal(): Promise<Softwa
     };
   });
 }
-
+

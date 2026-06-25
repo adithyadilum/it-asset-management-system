@@ -3,8 +3,8 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getAuthenticatedUser } from '@/actions/auth';
-import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
+import { enforceFormAccess } from '@/actions/auth';
+import {  isGlobalAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,8 +14,7 @@ import {
   assetDocuments,
 } from '@/db/schema';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
-import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/constants/dashboard';
+import { calculateCurrentBookValue, DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { executeDisposalSchema } from '@/lib/validations/disposals';
 import type { DisposalFormState } from '@/types/disposals';
@@ -28,14 +27,9 @@ export async function executeAssetDisposal(
   const actionTimer = startLatencyTimer();
 
   // ── 1. Auth FIRST ─────────────────────────────────────────────────────────
-  const user = await getAuthenticatedUser();
-  if (!user) return { success: false, message: 'Unauthorized.' };
-
-  try {
-    requireAccess(user, isGlobalAdmin);
-  } catch {
-    return { success: false, message: 'Forbidden: insufficient permissions.' };
-  }
+  const auth = await enforceFormAccess(isGlobalAdmin);
+  if (!auth.ok) return auth.payload;
+  const user = auth.user;
 
   try {
     // ── 2. Parse and validate JSON payloads ──────────────────────────────────
@@ -154,6 +148,7 @@ export async function executeAssetDisposal(
           totalCost: assetPurchases.totalCost,
           purchaseDate: assetPurchases.purchaseDate,
           usefulLifeMonths: sql<number>`COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS})`,
+          salvageValue: assets.salvageValue,
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
@@ -162,11 +157,13 @@ export async function executeAssetDisposal(
       const bookValuesMap = new Map<string, number>();
       for (const row of purchaseData) {
         const totalCost = parseFloat(row.totalCost?.toString() || '0');
-        const bookValue = calculateStraightLineDepreciation(
-          totalCost,
-          row.usefulLifeMonths,
-          row.purchaseDate
-        );
+        const salvage = parseFloat(row.salvageValue?.toString() || '0');
+        const bookValue = calculateCurrentBookValue({
+          cost: totalCost,
+          salvageValue: salvage,
+          usefulLifeMonths: row.usefulLifeMonths,
+          purchaseDate: row.purchaseDate,
+        });
         bookValuesMap.set(row.assetId, Math.round(bookValue * 100) / 100);
       }
 
@@ -317,4 +314,4 @@ export async function executeAssetDisposal(
       startTime: actionTimer,
     });
   }
-}
+}

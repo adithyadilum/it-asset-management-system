@@ -3,30 +3,9 @@ import { eq, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { assets, assetPurchases, models, categories } from '@/db/schema';
 import { withApiKey } from '@/lib/api/with-api-key';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { apiError, parseBoundedInt } from '@/lib/api/utils';
+import { calculateCurrentBookValue } from '@/lib/depreciation';
 
-function apiError(status: number, code: string, message: string) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: { code, message },
-    },
-    { status }
-  );
-}
-
-function parseBoundedInt(value: string | null, defaultValue: number, min: number, max: number) {
-  if (value === null || value.trim() === '') {
-    return { ok: true as const, value: defaultValue };
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    return { ok: false as const };
-  }
-
-  return { ok: true as const, value: parsed };
-}
 
 export const GET = withApiKey('read:financials', async (request: NextRequest) => {
   try {
@@ -83,13 +62,15 @@ export const GET = withApiKey('read:financials', async (request: NextRequest) =>
     // Calculate current book value and accumulated depreciation using math helpers
     const data = result.map((row) => {
       const originalCost = parseFloat(row.totalCost?.toString() || '0');
+      const salvage = parseFloat(row.salvageValue?.toString() || '0');
       const usefulLife = row.usefulLifeMonths ?? 60;
 
-      const bookValue = calculateStraightLineDepreciation(
-        originalCost,
-        usefulLife,
-        row.purchaseDate
-      );
+      const bookValue = calculateCurrentBookValue({
+        cost: originalCost,
+        salvageValue: salvage,
+        usefulLifeMonths: usefulLife,
+        purchaseDate: row.purchaseDate,
+      });
 
       const roundedBookValue = Math.round(bookValue * 100) / 100;
       const accumulatedDepreciation = Math.round((originalCost - roundedBookValue) * 100) / 100;

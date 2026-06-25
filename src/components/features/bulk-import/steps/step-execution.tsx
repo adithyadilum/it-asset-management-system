@@ -1,9 +1,10 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import React, { useEffect, useRef, useState } from 'react';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CircleCheck, CircleX, Loader2, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { CircleCheck, CircleX, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { executeBulkImport } from '@/actions/bulk-import';
 import { tiqriToast } from '@/components/shared/sonner';
 import { cn } from '@/lib/utils';
@@ -112,7 +113,7 @@ export function StepExecution({ state, dispatch, onDone }: StepExecutionProps) {
         {isExecuting ? (
           <div className="flex flex-col items-center justify-center h-full gap-6 py-10 animate-in fade-in duration-500">
             <div className="flex flex-col items-center gap-4 w-full max-w-md">
-              <Loader2 className="size-10 text-primary animate-spin" />
+              <LoadingSpinner size="sm" />
               <p className="text-lg font-semibold animate-pulse">
                 Importing {totalToImport} {totalToImport === 1 ? 'asset' : 'assets'}...
               </p>

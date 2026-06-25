@@ -6,7 +6,7 @@ import { AdminMobileMetrics } from "@/components/features/mobile/admin-mobile-me
 import { AdminMobileMetricsSkeleton } from "@/components/features/mobile/admin-mobile-metrics-skeleton"
 
 export default async function MobilePage() {
-  const user = await requirePageAuth(canManageAssets)
+  await requirePageAuth(canManageAssets)
 
   return (
     <div className="flex w-full flex-col h-full bg-background md:hidden">
@@ -19,4 +19,4 @@ export default async function MobilePage() {
       </div>
     </div>
   )
-}
+}

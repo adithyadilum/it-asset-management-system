@@ -1,7 +1,8 @@
 'use client';
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AssetHistoryTimeline } from '@/components/shared/timeline';
 import { getAssetAuditHistory } from '@/actions/audit-log';
@@ -87,7 +88,7 @@ export function HistoryTab({
   if (isLoading) {
     return (
       <div className={cn('flex w-full items-center justify-center py-12', className)}>
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <LoadingSpinner size="sm" />
       </div>
     );
   }
@@ -150,7 +151,7 @@ export function HistoryTab({
           >
             {isLoadingMore ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin text-muted-foreground" />
+                <LoadingSpinner size="sm" />
                 Loading...
               </>
             ) : (

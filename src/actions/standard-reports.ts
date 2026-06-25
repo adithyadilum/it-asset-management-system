@@ -30,7 +30,7 @@ import {
   softwareAllocations,
   systemAuditLogs,
 } from '@/db/schema';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import type { ReportPreviewRow } from '@/types/standard-reports';
@@ -41,6 +41,12 @@ import {
 import { extractLabelFromValues } from '@/lib/audit';
 import { customStatuses } from '@/db/schema';
 import { reportPreviewFiltersSchema } from '@/lib/validations/standard-reports';
+import {
+  calculateCurrentBookValue,
+  calculateMonthlyDepreciation,
+  calculateMonthsElapsed,
+  DEFAULT_USEFUL_LIFE_MONTHS,
+} from '@/lib/depreciation';
 
 // ---------------------------------------------------------------------------
 // Input type
@@ -66,10 +72,7 @@ export interface ReportPreviewFilters {
 export async function getStandardReportsFilterOptions() {
   const actionTimer = startLatencyTimer();
 
-  const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) {
-    throw new Error('Forbidden: You do not have permission to access reports.');
-  }
+  await enforceActionAccess(canManageAssets);
 
   try {
     const [dbLocations, dbCustomStatuses, dbCategories, dbVendors] =
@@ -1195,26 +1198,20 @@ export async function fetchReportPreview(
       const data: ReportPreviewRow[] = rows.map((row) => {
         const cost = Number(row.totalCost || 0);
         const salvage = Number(row.salvageValue || 0);
-        const usefulLife = row.usefulLifeMonths || 36;
-        const ageMonths = row.purchaseDate
-          ? Math.max(
-              0,
-              Math.floor(
-                (Date.now() - new Date(row.purchaseDate).getTime()) /
-                  (1000 * 60 * 60 * 24 * 30.4)
-              )
-            )
-          : Math.max(
-              0,
-              Math.floor(
-                (Date.now() - new Date(row.createdAt).getTime()) /
-                  (1000 * 60 * 60 * 24 * 30.4)
-              )
-            );
+        const usefulLife = row.usefulLifeMonths || DEFAULT_USEFUL_LIFE_MONTHS;
+        const purchaseDate = row.purchaseDate || row.createdAt;
+        
+        const params = {
+          cost,
+          salvageValue: salvage,
+          usefulLifeMonths: usefulLife,
+          purchaseDate,
+        };
 
-        const monthlyDep = usefulLife > 0 ? (cost - salvage) / usefulLife : 0;
-        const accDep = monthlyDep * Math.min(usefulLife, ageMonths);
-        const bookVal = cost - accDep;
+        const bookVal = calculateCurrentBookValue(params);
+        const monthlyDep = calculateMonthlyDepreciation(params);
+        const accDep = Math.max(0, cost - bookVal);
+        const ageMonths = calculateMonthsElapsed(purchaseDate);
         const depPct = cost > 0 ? (accDep / cost) * 100 : 0;
 
         return {
@@ -1332,26 +1329,18 @@ export async function fetchReportPreview(
       const data: ReportPreviewRow[] = rows.map((row) => {
         const cost = Number(row.totalCost || 0);
         const salvage = Number(row.salvageValue || 0);
-        const usefulLife = row.usefulLifeMonths || 36;
-        const ageMonths = row.purchaseDate
-          ? Math.max(
-              0,
-              Math.floor(
-                (Date.now() - new Date(row.purchaseDate).getTime()) /
-                  (1000 * 60 * 60 * 24 * 30.4)
-              )
-            )
-          : Math.max(
-              0,
-              Math.floor(
-                (Date.now() - new Date(row.createdAt).getTime()) /
-                  (1000 * 60 * 60 * 24 * 30.4)
-              )
-            );
+        const usefulLife = row.usefulLifeMonths || DEFAULT_USEFUL_LIFE_MONTHS;
+        const purchaseDate = row.purchaseDate || row.createdAt;
+        
+        const params = {
+          cost,
+          salvageValue: salvage,
+          usefulLifeMonths: usefulLife,
+          purchaseDate,
+        };
 
-        const monthlyDep = usefulLife > 0 ? (cost - salvage) / usefulLife : 0;
-        const accDep = monthlyDep * Math.min(usefulLife, ageMonths);
-        const bookVal = cost - accDep;
+        const bookVal = calculateCurrentBookValue(params);
+        const accDep = Math.max(0, cost - bookVal);
 
         const stats = maintenanceStats.get(row.id) || {
           totalCost: 0,
@@ -1815,4 +1804,4 @@ export async function fetchReportPreview(
       startTime: actionTimer,
     });
   }
-}
+}

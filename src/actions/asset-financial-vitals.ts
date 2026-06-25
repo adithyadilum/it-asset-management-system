@@ -4,8 +4,8 @@
 import { db } from '@/db';
 import { assets, assetPurchases, maintenanceTickets } from '@/db/schema';
 import { eq, sql, and } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import {  enforceActionAccess } from '@/actions/auth';
+import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
 
 /**
@@ -13,8 +13,7 @@ import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
  * Financial vitals are sensitive and restricted to Admins and Finance auditors.
  */
 async function enforceFinanceAccess() {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
 
   if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     throw new Error(
@@ -65,6 +64,7 @@ export async function getAssetFinancialVitals(
         id: assets.id,
         assetTag: assets.assetTag,
         usefulLifeMonths: assets.usefulLifeMonths,
+        salvageValue: assets.salvageValue,
         purchaseDate: assetPurchases.purchaseDate,
         basePrice: assetPurchases.basePrice,
         tax: assetPurchases.tax,
@@ -104,14 +104,15 @@ export async function getAssetFinancialVitals(
       repairResult[0]?.totalRepair?.toString() || '0'
     );
 
-    // 3. Calculate Depreciation & Book Value using shared math helper
     const price = parseFloat(asset.totalCost?.toString() || '0');
-    const lifeMonths = asset.usefulLifeMonths || 60; // Default to 5 years if not set
-    const currentBookValue = calculateStraightLineDepreciation(
-      price,
-      lifeMonths,
-      asset.purchaseDate
-    );
+    const salvage = parseFloat(asset.salvageValue?.toString() || '0');
+    const params = {
+      cost: price,
+      salvageValue: salvage,
+      usefulLifeMonths: asset.usefulLifeMonths,
+      purchaseDate: asset.purchaseDate,
+    };
+    const currentBookValue = calculateCurrentBookValue(params);
 
     // 4. Determine Warranty Status
     const isUnderWarranty = asset.warrantyExpiry
@@ -130,7 +131,7 @@ export async function getAssetFinancialVitals(
       currencyCode: asset.currencyCode || 'LKR',
       warrantyExpiry: asset.warrantyExpiry,
       isUnderWarranty,
-      usefulLifeMonths: lifeMonths,
+      usefulLifeMonths: asset.usefulLifeMonths || 60,
       currentBookValue: Math.round(currentBookValue * 100) / 100,
       totalRepairCosts,
       totalTCO: Math.round((price + totalRepairCosts) * 100) / 100,
@@ -157,4 +158,4 @@ export async function getAssetFinancialVitals(
     );
     throw new Error('Failed to load financial vitals.');
   }
-}
+}

@@ -3,7 +3,7 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,7 +14,7 @@ import {
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { normalizeAssetIds } from '@/actions/disposals/utils';
-import { requireAccess, canManageAssets } from '@/lib/auth/roles';
+import {  canManageAssets } from '@/lib/auth/roles';
 import { createDisposalRequestSchema } from '@/lib/validations/disposals';
 
 export async function createDisposalRequest(input: {
@@ -23,10 +23,7 @@ export async function createDisposalRequest(input: {
   justification?: string;
 }) {
   const actionTimer = startLatencyTimer();
-  const user = await getAuthenticatedUser();
-
-  if (!user) throw new Error('UNAUTHENTICATED');
-  requireAccess(user, canManageAssets);
+  const user = await enforceActionAccess(canManageAssets);
 
   // ── Zod validation ────────────────────────────────────────────────────────
   const parsed = createDisposalRequestSchema.safeParse({
@@ -220,4 +217,4 @@ export async function createDisposalRequest(input: {
       startTime: actionTimer,
     });
   }
-}
+}

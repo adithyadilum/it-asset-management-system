@@ -10,13 +10,15 @@ import {
 } from '@/db/schema';
 import { unstable_cache } from 'next/cache';
 import {
-  DEFAULT_USEFUL_LIFE_MONTHS,
+  
   DEFAULT_SOFTWARE_SEAT_COST,
   DASHBOARD_KPI_CACHE_TTL,
   HIGH_MAINTENANCE_TICKET_THRESHOLD,
   FLEET_HEALTH_WEIGHTS,
 } from '@/lib/constants/dashboard';
 import type { DashboardKpiMetrics } from '@/types/dashboard';
+import { convertCurrencyAmount } from '@/lib/currency';
+import { straightLineNbvSqlFragment } from '@/lib/depreciation';
 
 function getFleetHealthLabel(score: number): string {
   if (score >= 85) return 'Excellent';
@@ -127,24 +129,21 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
 
       db
         .select({
-          totalAssetValue: sql<number>`SUM(${assetPurchases.totalCost})`,
-          totalAssetValuePrev: sql<number>`SUM(CASE WHEN ${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp THEN ${assetPurchases.totalCost} ELSE 0 END)`,
+          totalAssetValue: sql<number>`SUM(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1))`,
+          totalAssetValuePrev: sql<number>`SUM(CASE WHEN ${assets.createdAt} < ${thirtyDaysAgo.toISOString()}::timestamp THEN ${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1) ELSE 0 END)`,
           nbv: sql<number>`
             SUM(
               CASE WHEN ${assets.status} != 'Disposed' THEN
                 CASE WHEN ${assetPurchases.purchaseDate} IS NULL THEN
-                  COALESCE(${assetPurchases.totalCost}::numeric, 0)
+                  COALESCE(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1), 0)
                 ELSE
-                  GREATEST(0,
-                    ${assetPurchases.totalCost}::numeric - (
-                      ${assetPurchases.totalCost}::numeric
-                      / GREATEST(1, COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS}))
-                      * GREATEST(0,
-                         EXTRACT(YEAR FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp)) * 12
-                         + EXTRACT(MONTH FROM AGE(NOW(), ${assetPurchases.purchaseDate}::timestamp))
-                      )
-                    )
-                  )
+                  ${sql.raw(straightLineNbvSqlFragment(
+                    'asset_purchases.total_cost',
+                    'asset_purchases.exchange_rate',
+                    'assets.salvage_value',
+                    'assets.useful_life_months',
+                    'asset_purchases.purchase_date'
+                  ))}
                 END
               ELSE 0 END
             )
@@ -218,7 +217,7 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
         ? db
             .select({
               assetId: assetPurchases.assetId,
-              totalCost: assetPurchases.totalCost,
+              totalCostLkr: sql<number>`${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1)`,
             })
             .from(assetPurchases)
             .where(inArray(assetPurchases.assetId, softwareAssetIds))
@@ -240,9 +239,14 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     const warrantyExpiries30Days = Number(financialMetricsRes[0]?.warrantyExpiries30Days || 0);
     const warrantyCovered = Number(financialMetricsRes[0]?.warrantyCovered || 0);
 
-    const cumulativeRepairSpend = parseFloat(maintenanceMetricsRes[0]?.allTimeRepair?.toString() || '0');
-    const repairThisMonth = parseFloat(maintenanceMetricsRes[0]?.repairThisMonth?.toString() || '0');
-    const repairLastMonth = parseFloat(maintenanceMetricsRes[0]?.repairLastMonth?.toString() || '0');
+    // Maintenance actualCost has no currency column — UI convention is USD (see repair history page).
+    // Normalize to LKR using the same static rates as the rest of the app.
+    const rawRepairAll = parseFloat(maintenanceMetricsRes[0]?.allTimeRepair?.toString() || '0');
+    const rawRepairThisMonth = parseFloat(maintenanceMetricsRes[0]?.repairThisMonth?.toString() || '0');
+    const rawRepairLastMonth = parseFloat(maintenanceMetricsRes[0]?.repairLastMonth?.toString() || '0');
+    const cumulativeRepairSpend = convertCurrencyAmount(rawRepairAll, 'USD', 'LKR');
+    const repairThisMonth = convertCurrencyAmount(rawRepairThisMonth, 'USD', 'LKR');
+    const repairLastMonth = convertCurrencyAmount(rawRepairLastMonth, 'USD', 'LKR');
     const repairSpendTrend =
       repairLastMonth > 0
         ? Math.round(((repairThisMonth - repairLastMonth) / repairLastMonth) * 1000) / 10
@@ -255,11 +259,11 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       allocationsCountRes.map((a) => [a.licenseId, a.count])
     );
 
-    // Build software purchases map from the parallel query result
+    // Build software purchases map from the parallel query result (values are LKR-normalized)
     const softwarePurchasesMap = new Map<string, number>(
       softwarePurchasesRes.map((p) => [
         p.assetId,
-        parseFloat(p.totalCost?.toString() || '0'),
+        parseFloat(p.totalCostLkr?.toString() || '0'),
       ])
     );
 
@@ -335,4 +339,4 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     revalidate: DASHBOARD_KPI_CACHE_TTL,
     tags: ['dashboard-kpis'],
   }
-);
+);

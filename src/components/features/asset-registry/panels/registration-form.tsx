@@ -1,7 +1,7 @@
 "use client";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import * as React from 'react';
-import { LoaderCircle } from 'lucide-react';
 
 import {
   SlidePanel,
@@ -207,7 +207,7 @@ export function RegistrationForm({
         id: 'submit',
         label: isPending ? (
           <span className="inline-flex items-center gap-2">
-            <LoaderCircle className="h-4 w-4 animate-spin" />
+            <LoadingSpinner size="sm" />
             <span>{config.submittingLabel}</span>
           </span>
         ) : (
@@ -348,4 +348,4 @@ export function RegistrationForm({
       />
     </>
   );
-}
+}

@@ -1,7 +1,7 @@
 'use server';
 
-import { getAuthenticatedUser } from '@/actions/auth';
-import { requireAccess, isITOperator } from '@/lib/auth/roles';
+import {  enforceActionAccess } from '@/actions/auth';
+import {  isITOperator } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -27,9 +27,7 @@ export interface ITDashboardBatchData {
 
 /** Fetches all IT-related dashboard data in parallel. Restricted to ITOperator / GlobalAdmin. */
 export async function getITDashboardData(): Promise<ITDashboardBatchData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  requireAccess(user, isITOperator);
+  await enforceActionAccess(isITOperator);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),
@@ -79,4 +77,4 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
     highMaintenanceAssets:
       results[4].status === 'fulfilled' ? (results[4].value as HighMaintenanceRow[]) : [],
   };
-}
+}

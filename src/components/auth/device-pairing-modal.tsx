@@ -1,9 +1,10 @@
 'use client';
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
-import { CheckCircle2, RefreshCw, Loader2, QrCode } from 'lucide-react';
+import { CheckCircle2, RefreshCw, QrCode } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -139,7 +140,7 @@ export default function DevicePairingModal({ open, onOpenChange }: DevicePairing
                     {/* STATE: LOADING */}
                     {pairingState === 'loading' && (
                         <div className="flex flex-col items-center text-muted-foreground animate-pulse">
-                            <Loader2 className="w-12 h-12 mb-4 animate-spin text-primary" />
+                            <LoadingSpinner size="sm" />
                             <p>Generating secure token...</p>
                         </div>
                     )}
