@@ -5,6 +5,11 @@ import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/use
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user)) throw new Error('Forbidden');
+  }),
 }));
 
 // Mock queries
