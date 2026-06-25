@@ -196,7 +196,7 @@ export const DeviceModelForm = forwardRef<MasterDataFormRef, DeviceModelFormProp
 
             setModelImageFile(selectedFile);
             setRemoveExistingImage(true);
-            if (selectedFile) setShowModelImageUploader(true);
+            if (selectedFile) setShowModelImageUploader(false);
             setIsModelImageDragOver(false);
         }, [modelImageInputRef]);
 
