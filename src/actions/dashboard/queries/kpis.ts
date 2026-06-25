@@ -17,6 +17,7 @@ import {
   FLEET_HEALTH_WEIGHTS,
 } from '@/lib/constants/dashboard';
 import type { DashboardKpiMetrics } from '@/types/dashboard';
+import { convertCurrencyAmount } from '@/lib/currency';
 
 function getFleetHealthLabel(score: number): string {
   if (score >= 85) return 'Excellent';
@@ -240,9 +241,14 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     const warrantyExpiries30Days = Number(financialMetricsRes[0]?.warrantyExpiries30Days || 0);
     const warrantyCovered = Number(financialMetricsRes[0]?.warrantyCovered || 0);
 
-    const cumulativeRepairSpend = parseFloat(maintenanceMetricsRes[0]?.allTimeRepair?.toString() || '0');
-    const repairThisMonth = parseFloat(maintenanceMetricsRes[0]?.repairThisMonth?.toString() || '0');
-    const repairLastMonth = parseFloat(maintenanceMetricsRes[0]?.repairLastMonth?.toString() || '0');
+    // Maintenance actualCost has no currency column — UI convention is USD (see repair history page).
+    // Normalize to LKR using the same static rates as the rest of the app.
+    const rawRepairAll = parseFloat(maintenanceMetricsRes[0]?.allTimeRepair?.toString() || '0');
+    const rawRepairThisMonth = parseFloat(maintenanceMetricsRes[0]?.repairThisMonth?.toString() || '0');
+    const rawRepairLastMonth = parseFloat(maintenanceMetricsRes[0]?.repairLastMonth?.toString() || '0');
+    const cumulativeRepairSpend = convertCurrencyAmount(rawRepairAll, 'USD', 'LKR');
+    const repairThisMonth = convertCurrencyAmount(rawRepairThisMonth, 'USD', 'LKR');
+    const repairLastMonth = convertCurrencyAmount(rawRepairLastMonth, 'USD', 'LKR');
     const repairSpendTrend =
       repairLastMonth > 0
         ? Math.round(((repairThisMonth - repairLastMonth) / repairLastMonth) * 1000) / 10
