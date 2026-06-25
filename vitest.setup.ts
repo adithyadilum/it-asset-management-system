@@ -42,3 +42,25 @@ import { afterEach, afterAll } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+  unstable_rethrow: vi.fn(),
+}));
+
+import React from 'react';
+
+vi.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ children, href, ...props }: any) => {
+    return React.createElement('a', { href, ...props }, children);
+  },
+}));

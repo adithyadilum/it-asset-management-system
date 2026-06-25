@@ -1,8 +1,8 @@
 'use server';
 
-import {  enforceActionAccess } from '@/actions/auth';
+import { enforceActionAccess } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import {  isFinancialAuditor } from '@/lib/auth/roles';
+import { canAccessFinancials } from '@/lib/auth/roles';
 import { logError } from '@/lib/latency';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
@@ -36,7 +36,7 @@ export interface FinanceDashboardBatchData {
 
 /** Fetches all financial dashboard data in parallel. Restricted to FinancialAuditor / GlobalAdmin. */
 export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchData> {
-  await enforceActionAccess(isFinancialAuditor);
+  await enforceActionAccess(canAccessFinancials);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),
@@ -48,10 +48,22 @@ export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchDa
     getRecentActivitiesInternal(),
   ]);
 
-  const [kpiResult, invResult, deptResult, topAssetResult, writeOffResult, swOptResult, activityResult] = results;
+  const [
+    kpiResult,
+    invResult,
+    deptResult,
+    topAssetResult,
+    writeOffResult,
+    swOptResult,
+    activityResult,
+  ] = results;
 
   if (kpiResult.status === 'rejected') {
-    logError({ scope: 'DASHBOARD', label: 'kpi_metrics_fetch', error: kpiResult.reason });
+    logError({
+      scope: 'DASHBOARD',
+      label: 'kpi_metrics_fetch',
+      error: kpiResult.reason,
+    });
     throw kpiResult.reason;
   }
 
@@ -62,14 +74,24 @@ export async function getFinanceDashboardData(): Promise<FinanceDashboardBatchDa
         ? invResult.value
         : { inventoryData: [], utilizationRate: 0 },
     departmentAllocation:
-      deptResult.status === 'fulfilled' ? (deptResult.value as DepartmentAllocationItem[]) : [],
+      deptResult.status === 'fulfilled'
+        ? (deptResult.value as DepartmentAllocationItem[])
+        : [],
     topHighValueAssets:
-      topAssetResult.status === 'fulfilled' ? (topAssetResult.value as TopHighValueAssetRow[]) : [],
+      topAssetResult.status === 'fulfilled'
+        ? (topAssetResult.value as TopHighValueAssetRow[])
+        : [],
     writeOffsLedger:
-      writeOffResult.status === 'fulfilled' ? (writeOffResult.value as WriteOffLedgerRow[]) : [],
+      writeOffResult.status === 'fulfilled'
+        ? (writeOffResult.value as WriteOffLedgerRow[])
+        : [],
     softwareOptimization:
-      swOptResult.status === 'fulfilled' ? (swOptResult.value as SoftwareOptimizationRow[]) : [],
+      swOptResult.status === 'fulfilled'
+        ? (swOptResult.value as SoftwareOptimizationRow[])
+        : [],
     recentActivities:
-      activityResult.status === 'fulfilled' ? (activityResult.value as RecentActivity[]) : [],
+      activityResult.status === 'fulfilled'
+        ? (activityResult.value as RecentActivity[])
+        : [],
   };
-}
+}
