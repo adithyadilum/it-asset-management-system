@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
-import { allocateSoftwareLicensesAction } from '@/actions/software';
+import {
+  allocateSoftwareLicensesAction,
+  revokeSoftwareLicenseAllocationAction,
+} from '@/actions/software';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
@@ -9,6 +12,7 @@ vi.mock('@/actions/auth', () => ({
 }));
 
 const { mockDb, mockTransaction } = vi.hoisted(() => {
+  const updateReturning = vi.fn().mockResolvedValue([{ id: 10 }]);
   const tx = {
     query: {
       softwareLicenses: {
@@ -17,6 +21,12 @@ const { mockDb, mockTransaction } = vi.hoisted(() => {
     },
     insert: vi.fn(() => ({
       values: vi.fn(),
+    })),
+    updateReturning,
+    update: vi.fn(() => ({
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      returning: updateReturning,
     })),
   };
 
@@ -35,8 +45,13 @@ const { mockDb, mockTransaction } = vi.hoisted(() => {
 
 vi.mock('@/db', () => ({ db: mockDb }));
 vi.mock('@/db/schema', () => ({
-  softwareLicenses: { assetId: 'softwareLicenses.assetId' },
-  softwareAllocations: { id: 'softwareAllocations.id' },
+  softwareLicenses: { id: 'softwareLicenses.id', assetId: 'softwareLicenses.assetId' },
+  softwareAllocations: {
+    id: 'softwareAllocations.id',
+    licenseId: 'softwareAllocations.licenseId',
+    assignedToUserId: 'softwareAllocations.assignedToUserId',
+    revokedAt: 'softwareAllocations.revokedAt',
+  },
 }));
 
 vi.mock('@/lib/audit', () => ({
@@ -136,6 +151,58 @@ describe('allocateSoftwareLicensesAction', () => {
     expect(mockTransaction.insert).toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
     expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/my-assets');
     expect(revalidateTag).toHaveBeenCalledWith('dashboard-kpis', 'max');
+  });
+});
+
+describe('revokeSoftwareLicenseAllocationAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTransaction.updateReturning.mockResolvedValue([{ id: 10 }]);
+  });
+
+  it('returns unauthorized when user is not logged in', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(null);
+    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
+    expect(result).toEqual({ success: false, error: 'Unauthorized: Please sign in.' });
+  });
+
+  it('returns forbidden for non-admin roles', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
+    expect(result.success).toBe(false);
+    expect((result as { success: false; error: string }).error).toContain('Forbidden');
+  });
+
+  it('revokes an active software allocation and revalidates affected views', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockTransaction.query.softwareLicenses.findFirst.mockResolvedValue({
+      id: 'license-1',
+    });
+
+    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
+
+    expect(result).toEqual({ success: true });
+    expect(mockTransaction.update).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith('/assets');
+    expect(revalidatePath).toHaveBeenCalledWith('/assets/software');
+    expect(revalidatePath).toHaveBeenCalledWith('/my-assets');
+    expect(revalidateTag).toHaveBeenCalledWith('dashboard-kpis', 'max');
+  });
+
+  it('returns an error when no active allocation exists for the user', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    mockTransaction.query.softwareLicenses.findFirst.mockResolvedValue({
+      id: 'license-1',
+    });
+    mockTransaction.updateReturning.mockResolvedValueOnce([]);
+
+    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Active software allocation not found for this user.',
+    });
   });
 });
