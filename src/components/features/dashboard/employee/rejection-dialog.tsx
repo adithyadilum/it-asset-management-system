@@ -1,7 +1,8 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
 
 import * as React from 'react';
-import { Loader2, TriangleAlert } from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { rejectAssignmentAction } from '@/actions/employee';
@@ -140,7 +141,7 @@ export function RejectionDialog({
             <Button type="submit" disabled={isSubmitting || reason.trim().length < 10}>
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <LoadingSpinner size="sm" />
                   Submitting...
                 </span>
               ) : (

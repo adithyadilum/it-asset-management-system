@@ -1,3 +1,4 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import React, { useState } from "react";
 import {
     Dialog,
@@ -140,7 +141,7 @@ export function PrintConfigurationModal({
                         disabled={isGenerating}
                         className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
-                        {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isGenerating && <LoadingSpinner size="sm" />}
                         {isGenerating ? "Generating PDF..." : "Generate"}
                     </Button>
                 </DialogFooter>

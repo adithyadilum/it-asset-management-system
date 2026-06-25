@@ -1,3 +1,4 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 "use client";
 
 import * as React from "react";
@@ -49,7 +50,7 @@ export function FormPanel({
       id: "submit",
       label: isSubmitting ? (
         <span className="inline-flex items-center gap-2">
-          <LoaderCircle className="h-4 w-4 animate-spin" />
+          <LoadingSpinner size="sm" />
           <span>{submittingLabel}</span>
         </span>
       ) : (

@@ -1,9 +1,10 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
 
 import { useState, useTransition } from 'react';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, ChevronDown, Loader2, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ArrowRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -228,7 +229,7 @@ export function InteractiveStatusBadge({
               onClick={handleConfirm}
               disabled={isPending || reasonNote.trim().length < 10}
             >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isPending && <LoadingSpinner size="sm" />}
               Confirm Override
             </Button>
           </DialogFooter>

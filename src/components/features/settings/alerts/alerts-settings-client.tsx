@@ -1,3 +1,4 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -7,7 +8,6 @@ import {
   MessageSquare,
   ShieldCheck,
   Activity,
-  Loader2,
   Calendar,
   CheckCircle,
   AlertTriangle,
@@ -457,7 +457,7 @@ export function AlertsSettingsClient() {
                                 />
                                 {isRuleUpdating && (
                                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                    <Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving...
+                                    <LoadingSpinner size="sm" /> Saving...
                                   </span>
                                 )}
                               </div>
@@ -647,7 +647,7 @@ export function AlertsSettingsClient() {
                       onClick={handleTestEmail}
                       className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-border hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
                     >
-                      {testingEmail ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      {testingEmail ? <LoadingSpinner size="sm" /> : null}
                       Test Connection
                     </button>
                   </div>
@@ -684,7 +684,7 @@ export function AlertsSettingsClient() {
                       onClick={handleTestTeams}
                       className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-border hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
                     >
-                      {testingTeams ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      {testingTeams ? <LoadingSpinner size="sm" /> : null}
                       Test Webhook
                     </button>
                   </div>
@@ -699,7 +699,7 @@ export function AlertsSettingsClient() {
                   onClick={handleSaveIntegrations}
                   className="flex items-center justify-center gap-2 h-10 px-6 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
                 >
-                  {savingIntegrations ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {savingIntegrations ? <LoadingSpinner size="sm" /> : null}
                   Save Integration Settings
                 </button>
               </div>

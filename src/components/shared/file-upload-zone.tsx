@@ -1,8 +1,9 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
 
 import React, { useCallback, useState, useTransition } from 'react';
 import { useDropzone, FileRejection } from 'react-dropzone';
-import { UploadCloud, File as FileIcon, X, Loader2 } from 'lucide-react';
+import { UploadCloud, File as FileIcon, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
@@ -167,7 +168,7 @@ export function FileUploadZone({
           >
             {isUploading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <LoadingSpinner size="sm" />
                 Uploading Files...
               </>
             ) : (

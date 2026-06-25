@@ -1,3 +1,4 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
 
 import { useState } from 'react';
@@ -9,7 +10,6 @@ import {
   Clock,
   CalendarDays,
   Unlink,
-  Loader2,
   SmartphoneNfc,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -180,7 +180,7 @@ export function DevicesList({ devices }: DevicesListProps) {
                 className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-colors"
               >
                 {isUnlinking ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <LoadingSpinner size="sm" />
                 ) : (
                   <Unlink className="h-3.5 w-3.5" />
                 )}

@@ -1,3 +1,4 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 "use client";
 
 import * as React from 'react';
@@ -207,7 +208,7 @@ export function RegistrationForm({
         id: 'submit',
         label: isPending ? (
           <span className="inline-flex items-center gap-2">
-            <LoaderCircle className="h-4 w-4 animate-spin" />
+            <LoadingSpinner size="sm" />
             <span>{config.submittingLabel}</span>
           </span>
         ) : (

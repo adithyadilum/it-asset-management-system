@@ -1,8 +1,8 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 'use client';
 
 import {
   ClipboardList,
-  Loader2,
   Monitor,
   Search,
   SquareMenu,
@@ -504,7 +504,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
               <div className="mt-2 border-t border-border px-1 pt-2 text-xs text-muted-foreground">
                 {isSearching ? (
                   <span className="inline-flex items-center gap-1">
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <LoadingSpinner size="sm" />
                     Searching...
                   </span>
                 ) : (

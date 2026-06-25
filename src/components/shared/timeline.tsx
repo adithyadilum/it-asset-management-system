@@ -1,5 +1,7 @@
 'use client';
 
+import { formatMoneyByCurrency } from '@/lib/currency';
+import React, { useMemo } from 'react';
 import { format } from 'date-fns';
 import {
     CheckCircle2,
@@ -170,11 +172,7 @@ function formatTimelineValue(field: string, value: unknown): string {
 
     if (typeof value === 'number') {
         if (/cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(field)) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                maximumFractionDigits: 2,
-            }).format(value);
+            return formatMoneyByCurrency(value, 'USD');
         }
 
         return new Intl.NumberFormat('en-US').format(value);
@@ -192,11 +190,7 @@ function formatTimelineValue(field: string, value: unknown): string {
     if (/cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(field)) {
         const parsed = Number(text.replace(/[^0-9.-]/g, ''));
         if (Number.isFinite(parsed) && text.trim().length > 0) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                maximumFractionDigits: 2,
-            }).format(parsed);
+            return formatMoneyByCurrency(parsed, 'USD');
         }
     }
 
