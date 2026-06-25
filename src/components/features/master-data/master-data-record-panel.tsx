@@ -10,7 +10,6 @@ import {
     type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-
 import { deleteMasterDataRecords, updateMasterDataRecord } from "@/actions/master-data";
 import {
     INITIAL_UPDATE_MASTER_DATA_STATE,

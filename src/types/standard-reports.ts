@@ -24,6 +24,19 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   dateTo: '',
 };
 
+export interface ReportPreviewFilters {
+  source?: string;
+  assetType?: string;
+  category?: string;
+  location?: string;
+  status?: string;
+  masterDataType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Report Preview Row (matches the preview DataTable columns)
 // ---------------------------------------------------------------------------
