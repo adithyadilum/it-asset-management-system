@@ -3,7 +3,7 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import { enforceFormAccess } from '@/actions/auth';
 import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
@@ -27,14 +27,9 @@ export async function executeAssetDisposal(
   const actionTimer = startLatencyTimer();
 
   // ── 1. Auth FIRST ─────────────────────────────────────────────────────────
-  const user = await getAuthenticatedUser();
-  if (!user) return { success: false, message: 'Unauthorized.' };
-
-  try {
-    requireAccess(user, isGlobalAdmin);
-  } catch {
-    return { success: false, message: 'Forbidden: insufficient permissions.' };
-  }
+  const auth = await enforceFormAccess(isGlobalAdmin);
+  if (!auth.ok) return auth.payload;
+  const user = auth.user;
 
   try {
     // ── 2. Parse and validate JSON payloads ──────────────────────────────────

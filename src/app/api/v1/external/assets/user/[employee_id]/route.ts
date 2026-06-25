@@ -3,16 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withApiKey } from '@/lib/api/with-api-key'
 import { getAssetsByEmployeeId } from '@/lib/data/external-api-repo'
 import { isValidUuid } from '@/lib/auth/uuid'
+import { apiError } from '@/lib/api/utils'
 
-function apiError(status: number, code: string, message: string) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: { code, message },
-    },
-    { status }
-  )
-}
 
 export const GET = withApiKey('read:assets:by-user', async (
   _request: NextRequest,
