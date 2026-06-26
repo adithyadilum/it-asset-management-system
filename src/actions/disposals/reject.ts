@@ -23,10 +23,20 @@ export async function rejectDisposalRequest(
 ): Promise<DisposalFormState> {
   const actionTimer = startLatencyTimer();
 
+  // ── 1. Auth FIRST — before any payload parsing ────────────────────────────
+  const user = await getAuthenticatedUser();
+  if (!user) return { success: false, message: 'Unauthorized.' };
+
+  try {
+    requireAccess(user, isGlobalAdmin);
+  } catch {
+    return { success: false, message: 'Forbidden: insufficient permissions.' };
+  }
+
+  // ── 2. Safe JSON parsing ──────────────────────────────────────────────────
   let parsedDisposalIds: number[];
   let parsedAssetIds: string[];
 
-  // Safe JSON parsing
   try {
     parsedDisposalIds = JSON.parse(String(formData.get('disposalIds') || '[]'));
     parsedAssetIds = JSON.parse(String(formData.get('assetIds') || '[]'));
@@ -34,7 +44,7 @@ export async function rejectDisposalRequest(
     return { success: false, message: 'Invalid payload format for IDs.' };
   }
 
-  // Validate schema
+  // ── 3. Zod schema validation ──────────────────────────────────────────────
   const parsed = rejectDisposalSchema.safeParse({
     disposalIds: parsedDisposalIds,
     assetIds: parsedAssetIds,
@@ -59,34 +69,16 @@ export async function rejectDisposalRequest(
     maintenanceIssue,
   } = parsed.data;
 
-  const user = await getAuthenticatedUser();
-
-  if (!user) return { success: false, message: 'UNAUTHENTICATED' };
-  try {
-    requireAccess(user, isGlobalAdmin);
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Forbidden',
-    };
-  }
-
-  // Normalize and deduplicate
+  // ── 4. Normalize and deduplicate ─────────────────────────────────────────
   const normalizedDisposalIds = normalizeDisposalIds(validDisposalIds);
   const normalizedAssetIds = normalizeAssetIds(validAssetIds);
 
   if (normalizedDisposalIds.length === 0 || normalizedAssetIds.length === 0) {
-    return {
-      success: false,
-      message: 'No valid disposal or asset IDs provided.',
-    };
+    return { success: false, message: 'No valid disposal or asset IDs provided.' };
   }
 
   if (normalizedDisposalIds.length !== normalizedAssetIds.length) {
-    return {
-      success: false,
-      message: 'Disposal and asset ID counts do not match.',
-    };
+    return { success: false, message: 'Disposal and asset ID counts do not match.' };
   }
 
   try {
@@ -113,9 +105,7 @@ export async function rejectDisposalRequest(
         (d) => d.status === 'Pending Approval'
       );
       if (!allPending) {
-        throw new Error(
-          'One or more requested disposals are not eligible for rejection.'
-        );
+        throw new Error('One or more requested disposals are not eligible for rejection.');
       }
 
       // 2. Verify asset IDs match disposal records (prevent tampering)
@@ -126,9 +116,7 @@ export async function rejectDisposalRequest(
         disposalAssetIds.length !== normalizedAssetIds.length ||
         !disposalAssetIds.every((id) => requestedAssetIdSet.has(id))
       ) {
-        throw new Error(
-          'Submitted assets do not match the selected disposal requests.'
-        );
+        throw new Error('Submitted assets do not match the selected disposal requests.');
       }
 
       // 3. Fetch current asset data for audit trail
@@ -162,13 +150,12 @@ export async function rejectDisposalRequest(
       }
 
       // 5. Revert asset statuses + UNSET is_archived (soft delete reversal)
-      // ⭐ KEY UPDATE: Ensure is_archived = false when rejection happens
       const validFallbackStatus = validStatus as 'Available' | 'In Repair';
       const updatedAssets = await tx
         .update(assets)
         .set({
           status: validFallbackStatus,
-          isArchived: false, // ⭐ Soft delete reversal - asset is no longer archived
+          isArchived: false,
           updatedAt: new Date(),
         })
         .where(inArray(assets.id, normalizedAssetIds))
@@ -205,11 +192,11 @@ export async function rejectDisposalRequest(
         performedById: user.id,
         oldValue: {
           status: assetStatusMap.get(assetId) || 'Pending Disposal',
-          isArchived: true, // Was marked for archival
+          isArchived: true,
         },
         newValue: {
           status: validFallbackStatus,
-          isArchived: false, // ⭐ Soft delete reversed
+          isArchived: false,
           disposalRejected: true,
           rejectionReason: normalizedReason,
         },
@@ -241,21 +228,20 @@ export async function rejectDisposalRequest(
     };
   } catch (error) {
     logError({ scope: 'ACTION', label: 'disposals.reject', error });
-    const KNOWN_REJECT_ERRORS = [
+
+    const KNOWN_ERRORS = [
       'One or more disposal requests could not be found.',
       'One or more requested disposals are not eligible for rejection.',
       'Submitted assets do not match the selected disposal requests.',
       'Failed to reject all disposal requests.',
       'Failed to revert asset statuses.',
     ];
-    const isKnown =
-      error instanceof Error && KNOWN_REJECT_ERRORS.includes(error.message);
-    return {
-      success: false,
-      message: isKnown && error instanceof Error
-        ? error.message
-        : 'Failed to reject disposal requests.',
-    };
+
+    if (error instanceof Error && KNOWN_ERRORS.includes(error.message)) {
+      return { success: false, message: error.message };
+    }
+
+    return { success: false, message: 'Failed to reject disposal requests.' };
   } finally {
     logLatency({
       scope: 'ACTION',

@@ -1,95 +1,62 @@
 import type { UserRole } from '@/types/auth';
 
-//functions output boolean values are used for frontend mostly to render conditional UI
+// ─── Role Identity Checks (used for conditional UI rendering) ────────────────
 
-/**
- * Returns true if the user has the GlobalAdmin role.
- */
 export function isGlobalAdmin(role: UserRole): boolean {
   return role === 'GlobalAdmin';
 }
 
-/**
- * Returns true if the user has the ITOperator role.
- */
 export function isITOperator(role: UserRole): boolean {
   return role === 'ITOperator';
 }
 
-/**
- * Returns true if the user has the FinanceAuditor role.
- */
-export function isFinanceAuditor(role: UserRole): boolean {
-  return role === 'FinanceAuditor';
+export function isFinancialAuditor(role: UserRole): boolean {
+  return role === 'FinancialAuditor';
 }
 
-/**
- * Returns true if the user has the Employee role.
- */
 export function isEmployee(role: UserRole): boolean {
   return role === 'Employee';
 }
 
-/**
- * Returns true if the user is a privileged member (Admin, IT, Finance) and NOT a standard Employee.
- */
-export function isPrivilegedUser(role: UserRole): boolean {
-  return role !== 'Employee';
-}
+// ─── Permission Predicates (used for route guards and feature flags) ─────────
 
-/**
- * Returns true if the user role is authorized to view the asset registry.
- * GlobalAdmin, ITOperator, and FinanceAuditor have access.
- */
+/** GlobalAdmin, ITOperator, FinancialAuditor can view the registry. */
 export function canViewAssetRegistry(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinanceAuditor';
+  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinancialAuditor';
 }
 
-/**
- * Returns true if the user role is authorized to modify assets (create, update, delete).
- * GlobalAdmin and ITOperator have access.
- */
+/** GlobalAdmin, ITOperator can create/update/delete assets. */
 export function canManageAssets(role: UserRole): boolean {
   return role === 'GlobalAdmin' || role === 'ITOperator';
 }
 
-/**
- * Returns true if the user role has access to financial ledgers and audits.
- * GlobalAdmin and FinanceAuditor have access.
- */
+/** GlobalAdmin, FinancialAuditor can access financial ledgers and audits. */
 export function canAccessFinancials(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'FinanceAuditor';
+  return role === 'GlobalAdmin' || role === 'FinancialAuditor';
 }
 
-/**
- * Returns true if the user role has access to general IT and operations workflows.
- * GlobalAdmin and ITOperator have access.
- */
+/** GlobalAdmin, ITOperator can access operations workflows. */
 export function canAccessOperations(role: UserRole): boolean {
   return role === 'GlobalAdmin' || role === 'ITOperator';
 }
 
-/**
- * Returns true if the user role has access to view disposal history.
- * GlobalAdmin and FinanceAuditor have access.
- */
+/** GlobalAdmin, FinancialAuditor can view disposal history records. */
 export function canViewDisposalHistory(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'FinanceAuditor';
+  return role === 'GlobalAdmin' || role === 'FinancialAuditor';
 }
 
-// ─── Assert Guards ────────────────────────────────────────────────────────────
-// A generic guard for use in server actions. Evaluates the user's role against
-// a provided predicate (e.g. `isGlobalAdmin` or `canManageAssets`).
-// Throws an error if the predicate fails.
-// This is used for backend 
+/** All roles except Employee can use the mobile app. */
+export function canAccessMobile(role: UserRole): boolean {
+  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinancialAuditor';
+}
 
+// ─── Server-Side Assert Guard ────────────────────────────────────────────────
+/** Throws FORBIDDEN if the user's role does not satisfy the given predicate. */
 export function requireAccess(
   user: { role: UserRole },
   predicate: (role: UserRole) => boolean
 ): void {
   if (!predicate(user.role)) {
-    // Include both a stable error code and the human-readable message to keep
-    // server-action and test expectations consistent across modules.
     throw new Error('FORBIDDEN: Forbidden');
   }
 }

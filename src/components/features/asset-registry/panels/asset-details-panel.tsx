@@ -77,6 +77,7 @@ export interface AssetDetailsPanelProps {
   availableSeats?: number;
   expiryDate?: string | null;
   licenseType?: string | null;
+  billingCycle?: string | null;
 
   // Actions
   onEdit?: () => void;
@@ -119,6 +120,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     // SAM Data mapping from repo
     const softwareLicenseKey = props.serialNumber || '-';
     const softwareLicenseType = props.licenseType || props.specs?.license_type?.toString() || 'Subscription';
+    const softwareBillingCycle = props.billingCycle || props.specs?.billing_cycle?.toString() || '-';
     const softwareVersion = props.specs?.version?.toString() || '-';
     const rawExpiry = (props.expiryDate && props.expiryDate !== '-') 
       ? props.expiryDate 
@@ -152,6 +154,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Product', value: props.model || props.assetName || '-' },
         { label: 'License Key', value: softwareLicenseKey !== '-' ? <CopyableField value={softwareLicenseKey} label="License Key" /> : '-' },
         { label: 'License Type', value: softwareLicenseType },
+        { label: 'Billing Cycle', value: softwareBillingCycle },
         { label: 'Version', value: softwareVersion },
         { label: 'Total Seats', value: softwareTotalSeats },
         { label: 'Expiration Date', value: softwareExpirationDate },
@@ -209,6 +212,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
                     ) : '-' 
                   },
                   { label: 'License Type', value: softwareLicenseType },
+                  { label: 'Billing Cycle', value: softwareBillingCycle },
                   { label: 'Version', value: softwareVersion },
                   { label: 'Expiration Date', value: softwareExpirationDate },
                 ],
@@ -272,6 +276,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             vendor={props.vendorInfo || { vendorId: '', vendorName: 'N/A' }}
             onCurrencyChange={props.onCurrencyChange}
             hideWarranty={isSoftware}
+            hideShippingCost={isSoftware}
           />
         ),
       });
@@ -292,7 +297,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             allocatedCount={allocatedCount}
             allocations={props.allocations ?? []}
             onRevoke={props.onRevokeAllocation}
-            isReadOnly={true}
+            isReadOnly={!props.onRevokeAllocation}
           />
         ),
       });

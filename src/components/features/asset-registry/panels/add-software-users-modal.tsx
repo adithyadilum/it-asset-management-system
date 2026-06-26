@@ -1,7 +1,8 @@
 'use client';
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import * as React from 'react';
-import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
 
 import {
@@ -193,7 +194,7 @@ export function AddSoftwareUsersModal({
                 <CommandList className="max-h-60">
                   {isSearching && (
                     <div className="p-4 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <LoadingSpinner size="sm" />
                       Searching...
                     </div>
                   )}
@@ -290,7 +291,7 @@ export function AddSoftwareUsersModal({
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <LoadingSpinner size="sm" />
                 Allocating...
               </>
             ) : (

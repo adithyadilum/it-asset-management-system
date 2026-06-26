@@ -3,6 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { assets, assetPurchases, softwareLicenses, models } from '@/db/schema';
 import { withApiKey } from '@/lib/api/with-api-key';
+import { apiError, parseBoundedInt } from '@/lib/api/utils';
 import {
   countAssetsForExternalApi,
   getAssetsForExternalApi,
@@ -13,28 +14,7 @@ import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
 
-function apiError(status: number, code: string, message: string, details?: unknown) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: { code, message, ...(details ? { details } : {}) },
-    },
-    { status }
-  );
-}
 
-function parseBoundedInt(value: string | null, defaultValue: number, min: number, max: number) {
-  if (value === null || value.trim() === '') {
-    return { ok: true as const, value: defaultValue };
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    return { ok: false as const };
-  }
-
-  return { ok: true as const, value: parsed };
-}
 
 function toDateString(date: Date) {
   return date.toISOString().split('T')[0];
@@ -119,6 +99,14 @@ export const POST = withApiKey('write:assets', async (request: NextRequest, { ap
     }
 
     const input = parsed.data;
+    const instanceAttributes = {
+      ...(input.instanceAttributes ?? {}),
+      ...(input.pillar === 'Software' &&
+      input.licenseType === 'Subscription' &&
+      input.billingCycle
+        ? { billing_cycle: input.billingCycle }
+        : {}),
+    };
 
     // 2. Fetch the selected model to verify existence and get prefix
     const modelWithCategory = await db.query.models.findFirst({
@@ -175,7 +163,7 @@ export const POST = withApiKey('write:assets', async (request: NextRequest, { ap
               status: 'Available',
               condition: input.condition,
               usefulLifeMonths,
-              instanceAttributes: input.instanceAttributes,
+              instanceAttributes,
             })
             .returning({ id: assets.id, assetTag: assets.assetTag });
 
@@ -253,6 +241,10 @@ export const POST = withApiKey('write:assets', async (request: NextRequest, { ap
         ...(input.pillar === 'Software' && input.licenseType
           ? {
               licenseType: input.licenseType,
+              billingCycle:
+                input.licenseType === 'Subscription'
+                  ? input.billingCycle
+                  : undefined,
               totalSeats: input.totalSeats ?? 1,
             }
           : {}),

@@ -4,29 +4,8 @@ import { alias } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
 import { assetDisposals, assets, users } from '@/db/schema';
 import { withApiKey } from '@/lib/api/with-api-key';
+import { apiError, parseBoundedInt } from '@/lib/api/utils';
 
-function apiError(status: number, code: string, message: string) {
-  return NextResponse.json(
-    {
-      success: false,
-      error: { code, message },
-    },
-    { status }
-  );
-}
-
-function parseBoundedInt(value: string | null, defaultValue: number, min: number, max: number) {
-  if (value === null || value.trim() === '') {
-    return { ok: true as const, value: defaultValue };
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    return { ok: false as const };
-  }
-
-  return { ok: true as const, value: parsed };
-}
 
 const requester = alias(users, 'requester');
 const approver = alias(users, 'approver');

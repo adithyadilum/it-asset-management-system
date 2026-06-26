@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { GlobalAdminDashboardView } from './global-admin-dashboard-view';
@@ -45,7 +46,7 @@ describe('GlobalAdminDashboardView', () => {
       highMaintenance: []
     };
     
-    render(<GlobalAdminDashboardView data={mockData as any} currencyCode="USD" exchangeRate={1.5} />);
+    render(<CurrencyProvider initialCurrency="USD"><GlobalAdminDashboardView data={mockData as any} /></CurrencyProvider>);
     
     expect(screen.getByTestId('department-chart')).toBeInTheDocument();
     expect(screen.getByTestId('inventory-chart')).toBeInTheDocument();

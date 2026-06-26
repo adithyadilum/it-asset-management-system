@@ -1,7 +1,8 @@
 "use client";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import { useCallback, useMemo, useState } from 'react';
-import { AlertCircle, Loader2, TriangleAlert } from 'lucide-react';
+import { AlertCircle, TriangleAlert } from 'lucide-react';
 
 import { fetchReportPreview } from '@/actions/standard-reports';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -226,7 +227,7 @@ export function GenerateReportPdfModal({
     >
       {isGenerating ? (
         <div className="flex items-center justify-center gap-3 py-6 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+          <LoadingSpinner size="sm" />
           <span>Preparing report…</span>
         </div>
       ) : (

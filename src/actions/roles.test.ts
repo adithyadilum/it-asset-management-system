@@ -15,6 +15,11 @@ import {
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user)) throw new Error('Forbidden');
+  }),
 }));
 
 const { mockDb, chain } = vi.hoisted(() => {
@@ -119,7 +124,7 @@ describe('searchUsers', () => {
     await expect(searchUsers('test')).rejects.toThrow('Forbidden');
   });
 
-  it('throws when user is FinanceAuditor', async () => {
+  it('throws when user is FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
     await expect(searchUsers('test')).rejects.toThrow('Forbidden');
   });

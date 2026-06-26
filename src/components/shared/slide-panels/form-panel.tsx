@@ -1,7 +1,7 @@
 "use client";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import * as React from "react";
-import { LoaderCircle } from "lucide-react";
 
 import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
 import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
@@ -49,7 +49,7 @@ export function FormPanel({
       id: "submit",
       label: isSubmitting ? (
         <span className="inline-flex items-center gap-2">
-          <LoaderCircle className="h-4 w-4 animate-spin" />
+          <LoadingSpinner size="sm" />
           <span>{submittingLabel}</span>
         </span>
       ) : (
@@ -84,4 +84,4 @@ export function FormPanel({
       showCloseButton={showCloseButton}
     />
   );
-}
+}

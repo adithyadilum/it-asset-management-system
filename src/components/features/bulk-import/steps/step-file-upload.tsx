@@ -1,7 +1,8 @@
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import React, { useState, useRef } from 'react';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileSpreadsheet, Upload, X, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { generateImportTemplate } from '@/actions/bulk-import';
 import { parseAndValidateImport } from '@/actions/bulk-import';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -146,7 +147,7 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
           >
             {isDownloading ? (
               <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
+                <LoadingSpinner size="sm" />
                 Generating...
               </>
             ) : (
@@ -246,7 +247,7 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
         >
           {state.isValidating ? (
             <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
+              <LoadingSpinner size="sm" />
               Validating...
             </>
           ) : (

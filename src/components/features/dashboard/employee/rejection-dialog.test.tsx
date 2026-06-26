@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { RejectionDialog } from './rejection-dialog';
@@ -29,14 +30,14 @@ describe('RejectionDialog', () => {
       status: 'pending'
     };
 
-    render(
+    render(<CurrencyProvider initialCurrency="USD">
       <RejectionDialog 
         isOpen={true} 
         onOpenChange={vi.fn()} 
         assignment={mockAssignment as any}
         onSuccess={mockOnSuccess}
       />
-    );
+    </CurrencyProvider>);
     
     const confirmBtn = screen.getByRole('button', { name: /Submit Report/i });
     

@@ -12,6 +12,11 @@ import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user)) throw new Error('Forbidden');
+  }),
 }));
 
 vi.mock('@/lib/latency', () => ({
@@ -98,14 +103,14 @@ describe('Notifications Actions', () => {
   describe('markAsRead & markAllAsRead', () => {
     it('markAsRead successfully updates the isRead flag for a notification', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      mockDb.update.mockReturnValueOnce(chain([]));
-      await markAsRead('notif-123');
+      mockDb.update.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000001' }]));
+      await markAsRead('00000000-0000-4000-a000-000000000001');
       expect(mockDb.update).toHaveBeenCalled();
     });
 
     it('markAllAsRead updates all unread notifications', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      mockDb.update.mockReturnValueOnce(chain([]));
+      mockDb.update.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000001' }]));
       await markAllAsRead();
       expect(mockDb.update).toHaveBeenCalled();
     });

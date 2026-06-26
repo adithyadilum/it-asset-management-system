@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { X } from "lucide-react"
 
 import { assignUserRole, setUserActiveStatus } from "@/actions/roles"
@@ -33,7 +33,7 @@ interface EditUserRoleModalProps {
 const ROLE_OPTIONS: Array<{ value: UserRole; label: string }> = [
   { value: "GlobalAdmin", label: "Global Admin" },
   { value: "ITOperator", label: "IT Operator" },
-  { value: "FinanceAuditor", label: "Finance Auditor" },
+  { value: "FinancialAuditor", label: "Financial Auditor" },
   { value: "Employee", label: "Employee" },
 ]
 
@@ -48,20 +48,29 @@ export function EditUserRoleModal({
   const [isActive, setIsActive] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
+  
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (!isOpen) {
-      setTimeout(() => {
-        setIsSubmitting(false)
-        setError(null)
-      }, 0)
+      setIsSubmitting(false)
+      setError(null)
     } else if (user) {
-      setTimeout(() => {
-        setSelectedRole(user.role)
-        setIsActive(user.isActive)
-      }, 0)
+      setSelectedRole(user.role)
+      setIsActive(user.isActive)
     }
-  }, [isOpen, user])
+  }
+
+  // Also need to handle when 'user' changes while open, or we can just rely on the open toggle
+  // The original useEffect watched [isOpen, user]
+  const [prevUser, setPrevUser] = useState(user);
+  if (user !== prevUser) {
+    setPrevUser(user);
+    if (isOpen && user) {
+      setSelectedRole(user.role)
+      setIsActive(user.isActive)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!user) {
@@ -188,7 +197,7 @@ export function EditUserRoleModal({
                 onClick={handleSubmit}
                 disabled={isSubmitting || !user || isSelf}
               >
-                {isSubmitting ? "Updating..." : "Update Details"}
+                {isSubmitting ? "Updating..." : "Update"}
               </Button>
             </div>
             

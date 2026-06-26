@@ -38,7 +38,7 @@ export function MaintenanceTabs({
   selectedTicketId,
   userRole,
 }: MaintenanceTabsProps) {
-  const defaultTab = userRole === 'FinanceAuditor' ? 'history' : 'pending';
+  const defaultTab = userRole === 'FinancialAuditor' ? 'history' : 'pending';
   const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'history'>(defaultTab as 'pending' | 'active' | 'history');
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
 
@@ -159,7 +159,7 @@ export function MaintenanceTabs({
   ];
 
   const tabConfig = [
-    ...(userRole !== 'FinanceAuditor' ? [
+    ...(userRole !== 'FinancialAuditor' ? [
       {
         id: 'pending',
         label: `Pending Review ${pendingTickets.length > 0 ? `(${pendingTickets.length})` : ''}`,
@@ -202,7 +202,7 @@ export function MaintenanceTabs({
           />
 
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 rounded-md border border-border bg-background">
-            {userRole !== 'FinanceAuditor' && (
+            {userRole !== 'FinancialAuditor' && (
               <>
                 <TabsContent value="pending" className="m-0 flex-1 flex-col overflow-hidden data-[state=active]:flex">
                   {isLoading ? (

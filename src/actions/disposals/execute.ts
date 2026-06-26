@@ -1,19 +1,20 @@
 'use server';
 
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getAuthenticatedUser } from '@/actions/auth';
-import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
+import { enforceFormAccess } from '@/actions/auth';
+import {  isGlobalAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   assetDisposals,
   assets,
+  assetPurchases,
   systemAuditLogs,
   assetDocuments,
 } from '@/db/schema';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
+import { calculateCurrentBookValue, DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { executeDisposalSchema } from '@/lib/validations/disposals';
 import type { DisposalFormState } from '@/types/disposals';
@@ -24,20 +25,14 @@ export async function executeAssetDisposal(
   formData: FormData
 ): Promise<DisposalFormState> {
   const actionTimer = startLatencyTimer();
-  const user = await getAuthenticatedUser();
 
-  if (!user) return { success: false, message: 'UNAUTHENTICATED' };
-  try {
-    requireAccess(user, isGlobalAdmin);
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Forbidden',
-    };
-  }
+  // ── 1. Auth FIRST ─────────────────────────────────────────────────────────
+  const auth = await enforceFormAccess(isGlobalAdmin);
+  if (!auth.ok) return auth.payload;
+  const user = auth.user;
 
   try {
-    // Parse and validate JSON payloads
+    // ── 2. Parse and validate JSON payloads ──────────────────────────────────
     let parsedDisposalIds: number[];
     let parsedAssetIds: string[];
     let parsedReceiptUrls: string[];
@@ -54,7 +49,7 @@ export async function executeAssetDisposal(
       return { success: false, message: 'Invalid payload format.' };
     }
 
-    // Validate schema
+    // ── 3. Validate schema ───────────────────────────────────────────────────
     const parsed = executeDisposalSchema.safeParse({
       disposalIds: parsedDisposalIds,
       assetIds: parsedAssetIds,
@@ -77,22 +72,16 @@ export async function executeAssetDisposal(
 
     const validData = parsed.data;
 
-    // Normalize and deduplicate
+    // ── 4. Normalize and deduplicate ─────────────────────────────────────────
     const normalizedDisposalIds = normalizeDisposalIds(validData.disposalIds);
     const normalizedAssetIds = normalizeAssetIds(validData.assetIds);
 
     if (normalizedDisposalIds.length === 0 || normalizedAssetIds.length === 0) {
-      return {
-        success: false,
-        message: 'No valid disposal or asset IDs provided.',
-      };
+      return { success: false, message: 'No valid disposal or asset IDs provided.' };
     }
 
     if (normalizedDisposalIds.length !== normalizedAssetIds.length) {
-      return {
-        success: false,
-        message: 'Disposal and asset ID counts do not match.',
-      };
+      return { success: false, message: 'Disposal and asset ID counts do not match.' };
     }
 
     const dbTimer = startLatencyTimer();
@@ -124,9 +113,7 @@ export async function executeAssetDisposal(
       );
 
       if (!allEligible) {
-        throw new Error(
-          'One or more disposal requests are not in an eligible status.'
-        );
+        throw new Error('One or more disposal requests are not in an eligible status.');
       }
 
       // Asset ID mapping verification
@@ -137,9 +124,7 @@ export async function executeAssetDisposal(
         disposalAssetIds.length !== normalizedAssetIds.length ||
         !disposalAssetIds.every((id) => requestedAssetIdSet.has(id))
       ) {
-        throw new Error(
-          'Submitted assets do not match the selected disposal requests.'
-        );
+        throw new Error('Submitted assets do not match the selected disposal requests.');
       }
 
       // 3. Fetch current asset data for audit
@@ -156,39 +141,59 @@ export async function executeAssetDisposal(
         currentAssets.map((a) => [a.id, a.status])
       );
 
-      // Get book value for the assets at the time of disposal
+      // 4. Batch-fetch purchase data for all assets (replaces N+1 getAssetFinancialVitals calls)
+      const purchaseData = await tx
+        .select({
+          assetId: assetPurchases.assetId,
+          totalCost: assetPurchases.totalCost,
+          purchaseDate: assetPurchases.purchaseDate,
+          usefulLifeMonths: sql<number>`COALESCE(${assets.usefulLifeMonths}, ${DEFAULT_USEFUL_LIFE_MONTHS})`,
+          salvageValue: assets.salvageValue,
+        })
+        .from(assetPurchases)
+        .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        .where(inArray(assetPurchases.assetId, normalizedAssetIds));
+
       const bookValuesMap = new Map<string, number>();
-      for (const assetId of normalizedAssetIds) {
-        try {
-          const vitals = await getAssetFinancialVitals(assetId);
-          bookValuesMap.set(assetId, vitals.currentBookValue);
-        } catch {
-          bookValuesMap.set(assetId, 0);
-        }
+      for (const row of purchaseData) {
+        const totalCost = parseFloat(row.totalCost?.toString() || '0');
+        const salvage = parseFloat(row.salvageValue?.toString() || '0');
+        const bookValue = calculateCurrentBookValue({
+          cost: totalCost,
+          salvageValue: salvage,
+          usefulLifeMonths: row.usefulLifeMonths,
+          purchaseDate: row.purchaseDate,
+        });
+        bookValuesMap.set(row.assetId, Math.round(bookValue * 100) / 100);
       }
 
       const totalSalvage = validData.actualSalvageValue ?? 0;
-      const salvagePerAsset = normalizedAssetIds.length > 0 ? (totalSalvage / normalizedAssetIds.length) : 0;
+      const salvagePerAsset =
+        normalizedAssetIds.length > 0 ? totalSalvage / normalizedAssetIds.length : 0;
 
-      // 4. Execute disposal: update disposal records individually
+      // 5. Execute disposal: update all disposal records in parallel
       const updatedDisposalIds: number[] = [];
-      for (const record of disposalRecords) {
-        const bookValue = bookValuesMap.get(record.assetId) ?? 0;
-        const res = await tx
-          .update(assetDisposals)
-          .set({
-            status: 'Completed',
-            approvedById: user.id,
-            resolvedAt: validData.disposalDate
-              ? new Date(validData.disposalDate)
-              : new Date(),
-            reason: validData.reason,
-            actualSalvageValue: String(salvagePerAsset.toFixed(2)),
-            bookValueAtDisposal: String(bookValue.toFixed(2)),
-          })
-          .where(eq(assetDisposals.id, record.disposalId))
-          .returning({ disposalId: assetDisposals.id });
+      const updateResults = await Promise.all(
+        disposalRecords.map((record) => {
+          const bookValue = bookValuesMap.get(record.assetId) ?? 0;
+          return tx
+            .update(assetDisposals)
+            .set({
+              status: 'Completed',
+              approvedById: user.id,
+              resolvedAt: validData.disposalDate
+                ? new Date(validData.disposalDate)
+                : new Date(),
+              reason: validData.reason,
+              actualSalvageValue: String(salvagePerAsset.toFixed(2)),
+              bookValueAtDisposal: String(bookValue.toFixed(2)),
+            })
+            .where(eq(assetDisposals.id, record.disposalId))
+            .returning({ disposalId: assetDisposals.id });
+        })
+      );
 
+      for (const res of updateResults) {
         if (res.length > 0) {
           updatedDisposalIds.push(res[0].disposalId);
         }
@@ -198,13 +203,12 @@ export async function executeAssetDisposal(
         throw new Error('Failed to update all disposal requests.');
       }
 
-      // 5. Execute disposal: update asset statuses + SET is_archived = true
-      // ⭐ KEY UPDATE: Set is_archived = true when disposal is completed
+      // 6. Update asset statuses + set is_archived = true
       const updatedAssets = await tx
         .update(assets)
         .set({
           status: 'Disposed',
-          isArchived: true, // ⭐ Soft delete - archive the asset
+          isArchived: true,
           updatedAt: new Date(),
         })
         .where(inArray(assets.id, normalizedAssetIds))
@@ -214,7 +218,7 @@ export async function executeAssetDisposal(
         throw new Error('Failed to update all assets.');
       }
 
-      // 5b. Save uploaded disposal certificates/receipts
+      // 7. Save uploaded disposal certificates/receipts (optional)
       const documentEntries = normalizedAssetIds.flatMap((assetId) =>
         validData.receiptUrls.map((url) => ({
           assetId,
@@ -229,7 +233,7 @@ export async function executeAssetDisposal(
         await tx.insert(assetDocuments).values(documentEntries);
       }
 
-      // 6. Log comprehensive audit trail
+      // 8. Log comprehensive audit trail
       const auditEntries = normalizedAssetIds.map((assetId) => ({
         entityType: 'Asset' as const,
         entityId: assetId,
@@ -237,16 +241,17 @@ export async function executeAssetDisposal(
         performedById: user.id,
         oldValue: {
           status: assetStatusMap.get(assetId) || 'Unknown',
-          isArchived: false, // Was active
+          isArchived: false,
         },
         newValue: {
           status: 'Disposed',
-          isArchived: true, // ⭐ Now archived
+          isArchived: true,
           disposalMethod: validData.disposalMethod,
           disposalDate: validData.disposalDate || new Date().toISOString(),
           dataWiped: validData.dataWiped,
           tagsRemoved: validData.tagsRemoved,
-          receiptUrl: validData.receiptUrl,
+          // Use the array field (receiptUrls), not the removed singular receiptUrl
+          receiptUrls: validData.receiptUrls,
           reason: validData.reason,
         },
         performedAt: new Date(),
@@ -288,21 +293,20 @@ export async function executeAssetDisposal(
     };
   } catch (error) {
     logError({ scope: 'ACTION', label: 'disposals.executeAssetDisposal', error });
-    const KNOWN_EXECUTE_ERRORS = [
+
+    const KNOWN_ERRORS = [
+      'One or more disposal requests could not be found.',
       'One or more disposal requests are not in an eligible status.',
+      'Submitted assets do not match the selected disposal requests.',
       'Failed to update all disposal requests.',
       'Failed to update all assets.',
-      'One or more disposal requests could not be found.',
-      'Submitted assets do not match the selected disposal requests.',
     ];
-    const isKnown =
-      error instanceof Error && KNOWN_EXECUTE_ERRORS.includes(error.message);
-    return {
-      success: false,
-      message: isKnown && error instanceof Error
-        ? error.message
-        : 'Failed to execute asset disposal.',
-    };
+
+    if (error instanceof Error && KNOWN_ERRORS.includes(error.message)) {
+      return { success: false, message: error.message };
+    }
+
+    return { success: false, message: 'Failed to execute asset disposal.' };
   } finally {
     logLatency({
       scope: 'ACTION',
@@ -310,4 +314,4 @@ export async function executeAssetDisposal(
       startTime: actionTimer,
     });
   }
-}
+}

@@ -85,3 +85,45 @@ export const panelRepairSchema = z.object({
 });
 
 export type PanelRepairInput = z.infer<typeof panelRepairSchema>;
+
+// ---------------------------------------------------------------------------
+// getRepairHistory (pagination parameter bounds)
+// ---------------------------------------------------------------------------
+
+export const getRepairHistoryParamsSchema = z.object({
+  page: z.number().int().min(1, 'Page must be 1 or greater.'),
+  pageSize: z
+    .number()
+    .int()
+    .min(1, 'Page size must be at least 1.')
+    .max(100, 'Page size must not exceed 100.'),
+  searchTerm: z
+    .string()
+    .trim()
+    .max(200, 'Search term must be 200 characters or fewer.')
+    .optional()
+    .default(''),
+});
+
+export type GetRepairHistoryParams = z.infer<typeof getRepairHistoryParamsSchema>;
+
+// ---------------------------------------------------------------------------
+// getAssetMaintenanceHistory (limit parameter bounds)
+// ---------------------------------------------------------------------------
+
+export const getAssetMaintenanceHistoryParamsSchema = z.object({
+  assetId: z
+    .string()
+    .trim()
+    .min(1, 'Asset ID is required.')
+    .max(100, 'Asset ID must be 100 characters or fewer.'),
+  limit: z
+    .number()
+    .int()
+    .min(1, 'Limit must be at least 1.')
+    .max(100, 'Limit must not exceed 100.'),
+});
+
+export type GetAssetMaintenanceHistoryParams = z.infer<
+  typeof getAssetMaintenanceHistoryParamsSchema
+>;

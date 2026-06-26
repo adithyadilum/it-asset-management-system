@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { requirePageAuth } from '@/lib/auth/page-guard';
 import { db } from '@/db';
 import { assetDisposals, assets, users, models, categories, assetDocuments } from '@/db/schema';
 import { eq, desc, inArray, and, sql, or, ilike } from 'drizzle-orm';
@@ -16,13 +15,9 @@ interface DisposalsPageProps {
 }
 
 export default async function DisposalsPage({ searchParams }: DisposalsPageProps) {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    redirect('/login');
-  }
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
-    redirect('/403');
-  }
+  const user = await requirePageAuth(
+    (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor',
+  );
 
   const cookieStore = await cookies();
   const preferredCurrency = cookieStore.get('preferred_currency')?.value || 'LKR';

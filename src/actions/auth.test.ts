@@ -132,7 +132,7 @@ describe('getAuthenticatedUser', () => {
     expect(user?.role).toBe('Employee');
   });
 
-  it.each(['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee'] as const)(
+  it.each(['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee'] as const)(
     'preserves %s role exactly',
     async (role) => {
       mockGetServerSession.mockResolvedValue({

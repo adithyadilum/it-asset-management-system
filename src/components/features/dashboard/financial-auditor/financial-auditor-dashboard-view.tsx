@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { DataTable } from "@/components/shared/data-table"
 import { cn } from "@/lib/utils"
@@ -14,21 +15,24 @@ import {
   useWriteOffsColumns,
   useSoftwareOptimizationColumns,
 } from "../shared/dashboard-table-columns"
-import type { FinanceDashboardBatchData } from "@/actions/dashboard/finance-auditor"
+import type { FinanceDashboardBatchData } from "@/actions/dashboard/financial-auditor"
+import { useCurrency } from "@/components/providers/currency-provider"
+import { convertCurrencyAmount } from "@/lib/currency"
 
-interface FinanceAuditorDashboardViewProps {
+interface FinancialAuditorDashboardViewProps {
   data: FinanceDashboardBatchData
-  currencyCode?: string
-  exchangeRate?: number
   apiRates?: Record<string, number>
 }
 
-export function FinanceAuditorDashboardView({
+export function FinancialAuditorDashboardView({
   data,
-  currencyCode = "LKR",
-  exchangeRate = 1,
   apiRates,
-}: FinanceAuditorDashboardViewProps) {
+}: FinancialAuditorDashboardViewProps) {
+  const { currency: currencyCode } = useCurrency();
+  const exchangeRate = useMemo(
+    () => convertCurrencyAmount(1, 'LKR', currencyCode, apiRates),
+    [currencyCode, apiRates],
+  );
   const topHighValueColumns = useTopHighValueAssetsColumns(currencyCode, exchangeRate)
   const writeOffsColumns = useWriteOffsColumns(currencyCode, apiRates)
   const softwareOptimizationColumns = useSoftwareOptimizationColumns(currencyCode, exchangeRate)

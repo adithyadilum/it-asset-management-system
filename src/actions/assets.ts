@@ -151,6 +151,7 @@ export async function registerAsset(
         }
       })(),
       licenseType: formData.get('licenseType') || undefined,
+      billingCycle: formData.get('billingCycle') || undefined,
       totalSeats: formData.get('totalSeats') || undefined,
       licenseStartDate: formData.get('licenseStartDate') || undefined,
       licenseExpiryDate: formData.get('licenseExpiryDate') || undefined,
@@ -169,6 +170,14 @@ export async function registerAsset(
       usefulLifeMonths:
         parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
       invoiceFile: formData.get('invoiceFile') as File | null,
+    };
+    const instanceAttributes = {
+      ...(input.instanceAttributes ?? {}),
+      ...(input.pillar === 'Software' &&
+      input.licenseType === 'Subscription' &&
+      input.billingCycle
+        ? { billing_cycle: input.billingCycle }
+        : {}),
     };
 
     // 3. File Upload (Placeholder)
@@ -232,7 +241,7 @@ export async function registerAsset(
               status: 'Available',
               condition: input.condition,
               usefulLifeMonths: input.usefulLifeMonths,
-              instanceAttributes: input.instanceAttributes,
+              instanceAttributes,
             })
             .returning({ id: assets.id, assetTag: assets.assetTag });
 
@@ -310,6 +319,10 @@ export async function registerAsset(
         ...(input.pillar === 'Software' && input.licenseType
           ? {
               licenseType: input.licenseType,
+              billingCycle:
+                input.licenseType === 'Subscription'
+                  ? input.billingCycle
+                  : undefined,
               totalSeats: input.totalSeats ?? 1,
             }
           : {}),
@@ -785,9 +798,21 @@ export async function editAssetDetailsAction(
           .returning({ id: assetPurchases.id });
 
         if (result.length === 0) {
-          throw new Error(
-            'Failed to update asset purchase. Row not found or not updated.'
-          );
+          // If no purchase record exists, insert a new one
+          const inserted = await tx
+            .insert(assetPurchases)
+            .values({
+              assetId,
+              warrantyExpiry,
+              updatedAt: new Date(),
+            })
+            .returning({ id: assetPurchases.id });
+
+          if (inserted.length === 0) {
+            throw new Error(
+              'Failed to create asset purchase record.'
+            );
+          }
         }
       }
 

@@ -173,8 +173,8 @@ export function buildSelectionActions(
   }
 
   actions.push({
-    id: 'dispose',
-    label: 'Dispose',
+    id: 'request-disposal',
+    label: 'Request Disposal',
     tone: 'destructive',
     disabled: isMutating,
     onClick: callbacks.onDispose,

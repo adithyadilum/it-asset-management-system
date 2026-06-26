@@ -42,9 +42,13 @@ export function DisposeAssetsRequestDialog({
 
   const assetIds = useMemo(() => selectedAssets.map((a) => a.id), [selectedAssets]);
 
-  function reset() {
-    setReason('');
-    setJustification('');
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (!open) {
+      setReason('');
+      setJustification('');
+    }
   }
 
   const handleSubmit = () => {
@@ -67,10 +71,7 @@ export function DisposeAssetsRequestDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) reset();
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="sm:max-w-140">
         <DialogHeader>

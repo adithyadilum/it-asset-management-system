@@ -9,6 +9,20 @@ interface NotificationItemProps {
   onMarkAsRead: (id: string) => Promise<void>;
 }
 
+function isSafeLocalPath(path: string | null | undefined): boolean {
+  if (!path) return false;
+  // Must start with '/' and not '//' or '\\'
+  if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('\\')) {
+    return false;
+  }
+  try {
+    const url = new URL(path, 'http://localhost');
+    return url.origin === 'http://localhost';
+  } catch {
+    return false;
+  }
+}
+
 export function NotificationItem({
   notification,
   onMarkAsRead,
@@ -21,8 +35,8 @@ export function NotificationItem({
       await onMarkAsRead(notification.id);
     }
 
-    // Navigate to target URL if available
-    if (notification.targetUrl) {
+    // Navigate to target URL if available and safe
+    if (notification.targetUrl && isSafeLocalPath(notification.targetUrl)) {
       router.push(notification.targetUrl);
     }
   };

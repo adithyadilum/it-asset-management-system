@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { DateFormatted } from "@/components/shared/formatters"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { formatMoneyByCurrency, convertCurrencyAmount } from "@/lib/currency"
@@ -93,7 +94,7 @@ export function useOverdueColumns(
       minSize: 110,
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {new Date(row.original.expectedReturnDate).toLocaleDateString()}
+          <DateFormatted date={row.original.expectedReturnDate} />
         </span>
       ),
     },
@@ -179,7 +180,7 @@ export function usePendingDisposalColumns(userRole: string): ColumnDef<PendingDi
       minSize: 130,
       meta: { noTruncate: true },
       cell: ({ row }) => {
-        if (userRole === 'FinanceAuditor') {
+        if (userRole === 'FinancialAuditor') {
           return <span className="text-xs text-muted-foreground italic">Awaiting Admin Sign-Off</span>
         }
         return (
@@ -352,7 +353,7 @@ export function useDepreciationColumns(
       minSize: 120,
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {row.original.purchaseDate ? new Date(row.original.purchaseDate).toLocaleDateString() : "—"}
+          <DateFormatted date={row.original.purchaseDate} fallback="-" />
         </span>
       ),
     },
@@ -442,7 +443,7 @@ export function useWriteOffsColumns(
       minSize: 130,
       cell: ({ row }) => (
         <span className="text-xs text-muted-foreground">
-          {row.original.disposalDate ? new Date(row.original.disposalDate).toLocaleDateString() : "—"}
+          <DateFormatted date={row.original.disposalDate} fallback="-" />
         </span>
       ),
     },

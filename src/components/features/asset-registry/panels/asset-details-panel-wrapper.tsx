@@ -20,6 +20,7 @@ import {
 } from "@/actions/asset-registry-panels";
 import { getAssetFinancialVitals, type AssetFinancialVitals } from "@/actions/asset-financial-vitals";
 import { getVendors, reportDefectiveFromPanel } from "@/actions/maintenance";
+import { revokeSoftwareLicenseAllocationAction } from "@/actions/software";
 
 import { tiqriToast } from "@/components/shared/sonner";
 import {
@@ -242,6 +243,41 @@ export function AssetDetailsPanelWrapper({
     }
   }, [data, router, onClose]);
 
+  const handleRevokeSoftwareAllocation = useCallback(async (userId: string) => {
+    if (!data?.asset.id) {
+      return;
+    }
+
+    const allocation = allocations.find((item) => item.id === userId);
+    const result = await revokeSoftwareLicenseAllocationAction(data.asset.id, userId);
+
+    if (!result.success) {
+      tiqriToast.error(result.error);
+      return;
+    }
+
+    tiqriToast.success(`Removed ${allocation?.name ?? 'user'} from this software license.`);
+    setAllocations((previous) => previous.filter((item) => item.id !== userId));
+    setData((previous) => {
+      if (!previous?.softwareLicense) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        softwareLicense: {
+          ...previous.softwareLicense,
+          availableSeats: Math.min(
+            previous.softwareLicense.totalSeats,
+            previous.softwareLicense.availableSeats + 1
+          ),
+        },
+      };
+    });
+    setRefreshNonce((n) => n + 1);
+    onRefreshRef?.current?.();
+  }, [allocations, data, onRefreshRef]);
+
   // Derive pillar info for conditional logic
   const pillar = data?.model.category.pillar ?? "";
   const assetLabel = data?.asset.name || data?.model.name || data?.asset.assetTag || "Asset";
@@ -319,6 +355,7 @@ export function AssetDetailsPanelWrapper({
         availableSeats={data?.softwareLicense?.availableSeats}
         expiryDate={formatDisplayDate(data?.softwareLicense?.expiryDate)}
         licenseType={data?.softwareLicense?.licenseType}
+        onRevokeAllocation={handleRevokeSoftwareAllocation}
         onCurrencyChange={setDisplayCurrencyOverride}
         manualStatuses={manualStatuses}
         onEdit={handleEditClick}

@@ -9,6 +9,12 @@ import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER, FINANCE_AUDITOR_USER } fro
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: async (predicate?: (role: string) => boolean) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('UNAUTHENTICATED');
+    if (predicate && !predicate(user.role)) throw new Error('FORBIDDEN: Forbidden');
+    return user;
+  },
 }));
 
 const { mockDb, chain } = vi.hoisted(() => {
@@ -69,8 +75,8 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }));
 
-vi.mock('@/lib/financial-math', () => ({
-  calculateStraightLineDepreciation: vi.fn().mockReturnValue(500),
+vi.mock('@/lib/depreciation', () => ({
+  calculateCurrentBookValue: vi.fn().mockReturnValue(500),
 }));
 
 // ---------------------------------------------------------------------------
@@ -95,9 +101,9 @@ import {
 describe('Read Operations: getPendingMaintenanceTickets', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws Unauthorized for unauthenticated user', async () => {
+  it('throws UNAUTHENTICATED for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getPendingMaintenanceTickets()).rejects.toThrow('Unauthorized');
+    await expect(getPendingMaintenanceTickets()).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws Forbidden for Employee role', async () => {
@@ -119,11 +125,9 @@ describe('Read Operations: getPendingMaintenanceTickets', () => {
     expect(result.tickets).toHaveLength(1);
   });
 
-  it('returns tickets for FinanceAuditor', async () => {
+  it('throws Forbidden for FinanceAuditor (no longer allowed on pending tickets)', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
-    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
-    const result = await getPendingMaintenanceTickets();
-    expect(result.tickets).toHaveLength(1);
+    await expect(getPendingMaintenanceTickets()).rejects.toThrow('Forbidden');
   });
 
   it('applies search filter on asset tag, name, or issue', async () => {
@@ -138,9 +142,9 @@ describe('Read Operations: getPendingMaintenanceTickets', () => {
 describe('Read Operations: getTicketForIssueReview', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws Unauthorized for unauthenticated user', async () => {
+  it('throws UNAUTHENTICATED for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getTicketForIssueReview(1)).rejects.toThrow('Unauthorized');
+    await expect(getTicketForIssueReview(1)).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws error for invalid (non-positive) ticket ID', async () => {
@@ -158,10 +162,18 @@ describe('Read Operations: getTicketForIssueReview', () => {
 
   it('returns full review panel data for valid ticket', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    // Supply usefulLifeMonths so calculateCurrentBookValue doesn't crash
     mockDb.select.mockReturnValueOnce(chain([{
       ticket: { id: 1 },
-      asset: { id: 'a1', status: 'Available' },
+      asset: { id: 'a1', status: 'Available', usefulLifeMonths: 36 },
+      model: {},
+      brand: {},
+      category: {},
+      purchase: null,
+      reportedBy: { id: 'u1', name: 'Admin', email: 'admin@test.com' },
     }]));
+    // Second select: repair cost aggregation
+    mockDb.select.mockReturnValueOnce(chain([{ totalRepair: 0 }]));
     const result = await getTicketForIssueReview(1);
     expect(result).not.toBeNull();
   });
@@ -170,9 +182,9 @@ describe('Read Operations: getTicketForIssueReview', () => {
 describe('Read Operations: getActiveRepairTickets', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws Unauthorized for unauthenticated user', async () => {
+  it('throws UNAUTHENTICATED for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getActiveRepairTickets()).rejects.toThrow('Unauthorized');
+    await expect(getActiveRepairTickets()).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws Forbidden for Employee role', async () => {
@@ -191,9 +203,9 @@ describe('Read Operations: getActiveRepairTickets', () => {
 describe('Read Operations: getRepairHistory', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws Unauthorized for unauthenticated user', async () => {
+  it('throws UNAUTHENTICATED for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getRepairHistory()).rejects.toThrow('Unauthorized');
+    await expect(getRepairHistory()).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('returns paginated repair history', async () => {
@@ -208,9 +220,9 @@ describe('Read Operations: getRepairHistory', () => {
 describe('Read Operations: getAssetMaintenanceHistory', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws Unauthorized for unauthenticated user', async () => {
+  it('throws UNAUTHENTICATED for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getAssetMaintenanceHistory('uuid')).rejects.toThrow('Unauthorized');
+    await expect(getAssetMaintenanceHistory('uuid')).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws for asset with no history if asset not found', async () => {
@@ -262,9 +274,9 @@ describe('Write Operations: resolveIssueInternally', () => {
 describe('Write Operations: initiateVendorRepair', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws Unauthorized for unauthenticated user', async () => {
+  it('throws UNAUTHENTICATED for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(initiateVendorRepair(1, 'uuid', '1', 'RMA')).rejects.toThrow('Unauthorized');
+    await expect(initiateVendorRepair(1, 'uuid', '1', 'RMA')).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws Forbidden for Employee', async () => {
@@ -315,9 +327,9 @@ describe('Write Operations: initiateVendorRepair', () => {
 describe('Write Operations: completeRepairTicket', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('throws Unauthorized for unauthenticated user', async () => {
+  it('throws UNAUTHENTICATED for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(completeRepairTicket(1, '150', 'Fixed', 'Available')).rejects.toThrow('Unauthorized');
+    await expect(completeRepairTicket(1, '150', 'Fixed', 'Available')).rejects.toThrow('UNAUTHENTICATED');
   });
 
   it('throws Forbidden for Employee', async () => {

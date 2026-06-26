@@ -4,12 +4,16 @@ import { desc, eq, and, count } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { appNotifications, integrationSettings } from '@/db/schema';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
 import { Resend } from 'resend';
 import { serverEnv } from '@/lib/env';
+import {
+  getNotificationsParamsSchema,
+  markAsReadParamsSchema,
+} from '@/lib/validations/notifications';
 
 /**
  * Microsoft Teams webhook endpoints must stay on this host allow-list.
@@ -100,13 +104,19 @@ export async function getNotifications(limit = 10, offset = 0) {
     const user = await getAuthenticatedUser();
     if (!user) return [];
 
+    const validation = getNotificationsParamsSchema.safeParse({ limit, offset });
+    if (!validation.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { limit: safeLimit, offset: safeOffset } = validation.data;
+
     const data = await db
       .select()
       .from(appNotifications)
       .where(eq(appNotifications.userId, user.id))
       .orderBy(desc(appNotifications.createdAt))
-      .limit(limit)
-      .offset(offset);
+      .limit(safeLimit)
+      .offset(safeOffset);
 
     return data;
   } finally {
@@ -121,17 +131,24 @@ export async function getNotifications(limit = 10, offset = 0) {
 export async function markAsRead(id: string) {
   const timer = startLatencyTimer();
   try {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error('Unauthorized');
+    const user = await enforceActionAccess();
 
-    await db
+    const validation = markAsReadParamsSchema.safeParse({ id });
+    if (!validation.success) {
+      throw new Error('Invalid notification ID format.');
+    }
+
+    const updated = await db
       .update(appNotifications)
       .set({ isRead: true })
       .where(
         and(eq(appNotifications.id, id), eq(appNotifications.userId, user.id))
-      );
+      )
+      .returning();
 
-    // Usually with server actions it's good to revalidate paths, but if we're using SWR, SWR handles the revalidation.
+    if (updated.length === 0) {
+      throw new Error('Notification not found or unauthorized.');
+    }
   } finally {
     logLatency({
       scope: 'ACTION',
@@ -144,8 +161,7 @@ export async function markAsRead(id: string) {
 export async function markAllAsRead() {
   const timer = startLatencyTimer();
   try {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error('Unauthorized');
+    const user = await enforceActionAccess();
 
     await db
       .update(appNotifications)
@@ -155,7 +171,8 @@ export async function markAllAsRead() {
           eq(appNotifications.userId, user.id),
           eq(appNotifications.isRead, false)
         )
-      );
+      )
+      .returning();
   } finally {
     logLatency({
       scope: 'ACTION',

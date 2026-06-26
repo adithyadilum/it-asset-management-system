@@ -21,7 +21,7 @@ export interface Notification {
 }
 
 export function useNotifications() {
-  const { data: unreadCount = 0, mutate: mutateUnreadCount } = useSWR(
+  const { data: unreadCount = 0, mutate: mutateUnreadCount } = useSWR<number>(
     'notifications-unread-count',
     getUnreadCount,
     {
@@ -38,54 +38,74 @@ export function useNotifications() {
     isLoading,
     error,
     mutate: mutateNotifications,
-  } = useSWR('notifications-list', () => getNotifications(10, 0), {
+  } = useSWR<Notification[]>('notifications-list', async () => {
+    const data = await getNotifications(10, 0);
+    return data as Notification[];
+  }, {
     revalidateOnFocus: false, // Prevents hammering the DB when tabbing back
   });
 
   const fetchNotifications = useCallback(
     async (limit = 10, offset = 0) => {
       const data = await getNotifications(limit, offset);
-      mutateNotifications(data, false);
+      mutateNotifications(data as Notification[], false);
     },
     [mutateNotifications]
   );
 
   const handleMarkAsRead = useCallback(
     async (notificationId: string) => {
-      // Optimistic update
-      mutateNotifications(
-        (prev = []) =>
-          prev.map((notif) =>
-            notif.id === notificationId ? { ...notif, isRead: true } : notif
-          ),
-        false
-      );
-      mutateUnreadCount((prev = 0) => Math.max(0, prev - 1), false);
+      const promise = markAsRead(notificationId);
 
-      // Server Action
-      await markAsRead(notificationId);
-
-      // Re-validate
-      mutateNotifications();
-      mutateUnreadCount();
+      try {
+        await Promise.all([
+          mutateNotifications(promise as unknown as Promise<Notification[]>, {
+            optimisticData: (prev = []) =>
+              prev.map((notif) =>
+                notif.id === notificationId ? { ...notif, isRead: true } : notif
+              ),
+            rollbackOnError: true,
+            populateCache: false,
+            revalidate: true,
+          }),
+          mutateUnreadCount(promise as unknown as Promise<number>, {
+            optimisticData: (prev = 0) => Math.max(0, prev - 1),
+            rollbackOnError: true,
+            populateCache: false,
+            revalidate: true,
+          }),
+        ]);
+      } catch (err) {
+        console.error('Failed to mark notification as read:', err);
+        throw err;
+      }
     },
     [mutateNotifications, mutateUnreadCount]
   );
 
   const handleMarkAllAsRead = useCallback(async () => {
-    // Optimistic update
-    mutateNotifications(
-      (prev = []) => prev.map((notif) => ({ ...notif, isRead: true })),
-      false
-    );
-    mutateUnreadCount(0, false);
+    const promise = markAllAsRead();
 
-    // Server Action
-    await markAllAsRead();
-
-    // Re-validate
-    mutateNotifications();
-    mutateUnreadCount();
+    try {
+      await Promise.all([
+        mutateNotifications(promise as unknown as Promise<Notification[]>, {
+          optimisticData: (prev = []) =>
+            prev.map((notif) => ({ ...notif, isRead: true })),
+          rollbackOnError: true,
+          populateCache: false,
+          revalidate: true,
+        }),
+        mutateUnreadCount(promise as unknown as Promise<number>, {
+          optimisticData: 0,
+          rollbackOnError: true,
+          populateCache: false,
+          revalidate: true,
+        }),
+      ]);
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err);
+      throw err;
+    }
   }, [mutateNotifications, mutateUnreadCount]);
 
   return {

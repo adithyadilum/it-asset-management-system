@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { softwareLicenses, softwareAllocations } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
@@ -11,6 +11,10 @@ import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 export type AllocateSoftwareResult =
   | { success: true; allocatedCount: number }
+  | { success: false; error: string };
+
+export type RevokeSoftwareAllocationResult =
+  | { success: true }
   | { success: false; error: string };
 
 export async function allocateSoftwareLicensesAction(assetId: string, userIds: string[]): Promise<AllocateSoftwareResult> {
@@ -83,6 +87,7 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
 
     revalidatePath('/assets');
     revalidatePath('/assets/software');
+    revalidatePath('/my-assets');
     revalidateTag('dashboard-kpis', 'max');
     
     return result;
@@ -101,6 +106,87 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
     logLatency({
       scope: 'ACTION',
       label: 'software.allocateSoftwareLicensesAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export async function revokeSoftwareLicenseAllocationAction(
+  assetId: string,
+  userId: string
+): Promise<RevokeSoftwareAllocationResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    return { success: false, error: 'Unauthorized: Please sign in.' };
+  }
+
+  if (!canManageAssets(currentUser.role)) {
+    return { success: false, error: 'Forbidden: You do not have permission to revoke software allocations.' };
+  }
+
+  if (!assetId || !userId) {
+    return { success: false, error: 'Asset and user are required.' };
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      const license = await tx.query.softwareLicenses.findFirst({
+        where: eq(softwareLicenses.assetId, assetId),
+      });
+
+      if (!license) {
+        throw new Error('Software license not found for this asset.');
+      }
+
+      const revokedAt = new Date();
+      const [revokedAllocation] = await tx
+        .update(softwareAllocations)
+        .set({ revokedAt })
+        .where(
+          and(
+            eq(softwareAllocations.licenseId, license.id),
+            eq(softwareAllocations.assignedToUserId, userId),
+            isNull(softwareAllocations.revokedAt)
+          )
+        )
+        .returning({ id: softwareAllocations.id });
+
+      if (!revokedAllocation) {
+        throw new Error('Active software allocation not found for this user.');
+      }
+
+      await logAuditActionTx(tx, {
+        entityType: 'SoftwareLicense',
+        entityId: license.id,
+        actionType: 'RETURN',
+        performedById: currentUser.id,
+        newData: { revokedUser: userId, revokedAt: revokedAt.toISOString() },
+      });
+    });
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/software');
+    revalidatePath('/my-assets');
+    revalidateTag('dashboard-kpis', 'max');
+
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'software.revokeSoftwareLicenseAllocationAction',
+      error,
+    });
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to revoke software allocation.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'software.revokeSoftwareLicenseAllocationAction',
       startTime: actionTimer,
     });
   }

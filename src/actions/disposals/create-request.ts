@@ -3,7 +3,7 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import {  enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,7 +14,8 @@ import {
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { normalizeAssetIds } from '@/actions/disposals/utils';
-import { requireAccess, canManageAssets } from '@/lib/auth/roles';
+import {  canManageAssets } from '@/lib/auth/roles';
+import { createDisposalRequestSchema } from '@/lib/validations/disposals';
 
 export async function createDisposalRequest(input: {
   assetIds: string[];
@@ -22,18 +23,29 @@ export async function createDisposalRequest(input: {
   justification?: string;
 }) {
   const actionTimer = startLatencyTimer();
-  const user = await getAuthenticatedUser();
+  const user = await enforceActionAccess(canManageAssets);
 
-  if (!user) throw new Error('UNAUTHENTICATED');
-  requireAccess(user, canManageAssets);
+  // ── Zod validation ────────────────────────────────────────────────────────
+  const parsed = createDisposalRequestSchema.safeParse({
+    assetIds: input.assetIds,
+    reason: input.reason,
+    justification: input.justification,
+  });
 
-  const normalizedAssetIds = normalizeAssetIds(input.assetIds);
-  const reason = input.reason?.trim();
-  const justification = input.justification?.trim() || null;
+  if (!parsed.success) {
+    const firstError =
+      Object.values(parsed.error.flatten().fieldErrors).flat()[0] ??
+      'Validation failed.';
+    throw new Error(firstError);
+  }
+
+  const { assetIds: rawAssetIds, reason, justification } = parsed.data;
+
+  // Normalize and deduplicate (filter invalid UUIDs that slipped past Zod coercion)
+  const normalizedAssetIds = normalizeAssetIds(rawAssetIds);
 
   if (normalizedAssetIds.length === 0)
-    throw new Error('Select at least one asset.');
-  if (!reason) throw new Error('Reason is required.');
+    throw new Error('Select at least one valid asset.');
 
   try {
     const checkTimer = startLatencyTimer();
@@ -191,10 +203,12 @@ export async function createDisposalRequest(input: {
       });
     });
 
+    // skipped = valid assets that were not inserted (already pending)
+    // Uses normalizedAssetIds (not raw input) so malformed IDs don't inflate the count
     return {
       success: true as const,
       inserted: result.inserted,
-      skipped: input.assetIds.length - result.inserted,
+      skipped: normalizedAssetIds.length - result.inserted,
     };
   } finally {
     logLatency({
@@ -203,4 +217,4 @@ export async function createDisposalRequest(input: {
       startTime: actionTimer,
     });
   }
-}
+}

@@ -111,7 +111,7 @@ describe('ExecuteDisposalDialog', () => {
       />
     );
 
-    const confirmBtn = screen.getByRole('button', { name: 'Confirm Disposal' });
+    const confirmBtn = screen.getByRole('button', { name: 'Execute Disposal' });
     expect(confirmBtn).toBeDisabled();
 
     // Check checkboxes

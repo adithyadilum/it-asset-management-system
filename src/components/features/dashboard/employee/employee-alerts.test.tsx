@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { EmployeeAlerts } from './employee-alerts';
@@ -27,7 +28,7 @@ describe('EmployeeAlerts', () => {
       upcomingReturns: []
     };
     // @ts-ignore
-    render(<EmployeeAlerts alerts={mockAlerts as any} onAccept={vi.fn()} onReject={vi.fn()} onReport={vi.fn()} />);
+    render(<CurrencyProvider initialCurrency="USD"><EmployeeAlerts alerts={mockAlerts as any} onAccept={vi.fn()} onReject={vi.fn()} onReport={vi.fn()} /></CurrencyProvider>);
     
     expect(screen.getByText(/Action Required/i)).toBeInTheDocument();
   });

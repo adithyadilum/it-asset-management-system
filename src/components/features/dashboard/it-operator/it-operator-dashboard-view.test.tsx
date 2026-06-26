@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ITOperatorDashboardView } from './it-operator-dashboard-view';
@@ -30,7 +31,7 @@ describe('ITOperatorDashboardView', () => {
       systemHealth: []
     };
     
-    render(<ITOperatorDashboardView data={mockData as any} />);
+    render(<CurrencyProvider initialCurrency="USD"><ITOperatorDashboardView data={mockData as any} /></CurrencyProvider>);
     expect(screen.getByTestId('kpi-metrics')).toBeInTheDocument();
   });
 });

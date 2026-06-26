@@ -76,6 +76,7 @@ export interface PurchaseDetailsTabProps {
   onInvoiceClick?: () => void;
   className?: string;
   hideWarranty?: boolean;
+  hideShippingCost?: boolean;
 }
 
 export function PurchaseDetailsTab({
@@ -96,6 +97,7 @@ export function PurchaseDetailsTab({
   onInvoiceClick,
   className = '',
   hideWarranty = false,
+  hideShippingCost = false,
 }: PurchaseDetailsTabProps) {
   const resolvedSourceCurrency = sourceCurrency ?? currency;
 
@@ -170,7 +172,7 @@ export function PurchaseDetailsTab({
       <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
         <DetailField label="Purchase Date" value={formatDate(purchaseDate)} />
         <DetailField label="Base Price" value={formattedBasePrice} isMono />
-        <DetailField label="Shipping Cost" value={formattedShippingCost} isMono />
+        {!hideShippingCost && <DetailField label="Shipping Cost" value={formattedShippingCost} isMono />}
         <DetailField label="Tax" value={formattedTax} isMono />
         <DetailField label="Total Cost" value={formattedTotalCost} isMono />
         {!hideWarranty && <DetailField label="Warranty Period" value={warrantyPeriod} />}

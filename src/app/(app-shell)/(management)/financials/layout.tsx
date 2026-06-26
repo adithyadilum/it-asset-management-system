@@ -13,8 +13,8 @@ export default async function FinancialsLayout({
     redirect('/login');
   }
 
-  // Strict RBAC Guard: Only GlobalAdmin and FinanceAuditor can access
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
+  // Strict RBAC Guard: Only GlobalAdmin and FinancialAuditor can access
+  if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     redirect('/403');
   }
 

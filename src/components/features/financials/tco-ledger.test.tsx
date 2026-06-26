@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TCOLedger } from './tco-ledger';
@@ -27,7 +28,7 @@ describe('TCOLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<TCOLedger initialData={mockData} />);
+    render(<CurrencyProvider initialCurrency="USD"><TCOLedger initialData={mockData} /></CurrencyProvider>);
     expect(screen.getByText('AST-002')).toBeInTheDocument();
     expect(screen.getByText('Servers')).toBeInTheDocument();
   });

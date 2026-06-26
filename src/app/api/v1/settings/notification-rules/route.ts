@@ -20,6 +20,43 @@ export async function GET() {
       );
     }
 
+    const rules = await db
+      .select()
+      .from(notificationRules)
+      .orderBy(notificationRules.id);
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: rules,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error('GET /api/v1/settings/notification-rules error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST() {
+  try {
+    const user = await getAuthenticatedUser();
+
+    if (!user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!canManageAssets(user.role)) {
+      return NextResponse.json(
+        { error: 'Forbidden: Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     let rules = await db
       .select()
       .from(notificationRules)
@@ -184,7 +221,7 @@ export async function GET() {
     );
   } catch (error) {
     unstable_rethrow(error);
-    console.error('GET /api/v1/settings/notification-rules error:', error);
+    console.error('POST /api/v1/settings/notification-rules error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -184,6 +184,16 @@ export const assetRegistrationSchema = z.object({
       message: 'License type must be a valid option.',
     }).optional()
   ),
+  billingCycle: z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? undefined : trimmed;
+    },
+    z.enum(['Monthly', 'Annual'], {
+      message: 'Billing cycle must be monthly or annual.',
+    }).optional()
+  ),
   totalSeats: z.preprocess(
     (value) => {
       if (typeof value !== 'string') return value;
@@ -222,6 +232,57 @@ export const assetRegistrationSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ['totalSeats'],
         message: 'Total seats is required for software.',
+      });
+    }
+    if (data.licenseType === 'Subscription') {
+      if (!data.billingCycle) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['billingCycle'],
+          message: 'Billing cycle is required for subscription licenses.',
+        });
+      }
+      if (!data.licenseExpiryDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['licenseExpiryDate'],
+          message: 'Expiry date is required for subscription licenses.',
+        });
+      }
+    }
+    if (data.licenseType === 'Perpetual' && data.licenseExpiryDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['licenseExpiryDate'],
+        message: 'Perpetual licenses must not have an expiry date.',
+      });
+    }
+    if (data.licenseType !== 'Subscription' && data.billingCycle) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['billingCycle'],
+        message: 'Billing cycle only applies to subscription licenses.',
+      });
+    }
+    if (
+      data.licenseType === 'Open Source / Free' &&
+      (data.basePrice !== 0 || (data.tax ?? 0) !== 0 || (data.shippingCost ?? 0) !== 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['basePrice'],
+        message: 'Free software must have a total cost of 0.',
+      });
+    }
+    if (
+      data.licenseStartDate &&
+      data.licenseExpiryDate &&
+      data.licenseExpiryDate < data.licenseStartDate
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['licenseExpiryDate'],
+        message: 'Expiry date must be after the start date.',
       });
     }
   }

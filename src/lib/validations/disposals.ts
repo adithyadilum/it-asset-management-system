@@ -1,19 +1,59 @@
-// web/src/lib/validations/disposals.ts
 import { z } from 'zod';
 
-const receiptUrlSchema = z.string().url('A valid receipt URL is required.');
-const receiptUrlsSchema = z
-  .array(receiptUrlSchema)
-  .min(1, 'At least one valid receipt URL is required.');
+// ─── Receipt URL domain allowlist ──────────────────────────────────────────
+// Only accept URLs from the Vercel Blob storage hostname to prevent injection
+// of external URLs into the assetDocuments table.
+const ALLOWED_BLOB_HOSTNAMES = [
+  'public.blob.vercel-storage.com',
+];
 
-// Schema for the Execute Disposal Action
+function isAllowedBlobUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_BLOB_HOSTNAMES.some((host) => parsed.hostname.endsWith(host));
+  } catch {
+    return false;
+  }
+}
+
+const receiptUrlSchema = z
+  .string()
+  .url('A valid receipt URL is required.')
+  .refine(isAllowedBlobUrl, {
+    message: 'Receipt URL must be from an authorized storage provider.',
+  });
+
+const receiptUrlsSchema = z.array(receiptUrlSchema);
+
+// ─── Create Disposal Request Schema ─────────────────────────────────────────
+// Used by createDisposalRequest server action.
+export const createDisposalRequestSchema = z.object({
+  assetIds: z
+    .array(z.string().uuid('Invalid asset ID format.'))
+    .min(1, 'Select at least one asset.'),
+  reason: z
+    .string()
+    .trim()
+    .min(1, 'Reason is required.')
+    .max(500, 'Reason is too long.'),
+  justification: z
+    .string()
+    .trim()
+    .max(2000, 'Justification is too long.')
+    .optional()
+    .transform((val) => val ?? null),
+});
+
+// ─── Execute Disposal Schema ─────────────────────────────────────────────────
+// Used by executeAssetDisposal server action.
+// receiptUrls is optional — document upload is not required to complete disposal.
 export const executeDisposalSchema = z
   .object({
     disposalIds: z.array(z.coerce.number().int().positive()).min(1, 'No disposals selected.'),
     // strictly validate UUIDs
     assetIds: z.array(z.string().uuid('Invalid asset ID format.')).min(1, 'No assets selected.'),
-    reason: z.string().min(1, 'Reason is required.'), 
-    //validate ISO date or datetime
+    reason: z.string().min(1, 'Reason is required.'),
+    // validate ISO date or datetime
     disposalDate: z
       .string()
       .refine(
@@ -35,30 +75,12 @@ export const executeDisposalSchema = z
       message: 'You must confirm physical tags are removed.',
     }),
     actualSalvageValue: z.coerce.number().min(0, 'Salvage value must be non-negative.').optional(),
-    // Support for both single and multiple receipt URLs
-    receiptUrl: receiptUrlSchema.optional(),
-    receiptUrls: receiptUrlsSchema.optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (!data.receiptUrl && !data.receiptUrls?.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'At least one valid receipt URL is required.',
-        path: ['receiptUrls'],
-      });
-    }
-  })
-  .transform((data) => {
-    const normalizedReceiptUrls = data.receiptUrls ?? (data.receiptUrl ? [data.receiptUrl] : []);
-
-    return {
-      ...data,
-      receiptUrl: data.receiptUrl ?? normalizedReceiptUrls[0],
-      receiptUrls: normalizedReceiptUrls,
-    };
+    // Upload is optional — an empty array is acceptable
+    receiptUrls: receiptUrlsSchema.optional().default([]),
   });
 
-// Schema for the Reject Disposal Action
+// ─── Reject Disposal Schema ───────────────────────────────────────────────────
+// Used by rejectDisposalRequest server action.
 export const rejectDisposalSchema = z
   .object({
     disposalIds: z.array(z.coerce.number().int().positive()).min(1, 'No disposals selected.'),
@@ -75,7 +97,7 @@ export const rejectDisposalSchema = z
     maintenanceIssue: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-        if (data.fallbackStatus === 'In Repair' && (!data.maintenanceIssue || data.maintenanceIssue.trim() === '')) {
+    if (data.fallbackStatus === 'In Repair' && (!data.maintenanceIssue || data.maintenanceIssue.trim() === '')) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Maintenance issue description is required when routing to repair.',

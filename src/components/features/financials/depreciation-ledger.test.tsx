@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DepreciationLedger } from './depreciation-ledger';
@@ -27,7 +28,7 @@ describe('DepreciationLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<DepreciationLedger initialData={mockData} />);
+    render(<CurrencyProvider initialCurrency="USD"><DepreciationLedger initialData={mockData} /></CurrencyProvider>);
     expect(screen.getByText('AST-001')).toBeInTheDocument();
     expect(screen.getByText('Laptops')).toBeInTheDocument();
   });

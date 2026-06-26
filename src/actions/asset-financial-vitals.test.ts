@@ -5,6 +5,11 @@ import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/use
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user)) throw new Error('Forbidden');
+  }),
 }));
 
 const mockResolveAssetPrimaryId = vi.fn();
@@ -62,7 +67,7 @@ describe('getAssetFinancialVitals', () => {
     vi.clearAllMocks();
   });
 
-  it('restricts access to FinanceAuditor and GlobalAdmin', async () => {
+  it('restricts access to FinancialAuditor and GlobalAdmin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
     await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow('Forbidden');
 

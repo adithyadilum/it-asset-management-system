@@ -102,8 +102,8 @@ export async function seedAssets() {
       },
       {
         email: 'finance@tiqri.com',
-        name: 'Finance Auditor',
-        role: 'FinanceAuditor',
+        name: 'Financial Auditor',
+        role: 'FinancialAuditor',
         department: 'Finance',
       },
       {

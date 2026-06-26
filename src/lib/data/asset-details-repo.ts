@@ -9,6 +9,7 @@ import {
   assetDocuments,
 } from '@/db/schema';
 import { isValidUuid } from '@/lib/auth/uuid';
+import { isSoftwareLicenseNearCapacity } from '@/lib/software-license-status';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -261,7 +262,10 @@ export async function getAssetDetailsById(
       location: { columns: { id: true, name: true, type: true } },
       softwareLicense: {
         with: {
-          allocations: { columns: { id: true } },
+          allocations: {
+            where: (allocations, { isNull }) => isNull(allocations.revokedAt),
+            columns: { id: true },
+          },
         },
       },
       owner: { columns: { id: true, companyName: true } },
@@ -437,7 +441,7 @@ export async function getAssetDetailsById(
       ? expiry < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
-    const isNearFull = totalSeats > 0 && availableSeats <= 2;
+    const isNearFull = isSoftwareLicenseNearCapacity(totalSeats, availableSeats);
 
     if (isExpired) {
       result.asset.status = 'expired';
@@ -533,6 +537,7 @@ export async function getAssetAllocationsById(
       softwareLicense: {
         with: {
           allocations: {
+            where: (allocations, { isNull }) => isNull(allocations.revokedAt),
             with: {
               assignedToUser: {
                 columns: { id: true, name: true, email: true },

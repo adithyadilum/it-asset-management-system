@@ -5,6 +5,11 @@ import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/use
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user)) throw new Error('Forbidden');
+  }),
 }));
 
 const mockGetGlobalAdminDashboardData = vi.fn();
@@ -18,7 +23,7 @@ vi.mock('@/actions/dashboard/it-operator', () => ({
 }));
 
 const mockGetFinanceDashboardData = vi.fn();
-vi.mock('@/actions/dashboard/finance-auditor', () => ({
+vi.mock('@/actions/dashboard/financial-auditor', () => ({
   getFinanceDashboardData: () => mockGetFinanceDashboardData(),
 }));
 
@@ -35,7 +40,7 @@ describe('Dashboard Action: getDashboardBatchData', () => {
   it('returns restricted view / throws forbidden for Employee', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
     // The implementation throws 'Forbidden' for Employee
-    await expect(getDashboardBatchData()).rejects.toThrow('Forbidden');
+    await expect(getDashboardBatchData()).rejects.toThrow('FORBIDDEN');
   });
 
   it('returns full metrics for GlobalAdmin', async () => {
@@ -67,10 +72,10 @@ describe('Dashboard Action: getDashboardBatchData', () => {
     expect(result.depreciationLedger).toEqual([]);
   });
 
-  it('returns Finance-specific metrics for FinanceAuditor', async () => {
+  it('returns Finance-specific metrics for FinancialAuditor', async () => {
     mockGetAuthenticatedUser.mockResolvedValue({
       id: 'finance1',
-      role: 'FinanceAuditor',
+      role: 'FinancialAuditor',
     });
     mockGetFinanceDashboardData.mockResolvedValue({
       kpiMetrics: { totalActiveAssets: 150 },

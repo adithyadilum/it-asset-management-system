@@ -1,6 +1,7 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { FinanceAuditorDashboardView } from './finance-auditor-dashboard-view';
+import { FinancialAuditorDashboardView } from './financial-auditor-dashboard-view';
 
 vi.mock('../shared/kpi-metrics-row', () => ({
   KpiMetricsRow: () => <div data-testid="kpi-metrics" />
@@ -12,7 +13,7 @@ vi.mock('@/components/shared/data-table', () => ({
   DataTable: () => <div data-testid="data-table" />
 }));
 
-describe('FinanceAuditorDashboardView', () => {
+describe('FinancialAuditorDashboardView', () => {
   afterEach(async () => {
     // Flush microtasks to prevent React Fiber act() leaks
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -29,7 +30,7 @@ describe('FinanceAuditorDashboardView', () => {
       highValueAssets: []
     };
     
-    render(<FinanceAuditorDashboardView data={mockData as any} />);
+    render(<CurrencyProvider initialCurrency="USD"><FinancialAuditorDashboardView data={mockData as any} /></CurrencyProvider>);
     expect(screen.getByTestId('kpi-metrics')).toBeInTheDocument();
   });
 });

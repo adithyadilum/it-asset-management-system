@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CurrencyFormatted, DateFormatted } from '@/components/shared/formatters';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,19 +41,11 @@ export function IssueReviewPanel({
   const [showRepairDialog, setShowRepairDialog] = useState(false);
 
   const formatCurrency = (value: number | string | null) => {
-    if (value === null) return 'N/A';
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(num)) return 'N/A';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(num);
+    return <CurrencyFormatted amount={value} compact />;
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    } catch {
-      return 'N/A';
-    }
+    return <DateFormatted date={dateString} />;
   };
 
   if (isLoading || !data) {

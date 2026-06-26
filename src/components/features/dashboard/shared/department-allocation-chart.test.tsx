@@ -1,3 +1,4 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DepartmentAllocationChart } from './department-allocation-chart';
@@ -26,7 +27,7 @@ describe('DepartmentAllocationChart', () => {
       { department: 'IT', allocated: 50, available: 10, inRepair: 5 }
     ];
     
-    render(<DepartmentAllocationChart allocationData={mockData as any} />);
+    render(<CurrencyProvider initialCurrency="USD"><DepartmentAllocationChart allocationData={mockData as any} /></CurrencyProvider>);
     expect(screen.getByText(/Asset Allocation by Department/i)).toBeInTheDocument();
   });
 });

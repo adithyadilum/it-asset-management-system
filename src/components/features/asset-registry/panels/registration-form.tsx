@@ -1,7 +1,7 @@
 "use client";
+import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 import * as React from 'react';
-import { LoaderCircle } from 'lucide-react';
 
 import {
   SlidePanel,
@@ -49,6 +49,11 @@ const LICENSE_TYPE_OPTIONS: RegistrationOption[] = [
   { value: 'Perpetual', label: 'Perpetual' },
   { value: 'Subscription', label: 'Subscription' },
   { value: 'Open Source / Free', label: 'Open Source / Free' },
+];
+
+const BILLING_CYCLE_OPTIONS: RegistrationOption[] = [
+  { value: 'Monthly', label: 'Monthly' },
+  { value: 'Annual', label: 'Annual' },
 ];
 
 const CONDITION_OPTIONS = ['New', 'Excellent', 'Fair', 'Poor', 'Damaged'];
@@ -152,6 +157,8 @@ export function RegistrationForm({
     setCustomFieldValues,
     licenseType,
     setLicenseType,
+    billingCycle,
+    setBillingCycle,
     totalSeats,
     setTotalSeats,
     licenseStartDate,
@@ -181,6 +188,7 @@ export function RegistrationForm({
     licenseStartDateValue,
     licenseExpiryDateLabel,
     licenseExpiryDateValue,
+    isFreeSoftwareLicense,
     currencySymbol,
     totalCost,
   } = useRegistrationForm({
@@ -207,7 +215,7 @@ export function RegistrationForm({
         id: 'submit',
         label: isPending ? (
           <span className="inline-flex items-center gap-2">
-            <LoaderCircle className="h-4 w-4 animate-spin" />
+            <LoadingSpinner size="sm" />
             <span>{config.submittingLabel}</span>
           </span>
         ) : (
@@ -279,6 +287,9 @@ export function RegistrationForm({
         licenseType={licenseType}
         setLicenseType={setLicenseType}
         LICENSE_TYPE_OPTIONS={LICENSE_TYPE_OPTIONS}
+        billingCycle={billingCycle}
+        setBillingCycle={setBillingCycle}
+        BILLING_CYCLE_OPTIONS={BILLING_CYCLE_OPTIONS}
         totalSeats={totalSeats}
         setTotalSeats={setTotalSeats}
         licenseStartDate={licenseStartDate}
@@ -319,6 +330,7 @@ export function RegistrationForm({
 
         costPerSeat={costPerSeat}
         setCostPerSeat={setCostPerSeat}
+        isFreeSoftwareLicense={isFreeSoftwareLicense}
         warrantyMonths={warrantyMonths}
         setWarrantyMonths={setWarrantyMonths}
         WARRANTY_MONTH_OPTIONS={WARRANTY_MONTH_OPTIONS}
