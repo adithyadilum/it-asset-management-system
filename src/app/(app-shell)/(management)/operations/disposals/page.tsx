@@ -55,7 +55,7 @@ export default async function DisposalsPage({
   const validPageSize = isNaN(pageSize) || pageSize < 1 ? 10 : pageSize;
 
   // 1. Fetch pending requests
-  const pendingData = await db
+  const pendingDataPromise = db
     .select({
       id: assetDisposals.id,
       assetId: assets.id,
@@ -87,25 +87,9 @@ export default async function DisposalsPage({
     searchCondition
   );
 
-  // 2. Fetch disposal history count for pagination
-  const [countResult] = await db
+  const historyDataPromise = db
     .select({
-      count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)`,
-    })
-    .from(assetDisposals)
-    .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
-    .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
-    .where(historyBaseCondition);
-
-  const totalRecords = countResult?.count || 0;
-  const pageCount = Math.max(Math.ceil(totalRecords / validPageSize), 1);
-
-  // 3. Fetch disposal history paginated data
-  const historyDataRaw = await db
-    .select({
+      totalCount: sql<number>`count(*) over()::int`,
       id: assetDisposals.id,
       assetId: assets.id,
       assetTag: assets.assetTag,
@@ -149,10 +133,40 @@ export default async function DisposalsPage({
     .limit(validPageSize)
     .offset((validPage - 1) * validPageSize);
 
+  const [pendingData, historyDataRaw] = await Promise.all([
+    pendingDataPromise,
+    historyDataPromise,
+  ]);
+
+  let totalRecords = historyDataRaw[0]?.totalCount ?? 0;
+  if (historyDataRaw.length === 0 && validPage > 1) {
+    const [countResult] = await db
+      .select({
+        count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)`,
+      })
+      .from(assetDisposals)
+      .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
+      .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
+      .where(historyBaseCondition);
+    totalRecords = countResult?.count ?? 0;
+  }
+  const pageCount = Math.max(Math.ceil(totalRecords / validPageSize), 1);
+
   // Format the history data to match the expected props
   const historyData = historyDataRaw.map((row) => ({
-    ...row,
+    id: row.id,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    category: row.category,
+    reason: row.reason,
     flaggedBy: row.flaggedBy || 'Unknown',
+    disposedBy: row.disposedBy,
+    disposalDate: row.disposalDate,
+    status: row.status,
+    documentUrls: row.documentUrls,
   }));
 
   return (
