@@ -300,11 +300,7 @@ export async function getActiveRepairTickets(searchTerm = '') {
   return loadActiveRepairTickets(searchTerm);
 }
 
-async function loadRepairHistory(
-  page = 1,
-  pageSize = 10,
-  searchTerm = ''
-) {
+async function loadRepairHistory(page = 1, pageSize = 10, searchTerm = '') {
   // Validate and bound pagination parameters.
   const paramsResult = getRepairHistoryParamsSchema.safeParse({
     page,
