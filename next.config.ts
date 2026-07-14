@@ -1,23 +1,38 @@
 /** @type {import('next').NextConfig} */
 import './src/lib/env';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const applicationUrl = new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000');
+const serverActionOrigins = isProduction
+  ? [applicationUrl.host]
+  : [applicationUrl.host, 'localhost:3000', '127.0.0.1:3000'];
+
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https: wss:",
+  "worker-src 'self' blob:",
+  ...(isProduction ? ['upgrade-insecure-requests'] : []),
+].join('; ');
+
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
-  // Add your ngrok URL and local IP here (DO NOT include https://)
-  allowedDevOrigins: [
-    'cadc-2402-4000-2110-33a2-68ce-638f-2f60-50e9.ngrok-free.app',
-    '192.168.8.101',
-    'localhost:3000',
-    '127.0.0.1',
-  ],
+  allowedDevOrigins: isProduction ? [] : ['localhost:3000', '127.0.0.1'],
   reactCompiler: true,
   cacheComponents: true,
   experimental: {
     instantNavigationDevToolsToggle: true,
     serverActions: {
-      bodySizeLimit: '10mb',
-      allowedOrigins: ['localhost:3000', '*.ngrok-free.app'],
+      bodySizeLimit: '5mb',
+      allowedOrigins: serverActionOrigins,
     },
   },
   images: {
@@ -35,6 +50,23 @@ const nextConfig = {
         pathname: '/**', // This allows all folders (like /models, /invoices)
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
+          ...(isProduction
+            ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
+            : []),
+        ],
+      },
+    ];
   },
 };
 module.exports = nextConfig;

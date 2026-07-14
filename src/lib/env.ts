@@ -14,8 +14,8 @@ const serverEnvSchema = z.object({
 
   // ── Auth (NextAuth + Keycloak) ────────────────────────────
   NEXTAUTH_URL: z.string().url(),
-  NEXTAUTH_SECRET: z.string().min(1),
-  MOBILE_JWT_SECRET: z.string().min(16),
+  NEXTAUTH_SECRET: z.string().min(32),
+  MOBILE_JWT_SECRET: z.string().min(32),
   KEYCLOAK_CLIENT_ID: z.string().min(1),
   KEYCLOAK_CLIENT_SECRET: z.string().min(1),
   KEYCLOAK_ISSUER: z.string().url(),
@@ -37,7 +37,12 @@ const serverEnvSchema = z.object({
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
 
   // ── Encryption ────────────────────────────────────────────
-  ENCRYPTION_SECRET: z.string().min(1).optional(),
+  ENCRYPTION_SECRET: z
+    .string()
+    .refine((value) => Buffer.from(value, 'base64').length === 32, {
+      message: 'must be a base64-encoded 32-byte key',
+    })
+    .optional(),
 
   // ── Pusher (Server-only) ──────────────────────────────────
   PUSHER_APP_ID: z.string().min(1).optional(),
@@ -49,6 +54,7 @@ const serverEnvSchema = z.object({
 
   // ── Vercel Blob ───────────────────────────────────────────
   BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
+  PRIVATE_BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
 });
 
 const result = serverEnvSchema.safeParse(process.env);
