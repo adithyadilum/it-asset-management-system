@@ -3,7 +3,7 @@
 - **Project:** IT Asset Management System
 - **Audit date:** 2026-07-14
 - **Baseline:** `dev` / `e5773c8338d9256472428bb24952a4e184bf5f62`
-- **Remediation state:** `dev` through `db3990c` (report update follows)
+- **Remediation state:** `dev` through `0175f9c` (report update follows)
 - **Scope:** Security, performance, CI/CD, deployment, tests, and code quality
 - **Update:** Remediation was implemented on 2026-07-14 in conventional commits and verified locally.
 
@@ -47,15 +47,18 @@ Status meanings: **Fixed** is implemented and locally verified; **Mitigated** ma
 
 ### Performance and reliability
 
-| ID      | Status    | Implemented remediation / remaining work                                                                                                                                        |
-| ------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PERF-01 | Fixed     | Migration `0006` adds the identified composite, partial, and trigram indexes and enables `pg_trgm`. Production query plans must still be observed after rollout.                |
-| PERF-02 | Mitigated | Imports use a category-scoped Redis owner-token lock with TTL and retain a 5,000-row ceiling. Staging tables, batched writes, and an asynchronous job model remain recommended. |
-| PERF-03 | Fixed     | Handlers attempt once, return failure for QStash retry, and avoid in-request exponential sleeps.                                                                                |
-| PERF-04 | Mitigated | Report/export requests are hard-capped at 5,000 rows. Asynchronous streamed exports remain appropriate for larger data sets.                                                    |
-| PERF-05 | Mitigated | Trigram indexes address contains-search scans; report-count query/caching redesign remains.                                                                                     |
-| PERF-06 | Fixed     | Explicit pool size, connect/idle/statement timeouts, application name, and development singleton behavior are configured.                                                       |
-| PERF-07 | Fixed     | Notification fallback polling is no faster than 60 seconds and pauses while hidden or offline; push invalidation remains primary.                                               |
+| ID      | Status    | Implemented remediation / remaining work                                                                                                                                          |
+| ------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PERF-01 | Fixed     | Migration `0006` adds the identified composite, partial, and trigram indexes and enables `pg_trgm`. Production query plans must still be observed after rollout.                  |
+| PERF-02 | Mitigated | Imports use a category-scoped Redis owner-token lock with TTL and retain a 5,000-row ceiling. Staging tables, batched writes, and an asynchronous job model remain recommended.   |
+| PERF-03 | Fixed     | Handlers attempt once, return failure for QStash retry, and avoid in-request exponential sleeps.                                                                                  |
+| PERF-04 | Mitigated | Report/export requests are hard-capped at 5,000 rows. Asynchronous streamed exports remain appropriate for larger data sets.                                                      |
+| PERF-05 | Mitigated | Trigram indexes address contains-search scans; report-count query/caching redesign remains.                                                                                       |
+| PERF-06 | Fixed     | Explicit pool size, connect/idle/statement timeouts, application name, and development singleton behavior are configured.                                                         |
+| PERF-07 | Fixed     | Notification fallback polling is no faster than 60 seconds and pauses while hidden or offline; push invalidation remains primary.                                                 |
+| PERF-08 | Fixed     | Asset registry pages reuse server data, combine count/rows, resolve assignments in the primary query, and reuse server-provided status metadata. Warm live samples were 80-91 ms. |
+| PERF-09 | Fixed     | Asset detail panels and maintenance tabs use consolidated actions with one authentication boundary; development Strict Mode requests are deduplicated while in flight.            |
+| PERF-10 | Fixed     | Notification list/count bootstrap and refresh now use one SWR key, one authenticated action, and one query instead of two independent action requests.                            |
 
 ### CI/CD and deployment
 
@@ -73,7 +76,7 @@ Status meanings: **Fixed** is implemented and locally verified; **Mitigated** ma
 
 | ID    | Status    | Implemented remediation / remaining work                                                                                                                    |
 | ----- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CQ-01 | Fixed     | Auth mocks and stale component fixtures match production contracts; all 199 test files and 1,094 tests pass without unhandled errors.                       |
+| CQ-01 | Fixed     | Auth mocks and stale component fixtures match production contracts; all 201 test files and 1,105 tests pass without unhandled errors.                       |
 | CQ-02 | Fixed     | Invoice/document uploads use the hardened private-storage abstraction and authenticated retrieval rather than placeholder URLs.                             |
 | CQ-03 | Fixed     | The repository is normalized with Prettier, scripts exist, and CI enforces `format:check`.                                                                  |
 | CQ-04 | Open      | Large action/client/repository modules require incremental use-case refactoring; this was not mixed into security remediation.                              |
@@ -88,12 +91,27 @@ Status meanings: **Fixed** is implemented and locally verified; **Mitigated** ma
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run check`                | Passed: ESLint and TypeScript 6.0.3                                                                                                                                               |
 | `npm run format:check`         | Passed                                                                                                                                                                            |
-| `npm run test:coverage`        | Passed: 199/199 files, 1,094/1,094 tests; 46.69% statements, 38.00% branches, 41.92% functions, 47.69% lines                                                                      |
+| `npm run test:coverage`        | Passed: 201/201 files, 1,105/1,105 tests; 47.10% statements, 38.40% branches, 42.27% functions, 48.11% lines                                                                      |
 | `npm run build`                | Passed: Next.js 16.2.10 optimized build; 64 static pages generated                                                                                                                |
+| `npm run test:run`             | Passed after response-time remediation: 201/201 files and 1,105/1,105 tests                                                                                                       |
 | `npm audit --audit-level=high` | Passed: 0 vulnerabilities                                                                                                                                                         |
 | Dependency currency            | All compatible updates installed. ESLint 10 and TypeScript 7 are held to supported peer ranges; `@vitejs/plugin-react` 6.0.3 is held because of unresolved Babel peer resolution. |
 | Migration/E2E execution        | Not run locally because Docker was unavailable; CI definitions were repaired and require execution before release.                                                                |
 | Live/cloud controls            | Not tested; Vercel, Neon, Keycloak, Upstash, Pusher, GitHub settings, WAF, backups, logging, and deployed headers require environment verification.                               |
+
+### Response-time follow-up (2026-07-14)
+
+The timing trace supplied after the audit showed that proxy authorization was already healthy (generally 0-7 ms). The remaining application-owned latency came from duplicate browser action requests and avoidable sequential database round trips. The following follow-up was implemented:
+
+- Asset registry clients no longer request custom statuses after hydration because the server shell already supplies the same active manual/custom status metadata.
+- Hardware and unified registry rows resolve the latest active assignee inside the primary paginated query. This removes the second assignment query while retaining the existing `(asset_id, returned_date)` index.
+- Registry pagination count and rows are returned together, the server-rendered first page is reused, and asset detail tabs share one consolidated action and one ID resolution.
+- Maintenance loads pending, active, and history tabs through one authenticated action. The independent reads run concurrently; the normal history page uses a window count instead of a separate count query; an in-flight key prevents React development Strict Mode from repeating the request.
+- Notifications load list and unread count through one action/query/cache key. Mark-read operations optimistically update that shared cache and perform one consolidated revalidation.
+
+Live Neon repository sampling after the changes returned 4 hardware rows in **80 ms warm**, 3 software rows in **90 ms warm**, and 15 unified rows in **91 ms warm**. The supplied pre-fix trace showed the hardware registry database work at **419 ms** and the software database work at **282 ms**. These are small development samples rather than production SLO evidence, but they verify the removed round trips. A cold hardware sample took **1,678 ms**, which identifies remote/serverless database wake-up as the remaining first-idle-request cost; production measurement should separate cold and warm percentiles and evaluate provider keep-warm/pooling settings if cold latency is unacceptable.
+
+The multi-second first visits attributed to `next.js`/Turbopack compilation are development-only compilation costs. User-facing latency must be measured against `next build && next start` or the deployed production runtime; the production build completed successfully after these changes.
 
 ## Remediation commits
 
@@ -105,6 +123,15 @@ Status meanings: **Fixed** is implemented and locally verified; **Mitigated** ma
 - `1d85036 chore(deps): upgrade dependencies and enforce coverage`
 - `0838099 fix(types): type dynamic status icon lookup`
 - `db3990c style: format repository`
+- `4184cbf fix(db): support pooled Neon authentication`
+- `64d62a9 fix(dev): allow React CSP diagnostics`
+- `9384488 perf(assets): consolidate panel data loading`
+- `787ec3f perf(registry): eliminate redundant initial queries`
+- `c20751d perf(auth): cache user lookup per request`
+- `a2a6945 perf(registry): remove redundant lookup queries`
+- `b0711a7 perf(maintenance): consolidate overview loading`
+- `7749a62 perf(notifications): unify notification bootstrap`
+- `0175f9c style(maintenance): format history loader`
 
 ## Original audit scope and evidence
 
