@@ -12,7 +12,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
@@ -54,7 +55,7 @@ describe('getAssetsByPillar', () => {
 
   it('throws unauthorized for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getAssetsByPillar({ pillar: 'Hardware' })).rejects.toThrow('Forbidden');
+    await expect(getAssetsByPillar({ pillar: 'Hardware' })).rejects.toThrow('Unauthorized');
   });
 
   it('throws unauthorized for employee role', async () => {
@@ -94,7 +95,7 @@ describe('getAllAssetsUnified', () => {
 
   it('throws unauthorized for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getAllAssetsUnified({ pillar: 'Hardware' })).rejects.toThrow('Forbidden');
+    await expect(getAllAssetsUnified({ pillar: 'Hardware' })).rejects.toThrow('Unauthorized');
   });
 
   it('successfully calls getAllAssetsUnifiedRepo with normalized inputs', async () => {
@@ -123,7 +124,7 @@ describe('getCategoriesByPillar', () => {
 
   it('throws unauthorized for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getCategoriesByPillar('Hardware')).rejects.toThrow('Forbidden');
+    await expect(getCategoriesByPillar('Hardware')).rejects.toThrow('Unauthorized');
   });
 
   it('delegates to repo for valid pillar', async () => {

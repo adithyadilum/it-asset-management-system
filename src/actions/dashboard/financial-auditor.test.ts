@@ -75,7 +75,7 @@ describe('getFinanceDashboardData', () => {
     });
     mockGetCachedDashboardKpiMetrics.mockResolvedValue({ totalActiveAssets: 100 });
     mockGetCachedInventoryStatus.mockResolvedValue({ inventoryData: [] });
-    mockGetCachedDepartmentAllocation.mockResolvedValue([{ dept: 'Finance', count: 5 }]);
+    mockGetCachedDepartmentAllocation.mockResolvedValue([{ name: 'Finance', value: 5 }]);
     mockGetDashboardTopHighValueAssetsInternal.mockResolvedValue([{ id: 1 }]);
     mockGetWriteOffsLedger.mockResolvedValue({ data: [{ id: 2 }] });
     mockGetDashboardSoftwareOptimizationInternal.mockResolvedValue([{ id: 3 }]);

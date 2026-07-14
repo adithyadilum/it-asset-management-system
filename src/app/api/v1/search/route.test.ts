@@ -9,6 +9,8 @@ import { db } from '@/db';
 import { GET } from '@/app/api/v1/search/route';
 import { getToken } from 'next-auth/jwt';
 
+const mockGetAuthenticatedUserFromRequest = vi.hoisted(() => vi.fn());
+
 vi.mock('@/db', () => ({
   db: {
     select: vi.fn(),
@@ -17,6 +19,9 @@ vi.mock('@/db', () => ({
 
 vi.mock('next-auth/jwt', () => ({
   getToken: vi.fn(),
+}));
+vi.mock('@/lib/auth/get-authenticated-user', () => ({
+  getAuthenticatedUserFromRequest: mockGetAuthenticatedUserFromRequest,
 }));
 
 vi.mock('@/lib/latency', () => ({
@@ -53,7 +58,7 @@ describe('GET /api/v1/search', () => {
   });
 
   it('returns 401 when token is missing', async () => {
-    vi.mocked(getToken).mockResolvedValue(null);
+    mockGetAuthenticatedUserFromRequest.mockResolvedValue(null);
 
     const response = await GET(createRequest('http://localhost/api/v1/search?q=laptop'));
     expect(response.status).toBe(401);
@@ -63,7 +68,7 @@ describe('GET /api/v1/search', () => {
   });
 
   it('returns assets, users, and backend-driven reports for GlobalAdmin', async () => {
-    vi.mocked(getToken).mockResolvedValue({
+    mockGetAuthenticatedUserFromRequest.mockResolvedValue({
       id: '123e4567-e89b-12d3-a456-426614174000',
       role: 'GlobalAdmin',
     } as never);
@@ -113,7 +118,7 @@ describe('GET /api/v1/search', () => {
   });
 
   it('returns empty restricted groups for Employee role', async () => {
-    vi.mocked(getToken).mockResolvedValue({
+    mockGetAuthenticatedUserFromRequest.mockResolvedValue({
       id: '123e4567-e89b-12d3-a456-426614174000',
       role: 'Employee',
     } as never);

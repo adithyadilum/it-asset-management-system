@@ -31,6 +31,7 @@ vi.mock('@/db', () => ({
 }));
 
 vi.mock('@/lib/api/rate-limiter', () => ({
+  applyPreAuthRateLimit: vi.fn().mockResolvedValue({ success: true, limit: 20, remaining: 19, reset: 1234 }),
   applyRateLimit: vi.fn(),
   injectRateLimitHeaders: vi.fn((resp: any) => resp),
 }));

@@ -109,7 +109,7 @@ describe('IssueReviewPanel', () => {
     expect(screen.getByText('Active')).toBeInTheDocument();
     // Currency format checks
     expect(screen.getByText(/500/)).toBeInTheDocument();
-    expect(screen.getByText(/1,000/)).toBeInTheDocument();
+    expect(screen.getByText(/1K/)).toBeInTheDocument();
   });
 
   it('handles actions correctly', () => {

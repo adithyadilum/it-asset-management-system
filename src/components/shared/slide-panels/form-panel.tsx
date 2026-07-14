@@ -44,6 +44,7 @@ export function FormPanel({
       variant: "outline",
       onClick: () => onClose(false),
       disabled: isSubmitting,
+      ariaLabel: cancelLabel,
     },
     {
       id: "submit",
@@ -57,6 +58,7 @@ export function FormPanel({
       ),
       onClick: () => formRef.current?.requestSubmit(),
       disabled: isSubmitting,
+      ariaLabel: isSubmitting ? submittingLabel : submitLabel,
     },
   ];
 
@@ -84,4 +86,4 @@ export function FormPanel({
       showCloseButton={showCloseButton}
     />
   );
-}
+}

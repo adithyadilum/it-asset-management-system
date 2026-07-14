@@ -9,7 +9,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
@@ -93,6 +94,6 @@ describe('createDisposalRequest', () => {
 
   it('throws UNAUTHENTICATED when user is not logged in', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(createDisposalRequest(validInput)).rejects.toThrow('UNAUTHENTICATED');
+    await expect(createDisposalRequest(validInput)).rejects.toThrow('Unauthorized');
   });
 });

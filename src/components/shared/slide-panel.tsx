@@ -15,6 +15,7 @@ export type SlidePanelAction = {
     onClick?: () => void;
     className?: string;
     disabled?: boolean;
+    ariaLabel?: string;
 };
 
 interface SlidePanelProps {
@@ -231,6 +232,7 @@ export function SlidePanel({
                                                 onClose(false);
                                             }}
                                             disabled={action.disabled}
+                                            aria-label={action.ariaLabel}
                                         >
                                             {action.label}
                                         </Button>

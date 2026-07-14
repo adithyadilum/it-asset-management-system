@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---------------------------------------------------------------------------
 
 const mockGetServerSession = vi.fn();
+const mockFindUser = vi.fn();
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => mockGetServerSession(...args),
 }));
@@ -12,6 +13,12 @@ vi.mock('next-auth', () => ({
 vi.mock('@/lib/auth/auth-options', () => ({
   authOptions: {},
 }));
+
+vi.mock('@/db', () => ({
+  db: { query: { users: { findFirst: (...args: unknown[]) => mockFindUser(...args) } } },
+}));
+vi.mock('@/db/schema', () => ({ users: { id: 'users.id' } }));
+vi.mock('drizzle-orm', () => ({ eq: vi.fn() }));
 
 const mockLogAuditAction = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/audit', () => ({
@@ -42,6 +49,12 @@ import { getAuthenticatedUser, getFederatedLogoutUrl } from '@/actions/auth';
 describe('getAuthenticatedUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFindUser.mockImplementation(async () => {
+      const session = await mockGetServerSession();
+      return session?.user
+        ? { ...session.user, isActive: session.user.isActive ?? true }
+        : null;
+    });
   });
 
   it('returns null when no session exists', async () => {

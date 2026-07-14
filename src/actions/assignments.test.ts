@@ -16,7 +16,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
@@ -288,7 +289,7 @@ describe('getOperationsAssignmentsDataAction', () => {
 
   it('throws for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getOperationsAssignmentsDataAction()).rejects.toThrow('Forbidden');
+    await expect(getOperationsAssignmentsDataAction()).rejects.toThrow('Unauthorized');
   });
 
   it('throws for Employee role', async () => {

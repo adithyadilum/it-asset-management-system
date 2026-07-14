@@ -8,7 +8,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
@@ -49,7 +50,7 @@ describe('getITDashboardData', () => {
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
     mockGetCachedDashboardKpiMetrics.mockResolvedValue({ totalActiveAssets: 100 });
     mockGetCachedInventoryStatus.mockResolvedValue({ inventoryData: [] });
-    mockGetCachedDepartmentAllocation.mockResolvedValue([{ dept: 'IT', count: 5 }]);
+    mockGetCachedDepartmentAllocation.mockResolvedValue([{ name: 'IT', value: 5 }]);
     mockGetOverdueReturnsInternal.mockResolvedValue([{ id: 1 }]);
     mockGetHighMaintenanceAssetsInternal.mockResolvedValue([{ id: 2 }]);
 

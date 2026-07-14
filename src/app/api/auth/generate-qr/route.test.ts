@@ -21,6 +21,7 @@ vi.mock('@upstash/redis', () => ({
 
 // ── Mock: NextAuth session ───────────────────────────────────────────────────
 const mockGetServerSession = vi.fn();
+const mockGetAuthenticatedUser = vi.fn();
 
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => mockGetServerSession(...args),
@@ -28,6 +29,9 @@ vi.mock('next-auth', () => ({
 
 vi.mock('@/lib/auth/auth-options', () => ({
   authOptions: {},
+}));
+vi.mock('@/actions/auth', () => ({
+  getAuthenticatedUser: () => mockGetAuthenticatedUser(),
 }));
 
 // ── Mock: Audit logger ───────────────────────────────────────────────────────
@@ -41,7 +45,7 @@ import { POST } from './route';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function makeSession(role: string, id = 'user-abc') {
-  return { user: { id, role, email: `${role.toLowerCase()}@tiqri.com` } };
+  return { id, role, email: `${role.toLowerCase()}@tiqri.com`, name: role, isActive: true };
 }
 
 describe('POST /api/auth/generate-qr', () => {
@@ -50,7 +54,7 @@ describe('POST /api/auth/generate-qr', () => {
   });
 
   it('returns 401 when no session exists', async () => {
-    mockGetServerSession.mockResolvedValue(null);
+    mockGetAuthenticatedUser.mockResolvedValue(null);
 
     const response = await POST();
 
@@ -60,7 +64,7 @@ describe('POST /api/auth/generate-qr', () => {
   });
 
   it('returns 200 and a token for a GlobalAdmin', async () => {
-    mockGetServerSession.mockResolvedValue(makeSession('GlobalAdmin'));
+    mockGetAuthenticatedUser.mockResolvedValue(makeSession('GlobalAdmin'));
 
     const response = await POST();
 
@@ -87,7 +91,7 @@ describe('POST /api/auth/generate-qr', () => {
     ['FinancialAuditor'],
     ['Employee'],
   ])('returns 403 for role "%s" and logs the attempt', async (role) => {
-    mockGetServerSession.mockResolvedValue(makeSession(role));
+    mockGetAuthenticatedUser.mockResolvedValue(makeSession(role));
 
     const response = await POST();
 
