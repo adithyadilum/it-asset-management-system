@@ -37,6 +37,11 @@ export function useAssetRegistryData({
   const [customStatuses, setCustomStatuses] = useState<string[]>([]);
 
   const requestSequenceRef = useRef(0);
+  const initialResultRef = useRef(initialResult);
+  const canReuseInitialResultRef = useRef(true);
+  const initialRowsPromiseRef = useRef<Promise<AssetRegistryRow[]> | null>(
+    null
+  );
 
   // Fetch custom statuses once on mount
   useEffect(() => {
@@ -72,32 +77,57 @@ export function useAssetRegistryData({
 
         const fetchFn =
           view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
+        const matchesInitialQuery =
+          refreshNonce === 0 &&
+          !debouncedQuery &&
+          selectedCategoryId === undefined &&
+          backendStatusFilter === undefined;
 
-        const firstPage = await fetchFn({
-          ...requestParams,
-          page: 1,
-          pageSize: BULK_FETCH_PAGE_SIZE,
-        });
-
-        if (requestSequence !== requestSequenceRef.current) {
-          return;
+        if (!matchesInitialQuery) {
+          canReuseInitialResultRef.current = false;
         }
 
-        let aggregatedRows = [...firstPage.data];
-
-        for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
-          const nextPage = await fetchFn({
+        let aggregatedRows: AssetRegistryRow[];
+        if (matchesInitialQuery && canReuseInitialResultRef.current) {
+          if (!initialRowsPromiseRef.current) {
+            initialRowsPromiseRef.current = (async () => {
+              const serverResult = initialResultRef.current;
+              let initialRows = [...serverResult.data];
+              for (
+                let page = 2;
+                page <= serverResult.meta.totalPages;
+                page += 1
+              ) {
+                const nextPage = await fetchFn({
+                  ...requestParams,
+                  page,
+                  pageSize: serverResult.meta.pageSize,
+                });
+                initialRows = initialRows.concat(nextPage.data);
+              }
+              return initialRows;
+            })();
+          }
+          aggregatedRows = await initialRowsPromiseRef.current;
+        } else {
+          const firstPage = await fetchFn({
             ...requestParams,
-            page,
+            page: 1,
             pageSize: BULK_FETCH_PAGE_SIZE,
           });
+          aggregatedRows = [...firstPage.data];
 
-          if (requestSequence !== requestSequenceRef.current) {
-            return;
+          for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
+            const nextPage = await fetchFn({
+              ...requestParams,
+              page,
+              pageSize: BULK_FETCH_PAGE_SIZE,
+            });
+            aggregatedRows = aggregatedRows.concat(nextPage.data);
           }
-
-          aggregatedRows = aggregatedRows.concat(nextPage.data);
         }
+
+        if (requestSequence !== requestSequenceRef.current) return;
 
         startTransition(() => {
           setRows(aggregatedRows);

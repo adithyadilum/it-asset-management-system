@@ -117,6 +117,37 @@ describe('AssetRegistryClient', () => {
     expect(screen.getByText('Laptop')).toBeInTheDocument();
   });
 
+  it('reuses the server result instead of refetching on mount', async () => {
+    render(
+      <AssetRegistryClient
+        config={mockConfig}
+        initialCategories={[]}
+        initialResult={mockInitialResult}
+      />
+    );
+
+    await waitFor(() => {
+      expect(getAllAssetsUnified).not.toHaveBeenCalled();
+    });
+  });
+
+  it('opens record panels with the asset UUID', () => {
+    render(
+      <AssetRegistryClient
+        config={mockConfig}
+        initialCategories={[]}
+        initialResult={mockInitialResult}
+      />
+    );
+
+    fireEvent.click(screen.getByText('TAG-1'));
+
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      '/assets?panel=record&id=1&animate=1',
+      { scroll: false }
+    );
+  });
+
   it('handles search input', async () => {
     render(
       <AssetRegistryClient

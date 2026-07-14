@@ -293,7 +293,7 @@ export function AssetRegistryClient({
     (row: AssetRegistryRow) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set('panel', 'record');
-      params.set('id', row.assetTag);
+      params.set('id', row.id);
       params.set('animate', isPanelOpen ? '0' : '1');
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     },
@@ -471,7 +471,10 @@ export function AssetRegistryClient({
                   : undefined,
               }}
               isRowActive={(row) =>
-                Boolean(activeRecordId && row.assetTag === activeRecordId)
+                Boolean(
+                  activeRecordId &&
+                  (row.id === activeRecordId || row.assetTag === activeRecordId)
+                )
               }
               onRowClick={navigateToRecord}
               className="rounded-lg border-border"

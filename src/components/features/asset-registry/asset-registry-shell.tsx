@@ -13,6 +13,7 @@ import { AssetRegistryContent } from './asset-registry-content';
 import { getManualOverrideStatuses } from '@/actions/statuses';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
+import { BULK_FETCH_PAGE_SIZE } from './asset-registry-constants';
 
 const getCachedCategoriesByPillar = cache((pillar: string) =>
   getCategoriesByPillar(pillar)
@@ -51,7 +52,7 @@ export async function AssetRegistryShell({
       fetchFn({
         pillar: config.pillar,
         page: 1,
-        pageSize: config.defaultPageSize,
+        pageSize: BULK_FETCH_PAGE_SIZE,
       }),
       getManualOverrideStatuses(),
       getAuthenticatedUser(),

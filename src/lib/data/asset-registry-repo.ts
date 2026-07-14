@@ -235,25 +235,9 @@ export async function getAssetsByPillar(
     }
   }
 
-  const totalRows = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(assets)
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(locations, eq(assets.locationId, locations.id))
-    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
-    .leftJoin(
-      assignedSeatsSubquery,
-      eq(softwareLicenses.id, assignedSeatsSubquery.licenseId)
-    )
-    .where(and(whereCondition, softwareStatusCondition));
-
-  const total = totalRows[0]?.total ?? 0;
-
-  // Subquery already defined above
-
   const rows = await db
     .select({
+      totalCount: sql<number>`count(*) over()::int`,
       id: assets.id,
       assetTag: assets.assetTag,
       name: assets.name,
@@ -288,10 +272,11 @@ export async function getAssetsByPillar(
     .limit(safePageSize)
     .offset(offset);
 
+  const total = rows[0]?.totalCount ?? 0;
   const assetIds = rows.map((row) => row.id);
 
   const assignedUserByAssetId = new Map<string, string>();
-  if (assetIds.length > 0) {
+  if (assetIds.length > 0 && filters.pillar !== 'Software') {
     const activeAssignments = await db
       .select({
         assetId: assetAssignments.assetId,
@@ -350,12 +335,26 @@ export async function getAssetsByPillar(
     }
 
     return {
-      ...row,
+      id: row.id,
+      assetTag: row.assetTag,
+      name: row.name,
+      serialNumber: row.serialNumber,
       status: calculatedStatus,
+      condition: row.condition,
+      categoryId: row.categoryId,
+      category: row.category,
+      pillar: row.pillar,
+      model: row.model,
+      locationId: row.locationId,
+      location: row.location,
       instanceAttributes:
         (row.instanceAttributes as Record<string, unknown>) ?? null,
+      updatedAt: row.updatedAt,
       assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      totalSeats: row.totalSeats,
       availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
+      expiryDate: row.expiryDate,
+      licenseType: row.licenseType,
     };
   });
 
@@ -471,23 +470,9 @@ export async function getAllAssetsUnified(
       : undefined
   );
 
-  const totalRows = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(assets)
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(locations, eq(assets.locationId, locations.id))
-    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
-    .leftJoin(
-      assignedSeatsSubquery,
-      eq(softwareLicenses.id, assignedSeatsSubquery.licenseId)
-    )
-    .where(whereCondition);
-
-  const total = totalRows[0]?.total ?? 0;
-
   const rows = await db
     .select({
+      totalCount: sql<number>`count(*) over()::int`,
       id: assets.id,
       assetTag: assets.assetTag,
       name: assets.name,
@@ -522,7 +507,10 @@ export async function getAllAssetsUnified(
     .limit(safePageSize)
     .offset(offset);
 
-  const assetIds = rows.map((row) => row.id);
+  const total = rows[0]?.totalCount ?? 0;
+  const assetIds = rows
+    .filter((row) => row.pillar !== 'Software')
+    .map((row) => row.id);
 
   const assignedUserByAssetId = new Map<string, string>();
   if (assetIds.length > 0) {
@@ -584,13 +572,26 @@ export async function getAllAssetsUnified(
     }
 
     return {
-      ...row,
+      id: row.id,
+      assetTag: row.assetTag,
+      name: row.name,
+      serialNumber: row.serialNumber,
       status: calculatedStatus,
+      condition: row.condition,
+      categoryId: row.categoryId,
+      category: row.category,
+      pillar: row.pillar,
+      model: row.model,
+      locationId: row.locationId,
+      location: row.location,
       instanceAttributes:
         (row.instanceAttributes as Record<string, unknown>) ?? null,
+      updatedAt: row.updatedAt,
       assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      totalSeats: row.totalSeats,
       availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
-      assignedSeats: row.pillar === 'Software' ? assignedSeats : undefined,
+      expiryDate: row.expiryDate,
+      licenseType: row.licenseType,
     };
   });
 
