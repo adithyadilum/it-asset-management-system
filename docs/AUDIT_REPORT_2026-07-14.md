@@ -3,7 +3,7 @@
 - **Project:** IT Asset Management System
 - **Audit date:** 2026-07-14
 - **Baseline:** `dev` / `e5773c8338d9256472428bb24952a4e184bf5f62`
-- **Remediation state:** `dev` through `0175f9c` (report update follows)
+- **Remediation state:** `dev` through `dc5d8e8` (report update follows)
 - **Scope:** Security, performance, CI/CD, deployment, tests, and code quality
 - **Update:** Remediation was implemented on 2026-07-14 in conventional commits and verified locally.
 
@@ -59,6 +59,10 @@ Status meanings: **Fixed** is implemented and locally verified; **Mitigated** ma
 | PERF-08 | Fixed     | Asset registry pages reuse server data, combine count/rows, resolve assignments in the primary query, and reuse server-provided status metadata. Warm live samples were 80-91 ms. |
 | PERF-09 | Fixed     | Asset detail panels and maintenance tabs use consolidated actions with one authentication boundary; development Strict Mode requests are deduplicated while in flight.            |
 | PERF-10 | Fixed     | Notification list/count bootstrap and refresh now use one SWR key, one authenticated action, and one query instead of two independent action requests.                            |
+| PERF-11 | Fixed     | Audit and financial ledgers retain server-rendered initial pages under React Strict Mode and combine count/row queries; audit label lookups run concurrently.                     |
+| PERF-12 | Fixed     | Alerts settings are server-rendered from one authenticated bootstrap, eliminating duplicate integration actions and notification-rule API requests.                               |
+| PERF-13 | Fixed     | Disposal pending/history reads run concurrently and history pagination count is returned with the page query.                                                                     |
+| PERF-14 | Fixed     | Assignment overdue-state writes are deduplicated and reused for 60 seconds per worker; subsequent warm dashboard sampling improved from 171 ms to 97 ms.                          |
 
 ### CI/CD and deployment
 
@@ -76,7 +80,7 @@ Status meanings: **Fixed** is implemented and locally verified; **Mitigated** ma
 
 | ID    | Status    | Implemented remediation / remaining work                                                                                                                    |
 | ----- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CQ-01 | Fixed     | Auth mocks and stale component fixtures match production contracts; all 201 test files and 1,105 tests pass without unhandled errors.                       |
+| CQ-01 | Fixed     | Auth mocks and stale component fixtures match production contracts; all 201 test files and 1,107 tests pass without unhandled errors.                       |
 | CQ-02 | Fixed     | Invoice/document uploads use the hardened private-storage abstraction and authenticated retrieval rather than placeholder URLs.                             |
 | CQ-03 | Fixed     | The repository is normalized with Prettier, scripts exist, and CI enforces `format:check`.                                                                  |
 | CQ-04 | Open      | Large action/client/repository modules require incremental use-case refactoring; this was not mixed into security remediation.                              |
@@ -91,9 +95,9 @@ Status meanings: **Fixed** is implemented and locally verified; **Mitigated** ma
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run check`                | Passed: ESLint and TypeScript 6.0.3                                                                                                                                               |
 | `npm run format:check`         | Passed                                                                                                                                                                            |
-| `npm run test:coverage`        | Passed: 201/201 files, 1,105/1,105 tests; 47.10% statements, 38.40% branches, 42.27% functions, 48.11% lines                                                                      |
+| `npm run test:coverage`        | Passed: 201/201 files, 1,107/1,107 tests; 47.02% statements, 38.44% branches, 42.16% functions, 48.03% lines                                                                      |
 | `npm run build`                | Passed: Next.js 16.2.10 optimized build; 64 static pages generated                                                                                                                |
-| `npm run test:run`             | Passed after response-time remediation: 201/201 files and 1,105/1,105 tests                                                                                                       |
+| `npm run test:run`             | Passed after response-time remediation: 201/201 files and 1,107/1,107 tests                                                                                                       |
 | `npm audit --audit-level=high` | Passed: 0 vulnerabilities                                                                                                                                                         |
 | Dependency currency            | All compatible updates installed. ESLint 10 and TypeScript 7 are held to supported peer ranges; `@vitejs/plugin-react` 6.0.3 is held because of unresolved Babel peer resolution. |
 | Migration/E2E execution        | Not run locally because Docker was unavailable; CI definitions were repaired and require execution before release.                                                                |
@@ -112,6 +116,17 @@ The timing trace supplied after the audit showed that proxy authorization was al
 Live Neon repository sampling after the changes returned 4 hardware rows in **80 ms warm**, 3 software rows in **90 ms warm**, and 15 unified rows in **91 ms warm**. The supplied pre-fix trace showed the hardware registry database work at **419 ms** and the software database work at **282 ms**. These are small development samples rather than production SLO evidence, but they verify the removed round trips. A cold hardware sample took **1,678 ms**, which identifies remote/serverless database wake-up as the remaining first-idle-request cost; production measurement should separate cold and warm percentiles and evaluate provider keep-warm/pooling settings if cold latency is unacceptable.
 
 The multi-second first visits attributed to `next.js`/Turbopack compilation are development-only compilation costs. User-facing latency must be measured against `next build && next start` or the deployed production runtime; the production build completed successfully after these changes.
+
+### Second timing-log follow-up (2026-07-14)
+
+A broader navigation trace confirmed the proxy remained healthy at **0-9 ms** and identified additional client hydration and query-shape work:
+
+- The system audit page previously rendered a server result and then issued the same action twice under development Strict Mode. It now reuses that result until filters or pagination change. Its count and page slice use one query on normal pages, and independent label-resolution batches run concurrently.
+- Depreciation, TCO, and write-off ledgers now preserve both server rows and page count through hydration. Their former immediate POSTs are removed, and each normal page combines count and rows.
+- Alerts settings now load integration flags and notification rules in the server render using one authorization boundary and concurrent queries. The duplicate `getIntegrationStatus` and notification-rules requests shown in the trace are removed.
+- Disposal pending/history queries now execute concurrently, and history uses a window count. Assignment dashboard overdue updates are shared for 60 seconds per worker instead of issuing a write on every read; live warm repository sampling improved from **171 ms** to **97 ms** after the refresh was reused.
+
+The remaining `getNotificationSummary` samples around 170-215 ms represent an authoritative active-user check plus the notification query and are retained for account-revocation correctness. Higher 400+ ms samples correlate with remote database cold/connection variability. Likewise, the 925 ms `next.js` component of `/api/auth/session` and 2.4 s first Alerts compilation are development compilation costs. Token refresh coordination is deliberately not weakened for latency.
 
 ## Remediation commits
 
@@ -132,6 +147,11 @@ The multi-second first visits attributed to `next.js`/Turbopack compilation are 
 - `b0711a7 perf(maintenance): consolidate overview loading`
 - `7749a62 perf(notifications): unify notification bootstrap`
 - `0175f9c style(maintenance): format history loader`
+- `a3d3f56 docs(audit): record response time remediation`
+- `a9fff35 perf(reports): eliminate redundant page queries`
+- `4b6001e perf(settings): server render alert configuration`
+- `6c8d161 perf(disposals): parallelize dashboard queries`
+- `dc5d8e8 perf(assignments): throttle overdue refresh writes`
 
 ## Original audit scope and evidence
 
