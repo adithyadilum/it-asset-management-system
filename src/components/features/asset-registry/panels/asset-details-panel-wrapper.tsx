@@ -12,16 +12,10 @@ import { RequestReturnDialog } from '@/components/features/operations/assignment
 import { RemindReturnDialog } from '@/components/features/operations/assignments/remind-return-dialog';
 import { MarkReturnedDialog } from '@/components/features/operations/assignments/mark-returned-dialog';
 import {
-  getAssetDetailsByIdAction,
-  getAssetHistoryByIdAction,
-  getAssetMaintenanceByIdAction,
-  getAssetAllocationsAction,
+  getAssetPanelDataAction,
   getEditDropdownOptionsAction,
 } from '@/actions/asset-registry-panels';
-import {
-  getAssetFinancialVitals,
-  type AssetFinancialVitals,
-} from '@/actions/asset-financial-vitals';
+import type { AssetFinancialVitals } from '@/lib/data/asset-financial-vitals-repo';
 import { getVendors, reportDefectiveFromPanel } from '@/actions/maintenance';
 import { revokeSoftwareLicenseAllocationAction } from '@/actions/software';
 
@@ -34,6 +28,31 @@ import {
 } from '@/lib/data/asset-details-repo';
 import type { TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 import type { Vendor } from '@/types/maintenance';
+
+type AssetPanelRequest = ReturnType<typeof getAssetPanelDataAction>;
+const inFlightPanelRequests = new Map<string, AssetPanelRequest>();
+
+function loadAssetPanelData(recordId: string, refreshNonce: number) {
+  const requestKey = `${recordId}:${refreshNonce}`;
+  const existingRequest = inFlightPanelRequests.get(requestKey);
+  if (existingRequest) return existingRequest;
+
+  const request = getAssetPanelDataAction(recordId);
+  inFlightPanelRequests.set(requestKey, request);
+  void request.then(
+    () => {
+      if (inFlightPanelRequests.get(requestKey) === request) {
+        inFlightPanelRequests.delete(requestKey);
+      }
+    },
+    () => {
+      if (inFlightPanelRequests.get(requestKey) === request) {
+        inFlightPanelRequests.delete(requestKey);
+      }
+    }
+  );
+  return request;
+}
 
 export interface AssetDetailsPanelWrapperProps {
   isOpen: boolean;
@@ -153,33 +172,32 @@ export function AssetDetailsPanelWrapper({
       }
 
       try {
-        const [
-          detailsRes,
-          historyRes,
-          maintenanceRes,
-          allocationsRes,
-          financialRes,
-        ] = await Promise.all([
-          getAssetDetailsByIdAction(recordId),
-          getAssetHistoryByIdAction(recordId),
-          getAssetMaintenanceByIdAction(recordId),
-          getAssetAllocationsAction(recordId),
-          getAssetFinancialVitals(recordId).catch(() => null),
-        ]);
+        const result = await loadAssetPanelData(recordId, refreshNonce);
 
         if (isMounted) {
-          if (detailsRes.success) {
-            setData(detailsRes.data);
+          if (result.success && result.data) {
+            setData(result.data.details);
+            setHistoryEvents(result.data.history);
+            setMaintenanceEvents(result.data.maintenance);
+            setAllocations(result.data.allocations);
+            setFinancialVitals(result.data.financial);
           } else {
             tiqriToast.error('Failed to load asset details');
+            setData(null);
+            setHistoryEvents([]);
+            setMaintenanceEvents([]);
+            setAllocations([]);
+            setFinancialVitals(null);
           }
-
-          setHistoryEvents(historyRes.success ? historyRes.data : []);
-          setMaintenanceEvents(
-            maintenanceRes.success ? maintenanceRes.data : []
-          );
-          setAllocations(allocationsRes.success ? allocationsRes.data : []);
-          setFinancialVitals(financialRes ?? null);
+        }
+      } catch {
+        if (isMounted) {
+          tiqriToast.error('Failed to load asset details');
+          setData(null);
+          setHistoryEvents([]);
+          setMaintenanceEvents([]);
+          setAllocations([]);
+          setFinancialVitals(null);
         }
       } finally {
         if (isMounted) {

@@ -14,6 +14,81 @@ import {
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { logError } from '@/lib/latency';
+import {
+  getAssetAllocationsByResolvedId,
+  getAssetDetailsByResolvedId,
+  getAssetHistoryByResolvedId,
+  getAssetMaintenanceByResolvedId,
+  resolveAssetPrimaryId,
+  type AllocationData,
+  type AssetDetailsData,
+  type HistoryEvent,
+  type MaintenanceEvent,
+} from '@/lib/data/asset-details-repo';
+import {
+  getAssetFinancialVitalsByResolvedId,
+  type AssetFinancialVitals,
+} from '@/lib/data/asset-financial-vitals-repo';
+
+export interface AssetPanelData {
+  details: AssetDetailsData | null;
+  history: HistoryEvent[];
+  maintenance: MaintenanceEvent[];
+  allocations: AllocationData[];
+  financial: AssetFinancialVitals | null;
+}
+
+/**
+ * Loads the complete details panel through one Server Action. This avoids five
+ * HTTP requests, repeated authorization lookups, and repeated asset-tag
+ * resolution while preserving field-level financial authorization.
+ */
+export async function getAssetPanelDataAction(id: string) {
+  const user = await getAuthenticatedUser();
+  if (!user || !canViewAssetRegistry(user.role)) {
+    return { success: false as const, message: 'Forbidden', data: null };
+  }
+
+  try {
+    const resolvedAssetId = await resolveAssetPrimaryId(id);
+    if (!resolvedAssetId) {
+      return {
+        success: false as const,
+        message: 'Asset not found.',
+        data: null,
+      };
+    }
+
+    const canViewFinancials =
+      user.role === 'GlobalAdmin' || user.role === 'FinancialAuditor';
+    const [details, history, maintenance, allocations, financial] =
+      await Promise.all([
+        getAssetDetailsByResolvedId(resolvedAssetId),
+        getAssetHistoryByResolvedId(resolvedAssetId),
+        getAssetMaintenanceByResolvedId(resolvedAssetId),
+        getAssetAllocationsByResolvedId(resolvedAssetId),
+        canViewFinancials
+          ? getAssetFinancialVitalsByResolvedId(resolvedAssetId)
+          : Promise.resolve(null),
+      ]);
+
+    return {
+      success: true as const,
+      data: { details, history, maintenance, allocations, financial },
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getAssetPanelDataAction',
+      error,
+    });
+    return {
+      success: false as const,
+      message: 'Failed to load asset panel data.',
+      data: null,
+    };
+  }
+}
 
 export async function getAssetDetailsByIdAction(id: string) {
   const user = await getAuthenticatedUser();
