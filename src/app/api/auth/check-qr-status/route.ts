@@ -11,7 +11,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
 
-  if (!token) return NextResponse.json({ claimed: false });
+  if (!token || !/^[a-f0-9]{64}$/i.test(token)) {
+    return NextResponse.json({ claimed: false }, { status: 400 });
+  }
 
   // Check for the explicit "claimed" marker set by the mobile-exchange endpoint.
   // This avoids the false-positive bug where an expired token (key deleted by TTL)

@@ -6,34 +6,13 @@ import { linkedDevices } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
 import Pusher from 'pusher';
-import * as jose from 'jose';
-
-const MOBILE_SECRET = new TextEncoder().encode(
-  serverEnv.MOBILE_JWT_SECRET
-);
+import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authenticated-user';
 
 export async function POST(req: Request) {
-  // 1. Extract Bearer Token
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const token = authHeader.split(' ')[1];
-  let userId = null;
-  let jti = null;
-
-  try {
-    const { payload } = await jose.jwtVerify(token, MOBILE_SECRET);
-    userId = payload.id;
-    jti = payload.jti;
-  } catch {
-    return NextResponse.json({ error: 'Invalid or Expired Mobile Token' }, { status: 401 });
-  }
-
-  if (!userId || !jti) {
-    return NextResponse.json({ error: 'Invalid Token Payload' }, { status: 401 });
-  }
+  const user = await getAuthenticatedMobileUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = user.id;
+  const jti = user.jwtId;
 
   // 2. Find the exact device using the JWT ID (jti)
   const [device] = await db
@@ -41,7 +20,7 @@ export async function POST(req: Request) {
     .from(linkedDevices)
     .where(
       and(
-        eq(linkedDevices.jwtId, jti as string),
+        eq(linkedDevices.jwtId, jti),
         eq(linkedDevices.isRevoked, false)
       )
     )
@@ -81,9 +60,9 @@ export async function POST(req: Request) {
   // 5. Audit Log
   await logAuditAction({
     entityType: 'linked_devices',
-    entityId: jti as string,
+    entityId: jti,
     actionType: 'DEVICE_UNLINKED', // User initiated from mobile
-    performedById: userId as string,
+    performedById: userId,
     oldData: {
       deviceName: device.deviceName,
       deviceOs: device.deviceOs,

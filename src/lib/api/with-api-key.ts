@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { apiKeys } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
-import { applyRateLimit, injectRateLimitHeaders } from '@/lib/api/rate-limiter';
+import { applyPreAuthRateLimit, applyRateLimit, injectRateLimitHeaders } from '@/lib/api/rate-limiter';
 import type { ApiKeyScope } from '@/types/integrations';
 import { hashApiKey } from '@/lib/api/api-key-hash';
 
@@ -63,6 +63,18 @@ export function withApiKey<TContext extends Record<string, unknown>>(
           'Missing or invalid API key. Provide via Authorization header as a Bearer token or via x-api-key header.'
         );
       }
+
+      const platformForwardedFor = req.headers.get('x-vercel-forwarded-for');
+      const forwardedFor = platformForwardedFor || req.headers.get('x-forwarded-for');
+      const firstIp = forwardedFor ? forwardedFor.split(',')[0].trim() : '';
+      const clientIp = firstIp || req.headers.get('x-real-ip') || 'unknown';
+      const preAuthLimit = await applyPreAuthRateLimit(clientIp);
+      if (!preAuthLimit.success) {
+        const response = apiError(429, 'RATE_LIMITED', 'Rate limit exceeded');
+        injectRateLimitHeaders(response, preAuthLimit);
+        return response;
+      }
+
       const hash = await hashApiKey(token);
 
       const found = (await db.query.apiKeys.findFirst({
@@ -85,9 +97,6 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         );
       }
 
-      const forwardedFor = req.headers.get('x-forwarded-for');
-      const firstIp = forwardedFor ? forwardedFor.split(',')[0].trim() : '';
-      const clientIp = firstIp || req.headers.get('x-real-ip') || 'unknown';
       const rlIdentifier = `${found.id}:${clientIp}`;
       const rl = await applyRateLimit(rlIdentifier);
       if (!rl.success) {
@@ -96,31 +105,23 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         return resp;
       }
 
-      // fire-and-forget updates
-      void db
-        .update(apiKeys)
-        .set({ lastUsedAt: new Date() })
-        .where(eq(apiKeys.id, found.id))
-        .catch((err) =>
-          console.error('Failed to update API key lastUsedAt:', err)
-        );
-
-      void logAuditAction({
-        entityType: 'ExternalApi',
-        entityId: req.nextUrl.pathname,
-        actionType: 'EXTERNAL_API_ACCESS',
-        performedById: found.createdById,
-        newData: {
-          apiKeyName: found.name,
-          scope: requiredScope,
-          method: req.method,
-        },
-      }).catch((err) =>
-        console.error(
-          'Failed to log audit action for external API access:',
-          err
-        )
-      );
+      await Promise.all([
+        db
+          .update(apiKeys)
+          .set({ lastUsedAt: new Date() })
+          .where(eq(apiKeys.id, found.id)),
+        logAuditAction({
+          entityType: 'ExternalApi',
+          entityId: req.nextUrl.pathname,
+          actionType: 'EXTERNAL_API_ACCESS',
+          performedById: found.createdById,
+          newData: {
+            apiKeyName: found.name,
+            scope: requiredScope,
+            method: req.method,
+          },
+        }),
+      ]);
 
       const response = await handler(req, { ...ctx, apiKey: found });
       injectRateLimitHeaders(response, rl);

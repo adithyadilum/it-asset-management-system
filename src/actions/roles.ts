@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { departments, users } from '@/db/schema';
+import { departments, linkedDevices, userRefreshTokens, users } from '@/db/schema';
 import { eq, ilike, or, inArray, sql, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -384,6 +384,16 @@ export async function setUserActiveStatus(targetUserId: string, isActive: boolea
 
       if (updatedUsers.length === 0) {
         return { success: false, error: 'Failed to update user status.' };
+      }
+
+      if (!isActive) {
+        await Promise.all([
+          tx.delete(userRefreshTokens).where(eq(userRefreshTokens.userId, targetUserId)),
+          tx
+            .update(linkedDevices)
+            .set({ isRevoked: true })
+            .where(eq(linkedDevices.userId, targetUserId)),
+        ]);
       }
 
       await logAuditActionTx(tx, {

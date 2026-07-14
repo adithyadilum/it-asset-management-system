@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server';
-import { serverEnv } from '@/lib/env';
-import * as jose from 'jose';
 import { db } from '@/db';
 import {
   assets,
   assetAssignments,
   categories,
-  linkedDevices,
   locations,
   models,
   users,
 } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-
-const MOBILE_SECRET = new TextEncoder().encode(serverEnv.MOBILE_JWT_SECRET);
+import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authenticated-user';
 
 /**
  * Maps a backend asset status string to the mobile enum value.
@@ -68,54 +64,11 @@ function mapStatus(
  */
 export async function GET(req: Request) {
   // --- 1. Authenticate via mobile JWT ---
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
+  const user = await getAuthenticatedMobileUserFromRequest(req);
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const token = authHeader.slice(7).trim();
-
-  let userId: string;
-  try {
-    const { payload } = await jose.jwtVerify(token, MOBILE_SECRET);
-
-    if (!payload.jti) {
-      return NextResponse.json(
-        { error: 'Invalid token: missing jti' },
-        { status: 401 }
-      );
-    }
-
-    // Verify the device is still active (not revoked)
-    const [device] = await db
-      .select({ id: linkedDevices.id, isRevoked: linkedDevices.isRevoked })
-      .from(linkedDevices)
-      .where(
-        and(
-          eq(linkedDevices.jwtId, payload.jti),
-          eq(linkedDevices.isRevoked, false)
-        )
-      )
-      .limit(1);
-
-    if (!device) {
-      return NextResponse.json(
-        { error: 'Device has been unlinked. Please re-pair your device.' },
-        { status: 401 }
-      );
-    }
-
-    userId = typeof payload.id === 'string' && payload.id ? payload.id : '';
-  } catch {
-    return NextResponse.json(
-      { error: 'Invalid or expired token' },
-      { status: 401 }
-    );
-  }
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const userId = user.id;
 
   // --- 2. Fetch all non-returned assignments for this user ---
   try {

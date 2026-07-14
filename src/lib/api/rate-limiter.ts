@@ -3,6 +3,7 @@ import { Redis } from '@upstash/redis'
 import { serverEnv } from '@/lib/env'
 
 let ratelimitInstance: Ratelimit | null = null
+let preAuthRateLimitInstance: Ratelimit | null = null
 
 export function getRateLimiter(): Ratelimit {
   if (!ratelimitInstance) {
@@ -38,6 +39,28 @@ export async function applyRateLimit(identifier: string): Promise<RateLimitResul
     limit,
     remaining,
     reset,
+  }
+}
+
+export async function applyPreAuthRateLimit(identifier: string): Promise<RateLimitResult> {
+  if (!preAuthRateLimitInstance) {
+    preAuthRateLimitInstance = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(
+        Math.min(serverEnv.API_RATE_LIMIT_MAX, 20),
+        `${serverEnv.API_RATE_LIMIT_WINDOW_SECONDS} s`
+      ),
+      analytics: true,
+      prefix: 'eitams:ratelimit:preauth',
+    })
+  }
+
+  const res = await preAuthRateLimitInstance.limit(identifier)
+  return {
+    success: res.success,
+    limit: Number(res.limit ?? 20),
+    remaining: Number(res.remaining ?? 0),
+    reset: Math.floor(Number(res.reset ?? 0) / 1000),
   }
 }
 

@@ -1,5 +1,4 @@
 import { and, asc, eq, ilike, inArray, or, sql, ne } from 'drizzle-orm';
-import { getToken } from 'next-auth/jwt';
 import { unstable_rethrow } from 'next/navigation';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
@@ -22,21 +21,9 @@ import type {
   OmniSearchResponse,
   OmniSearchUserResult,
 } from '@/types/omni-search';
+import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
 
 const MAX_RESULTS_PER_GROUP = 8;
-
-function normalizeTokenRole(role: unknown): UserRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinancialAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
-  }
-
-  return null;
-}
 
 function canSearchAssets(role: UserRole) {
   return role !== 'Employee';
@@ -56,23 +43,11 @@ async function getAuthenticatedSearchUser(
   const authTimer = startLatencyTimer();
 
   try {
-    const token = await getToken({ req: request });
-
-    if (!token) {
+    const user = await getAuthenticatedUserFromRequest(request);
+    if (!user) {
       return null;
     }
-
-    const userId = token.id as string | undefined;
-    const role = normalizeTokenRole(token.role);
-
-    if (!userId || !role) {
-      return null;
-    }
-
-    return {
-      id: userId,
-      role,
-    };
+    return { id: user.id, role: user.role };
   } catch {
     return null;
   } finally {

@@ -7,6 +7,9 @@ import { authOptions } from '@/lib/auth/auth-options';
 import { logAuditAction } from '@/lib/audit';
 import type { UserRole } from '@/types/auth';
 import { serverEnv } from '@/lib/env';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 function normalizeRole(role: unknown): UserRole {
   if (
@@ -43,10 +46,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     return null;
   }
 
-  const { id, email, name, role } = session.user;
-  // isActive is stored in the session by the NextAuth session callback.
-  // Default true so callers that don't check it are unaffected (e.g. legacy tokens).
-  const isActive = session.user.isActive ?? true;
+  const { id, email, name } = session.user;
 
   // Explicitly validate every field — NextAuth fields can be null/undefined.
   if (
@@ -60,13 +60,13 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     return null;
   }
 
-  return {
-    id,
-    email,
-    name,
-    role: normalizeRole(role),
-    isActive,
-  };
+  const currentUser = await db.query.users.findFirst({
+    where: eq(users.id, id),
+    columns: { id: true, email: true, name: true, role: true, isActive: true },
+  });
+  if (!currentUser?.isActive) return null;
+
+  return { ...currentUser, role: normalizeRole(currentUser.role), isActive: true };
 }
 
 /**
@@ -106,7 +106,7 @@ export async function getFederatedLogoutUrl() {
  */
 export async function enforceActionAccess(predicate?: (role: UserRole) => boolean): Promise<AuthenticatedUser> {
   const user = await getAuthenticatedUser();
-  if (!user) throw new Error('UNAUTHENTICATED');
+  if (!user) throw new Error('Unauthorized');
   
   if (predicate && !predicate(user.role)) {
     throw new Error('FORBIDDEN: Forbidden');

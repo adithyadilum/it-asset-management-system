@@ -1,41 +1,15 @@
 import { serverEnv } from '@/lib/env';
 import { clientEnv } from '@/lib/env.client';
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth-options';
-import * as jose from 'jose';
 import Pusher from 'pusher';
-
-const MOBILE_SECRET = new TextEncoder().encode(
-  serverEnv.MOBILE_JWT_SECRET
-);
+import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
 
 export async function POST(req: Request) {
-  let userId = null;
-
-  // --- 1. Check for Mobile App (Bearer Token) ---
-  const authHeader = req.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
-    try {
-      const { payload } = await jose.jwtVerify(token, MOBILE_SECRET);
-      userId = payload.id;
-    } catch {
-      return NextResponse.json({ error: 'Invalid or Expired Mobile Token' }, { status: 401 });
-    }
-  } 
-  
-  // --- 2. Check for Web Dashboard (NextAuth Cookie) ---
-  else {
-    const session = await getServerSession(authOptions);
-    if (session?.user) {
-      userId = session.user.id;
-    }
-  }
-
-  if (!userId) {
+  const user = await getAuthenticatedUserFromRequest(req);
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const userId = user.id;
 
   // --- 3. Extract payload ---
   let barcode: string | null = null;

@@ -10,6 +10,20 @@ import { serverEnv } from '@/lib/env';
 import { db } from '@/db';
 import { users, userRefreshTokens, departments } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
+import { decrypt, encrypt } from '@/lib/crypto';
+
+const ENCRYPTED_TOKEN_PREFIX = 'enc:v1:';
+
+function encryptToken(value: string): string {
+  return `${ENCRYPTED_TOKEN_PREFIX}${encrypt(value)}`;
+}
+
+function decryptToken(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.startsWith(ENCRYPTED_TOKEN_PREFIX)
+    ? decrypt(value.slice(ENCRYPTED_TOKEN_PREFIX.length))
+    : value;
+}
 
 function normalizeRole(role: unknown): UserRole {
   if (
@@ -82,16 +96,16 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         console.log(`[AUTH] Token already refreshed by peer worker for user ${userId}, skipping Keycloak call`);
         return {
           ...token,
-          accessToken: stored.accessToken ?? (token.accessToken as string),
-          idToken: stored.idToken ?? (token.idToken as string),
-          refreshToken: stored.refreshToken,
+          accessToken: decryptToken(stored.accessToken) ?? (token.accessToken as string),
+          idToken: decryptToken(stored.idToken) ?? (token.idToken as string),
+          refreshToken: decryptToken(stored.refreshToken) ?? (token.refreshToken as string),
           accessTokenExpires: stored.accessTokenExpires.getTime(),
           error: undefined,
         };
       }
 
       // ── 3. Hit Keycloak — we are the one worker that won the lock ────────
-      const refreshTokenToUse = stored?.refreshToken ?? (token.refreshToken as string);
+      const refreshTokenToUse = decryptToken(stored?.refreshToken) ?? (token.refreshToken as string);
       const url = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
 
       const response = await fetch(url, {
@@ -125,17 +139,17 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         .insert(userRefreshTokens)
         .values({
           userId,
-          refreshToken: newRefreshToken,
-          accessToken: refreshedTokens.access_token as string,
-          idToken: refreshedTokens.id_token as string,
+          refreshToken: encryptToken(newRefreshToken),
+          accessToken: encryptToken(refreshedTokens.access_token as string),
+          idToken: encryptToken(refreshedTokens.id_token as string),
           accessTokenExpires: newExpires,
         })
         .onConflictDoUpdate({
           target: userRefreshTokens.userId,
           set: {
-            refreshToken: newRefreshToken,
-            accessToken: refreshedTokens.access_token as string,
-            idToken: refreshedTokens.id_token as string,
+            refreshToken: encryptToken(newRefreshToken),
+            accessToken: encryptToken(refreshedTokens.access_token as string),
+            idToken: encryptToken(refreshedTokens.id_token as string),
             accessTokenExpires: newExpires,
             updatedAt: new Date(),
           },
@@ -385,17 +399,17 @@ export const authOptions: NextAuthOptions = {
                 .insert(userRefreshTokens)
                 .values({
                   userId: dbUser.id,
-                  refreshToken: account.refresh_token,
-                  accessToken: account.access_token,
-                  idToken: account.id_token,
+                  refreshToken: encryptToken(account.refresh_token),
+                  accessToken: encryptToken(account.access_token as string),
+                  idToken: encryptToken(account.id_token as string),
                   accessTokenExpires: new Date((account.expires_at as number) * 1000),
                 })
                 .onConflictDoUpdate({
                   target: userRefreshTokens.userId,
                   set: {
-                    refreshToken: account.refresh_token,
-                    accessToken: account.access_token,
-                    idToken: account.id_token,
+                    refreshToken: encryptToken(account.refresh_token),
+                    accessToken: encryptToken(account.access_token as string),
+                    idToken: encryptToken(account.id_token as string),
                     accessTokenExpires: new Date((account.expires_at as number) * 1000),
                     updatedAt: new Date(),
                   },

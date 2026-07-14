@@ -144,15 +144,12 @@ export async function logAuditAction(payload: AuditPayload) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function logAuditActionTx(tx: any, payload: AuditPayload) {
-  try {
-    const record = await buildAuditRecord(payload);
-    if (!record) return;
+  const record = await buildAuditRecord(payload);
+  if (!record) return;
 
-    // 3. Write the Immutable Record via Transaction
-    await tx.insert(systemAuditLogs).values(record);
-  } catch (error) {
-    console.error('CRITICAL: Failed to write to audit ledger via tx', error);
-  }
+  // Transactional mutations must fail closed when their audit record cannot be
+  // written, otherwise the business change and its ledger can diverge.
+  await tx.insert(systemAuditLogs).values(record);
 }
 
 export function extractLabelFromValues(
