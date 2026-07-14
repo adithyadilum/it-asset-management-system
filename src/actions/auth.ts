@@ -1,6 +1,7 @@
 'use server';
 
 import { getServerSession } from 'next-auth';
+import { cache } from 'react';
 
 import { authOptions } from '@/lib/auth/auth-options';
 import { logAuditAction } from '@/lib/audit';
@@ -38,7 +39,7 @@ export type AuthenticatedUser = {
  * The return type is intentionally kept identical to the previous custom-JWT
  * implementation so the 50+ call-sites remain unchanged.
  */
-export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
+async function loadAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   const session = await getServerSession(authOptions);
 
   if (!session?.user || session.error === 'RefreshAccessTokenError') {
@@ -70,6 +71,14 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     role: normalizeRole(currentUser.role),
     isActive: true,
   };
+}
+
+// React scopes this cache to the current server request. Server-rendered pages
+// can call several protected loaders without re-reading the same user row.
+const getRequestAuthenticatedUser = cache(loadAuthenticatedUser);
+
+export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
+  return getRequestAuthenticatedUser();
 }
 
 /**
