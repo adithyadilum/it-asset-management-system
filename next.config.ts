@@ -8,6 +8,9 @@ const applicationUrl = new URL(
 const serverActionOrigins = isProduction
   ? [applicationUrl.host]
   : [applicationUrl.host, 'localhost:3000', '127.0.0.1:3000'];
+const scriptSource = isProduction
+  ? "script-src 'self' 'unsafe-inline'"
+  : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -15,7 +18,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  scriptSource,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
