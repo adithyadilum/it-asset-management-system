@@ -10,7 +10,12 @@ import { serverEnv } from '@/lib/env';
 type AppDatabase = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 function createDatabase(): AppDatabase {
-  if (serverEnv.DATABASE_URL.includes('localhost')) {
+  const databaseHostname = new URL(serverEnv.DATABASE_URL).hostname;
+  const isLocalDatabase = ['localhost', '127.0.0.1', '::1'].includes(
+    databaseHostname
+  );
+
+  if (isLocalDatabase) {
     const queryClient = postgres(serverEnv.DATABASE_URL, {
       max: 10,
       idle_timeout: 20,
@@ -26,9 +31,16 @@ function createDatabase(): AppDatabase {
     max: 10,
     idleTimeoutMillis: 20_000,
     connectionTimeoutMillis: 10_000,
-    options:
-      '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000',
+    query_timeout: 30_000,
+    application_name: 'eitams',
   });
+
+  // Pool emits idle-client errors asynchronously. Without a listener Node
+  // treats them as uncaught exceptions and can terminate the dev/prod worker.
+  pool.on('error', (error: Error) => {
+    console.error('[DB] Unexpected idle Neon connection error:', error.message);
+  });
+
   return drizzleNeon(pool, { schema }) as unknown as AppDatabase;
 }
 

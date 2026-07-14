@@ -45,6 +45,33 @@ describe('authOptions callbacks', () => {
       expect(result).toBe(false);
     });
 
+    it('rejects login without exposing database error details', async () => {
+      findFirstMock.mockRejectedValue(
+        new Error('Failed query with params: private-user@tiqri.com')
+      );
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        const result = await signIn({
+          user: { email: 'private-user@tiqri.com' },
+          account: null,
+          profile: { email: 'private-user@tiqri.com' },
+        } as any);
+
+        expect(result).toBe(false);
+        expect(consoleError).toHaveBeenCalledWith(
+          '[AUTH] Login database lookup failed (code: UNKNOWN)'
+        );
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain(
+          'private-user@tiqri.com'
+        );
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
     it('JIT provisions a new user with Employee role if the user does not exist', async () => {
       // User does not exist in DB
       findFirstMock.mockResolvedValue(null);

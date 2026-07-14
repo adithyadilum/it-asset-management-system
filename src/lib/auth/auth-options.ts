@@ -230,10 +230,27 @@ export const authOptions: NextAuthOptions = {
 
       const normalizedEmail = email.toLowerCase();
 
-      // Check if user already exists in PostgreSQL
-      const existingUser = await db.query.users.findFirst({
-        where: eq(users.email, normalizedEmail),
-      });
+      // Check if user already exists in PostgreSQL. Keep infrastructure error
+      // details server-side so NextAuth does not place SQL/PII in an OAuth
+      // error redirect URL.
+      let existingUser: typeof users.$inferSelect | undefined;
+      try {
+        existingUser = await db.query.users.findFirst({
+          where: eq(users.email, normalizedEmail),
+        });
+      } catch (error) {
+        const cause =
+          error instanceof Error && 'cause' in error ? error.cause : undefined;
+        const code =
+          typeof cause === 'object' &&
+          cause !== null &&
+          'code' in cause &&
+          typeof cause.code === 'string'
+            ? cause.code
+            : 'UNKNOWN';
+        console.error(`[AUTH] Login database lookup failed (code: ${code})`);
+        return false;
+      }
 
       // ── Sync Department from Keycloak Profile ──────────────────────────────
       let userDepartmentId: number | undefined;
