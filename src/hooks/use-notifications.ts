@@ -8,6 +8,7 @@ import {
   markAllAsRead,
   markAsRead,
 } from '@/actions/notifications';
+import { clientEnv } from '@/lib/env.client';
 
 export interface Notification {
   id: string;
@@ -25,7 +26,9 @@ export function useNotifications() {
     'notifications-unread-count',
     getUnreadCount,
     {
-      refreshInterval: 30000, // Poll every 30 seconds while the tab is active
+      refreshInterval: Math.max(clientEnv.NEXT_PUBLIC_NOTIFICATION_POLL_INTERVAL, 60000),
+      refreshWhenHidden: false,
+      refreshWhenOffline: false,
       revalidateOnFocus: true, // Instantly fetch when the user clicks back into this tab
       revalidateOnReconnect: true, // Instantly fetch if the internet drops and comes back
       dedupingInterval: 10000, // Throttle requests: ignore duplicate calls within 10 seconds

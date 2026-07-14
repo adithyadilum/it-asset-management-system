@@ -27,7 +27,7 @@ interface GenerateReportPdfModalProps {
 type ExportScope = 'preview' | 'all';
 
 const LARGE_EXPORT_THRESHOLD = 5000;
-const MAX_EXPORT_PAGE_SIZE = 100000;
+const MAX_EXPORT_PAGE_SIZE = 5000;
 
 function formatFilterValue(value: string | undefined) {
   return value && value.trim().length > 0 ? value : 'All';

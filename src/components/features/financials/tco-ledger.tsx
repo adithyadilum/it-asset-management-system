@@ -98,7 +98,7 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
 
     const response = await getTCOLedger({
       page: 1,
-      pageSize: 100000,
+      pageSize: 5000,
       search: debouncedSearch,
       category: categoryFilter,
       costFilter: costFilter

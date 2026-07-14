@@ -5,6 +5,14 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { describe, it, expect, vi } from 'vitest';
 
+const { mockRedisSet, mockRedisEval } = vi.hoisted(() => ({
+  mockRedisSet: vi.fn().mockResolvedValue('OK'),
+  mockRedisEval: vi.fn().mockResolvedValue(1),
+}));
+vi.mock('@upstash/redis', () => ({
+  Redis: { fromEnv: () => ({ set: mockRedisSet, eval: mockRedisEval }) },
+}));
+
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: vi.fn(),
 }));
@@ -129,7 +137,7 @@ describe('Bulk Import Integration', () => {
 
     // Mock lock failure
      
-    vi.mocked(db.execute).mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: false }] } as any);
+    mockRedisSet.mockResolvedValueOnce(null);
 
      
     const result = await executeBulkImport(1, [{}] as any, 'import.csv');

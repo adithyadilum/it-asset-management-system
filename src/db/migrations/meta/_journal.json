@@ -43,6 +43,13 @@
       "when": 1782336354810,
       "tag": "0005_rename_role_enum_financial_auditor",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784004531710,
+      "tag": "0006_security_performance_indexes",
+      "breakpoints": true
     }
   ]
 }

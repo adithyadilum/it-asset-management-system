@@ -8,6 +8,13 @@ import { ResolvedImportRow } from '@/lib/bulk-import/types';
 // ---------------------------------------------------------------------------
 
 const mockGetAuthenticatedUser = vi.fn();
+const { mockRedisSet, mockRedisEval } = vi.hoisted(() => ({
+  mockRedisSet: vi.fn().mockResolvedValue('OK'),
+  mockRedisEval: vi.fn().mockResolvedValue(1),
+}));
+vi.mock('@upstash/redis', () => ({
+  Redis: { fromEnv: () => ({ set: mockRedisSet, eval: mockRedisEval }) },
+}));
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
   enforceActionAccess: vi.fn(async (validator) => {
@@ -188,7 +195,7 @@ describe('executeBulkImport', () => {
 
   it('returns error if lock cannot be acquired', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.execute.mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: false }] });
+    mockRedisSet.mockResolvedValueOnce(null);
     
     const res = await executeBulkImport(1, [{}] as unknown as ResolvedImportRow[], 'file.csv');
     expect(res.success).toBe(false);
@@ -197,7 +204,7 @@ describe('executeBulkImport', () => {
 
   it('successfully executes bulk import', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.execute.mockResolvedValue({ rows: [{ pg_try_advisory_lock: true }] });
+    mockRedisSet.mockResolvedValueOnce('OK');
     
     // Select count returns 0
     mockDb.select.mockReturnValueOnce(chain([{ value: 0 }]));

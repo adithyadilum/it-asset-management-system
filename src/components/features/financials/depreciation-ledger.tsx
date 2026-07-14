@@ -101,7 +101,7 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
     const response = await getDepreciationLedger({
       page: 1,
-      pageSize: 100000,
+      pageSize: 5000,
       search: debouncedSearch,
       category: categoryFilter,
       ageFilter: ageFilter

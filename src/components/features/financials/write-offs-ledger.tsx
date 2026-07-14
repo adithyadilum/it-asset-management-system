@@ -98,7 +98,7 @@ export function WriteOffsLedger({ initialData }: WriteOffsLedgerProps) {
 
     const response = await getWriteOffsLedger({
       page: 1,
-      pageSize: 100000,
+      pageSize: 5000,
       search: debouncedSearch,
       category: categoryFilter,
       salvageFilter: salvageFilter

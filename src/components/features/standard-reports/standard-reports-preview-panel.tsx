@@ -117,7 +117,7 @@ export function StandardReportsPreviewPanel({
         const result = await fetchReportPreview({
           ...filterState,
           page: 0,
-          pageSize: 100000, // Large number to fetch all records
+          pageSize: 5000,
         });
         dataToExport = result.data;
       }

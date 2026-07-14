@@ -19,6 +19,15 @@ import { revalidatePath } from 'next/cache';
 import Papa from 'papaparse';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
+import { Redis } from '@upstash/redis';
+import { randomUUID } from 'crypto';
+
+let bulkImportRedis: Redis | null = null;
+
+function getBulkImportRedis() {
+  bulkImportRedis ??= Redis.fromEnv();
+  return bulkImportRedis;
+}
 
 function addMonths(value: Date, months: number) {
   const nextDate = new Date(value);
@@ -187,12 +196,10 @@ export async function executeBulkImport(
     };
   }
 
-  const BULK_IMPORT_LOCK_ID = 7777;
-  const lockResult = await db.execute(
-    sql`SELECT pg_try_advisory_lock(${BULK_IMPORT_LOCK_ID})`
-  );
-  const rows = Array.isArray(lockResult) ? lockResult : (lockResult as { rows?: unknown[] }).rows;
-  const lockGranted = (rows?.[0] as Record<string, unknown> | undefined)?.pg_try_advisory_lock;
+  const lockKey = `eitams:bulk-import:category:${categoryId}`;
+  const lockOwner = randomUUID();
+  const redis = getBulkImportRedis();
+  const lockGranted = await redis.set(lockKey, lockOwner, { nx: true, ex: 3600 });
 
   if (!lockGranted) {
     return {
@@ -334,6 +341,10 @@ export async function executeBulkImport(
       message: 'An unexpected error occurred during import execution.',
     };
   } finally {
-    await db.execute(sql`SELECT pg_advisory_unlock(${BULK_IMPORT_LOCK_ID})`);
+    await redis.eval(
+      "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+      [lockKey],
+      [lockOwner]
+    );
   }
 }
