@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
-import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
 import {
   getAssetsByPillar,
   getAllAssetsUnified,
@@ -20,6 +19,7 @@ interface UseAssetRegistryDataProps {
   selectedCategoryId?: number;
   backendStatusFilter?: string;
   refreshNonce: number;
+  customStatuses: string[];
 }
 
 export function useAssetRegistryData({
@@ -30,36 +30,17 @@ export function useAssetRegistryData({
   selectedCategoryId,
   backendStatusFilter,
   refreshNonce,
+  customStatuses,
 }: UseAssetRegistryDataProps) {
   const [rows, setRows] = useState<AssetRegistryRow[]>(initialResult.data);
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [customStatuses, setCustomStatuses] = useState<string[]>([]);
-
   const requestSequenceRef = useRef(0);
   const initialResultRef = useRef(initialResult);
   const canReuseInitialResultRef = useRef(true);
   const initialRowsPromiseRef = useRef<Promise<AssetRegistryRow[]> | null>(
     null
   );
-
-  // Fetch custom statuses once on mount
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const result = await getCustomStatuses();
-        if (!mounted) return;
-        setCustomStatuses(result.map((r: CustomStatusRow) => r.name));
-      } catch {
-        // ignore non-fatal
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   // Load asset rows whenever filters/search/category change
   useEffect(() => {

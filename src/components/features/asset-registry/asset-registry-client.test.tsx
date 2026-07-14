@@ -20,10 +20,6 @@ vi.mock('@/actions/asset-registry', () => ({
     .mockResolvedValue({ data: [], meta: { totalPages: 1 } }),
 }));
 
-vi.mock('@/actions/statuses', () => ({
-  getCustomStatuses: vi.fn().mockResolvedValue([]),
-}));
-
 vi.mock('@/components/features/bulk-import/bulk-import-wizard', () => ({
   BulkImportWizard: () => <div data-testid="bulk-import-wizard" />,
 }));

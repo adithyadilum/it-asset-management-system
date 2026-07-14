@@ -179,6 +179,16 @@ export async function getAssetsByPillar(
     .groupBy(softwareAllocations.licenseId)
     .as('assigned_seats');
 
+  const latestAssignedUser = sql<string | null>`(
+    select ${users.name}
+    from ${assetAssignments}
+    left join ${users} on ${assetAssignments.assignedToUserId} = ${users.id}
+    where ${assetAssignments.assetId} = ${assets.id}
+      and ${assetAssignments.returnedDate} is null
+    order by ${assetAssignments.assignedDate} desc
+    limit 1
+  )`;
+
   // Dynamic Status Filtering for Software
   let softwareStatusCondition = undefined;
   if (filters.status && filters.pillar === 'Software') {
@@ -250,6 +260,10 @@ export async function getAssetsByPillar(
       model: models.name,
       locationId: assets.locationId,
       location: locations.name,
+      assignedTo:
+        filters.pillar === 'Software'
+          ? sql<string | null>`null`
+          : latestAssignedUser,
       instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
       // SAM fields
@@ -273,38 +287,6 @@ export async function getAssetsByPillar(
     .offset(offset);
 
   const total = rows[0]?.totalCount ?? 0;
-  const assetIds = rows.map((row) => row.id);
-
-  const assignedUserByAssetId = new Map<string, string>();
-  if (assetIds.length > 0 && filters.pillar !== 'Software') {
-    const activeAssignments = await db
-      .select({
-        assetId: assetAssignments.assetId,
-        assignedTo: users.name,
-      })
-      .from(assetAssignments)
-      .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-      .where(
-        and(
-          inArray(assetAssignments.assetId, assetIds),
-          isNull(assetAssignments.returnedDate)
-        )
-      )
-      .orderBy(desc(assetAssignments.assignedDate));
-
-    for (const activeAssignment of activeAssignments) {
-      if (
-        !assignedUserByAssetId.has(activeAssignment.assetId) &&
-        activeAssignment.assignedTo
-      ) {
-        assignedUserByAssetId.set(
-          activeAssignment.assetId,
-          activeAssignment.assignedTo
-        );
-      }
-    }
-  }
-
   const data: AssetRegistryRow[] = rows.map((row) => {
     const totalSeats = typeof row.totalSeats === 'number' ? row.totalSeats : 0;
     const assignedSeats =
@@ -350,7 +332,7 @@ export async function getAssetsByPillar(
       instanceAttributes:
         (row.instanceAttributes as Record<string, unknown>) ?? null,
       updatedAt: row.updatedAt,
-      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      assignedTo: row.assignedTo,
       totalSeats: row.totalSeats,
       availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
       expiryDate: row.expiryDate,
@@ -392,6 +374,19 @@ export async function getAllAssetsUnified(
     .where(isNull(softwareAllocations.revokedAt))
     .groupBy(softwareAllocations.licenseId)
     .as('assigned_seats');
+
+  const latestAssignedUser = sql<string | null>`case
+    when ${categories.pillar} = 'Software' then null
+    else (
+      select ${users.name}
+      from ${assetAssignments}
+      left join ${users} on ${assetAssignments.assignedToUserId} = ${users.id}
+      where ${assetAssignments.assetId} = ${assets.id}
+        and ${assetAssignments.returnedDate} is null
+      order by ${assetAssignments.assignedDate} desc
+      limit 1
+    )
+  end`;
 
   // Dynamic Status Filtering for Software
   let softwareStatusCondition = undefined;
@@ -485,6 +480,7 @@ export async function getAllAssetsUnified(
       model: models.name,
       locationId: assets.locationId,
       location: locations.name,
+      assignedTo: latestAssignedUser,
       instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
       // SAM fields
@@ -508,40 +504,6 @@ export async function getAllAssetsUnified(
     .offset(offset);
 
   const total = rows[0]?.totalCount ?? 0;
-  const assetIds = rows
-    .filter((row) => row.pillar !== 'Software')
-    .map((row) => row.id);
-
-  const assignedUserByAssetId = new Map<string, string>();
-  if (assetIds.length > 0) {
-    const activeAssignments = await db
-      .select({
-        assetId: assetAssignments.assetId,
-        assignedTo: users.name,
-      })
-      .from(assetAssignments)
-      .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-      .where(
-        and(
-          inArray(assetAssignments.assetId, assetIds),
-          isNull(assetAssignments.returnedDate)
-        )
-      )
-      .orderBy(desc(assetAssignments.assignedDate));
-
-    for (const activeAssignment of activeAssignments) {
-      if (
-        !assignedUserByAssetId.has(activeAssignment.assetId) &&
-        activeAssignment.assignedTo
-      ) {
-        assignedUserByAssetId.set(
-          activeAssignment.assetId,
-          activeAssignment.assignedTo
-        );
-      }
-    }
-  }
-
   const data: AssetRegistryRow[] = rows.map((row) => {
     const totalSeats = typeof row.totalSeats === 'number' ? row.totalSeats : 0;
     const assignedSeats =
@@ -587,7 +549,7 @@ export async function getAllAssetsUnified(
       instanceAttributes:
         (row.instanceAttributes as Record<string, unknown>) ?? null,
       updatedAt: row.updatedAt,
-      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      assignedTo: row.assignedTo,
       totalSeats: row.totalSeats,
       availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
       expiryDate: row.expiryDate,

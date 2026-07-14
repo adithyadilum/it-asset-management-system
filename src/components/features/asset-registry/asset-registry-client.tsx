@@ -153,6 +153,10 @@ export function AssetRegistryClient({
   );
   const backendStatusFilter =
     statusFilter?.operator === 'is' ? statusFilter.value : undefined;
+  const customStatuses = useMemo(
+    () => manualStatuses.map((status) => status.value),
+    [manualStatuses]
+  );
 
   // Debounce search input
   useEffect(() => {
@@ -172,7 +176,6 @@ export function AssetRegistryClient({
     isPending,
     errorMessage,
     setErrorMessage,
-    customStatuses,
     manuallyUpdateRowStatus,
   } = useAssetRegistryData({
     initialResult,
@@ -182,6 +185,7 @@ export function AssetRegistryClient({
     selectedCategoryId,
     backendStatusFilter,
     refreshNonce,
+    customStatuses,
   });
 
   const { isMutating, performBulkStatusChange, performBulkTransfer } =
