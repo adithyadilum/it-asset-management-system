@@ -17,8 +17,10 @@ export default async function TCOLedgerPage() {
       >
         Total Cost of Ownership (TCO)
       </h1>
-      {/* 2. Pass ONLY the array slice to initialData */}
-      <TCOLedger initialData={response.data} />
+      <TCOLedger
+        initialData={response.data}
+        initialPageCount={response.meta.totalPages}
+      />
     </div>
   );
 }

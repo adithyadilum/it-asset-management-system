@@ -384,6 +384,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
 
   const [isPending, startTransition] = useTransition();
+  const canReuseInitialResultRef = useRef(Boolean(initialResult));
 
   // Debounce search so we only query the server after the user pauses typing.
   useEffect(() => {
@@ -417,10 +418,30 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
 
   // Reload whenever paging, search, or filters change.
   useEffect(() => {
+    const matchesInitialRequest =
+      pagination.pageIndex === 0 &&
+      pagination.pageSize === (initialResult?.meta.pageSize ?? 16) &&
+      debouncedQuery === '' &&
+      appliedFilters.length === 0;
+
+    if (matchesInitialRequest && canReuseInitialResultRef.current) {
+      return;
+    }
+    if (!matchesInitialRequest) {
+      canReuseInitialResultRef.current = false;
+    }
+
     startTransition(() => {
       loadRows();
     });
-  }, [loadRows]);
+  }, [
+    appliedFilters.length,
+    debouncedQuery,
+    initialResult?.meta.pageSize,
+    loadRows,
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
 
   const setOrReplaceFilter = (nextFilter: AppliedFilter) => {
     setAppliedFilters((currentFilters) => {

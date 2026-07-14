@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import AuditLogClient from './audit-log-client';
+import { getAuditLogs } from '@/actions/audit-log';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
@@ -18,14 +20,16 @@ vi.mock('@/actions/audit-log', () => ({
 describe('AuditLogClient', () => {
   it('renders correctly', async () => {
     render(
-      <AuditLogClient
-        initialResult={
-          {
-            data: [],
-            meta: { total: 0, page: 1, pageSize: 16, totalPages: 1 },
-          } as any
-        }
-      />
+      <StrictMode>
+        <AuditLogClient
+          initialResult={
+            {
+              data: [],
+              meta: { total: 0, page: 1, pageSize: 16, totalPages: 1 },
+            } as any
+          }
+        />
+      </StrictMode>
     );
     expect(screen.getByText('System Audit Log')).toBeInTheDocument();
 
@@ -33,5 +37,6 @@ describe('AuditLogClient', () => {
     await waitFor(() => {
       expect(screen.getByText('System Audit Log')).toBeInTheDocument();
     });
+    expect(getAuditLogs).not.toHaveBeenCalled();
   });
 });

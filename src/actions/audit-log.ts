@@ -764,18 +764,9 @@ export async function getAuditLogs(
 
     const whereCondition = baseWhere.length > 0 ? and(...baseWhere) : undefined;
 
-    // Count first so the table can paginate before fetching the page slice.
-    const totalRowsCount = await db
-      .select({ total: sql<number>`cast(count(*) as integer)` })
-      .from(systemAuditLogs)
-      .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
-      .where(whereCondition);
-
-    const total = totalRowsCount[0]?.total ?? 0;
-    const totalPages = Math.ceil(total / pageSize);
-
     const records = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: systemAuditLogs.id,
         performedAt: systemAuditLogs.performedAt,
         entityType: systemAuditLogs.entityType,
@@ -796,10 +787,23 @@ export async function getAuditLogs(
       .limit(pageSize)
       .offset(offset);
 
+    let total = records[0]?.totalCount ?? 0;
+    if (records.length === 0 && page > 1) {
+      const totalRowsCount = await db
+        .select({ total: sql<number>`cast(count(*) as integer)` })
+        .from(systemAuditLogs)
+        .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+        .where(whereCondition);
+      total = totalRowsCount[0]?.total ?? 0;
+    }
+    const totalPages = Math.ceil(total / pageSize);
+
     // Resolve display labels after the page query so the list stays readable.
-    const targetEntityLabels = await resolveTargetEntityLabels(records);
-    const { labels: valueLabels, idMappings } =
-      await resolveAuditValueLabels(records);
+    const [targetEntityLabels, { labels: valueLabels, idMappings }] =
+      await Promise.all([
+        resolveTargetEntityLabels(records),
+        resolveAuditValueLabels(records),
+      ]);
 
     const data: AuditLogRow[] = records.map((record) => {
       const oldValue = record.oldValue as Record<string, unknown> | null;

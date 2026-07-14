@@ -30,14 +30,18 @@ import { useCurrency } from '@/components/providers/currency-provider';
 
 interface TCOLedgerProps {
   initialData: TCOLedgerRecord[];
+  initialPageCount?: number;
 }
 
-export function TCOLedger({ initialData }: TCOLedgerProps) {
+export function TCOLedger({
+  initialData,
+  initialPageCount = 1,
+}: TCOLedgerProps) {
   const [data, setData] = useState<TCOLedgerRecord[]>(initialData);
-  const [pageCount, setPageCount] = useState(1);
+  const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
-  const hasInitializedRef = useRef(false);
+  const canReuseInitialDataRef = useRef(true);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -85,17 +89,15 @@ export function TCOLedger({ initialData }: TCOLedgerProps) {
   }, [searchTerm]);
 
   useEffect(() => {
-    const shouldSkipFirstFetch =
-      !hasInitializedRef.current &&
+    const matchesInitialRequest =
       pagination.pageIndex === 0 &&
+      pagination.pageSize === 16 &&
       debouncedSearch === '' &&
       appliedFilters.length === 0;
-    if (shouldSkipFirstFetch) {
-      hasInitializedRef.current = true;
+    if (matchesInitialRequest && canReuseInitialDataRef.current) {
       return;
     }
-
-    hasInitializedRef.current = true;
+    if (!matchesInitialRequest) canReuseInitialDataRef.current = false;
     startTransition(async () => {
       const categoryFilter = appliedFilters.find(
         (f) => f.field === 'Asset Category' && f.operator === 'is'

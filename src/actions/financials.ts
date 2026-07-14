@@ -97,20 +97,9 @@ export async function getDepreciationLedger(
 
     const whereClause = and(...conditions);
 
-    // 2. Get Total Count for Pagination Metadata
-    const totalCountRes = await db
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch ONLY the requested page slice
     const result = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -128,6 +117,18 @@ export async function getDepreciationLedger(
       .orderBy(desc(assetPurchases.purchaseDate))
       .limit(validPageSize)
       .offset(offset);
+
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
 
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
@@ -243,23 +244,10 @@ export async function getTCOLedger(
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    // 2. Get Total Count
-    const totalCountRes = await db
-      .with(repairCostsSq)
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch Page Slice
     const result = await db
       .with(repairCostsSq)
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -277,6 +265,20 @@ export async function getTCOLedger(
       .orderBy(desc(assetPurchases.purchaseDate))
       .limit(validPageSize)
       .offset(offset);
+
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .with(repairCostsSq)
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
 
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
@@ -381,21 +383,9 @@ export async function getWriteOffsLedger(
 
     const whereClause = and(...conditions);
 
-    // 2. Get Total Count
-    const totalCountRes = await db
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch Page Slice
     const result = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -415,6 +405,19 @@ export async function getWriteOffsLedger(
       .orderBy(desc(assetDisposals.resolvedAt))
       .limit(validPageSize)
       .offset(offset);
+
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
 
     const ledgers = result.map((row) => ({
       id: row.id,

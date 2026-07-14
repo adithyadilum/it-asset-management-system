@@ -95,8 +95,7 @@ describe('Financials Actions', () => {
 
     it('allows FinancialAuditor and GlobalAdmin', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      mockDb.select.mockReturnValueOnce(chain([{ value: 0 }])); // count
-      mockDb.select.mockReturnValueOnce(chain([])); // data
+      mockDb.select.mockReturnValueOnce(chain([]));
 
       const res = await getDepreciationLedger();
       expect(res.data).toEqual([]);
@@ -106,10 +105,10 @@ describe('Financials Actions', () => {
   describe('getDepreciationLedger', () => {
     it('correctly calculates Current Book Value and handles pagination', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      mockDb.select.mockReturnValueOnce(chain([{ value: 100 }])); // count
       mockDb.select.mockReturnValueOnce(
         chain([
           {
+            totalCount: 100,
             id: 1,
             assetTag: 'TAG-1',
             categoryName: 'Hardware',
@@ -140,22 +139,20 @@ describe('Financials Actions', () => {
 
       // We mocked `db.with()` properly
       mockDb.with.mockReturnValue({
-        select: vi
-          .fn()
-          .mockReturnValueOnce(chain([{ value: 1 }]))
-          .mockReturnValueOnce(
-            chain([
-              {
-                id: 1,
-                assetTag: 'TAG-2',
-                categoryName: 'Hardware',
-                purchaseDate: new Date().toISOString(),
-                originalPrice: '1000',
-                currencyCode: 'USD',
-                totalRepairCosts: '250',
-              },
-            ])
-          ),
+        select: vi.fn().mockReturnValueOnce(
+          chain([
+            {
+              totalCount: 1,
+              id: 1,
+              assetTag: 'TAG-2',
+              categoryName: 'Hardware',
+              purchaseDate: new Date().toISOString(),
+              originalPrice: '1000',
+              currencyCode: 'USD',
+              totalRepairCosts: '250',
+            },
+          ])
+        ),
       });
 
       const result = await getTCOLedger();
@@ -171,10 +168,10 @@ describe('Financials Actions', () => {
     it('retrieves only disposed assets with salvage value', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
 
-      mockDb.select.mockReturnValueOnce(chain([{ value: 1 }])); // count
       mockDb.select.mockReturnValueOnce(
         chain([
           {
+            totalCount: 1,
             id: 1,
             assetTag: 'TAG-3',
             categoryName: 'Hardware',

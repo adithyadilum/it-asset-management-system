@@ -208,13 +208,10 @@ describe('audit-log server actions', () => {
     it('returns paginated data', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
 
-      // First query is count
-      mockDb.select.mockReturnValueOnce(chain([{ total: 1 }]));
-
-      // Second query is records
       mockDb.select.mockReturnValueOnce(
         chain([
           {
+            totalCount: 1,
             id: 1,
             performedAt: new Date(),
             entityType: 'Asset',
@@ -231,7 +228,7 @@ describe('audit-log server actions', () => {
         ])
       );
 
-      // Third: resolveTargetEntityLabels
+      // Second: resolveTargetEntityLabels
       mockDb.select.mockReturnValueOnce(
         chain([{ id: 'uuid-1', assetTag: 'TAG1', name: 'Asset1' }])
       );

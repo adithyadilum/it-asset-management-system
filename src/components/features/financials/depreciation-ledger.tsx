@@ -30,15 +30,19 @@ import { useCurrency } from '@/components/providers/currency-provider';
 
 interface DepreciationLedgerProps {
   initialData: DepreciationLedgerRecord[];
+  initialPageCount?: number;
 }
 
-export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
+export function DepreciationLedger({
+  initialData,
+  initialPageCount = 1,
+}: DepreciationLedgerProps) {
   // Data & Pagination State - Initialize from initialData to avoid empty flash
   const [data, setData] = useState<DepreciationLedgerRecord[]>(initialData);
-  const [pageCount, setPageCount] = useState(1);
+  const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
   const [isPending, startTransition] = useTransition();
-  const hasInitializedRef = useRef(false);
+  const canReuseInitialDataRef = useRef(true);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -84,17 +88,15 @@ export function DepreciationLedger({ initialData }: DepreciationLedgerProps) {
 
   // The Server Fetcher - Skip first fetch if no filters/search on page 0
   useEffect(() => {
-    const shouldSkipFirstFetch =
-      !hasInitializedRef.current &&
+    const matchesInitialRequest =
       pagination.pageIndex === 0 &&
+      pagination.pageSize === 16 &&
       debouncedSearch === '' &&
       appliedFilters.length === 0;
-    if (shouldSkipFirstFetch) {
-      hasInitializedRef.current = true;
+    if (matchesInitialRequest && canReuseInitialDataRef.current) {
       return;
     }
-
-    hasInitializedRef.current = true;
+    if (!matchesInitialRequest) canReuseInitialDataRef.current = false;
     startTransition(async () => {
       const categoryFilter = appliedFilters.find(
         (f) => f.field === 'Asset Category' && f.operator === 'is'

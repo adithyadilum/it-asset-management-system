@@ -1,7 +1,9 @@
 import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TCOLedger } from './tco-ledger';
+import { getTCOLedger } from '@/actions/financials';
 
 vi.mock('@/actions/financials', () => ({
   getTCOLedger: vi.fn(),
@@ -29,11 +31,14 @@ describe('TCOLedger', () => {
 
   it('renders correctly with initial data', () => {
     render(
-      <CurrencyProvider initialCurrency="USD">
-        <TCOLedger initialData={mockData} />
-      </CurrencyProvider>
+      <StrictMode>
+        <CurrencyProvider initialCurrency="USD">
+          <TCOLedger initialData={mockData} />
+        </CurrencyProvider>
+      </StrictMode>
     );
     expect(screen.getByText('AST-002')).toBeInTheDocument();
     expect(screen.getByText('Servers')).toBeInTheDocument();
+    expect(getTCOLedger).not.toHaveBeenCalled();
   });
 });

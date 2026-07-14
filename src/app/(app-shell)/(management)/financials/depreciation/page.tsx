@@ -17,8 +17,10 @@ export default async function DepreciationLedgerPage() {
       >
         Depreciation Ledger
       </h1>
-      {/* 2. Pass ONLY the array slice to initialData */}
-      <DepreciationLedger initialData={response.data} />
+      <DepreciationLedger
+        initialData={response.data}
+        initialPageCount={response.meta.totalPages}
+      />
     </div>
   );
 }

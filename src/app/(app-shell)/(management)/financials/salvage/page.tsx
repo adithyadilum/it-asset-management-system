@@ -17,8 +17,10 @@ export default async function SalvageLedgerPage() {
       >
         Write-Offs & Salvage
       </h1>
-      {/* 2. Pass ONLY the array slice to initialData */}
-      <WriteOffsLedger initialData={response.data} />
+      <WriteOffsLedger
+        initialData={response.data}
+        initialPageCount={response.meta.totalPages}
+      />
     </div>
   );
 }
