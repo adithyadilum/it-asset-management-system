@@ -1,27 +1,112 @@
 # End-to-End Engineering Audit Report
 
-**Project:** IT Asset Management System  
-**Audit date:** 2026-07-14  
-**Branch / commit:** `dev` / `e5773c8338d9256472428bb24952a4e184bf5f62`  
-**Scope:** Security, performance, CI/CD, deployment, tests, and code quality  
-**Change policy:** No application source or configuration was changed. This report is the only file added.
+- **Project:** IT Asset Management System
+- **Audit date:** 2026-07-14
+- **Baseline:** `dev` / `e5773c8338d9256472428bb24952a4e184bf5f62`
+- **Remediation state:** `dev` through `db3990c` (report update follows)
+- **Scope:** Security, performance, CI/CD, deployment, tests, and code quality
+- **Update:** Remediation was implemented on 2026-07-14 in conventional commits and verified locally.
 
 ## Executive summary
 
-The application has several strong foundations: strict TypeScript, clean ESLint results, a successful production build, a non-root runtime container, parameterized Drizzle queries, consistent Zod usage in many business flows, role helpers, transaction usage for core mutations, QStash signature verification, AES-256-GCM for integration secrets, CodeQL, Dependabot, and approximately 200 unit/component test files.
+The release-blocking repository defects identified by the original audit have been remediated: active account and device state is enforced centrally, uploads are private and byte-validated, Docker build secrets are excluded, QR claims are atomic, expensive API-key verification is pre-limited, the missing migration is restored, database/query workloads are bounded, notification retry behavior is queue-native, and CI now enforces deterministic install, migration, formatting, coverage, build, and dependency-audit gates.
 
-It is **not yet production-ready**. No immediately exploitable unauthenticated critical vulnerability was confirmed, but multiple high-severity weaknesses can cause authorization bypass after account deactivation, confidential-document exposure, build-secret leakage, pairing-token races, denial of service, audit gaps, and failed deployments.
+The project is now substantially safer and all locally executable quality gates pass. Production approval remains **conditional** on migration and E2E execution in an environment with Docker/services, deployment-platform verification, and explicit acceptance or completion of the residual items listed below. This repository review is not a substitute for a live penetration test or cloud-control review.
 
 ### Priority summary
 
-| Priority | Main risk | Recommended release decision |
-|---|---|---|
-| P0 | Inactive users remain authorized in APIs/server actions; documents are public and weakly validated; `.env` enters Docker build context; migration `0004` is missing | Block production release until fixed |
-| P1 | QR exchange race, expensive API-key verification before throttling, unreliable audit writes, broken E2E workflow, broken unit suite | Fix before the next release candidate |
-| P2 | Missing database indexes, blocking retry sleeps, bulk-import locking/scalability, missing browser headers, dependency advisories | Fix or explicitly accept with monitoring and owners |
-| P3 | Formatting, large modules, weak coverage governance, runtime/version drift | Schedule as engineering-quality work |
+| Priority | Current state                                                                                                                    | Release decision                                                 |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| P0       | Repository release blockers fixed                                                                                                | Verify migrations, private Blob configuration, and deployed auth |
+| P1       | Core fixes and CI gates complete; external E2E execution still required                                                          | Run CI/E2E and smoke tests before production                     |
+| P2       | Most repository controls fixed or mitigated; audit immutability, universal abuse controls, and webhook destination policy remain | Assign owners and written risk acceptance                        |
+| P3       | Formatting and coverage governance added; large-module and layering refactors remain                                             | Schedule incremental refactoring                                 |
 
-## Audit scope and evidence
+## Remediation status
+
+Status meanings: **Fixed** is implemented and locally verified; **Mitigated** materially reduces the risk but leaves follow-up work; **Open** requires organizational, architectural, or external-environment work.
+
+### Security
+
+| ID     | Status    | Implemented remediation / remaining work                                                                                                                                                                     |
+| ------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SEC-01 | Fixed     | Web and mobile principals are reloaded from the database; inactive users are rejected; deactivation revokes devices and refresh tokens.                                                                      |
+| SEC-02 | Mitigated | Sensitive documents use a private Blob store and authenticated streaming endpoint; extension, MIME, magic-byte, size, and randomized-name checks are enforced. External malware scanning/quarantine remains. |
+| SEC-03 | Fixed     | `.dockerignore` excludes environment files, keys, reports, and unnecessary build context.                                                                                                                    |
+| SEC-04 | Fixed     | QR codes use atomic Redis `GETDEL`, authoritative account checks, issuer/audience claims, and publish the claimed marker only after persistence.                                                             |
+| SEC-05 | Mitigated | Cheap pre-auth throttling now occurs before PBKDF2, trusted platform IP headers are preferred, and post-auth key throttling remains. A versioned HMAC key-index migration is still recommended.              |
+| SEC-06 | Mitigated | Transaction-scoped critical audit writes fail closed and external API audit/usage writes are awaited. Append-only database permissions, tamper evidence, and external log export remain operational work.    |
+| SEC-07 | Fixed     | Server Action origins are exact/environment-specific and the global body limit is reduced to 5 MB.                                                                                                           |
+| SEC-08 | Mitigated | CSP, HSTS, anti-framing, MIME-sniffing, referrer, and permissions headers are configured. Replace compatibility CSP allowances with nonce-based policy after deployed testing.                               |
+| SEC-09 | Mitigated | Stored Keycloak access, ID, and refresh tokens are encrypted with legacy plaintext read/migration compatibility. Software license-key encryption remains.                                                    |
+| SEC-10 | Fixed     | Mobile JWT validation is centralized and requires issuer, audience, subject, JTI, active device ownership, active user, and authoritative role.                                                              |
+| SEC-11 | Fixed     | Production-aware secret length, encryption-key, HTTPS URL, and dependent-service validation is enforced.                                                                                                     |
+| SEC-12 | Mitigated | Pre-auth API throttling, bounded request/body/file sizes, reduced Server Action limit, and bounded imports/exports are present. A uniform limiter for every internal/mobile route remains.                   |
+| SEC-13 | Fixed     | Compatible dependencies were upgraded, transitive vulnerable versions are overridden, `npm audit` reports zero vulnerabilities, and CI fails on high-severity advisories.                                    |
+| SEC-14 | Open      | Webhook destinations still require an organization-defined allowlist and redirect/DNS policy. QStash mediation and audit logging remain compensating controls.                                               |
+
+### Performance and reliability
+
+| ID      | Status    | Implemented remediation / remaining work                                                                                                                                        |
+| ------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PERF-01 | Fixed     | Migration `0006` adds the identified composite, partial, and trigram indexes and enables `pg_trgm`. Production query plans must still be observed after rollout.                |
+| PERF-02 | Mitigated | Imports use a category-scoped Redis owner-token lock with TTL and retain a 5,000-row ceiling. Staging tables, batched writes, and an asynchronous job model remain recommended. |
+| PERF-03 | Fixed     | Handlers attempt once, return failure for QStash retry, and avoid in-request exponential sleeps.                                                                                |
+| PERF-04 | Mitigated | Report/export requests are hard-capped at 5,000 rows. Asynchronous streamed exports remain appropriate for larger data sets.                                                    |
+| PERF-05 | Mitigated | Trigram indexes address contains-search scans; report-count query/caching redesign remains.                                                                                     |
+| PERF-06 | Fixed     | Explicit pool size, connect/idle/statement timeouts, application name, and development singleton behavior are configured.                                                       |
+| PERF-07 | Fixed     | Notification fallback polling is no faster than 60 seconds and pauses while hidden or offline; push invalidation remains primary.                                               |
+
+### CI/CD and deployment
+
+| ID      | Status    | Implemented remediation / remaining work                                                                                                                                                                           |
+| ------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CICD-01 | Fixed     | Playwright uses `npm run e2e`, one PostgreSQL service lifecycle, checked-in migrations, aligned Node/PostgreSQL versions, and avoids CI Compose conflicts. Execution still requires the CI/Docker environment.     |
+| CICD-02 | Fixed     | Missing migration `0004` is restored, enum migration `0005` is defensive, migration scripts exist, and CI migrates a clean PostgreSQL database.                                                                    |
+| CICD-03 | Fixed     | Push/PR CI runs deterministic install, migrations, format, lint/typecheck, coverage, production build, and dependency audit.                                                                                       |
+| CICD-04 | Mitigated | Node 22, PostgreSQL 17, and `npm ci` are aligned across workflows and Docker. Container image digest pinning remains.                                                                                              |
+| CICD-05 | Mitigated | GitHub Actions are pinned to full SHAs and dependency audit is enforced. Secret scanning, SBOM/license policy, image scanning, signing, and provenance remain.                                                     |
+| CICD-06 | Mitigated | Liveness/readiness routes and Docker health checks are present. The externally managed deployment workflow, approvals, smoke/rollback automation, and observability gates must be verified outside the repository. |
+| CICD-07 | Open      | Branch protection, required reviews, signed releases, team ownership, and admin-bypass policy require GitHub organization changes.                                                                                 |
+
+### Code quality and testing
+
+| ID    | Status    | Implemented remediation / remaining work                                                                                                                    |
+| ----- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CQ-01 | Fixed     | Auth mocks and stale component fixtures match production contracts; all 199 test files and 1,094 tests pass without unhandled errors.                       |
+| CQ-02 | Fixed     | Invoice/document uploads use the hardened private-storage abstraction and authenticated retrieval rather than placeholder URLs.                             |
+| CQ-03 | Fixed     | The repository is normalized with Prettier, scripts exist, and CI enforces `format:check`.                                                                  |
+| CQ-04 | Open      | Large action/client/repository modules require incremental use-case refactoring; this was not mixed into security remediation.                              |
+| CQ-05 | Fixed     | V8 coverage is installed and enforced in CI with a measured baseline and thresholds. Critical-module and changed-line thresholds can be raised iteratively. |
+| CQ-06 | Mitigated | Stale `@ts-ignore`/`any` test escapes and an unsafe icon lookup were removed. Broader `allowJs`, `skipLibCheck`, and production `any` reduction remain.     |
+| CQ-07 | Fixed     | Canonical web/mobile auth boundaries now enforce active state and authoritative roles; mobile routes share one validator.                                   |
+| CQ-08 | Open      | Repository/page import boundaries and database-driver separation remain architectural cleanup.                                                              |
+
+## Verification after remediation
+
+| Gate                           | Result                                                                                                                                                                            |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run check`                | Passed: ESLint and TypeScript 6.0.3                                                                                                                                               |
+| `npm run format:check`         | Passed                                                                                                                                                                            |
+| `npm run test:coverage`        | Passed: 199/199 files, 1,094/1,094 tests; 46.69% statements, 38.00% branches, 41.92% functions, 47.69% lines                                                                      |
+| `npm run build`                | Passed: Next.js 16.2.10 optimized build; 64 static pages generated                                                                                                                |
+| `npm audit --audit-level=high` | Passed: 0 vulnerabilities                                                                                                                                                         |
+| Dependency currency            | All compatible updates installed. ESLint 10 and TypeScript 7 are held to supported peer ranges; `@vitejs/plugin-react` 6.0.3 is held because of unresolved Babel peer resolution. |
+| Migration/E2E execution        | Not run locally because Docker was unavailable; CI definitions were repaired and require execution before release.                                                                |
+| Live/cloud controls            | Not tested; Vercel, Neon, Keycloak, Upstash, Pusher, GitHub settings, WAF, backups, logging, and deployed headers require environment verification.                               |
+
+## Remediation commits
+
+- `10dfae3 docs(audit): add engineering audit report`
+- `dff8bd2 fix(security): harden authentication and token lifecycle`
+- `87f01f5 fix(security): protect uploads and deployment boundaries`
+- `49eccc2 fix(reliability): bound database and queue workloads`
+- `8965124 ci: enforce deterministic quality and test gates`
+- `1d85036 chore(deps): upgrade dependencies and enforce coverage`
+- `0838099 fix(types): type dynamic status icon lookup`
+- `db3990c style: format repository`
+
+## Original audit scope and evidence
 
 - Reviewed approximately 66,000 non-test TypeScript/TSX lines, 33 API route handlers, server actions, authentication, storage, integrations, database schema/migrations, Docker, GitHub Actions, Vitest, and Playwright.
 - `npm run check`: **passed** (ESLint and `tsc --noEmit`).
@@ -32,9 +117,9 @@ It is **not yet production-ready**. No immediately exploitable unauthenticated c
 - E2E was not run because the local Docker daemon was unavailable. Static review also shows the GitHub E2E workflow cannot run correctly as committed.
 - Secret values were never printed. `.env` and `.env.test` are ignored and not tracked; no commit history for them was found.
 
-Limitations: this was a repository audit, not a live penetration test. It did not validate Vercel/Neon/Keycloak/Upstash/Pusher tenant settings, production IAM, branch-protection rules, WAF controls, backups/restores, DNS/TLS, cloud logs, or a deployed application. Docker image scanning and dedicated secret/SAST scanners were unavailable locally.
+The evidence below records the baseline at `e5773c8`; paths, line numbers, versions, and results are historical and may no longer describe the remediated tree. This was a repository audit, not a live penetration test. It did not validate Vercel/Neon/Keycloak/Upstash/Pusher tenant settings, production IAM, branch-protection rules, WAF controls, backups/restores, DNS/TLS, cloud logs, or a deployed application.
 
-## Security findings
+## Original security findings (baseline evidence)
 
 ### SEC-01 — High — Deactivated accounts remain authorized outside page middleware
 
@@ -318,34 +403,31 @@ Some pages import the database directly while most use actions/repositories, and
 - Runtime container uses a non-root user and standalone output.
 - CodeQL and Dependabot are configured.
 
-## Remediation roadmap
+## Remaining remediation roadmap
 
-### First 48 hours (release blockers)
+### Before production release
 
-1. Reject inactive users centrally; revoke sessions/refresh tokens/devices on deactivation.
-2. Make document storage private and disable weak/active-content uploads until hardened.
-3. Exclude all env/secret files from Docker context and rotate secrets if shared builders were used.
-4. Restore migration `0004`; validate clean and upgrade migrations.
-5. Fix QR token atomic consumption and authoritative account checks.
-6. Put a cheap limiter before API-key PBKDF2 and rate-limit invalid attempts.
+1. Run the checked-in migrations from an empty database and from the last released schema; retain logs and a tested rollback/restore point.
+2. Run the repaired Playwright workflow and critical auth/RBAC/upload journeys against representative Keycloak and storage services.
+3. Configure and verify `PRIVATE_BLOB_READ_WRITE_TOKEN` as a separate private store, then test cross-role document access denial in the deployed environment.
+4. Validate deployed CSP/HSTS/health responses, server-action origins, client-IP trust, readiness dependencies, and secret validation.
+5. Require the new CI and security checks through protected-branch rules; record named owners and acceptance for every Open/Mitigated item.
 
-### First week
+### Next security/reliability iteration
 
-1. Repair unit tests and make test/build required CI gates.
-2. Rebuild the Playwright workflow around one database lifecycle and real critical journeys.
-3. Make critical audit writes transactional/reliable.
-4. Remove wildcard production origins and add security headers.
-5. Eliminate in-handler retry sleeps; delegate retries to QStash.
-6. Add the highest-value indexes after query-plan validation.
+1. Define webhook destination allowlists and DNS/redirect protections.
+2. Encrypt software license keys and rotate/version application encryption keys.
+3. Add append-only audit database permissions, tamper evidence, external security-log export, retention, and alerting.
+4. Apply shared abuse controls to internal/mobile/search/upload endpoints and add decompression/time budgets for Office imports.
+5. Move large imports/exports to asynchronous staging/streaming jobs and remove remaining repeated report counts.
+6. Add secret, SBOM/license, container/IaC, signing, and provenance controls; pin container images by digest.
 
-### First month
+### Ongoing code quality
 
-1. Redesign bulk import as a bounded asynchronous/staging workflow.
-2. Encrypt identity/license secrets at rest and establish key rotation.
-3. Centralize authentication middleware and add route-level negative tests.
-4. Add coverage, formatting, SBOM, secret/container scanning, pinned actions/images, and deployment smoke/rollback gates.
-5. Add pool/slow-query metrics, endpoint SLOs, error tracking, security alerts, and backup-restore drills.
+1. Refactor the largest action, repository, and client modules by bounded use case.
+2. Enforce repository/page import boundaries and reduce `any`, `allowJs`, and `skipLibCheck` exceptions.
+3. Raise coverage thresholds incrementally, with stronger floors for authentication, audit, upload, migration, and concurrency paths.
 
-## Suggested release gate
+## Release gate
 
-Do not approve a production release until all P0 items are resolved and independently verified. Require a green run of lint, typecheck, formatting, unit/component tests, production build, migration-from-zero and upgrade tests, dependency/secret scans, and critical Playwright journeys. Any deferred P1/P2 finding should have a named owner, due date, compensating control, and written risk acceptance.
+Repository checks are green, but production release should wait for successful migration-from-zero/upgrade, critical Playwright, deployed private-document authorization, and smoke/readiness verification. Any remaining Mitigated/Open finding must have a named owner, due date, compensating control, and written risk acceptance.
