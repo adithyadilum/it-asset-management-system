@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getUnreadCount,
+  getNotificationSummary,
   markAsRead,
   markAllAsRead,
   saveIntegrationSettings,
@@ -77,6 +78,10 @@ const { mockDb, chain } = vi.hoisted(() => {
 vi.mock('@/db', () => ({ db: mockDb }));
 vi.mock('@/db/schema', () => ({
   appNotifications: {
+    title: 'appNotifications.title',
+    message: 'appNotifications.message',
+    targetUrl: 'appNotifications.targetUrl',
+    eventType: 'appNotifications.eventType',
     userId: 'appNotifications.userId',
     isRead: 'appNotifications.isRead',
     id: 'appNotifications.id',
@@ -115,6 +120,34 @@ describe('Notifications Actions', () => {
       mockDb.select.mockReturnValueOnce(chain([{ count: 5 }]));
       const res = await getUnreadCount();
       expect(res).toBe(5);
+    });
+  });
+
+  describe('getNotificationSummary', () => {
+    it('loads notifications and the unread badge in one query', async () => {
+      mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+      mockDb.select.mockReturnValueOnce(
+        chain([
+          {
+            id: 'notification-id',
+            userId: EMPLOYEE_USER.id,
+            title: 'Title',
+            message: 'Message',
+            targetUrl: null,
+            isRead: false,
+            eventType: 'ASSIGNMENT_CREATED',
+            createdAt: new Date('2026-07-14T00:00:00Z'),
+            unreadCount: 4,
+          },
+        ])
+      );
+
+      const result = await getNotificationSummary();
+
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      expect(result.unreadCount).toBe(4);
+      expect(result.notifications).toHaveLength(1);
+      expect(result.notifications[0]).not.toHaveProperty('unreadCount');
     });
   });
 

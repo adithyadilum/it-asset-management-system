@@ -1,6 +1,6 @@
 'use server';
 
-import { desc, eq, and, count } from 'drizzle-orm';
+import { desc, eq, and, count, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { appNotifications, integrationSettings } from '@/db/schema';
@@ -126,6 +126,62 @@ export async function getNotifications(limit = 10, offset = 0) {
     logLatency({
       scope: 'ACTION',
       label: 'notifications.getNotifications',
+      startTime: timer,
+    });
+  }
+}
+
+/** Load the bell badge and first notification page with one auth/DB round trip. */
+export async function getNotificationSummary(limit = 10, offset = 0) {
+  const timer = startLatencyTimer();
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) return { notifications: [], unreadCount: 0 };
+
+    const validation = getNotificationsParamsSchema.safeParse({
+      limit,
+      offset,
+    });
+    if (!validation.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { limit: safeLimit, offset: safeOffset } = validation.data;
+
+    const rows = await db
+      .select({
+        id: appNotifications.id,
+        userId: appNotifications.userId,
+        title: appNotifications.title,
+        message: appNotifications.message,
+        targetUrl: appNotifications.targetUrl,
+        isRead: appNotifications.isRead,
+        eventType: appNotifications.eventType,
+        createdAt: appNotifications.createdAt,
+        unreadCount: sql<number>`count(*) filter (where not ${appNotifications.isRead}) over()::int`,
+      })
+      .from(appNotifications)
+      .where(eq(appNotifications.userId, user.id))
+      .orderBy(desc(appNotifications.createdAt))
+      .limit(safeLimit)
+      .offset(safeOffset);
+
+    return {
+      notifications: rows.map((row) => ({
+        id: row.id,
+        userId: row.userId,
+        title: row.title,
+        message: row.message,
+        targetUrl: row.targetUrl,
+        isRead: row.isRead,
+        eventType: row.eventType,
+        createdAt: row.createdAt,
+      })),
+      unreadCount: rows[0]?.unreadCount ?? 0,
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'notifications.getNotificationSummary',
       startTime: timer,
     });
   }
