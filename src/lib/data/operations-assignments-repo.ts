@@ -31,6 +31,25 @@ type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
 
 export type AssignmentsDashboardTab = 'available' | 'assigned' | 'returned';
 
+const OVERDUE_REFRESH_INTERVAL_MS = 60_000;
+let lastOverdueRefreshAt = 0;
+let inFlightOverdueRefresh: Promise<void> | null = null;
+
+async function refreshOverdueAssignmentsForDashboard() {
+  if (Date.now() - lastOverdueRefreshAt < OVERDUE_REFRESH_INTERVAL_MS) return;
+  if (inFlightOverdueRefresh) return inFlightOverdueRefresh;
+
+  inFlightOverdueRefresh = refreshOverdueAssignments()
+    .then(() => {
+      lastOverdueRefreshAt = Date.now();
+    })
+    .finally(() => {
+      inFlightOverdueRefresh = null;
+    });
+
+  return inFlightOverdueRefresh;
+}
+
 export interface AssignmentsDashboardRow {
   id: string;
   assetTag: string;
@@ -487,7 +506,7 @@ export async function getAssignmentsDashboardData(
   tab?: AssignmentsDashboardTab
 ): Promise<AssignmentsDashboardData> {
   // Automatic refresh of overdue states on data load
-  await refreshOverdueAssignments();
+  await refreshOverdueAssignmentsForDashboard();
 
   if (tab === 'assigned') {
     const assigned = await loadAssetsByStatus('Assigned');
