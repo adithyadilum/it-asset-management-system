@@ -120,6 +120,7 @@ import {
   getTicketForIssueReview,
   getActiveRepairTickets,
   getRepairHistory,
+  getMaintenanceOverview,
   getAssetMaintenanceHistory,
   resolveIssueInternally,
   initiateVendorRepair,
@@ -250,10 +251,30 @@ describe('Read Operations: getRepairHistory', () => {
 
   it('returns paginated repair history', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.select.mockReturnValueOnce(chain([{ count: 1 }]));
-    mockDb.select.mockReturnValueOnce(chain([{ ticket: { id: 1 } }]));
+    mockDb.select.mockReturnValueOnce(
+      chain([{ totalCount: 1, ticket: { id: 1 } }])
+    );
     const result = await getRepairHistory(10);
     expect(result.tickets).toHaveLength(1);
+    expect(result.total).toBe(1);
+  });
+});
+
+describe('Read Operations: getMaintenanceOverview', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns only permitted history data for a FinancialAuditor', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
+    mockDb.select.mockReturnValueOnce(
+      chain([{ totalCount: 1, ticket: { id: 1 } }])
+    );
+
+    const result = await getMaintenanceOverview();
+
+    expect(result.pendingTickets).toEqual([]);
+    expect(result.activeRepairTickets).toEqual([]);
+    expect(result.repairHistoryTickets).toEqual([{ id: 1 }]);
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
   });
 });
 

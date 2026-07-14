@@ -5,9 +5,7 @@ import { MaintenanceTabs } from '@/components/features/maintenance/maintenance-t
 import { IssueReviewPanelWrapper } from '@/components/features/maintenance/issue-review-panel-wrapper';
 import { LogCompleteRepairDialog } from '@/components/features/maintenance/log-complete-repair-dialog';
 import {
-  getPendingMaintenanceTickets,
-  getActiveRepairTickets,
-  getRepairHistory,
+  getMaintenanceOverview,
   completeRepairTicket,
 } from '@/actions/maintenance';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -43,6 +41,29 @@ const initialUIState: UIState = {
   activeRepairDetails: null,
   isCompletingRepair: false,
 };
+
+type MaintenanceOverview = Awaited<ReturnType<typeof getMaintenanceOverview>>;
+const inFlightOverviewRequests = new Map<
+  string,
+  Promise<MaintenanceOverview>
+>();
+
+function requestMaintenanceOverview(
+  userRole: string | undefined,
+  query: string
+) {
+  const requestKey = `${userRole ?? 'unknown'}:${query}`;
+  const existingRequest = inFlightOverviewRequests.get(requestKey);
+  if (existingRequest) return existingRequest;
+
+  const request = getMaintenanceOverview(query).finally(() => {
+    if (inFlightOverviewRequests.get(requestKey) === request) {
+      inFlightOverviewRequests.delete(requestKey);
+    }
+  });
+  inFlightOverviewRequests.set(requestKey, request);
+  return request;
+}
 
 function uiReducer(state: UIState, action: UIAction): UIState {
   switch (action.type) {
@@ -96,18 +117,10 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
     async (query: string) => {
       try {
         setIsLoading(true);
-        const [ticketsResult, activeResult, historyResult] = await Promise.all([
-          userRole !== 'FinancialAuditor'
-            ? getPendingMaintenanceTickets(query)
-            : Promise.resolve({ tickets: [], total: 0 }),
-          userRole !== 'FinancialAuditor'
-            ? getActiveRepairTickets(query)
-            : Promise.resolve({ tickets: [], total: 0 }),
-          getRepairHistory(1, 100, query),
-        ]);
-        setPendingTickets(ticketsResult.tickets);
-        setActiveRepairTickets(activeResult.tickets);
-        setRepairHistoryTickets(historyResult.tickets);
+        const result = await requestMaintenanceOverview(userRole, query);
+        setPendingTickets(result.pendingTickets);
+        setActiveRepairTickets(result.activeRepairTickets);
+        setRepairHistoryTickets(result.repairHistoryTickets);
       } catch (err) {
         console.error(
           '[MaintenanceShell] Failed to load data:',

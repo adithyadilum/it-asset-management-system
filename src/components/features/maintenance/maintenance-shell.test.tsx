@@ -1,17 +1,14 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MaintenanceShell } from './maintenance-shell';
 import {
-  getPendingMaintenanceTickets,
-  getActiveRepairTickets,
-  getRepairHistory,
+  getMaintenanceOverview,
   completeRepairTicket,
 } from '@/actions/maintenance';
 
 vi.mock('@/actions/maintenance', () => ({
-  getPendingMaintenanceTickets: vi.fn(),
-  getActiveRepairTickets: vi.fn(),
-  getRepairHistory: vi.fn(),
+  getMaintenanceOverview: vi.fn(),
   completeRepairTicket: vi.fn(),
 }));
 
@@ -60,27 +57,33 @@ vi.mock('@/components/features/maintenance/log-complete-repair-dialog', () => ({
 describe('MaintenanceShell', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (getPendingMaintenanceTickets as any).mockResolvedValue({
-      tickets: [],
-      total: 0,
+    (getMaintenanceOverview as any).mockResolvedValue({
+      pendingTickets: [],
+      activeRepairTickets: [],
+      repairHistoryTickets: [],
     });
-    (getActiveRepairTickets as any).mockResolvedValue({
-      tickets: [],
-      total: 0,
-    });
-    (getRepairHistory as any).mockResolvedValue({ tickets: [], total: 0 });
   });
 
   it('loads data on mount', async () => {
     render(<MaintenanceShell />);
 
     await waitFor(() => {
-      expect(getPendingMaintenanceTickets).toHaveBeenCalled();
-      expect(getActiveRepairTickets).toHaveBeenCalled();
-      expect(getRepairHistory).toHaveBeenCalled();
+      expect(getMaintenanceOverview).toHaveBeenCalledWith('');
     });
 
     expect(screen.getByText('Maintenance & Repairs')).toBeInTheDocument();
+  });
+
+  it('deduplicates the initial request in development Strict Mode', async () => {
+    render(
+      <StrictMode>
+        <MaintenanceShell />
+      </StrictMode>
+    );
+
+    await waitFor(() => {
+      expect(getMaintenanceOverview).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('opens panel when pending row is clicked', async () => {
