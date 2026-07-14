@@ -3,7 +3,11 @@
 import { desc, eq, and, count, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { appNotifications, integrationSettings } from '@/db/schema';
+import {
+  appNotifications,
+  integrationSettings,
+  notificationRules,
+} from '@/db/schema';
 import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { encrypt, decrypt } from '@/lib/crypto';
@@ -274,6 +278,45 @@ export async function getIntegrationStatus() {
     logLatency({
       scope: 'ACTION',
       label: 'notifications.getIntegrationStatus',
+      startTime: timer,
+    });
+  }
+}
+
+/** Server-rendered bootstrap for the alerts settings page. */
+export async function getAlertsSettingsBootstrap() {
+  const timer = startLatencyTimer();
+  try {
+    const user = await enforceActionAccess();
+    if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') {
+      throw new Error('Forbidden: Unauthorized role');
+    }
+
+    const [settingsRows, rules] = await Promise.all([
+      db
+        .select({
+          resendApiKey: integrationSettings.resendApiKey,
+          teamsWebhookUrl: integrationSettings.teamsWebhookUrl,
+        })
+        .from(integrationSettings)
+        .where(eq(integrationSettings.id, 1))
+        .limit(1),
+      db.select().from(notificationRules).orderBy(notificationRules.id),
+    ]);
+    const settings = settingsRows[0];
+
+    return {
+      rules,
+      integrations: {
+        resendConfigured: Boolean(settings?.resendApiKey),
+        teamsConfigured: Boolean(settings?.teamsWebhookUrl),
+      },
+      isAdmin: user.role === 'GlobalAdmin',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'notifications.getAlertsSettingsBootstrap',
       startTime: timer,
     });
   }

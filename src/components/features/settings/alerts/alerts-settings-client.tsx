@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  getIntegrationStatus,
   saveIntegrationSettings,
   testIntegrationConnection,
 } from '@/actions/notifications';
@@ -39,7 +38,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-interface NotificationRule {
+export interface NotificationRule {
   id: number;
   ruleKey: string;
   displayName: string;
@@ -49,7 +48,16 @@ interface NotificationRule {
   channelInApp: boolean;
   channelEmail: boolean;
   channelTeams: boolean;
-  updatedAt: string;
+  updatedAt: string | Date;
+}
+
+interface AlertsSettingsClientProps {
+  initialRules: NotificationRule[];
+  initialIntegrations: {
+    resendConfigured: boolean;
+    teamsConfigured: boolean;
+  };
+  initialIsAdmin: boolean;
 }
 
 const UI_CATEGORIES = [
@@ -104,38 +112,29 @@ const CUSTOM_DISPLAY_NAMES: Record<string, string> = {
   ROLE_CHANGE: 'User Role Elevated to Global Admin',
 };
 
-export function AlertsSettingsClient() {
-  const [rules, setRules] = useState<NotificationRule[]>([]);
-  const [loading, setLoading] = useState(true);
+export function AlertsSettingsClient({
+  initialRules,
+  initialIntegrations,
+  initialIsAdmin,
+}: AlertsSettingsClientProps) {
+  const [rules, setRules] = useState<NotificationRule[]>(initialRules);
+  const [loading, setLoading] = useState(initialRules.length === 0);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const [integrations, setIntegrations] = useState<{
     resendConfigured: boolean;
     teamsConfigured: boolean;
-  } | null>(null);
-  const [resendKey, setResendKey] = useState('');
-  const [teamsUrl, setTeamsUrl] = useState('');
+  } | null>(initialIntegrations);
+  const [resendKey, setResendKey] = useState(
+    initialIntegrations.resendConfigured ? '••••••••' : ''
+  );
+  const [teamsUrl, setTeamsUrl] = useState(
+    initialIntegrations.teamsConfigured ? '••••••••' : ''
+  );
   const [savingIntegrations, setSavingIntegrations] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingTeams, setTestingTeams] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    async function checkIntegrations() {
-      try {
-        const res = await getIntegrationStatus();
-        if (res.success && res.data) {
-          setIsAdmin(res.data.isAdmin);
-          setIntegrations(res.data);
-          if (res.data.resendConfigured) setResendKey('••••••••');
-          if (res.data.teamsConfigured) setTeamsUrl('••••••••');
-        }
-      } catch {
-        console.warn('User does not have access to integration settings.');
-      }
-    }
-    checkIntegrations();
-  }, []);
+  const [isAdmin] = useState(initialIsAdmin);
 
   const handleTestEmail = async () => {
     if (!resendKey) {
@@ -232,27 +231,17 @@ export function AlertsSettingsClient() {
   };
 
   useEffect(() => {
-    async function fetchRules() {
+    if (initialRules.length > 0) return;
+
+    let mounted = true;
+    async function seedRules() {
       try {
-        const response = await fetch('/api/v1/settings/notification-rules');
+        const response = await fetch('/api/v1/settings/notification-rules', {
+          method: 'POST',
+        });
         const json = await response.json();
-        if (json.success) {
-          if (json.data.length === 0) {
-            const seedResponse = await fetch(
-              '/api/v1/settings/notification-rules',
-              {
-                method: 'POST',
-              }
-            );
-            const seedJson = await seedResponse.json();
-            if (seedJson.success) {
-              setRules(seedJson.data);
-            } else {
-              tiqriToast.error('Failed to auto-seed alert configurations');
-            }
-          } else {
-            setRules(json.data);
-          }
+        if (mounted && json.success) {
+          setRules(json.data);
         } else {
           tiqriToast.error('Failed to load alert configurations');
         }
@@ -260,12 +249,15 @@ export function AlertsSettingsClient() {
         console.error('Error fetching notification rules:', error);
         tiqriToast.error('Failed to connect to notification settings API');
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
-    fetchRules();
-  }, []);
+    void seedRules();
+    return () => {
+      mounted = false;
+    };
+  }, [initialRules.length]);
 
   const handleUpdateRule = async (
     ruleId: number,

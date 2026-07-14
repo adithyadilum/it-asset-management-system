@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getUnreadCount,
   getNotificationSummary,
+  getAlertsSettingsBootstrap,
   markAsRead,
   markAllAsRead,
   saveIntegrationSettings,
@@ -87,7 +88,12 @@ vi.mock('@/db/schema', () => ({
     id: 'appNotifications.id',
     createdAt: 'appNotifications.createdAt',
   },
-  integrationSettings: { id: 'integrationSettings.id' },
+  integrationSettings: {
+    id: 'integrationSettings.id',
+    resendApiKey: 'integrationSettings.resendApiKey',
+    teamsWebhookUrl: 'integrationSettings.teamsWebhookUrl',
+  },
+  notificationRules: { id: 'notificationRules.id' },
 }));
 
 const mockResendSend = vi.fn();
@@ -148,6 +154,27 @@ describe('Notifications Actions', () => {
       expect(result.unreadCount).toBe(4);
       expect(result.notifications).toHaveLength(1);
       expect(result.notifications[0]).not.toHaveProperty('unreadCount');
+    });
+  });
+
+  describe('getAlertsSettingsBootstrap', () => {
+    it('loads integration flags and rules with one authorization boundary', async () => {
+      mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+      mockDb.select
+        .mockReturnValueOnce(
+          chain([{ resendApiKey: 'encrypted-key', teamsWebhookUrl: null }])
+        )
+        .mockReturnValueOnce(chain([{ id: 1, ruleKey: 'RETURN_OVERDUE' }]));
+
+      const result = await getAlertsSettingsBootstrap();
+
+      expect(result.integrations).toEqual({
+        resendConfigured: true,
+        teamsConfigured: false,
+      });
+      expect(result.rules).toHaveLength(1);
+      expect(result.isAdmin).toBe(true);
+      expect(mockGetAuthenticatedUser).toHaveBeenCalledTimes(1);
     });
   });
 

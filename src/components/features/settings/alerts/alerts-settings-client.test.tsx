@@ -1,16 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { AlertsSettingsClient } from './alerts-settings-client';
-import {
-  getIntegrationStatus,
-  saveIntegrationSettings,
-  testIntegrationConnection,
-} from '@/actions/notifications';
+import { testIntegrationConnection } from '@/actions/notifications';
 import { tiqriToast } from '@/components/shared/sonner';
 
 // Mock the actions
 vi.mock('@/actions/notifications', () => ({
-  getIntegrationStatus: vi.fn(),
   saveIntegrationSettings: vi.fn(),
   testIntegrationConnection: vi.fn(),
 }));
@@ -58,25 +53,34 @@ describe('AlertsSettingsClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (getIntegrationStatus as any).mockResolvedValue({
-      success: true,
-      data: { isAdmin: false, resendConfigured: false, teamsConfigured: false },
-    });
-
     mockFetch.mockResolvedValue({
       json: vi.fn().mockResolvedValue({ success: true, data: mockRules }),
     });
   });
 
+  const renderClient = ({
+    rules = mockRules,
+    isAdmin = false,
+    resendConfigured = false,
+    teamsConfigured = false,
+  } = {}) =>
+    render(
+      <AlertsSettingsClient
+        initialRules={rules as any}
+        initialIntegrations={{ resendConfigured, teamsConfigured }}
+        initialIsAdmin={isAdmin}
+      />
+    );
+
   it('renders loading state initially', () => {
-    render(<AlertsSettingsClient />);
+    renderClient({ rules: [] });
     expect(
       screen.queryByText('Alerts & Notifications')
     ).not.toBeInTheDocument();
   });
 
   it('fetches and renders rules', async () => {
-    render(<AlertsSettingsClient />);
+    renderClient({ rules: [] });
 
     await waitFor(() => {
       expect(screen.getByText('Alerts & Notifications')).toBeInTheDocument();
@@ -87,18 +91,19 @@ describe('AlertsSettingsClient', () => {
     });
   });
 
-  it('handles rule toggle correctly', async () => {
-    mockFetch
-      // First call for initial load
-      .mockResolvedValueOnce({
-        json: vi.fn().mockResolvedValue({ success: true, data: mockRules }),
-      })
-      // Second call for update
-      .mockResolvedValueOnce({
-        json: vi.fn().mockResolvedValue({ success: true }),
-      });
+  it('reuses server-rendered settings without bootstrap requests', () => {
+    renderClient();
 
-    render(<AlertsSettingsClient />);
+    expect(screen.getByText('Alerts & Notifications')).toBeInTheDocument();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('handles rule toggle correctly', async () => {
+    mockFetch.mockResolvedValueOnce({
+      json: vi.fn().mockResolvedValue({ success: true }),
+    });
+
+    renderClient();
 
     await waitFor(() => {
       expect(
@@ -110,7 +115,7 @@ describe('AlertsSettingsClient', () => {
     fireEvent.click(offButton);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenLastCalledWith(
         '/api/v1/settings/notification-rules/1',
         {
@@ -132,12 +137,7 @@ describe('AlertsSettingsClient', () => {
   });
 
   it('shows integration settings for admins', async () => {
-    (getIntegrationStatus as any).mockResolvedValue({
-      success: true,
-      data: { isAdmin: true, resendConfigured: true, teamsConfigured: false },
-    });
-
-    render(<AlertsSettingsClient />);
+    renderClient({ isAdmin: true, resendConfigured: true });
 
     await waitFor(() => {
       expect(
@@ -151,13 +151,9 @@ describe('AlertsSettingsClient', () => {
   });
 
   it('handles testing email connection', async () => {
-    (getIntegrationStatus as any).mockResolvedValue({
-      success: true,
-      data: { isAdmin: true, resendConfigured: false, teamsConfigured: false },
-    });
     (testIntegrationConnection as any).mockResolvedValue({ success: true });
 
-    render(<AlertsSettingsClient />);
+    renderClient({ isAdmin: true });
 
     await waitFor(() => {
       expect(
