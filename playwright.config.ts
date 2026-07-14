@@ -73,11 +73,11 @@ export default defineConfig({
     // },
   ],
 
-/* Run your local Next.js dev server before starting the tests */
+  /* Run your local Next.js dev server before starting the tests */
   webServer: {
     command: 'npm run dev -- -p 3001',
     url: 'http://127.0.0.1:3001',
     reuseExistingServer: false,
     timeout: 120 * 1000,
-   },
+  },
 });

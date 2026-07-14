@@ -15,7 +15,11 @@ vi.mock('@/lib/auth/auth-options', () => ({
 }));
 
 vi.mock('@/db', () => ({
-  db: { query: { users: { findFirst: (...args: unknown[]) => mockFindUser(...args) } } },
+  db: {
+    query: {
+      users: { findFirst: (...args: unknown[]) => mockFindUser(...args) },
+    },
+  },
 }));
 vi.mock('@/db/schema', () => ({ users: { id: 'users.id' } }));
 vi.mock('drizzle-orm', () => ({ eq: vi.fn() }));
@@ -91,7 +95,12 @@ describe('getAuthenticatedUser', () => {
 
   it('returns null when session.user.name is undefined', async () => {
     mockGetServerSession.mockResolvedValue({
-      user: { id: 'u1', email: 'a@b.com', name: undefined, role: 'GlobalAdmin' },
+      user: {
+        id: 'u1',
+        email: 'a@b.com',
+        name: undefined,
+        role: 'GlobalAdmin',
+      },
     });
     expect(await getAuthenticatedUser()).toBeNull();
   });
@@ -145,17 +154,19 @@ describe('getAuthenticatedUser', () => {
     expect(user?.role).toBe('Employee');
   });
 
-  it.each(['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee'] as const)(
-    'preserves %s role exactly',
-    async (role) => {
-      mockGetServerSession.mockResolvedValue({
-        user: { id: 'u1', email: 'a@b.com', name: 'A', role },
-      });
+  it.each([
+    'GlobalAdmin',
+    'ITOperator',
+    'FinancialAuditor',
+    'Employee',
+  ] as const)('preserves %s role exactly', async (role) => {
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com', name: 'A', role },
+    });
 
-      const user = await getAuthenticatedUser();
-      expect(user?.role).toBe(role);
-    }
-  );
+    const user = await getAuthenticatedUser();
+    expect(user?.role).toBe(role);
+  });
 });
 
 describe('getFederatedLogoutUrl', () => {

@@ -1,4 +1,3 @@
- 
 /**
  * @vitest-environment node
  */
@@ -20,7 +19,9 @@ vi.mock('@/db', () => ({
 }));
 
 describe('authOptions callbacks', () => {
-  const findFirstMock = db.query.users.findFirst as unknown as ReturnType<typeof vi.fn>;
+  const findFirstMock = db.query.users.findFirst as unknown as ReturnType<
+    typeof vi.fn
+  >;
   const insertMock = db.insert as unknown as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {

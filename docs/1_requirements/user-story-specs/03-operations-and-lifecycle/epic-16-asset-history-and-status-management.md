@@ -44,9 +44,11 @@ This epic focuses on accountability and exception handling. It surfaces the raw 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the vertical timeline React component for the `History` tab, rendering event cards parsing JSON diffs.
 
 #### Backend
+
 - [x] Create the `getAssetHistoryById` repository function that scopes the `system_audit_logs` specifically to `entityId = asset.id`.
 
 ---
@@ -83,11 +85,13 @@ This epic focuses on accountability and exception handling. It surfaces the raw 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the interactive `StatusBadge` React component with a built-in inline dropdown menu.
 - [x] Write frontend logic to fetch `getManualOverrideStatuses` to populate the options.
 - [x] Build the "Status Change Justification" modal with a mandatory note text area.
 
 #### Backend
+
 - [x] Create the `getManualOverrideStatuses` Server Action combining hardcoded constants with the `customStatuses` database table.
 - [x] Create the `manualStatusOverrideAction` that validates the requested status transition, requires a justification note, and writes to the Audit Log.
 - [x] Implement automatic side-effects: if the asset was `Assigned` and is being changed forcefully, automatically close the active assignment record in the background.
@@ -125,13 +129,16 @@ This epic focuses on accountability and exception handling. It surfaces the raw 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Custom Status Configuration" UI page in Settings with a CRUD data grid.
 - [x] Update the global frontend status configuration to dynamically render `Color Theme` and `Icon` from custom definitions.
 
 #### Backend
+
 - [x] Create `getCustomStatuses`, `createCustomStatus`, and `deleteCustomStatus` Server Actions.
 - [x] Implement `customStatusSchema` Zod validation for secure creation payloads.
 - [x] Explicitly catch Postgres `23505` error codes to prevent application crashes on duplicate names.
 
 #### Database
+
 - [x] Create a `customStatuses` table via Drizzle ORM with columns: `id`, `name` (UNIQUE), `iconName`, `colorTheme`, `isActive`, `createdById`, `createdAt`.

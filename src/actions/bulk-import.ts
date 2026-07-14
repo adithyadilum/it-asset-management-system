@@ -199,7 +199,10 @@ export async function executeBulkImport(
   const lockKey = `eitams:bulk-import:category:${categoryId}`;
   const lockOwner = randomUUID();
   const redis = getBulkImportRedis();
-  const lockGranted = await redis.set(lockKey, lockOwner, { nx: true, ex: 3600 });
+  const lockGranted = await redis.set(lockKey, lockOwner, {
+    nx: true,
+    ex: 3600,
+  });
 
   if (!lockGranted) {
     return {
@@ -233,7 +236,7 @@ export async function executeBulkImport(
     const importedAssetTags: string[] = [];
     const failedRows: Record<string, string | number>[] = [];
 
-    const apiRates = await fetchLiveExchangeRates() ?? undefined;
+    const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
 
     for (const row of resolvedRows) {
       let assetTag = '';
@@ -253,12 +256,7 @@ export async function executeBulkImport(
               locationId: row.locationId,
               ownerId: row.ownerId,
               condition: row.condition as
-                | 'New'
-                | 'Excellent'
-                | 'Fair'
-                | 'Poor'
-                | 'Damaged'
-                | null,
+                'New' | 'Excellent' | 'Fair' | 'Poor' | 'Damaged' | null,
               status: 'Available',
               instanceAttributes: row.instanceAttributes,
             })
@@ -272,7 +270,12 @@ export async function executeBulkImport(
               )
             : null;
 
-          const conversionRate = convertCurrencyAmount(1, row.currencyCode || 'LKR', 'LKR', apiRates).toFixed(6);
+          const conversionRate = convertCurrencyAmount(
+            1,
+            row.currencyCode || 'LKR',
+            'LKR',
+            apiRates
+          ).toFixed(6);
 
           await tx.insert(assetPurchases).values({
             assetId: newAsset.id,

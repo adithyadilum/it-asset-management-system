@@ -26,7 +26,10 @@ export function useNotifications() {
     'notifications-unread-count',
     getUnreadCount,
     {
-      refreshInterval: Math.max(clientEnv.NEXT_PUBLIC_NOTIFICATION_POLL_INTERVAL, 60000),
+      refreshInterval: Math.max(
+        clientEnv.NEXT_PUBLIC_NOTIFICATION_POLL_INTERVAL,
+        60000
+      ),
       refreshWhenHidden: false,
       refreshWhenOffline: false,
       revalidateOnFocus: true, // Instantly fetch when the user clicks back into this tab
@@ -41,12 +44,16 @@ export function useNotifications() {
     isLoading,
     error,
     mutate: mutateNotifications,
-  } = useSWR<Notification[]>('notifications-list', async () => {
-    const data = await getNotifications(10, 0);
-    return data as Notification[];
-  }, {
-    revalidateOnFocus: false, // Prevents hammering the DB when tabbing back
-  });
+  } = useSWR<Notification[]>(
+    'notifications-list',
+    async () => {
+      const data = await getNotifications(10, 0);
+      return data as Notification[];
+    },
+    {
+      revalidateOnFocus: false, // Prevents hammering the DB when tabbing back
+    }
+  );
 
   const fetchNotifications = useCallback(
     async (limit = 10, offset = 0) => {

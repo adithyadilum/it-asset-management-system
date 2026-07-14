@@ -36,8 +36,10 @@ function buildEventDetails(
   }
 
   if (!oldValue && !newValue) {
-    if (action === 'CREATE') return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
-    if (action === 'DELETE') return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
+    if (action === 'CREATE')
+      return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
+    if (action === 'DELETE')
+      return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
     return 'Updated record';
   }
 
@@ -58,8 +60,10 @@ function buildEventDetails(
     }
   }
 
-  if (action === 'CREATE') return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
-  if (action === 'DELETE') return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
+  if (action === 'CREATE')
+    return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
+  if (action === 'DELETE')
+    return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
   return 'Updated record';
 }
 
@@ -123,7 +127,12 @@ export async function GET(req: Request) {
       return {
         id: record.id,
         action: record.actionType,
-        event: buildEventDetails(record.actionType, record.entityType, oldValue, newValue),
+        event: buildEventDetails(
+          record.actionType,
+          record.entityType,
+          oldValue,
+          newValue
+        ),
         entityType: record.entityType,
         entityLabel,
         performedBy: record.performedById
@@ -139,6 +148,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ data });
   } catch (error) {
     console.error('[GET /api/v1/activity/recent] DB error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -30,4 +30,3 @@ export interface RoleUser {
   role: UserRole;
   isActive: boolean;
 }
-

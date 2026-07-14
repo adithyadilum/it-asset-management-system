@@ -2,7 +2,9 @@
 import './src/lib/env';
 
 const isProduction = process.env.NODE_ENV === 'production';
-const applicationUrl = new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000');
+const applicationUrl = new URL(
+  process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+);
 const serverActionOrigins = isProduction
   ? [applicationUrl.host]
   : [applicationUrl.host, 'localhost:3000', '127.0.0.1:3000'];
@@ -60,9 +62,17 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(), geolocation=()',
+          },
           ...(isProduction
-            ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
+            ? [
+                {
+                  key: 'Strict-Transport-Security',
+                  value: 'max-age=63072000; includeSubDomains; preload',
+                },
+              ]
             : []),
         ],
       },

@@ -196,7 +196,9 @@ export async function POST() {
     ];
 
     const existingKeys = new Set(rules.map((r) => r.ruleKey));
-    const missingRules = defaultRules.filter((r) => !existingKeys.has(r.ruleKey));
+    const missingRules = defaultRules.filter(
+      (r) => !existingKeys.has(r.ruleKey)
+    );
 
     if (missingRules.length > 0) {
       const inserted = await db

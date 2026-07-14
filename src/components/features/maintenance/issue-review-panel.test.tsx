@@ -12,7 +12,11 @@ vi.mock('@/components/shared/slide-panel', () => ({
         <div>{content}</div>
         <div>
           {actions.map((action: any) => (
-            <button key={action.id} onClick={action.onClick} disabled={action.disabled}>
+            <button
+              key={action.id}
+              onClick={action.onClick}
+              disabled={action.disabled}
+            >
               {action.label}
             </button>
           ))}
@@ -38,7 +42,9 @@ vi.mock('./initiate-repair-dialog', () => ({
     if (!isOpen) return null;
     return (
       <div data-testid="initiate-repair-dialog">
-        <button onClick={() => onConfirm({ vendorId: '1' })}>Confirm Repair</button>
+        <button onClick={() => onConfirm({ vendorId: '1' })}>
+          Confirm Repair
+        </button>
       </div>
     );
   },
@@ -79,30 +85,34 @@ describe('IssueReviewPanel', () => {
   const mockVendors: any[] = [];
 
   it('renders skeleton when loading', () => {
-    render(<CurrencyProvider initialCurrency="USD">
-      <IssueReviewPanel
-        isOpen={true}
-        onClose={mockOnClose}
-        isLoading={true}
-        data={null}
-        vendors={mockVendors}
-      />
-    </CurrencyProvider>);
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <IssueReviewPanel
+          isOpen={true}
+          onClose={mockOnClose}
+          isLoading={true}
+          data={null}
+          vendors={mockVendors}
+        />
+      </CurrencyProvider>
+    );
     // When loading, SlidePanel is rendered with empty actions and skeleton content
     expect(screen.getByTestId('slide-panel')).toBeInTheDocument();
     expect(screen.queryByText('Resolve Internally')).not.toBeInTheDocument();
   });
 
   it('renders content correctly', () => {
-    render(<CurrencyProvider initialCurrency="USD">
-      <IssueReviewPanel
-        isOpen={true}
-        onClose={mockOnClose}
-        isLoading={false}
-        data={mockData}
-        vendors={mockVendors}
-      />
-    </CurrencyProvider>);
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <IssueReviewPanel
+          isOpen={true}
+          onClose={mockOnClose}
+          isLoading={false}
+          data={mockData}
+          vendors={mockVendors}
+        />
+      </CurrencyProvider>
+    );
     expect(screen.getByText('ID: TAG-123')).toBeInTheDocument();
     expect(screen.getAllByText('Pro Book')[0]).toBeInTheDocument();
     expect(screen.getByText('Screen flickering')).toBeInTheDocument();
@@ -113,20 +123,24 @@ describe('IssueReviewPanel', () => {
   });
 
   it('handles actions correctly', () => {
-    render(<CurrencyProvider initialCurrency="USD">
-      <IssueReviewPanel
-        isOpen={true}
-        onClose={mockOnClose}
-        isLoading={false}
-        data={mockData}
-        vendors={mockVendors}
-        onResolveInternally={mockOnResolveInternally}
-        onInitiateRepair={mockOnInitiateRepair}
-      />
-    </CurrencyProvider>);
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <IssueReviewPanel
+          isOpen={true}
+          onClose={mockOnClose}
+          isLoading={false}
+          data={mockData}
+          vendors={mockVendors}
+          onResolveInternally={mockOnResolveInternally}
+          onInitiateRepair={mockOnInitiateRepair}
+        />
+      </CurrencyProvider>
+    );
 
     // Click Resolve Internally
-    const resolveBtn = screen.getByRole('button', { name: 'Resolve Internally' });
+    const resolveBtn = screen.getByRole('button', {
+      name: 'Resolve Internally',
+    });
     fireEvent.click(resolveBtn);
     expect(screen.getByTestId('resolve-internally-dialog')).toBeInTheDocument();
 

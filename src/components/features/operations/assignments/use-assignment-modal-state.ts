@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useEffect } from "react";
-import { searchUsers } from "@/actions/users";
-import { searchLocations } from "@/actions/locations";
-import { tiqriToast } from "@/components/shared/sonner";
+import { useState, useCallback, useEffect } from 'react';
+import { searchUsers } from '@/actions/users';
+import { searchLocations } from '@/actions/locations';
+import { tiqriToast } from '@/components/shared/sonner';
 import {
   calculateExpectedReturnDate,
   calculateDurationFromDate,
-} from "@/lib/assignment-date-utils";
+} from '@/lib/assignment-date-utils';
 
 export type AssigneeOption = {
   value: string;
@@ -19,29 +19,33 @@ interface UseAssignmentModalStateProps {
   disableUserAssignment: boolean;
 }
 
-export function useAssignmentModalState({ isOpen, disableUserAssignment }: UseAssignmentModalStateProps) {
-  const [assignmentMode, setAssignmentMode] = useState<"user" | "location">(() =>
-    disableUserAssignment ? "location" : "user"
+export function useAssignmentModalState({
+  isOpen,
+  disableUserAssignment,
+}: UseAssignmentModalStateProps) {
+  const [assignmentMode, setAssignmentMode] = useState<'user' | 'location'>(
+    () => (disableUserAssignment ? 'location' : 'user')
   );
-  const [assignee, setAssignee] = useState("");
-  const [duration, setDuration] = useState("");
-  const [expectedReturn, setExpectedReturn] = useState("");
-  const [notes, setNotes] = useState("");
+  const [assignee, setAssignee] = useState('');
+  const [duration, setDuration] = useState('');
+  const [expectedReturn, setExpectedReturn] = useState('');
+  const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userOptions, setUserOptions] = useState<AssigneeOption[]>([]);
   const [locationOptions, setLocationOptions] = useState<AssigneeOption[]>([]);
 
-  const activeOptions = assignmentMode === "user" ? userOptions : locationOptions;
+  const activeOptions =
+    assignmentMode === 'user' ? userOptions : locationOptions;
 
   const loadOptions = useCallback(async () => {
     try {
       const [usersResult, locationsResult] = await Promise.all([
-        searchUsers("", 1000),
-        searchLocations("", 1000),
+        searchUsers('', 1000),
+        searchLocations('', 1000),
       ]);
 
       if (!usersResult.success || !locationsResult.success) {
-        throw new Error("Failed to load assignment options.");
+        throw new Error('Failed to load assignment options.');
       }
 
       setUserOptions(
@@ -58,7 +62,7 @@ export function useAssignmentModalState({ isOpen, disableUserAssignment }: UseAs
         }))
       );
     } catch {
-      tiqriToast.error("Failed to load assignment options.");
+      tiqriToast.error('Failed to load assignment options.');
     }
   }, []);
 
@@ -78,19 +82,22 @@ export function useAssignmentModalState({ isOpen, disableUserAssignment }: UseAs
   }, [isOpen, loadOptions]);
 
   const resetState = useCallback(() => {
-    setAssignmentMode(disableUserAssignment ? "location" : "user");
-    setAssignee("");
-    setDuration("");
-    setExpectedReturn("");
-    setNotes("");
+    setAssignmentMode(disableUserAssignment ? 'location' : 'user');
+    setAssignee('');
+    setDuration('');
+    setExpectedReturn('');
+    setNotes('');
   }, [disableUserAssignment]);
 
-  const handleAssignmentModeChange = useCallback((mode: "user" | "location") => {
-    setAssignmentMode(mode);
-    setAssignee("");
-    setDuration("");
-    setExpectedReturn("");
-  }, []);
+  const handleAssignmentModeChange = useCallback(
+    (mode: 'user' | 'location') => {
+      setAssignmentMode(mode);
+      setAssignee('');
+      setDuration('');
+      setExpectedReturn('');
+    },
+    []
+  );
 
   const handleDurationChange = useCallback((value: string) => {
     setDuration(`${value}`);
@@ -101,7 +108,7 @@ export function useAssignmentModalState({ isOpen, disableUserAssignment }: UseAs
       return;
     }
 
-    setExpectedReturn("");
+    setExpectedReturn('');
   }, []);
 
   const handleExpectedReturnChange = useCallback((value: string) => {
@@ -112,25 +119,27 @@ export function useAssignmentModalState({ isOpen, disableUserAssignment }: UseAs
   }, []);
 
   const validateAssignment = () => {
-    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
+    const resolvedAssignmentMode = disableUserAssignment
+      ? 'location'
+      : assignmentMode;
 
     if (!assignee) {
       tiqriToast.warning(
-        resolvedAssignmentMode === "user"
-          ? "Please select a user."
-          : "Please select a location."
+        resolvedAssignmentMode === 'user'
+          ? 'Please select a user.'
+          : 'Please select a location.'
       );
       return false;
     }
 
-    if (resolvedAssignmentMode === "user" && expectedReturn) {
-      const [year, month, day] = expectedReturn.split("-").map(Number);
+    if (resolvedAssignmentMode === 'user' && expectedReturn) {
+      const [year, month, day] = expectedReturn.split('-').map(Number);
       const selectedDate = new Date(year, month - 1, day);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       if (selectedDate < today) {
-        tiqriToast.error("Select a valid date");
+        tiqriToast.error('Select a valid date');
         return false;
       }
     }

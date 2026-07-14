@@ -2,8 +2,6 @@
  * @vitest-environment node
  */
 
- 
-
 import { NextRequest, NextResponse } from 'next/server';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,7 +29,12 @@ vi.mock('@/db', () => ({
 }));
 
 vi.mock('@/lib/api/rate-limiter', () => ({
-  applyPreAuthRateLimit: vi.fn().mockResolvedValue({ success: true, limit: 20, remaining: 19, reset: 1234 }),
+  applyPreAuthRateLimit: vi.fn().mockResolvedValue({
+    success: true,
+    limit: 20,
+    remaining: 19,
+    reset: 1234,
+  }),
   applyRateLimit: vi.fn(),
   injectRateLimitHeaders: vi.fn((resp: any) => resp),
 }));
@@ -43,14 +46,16 @@ vi.mock('@/lib/audit', () => ({
 }));
 
 describe('withApiKey middleware', () => {
-  const mockHandler = vi.fn().mockResolvedValue(NextResponse.json({ success: true }));
+  const mockHandler = vi
+    .fn()
+    .mockResolvedValue(NextResponse.json({ success: true }));
   const requiredScope = 'read:assets';
   const validToken = 'test-token-123';
   let hashedToken = '';
 
   const wrappedHandler = withApiKey(requiredScope, mockHandler);
 
-const mockApiKeyRecord: any = {
+  const mockApiKeyRecord: any = {
     id: 'key-test-id',
     name: 'Test Key',
     keyHash: hashedToken,
@@ -73,7 +78,11 @@ const mockApiKeyRecord: any = {
     vi.clearAllMocks();
   });
 
-  function createRequest(authHeader?: string, ip?: string, xApiKeyHeader?: string) {
+  function createRequest(
+    authHeader?: string,
+    ip?: string,
+    xApiKeyHeader?: string
+  ) {
     const headers = new Headers();
     if (authHeader !== undefined) headers.set('authorization', authHeader);
     if (xApiKeyHeader !== undefined) headers.set('x-api-key', xApiKeyHeader);
@@ -107,7 +116,10 @@ const mockApiKeyRecord: any = {
   });
 
   it('fails if API key has been revoked', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({ ...mockApiKeyRecord, isRevoked: true });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({
+      ...mockApiKeyRecord,
+      isRevoked: true,
+    });
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(401);
@@ -118,7 +130,10 @@ const mockApiKeyRecord: any = {
   it('fails if API key has expired', async () => {
     const pastDate = new Date();
     pastDate.setFullYear(pastDate.getFullYear() - 1);
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({ ...mockApiKeyRecord, expiresAt: pastDate });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({
+      ...mockApiKeyRecord,
+      expiresAt: pastDate,
+    });
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(401);
@@ -127,7 +142,10 @@ const mockApiKeyRecord: any = {
   });
 
   it('fails if API key lacks required scope', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({ ...mockApiKeyRecord, scopes: ['read:users'] });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({
+      ...mockApiKeyRecord,
+      scopes: ['read:users'],
+    });
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(403);
@@ -136,8 +154,15 @@ const mockApiKeyRecord: any = {
   });
 
   it('fails if rate limited', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(mockApiKeyRecord);
-    vi.mocked(applyRateLimit).mockResolvedValueOnce({ success: false, limit: 100, remaining: 0, reset: 1234 });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
+      mockApiKeyRecord
+    );
+    vi.mocked(applyRateLimit).mockResolvedValueOnce({
+      success: false,
+      limit: 100,
+      remaining: 0,
+      reset: 1234,
+    });
     const req = createRequest(`Bearer   ${validToken}   `, '1.2.3.4');
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(429);
@@ -147,12 +172,19 @@ const mockApiKeyRecord: any = {
   });
 
   it('succeeds and calls handler if valid, checking IPs and white spaces', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(mockApiKeyRecord);
-    vi.mocked(applyRateLimit).mockResolvedValueOnce({ success: true, limit: 100, remaining: 99, reset: 1234 });
-    
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
+      mockApiKeyRecord
+    );
+    vi.mocked(applyRateLimit).mockResolvedValueOnce({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+
     const req = createRequest(`Bearer   ${validToken}   `, '1.2.3.4');
     const res = await wrappedHandler(req, {});
-    
+
     expect(res.status).toBe(200);
     expect(mockHandler).toHaveBeenCalledWith(req, { apiKey: mockApiKeyRecord });
     expect(applyRateLimit).toHaveBeenCalledWith('key-test-id:1.2.3.4');
@@ -161,18 +193,27 @@ const mockApiKeyRecord: any = {
   });
 
   it('succeeds and calls handler if valid x-api-key header is provided', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(mockApiKeyRecord);
-    vi.mocked(applyRateLimit).mockResolvedValueOnce({ success: true, limit: 100, remaining: 99, reset: 1234 });
-    
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
+      mockApiKeyRecord
+    );
+    vi.mocked(applyRateLimit).mockResolvedValueOnce({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+
     const req = createRequest(undefined, '1.2.3.4', validToken);
     const res = await wrappedHandler(req, {});
-    
+
     expect(res.status).toBe(200);
     expect(mockHandler).toHaveBeenCalledWith(req, { apiKey: mockApiKeyRecord });
   });
 
   it('returns INTERNAL_ERROR for unhandled faults', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockRejectedValueOnce(new Error('DB connection failed'));
+    vi.mocked(db.query.apiKeys.findFirst).mockRejectedValueOnce(
+      new Error('DB connection failed')
+    );
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(500);

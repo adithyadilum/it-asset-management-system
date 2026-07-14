@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { revalidatePath } from 'next/cache';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -21,9 +25,20 @@ const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
     [
-      'select', 'from', 'where', 'innerJoin', 'leftJoin',
-      'set', 'limit', 'returning', 'values', 'delete',
-      'insert', 'update', 'orderBy', 'groupBy',
+      'select',
+      'from',
+      'where',
+      'innerJoin',
+      'leftJoin',
+      'set',
+      'limit',
+      'returning',
+      'values',
+      'delete',
+      'insert',
+      'update',
+      'orderBy',
+      'groupBy',
     ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     const proxy = new Proxy(c, {
@@ -52,18 +67,53 @@ const { mockDb, chain } = vi.hoisted(() => {
 vi.mock('@/db', () => ({ db: mockDb }));
 
 vi.mock('@/db/schema', () => ({
-  assets: { id: 'assets.id', locationId: 'assets.locationId', modelId: 'assets.modelId', ownerId: 'assets.ownerId' },
-  assetPurchases: { id: 'assetPurchases.id', assetId: 'assetPurchases.assetId', vendorId: 'assetPurchases.vendorId' },
-  assetAssignments: { id: 'assetAssignments.id', assignedToLocationId: 'assetAssignments.assignedToLocationId' },
+  assets: {
+    id: 'assets.id',
+    locationId: 'assets.locationId',
+    modelId: 'assets.modelId',
+    ownerId: 'assets.ownerId',
+  },
+  assetPurchases: {
+    id: 'assetPurchases.id',
+    assetId: 'assetPurchases.assetId',
+    vendorId: 'assetPurchases.vendorId',
+  },
+  assetAssignments: {
+    id: 'assetAssignments.id',
+    assignedToLocationId: 'assetAssignments.assignedToLocationId',
+  },
   brands: { id: 'brands.id', name: 'brands.name', isActive: 'brands.isActive' },
-  categories: { id: 'categories.id', pillar: 'c.pillar', name: 'c.name', prefix: 'c.prefix', customSchema: 'c.cs', requiresSerial: 'c.rs', categoryCode: 'c.code', isActive: 'c.isActive' },
+  categories: {
+    id: 'categories.id',
+    pillar: 'c.pillar',
+    name: 'c.name',
+    prefix: 'c.prefix',
+    customSchema: 'c.cs',
+    requiresSerial: 'c.rs',
+    categoryCode: 'c.code',
+    isActive: 'c.isActive',
+  },
   departments: { id: 'departments.id', name: 'departments.name' },
-  locations: { id: 'locations.id', name: 'locations.name', locationCode: 'l.code', parentId: 'l.parentId', type: 'l.type', isActive: 'l.isActive' },
-  models: { id: 'models.id', brandId: 'models.brandId', categoryId: 'models.categoryId' },
+  locations: {
+    id: 'locations.id',
+    name: 'locations.name',
+    locationCode: 'l.code',
+    parentId: 'l.parentId',
+    type: 'l.type',
+    isActive: 'l.isActive',
+  },
+  models: {
+    id: 'models.id',
+    brandId: 'models.brandId',
+    categoryId: 'models.categoryId',
+  },
   owners: { id: 'owners.id' },
   vendors: { id: 'vendors.id', companyName: 'vendors.companyName' },
   customStatuses: { id: 'customStatuses.id' },
-  maintenanceTickets: { id: 'maintenanceTickets.id', vendorName: 'mt.vendorName' },
+  maintenanceTickets: {
+    id: 'maintenanceTickets.id',
+    vendorName: 'mt.vendorName',
+  },
   users: { id: 'users.id', departmentId: 'u.departmentId' },
 }));
 
@@ -83,13 +133,21 @@ vi.mock('@/lib/latency', () => ({
 }));
 
 vi.mock('@/lib/storage', () => ({
-  uploadFileToStorage: vi.fn().mockResolvedValue('https://storage.example.com/test.png'),
+  uploadFileToStorage: vi
+    .fn()
+    .mockResolvedValue('https://storage.example.com/test.png'),
 }));
 
 vi.mock('@/lib/master-data/shared', () => ({
   MASTER_DATA_RECORD_ENTITIES: [
-    'locations', 'asset-categories', 'brands', 'device-models',
-    'vendors', 'owners', 'departments', 'statuses',
+    'locations',
+    'asset-categories',
+    'brands',
+    'device-models',
+    'vendors',
+    'owners',
+    'departments',
+    'statuses',
   ],
 }));
 
@@ -268,14 +326,20 @@ describe('createBrand', () => {
 
   it('returns unauthorized for non-admin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    const result = await createBrand({ success: false, message: '' }, formData({ name: 'HP', isActive: 'true' }));
+    const result = await createBrand(
+      { success: false, message: '' },
+      formData({ name: 'HP', isActive: 'true' })
+    );
     expect(result.success).toBe(false);
     expect(result.message).toContain('Forbidden');
   });
 
   it('returns validation error for invalid data (name too short)', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    const result = await createBrand({ success: false, message: '' }, formData({ name: 'A', isActive: 'true' }));
+    const result = await createBrand(
+      { success: false, message: '' },
+      formData({ name: 'A', isActive: 'true' })
+    );
     expect(result.success).toBe(false);
     expect(result.message).toContain('validate brand data');
     expect(result.errors).toBeDefined();
@@ -283,7 +347,9 @@ describe('createBrand', () => {
 
   it('successfully inserts and audits brand', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.insert.mockReturnValue(chain([{ id: 1, name: 'HP', isActive: true }]));
+    mockDb.insert.mockReturnValue(
+      chain([{ id: 1, name: 'HP', isActive: true }])
+    );
 
     const result = await createBrand(
       { success: false, message: '' },
@@ -354,7 +420,16 @@ describe('createCategory', () => {
   it('successfully creates category with audit log', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockDb.insert.mockReturnValue(
-      chain([{ id: 1, pillar: 'Hardware', name: 'Laptops', prefix: 'LAP', customSchema: {}, requiresSerial: true }])
+      chain([
+        {
+          id: 1,
+          pillar: 'Hardware',
+          name: 'Laptops',
+          prefix: 'LAP',
+          customSchema: {},
+          requiresSerial: true,
+        },
+      ])
     );
 
     const result = await createCategory(

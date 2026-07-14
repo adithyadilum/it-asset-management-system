@@ -36,14 +36,16 @@ vi.mock('@/components/shared/sonner', () => ({
 vi.mock('@/components/ui/searchable-dropdown', () => ({
   SearchableDropdown: ({ options, value, onSelect, placeholder }: any) => (
     <div data-testid="searchable-dropdown">
-      <select 
-        value={value} 
+      <select
+        value={value}
         onChange={(e) => onSelect(e.target.value)}
         aria-label={placeholder}
       >
         <option value="">Select an option</option>
         {options.map((opt: any) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
         ))}
       </select>
     </div>
@@ -59,22 +61,22 @@ describe('AssetAssignmentModal', () => {
     (useRouter as any).mockReturnValue({
       refresh: mockRouterRefresh,
     });
-    
+
     // Default successful responses for options
     (searchUsers as any).mockResolvedValue({
       success: true,
       data: [
         { id: 'user-1', name: 'John Doe' },
-        { id: 'user-2', name: 'Jane Smith' }
-      ]
+        { id: 'user-2', name: 'Jane Smith' },
+      ],
     });
-    
+
     (searchLocations as any).mockResolvedValue({
       success: true,
       data: [
         { id: 1, name: 'Headquarters' },
-        { id: 2, name: 'Branch Office' }
-      ]
+        { id: 2, name: 'Branch Office' },
+      ],
     });
   });
 
@@ -93,14 +95,14 @@ describe('AssetAssignmentModal', () => {
 
   it('renders correctly with default props', async () => {
     renderModal();
-    
+
     expect(screen.getByText('Assign Asset:')).toBeInTheDocument();
     expect(screen.getByText('MacBook Pro')).toBeInTheDocument();
-    
+
     // Both user and location options should be available
     expect(screen.getByLabelText('Assign to User')).toBeInTheDocument();
     expect(screen.getByLabelText('Assign to Location')).toBeInTheDocument();
-    
+
     await waitFor(() => {
       expect(searchUsers).toHaveBeenCalled();
       expect(searchLocations).toHaveBeenCalled();
@@ -109,47 +111,55 @@ describe('AssetAssignmentModal', () => {
 
   it('disables user assignment for Office Furniture', async () => {
     renderModal({ assetGroup: 'Office Furniture' });
-    
-    const userRadio = screen.getByLabelText('Assign to User') as HTMLInputElement;
+
+    const userRadio = screen.getByLabelText(
+      'Assign to User'
+    ) as HTMLInputElement;
     expect(userRadio.disabled).toBe(true);
-    
-    const locationRadio = screen.getByLabelText('Assign to Location') as HTMLInputElement;
+
+    const locationRadio = screen.getByLabelText(
+      'Assign to Location'
+    ) as HTMLInputElement;
     expect(locationRadio.checked).toBe(true);
   });
 
   it('submits assignment to a user correctly', async () => {
     (assignAssetAction as any).mockResolvedValue({ success: true });
-    
+
     renderModal();
-    
+
     // Wait for options to load
     await waitFor(() => {
       expect(searchUsers).toHaveBeenCalled();
     });
-    
+
     // Select user mode (default for non-furniture)
-    const userRadio = screen.getByLabelText('Assign to User') as HTMLInputElement;
+    const userRadio = screen.getByLabelText(
+      'Assign to User'
+    ) as HTMLInputElement;
     expect(userRadio.checked).toBe(true);
-    
+
     const dropdown = screen.getByTestId('searchable-dropdown');
     const select = dropdown.querySelector('select') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'user-1' } });
-    
+
     // Add notes
-    const notesTextarea = screen.getByPlaceholderText('Add any additional notes');
+    const notesTextarea = screen.getByPlaceholderText(
+      'Add any additional notes'
+    );
     fireEvent.change(notesTextarea, { target: { value: 'Test note' } });
-    
+
     // Submit form
     const submitBtn = screen.getByRole('button', { name: 'Assign Asset' });
     fireEvent.click(submitBtn);
-    
+
     await waitFor(() => {
       expect(assignAssetAction).toHaveBeenCalledWith({
         assetId: 'asset-1',
         assignmentType: 'user',
         targetId: 'user-1',
         expectedReturnDate: undefined,
-        notes: 'Test note'
+        notes: 'Test note',
       });
       expect(mockRouterRefresh).toHaveBeenCalled();
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);

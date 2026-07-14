@@ -57,7 +57,9 @@ export async function POST(
         .returning({ id: assetAssignments.id });
 
       if (!updatedAssignment) {
-        throw new Error('Assignment not found, unauthorized, or not pending approval');
+        throw new Error(
+          'Assignment not found, unauthorized, or not pending approval'
+        );
       }
 
       // Mark notification queue processed
@@ -84,11 +86,12 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Assignment not found, unauthorized, or not pending approval') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 409 }
-      );
+    if (
+      error instanceof Error &&
+      error.message ===
+        'Assignment not found, unauthorized, or not pending approval'
+    ) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
     console.error(

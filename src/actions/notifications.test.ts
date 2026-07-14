@@ -27,7 +27,9 @@ vi.mock('@/lib/latency', () => ({
 }));
 
 const mockEncrypt = vi.fn().mockImplementation((val) => `encrypted_${val}`);
-const mockDecrypt = vi.fn().mockImplementation((val) => val.replace('encrypted_', ''));
+const mockDecrypt = vi
+  .fn()
+  .mockImplementation((val) => val.replace('encrypted_', ''));
 vi.mock('@/lib/crypto', () => ({
   encrypt: (v: string) => mockEncrypt(v),
   decrypt: (v: string) => mockDecrypt(v),
@@ -41,9 +43,19 @@ vi.mock('@/lib/audit', () => ({
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from', 'groupBy'].forEach(
-      (m) => (c[m] = vi.fn().mockReturnThis())
-    );
+    [
+      'values',
+      'set',
+      'where',
+      'returning',
+      'limit',
+      'offset',
+      'innerJoin',
+      'leftJoin',
+      'orderBy',
+      'from',
+      'groupBy',
+    ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     const proxy = new Proxy(c, {
       get(t, p) {
@@ -64,7 +76,12 @@ const { mockDb, chain } = vi.hoisted(() => {
 
 vi.mock('@/db', () => ({ db: mockDb }));
 vi.mock('@/db/schema', () => ({
-  appNotifications: { userId: 'appNotifications.userId', isRead: 'appNotifications.isRead', id: 'appNotifications.id', createdAt: 'appNotifications.createdAt' },
+  appNotifications: {
+    userId: 'appNotifications.userId',
+    isRead: 'appNotifications.isRead',
+    id: 'appNotifications.id',
+    createdAt: 'appNotifications.createdAt',
+  },
   integrationSettings: { id: 'integrationSettings.id' },
 }));
 
@@ -73,7 +90,7 @@ vi.mock('resend', () => {
   return {
     Resend: class {
       emails = { send: mockResendSend };
-    }
+    },
   };
 });
 
@@ -104,14 +121,18 @@ describe('Notifications Actions', () => {
   describe('markAsRead & markAllAsRead', () => {
     it('markAsRead successfully updates the isRead flag for a notification', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      mockDb.update.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000001' }]));
+      mockDb.update.mockReturnValueOnce(
+        chain([{ id: '00000000-0000-4000-a000-000000000001' }])
+      );
       await markAsRead('00000000-0000-4000-a000-000000000001');
       expect(mockDb.update).toHaveBeenCalled();
     });
 
     it('markAllAsRead updates all unread notifications', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      mockDb.update.mockReturnValueOnce(chain([{ id: '00000000-0000-4000-a000-000000000001' }]));
+      mockDb.update.mockReturnValueOnce(
+        chain([{ id: '00000000-0000-4000-a000-000000000001' }])
+      );
       await markAllAsRead();
       expect(mockDb.update).toHaveBeenCalled();
     });
@@ -122,15 +143,17 @@ describe('Notifications Actions', () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
       mockDb.select.mockReturnValueOnce(chain([])); // Not existing -> will insert
       mockDb.insert.mockReturnValueOnce(chain([{ id: 1 }]));
-      
+
       const res = await saveIntegrationSettings({
         resendApiKey: 'my-resend-key',
         teamsWebhookUrl: 'https://outlook.office.com/webhook',
       });
-      
+
       expect(res.success).toBe(true);
       expect(mockEncrypt).toHaveBeenCalledWith('my-resend-key');
-      expect(mockEncrypt).toHaveBeenCalledWith('https://outlook.office.com/webhook');
+      expect(mockEncrypt).toHaveBeenCalledWith(
+        'https://outlook.office.com/webhook'
+      );
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -143,7 +166,9 @@ describe('Notifications Actions', () => {
 
     it('rejects invalid teams webhook URLs', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      const res = await saveIntegrationSettings({ teamsWebhookUrl: 'https://malicious.com/webhook' });
+      const res = await saveIntegrationSettings({
+        teamsWebhookUrl: 'https://malicious.com/webhook',
+      });
       expect(res.success).toBe(false);
       expect(res.error).toContain('Invalid Teams Webhook URL');
     });
@@ -152,8 +177,13 @@ describe('Notifications Actions', () => {
   describe('testIntegrationConnection', () => {
     it('tests Resend successfully using mock', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      mockDb.select.mockReturnValueOnce(chain([{ id: 1, resendApiKey: 'encrypted_api-key' }]));
-      mockResendSend.mockResolvedValueOnce({ data: { id: 'msg-id' }, error: null });
+      mockDb.select.mockReturnValueOnce(
+        chain([{ id: 1, resendApiKey: 'encrypted_api-key' }])
+      );
+      mockResendSend.mockResolvedValueOnce({
+        data: { id: 'msg-id' },
+        error: null,
+      });
 
       const res = await testIntegrationConnection('email', {});
       expect(res.success).toBe(true);
@@ -163,12 +193,22 @@ describe('Notifications Actions', () => {
 
     it('tests Teams successfully using mock fetch', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      mockDb.select.mockReturnValueOnce(chain([{ id: 1, teamsWebhookUrl: 'encrypted_https://outlook.office.com/webhook' }]));
+      mockDb.select.mockReturnValueOnce(
+        chain([
+          {
+            id: 1,
+            teamsWebhookUrl: 'encrypted_https://outlook.office.com/webhook',
+          },
+        ])
+      );
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 } as Response);
 
       const res = await testIntegrationConnection('teams', {});
       expect(res.success).toBe(true);
-      expect(mockFetch).toHaveBeenCalledWith('https://outlook.office.com/webhook', expect.any(Object));
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://outlook.office.com/webhook',
+        expect.any(Object)
+      );
     });
   });
 });

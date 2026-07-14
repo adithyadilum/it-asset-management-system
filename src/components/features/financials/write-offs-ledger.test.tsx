@@ -29,7 +29,11 @@ describe('WriteOffsLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<CurrencyProvider initialCurrency="USD"><WriteOffsLedger initialData={mockData} /></CurrencyProvider>);
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <WriteOffsLedger initialData={mockData} />
+      </CurrencyProvider>
+    );
     expect(screen.getByText('AST-003')).toBeInTheDocument();
     expect(screen.getByText('Monitors')).toBeInTheDocument();
   });

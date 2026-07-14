@@ -29,17 +29,23 @@ describe('ResolveInternallyDialog', () => {
 
   it('disables submit button when note is empty', () => {
     renderDialog();
-    const submitBtn = screen.getByRole('button', { name: 'Resolve Internally' });
+    const submitBtn = screen.getByRole('button', {
+      name: 'Resolve Internally',
+    });
     expect(submitBtn).toBeDisabled();
   });
 
   it('submits correctly when note is entered', async () => {
     renderDialog();
 
-    const noteInput = screen.getByPlaceholderText('Describe how the issue was resolved...');
+    const noteInput = screen.getByPlaceholderText(
+      'Describe how the issue was resolved...'
+    );
     fireEvent.change(noteInput, { target: { value: 'Fixed software glitch' } });
 
-    const submitBtn = screen.getByRole('button', { name: 'Resolve Internally' });
+    const submitBtn = screen.getByRole('button', {
+      name: 'Resolve Internally',
+    });
     expect(submitBtn).not.toBeDisabled();
 
     fireEvent.click(submitBtn);
@@ -51,13 +57,17 @@ describe('ResolveInternallyDialog', () => {
 
   it('shows error if submission fails', async () => {
     mockOnConfirm.mockRejectedValueOnce(new Error('Network error'));
-    
+
     renderDialog();
 
-    const noteInput = screen.getByPlaceholderText('Describe how the issue was resolved...');
+    const noteInput = screen.getByPlaceholderText(
+      'Describe how the issue was resolved...'
+    );
     fireEvent.change(noteInput, { target: { value: 'Fixed software glitch' } });
 
-    const submitBtn = screen.getByRole('button', { name: 'Resolve Internally' });
+    const submitBtn = screen.getByRole('button', {
+      name: 'Resolve Internally',
+    });
     fireEvent.click(submitBtn);
 
     expect(await screen.findByText('Network error')).toBeInTheDocument();

@@ -8,7 +8,10 @@ import { linkedDevices, users } from '@/db/schema';
 import { logAuditAction } from '@/lib/audit';
 import { isGlobalAdmin } from '@/lib/auth/roles';
 import { serverEnv } from '@/lib/env';
-import { MOBILE_JWT_AUDIENCE, MOBILE_JWT_ISSUER } from '@/lib/auth/get-authenticated-user';
+import {
+  MOBILE_JWT_AUDIENCE,
+  MOBILE_JWT_ISSUER,
+} from '@/lib/auth/get-authenticated-user';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 
@@ -18,14 +21,18 @@ const redis = new Redis({
 });
 
 // A separate secret just for signing mobile companion app tokens
-const MOBILE_SECRET = new TextEncoder().encode(
-  serverEnv.MOBILE_JWT_SECRET
-);
+const MOBILE_SECRET = new TextEncoder().encode(serverEnv.MOBILE_JWT_SECRET);
 
 const exchangeSchema = z
   .object({
-    token: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
-    linkToken: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+    token: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/i)
+      .optional(),
+    linkToken: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/i)
+      .optional(),
     deviceName: z.string().trim().min(1).max(255).optional(),
     deviceOs: z.string().trim().max(100).optional(),
     deviceModel: z.string().trim().max(100).optional(),
@@ -48,7 +55,13 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const { token, linkToken: bodyLinkToken, deviceName, deviceOs, deviceModel } = parsed.data;
+  const {
+    token,
+    linkToken: bodyLinkToken,
+    deviceName,
+    deviceOs,
+    deviceModel,
+  } = parsed.data;
   const linkToken = token || bodyLinkToken;
 
   if (!linkToken) {
@@ -60,7 +73,10 @@ export async function POST(req: Request) {
   const userData = await redis.getdel(redisKey);
 
   if (!userData) {
-    return NextResponse.json({ error: 'QR Code expired or invalid' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'QR Code expired or invalid' },
+      { status: 401 }
+    );
   }
 
   // 2. BURN THE TOKEN! Single-use only.
@@ -76,11 +92,19 @@ export async function POST(req: Request) {
     typeof userData === 'string' ? JSON.parse(userData) : userData
   );
   if (!storedUser.success) {
-    return NextResponse.json({ error: 'Invalid pairing record' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Invalid pairing record' },
+      { status: 401 }
+    );
   }
   const user = storedUser.data;
   const [currentUser] = await db
-    .select({ id: users.id, email: users.email, role: users.role, isActive: users.isActive })
+    .select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+    })
     .from(users)
     .where(eq(users.id, user.id))
     .limit(1);
@@ -99,8 +123,11 @@ export async function POST(req: Request) {
       },
     });
     return NextResponse.json(
-      { error: 'Forbidden: Only Global Administrators can link a mobile device.' },
-      { status: 403 },
+      {
+        error:
+          'Forbidden: Only Global Administrators can link a mobile device.',
+      },
+      { status: 403 }
     );
   }
 
@@ -149,4 +176,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ accessToken: mobileJwt });
 }
-

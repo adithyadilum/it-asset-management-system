@@ -72,11 +72,13 @@ This epic governs the creation of new asset records within the IT Asset Manageme
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the reusable Slide-Out Panel React component (40-50% width, dark backdrop overlay).
 - [x] Integrate React Hook Form + Zod (`assetRegistrationSchema`) for form state management and validation.
 - [x] Implement the Pillar lock mechanism reading the current routing context.
 
 #### Backend
+
 - [x] Create the `registerAsset` Server Action that accepts `FormData`, validates it, and persists the record.
 - [x] Implement server-side Asset Tag generation mapping Model/Category prefixes (e.g. `LAP`) to sequence counters.
 - [x] Write the automatic retry-loop logic inside the database transaction to safely handle `asset_tag` unique constraint violations (`23505`) during high-concurrency inserts.
@@ -106,10 +108,12 @@ This epic governs the creation of new asset records within the IT Asset Manageme
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the conditional Hardware form rendering showing `Serial Number`, `Condition`, `Location`.
 - [x] Build the Consumables variant: hide individual tracking ID and serial number fields, render the Stepper Input for "Quantity to Add".
 
 #### Backend
+
 - [x] Add `UNIQUE` constraint validation on `serial_number` within the database to prevent duplicate entries (handled via Postgres schema).
 - [ ] Implement the backend bypass for Asset ID generation when `subcategory.type === 'Consumable'`: instead of creating individual records, increment a stock counter.
 
@@ -132,9 +136,11 @@ This epic governs the creation of new asset records within the IT Asset Manageme
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the conditional Software form rendering.
 
 #### Backend
+
 - [x] Implement conditional transaction logic within `registerAsset` to insert `softwareLicenses` when `input.pillar === 'Software'`.
 
 ---
@@ -155,6 +161,7 @@ This epic governs the creation of new asset records within the IT Asset Manageme
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the conditional Furniture form rendering showing `Building Location` and `Condition`.
 
 ---
@@ -175,6 +182,7 @@ This epic governs the creation of new asset records within the IT Asset Manageme
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the conditional Electronics form rendering.
 
 ---
@@ -202,8 +210,10 @@ This epic governs the creation of new asset records within the IT Asset Manageme
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Financials" form section capturing currency codes, tax, shipping, and base price.
 
 #### Backend
+
 - [x] Integrate `fetchLiveExchangeRates()` and `convertCurrencyAmount()` into the `registerAsset` and bulk import pipelines.
 - [x] Map the financial breakdown to the `asset_purchases` Drizzle schema.

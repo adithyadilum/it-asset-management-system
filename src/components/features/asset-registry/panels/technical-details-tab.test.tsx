@@ -13,7 +13,7 @@ describe('TechnicalDetailsTab', () => {
     const mockAsset = {
       specifications: { cpu: 'i7', ram: '16GB' },
       network: { macAddress: '00:11:22', ipAddress: '192.168.1.1' },
-      os: { name: 'Windows 11' }
+      os: { name: 'Windows 11' },
     };
     render(<TechnicalDetailsTab specs={mockAsset.specifications as any} />);
     expect(screen.getByText('i7')).toBeInTheDocument();

@@ -1,9 +1,14 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import { MonitorX } from "lucide-react"
-import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import Link from 'next/link';
+import { MonitorX } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function DesktopScreenRequired() {
   return (
@@ -15,7 +20,9 @@ export default function DesktopScreenRequired() {
           <CardTitle className="text-lg">Desktop Screen Required</CardTitle>
 
           <CardDescription className="max-w-prose">
-            This administrative section contains complex, multi-column data grids and advanced asset configurations that require a full-sized desktop workstation monitor to view properly.
+            This administrative section contains complex, multi-column data
+            grids and advanced asset configurations that require a full-sized
+            desktop workstation monitor to view properly.
           </CardDescription>
 
           <div className="pt-2">
@@ -26,5 +33,5 @@ export default function DesktopScreenRequired() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

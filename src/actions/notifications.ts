@@ -4,7 +4,7 @@ import { desc, eq, and, count } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { appNotifications, integrationSettings } from '@/db/schema';
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
@@ -104,7 +104,10 @@ export async function getNotifications(limit = 10, offset = 0) {
     const user = await getAuthenticatedUser();
     if (!user) return [];
 
-    const validation = getNotificationsParamsSchema.safeParse({ limit, offset });
+    const validation = getNotificationsParamsSchema.safeParse({
+      limit,
+      offset,
+    });
     if (!validation.success) {
       throw new Error('Invalid query parameters.');
     }

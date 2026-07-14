@@ -60,7 +60,9 @@ describe('GET /api/v1/search', () => {
   it('returns 401 when token is missing', async () => {
     mockGetAuthenticatedUserFromRequest.mockResolvedValue(null);
 
-    const response = await GET(createRequest('http://localhost/api/v1/search?q=laptop'));
+    const response = await GET(
+      createRequest('http://localhost/api/v1/search?q=laptop')
+    );
     expect(response.status).toBe(401);
 
     const body = await response.json();

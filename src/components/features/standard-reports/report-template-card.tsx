@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   ChevronRight,
@@ -40,7 +40,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { ReportTemplateData } from '@/types/standard-reports';
 
-function DataSourceIcon({ dataSource, className }: { dataSource: string; className?: string }) {
+function DataSourceIcon({
+  dataSource,
+  className,
+}: {
+  dataSource: string;
+  className?: string;
+}) {
   switch (dataSource) {
     case 'Assets':
       return <HardDrive className={className} />;
@@ -74,7 +80,10 @@ export function ReportTemplateCard({
 
   return (
     <>
-      <Card size="sm" className="h-full justify-between border-border bg-background">
+      <Card
+        size="sm"
+        className="h-full justify-between border-border bg-background"
+      >
         <CardHeader className="gap-3 p-4 pb-3 min-w-0">
           <div className="flex items-start justify-between gap-3 min-w-0 w-full overflow-hidden">
             <div className="space-y-1 flex-1 min-w-0 overflow-hidden">
@@ -86,7 +95,10 @@ export function ReportTemplateCard({
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <DataSourceIcon dataSource={template.dataSource} className="size-4 shrink-0 text-foreground" />
+              <DataSourceIcon
+                dataSource={template.dataSource}
+                className="size-4 shrink-0 text-foreground"
+              />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -133,7 +145,8 @@ export function ReportTemplateCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Report Template</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the &quot;{template.name}&quot; template? This action cannot be undone.
+              Are you sure you want to delete the &quot;{template.name}&quot;
+              template? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

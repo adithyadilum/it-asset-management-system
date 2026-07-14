@@ -1,48 +1,48 @@
-"use client"
+'use client';
 
-import { useMemo, useState } from "react"
-import { Plus, Search } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useMemo, useState } from 'react';
+import { Plus, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import type { WebhookSubscriptionDisplay } from "@/types/integrations"
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import type { WebhookSubscriptionDisplay } from '@/types/integrations';
 
-import { CreateWebhookDialog } from "./create-webhook-dialog"
-import { WebhookTable } from "@/components/features/integrations/webhook-table"
+import { CreateWebhookDialog } from './create-webhook-dialog';
+import { WebhookTable } from '@/components/features/integrations/webhook-table';
 
 interface WebhooksTabClientProps {
-  subscriptions: WebhookSubscriptionDisplay[]
+  subscriptions: WebhookSubscriptionDisplay[];
 }
 
 export function WebhooksTabClient({ subscriptions }: WebhooksTabClientProps) {
-  const router = useRouter()
-  const [createOpen, setCreateOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleChanged = () => {
-    router.refresh()
-  }
+    router.refresh();
+  };
 
   const filteredSubscriptions = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
+    const query = searchQuery.trim().toLowerCase();
 
     if (!query) {
-      return subscriptions
+      return subscriptions;
     }
 
     return subscriptions.filter((subscription) => {
-      const searchableEvents = subscription.events.join(" ").toLowerCase()
+      const searchableEvents = subscription.events.join(' ').toLowerCase();
 
       return (
         subscription.name.toLowerCase().includes(query) ||
         subscription.url.toLowerCase().includes(query) ||
         searchableEvents.includes(query) ||
         subscription.createdByName.toLowerCase().includes(query)
-      )
-    })
-  }, [searchQuery, subscriptions])
+      );
+    });
+  }, [searchQuery, subscriptions]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -69,13 +69,23 @@ export function WebhooksTabClient({ subscriptions }: WebhooksTabClientProps) {
 
       {filteredSubscriptions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted px-6 py-12 text-center">
-          <h4 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>No webhooks yet</h4>
-          <p className={`mt-2 text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
-            Create a webhook subscription to send EITAMS events to your external systems.
+          <h4
+            className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+          >
+            No webhooks yet
+          </h4>
+          <p
+            className={`mt-2 text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+          >
+            Create a webhook subscription to send EITAMS events to your external
+            systems.
           </p>
         </div>
       ) : (
-        <WebhookTable subscriptions={filteredSubscriptions} onChanged={handleChanged} />
+        <WebhookTable
+          subscriptions={filteredSubscriptions}
+          onChanged={handleChanged}
+        />
       )}
 
       <CreateWebhookDialog
@@ -84,5 +94,5 @@ export function WebhooksTabClient({ subscriptions }: WebhooksTabClientProps) {
         onCreated={handleChanged}
       />
     </div>
-  )
+  );
 }

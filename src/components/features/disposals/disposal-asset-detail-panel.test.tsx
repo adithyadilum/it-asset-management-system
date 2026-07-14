@@ -2,23 +2,26 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DisposalAssetDetailPanel } from './disposal-asset-detail-panel';
 
-vi.mock('@/components/features/asset-registry/panels/asset-details-panel-wrapper', () => ({
-  AssetDetailsPanelWrapper: ({ isOpen, additionalTabs }: any) => {
-    if (!isOpen) return null;
-    return (
-      <div data-testid="asset-details-panel">
-        <div data-testid="tabs">
-          {additionalTabs?.map((tab: any) => (
-            <div key={tab.id}>
-              <h3>{tab.label}</h3>
-              {tab.content}
-            </div>
-          ))}
+vi.mock(
+  '@/components/features/asset-registry/panels/asset-details-panel-wrapper',
+  () => ({
+    AssetDetailsPanelWrapper: ({ isOpen, additionalTabs }: any) => {
+      if (!isOpen) return null;
+      return (
+        <div data-testid="asset-details-panel">
+          <div data-testid="tabs">
+            {additionalTabs?.map((tab: any) => (
+              <div key={tab.id}>
+                <h3>{tab.label}</h3>
+                {tab.content}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    );
-  },
-}));
+      );
+    },
+  })
+);
 
 describe('DisposalAssetDetailPanel', () => {
   afterEach(async () => {
@@ -48,7 +51,7 @@ describe('DisposalAssetDetailPanel', () => {
 
     expect(screen.getByTestId('asset-details-panel')).toBeInTheDocument();
     expect(screen.getByText('Disposal')).toBeInTheDocument();
-    
+
     // Status
     expect(screen.getByText('Disposed')).toBeInTheDocument();
     // Dates & Users
@@ -63,11 +66,7 @@ describe('DisposalAssetDetailPanel', () => {
 
   it('renders correctly without disposal details', () => {
     render(
-      <DisposalAssetDetailPanel
-        isOpen={true}
-        onClose={vi.fn()}
-        assetId="1"
-      />
+      <DisposalAssetDetailPanel isOpen={true} onClose={vi.fn()} assetId="1" />
     );
 
     expect(screen.getByTestId('asset-details-panel')).toBeInTheDocument();

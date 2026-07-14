@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from '@/components/ui/card';
 
 export function AdminMobileMetricsSkeleton() {
   return (
@@ -36,10 +36,13 @@ export function AdminMobileMetricsSkeleton() {
         </div>
         <div className="flex flex-col gap-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="border rounded-lg px-4 py-3 bg-background border-border h-[46px]"></div>
+            <div
+              key={i}
+              className="border rounded-lg px-4 py-3 bg-background border-border h-[46px]"
+            ></div>
           ))}
         </div>
       </section>
     </>
-  )
+  );
 }

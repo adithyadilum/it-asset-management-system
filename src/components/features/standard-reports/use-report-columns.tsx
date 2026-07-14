@@ -1,10 +1,17 @@
 import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { getPrimaryIdColumn, type ReportPreviewRow } from '@/types/standard-reports';
+import {
+  getPrimaryIdColumn,
+  type ReportPreviewRow,
+} from '@/types/standard-reports';
 import { StatusBadge } from '@/components/shared/status-badge';
 
 function toCellText(value: unknown) {
-  if (value === null || value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === 'string' && value.trim().length === 0)
+  ) {
     return '-';
   }
   return String(value);
@@ -16,15 +23,26 @@ export function useReportColumns(source: string, selectedFields: string[]) {
     if (selectedFields && selectedFields.length > 0) {
       const primaryIdField = getPrimaryIdColumn(source);
       const primaryIdFields = [
-        'Record ID', 'Business Key', 'Asset ID', 'Asset Tag', 'Record Code',
-        'Assignment ID', 'Return ID', 'Ticket ID', 'Disposal ID', 'Purchase ID',
-        'License ID', 'Log ID'
+        'Record ID',
+        'Business Key',
+        'Asset ID',
+        'Asset Tag',
+        'Record Code',
+        'Assignment ID',
+        'Return ID',
+        'Ticket ID',
+        'Disposal ID',
+        'Purchase ID',
+        'License ID',
+        'Log ID',
       ];
-      const normalizedFields = Array.from(new Set(
-        selectedFields.map(f =>
-          primaryIdFields.includes(f) ? primaryIdField : f
+      const normalizedFields = Array.from(
+        new Set(
+          selectedFields.map((f) =>
+            primaryIdFields.includes(f) ? primaryIdField : f
+          )
         )
-      ));
+      );
 
       // Ensure primary ID is the first column if it exists in the selection
       if (normalizedFields.includes(primaryIdField)) {
@@ -39,7 +57,12 @@ export function useReportColumns(source: string, selectedFields: string[]) {
         cell: ({ row }) => {
           const value = row.original[field];
           if (field === 'Status') {
-            return <StatusBadge value={typeof value === 'string' ? value : undefined} showIcon />;
+            return (
+              <StatusBadge
+                value={typeof value === 'string' ? value : undefined}
+                showIcon
+              />
+            );
           }
           return toCellText(value);
         },

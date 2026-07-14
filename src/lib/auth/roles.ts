@@ -22,7 +22,11 @@ export function isEmployee(role: UserRole): boolean {
 
 /** GlobalAdmin, ITOperator, FinancialAuditor can view the registry. */
 export function canViewAssetRegistry(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinancialAuditor';
+  return (
+    role === 'GlobalAdmin' ||
+    role === 'ITOperator' ||
+    role === 'FinancialAuditor'
+  );
 }
 
 /** GlobalAdmin, ITOperator can create/update/delete assets. */
@@ -47,7 +51,11 @@ export function canViewDisposalHistory(role: UserRole): boolean {
 
 /** All roles except Employee can use the mobile app. */
 export function canAccessMobile(role: UserRole): boolean {
-  return role === 'GlobalAdmin' || role === 'ITOperator' || role === 'FinancialAuditor';
+  return (
+    role === 'GlobalAdmin' ||
+    role === 'ITOperator' ||
+    role === 'FinancialAuditor'
+  );
 }
 
 // ─── Server-Side Assert Guard ────────────────────────────────────────────────

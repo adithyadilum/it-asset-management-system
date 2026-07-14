@@ -1,8 +1,17 @@
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { db } from '@/db';
-import { assetPurchases, assets, models, categories, vendors } from '@/db/schema';
+import {
+  assetPurchases,
+  assets,
+  models,
+  categories,
+  vendors,
+} from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchPurchaseRecords(
   filters: ReportPreviewFilters,
@@ -20,14 +29,10 @@ export async function fetchPurchaseRecords(
     conditions.push(eq(vendors.companyName, filters.location));
   }
   if (filters.dateFrom) {
-    conditions.push(
-      sql`${assetPurchases.purchaseDate} >= ${filters.dateFrom}`
-    );
+    conditions.push(sql`${assetPurchases.purchaseDate} >= ${filters.dateFrom}`);
   }
   if (filters.dateTo) {
-    conditions.push(
-      sql`${assetPurchases.purchaseDate} <= ${filters.dateTo}`
-    );
+    conditions.push(sql`${assetPurchases.purchaseDate} <= ${filters.dateTo}`);
   }
   if (
     filters.category &&
@@ -44,8 +49,7 @@ export async function fetchPurchaseRecords(
     conditions.push(eq(categories.pillar, dbPillar as never));
   }
 
-  const whereCondition =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
   const baseQuery = db
     .select({

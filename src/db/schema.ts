@@ -92,7 +92,10 @@ export const customStatuses = pgTable('custom_statuses', {
   // New visual metadata columns
   iconName: varchar('icon_name', { length: 50 }).notNull().default('CircleDot'),
   colorTheme: varchar('color_theme', { length: 50 }).notNull().default('gray'),
-  allowedActions: jsonb('allowed_actions').$type<string[]>().default(['edit']).notNull(),
+  allowedActions: jsonb('allowed_actions')
+    .$type<string[]>()
+    .default(['edit'])
+    .notNull(),
   createdById: uuid('created_by_id').references(() => users.id),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -125,7 +128,9 @@ export const users = pgTable('users', {
   departmentId: integer('department_id').references(() => departments.id),
   role: roleEnum('role').default('Employee').notNull(),
   isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 // -----------------------------------------------------------------------------
@@ -995,13 +1000,20 @@ export const userRefreshTokens = pgTable('user_refresh_tokens', {
   refreshToken: text('refresh_token').notNull(),
   accessToken: text('access_token'),
   idToken: text('id_token'),
-  accessTokenExpires: timestamp('access_token_expires', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  accessTokenExpires: timestamp('access_token_expires', {
+    withTimezone: true,
+  }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
-export const userRefreshTokensRelations = relations(userRefreshTokens, ({ one }) => ({
-  user: one(users, {
-    fields: [userRefreshTokens.userId],
-    references: [users.id],
-  }),
-}));
+export const userRefreshTokensRelations = relations(
+  userRefreshTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userRefreshTokens.userId],
+      references: [users.id],
+    }),
+  })
+);

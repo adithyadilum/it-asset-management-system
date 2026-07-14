@@ -20,7 +20,7 @@ export function CurrencyProvider({
   initialCurrency: string;
 }) {
   const [currency, setCurrencyState] = useState<SupportedCurrency>(
-    resolveCurrencyCode(initialCurrency),
+    resolveCurrencyCode(initialCurrency)
   );
   const [isPending, startTransition] = useTransition();
 
@@ -38,6 +38,7 @@ export function CurrencyProvider({
 
 export function useCurrency(): CurrencyContextValue {
   const ctx = useContext(CurrencyContext);
-  if (!ctx) throw new Error('useCurrency must be used within a CurrencyProvider');
+  if (!ctx)
+    throw new Error('useCurrency must be used within a CurrencyProvider');
   return ctx;
 }

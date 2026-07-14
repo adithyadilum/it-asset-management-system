@@ -26,9 +26,15 @@ vi.mock('@/actions/auth', () => ({
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['select', 'from', 'where', 'leftJoin', 'set', 'limit', 'returning'].forEach(
-      (m) => (c[m] = vi.fn().mockReturnThis())
-    );
+    [
+      'select',
+      'from',
+      'where',
+      'leftJoin',
+      'set',
+      'limit',
+      'returning',
+    ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     // Make it thenable for `await db.select()...`
     const proxy = new Proxy(c, {
@@ -52,7 +58,7 @@ const { mockDb, chain } = vi.hoisted(() => {
         },
       },
     },
-    chain
+    chain,
   };
 });
 
@@ -71,7 +77,8 @@ vi.mock('@/db/schema', () => ({
 const mockLogAuditAction = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/audit', () => ({
   logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
-  logAuditActionTx: (tx: any, ...args: unknown[]) => mockLogAuditAction(...args),
+  logAuditActionTx: (tx: any, ...args: unknown[]) =>
+    mockLogAuditAction(...args),
 }));
 
 vi.mock('next/cache', () => ({
@@ -87,7 +94,9 @@ vi.mock('@/lib/latency', () => ({
 vi.mock('@/lib/auth/uuid', () => ({
   isValidUuid: (v: unknown) =>
     typeof v === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v),
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      v
+    ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -146,7 +155,13 @@ describe('searchUsers', () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
 
     const mockResults = [
-      { id: 'u1', name: 'Alice', email: 'alice@test.com', department: 'IT', role: 'Employee' },
+      {
+        id: 'u1',
+        name: 'Alice',
+        email: 'alice@test.com',
+        department: 'IT',
+        role: 'Employee',
+      },
     ];
     mockDb.select.mockReturnValue(chain(mockResults));
 
@@ -163,25 +178,31 @@ describe('assignUserRole', () => {
 
   it('throws when user is unauthenticated', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(assignUserRole(TARGET_USER.id, 'ITOperator')).rejects.toThrow('Forbidden');
+    await expect(assignUserRole(TARGET_USER.id, 'ITOperator')).rejects.toThrow(
+      'Forbidden'
+    );
   });
 
   it('throws when user is not GlobalAdmin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
-    await expect(assignUserRole(TARGET_USER.id, 'Employee')).rejects.toThrow('Forbidden');
+    await expect(assignUserRole(TARGET_USER.id, 'Employee')).rejects.toThrow(
+      'Forbidden'
+    );
   });
 
   it('throws for invalid UUID target', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    await expect(assignUserRole('not-a-uuid', 'Employee')).rejects.toThrow('Invalid target user id');
+    await expect(assignUserRole('not-a-uuid', 'Employee')).rejects.toThrow(
+      'Invalid target user id'
+    );
   });
 
   it('throws for invalid role value', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-     
-    await expect(assignUserRole(TARGET_USER.id, 'SuperUser' as any)).rejects.toThrow(
-      'Invalid role value'
-    );
+
+    await expect(
+      assignUserRole(TARGET_USER.id, 'SuperUser' as any)
+    ).rejects.toThrow('Invalid role value');
   });
 
   it('throws when admin tries to modify own role (anti-lockout)', async () => {
@@ -193,16 +214,25 @@ describe('assignUserRole', () => {
 
   it('returns error when target user not found (no rows updated)', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.query.users.findFirst.mockResolvedValue({ id: TARGET_USER.id, role: 'Employee' });
+    mockDb.query.users.findFirst.mockResolvedValue({
+      id: TARGET_USER.id,
+      role: 'Employee',
+    });
     mockDb.update.mockReturnValue(chain([])); // 0 rows returned
 
     const result = await assignUserRole(TARGET_USER.id, 'ITOperator');
-    expect(result).toEqual({ success: false, error: expect.stringContaining('not found') });
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringContaining('not found'),
+    });
   });
 
   it('successfully updates role and logs audit', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.query.users.findFirst.mockResolvedValue({ id: TARGET_USER.id, role: 'Employee' });
+    mockDb.query.users.findFirst.mockResolvedValue({
+      id: TARGET_USER.id,
+      role: 'Employee',
+    });
     mockDb.update.mockReturnValue(
       chain([{ updatedId: TARGET_USER.id, updatedRole: 'ITOperator' }])
     );
@@ -228,17 +258,17 @@ describe('assignUsersRoleBulk', () => {
 
   it('throws when user is not GlobalAdmin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    await expect(assignUsersRoleBulk([TARGET_USER.id], 'ITOperator')).rejects.toThrow(
-      'Forbidden'
-    );
+    await expect(
+      assignUsersRoleBulk([TARGET_USER.id], 'ITOperator')
+    ).rejects.toThrow('Forbidden');
   });
 
   it('throws for invalid role value', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-     
-    await expect(assignUsersRoleBulk([TARGET_USER.id], 'BadRole' as any)).rejects.toThrow(
-      'Invalid role value'
-    );
+
+    await expect(
+      assignUsersRoleBulk([TARGET_USER.id], 'BadRole' as any)
+    ).rejects.toThrow('Invalid role value');
   });
 
   it('returns error when user IDs array is empty', async () => {
@@ -306,7 +336,9 @@ describe('assignUsersRoleBulk', () => {
 
   it('deduplicates user IDs', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.query.users.findMany.mockResolvedValue([{ id: TARGET_USER.id, role: 'Employee' }]);
+    mockDb.query.users.findMany.mockResolvedValue([
+      { id: TARGET_USER.id, role: 'Employee' },
+    ]);
     mockDb.update.mockReturnValue(
       chain([{ updatedId: TARGET_USER.id, updatedRole: 'ITOperator' }])
     );
@@ -338,7 +370,10 @@ describe('removeUserFromManagedRole', () => {
 
   it('delegates to assignUserRole with Employee role', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.query.users.findFirst.mockResolvedValue({ id: TARGET_USER.id, role: 'ITOperator' });
+    mockDb.query.users.findFirst.mockResolvedValue({
+      id: TARGET_USER.id,
+      role: 'ITOperator',
+    });
     mockDb.update.mockReturnValue(
       chain([{ updatedId: TARGET_USER.id, updatedRole: 'Employee' }])
     );

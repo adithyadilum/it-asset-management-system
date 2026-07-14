@@ -51,7 +51,10 @@ const { mockDb, mockTransaction } = vi.hoisted(() => {
 
 vi.mock('@/db', () => ({ db: mockDb }));
 vi.mock('@/db/schema', () => ({
-  softwareLicenses: { id: 'softwareLicenses.id', assetId: 'softwareLicenses.assetId' },
+  softwareLicenses: {
+    id: 'softwareLicenses.id',
+    assetId: 'softwareLicenses.assetId',
+  },
   softwareAllocations: {
     id: 'softwareAllocations.id',
     licenseId: 'softwareAllocations.licenseId',
@@ -86,15 +89,24 @@ describe('allocateSoftwareLicensesAction', () => {
 
   it('returns unauthorized when user is not logged in', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [VALID_USER_ID_1]);
-    expect(result).toEqual({ success: false, error: 'Unauthorized: Please sign in.' });
+    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [
+      VALID_USER_ID_1,
+    ]);
+    expect(result).toEqual({
+      success: false,
+      error: 'Unauthorized: Please sign in.',
+    });
   });
 
   it('returns forbidden for non-admin roles', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [VALID_USER_ID_1]);
+    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [
+      VALID_USER_ID_1,
+    ]);
     expect(result.success).toBe(false);
-    expect((result as { success: false; error: string }).error).toContain('Forbidden');
+    expect((result as { success: false; error: string }).error).toContain(
+      'Forbidden'
+    );
   });
 
   it('returns error if no users are selected', async () => {
@@ -106,9 +118,14 @@ describe('allocateSoftwareLicensesAction', () => {
   it('returns error if software license is not found', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockTransaction.query.softwareLicenses.findFirst.mockResolvedValue(null);
-    
-    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [VALID_USER_ID_1]);
-    expect(result).toEqual({ success: false, error: 'Software license not found for this asset.' });
+
+    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [
+      VALID_USER_ID_1,
+    ]);
+    expect(result).toEqual({
+      success: false,
+      error: 'Software license not found for this asset.',
+    });
   });
 
   it('returns error if not enough seats are available', async () => {
@@ -121,10 +138,14 @@ describe('allocateSoftwareLicensesAction', () => {
         { assignedToUserId: 'other-user-2' },
       ],
     });
-    
-    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [VALID_USER_ID_1]);
+
+    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [
+      VALID_USER_ID_1,
+    ]);
     expect(result.success).toBe(false);
-    expect((result as { success: false; error: string }).error).toContain('Cannot allocate 1 users. Only 0 seats available.');
+    expect((result as { success: false; error: string }).error).toContain(
+      'Cannot allocate 1 users. Only 0 seats available.'
+    );
   });
 
   it('returns error if all selected users are already allocated', async () => {
@@ -132,13 +153,16 @@ describe('allocateSoftwareLicensesAction', () => {
     mockTransaction.query.softwareLicenses.findFirst.mockResolvedValue({
       id: 1,
       totalSeats: 5,
-      allocations: [
-        { assignedToUserId: VALID_USER_ID_1 },
-      ],
+      allocations: [{ assignedToUserId: VALID_USER_ID_1 }],
     });
-    
-    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [VALID_USER_ID_1]);
-    expect(result).toEqual({ success: false, error: 'All selected users are already allocated to this software.' });
+
+    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [
+      VALID_USER_ID_1,
+    ]);
+    expect(result).toEqual({
+      success: false,
+      error: 'All selected users are already allocated to this software.',
+    });
   });
 
   it('allocates new users successfully and filters out duplicates', async () => {
@@ -150,9 +174,12 @@ describe('allocateSoftwareLicensesAction', () => {
         { assignedToUserId: VALID_USER_ID_1 }, // user 1 already assigned
       ],
     });
-    
-    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [VALID_USER_ID_1, VALID_USER_ID_2]);
-    
+
+    const result = await allocateSoftwareLicensesAction(VALID_ASSET_ID, [
+      VALID_USER_ID_1,
+      VALID_USER_ID_2,
+    ]);
+
     expect(result).toEqual({ success: true, allocatedCount: 1 });
     expect(mockTransaction.insert).toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
@@ -170,15 +197,26 @@ describe('revokeSoftwareLicenseAllocationAction', () => {
 
   it('returns unauthorized when user is not logged in', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
-    expect(result).toEqual({ success: false, error: 'Unauthorized: Please sign in.' });
+    const result = await revokeSoftwareLicenseAllocationAction(
+      VALID_ASSET_ID,
+      VALID_USER_ID_1
+    );
+    expect(result).toEqual({
+      success: false,
+      error: 'Unauthorized: Please sign in.',
+    });
   });
 
   it('returns forbidden for non-admin roles', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
+    const result = await revokeSoftwareLicenseAllocationAction(
+      VALID_ASSET_ID,
+      VALID_USER_ID_1
+    );
     expect(result.success).toBe(false);
-    expect((result as { success: false; error: string }).error).toContain('Forbidden');
+    expect((result as { success: false; error: string }).error).toContain(
+      'Forbidden'
+    );
   });
 
   it('revokes an active software allocation and revalidates affected views', async () => {
@@ -187,7 +225,10 @@ describe('revokeSoftwareLicenseAllocationAction', () => {
       id: 'license-1',
     });
 
-    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
+    const result = await revokeSoftwareLicenseAllocationAction(
+      VALID_ASSET_ID,
+      VALID_USER_ID_1
+    );
 
     expect(result).toEqual({ success: true });
     expect(mockTransaction.update).toHaveBeenCalled();
@@ -204,7 +245,10 @@ describe('revokeSoftwareLicenseAllocationAction', () => {
     });
     mockTransaction.updateReturning.mockResolvedValueOnce([]);
 
-    const result = await revokeSoftwareLicenseAllocationAction(VALID_ASSET_ID, VALID_USER_ID_1);
+    const result = await revokeSoftwareLicenseAllocationAction(
+      VALID_ASSET_ID,
+      VALID_USER_ID_1
+    );
 
     expect(result).toEqual({
       success: false,

@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import { getCustomStatuses, type CustomStatusRow } from '@/actions/statuses';
-import { getAssetsByPillar, getAllAssetsUnified } from '@/actions/asset-registry';
+import {
+  getAssetsByPillar,
+  getAllAssetsUnified,
+} from '@/actions/asset-registry';
 import { BULK_FETCH_PAGE_SIZE } from './asset-registry-constants';
 import type { RegistryView } from './registry-config';
 import type { RegistryPillar } from '@/lib/data/asset-registry-repo';
-import type { AssetRegistryRow, AssetRegistryResult } from './asset-registry.types';
+import type {
+  AssetRegistryRow,
+  AssetRegistryResult,
+} from './asset-registry.types';
 
 interface UseAssetRegistryDataProps {
   initialResult: AssetRegistryResult;
@@ -45,7 +51,9 @@ export function useAssetRegistryData({
       }
     })();
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Load asset rows whenever filters/search/category change
@@ -62,7 +70,8 @@ export function useAssetRegistryData({
           status: backendStatusFilter,
         };
 
-        const fetchFn = view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
+        const fetchFn =
+          view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
 
         const firstPage = await fetchFn({
           ...requestParams,
@@ -100,7 +109,9 @@ export function useAssetRegistryData({
 
         startTransition(() => {
           setRows([]);
-          setErrorMessage(error instanceof Error ? error.message : 'Failed to load assets.');
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Failed to load assets.'
+          );
         });
       }
     };
@@ -117,20 +128,23 @@ export function useAssetRegistryData({
     selectedCategoryId,
   ]);
 
-  const manuallyUpdateRowStatus = useCallback((assetId: string, nextStatus: string) => {
-    setRows((prev) =>
-      prev.map((row) => {
-        if (row.id === assetId) {
-          return {
-            ...row,
-            status: nextStatus,
-            assignedTo: null, // Manual override always clears current assignment
-          };
-        }
-        return row;
-      })
-    );
-  }, []);
+  const manuallyUpdateRowStatus = useCallback(
+    (assetId: string, nextStatus: string) => {
+      setRows((prev) =>
+        prev.map((row) => {
+          if (row.id === assetId) {
+            return {
+              ...row,
+              status: nextStatus,
+              assignedTo: null, // Manual override always clears current assignment
+            };
+          }
+          return row;
+        })
+      );
+    },
+    []
+  );
 
   return {
     rows,

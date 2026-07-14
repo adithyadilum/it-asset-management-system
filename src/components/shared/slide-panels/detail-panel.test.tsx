@@ -21,21 +21,28 @@ describe('DetailPanel', () => {
   });
 
   it('renders badges if provided', () => {
-    render(<DetailPanel {...defaultProps} badges={['New', <span key="custom">CustomBadge</span>]} />);
+    render(
+      <DetailPanel
+        {...defaultProps}
+        badges={['New', <span key="custom">CustomBadge</span>]}
+      />
+    );
     expect(screen.getByText('New')).toBeInTheDocument();
     expect(screen.getByText('CustomBadge')).toBeInTheDocument();
   });
 
   it('renders empty state when no fields are provided', () => {
     render(<DetailPanel {...defaultProps} fields={[]} />);
-    expect(screen.getByText('No detail fields were provided.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No detail fields were provided.')
+    ).toBeInTheDocument();
   });
 
   it('renders custom actions and overrides default actions', () => {
     render(
-      <DetailPanel 
-        {...defaultProps} 
-        actions={[{ label: 'Custom Action', onClick: vi.fn() }]} 
+      <DetailPanel
+        {...defaultProps}
+        actions={[{ label: 'Custom Action', onClick: vi.fn() }]}
       />
     );
     expect(screen.getByText('Custom Action')).toBeInTheDocument();

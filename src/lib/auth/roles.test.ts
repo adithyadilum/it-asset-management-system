@@ -11,7 +11,12 @@ import {
   canAccessOperations,
 } from '@/lib/auth/roles';
 
-const ALL_ROLES: UserRole[] = ['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee'];
+const ALL_ROLES: UserRole[] = [
+  'GlobalAdmin',
+  'ITOperator',
+  'FinancialAuditor',
+  'Employee',
+];
 
 describe('isGlobalAdmin', () => {
   it('returns true only for GlobalAdmin', () => {
@@ -48,7 +53,6 @@ describe('isEmployee', () => {
     expect(isEmployee('FinancialAuditor')).toBe(false);
   });
 });
-
 
 describe('canViewAssetRegistry', () => {
   it('allows GlobalAdmin, ITOperator, and FinancialAuditor', () => {

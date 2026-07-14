@@ -245,16 +245,18 @@ async function searchReportsByQuery(
 
     const results = await Promise.all(queries);
 
-    return matchedReports.map((report) => {
-      const mapping = reportQueryMapping.find((m) => m.id === report.id);
-      const count = mapping ? (results[mapping.index]?.[0]?.count ?? 0) : 0;
-      return {
-        id: report.id,
-        label: report.label,
-        description: `${count} ${report.description}`,
-        href: report.href,
-      };
-    }).slice(0, MAX_RESULTS_PER_GROUP);
+    return matchedReports
+      .map((report) => {
+        const mapping = reportQueryMapping.find((m) => m.id === report.id);
+        const count = mapping ? (results[mapping.index]?.[0]?.count ?? 0) : 0;
+        return {
+          id: report.id,
+          label: report.label,
+          description: `${count} ${report.description}`,
+          href: report.href,
+        };
+      })
+      .slice(0, MAX_RESULTS_PER_GROUP);
   } finally {
     logLatency({
       scope: 'DB ACTION',

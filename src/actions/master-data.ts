@@ -726,7 +726,12 @@ export async function createMasterDataRecord(
 
         await db
           .update(locations)
-          .set({ locationCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['locations'], insertedId) })
+          .set({
+            locationCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['locations'],
+              insertedId
+            ),
+          })
           .where(eq(locations.id, insertedId));
 
         break;
@@ -774,7 +779,12 @@ export async function createMasterDataRecord(
 
         await db
           .update(categories)
-          .set({ categoryCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['asset-categories'], insertedId) })
+          .set({
+            categoryCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['asset-categories'],
+              insertedId
+            ),
+          })
           .where(eq(categories.id, insertedId));
 
         break;
@@ -813,7 +823,12 @@ export async function createMasterDataRecord(
 
         await db
           .update(brands)
-          .set({ brandCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['brands'], insertedId) })
+          .set({
+            brandCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['brands'],
+              insertedId
+            ),
+          })
           .where(eq(brands.id, insertedId));
 
         break;
@@ -874,7 +889,12 @@ export async function createMasterDataRecord(
 
         await db
           .update(models)
-          .set({ modelCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['device-models'], insertedId) })
+          .set({
+            modelCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['device-models'],
+              insertedId
+            ),
+          })
           .where(eq(models.id, insertedId));
 
         break;
@@ -928,7 +948,12 @@ export async function createMasterDataRecord(
 
         await db
           .update(vendors)
-          .set({ vendorCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['vendors'], insertedId) })
+          .set({
+            vendorCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['vendors'],
+              insertedId
+            ),
+          })
           .where(eq(vendors.id, insertedId));
 
         break;
@@ -972,7 +997,10 @@ export async function createMasterDataRecord(
         await db
           .update(departments)
           .set({
-            departmentCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['departments'], insertedId),
+            departmentCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['departments'],
+              insertedId
+            ),
             costCenterId: `CC-${String(insertedId).padStart(4, '0')}`,
           })
           .where(eq(departments.id, insertedId));
@@ -1013,7 +1041,12 @@ export async function createMasterDataRecord(
 
         await db
           .update(owners)
-          .set({ ownerCode: formatMasterDataCode(MASTER_DATA_CODE_PREFIX['owners'], insertedId) })
+          .set({
+            ownerCode: formatMasterDataCode(
+              MASTER_DATA_CODE_PREFIX['owners'],
+              insertedId
+            ),
+          })
           .where(eq(owners.id, insertedId));
 
         break;
@@ -1075,7 +1108,7 @@ export async function createMasterDataRecord(
       success: true,
       message: 'Record created successfully.',
     };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     logError({
       scope: 'ACTION',
@@ -1222,7 +1255,8 @@ export async function updateMasterDataRecord(
           };
         }
 
-        const parsedSchema = categorySchema.shape.customSchema.safeParse(customSchemaRaw);
+        const parsedSchema =
+          categorySchema.shape.customSchema.safeParse(customSchemaRaw);
         if (!parsedSchema.success) {
           return {
             success: false,
@@ -1588,7 +1622,7 @@ export async function updateMasterDataRecord(
       success: true,
       message: 'Record updated successfully.',
     };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     logError({
       scope: 'ACTION',

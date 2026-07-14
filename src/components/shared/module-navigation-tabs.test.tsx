@@ -20,11 +20,11 @@ describe('ModuleNavigationTabs', () => {
   it('switches tabs on click', async () => {
     const user = userEvent.setup();
     const onTabChangeMock = vi.fn();
-    
+
     render(<ModuleNavigationTabs tabs={tabs} onTabChange={onTabChangeMock} />);
-    
+
     await user.click(screen.getByRole('tab', { name: 'Tab 2' }));
-    
+
     expect(screen.getByText('Content 2')).toBeInTheDocument();
     expect(onTabChangeMock).toHaveBeenCalledWith('tab2');
   });

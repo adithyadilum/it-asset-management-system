@@ -4,12 +4,7 @@ import { ChevronRight, ListFilter, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import {
   Select,
@@ -21,7 +16,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { FilterRow, SOURCE_OPTIONS } from '@/components/features/standard-reports/standard-reports-page';
+import {
+  FilterRow,
+  SOURCE_OPTIONS,
+} from '@/components/features/standard-reports/standard-reports-page';
 import { ReportTemplateCard } from '@/components/features/standard-reports/report-template-card';
 import {
   type FilterState,
@@ -59,14 +57,16 @@ export function StandardReportsConfigPanel({
   resetKey,
 }: StandardReportsConfigPanelProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<ReportTemplateData | undefined>();
+  const [editingTemplate, setEditingTemplate] = useState<
+    ReportTemplateData | undefined
+  >();
 
   // Map UI Asset Types to DB Pillars for filtering category options
   const typeToPillarMap: Record<string, string> = {
-    'Hardware': 'Hardware',
-    'Software': 'Software',
-    'Electronics': 'Office Electronics',
-    'Furniture': 'Office Furniture',
+    Hardware: 'Hardware',
+    Software: 'Software',
+    Electronics: 'Office Electronics',
+    Furniture: 'Office Furniture',
   };
 
   const selectedPillar = typeToPillarMap[filterState.assetType];
@@ -83,47 +83,65 @@ export function StandardReportsConfigPanel({
 
   const locationOptions = [
     { value: '', label: 'All Locations' },
-    ...filterOptions.locations.filter((x) => x !== 'All locations').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.locations
+      .filter((x) => x !== 'All locations')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    ...filterOptions.statuses.filter((x) => x !== 'All statuses').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.statuses
+      .filter((x) => x !== 'All statuses')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const assignmentStateOptions = [
     { value: '', label: 'All States' },
-    ...filterOptions.assignmentStates.filter((x) => x !== 'All States').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.assignmentStates
+      .filter((x) => x !== 'All States')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const returnConditionOptions = [
     { value: '', label: 'All Conditions' },
-    ...filterOptions.returnConditions.filter((x) => x !== 'All Conditions').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.returnConditions
+      .filter((x) => x !== 'All Conditions')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const maintenanceStatusOptions = [
     { value: '', label: 'All Statuses' },
-    ...filterOptions.maintenanceStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.maintenanceStatuses
+      .filter((x) => x !== 'All Statuses')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const disposalStatusOptions = [
     { value: '', label: 'All Statuses' },
-    ...filterOptions.disposalStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.disposalStatuses
+      .filter((x) => x !== 'All Statuses')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const licenseTypeOptions = [
     { value: '', label: 'All Types' },
-    ...filterOptions.licenseTypes.filter((x) => x !== 'All Types').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.licenseTypes
+      .filter((x) => x !== 'All Types')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const auditActionOptions = [
     { value: '', label: 'All Actions' },
-    ...filterOptions.auditActionTypes.filter((x) => x !== 'All Actions').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.auditActionTypes
+      .filter((x) => x !== 'All Actions')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const vendorOptions = [
     { value: '', label: 'All Vendors' },
-    ...filterOptions.vendors.filter((x) => x !== 'All Vendors').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.vendors
+      .filter((x) => x !== 'All Vendors')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const masterDataTypeOptions = filterOptions.masterDataTypes;
@@ -192,7 +210,10 @@ export function StandardReportsConfigPanel({
       </div>
 
       {/* Footer Configuration Section - Fixed */}
-      <div key={resetKey} className="flex flex-col gap-4 px-4 pt-4 pb-4 shrink-0">
+      <div
+        key={resetKey}
+        className="flex flex-col gap-4 px-4 pt-4 pb-4 shrink-0"
+      >
         <div className="grid gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] md:items-center">
           <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
             Primary Data Source
@@ -224,31 +245,47 @@ export function StandardReportsConfigPanel({
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 p-4 pt-3">
-            {filterState.source && REPORT_FILTERS_BY_SOURCE[filterState.source] ? (
+            {filterState.source &&
+            REPORT_FILTERS_BY_SOURCE[filterState.source] ? (
               REPORT_FILTERS_BY_SOURCE[filterState.source].map((filter) => {
                 if (filter.type === 'select') {
-                  const opts = filter.optionsKey === 'ticketTypes'
-                    ? ['All Types', 'VENDOR', 'INTERNAL']
-                    : filterOptions.assetTypes;
+                  const opts =
+                    filter.optionsKey === 'ticketTypes'
+                      ? ['All Types', 'VENDOR', 'INTERNAL']
+                      : filterOptions.assetTypes;
 
-                  const placeholderVal = filter.optionsKey === 'ticketTypes' ? 'All Types' : 'All Assets';
+                  const placeholderVal =
+                    filter.optionsKey === 'ticketTypes'
+                      ? 'All Types'
+                      : 'All Assets';
 
                   return (
                     <FilterRow key={filter.key} label={filter.label}>
                       <Select
                         value={filterState[filter.key] || '__all__'}
-                        onValueChange={(value) => onFilterChange(filter.key, value === '__all__' ? '' : value)}
+                        onValueChange={(value) =>
+                          onFilterChange(
+                            filter.key,
+                            value === '__all__' ? '' : value
+                          )
+                        }
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder={placeholderVal} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__all__">{placeholderVal}</SelectItem>
-                          {opts.filter(x => x !== 'All Assets' && x !== 'All Types').map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="__all__">
+                            {placeholderVal}
+                          </SelectItem>
+                          {opts
+                            .filter(
+                              (x) => x !== 'All Assets' && x !== 'All Types'
+                            )
+                            .map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                     </FilterRow>
@@ -256,7 +293,9 @@ export function StandardReportsConfigPanel({
                 }
 
                 if (filter.type === 'searchable') {
-                  const opts = filter.optionsKey ? optionsMap[filter.optionsKey] : [];
+                  const opts = filter.optionsKey
+                    ? optionsMap[filter.optionsKey]
+                    : [];
                   const emptyMsg = `No ${filter.label.toLowerCase()} found.`;
                   return (
                     <FilterRow key={filter.key} label={filter.label}>
@@ -277,7 +316,9 @@ export function StandardReportsConfigPanel({
                       <Input
                         type="date"
                         value={filterState[filter.key] || ''}
-                        onChange={(e) => onFilterChange(filter.key, e.target.value)}
+                        onChange={(e) =>
+                          onFilterChange(filter.key, e.target.value)
+                        }
                         className="w-full bg-background"
                       />
                     </FilterRow>
@@ -296,11 +337,7 @@ export function StandardReportsConfigPanel({
               <Button variant="secondary" size="sm" onClick={onClearFilters}>
                 Clear filters
               </Button>
-              <Button
-                size="sm"
-                onClick={onManualPreview}
-                disabled={isLoading}
-              >
+              <Button size="sm" onClick={onManualPreview} disabled={isLoading}>
                 Preview report
                 <ChevronRight className="size-4" />
               </Button>

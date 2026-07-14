@@ -45,7 +45,13 @@ import { POST } from './route';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function makeSession(role: string, id = 'user-abc') {
-  return { id, role, email: `${role.toLowerCase()}@tiqri.com`, name: role, isActive: true };
+  return {
+    id,
+    role,
+    email: `${role.toLowerCase()}@tiqri.com`,
+    name: role,
+    isActive: true,
+  };
 }
 
 describe('POST /api/auth/generate-qr', () => {
@@ -79,35 +85,34 @@ describe('POST /api/auth/generate-qr', () => {
     expect(mockRedisSet).toHaveBeenCalledWith(
       expect.stringMatching(/^qr_link:/),
       expect.stringContaining('"role":"GlobalAdmin"'),
-      { ex: 60 },
+      { ex: 60 }
     );
 
     // No audit log should be fired for a successful case
     expect(mockLogAuditAction).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['ITOperator'],
-    ['FinancialAuditor'],
-    ['Employee'],
-  ])('returns 403 for role "%s" and logs the attempt', async (role) => {
-    mockGetAuthenticatedUser.mockResolvedValue(makeSession(role));
+  it.each([['ITOperator'], ['FinancialAuditor'], ['Employee']])(
+    'returns 403 for role "%s" and logs the attempt',
+    async (role) => {
+      mockGetAuthenticatedUser.mockResolvedValue(makeSession(role));
 
-    const response = await POST();
+      const response = await POST();
 
-    expect(response.status).toBe(403);
-    const body = await response.json();
-    expect(body.error).toMatch(/Forbidden/i);
+      expect(response.status).toBe(403);
+      const body = await response.json();
+      expect(body.error).toMatch(/Forbidden/i);
 
-    // Redis must NOT have been written to
-    expect(mockRedisSet).not.toHaveBeenCalled();
+      // Redis must NOT have been written to
+      expect(mockRedisSet).not.toHaveBeenCalled();
 
-    // An audit log entry must have been created
-    expect(mockLogAuditAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actionType: 'UNAUTHORIZED_QR_GENERATION_ATTEMPT',
-        newData: expect.objectContaining({ attemptedByRole: role }),
-      }),
-    );
-  });
+      // An audit log entry must have been created
+      expect(mockLogAuditAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: 'UNAUTHORIZED_QR_GENERATION_ATTEMPT',
+          newData: expect.objectContaining({ attemptedByRole: role }),
+        })
+      );
+    }
+  );
 });

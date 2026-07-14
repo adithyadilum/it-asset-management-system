@@ -12,8 +12,12 @@ vi.mock('next/navigation', () => ({
 
 // Mock the actions
 vi.mock('@/actions/asset-registry', () => ({
-  getAssetsByPillar: vi.fn().mockResolvedValue({ data: [], meta: { totalPages: 1 } }),
-  getAllAssetsUnified: vi.fn().mockResolvedValue({ data: [], meta: { totalPages: 1 } }),
+  getAssetsByPillar: vi
+    .fn()
+    .mockResolvedValue({ data: [], meta: { totalPages: 1 } }),
+  getAllAssetsUnified: vi
+    .fn()
+    .mockResolvedValue({ data: [], meta: { totalPages: 1 } }),
 }));
 
 vi.mock('@/actions/statuses', () => ({
@@ -21,23 +25,37 @@ vi.mock('@/actions/statuses', () => ({
 }));
 
 vi.mock('@/components/features/bulk-import/bulk-import-wizard', () => ({
-  BulkImportWizard: () => <div data-testid="bulk-import-wizard" />
+  BulkImportWizard: () => <div data-testid="bulk-import-wizard" />,
 }));
 
-vi.mock('@/components/features/asset-registry/tags/print-configuration-modal', () => ({
-  PrintConfigurationModal: () => <div data-testid="print-configuration-modal" />
-}));
+vi.mock(
+  '@/components/features/asset-registry/tags/print-configuration-modal',
+  () => ({
+    PrintConfigurationModal: () => (
+      <div data-testid="print-configuration-modal" />
+    ),
+  })
+);
 
-vi.mock('@/components/features/disposals/dispose-assets-request-dialog', () => ({
-  DisposeAssetsRequestDialog: () => <div data-testid="dispose-assets-request-dialog" />
-}));
+vi.mock(
+  '@/components/features/disposals/dispose-assets-request-dialog',
+  () => ({
+    DisposeAssetsRequestDialog: () => (
+      <div data-testid="dispose-assets-request-dialog" />
+    ),
+  })
+);
 
 vi.mock('use-debounce', () => ({
   useDebouncedCallback: (fn: any) => fn,
 }));
 
 // Mock ResizeObserver
-class ResizeObserver { observe() { } unobserve() { } disconnect() { } }
+class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('AssetRegistryClient', () => {
@@ -45,12 +63,26 @@ describe('AssetRegistryClient', () => {
     vi.unstubAllGlobals();
   });
 
-  const mockConfig = { view: 'unified', title: 'All Assets', defaultCategoryLabel: 'All Assets', defaultPageSize: 50, filters: [], filterFieldOptions: [] } as any;
+  const mockConfig = {
+    view: 'unified',
+    title: 'All Assets',
+    defaultCategoryLabel: 'All Assets',
+    defaultPageSize: 50,
+    filters: [],
+    filterFieldOptions: [],
+  } as any;
   const mockInitialResult = {
     data: [
-      { id: '1', assetTag: 'TAG-1', name: 'Laptop', status: 'ACTIVE', category: 'Computers', pillar: 'HARDWARE' }
+      {
+        id: '1',
+        assetTag: 'TAG-1',
+        name: 'Laptop',
+        status: 'ACTIVE',
+        category: 'Computers',
+        pillar: 'HARDWARE',
+      },
     ],
-    meta: { total: 1, page: 1, pageSize: 50, totalPages: 1 }
+    meta: { total: 1, page: 1, pageSize: 50, totalPages: 1 },
   } as any;
 
   const mockRouter = { push: vi.fn(), replace: vi.fn() };

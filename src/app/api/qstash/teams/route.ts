@@ -195,7 +195,9 @@ async function sendTeamsNotificationWithRetry({
       body: JSON.stringify(cardPayload),
     });
     if (!response.ok) {
-      throw new Error(`Teams Webhook responded with status: ${response.status}`);
+      throw new Error(
+        `Teams Webhook responded with status: ${response.status}`
+      );
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);

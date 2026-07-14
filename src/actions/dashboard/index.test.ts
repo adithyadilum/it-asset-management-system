@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getDashboardBatchData } from '@/actions/dashboard';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({

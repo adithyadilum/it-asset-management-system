@@ -4,7 +4,7 @@ import { eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { enforceFormAccess } from '@/actions/auth';
-import {  isGlobalAdmin } from '@/lib/auth/roles';
+import { isGlobalAdmin } from '@/lib/auth/roles';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,11 +14,17 @@ import {
   assetDocuments,
 } from '@/db/schema';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { calculateCurrentBookValue, DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
+import {
+  calculateCurrentBookValue,
+  DEFAULT_USEFUL_LIFE_MONTHS,
+} from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { executeDisposalSchema } from '@/lib/validations/disposals';
 import type { DisposalFormState } from '@/types/disposals';
-import { normalizeDisposalIds, normalizeAssetIds } from '@/actions/disposals/utils';
+import {
+  normalizeDisposalIds,
+  normalizeAssetIds,
+} from '@/actions/disposals/utils';
 
 export async function executeAssetDisposal(
   _prevState: DisposalFormState,
@@ -58,7 +64,8 @@ export async function executeAssetDisposal(
       disposalMethod: formData.get('disposalMethod')?.toString() || '',
       dataWiped: formData.get('dataWiped') === 'true',
       tagsRemoved: formData.get('tagsRemoved') === 'true',
-      actualSalvageValue: formData.get('actualSalvageValue')?.toString() || undefined,
+      actualSalvageValue:
+        formData.get('actualSalvageValue')?.toString() || undefined,
       receiptUrls: parsedReceiptUrls,
     });
 
@@ -77,11 +84,17 @@ export async function executeAssetDisposal(
     const normalizedAssetIds = normalizeAssetIds(validData.assetIds);
 
     if (normalizedDisposalIds.length === 0 || normalizedAssetIds.length === 0) {
-      return { success: false, message: 'No valid disposal or asset IDs provided.' };
+      return {
+        success: false,
+        message: 'No valid disposal or asset IDs provided.',
+      };
     }
 
     if (normalizedDisposalIds.length !== normalizedAssetIds.length) {
-      return { success: false, message: 'Disposal and asset ID counts do not match.' };
+      return {
+        success: false,
+        message: 'Disposal and asset ID counts do not match.',
+      };
     }
 
     const dbTimer = startLatencyTimer();
@@ -113,7 +126,9 @@ export async function executeAssetDisposal(
       );
 
       if (!allEligible) {
-        throw new Error('One or more disposal requests are not in an eligible status.');
+        throw new Error(
+          'One or more disposal requests are not in an eligible status.'
+        );
       }
 
       // Asset ID mapping verification
@@ -124,7 +139,9 @@ export async function executeAssetDisposal(
         disposalAssetIds.length !== normalizedAssetIds.length ||
         !disposalAssetIds.every((id) => requestedAssetIdSet.has(id))
       ) {
-        throw new Error('Submitted assets do not match the selected disposal requests.');
+        throw new Error(
+          'Submitted assets do not match the selected disposal requests.'
+        );
       }
 
       // 3. Fetch current asset data for audit
@@ -169,7 +186,9 @@ export async function executeAssetDisposal(
 
       const totalSalvage = validData.actualSalvageValue ?? 0;
       const salvagePerAsset =
-        normalizedAssetIds.length > 0 ? totalSalvage / normalizedAssetIds.length : 0;
+        normalizedAssetIds.length > 0
+          ? totalSalvage / normalizedAssetIds.length
+          : 0;
 
       // 5. Execute disposal: update all disposal records in parallel
       const updatedDisposalIds: number[] = [];
@@ -292,7 +311,11 @@ export async function executeAssetDisposal(
       message: `${result.disposedCount} asset(s) disposed successfully.`,
     };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'disposals.executeAssetDisposal', error });
+    logError({
+      scope: 'ACTION',
+      label: 'disposals.executeAssetDisposal',
+      error,
+    });
 
     const KNOWN_ERRORS = [
       'One or more disposal requests could not be found.',
@@ -314,4 +337,4 @@ export async function executeAssetDisposal(
       startTime: actionTimer,
     });
   }
-}
+}

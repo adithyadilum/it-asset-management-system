@@ -7,7 +7,9 @@ import {
 } from './types';
 
 const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-const dateSchema = z.string().regex(isoDateRegex, 'Date must be in YYYY-MM-DD format');
+const dateSchema = z
+  .string()
+  .regex(isoDateRegex, 'Date must be in YYYY-MM-DD format');
 
 /**
  * Normalizes common date string formats to YYYY-MM-DD.
@@ -86,8 +88,11 @@ export function validateRows(
     if (errBracketMatch) {
       cleanModelNameForError = errBracketMatch[1].trim();
     }
-    
-    const generatedAssetName = brandNameRaw.trim() && cleanModelNameForError ? `${brandNameRaw.trim()} - ${cleanModelNameForError}` : '';
+
+    const generatedAssetName =
+      brandNameRaw.trim() && cleanModelNameForError
+        ? `${brandNameRaw.trim()} - ${cleanModelNameForError}`
+        : '';
 
     const serialNumber = rawRow['Serial Number'] || '';
 
@@ -167,9 +172,18 @@ export function validateRows(
     }
 
     const warrantyRaw = rawRow['Warranty Months'];
-    const warrantyMonths = warrantyRaw?.trim() ? parseInt(warrantyRaw, 10) : null;
-    if (warrantyRaw?.trim() && (isNaN(warrantyMonths!) || warrantyMonths! <= 0)) {
-      fail('TYPE', 'Warranty Months', 'Warranty Months must be a positive integer.');
+    const warrantyMonths = warrantyRaw?.trim()
+      ? parseInt(warrantyRaw, 10)
+      : null;
+    if (
+      warrantyRaw?.trim() &&
+      (isNaN(warrantyMonths!) || warrantyMonths! <= 0)
+    ) {
+      fail(
+        'TYPE',
+        'Warranty Months',
+        'Warranty Months must be a positive integer.'
+      );
       continue;
     }
 
@@ -224,7 +238,11 @@ export function validateRows(
     if (locationNameRaw?.trim()) {
       const locRef = cache.locations.get(normalize(locationNameRaw));
       if (!locRef || !locRef.isActive) {
-        fail('REFERENTIAL', 'Location Name', 'Location Name is invalid or inactive.');
+        fail(
+          'REFERENTIAL',
+          'Location Name',
+          'Location Name is invalid or inactive.'
+        );
         continue;
       }
       locationId = locRef.id;
@@ -267,7 +285,11 @@ export function validateRows(
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     if (purchaseDateObj > today) {
-      fail('BUSINESS_RULE', 'Purchase Date', 'Purchase Date cannot be in the future.');
+      fail(
+        'BUSINESS_RULE',
+        'Purchase Date',
+        'Purchase Date cannot be in the future.'
+      );
       continue;
     }
 
@@ -304,23 +326,41 @@ export function validateRows(
         if (field.inputType === 'Number') {
           const num = Number(fieldVal);
           if (isNaN(num)) {
-            fail('EAV_SCHEMA', field.fieldName, `${field.fieldName} must be a number.`);
+            fail(
+              'EAV_SCHEMA',
+              field.fieldName,
+              `${field.fieldName} must be a number.`
+            );
             eavFailed = true;
             break;
           }
           instanceAttributes[field.fieldName] = num;
         } else if (field.inputType === 'Boolean') {
           const lower = fieldVal.toLowerCase();
-          if (lower !== 'yes' && lower !== 'no' && lower !== 'true' && lower !== 'false') {
-            fail('EAV_SCHEMA', field.fieldName, `${field.fieldName} must be Yes or No.`);
+          if (
+            lower !== 'yes' &&
+            lower !== 'no' &&
+            lower !== 'true' &&
+            lower !== 'false'
+          ) {
+            fail(
+              'EAV_SCHEMA',
+              field.fieldName,
+              `${field.fieldName} must be Yes or No.`
+            );
             eavFailed = true;
             break;
           }
-          instanceAttributes[field.fieldName] = lower === 'yes' || lower === 'true';
+          instanceAttributes[field.fieldName] =
+            lower === 'yes' || lower === 'true';
         } else if (field.inputType === 'Dropdown') {
           const allowedOptions = field.options?.map((o) => normalize(o)) || [];
           if (!allowedOptions.includes(normalize(fieldVal))) {
-            fail('EAV_SCHEMA', field.fieldName, `${field.fieldName} value is invalid.`);
+            fail(
+              'EAV_SCHEMA',
+              field.fieldName,
+              `${field.fieldName} value is invalid.`
+            );
             eavFailed = true;
             break;
           }
@@ -329,17 +369,25 @@ export function validateRows(
           const normalizedVal = normalizeDateString(fieldVal);
           const dateResult = dateSchema.safeParse(normalizedVal);
           if (!dateResult.success) {
-            fail('EAV_SCHEMA', field.fieldName, dateResult.error.issues[0].message);
+            fail(
+              'EAV_SCHEMA',
+              field.fieldName,
+              dateResult.error.issues[0].message
+            );
             eavFailed = true;
             break;
           } else {
-             const d = new Date(dateResult.data);
-             if (isNaN(d.getTime())) {
-                fail('EAV_SCHEMA', field.fieldName, `${field.fieldName} must be a valid date.`);
-                eavFailed = true;
-                break;
-             }
-             instanceAttributes[field.fieldName] = normalizedVal;
+            const d = new Date(dateResult.data);
+            if (isNaN(d.getTime())) {
+              fail(
+                'EAV_SCHEMA',
+                field.fieldName,
+                `${field.fieldName} must be a valid date.`
+              );
+              eavFailed = true;
+              break;
+            }
+            instanceAttributes[field.fieldName] = normalizedVal;
           }
         } else {
           // Text
@@ -370,7 +418,8 @@ export function validateRows(
       currencyCode: currencyCode || 'LKR',
       warrantyMonths,
       notes: rawRow['Notes']?.trim() || null,
-      instanceAttributes: Object.keys(instanceAttributes).length > 0 ? instanceAttributes : null,
+      instanceAttributes:
+        Object.keys(instanceAttributes).length > 0 ? instanceAttributes : null,
     });
   }
 

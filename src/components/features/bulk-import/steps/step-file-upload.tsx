@@ -34,8 +34,10 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -44,7 +46,7 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       tiqriToast.success('Template downloaded successfully');
     } catch (error) {
       console.error('Template download error:', error);
@@ -56,14 +58,17 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
 
   const handleFileChange = (file: File | null) => {
     if (!file) return;
-    
+
     // Check file type
-    const isValidType = file.name.endsWith('.csv') || file.name.endsWith('.xlsx');
+    const isValidType =
+      file.name.endsWith('.csv') || file.name.endsWith('.xlsx');
     if (!isValidType) {
-      tiqriToast.warning('Invalid file type. Please upload a .csv or .xlsx file.');
+      tiqriToast.warning(
+        'Invalid file type. Please upload a .csv or .xlsx file.'
+      );
       return;
     }
-    
+
     // Check file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
       tiqriToast.warning('File is too large. Maximum size is 10MB.');
@@ -93,16 +98,16 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
 
   const handleValidate = async () => {
     if (!state.file || !state.categoryId) return;
-    
+
     dispatch({ type: 'START_VALIDATION' });
-    
+
     try {
       const formData = new FormData();
       formData.append('file', state.file);
       formData.append('categoryId', state.categoryId.toString());
-      
+
       const result = await parseAndValidateImport(formData);
-      
+
       if (result.success || result.summary) {
         dispatch({ type: 'VALIDATION_COMPLETE', result: result });
       } else {
@@ -110,7 +115,9 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
       }
     } catch (error) {
       console.error('Validation error:', error);
-      tiqriToast.error(error instanceof Error ? error.message : 'Failed to validate file');
+      tiqriToast.error(
+        error instanceof Error ? error.message : 'Failed to validate file'
+      );
       dispatch({ type: 'VALIDATION_FAILED' });
     }
   };
@@ -126,7 +133,6 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-col flex-1 px-8 py-6 gap-6">
-        
         {/* Template Download Card */}
         <div className="flex items-center justify-between p-4 rounded-xl border bg-card shadow-sm">
           <div className="flex items-center gap-3">
@@ -134,7 +140,9 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
               <FileSpreadsheet className="size-5" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Download the template for</p>
+              <p className="text-sm text-muted-foreground">
+                Download the template for
+              </p>
               <p className="text-sm font-semibold">{state.categoryName}</p>
             </div>
           </div>
@@ -160,9 +168,9 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
         <div
           className={cn(
             'flex flex-col flex-1 items-center justify-center p-8 border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer min-h-40',
-            isDragOver 
-              ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
-              : state.file 
+            isDragOver
+              ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+              : state.file
                 ? 'border-border bg-muted/30 border-solid cursor-default'
                 : 'border-border bg-muted/10 hover:bg-muted/30'
           )}
@@ -186,8 +194,10 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
               <p className="text-sm font-semibold max-w-50 truncate">
                 {state.file.name}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">{formatFileSize(state.file.size)}</p>
-              
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatFileSize(state.file.size)}
+              </p>
+
               <Button
                 type="button"
                 variant="ghost"
@@ -210,7 +220,10 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
                 <Upload className="size-5" />
               </div>
               <p className="text-sm text-foreground">
-                Drag & drop your file here, or <span className="font-semibold text-primary">click to browse</span>
+                Drag & drop your file here, or{' '}
+                <span className="font-semibold text-primary">
+                  click to browse
+                </span>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
                 Supports .csv and .xlsx files up to 10MB

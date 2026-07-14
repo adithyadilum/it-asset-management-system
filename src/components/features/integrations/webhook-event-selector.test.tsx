@@ -16,7 +16,7 @@ describe('WebhookEventSelector', () => {
         onSelectedEventsChange={vi.fn()}
       />
     );
-    
+
     expect(screen.getByText('Asset Lifecycle')).toBeInTheDocument();
     expect(screen.getByText('Assignments')).toBeInTheDocument();
   });

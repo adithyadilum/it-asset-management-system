@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { maintenanceTickets, assets, assetAssignments, systemAuditLogs } from '@/db/schema';
+import {
+  maintenanceTickets,
+  assets,
+  assetAssignments,
+  systemAuditLogs,
+} from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
 
@@ -17,7 +22,10 @@ export async function POST(req: Request) {
     const { assetId, issueNote } = body;
 
     if (!assetId || !issueNote) {
-      return NextResponse.json({ error: 'assetId and issueNote are required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'assetId and issueNote are required' },
+        { status: 400 }
+      );
     }
 
     const result = await db.transaction(async (tx) => {
@@ -35,15 +43,18 @@ export async function POST(req: Request) {
       const now = new Date();
 
       // Create internal maintenance ticket (this puts it in Pending Review)
-      const [newTicket] = await tx.insert(maintenanceTickets).values({
-        assetId: currentAsset.id,
-        ticketType: 'INTERNAL',
-        reportedIssue: issueNote,
-        status: 'ACTIVE',
-        dispatchedById: userId,
-        createdAt: now,
-        updatedAt: now,
-      }).returning();
+      const [newTicket] = await tx
+        .insert(maintenanceTickets)
+        .values({
+          assetId: currentAsset.id,
+          ticketType: 'INTERNAL',
+          reportedIssue: issueNote,
+          status: 'ACTIVE',
+          dispatchedById: userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
 
       if (!newTicket) {
         throw new Error('Failed to create maintenance ticket');
@@ -89,10 +100,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(result);
-
   } catch (error) {
     console.error('Error reporting issue:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

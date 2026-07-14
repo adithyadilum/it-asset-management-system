@@ -10,7 +10,8 @@ import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authentica
 
 export async function POST(req: Request) {
   const user = await getAuthenticatedMobileUserFromRequest(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const userId = user.id;
   const jti = user.jwtId;
 
@@ -19,10 +20,7 @@ export async function POST(req: Request) {
     .select()
     .from(linkedDevices)
     .where(
-      and(
-        eq(linkedDevices.jwtId, jti),
-        eq(linkedDevices.isRevoked, false)
-      )
+      and(eq(linkedDevices.jwtId, jti), eq(linkedDevices.isRevoked, false))
     )
     .limit(1);
 
@@ -47,11 +45,11 @@ export async function POST(req: Request) {
       cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER,
       useTLS: true,
     });
-    
+
     // Notify the user's web session that devices were updated
     await pusher.trigger(`user-${userId}`, 'devices_updated', {
       deviceId: device.id,
-      action: 'removed'
+      action: 'removed',
     });
   } catch (error) {
     console.error('Failed to trigger Pusher devices_updated event:', error);
@@ -71,5 +69,8 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ success: true, message: 'Device successfully unlinked' });
+  return NextResponse.json({
+    success: true,
+    message: 'Device successfully unlinked',
+  });
 }

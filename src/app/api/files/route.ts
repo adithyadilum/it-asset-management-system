@@ -4,7 +4,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
 import { serverEnv } from '@/lib/env';
 
-const SENSITIVE_PREFIXES = ['invoices/', 'warranties/', 'disposals/', 'documents/'];
+const SENSITIVE_PREFIXES = [
+  'invoices/',
+  'warranties/',
+  'disposals/',
+  'documents/',
+];
 
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUserFromRequest(request);
@@ -13,7 +18,11 @@ export async function GET(request: NextRequest) {
   }
 
   const pathname = request.nextUrl.searchParams.get('pathname');
-  if (!pathname || pathname.includes('..') || !SENSITIVE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  if (
+    !pathname ||
+    pathname.includes('..') ||
+    !SENSITIVE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  ) {
     return NextResponse.json({ error: 'Invalid pathname' }, { status: 400 });
   }
 
@@ -34,7 +43,11 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const filename = pathname.split('/').pop()?.replace(/["\r\n]/g, '') || 'download';
+  const filename =
+    pathname
+      .split('/')
+      .pop()
+      ?.replace(/["\r\n]/g, '') || 'download';
   return new NextResponse(result.stream, {
     headers: {
       'Content-Type': result.blob.contentType || 'application/octet-stream',

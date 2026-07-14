@@ -10,14 +10,15 @@ import { logAuditActionTx } from '@/lib/audit';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
 export type AllocateSoftwareResult =
-  | { success: true; allocatedCount: number }
-  | { success: false; error: string };
+  { success: true; allocatedCount: number } | { success: false; error: string };
 
 export type RevokeSoftwareAllocationResult =
-  | { success: true }
-  | { success: false; error: string };
+  { success: true } | { success: false; error: string };
 
-export async function allocateSoftwareLicensesAction(assetId: string, userIds: string[]): Promise<AllocateSoftwareResult> {
+export async function allocateSoftwareLicensesAction(
+  assetId: string,
+  userIds: string[]
+): Promise<AllocateSoftwareResult> {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
@@ -26,7 +27,10 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
   }
 
   if (!canManageAssets(currentUser.role)) {
-    return { success: false, error: 'Forbidden: You do not have permission to allocate software.' };
+    return {
+      success: false,
+      error: 'Forbidden: You do not have permission to allocate software.',
+    };
   }
 
   if (!userIds.length) {
@@ -41,8 +45,8 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
         with: {
           allocations: {
             where: (allocations, { isNull }) => isNull(allocations.revokedAt),
-          }
-        }
+          },
+        },
       });
 
       if (!license) {
@@ -54,19 +58,27 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
       const availableSeats = license.totalSeats - currentAllocations;
 
       if (userIds.length > availableSeats) {
-        throw new Error(`Cannot allocate ${userIds.length} users. Only ${availableSeats} seats available.`);
+        throw new Error(
+          `Cannot allocate ${userIds.length} users. Only ${availableSeats} seats available.`
+        );
       }
 
       // Prevent duplicates
-      const alreadyAssignedUserIds = license.allocations.map(a => a.assignedToUserId);
-      const newUsers = userIds.filter(uid => !alreadyAssignedUserIds.includes(uid));
+      const alreadyAssignedUserIds = license.allocations.map(
+        (a) => a.assignedToUserId
+      );
+      const newUsers = userIds.filter(
+        (uid) => !alreadyAssignedUserIds.includes(uid)
+      );
 
       if (!newUsers.length) {
-        throw new Error('All selected users are already allocated to this software.');
+        throw new Error(
+          'All selected users are already allocated to this software.'
+        );
       }
 
       // 3. Create allocations
-      const insertValues = newUsers.map(uid => ({
+      const insertValues = newUsers.map((uid) => ({
         licenseId: license.id,
         assignedToUserId: uid,
       }));
@@ -89,7 +101,7 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
     revalidatePath('/assets/software');
     revalidatePath('/my-assets');
     revalidateTag('dashboard-kpis', 'max');
-    
+
     return result;
   } catch (error) {
     logError({
@@ -100,7 +112,10 @@ export async function allocateSoftwareLicensesAction(assetId: string, userIds: s
 
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to allocate software licenses.'
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to allocate software licenses.',
     };
   } finally {
     logLatency({
@@ -123,7 +138,11 @@ export async function revokeSoftwareLicenseAllocationAction(
   }
 
   if (!canManageAssets(currentUser.role)) {
-    return { success: false, error: 'Forbidden: You do not have permission to revoke software allocations.' };
+    return {
+      success: false,
+      error:
+        'Forbidden: You do not have permission to revoke software allocations.',
+    };
   }
 
   if (!assetId || !userId) {
@@ -181,7 +200,10 @@ export async function revokeSoftwareLicenseAllocationAction(
 
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to revoke software allocation.',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to revoke software allocation.',
     };
   } finally {
     logLatency({

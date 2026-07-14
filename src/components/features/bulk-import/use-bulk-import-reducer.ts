@@ -30,7 +30,12 @@ export type WizardState = {
 };
 
 export type WizardAction =
-  | { type: 'SET_CATEGORY'; categoryId: number; categoryName: string; pillar: string }
+  | {
+      type: 'SET_CATEGORY';
+      categoryId: number;
+      categoryName: string;
+      pillar: string;
+    }
   | { type: 'SET_FILE'; file: File | null }
   | { type: 'START_VALIDATION' }
   | { type: 'VALIDATION_COMPLETE'; result: BulkImportPreviewResult }
@@ -38,7 +43,10 @@ export type WizardAction =
   | { type: 'GO_BACK_TO_UPLOAD' }
   | { type: 'START_EXECUTION' }
   | { type: 'UPDATE_PROGRESS'; progress: number }
-  | { type: 'EXECUTION_COMPLETE'; result: NonNullable<WizardState['executionResult']> }
+  | {
+      type: 'EXECUTION_COMPLETE';
+      result: NonNullable<WizardState['executionResult']>;
+    }
   | { type: 'RESET' };
 
 const initialState: WizardState = {

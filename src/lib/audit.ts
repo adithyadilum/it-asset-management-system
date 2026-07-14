@@ -160,20 +160,32 @@ export function extractLabelFromValues(
     if (!obj) return null;
 
     const codeKeys = [
-      'assetTag', 'asset_tag',
-      'reportCode', 'report_code',
-      'locationCode', 'location_code',
-      'categoryCode', 'category_code',
-      'brandCode', 'brand_code',
-      'modelCode', 'model_code',
-      'vendorCode', 'vendor_code',
-      'ownerCode', 'owner_code',
-      'departmentCode', 'department_code',
-      'code'
+      'assetTag',
+      'asset_tag',
+      'reportCode',
+      'report_code',
+      'locationCode',
+      'location_code',
+      'categoryCode',
+      'category_code',
+      'brandCode',
+      'brand_code',
+      'modelCode',
+      'model_code',
+      'vendorCode',
+      'vendor_code',
+      'ownerCode',
+      'owner_code',
+      'departmentCode',
+      'department_code',
+      'code',
     ];
     let code: string | null = null;
     for (const key of codeKeys) {
-      if (typeof obj[key] === 'string' && (obj[key] as string).trim().length > 0) {
+      if (
+        typeof obj[key] === 'string' &&
+        (obj[key] as string).trim().length > 0
+      ) {
         code = (obj[key] as string).trim();
         break;
       }
@@ -182,7 +194,10 @@ export function extractLabelFromValues(
     const nameKeys = ['name', 'companyName', 'company_name', 'email'];
     let name: string | null = null;
     for (const key of nameKeys) {
-      if (typeof obj[key] === 'string' && (obj[key] as string).trim().length > 0) {
+      if (
+        typeof obj[key] === 'string' &&
+        (obj[key] as string).trim().length > 0
+      ) {
         name = (obj[key] as string).trim();
         break;
       }
@@ -202,4 +217,3 @@ export function extractLabelFromValues(
 
   return null;
 }
-

@@ -61,7 +61,10 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
     if (result.errors.length > 0) {
       // Only throw if it's not just a trailing empty line parsing error
       const nonTrivialErrors = result.errors.filter(
-        (err) => err.code !== 'TooManyFields' && err.code !== 'TooFewFields' && err.code !== 'UndetectableDelimiter'
+        (err) =>
+          err.code !== 'TooManyFields' &&
+          err.code !== 'TooFewFields' &&
+          err.code !== 'UndetectableDelimiter'
       );
       if (nonTrivialErrors.length > 0) {
         const firstError = nonTrivialErrors[0];
@@ -83,7 +86,8 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
       } else {
         const trimmedRow: Record<string, string> = {};
         for (const [key, value] of Object.entries(row)) {
-          trimmedRow[key] = (value && typeof value === 'string') ? value.trim() : '';
+          trimmedRow[key] =
+            value && typeof value === 'string' ? value.trim() : '';
         }
         rows.push(trimmedRow);
       }
@@ -110,16 +114,19 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
       let isEmpty = true;
       const rowData: Record<string, string> = {};
 
-      row.eachCell({ includeEmpty: true }, (cell: ExcelJS.Cell, colNumber: number) => {
-        const header = headers[colNumber - 1];
-        if (header) {
-          const textValue = getCellStringValue(cell);
-          rowData[header] = textValue;
-          if (textValue !== '') {
-            isEmpty = false;
+      row.eachCell(
+        { includeEmpty: true },
+        (cell: ExcelJS.Cell, colNumber: number) => {
+          const header = headers[colNumber - 1];
+          if (header) {
+            const textValue = getCellStringValue(cell);
+            rowData[header] = textValue;
+            if (textValue !== '') {
+              isEmpty = false;
+            }
           }
         }
-      });
+      );
 
       // Fill in missing headers with empty strings
       headers.forEach((h) => {

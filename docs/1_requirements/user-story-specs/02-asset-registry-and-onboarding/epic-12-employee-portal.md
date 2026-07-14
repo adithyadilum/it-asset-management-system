@@ -14,8 +14,8 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 
 ## Out of Scope / Limitations
 
-- Self-Service Requests: The ability for an employee to browse a catalog and request *new* assets is deferred to a future epic.
-- Notification Delivery Infrastructure: While this epic defines the *business rules and triggers* for when alerts should happen (e.g., storing items in the `notification_queue`), the actual email/Slack integration is deferred.
+- Self-Service Requests: The ability for an employee to browse a catalog and request _new_ assets is deferred to a future epic.
+- Notification Delivery Infrastructure: While this epic defines the _business rules and triggers_ for when alerts should happen (e.g., storing items in the `notification_queue`), the actual email/Slack integration is deferred.
 
 ## Assumptions & Dependencies
 
@@ -56,11 +56,13 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Implement the role-aware Sidebar component that filters the standard navigation.
 - [x] Implement post-login routing logic directing `Employee` roles to `/my-assets`.
 - [x] Reuse the `403 Forbidden` error page component from Epic 2 for route interception.
 
 #### Backend
+
 - [x] Write strict backend guards ensuring all admin server actions (`getAssetsByPillar`, `getAssetDetailsById`, etc.) validate the JWT role and throw `Unauthorized` errors for Employees.
 
 ---
@@ -97,12 +99,14 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the `MyAssetsPage` layout with a responsive CSS Grid.
 - [x] Build the `AssetCard` component displaying asset type icon, model name, status badge, and assigned date.
 - [x] Build the `getAssetPresentation` utility to dynamically map DB pillars to React `lucide` icons.
 - [x] Implement the `<Empty>` state fallback for users with 0 records.
 
 #### Backend
+
 - [x] Create the `getCurrentEmployeeAssets` Server Action fetching only records `WHERE assignedToUserId = currentUser.id` and filtering for specific valid states (`assigned`, `overdue`, `requested`).
 
 ---
@@ -139,10 +143,12 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the `EmployeeAlerts` banner component integrating with the portal notification store.
 - [x] Provide UI workflows for both Acceptance and Rejection with modal confirmations.
 
 #### Backend
+
 - [x] Build `acceptAssignmentAction` managing atomic updates for assignments and the notification queue.
 - [x] Build `rejectAssignmentAction` including Zod validation for the mandatory rejection reason string.
 - [x] Wire up Drizzle ORM transactions to guarantee state synchronicity between the `assets`, `asset_assignments`, and `notification_queue` tables.
@@ -167,7 +173,9 @@ This epic builds the Employee Portal, a simplified and highly restricted view of
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Integrate the return reminder UI via the generic `EmployeeAlerts` wrapper.
 
 #### Backend
+
 - [x] Implement the `getPortalAlertsAction` resolving active alerts from the database for the specific user.

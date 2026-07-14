@@ -56,7 +56,12 @@ async function verifyTokenAndRole(request: NextRequest) {
       return null;
     }
 
-    return { role, sub: token.id as string | undefined, isAccessTokenFresh, isActive: token.isActive as boolean ?? true };
+    return {
+      role,
+      sub: token.id as string | undefined,
+      isAccessTokenFresh,
+      isActive: (token.isActive as boolean) ?? true,
+    };
   } finally {
     logLatency({
       scope: 'PROXY AUTH',
@@ -65,8 +70,6 @@ async function verifyTokenAndRole(request: NextRequest) {
     });
   }
 }
-
-
 
 function getTopLevelSegment(pathname: string) {
   return pathname.split('/').filter(Boolean)[0] ?? null;
@@ -197,7 +200,9 @@ export async function proxy(request: NextRequest) {
 
     // Re-enabled users shouldn't stay on the disabled page.
     if (payload && payload.isActive && isAccountDisabledRoute) {
-      return NextResponse.redirect(new URL(DEFAULT_POST_LOGIN_REDIRECT, request.url));
+      return NextResponse.redirect(
+        new URL(DEFAULT_POST_LOGIN_REDIRECT, request.url)
+      );
     }
 
     if (payload && isProtectedRoute) {
@@ -214,7 +219,12 @@ export async function proxy(request: NextRequest) {
       }
 
       // Employees don't have a dashboard — send them to /my-assets.
-      if (payload.role === 'Employee' && (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/')) {
+      if (
+        payload.role === 'Employee' &&
+        (pathname === '/' ||
+          pathname === '/dashboard' ||
+          pathname === '/dashboard/')
+      ) {
         return NextResponse.redirect(new URL('/my-assets', request.url));
       }
 
@@ -242,7 +252,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
- matcher: [
+  matcher: [
     // All paths except API routes, static assets, and PWA files.
     '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons).*)',
   ],

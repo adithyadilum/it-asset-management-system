@@ -35,14 +35,21 @@ vi.mock('@/db', () => ({
     transaction: vi.fn((cb) => cb(db)),
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
-        returning: vi.fn().mockResolvedValue([{ id: 'mock-uuid', assetTag: 'HRW-001' }]),
+        returning: vi
+          .fn()
+          .mockResolvedValue([{ id: 'mock-uuid', assetTag: 'HRW-001' }]),
       })),
     })),
   },
 }));
 
 vi.mock('@/lib/api/rate-limiter', () => ({
-  applyPreAuthRateLimit: vi.fn().mockResolvedValue({ success: true, limit: 20, remaining: 19, reset: 1234 }),
+  applyPreAuthRateLimit: vi.fn().mockResolvedValue({
+    success: true,
+    limit: 20,
+    remaining: 19,
+    reset: 1234,
+  }),
   applyRateLimit: vi.fn(),
   injectRateLimitHeaders: vi.fn((resp) => resp),
 }));
@@ -78,7 +85,12 @@ function createSelectChain(result: unknown) {
   return chain;
 }
 
-function createRequest(url: string, method = 'GET', authHeader?: string, body?: string): NextRequest {
+function createRequest(
+  url: string,
+  method = 'GET',
+  authHeader?: string,
+  body?: string
+): NextRequest {
   const headers = new Headers();
   if (authHeader) headers.set('authorization', authHeader);
   return {
@@ -115,7 +127,12 @@ describe('External API Endpoints Scoping', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(applyRateLimit).mockResolvedValue({ success: true, limit: 100, remaining: 99, reset: 1234 });
+    vi.mocked(applyRateLimit).mockResolvedValue({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
   });
 
   describe('GET /api/v1/external/users', () => {
@@ -125,7 +142,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:assets'], // Missing read:users
       });
 
-      const req = createRequest('http://localhost/api/v1/external/users', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/users',
+        'GET',
+        authHeader
+      );
       const res = await getUsers(req, {});
       expect(res.status).toBe(403);
       const body = await res.json();
@@ -142,9 +163,13 @@ describe('External API Endpoints Scoping', () => {
       const dbSelectMock = db.select as unknown as ReturnType<typeof vi.fn>;
       dbSelectMock
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }])) // First call: count
-        .mockImplementationOnce(() => createSelectChain(mockUsers));      // Second call: users list
+        .mockImplementationOnce(() => createSelectChain(mockUsers)); // Second call: users list
 
-      const req = createRequest('http://localhost/api/v1/external/users', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/users',
+        'GET',
+        authHeader
+      );
       const res = await getUsers(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -160,7 +185,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:users'], // Missing read:maintenance
       });
 
-      const req = createRequest('http://localhost/api/v1/external/maintenance', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/maintenance',
+        'GET',
+        authHeader
+      );
       const res = await getMaintenance(req, {});
       expect(res.status).toBe(403);
     });
@@ -171,13 +200,19 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:maintenance'],
       });
 
-      const mockTickets = [{ id: 1, status: 'ACTIVE', reportedIssue: 'Broken Screen' }];
+      const mockTickets = [
+        { id: 1, status: 'ACTIVE', reportedIssue: 'Broken Screen' },
+      ];
       const dbSelectMock = db.select as unknown as ReturnType<typeof vi.fn>;
       dbSelectMock
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }]))
         .mockImplementationOnce(() => createSelectChain(mockTickets));
 
-      const req = createRequest('http://localhost/api/v1/external/maintenance', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/maintenance',
+        'GET',
+        authHeader
+      );
       const res = await getMaintenance(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -192,7 +227,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:users'],
       });
 
-      const req = createRequest('http://localhost/api/v1/external/disposals', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/disposals',
+        'GET',
+        authHeader
+      );
       const res = await getDisposals(req, {});
       expect(res.status).toBe(403);
     });
@@ -203,13 +242,19 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:disposals'],
       });
 
-      const mockDisposals = [{ id: 1, status: 'Pending Approval', reason: 'Old age' }];
+      const mockDisposals = [
+        { id: 1, status: 'Pending Approval', reason: 'Old age' },
+      ];
       const dbSelectMock = db.select as unknown as ReturnType<typeof vi.fn>;
       dbSelectMock
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }]))
         .mockImplementationOnce(() => createSelectChain(mockDisposals));
 
-      const req = createRequest('http://localhost/api/v1/external/disposals', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/disposals',
+        'GET',
+        authHeader
+      );
       const res = await getDisposals(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -224,7 +269,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:users'],
       });
 
-      const req = createRequest('http://localhost/api/v1/external/financials', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/financials',
+        'GET',
+        authHeader
+      );
       const res = await getFinancials(req, {});
       expect(res.status).toBe(403);
     });
@@ -256,7 +305,11 @@ describe('External API Endpoints Scoping', () => {
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }]))
         .mockImplementationOnce(() => createSelectChain(mockFinancials));
 
-      const req = createRequest('http://localhost/api/v1/external/financials', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/financials',
+        'GET',
+        authHeader
+      );
       const res = await getFinancials(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -284,7 +337,12 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:assets'], // Missing write:assets
       });
 
-      const req = createRequest('http://localhost/api/v1/external/assets', 'POST', authHeader, validAssetBody);
+      const req = createRequest(
+        'http://localhost/api/v1/external/assets',
+        'POST',
+        authHeader,
+        validAssetBody
+      );
       const res = await postAssets(req, {});
       expect(res.status).toBe(403);
     });
@@ -310,7 +368,12 @@ describe('External API Endpoints Scoping', () => {
         where: vi.fn().mockResolvedValue([{ value: 0 }]),
       }));
 
-      const req = createRequest('http://localhost/api/v1/external/assets', 'POST', authHeader, validAssetBody);
+      const req = createRequest(
+        'http://localhost/api/v1/external/assets',
+        'POST',
+        authHeader,
+        validAssetBody
+      );
       const res = await postAssets(req, {});
 
       expect(res.status).toBe(201);
@@ -330,7 +393,12 @@ describe('External API Endpoints Scoping', () => {
         name: '', // Empty name triggers validation failure
       });
 
-      const req = createRequest('http://localhost/api/v1/external/assets', 'POST', authHeader, invalidBody);
+      const req = createRequest(
+        'http://localhost/api/v1/external/assets',
+        'POST',
+        authHeader,
+        invalidBody
+      );
       const res = await postAssets(req, {});
 
       expect(res.status).toBe(400);

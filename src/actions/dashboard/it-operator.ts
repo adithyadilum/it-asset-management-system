@@ -1,7 +1,7 @@
 'use server';
 
-import {  enforceActionAccess } from '@/actions/auth';
-import {  isITOperator } from '@/lib/auth/roles';
+import { enforceActionAccess } from '@/actions/auth';
+import { isITOperator } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -37,7 +37,6 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
     getHighMaintenanceAssetsInternal(),
   ]);
 
-
   const kpiMetrics: DashboardKpiMetrics =
     results[0].status === 'fulfilled'
       ? results[0].value
@@ -51,7 +50,6 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
           softwareRenewals30Days: 0,
           impactedSoftwareEmployees: 0,
         };
-
 
   const filteredKpiMetrics: DashboardKpiMetrics = {
     totalActiveAssets: kpiMetrics.totalActiveAssets,
@@ -71,10 +69,16 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
         ? results[1].value
         : { inventoryData: [], utilizationRate: 0 },
     departmentAllocation:
-      results[2].status === 'fulfilled' ? (results[2].value as DepartmentAllocationItem[]) : [],
+      results[2].status === 'fulfilled'
+        ? (results[2].value as DepartmentAllocationItem[])
+        : [],
     overdueReturns:
-      results[3].status === 'fulfilled' ? (results[3].value as OverdueReturnRow[]) : [],
+      results[3].status === 'fulfilled'
+        ? (results[3].value as OverdueReturnRow[])
+        : [],
     highMaintenanceAssets:
-      results[4].status === 'fulfilled' ? (results[4].value as HighMaintenanceRow[]) : [],
+      results[4].status === 'fulfilled'
+        ? (results[4].value as HighMaintenanceRow[])
+        : [],
   };
-}
+}

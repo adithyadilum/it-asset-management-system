@@ -1,65 +1,85 @@
-"use client";
+'use client';
 
-import { useState, useMemo, useCallback } from "react";
-import { toast } from "sonner";
-import type { RowSelectionState } from "@tanstack/react-table";
+import { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
+import type { RowSelectionState } from '@tanstack/react-table';
 import {
   sendAssignmentReminderAction,
   requestAssetReturnAction,
   markAssetReceivedAction,
-} from "@/actions/assignments";
-import type { AppliedFilter, FilterFieldConfig } from "@/components/shared/filter-bar";
-import type { DataTableSelectionAction } from "@/components/shared/data-table";
-import type { AssignmentsDashboardData, AssignmentsDashboardRow } from "@/lib/data/operations-assignments-repo";
-import type { AssetAssignmentRow } from "./assignments-table";
-import type { MultiAssetAssignmentItem } from "./multi-asset-assignment-modal";
+} from '@/actions/assignments';
+import type {
+  AppliedFilter,
+  FilterFieldConfig,
+} from '@/components/shared/filter-bar';
+import type { DataTableSelectionAction } from '@/components/shared/data-table';
+import type {
+  AssignmentsDashboardData,
+  AssignmentsDashboardRow,
+} from '@/lib/data/operations-assignments-repo';
+import type { AssetAssignmentRow } from './assignments-table';
+import type { MultiAssetAssignmentItem } from './multi-asset-assignment-modal';
 
 function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
+  if (!date) return '-';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
   });
 }
 
 export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
-  const [searchValue, setSearchValue] = useState("");
+  const [searchValue, setSearchValue] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const [isMultiAssignModalOpen, setIsMultiAssignModalOpen] = useState(false);
-  const [multiAssignAssets, setMultiAssignAssets] = useState<MultiAssetAssignmentItem[]>([]);
+  const [multiAssignAssets, setMultiAssignAssets] = useState<
+    MultiAssetAssignmentItem[]
+  >([]);
 
-  const mapRow = useCallback((asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
-    assetId: asset.id,
-    assetName: asset.name ?? asset.assetTag,
-    serialNumber: asset.serialNumber ?? "-",
-    category: asset.category,
-    status: asset.status,
-    model: "-",
-    brand: "-",
-    owner: "-",
-    group: asset.pillar,
-    assignedTo: asset.assignedTo ?? "-",
-    department: asset.pillar,
-    assignedDate: formatDate(asset.assignedDate),
-    expectedReturnDate: formatDate(asset.expectedReturnDate),
-    dateCreated: formatDate(asset.createdAt),
-    updatedAt: formatDate(asset.updatedAt),
-    warranty: "-",
-    lastRepaired: "-",
-    note: asset.location ?? "-",
-    assetTag: asset.assetTag,
-    state: asset.state,
-    assignmentId: asset.assignmentId ?? undefined,
-  }), []);
+  const mapRow = useCallback(
+    (asset: AssignmentsDashboardRow): AssetAssignmentRow => ({
+      assetId: asset.id,
+      assetName: asset.name ?? asset.assetTag,
+      serialNumber: asset.serialNumber ?? '-',
+      category: asset.category,
+      status: asset.status,
+      model: '-',
+      brand: '-',
+      owner: '-',
+      group: asset.pillar,
+      assignedTo: asset.assignedTo ?? '-',
+      department: asset.pillar,
+      assignedDate: formatDate(asset.assignedDate),
+      expectedReturnDate: formatDate(asset.expectedReturnDate),
+      dateCreated: formatDate(asset.createdAt),
+      updatedAt: formatDate(asset.updatedAt),
+      warranty: '-',
+      lastRepaired: '-',
+      note: asset.location ?? '-',
+      assetTag: asset.assetTag,
+      state: asset.state,
+      assignmentId: asset.assignmentId ?? undefined,
+    }),
+    []
+  );
 
-  const availableRows = useMemo(() => data.available.map(mapRow), [data.available, mapRow]);
-  const assignedRows = useMemo(() => data.assigned.map(mapRow), [data.assigned, mapRow]);
-  const returnedRows = useMemo(() => data.returned.map(mapRow), [data.returned, mapRow]);
+  const availableRows = useMemo(
+    () => data.available.map(mapRow),
+    [data.available, mapRow]
+  );
+  const assignedRows = useMemo(
+    () => data.assigned.map(mapRow),
+    [data.assigned, mapRow]
+  );
+  const returnedRows = useMemo(
+    () => data.returned.map(mapRow),
+    [data.returned, mapRow]
+  );
 
   const assetRows = useMemo(
     () => [...availableRows, ...assignedRows, ...returnedRows],
@@ -86,10 +106,13 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
     return [...statuses].sort((left, right) => left.localeCompare(right));
   }, [assetRows]);
 
-  const filterFieldConfigs: FilterFieldConfig[] = useMemo(() => [
-    { value: 'Category', label: 'Category', options: categoryOptions },
-    { value: 'Status', label: 'Status', options: statusOptions },
-  ], [categoryOptions, statusOptions]);
+  const filterFieldConfigs: FilterFieldConfig[] = useMemo(
+    () => [
+      { value: 'Category', label: 'Category', options: categoryOptions },
+      { value: 'Status', label: 'Status', options: statusOptions },
+    ],
+    [categoryOptions, statusOptions]
+  );
 
   const searchedAssetRows = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -116,11 +139,11 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
       return appliedFilters.every((filter) => {
         if (filter.field === 'Category') {
           const matches = row.category === filter.value;
-          return filter.operator === "is" ? matches : !matches;
+          return filter.operator === 'is' ? matches : !matches;
         }
         if (filter.field === 'Status') {
           const matches = row.state === filter.value;
-          return filter.operator === "is" ? matches : !matches;
+          return filter.operator === 'is' ? matches : !matches;
         }
         return true;
       });
@@ -128,17 +151,28 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
   }, [searchedAssetRows, appliedFilters]);
 
   const filteredAvailableRows = useMemo(
-    () => filteredAssetRows.filter((row) => availableRows.some((availableRow) => availableRow.assetId === row.assetId)),
+    () =>
+      filteredAssetRows.filter((row) =>
+        availableRows.some(
+          (availableRow) => availableRow.assetId === row.assetId
+        )
+      ),
     [availableRows, filteredAssetRows]
   );
 
   const filteredAssignedRows = useMemo(
-    () => filteredAssetRows.filter((row) => assignedRows.some((assignedRow) => assignedRow.assetId === row.assetId)),
+    () =>
+      filteredAssetRows.filter((row) =>
+        assignedRows.some((assignedRow) => assignedRow.assetId === row.assetId)
+      ),
     [assignedRows, filteredAssetRows]
   );
 
   const filteredReturnedRows = useMemo(
-    () => filteredAssetRows.filter((row) => returnedRows.some((returnedRow) => returnedRow.assetId === row.assetId)),
+    () =>
+      filteredAssetRows.filter((row) =>
+        returnedRows.some((returnedRow) => returnedRow.assetId === row.assetId)
+      ),
     [filteredAssetRows, returnedRows]
   );
 
@@ -149,41 +183,66 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
       .filter(Boolean);
   }, [rowSelection, filteredAssignedRows]);
 
-  const hasReminderCandidates = useMemo(() => selectedAssignedRows.some(r => ["pending approval", "overdue"].includes(r.state)), [selectedAssignedRows]);
-  const hasMarkReceivedCandidates = useMemo(() => selectedAssignedRows.some(r => ["requested", "overdue"].includes(r.state)), [selectedAssignedRows]);
-  const hasRequestAgainCandidates = useMemo(() => selectedAssignedRows.some(r => r.state === "requested"), [selectedAssignedRows]);
-  const hasReturnCandidates = useMemo(() => selectedAssignedRows.some(r => r.state === "assigned"), [selectedAssignedRows]);
+  const hasReminderCandidates = useMemo(
+    () =>
+      selectedAssignedRows.some((r) =>
+        ['pending approval', 'overdue'].includes(r.state)
+      ),
+    [selectedAssignedRows]
+  );
+  const hasMarkReceivedCandidates = useMemo(
+    () =>
+      selectedAssignedRows.some((r) =>
+        ['requested', 'overdue'].includes(r.state)
+      ),
+    [selectedAssignedRows]
+  );
+  const hasRequestAgainCandidates = useMemo(
+    () => selectedAssignedRows.some((r) => r.state === 'requested'),
+    [selectedAssignedRows]
+  );
+  const hasReturnCandidates = useMemo(
+    () => selectedAssignedRows.some((r) => r.state === 'assigned'),
+    [selectedAssignedRows]
+  );
 
-  const selectionActionsAvailable = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(() => [
-    {
-      id: "assign-assets",
-      label: "Assign Assets",
-      tone: "primary",
-      onClick: (selectedRows) => {
-        setMultiAssignAssets(
-          selectedRows.map((row) => ({
-            assetId: row.assetId,
-            assetTag: row.assetTag,
-            assetName: row.assetName,
-            assetGroup: row.group,
-          }))
-        );
-        setIsMultiAssignModalOpen(true);
+  const selectionActionsAvailable = useMemo<
+    DataTableSelectionAction<AssetAssignmentRow>[]
+  >(
+    () => [
+      {
+        id: 'assign-assets',
+        label: 'Assign Assets',
+        tone: 'primary',
+        onClick: (selectedRows) => {
+          setMultiAssignAssets(
+            selectedRows.map((row) => ({
+              assetId: row.assetId,
+              assetTag: row.assetTag,
+              assetName: row.assetName,
+              assetGroup: row.group,
+            }))
+          );
+          setIsMultiAssignModalOpen(true);
+        },
       },
-    },
-  ], []);
+    ],
+    []
+  );
 
-  const selectionActionsAssigned = useMemo<DataTableSelectionAction<AssetAssignmentRow>[]>(() => {
+  const selectionActionsAssigned = useMemo<
+    DataTableSelectionAction<AssetAssignmentRow>[]
+  >(() => {
     const actions: DataTableSelectionAction<AssetAssignmentRow>[] = [];
 
     if (hasMarkReceivedCandidates) {
       actions.push({
-        id: "mark-received",
-        label: "Returned",
-        tone: "secondary",
+        id: 'mark-received',
+        label: 'Returned',
+        tone: 'secondary',
         onClick: async (selectedRows) => {
           const ids = selectedRows
-            .filter((r) => ["requested", "overdue"].includes(r.state))
+            .filter((r) => ['requested', 'overdue'].includes(r.state))
             .map((r) => r.assignmentId)
             .filter((id): id is number => id !== undefined);
 
@@ -194,7 +253,7 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
             toast.success(`${ids.length} assets marked as returned`);
             setRowSelection({});
           } else {
-            toast.error(result.error || "Failed to mark as returned");
+            toast.error(result.error || 'Failed to mark as returned');
           }
         },
       });
@@ -202,12 +261,12 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
 
     if (hasRequestAgainCandidates) {
       actions.push({
-        id: "request-again",
-        label: "Request Again",
-        tone: "secondary",
+        id: 'request-again',
+        label: 'Request Again',
+        tone: 'secondary',
         onClick: async (selectedRows) => {
           const ids = selectedRows
-            .filter((r) => r.state === "requested")
+            .filter((r) => r.state === 'requested')
             .map((r) => r.assignmentId)
             .filter((id): id is number => id !== undefined);
 
@@ -218,7 +277,7 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
             toast.success(`Return re-requested for ${ids.length} assets`);
             setRowSelection({});
           } else {
-            toast.error(result.error || "Failed to re-request return");
+            toast.error(result.error || 'Failed to re-request return');
           }
         },
       });
@@ -226,12 +285,12 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
 
     if (hasReminderCandidates) {
       actions.push({
-        id: "send-reminder",
-        label: "Send Reminder",
-        tone: "primary",
+        id: 'send-reminder',
+        label: 'Send Reminder',
+        tone: 'primary',
         onClick: async (selectedRows) => {
           const reminderIds = selectedRows
-            .filter((r) => ["pending approval", "overdue"].includes(r.state))
+            .filter((r) => ['pending approval', 'overdue'].includes(r.state))
             .map((r) => r.assignmentId)
             .filter((id): id is number => id !== undefined);
 
@@ -242,7 +301,7 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
             toast.success(`Reminder sent for ${reminderIds.length} assets`);
             setRowSelection({});
           } else {
-            toast.error(result.error || "Failed to send reminders");
+            toast.error(result.error || 'Failed to send reminders');
           }
         },
       });
@@ -250,12 +309,12 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
 
     if (hasReturnCandidates) {
       actions.push({
-        id: "request-return",
-        label: "Request Return",
-        tone: "primary",
+        id: 'request-return',
+        label: 'Request Return',
+        tone: 'primary',
         onClick: async (selectedRows) => {
           const returnIds = selectedRows
-            .filter((r) => r.state === "assigned")
+            .filter((r) => r.state === 'assigned')
             .map((r) => r.assignmentId)
             .filter((id): id is number => id !== undefined);
 
@@ -266,24 +325,33 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
             toast.success(`Return requested for ${returnIds.length} assets`);
             setRowSelection({});
           } else {
-            toast.error(result.error || "Failed to request return");
+            toast.error(result.error || 'Failed to request return');
           }
         },
       });
     }
 
     return actions;
-  }, [hasReminderCandidates, hasMarkReceivedCandidates, hasRequestAgainCandidates, hasReturnCandidates]);
+  }, [
+    hasReminderCandidates,
+    hasMarkReceivedCandidates,
+    hasRequestAgainCandidates,
+    hasReturnCandidates,
+  ]);
 
   const applyFilter = useCallback((nextFilter: AppliedFilter) => {
     setAppliedFilters((currentFilters) => {
-      const withoutCurrentField = currentFilters.filter((f) => f.field !== nextFilter.field);
+      const withoutCurrentField = currentFilters.filter(
+        (f) => f.field !== nextFilter.field
+      );
       return [...withoutCurrentField, nextFilter];
     });
   }, []);
 
   const clearFilter = useCallback((field: string) => {
-    setAppliedFilters((currentFilters) => currentFilters.filter((f) => f.field !== field));
+    setAppliedFilters((currentFilters) =>
+      currentFilters.filter((f) => f.field !== field)
+    );
   }, []);
 
   const clearAllFilters = useCallback(() => {

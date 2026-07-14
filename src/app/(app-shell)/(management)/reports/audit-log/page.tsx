@@ -1,10 +1,10 @@
-import AuditLogClient from "@/components/features/system-audit-log/audit-log-client";
-import { getAuditLogs } from "@/actions/audit-log";
-import { requirePageAuth } from "@/lib/auth/page-guard";
+import AuditLogClient from '@/components/features/system-audit-log/audit-log-client';
+import { getAuditLogs } from '@/actions/audit-log';
+import { requirePageAuth } from '@/lib/auth/page-guard';
 
 export default async function AuditLogPage() {
   await requirePageAuth(
-    (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor',
+    (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor'
   );
 
   const initialResult = await getAuditLogs({ page: 1, pageSize: 16 });
@@ -14,4 +14,4 @@ export default async function AuditLogPage() {
       <AuditLogClient initialResult={initialResult} />
     </div>
   );
-}
+}

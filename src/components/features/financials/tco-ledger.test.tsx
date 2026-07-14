@@ -28,7 +28,11 @@ describe('TCOLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<CurrencyProvider initialCurrency="USD"><TCOLedger initialData={mockData} /></CurrencyProvider>);
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <TCOLedger initialData={mockData} />
+      </CurrencyProvider>
+    );
     expect(screen.getByText('AST-002')).toBeInTheDocument();
     expect(screen.getByText('Servers')).toBeInTheDocument();
   });

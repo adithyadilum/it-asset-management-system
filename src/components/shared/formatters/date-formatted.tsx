@@ -27,7 +27,7 @@ export function DateFormatted({
   }
 
   const parsedDate = new Date(date);
-  
+
   if (Number.isNaN(parsedDate.getTime())) {
     return <span {...props}>{fallback}</span>;
   }

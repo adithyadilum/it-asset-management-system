@@ -2,7 +2,7 @@
 
 ## Summary
 
-This epic focuses entirely on establishing the front door of the asset management platform. It implements secure authentication using Keycloak as a federated Identity Provider (IdP) via NextAuth.js. This ensures employees can easily access the system using existing credentials while blocking unauthorized outsiders and inactive employees. 
+This epic focuses entirely on establishing the front door of the asset management platform. It implements secure authentication using Keycloak as a federated Identity Provider (IdP) via NextAuth.js. This ensures employees can easily access the system using existing credentials while blocking unauthorized outsiders and inactive employees.
 
 By leveraging NextAuth.js, Server Actions, and Postgres advisory locks, the system guarantees a secure, robust session lifecycle spanning from Just-in-Time (JIT) user provisioning to concurrent token refreshes in a multi-worker environment.
 
@@ -80,11 +80,13 @@ By leveraging NextAuth.js, Server Actions, and Postgres advisory locks, the syst
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the responsive `/login` Next.js route page with a centralized login card.
 - [x] Implement the `signIn('keycloak')` action from NextAuth.js handling try/catch.
 - [x] Handle deep link redirection by utilizing and sanitizing the `redirectTo` query parameter.
 
 #### Backend
+
 - [x] Configure `NextAuthOptions` with the Keycloak Provider utilizing environment variables (`KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ISSUER`).
 - [x] Implement `signIn` NextAuth callback to handle Just-in-Time (JIT) provisioning.
 - [x] On successful Keycloak authentication, verify if the user exists in the local PostgreSQL database using Drizzle ORM.
@@ -114,6 +116,7 @@ By leveraging NextAuth.js, Server Actions, and Postgres advisory locks, the syst
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] In the NextAuth `signIn` callback, check the `isActive` flag on the existing local user record.
 - [x] If `!existingUser.isActive`, return `false` to reject the authentication attempt immediately.
 - [x] Secure all `(app-shell)` routes using a server-side layout check (`getAuthenticatedUser()`).
@@ -154,6 +157,7 @@ By leveraging NextAuth.js, Server Actions, and Postgres advisory locks, the syst
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Implement `jwt` callback in `NextAuthOptions` to track the token expiration time and evaluate against a 60-second buffer.
 - [x] Build a reliable `refreshAccessToken` function that negotiates new tokens with the Keycloak `/protocol/openid-connect/token` endpoint.
 - [x] Store refresh tokens securely in a server-side `userRefreshTokens` database table upon initial login.
@@ -190,12 +194,14 @@ By leveraging NextAuth.js, Server Actions, and Postgres advisory locks, the syst
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Construct the `(app-shell)/layout.tsx` to include the `AppSidebar` and `TopHeader`.
 - [x] Extract user data from the NextAuth session via the custom `getAuthenticatedUser()` server action and pass it to the UI shell.
 - [x] Implement logout using the `signOut({ redirect: false })` NextAuth function.
 - [x] Navigate the browser explicitly to the federated logout URL upon local sign out.
 
 #### Backend
+
 - [x] Ensure the `session` NextAuth callback populates user role, ID, email, and name correctly for client-side components.
 - [x] Implement a `getFederatedLogoutUrl()` server action to build the Keycloak `/protocol/openid-connect/logout` URL containing the `id_token_hint` and `post_logout_redirect_uri`.
 - [x] Ensure all sign-outs are recorded securely in the audit log via `logAuditAction()` before clearing the session.

@@ -1,10 +1,13 @@
-"use client";
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+'use client';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
-import * as React from "react";
+import * as React from 'react';
 
-import { SlidePanel, type SlidePanelAction } from "@/components/shared/slide-panel";
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
+import {
+  SlidePanel,
+  type SlidePanelAction,
+} from '@/components/shared/slide-panel';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface FormPanelProps {
   isOpen: boolean;
@@ -30,24 +33,24 @@ export function FormPanel({
   children,
   onSubmit,
   isSubmitting = false,
-  submitLabel = "Submit",
-  submittingLabel = "Submitting...",
-  cancelLabel = "Cancel",
+  submitLabel = 'Submit',
+  submittingLabel = 'Submitting...',
+  cancelLabel = 'Cancel',
   showCloseButton = true,
 }: FormPanelProps) {
   const formRef = React.useRef<HTMLFormElement>(null);
 
   const actions: SlidePanelAction[] = [
     {
-      id: "cancel",
+      id: 'cancel',
       label: cancelLabel,
-      variant: "outline",
+      variant: 'outline',
       onClick: () => onClose(false),
       disabled: isSubmitting,
       ariaLabel: cancelLabel,
     },
     {
-      id: "submit",
+      id: 'submit',
       label: isSubmitting ? (
         <span className="inline-flex items-center gap-2">
           <LoadingSpinner size="sm" />
@@ -67,7 +70,9 @@ export function FormPanel({
       {React.Children.count(children) > 0 ? (
         children
       ) : (
-        <div className={`rounded-md bg-muted p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+        <div
+          className={`rounded-md bg-muted p-3 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+        >
           Add form fields as children to the FormPanel component.
         </div>
       )}

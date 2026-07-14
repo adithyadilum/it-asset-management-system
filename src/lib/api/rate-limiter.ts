@@ -1,48 +1,55 @@
-import { Ratelimit } from '@upstash/ratelimit'
-import { Redis } from '@upstash/redis'
-import { serverEnv } from '@/lib/env'
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+import { serverEnv } from '@/lib/env';
 
-let ratelimitInstance: Ratelimit | null = null
-let preAuthRateLimitInstance: Ratelimit | null = null
+let ratelimitInstance: Ratelimit | null = null;
+let preAuthRateLimitInstance: Ratelimit | null = null;
 
 export function getRateLimiter(): Ratelimit {
   if (!ratelimitInstance) {
-    const redis = Redis.fromEnv()
+    const redis = Redis.fromEnv();
     ratelimitInstance = new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(serverEnv.API_RATE_LIMIT_MAX, `${serverEnv.API_RATE_LIMIT_WINDOW_SECONDS} s`),
+      limiter: Ratelimit.slidingWindow(
+        serverEnv.API_RATE_LIMIT_MAX,
+        `${serverEnv.API_RATE_LIMIT_WINDOW_SECONDS} s`
+      ),
       analytics: true,
       prefix: 'eitams:ratelimit',
-    })
+    });
   }
-  return ratelimitInstance
+  return ratelimitInstance;
 }
 
 export type RateLimitResult = {
-  success: boolean
-  limit: number
-  remaining: number
-  reset: number
-}
+  success: boolean;
+  limit: number;
+  remaining: number;
+  reset: number;
+};
 
-export async function applyRateLimit(identifier: string): Promise<RateLimitResult> {
-  const limiter = getRateLimiter()
-  const res = await limiter.limit(identifier)
+export async function applyRateLimit(
+  identifier: string
+): Promise<RateLimitResult> {
+  const limiter = getRateLimiter();
+  const res = await limiter.limit(identifier);
 
   // upstash result fields vary; normalize to our shape
-  const limit = Number(res.limit ?? serverEnv.API_RATE_LIMIT_MAX)
-  const remaining = Number(res.remaining ?? 0)
-  const reset = Math.floor(Number(res.reset ?? 0) / 1000) // seconds
+  const limit = Number(res.limit ?? serverEnv.API_RATE_LIMIT_MAX);
+  const remaining = Number(res.remaining ?? 0);
+  const reset = Math.floor(Number(res.reset ?? 0) / 1000); // seconds
 
   return {
     success: res.success ?? remaining > 0,
     limit,
     remaining,
     reset,
-  }
+  };
 }
 
-export async function applyPreAuthRateLimit(identifier: string): Promise<RateLimitResult> {
+export async function applyPreAuthRateLimit(
+  identifier: string
+): Promise<RateLimitResult> {
   if (!preAuthRateLimitInstance) {
     preAuthRateLimitInstance = new Ratelimit({
       redis: Redis.fromEnv(),
@@ -52,28 +59,31 @@ export async function applyPreAuthRateLimit(identifier: string): Promise<RateLim
       ),
       analytics: true,
       prefix: 'eitams:ratelimit:preauth',
-    })
+    });
   }
 
-  const res = await preAuthRateLimitInstance.limit(identifier)
+  const res = await preAuthRateLimitInstance.limit(identifier);
   return {
     success: res.success,
     limit: Number(res.limit ?? 20),
     remaining: Number(res.remaining ?? 0),
     reset: Math.floor(Number(res.reset ?? 0) / 1000),
-  }
+  };
 }
 
-import type { NextResponse } from 'next/server'
+import type { NextResponse } from 'next/server';
 
-export function injectRateLimitHeaders(response: NextResponse, result: RateLimitResult) {
+export function injectRateLimitHeaders(
+  response: NextResponse,
+  result: RateLimitResult
+) {
   try {
-    response.headers.set('X-RateLimit-Limit', String(result.limit))
-    response.headers.set('X-RateLimit-Remaining', String(result.remaining))
-    response.headers.set('X-RateLimit-Reset', String(result.reset))
+    response.headers.set('X-RateLimit-Limit', String(result.limit));
+    response.headers.set('X-RateLimit-Remaining', String(result.remaining));
+    response.headers.set('X-RateLimit-Reset', String(result.reset));
   } catch {
     // best-effort, ignore
   }
 
-  return response
+  return response;
 }

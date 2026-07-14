@@ -18,7 +18,6 @@ import {
   maintenanceTickets,
   models,
   owners,
-
   softwareAllocations,
   softwareLicenses,
   systemAuditLogs,
@@ -155,7 +154,6 @@ export async function seedAssets() {
     const itUserId = userIds['it@tiqri.com'];
     const financeUserId = userIds['finance@tiqri.com'];
     const employeeUserId = userIds['employee@tiqri.com'];
-
 
     const locationSeeds = [
       { name: 'Colombo HQ', type: 'HQ', parent: null, isActive: true },

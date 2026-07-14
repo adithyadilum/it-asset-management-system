@@ -34,7 +34,9 @@ export function BulkTransferDialog({
   onConfirm,
   isMutating = false,
 }: BulkTransferDialogProps) {
-  const [destinationLocationId, setDestinationLocationId] = useState<number | null>(null);
+  const [destinationLocationId, setDestinationLocationId] = useState<
+    number | null
+  >(null);
   const [transferDate, setTransferDate] = useState('');
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -92,14 +94,18 @@ export function BulkTransferDialog({
                   <span className="font-medium text-foreground">
                     {selectedRow.assetTag}
                   </span>
-                  <span className="truncate">{toCellText(selectedRow.name)}</span>
+                  <span className="truncate">
+                    {toCellText(selectedRow.name)}
+                  </span>
                 </div>
               ))}
             </div>
           </ScrollArea>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground">Current Location</label>
+            <label className="text-sm font-medium text-foreground">
+              Current Location
+            </label>
             <Input
               value={
                 uniqueSelectedLocations.length === 0
@@ -122,7 +128,9 @@ export function BulkTransferDialog({
               onChange={(event) => {
                 const parsedValue = Number(event.target.value);
                 setDestinationLocationId(
-                  Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null
+                  Number.isInteger(parsedValue) && parsedValue > 0
+                    ? parsedValue
+                    : null
                 );
               }}
               className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground"
@@ -137,7 +145,9 @@ export function BulkTransferDialog({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground">Transfer Date</label>
+            <label className="text-sm font-medium text-foreground">
+              Transfer Date
+            </label>
             <div className="relative">
               <Input
                 type="date"
@@ -166,7 +176,11 @@ export function BulkTransferDialog({
             size="sm"
             className="h-8 rounded-lg bg-primary px-3 text-sm text-primary-foreground hover:bg-primary/90"
             onClick={() => void handleConfirm()}
-            disabled={!destinationLocationId || selectedAssets.length === 0 || isMutating}
+            disabled={
+              !destinationLocationId ||
+              selectedAssets.length === 0 ||
+              isMutating
+            }
           >
             Confirm Transfer
           </Button>

@@ -1,5 +1,5 @@
 'use client';
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import {
   ClipboardList,
@@ -87,42 +87,55 @@ function SectionSkeletonRows({ count = 2 }: { count?: number }) {
   );
 }
 
-
-function OmniStaticResultItem({ item, group, onSelect }: { item: OmniStaticItem, group: 'page' | 'report', onSelect: () => void }) {
-    const Icon = group === 'page' ? SquareMenu : ClipboardList;
-    return (
-      <CommandItem
-        value={`${item.label} ${item.description} ${item.keywords}`}
-        onSelect={onSelect}
-        className={resultItemClass}
-      >
-        <Icon className="size-4 text-muted-foreground" />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm text-foreground">{item.label}</span>
-          <span className="truncate text-xs text-muted-foreground">
-            {item.description}
-          </span>
-        </div>
-      </CommandItem>
-    );
+function OmniStaticResultItem({
+  item,
+  group,
+  onSelect,
+}: {
+  item: OmniStaticItem;
+  group: 'page' | 'report';
+  onSelect: () => void;
+}) {
+  const Icon = group === 'page' ? SquareMenu : ClipboardList;
+  return (
+    <CommandItem
+      value={`${item.label} ${item.description} ${item.keywords}`}
+      onSelect={onSelect}
+      className={resultItemClass}
+    >
+      <Icon className="size-4 text-muted-foreground" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-sm text-foreground">{item.label}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {item.description}
+        </span>
+      </div>
+    </CommandItem>
+  );
 }
 
-function OmniReportResultItem({ item, onSelect }: { item: OmniSearchReportResult, onSelect: () => void }) {
-    return (
-      <CommandItem
-        value={`${item.label} ${item.description}`}
-        onSelect={onSelect}
-        className={resultItemClass}
-      >
-        <ClipboardList className="size-4 text-muted-foreground" />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm text-foreground">{item.label}</span>
-          <span className="truncate text-xs text-muted-foreground">
-            {item.description}
-          </span>
-        </div>
-      </CommandItem>
-    );
+function OmniReportResultItem({
+  item,
+  onSelect,
+}: {
+  item: OmniSearchReportResult;
+  onSelect: () => void;
+}) {
+  return (
+    <CommandItem
+      value={`${item.label} ${item.description}`}
+      onSelect={onSelect}
+      className={resultItemClass}
+    >
+      <ClipboardList className="size-4 text-muted-foreground" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-sm text-foreground">{item.label}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {item.description}
+        </span>
+      </div>
+    </CommandItem>
+  );
 }
 
 export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
@@ -204,7 +217,8 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
     };
   }, []);
 
-  const [prevNormalizedQuery, setPrevNormalizedQuery] = useState(normalizedQuery);
+  const [prevNormalizedQuery, setPrevNormalizedQuery] =
+    useState(normalizedQuery);
 
   if (normalizedQuery !== prevNormalizedQuery) {
     setPrevNormalizedQuery(normalizedQuery);
@@ -316,8 +330,6 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
     usersResults.length === 0 &&
     !searchError;
 
-  
-  
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <Command shouldFilter={false} className="bg-transparent overflow-visible">
@@ -387,7 +399,14 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                   heading="Pages"
                   className={`px-0 ${sectionHeadingClass}`}
                 >
-                  {pageResults.map((item) => <OmniStaticResultItem key={item.id} item={item} group="page" onSelect={() => handleSelectHref(item.href)} />)}
+                  {pageResults.map((item) => (
+                    <OmniStaticResultItem
+                      key={item.id}
+                      item={item}
+                      group="page"
+                      onSelect={() => handleSelectHref(item.href)}
+                    />
+                  ))}
 
                   {shouldShowPagesEmptyState ? (
                     <SectionEmptyState query={normalizedQuery} entity="pages" />
@@ -404,33 +423,38 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
 
                   {!isSearching
                     ? assetsResults.map((asset) => (
-                      <CommandItem
-                        key={asset.id}
-                        value={`${asset.assetTag} ${asset.name ?? ''} ${asset.serialNumber ?? ''} ${asset.category}`}
-                        onSelect={() =>
-                          handleSelectHref(`/assets/${encodeURIComponent(asset.assetTag)}`)
-                        }
-                        className={resultItemClass}
-                      >
-                        <Monitor className="size-4 text-muted-foreground" />
+                        <CommandItem
+                          key={asset.id}
+                          value={`${asset.assetTag} ${asset.name ?? ''} ${asset.serialNumber ?? ''} ${asset.category}`}
+                          onSelect={() =>
+                            handleSelectHref(
+                              `/assets/${encodeURIComponent(asset.assetTag)}`
+                            )
+                          }
+                          className={resultItemClass}
+                        >
+                          <Monitor className="size-4 text-muted-foreground" />
 
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm text-foreground">
-                            {asset.name ?? asset.assetTag}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {asset.assetTag}
-                            {asset.serialNumber
-                              ? ` • ${asset.serialNumber}`
-                              : ''}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className="truncate text-sm text-foreground">
+                              {asset.name ?? asset.assetTag}
+                            </span>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {asset.assetTag}
+                              {asset.serialNumber
+                                ? ` • ${asset.serialNumber}`
+                                : ''}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))
                     : null}
 
                   {shouldShowAssetsEmptyState ? (
-                    <SectionEmptyState query={normalizedQuery} entity="assets" />
+                    <SectionEmptyState
+                      query={normalizedQuery}
+                      entity="assets"
+                    />
                   ) : null}
                 </CommandGroup>
 
@@ -445,11 +469,20 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                       {isSearching ? <SectionSkeletonRows count={1} /> : null}
 
                       {!isSearching
-                        ? reportsResults.map((item) => <OmniReportResultItem key={item.id} item={item} onSelect={() => handleSelectHref(item.href)} />)
+                        ? reportsResults.map((item) => (
+                            <OmniReportResultItem
+                              key={item.id}
+                              item={item}
+                              onSelect={() => handleSelectHref(item.href)}
+                            />
+                          ))
                         : null}
 
                       {shouldShowReportsEmptyState ? (
-                        <SectionEmptyState query={normalizedQuery} entity="reports" />
+                        <SectionEmptyState
+                          query={normalizedQuery}
+                          entity="reports"
+                        />
                       ) : null}
                     </CommandGroup>
                   </>
@@ -467,28 +500,33 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
 
                       {!isSearching
                         ? usersResults.map((user) => (
-                          <CommandItem
-                            key={user.id}
-                            value={`${user.name} ${user.email} ${user.department}`}
-                            onSelect={() => handleSelectHref('/settings/roles')}
-                            className={resultItemClass}
-                          >
-                            <UserRound className="size-4 text-muted-foreground" />
+                            <CommandItem
+                              key={user.id}
+                              value={`${user.name} ${user.email} ${user.department}`}
+                              onSelect={() =>
+                                handleSelectHref('/settings/roles')
+                              }
+                              className={resultItemClass}
+                            >
+                              <UserRound className="size-4 text-muted-foreground" />
 
-                            <div className="flex min-w-0 flex-1 flex-col">
-                              <span className="truncate text-sm text-foreground">
-                                {user.name}
-                              </span>
-                              <span className="truncate text-xs text-muted-foreground">
-                                {user.email} • {user.department}
-                              </span>
-                            </div>
-                          </CommandItem>
-                        ))
+                              <div className="flex min-w-0 flex-1 flex-col">
+                                <span className="truncate text-sm text-foreground">
+                                  {user.name}
+                                </span>
+                                <span className="truncate text-xs text-muted-foreground">
+                                  {user.email} • {user.department}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))
                         : null}
 
                       {shouldShowUsersEmptyState ? (
-                        <SectionEmptyState query={normalizedQuery} entity="users" />
+                        <SectionEmptyState
+                          query={normalizedQuery}
+                          entity="users"
+                        />
                       ) : null}
                     </CommandGroup>
                   </>

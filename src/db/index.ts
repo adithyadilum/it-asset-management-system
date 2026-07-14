@@ -26,12 +26,15 @@ function createDatabase(): AppDatabase {
     max: 10,
     idleTimeoutMillis: 20_000,
     connectionTimeoutMillis: 10_000,
-    options: '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000',
+    options:
+      '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000',
   });
   return drizzleNeon(pool, { schema }) as unknown as AppDatabase;
 }
 
-const globalForDatabase = globalThis as typeof globalThis & { eitamsDb?: AppDatabase };
+const globalForDatabase = globalThis as typeof globalThis & {
+  eitamsDb?: AppDatabase;
+};
 const db = globalForDatabase.eitamsDb ?? createDatabase();
 if (serverEnv.NODE_ENV !== 'production') globalForDatabase.eitamsDb = db;
 

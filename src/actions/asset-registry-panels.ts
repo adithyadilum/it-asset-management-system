@@ -22,12 +22,21 @@ export async function getAssetDetailsByIdAction(id: string) {
   }
 
   try {
-    const { getAssetDetailsById } = await import('@/lib/data/asset-details-repo');
+    const { getAssetDetailsById } =
+      await import('@/lib/data/asset-details-repo');
     const details = await getAssetDetailsById(id);
     return { success: true, data: details };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'panels.getAssetDetailsByIdAction', error });
-    return { success: false, message: 'Failed to load asset details.', data: null };
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getAssetDetailsByIdAction',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Failed to load asset details.',
+      data: null,
+    };
   }
 }
 
@@ -38,12 +47,21 @@ export async function getAssetHistoryByIdAction(id: string) {
   }
 
   try {
-    const { getAssetHistoryById } = await import('@/lib/data/asset-details-repo');
+    const { getAssetHistoryById } =
+      await import('@/lib/data/asset-details-repo');
     const history = await getAssetHistoryById(id);
     return { success: true, data: history };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'panels.getAssetHistoryByIdAction', error });
-    return { success: false, message: 'Failed to load asset history.', data: [] };
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getAssetHistoryByIdAction',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Failed to load asset history.',
+      data: [],
+    };
   }
 }
 
@@ -59,8 +77,16 @@ export async function getAssetMaintenanceByIdAction(id: string) {
     const maintenance = await getAssetMaintenanceById(id);
     return { success: true, data: maintenance };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'panels.getAssetMaintenanceByIdAction', error });
-    return { success: false, message: 'Failed to load maintenance records.', data: [] };
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getAssetMaintenanceByIdAction',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Failed to load maintenance records.',
+      data: [],
+    };
   }
 }
 
@@ -76,8 +102,16 @@ export async function getAssetAllocationsAction(id: string) {
     const allocations = await getAssetAllocationsById(id);
     return { success: true, data: allocations };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'panels.getAssetAllocationsAction', error });
-    return { success: false, message: 'Failed to load allocation history.', data: [] };
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getAssetAllocationsAction',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Failed to load allocation history.',
+      data: [],
+    };
   }
 }
 
@@ -93,8 +127,16 @@ export async function getAssetDisposalAction(id: string) {
     const disposal = await getAssetDisposalById(id);
     return { success: true, data: disposal };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'panels.getAssetDisposalAction', error });
-    return { success: false, message: 'Failed to load disposal record.', data: null };
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getAssetDisposalAction',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Failed to load disposal record.',
+      data: null,
+    };
   }
 }
 
@@ -107,50 +149,59 @@ export async function getRegistrationOptionsAction(pillar: string) {
   try {
     const pillarValue = pillar as (typeof pillarEnum.enumValues)[number];
 
-    const [categoriesList, brandsList, modelsList, vendorsList, ownersList, locationsList] =
-      await Promise.all([
-        db.query.categories.findMany({
-          where: and(
-            eq(categories.isActive, true),
-            eq(categories.pillar, pillarValue)
-          ),
-          columns: { id: true, name: true, pillar: true, customSchema: true },
-        }),
-        db.query.brands.findMany({
-          where: eq(brands.isActive, true),
-          columns: { id: true, name: true },
-        }),
-        db.query.models.findMany({
-          where: and(
-            eq(models.isActive, true),
-            inArray(
-              models.categoryId,
-              db.select({ id: categories.id }).from(categories).where(eq(categories.pillar, pillarValue))
-            )
-          ),
-          columns: {
-            id: true,
-            name: true,
-            brandId: true,
-            categoryId: true,
-            imageUrl: true,
-          },
-        }),
-        db.query.vendors.findMany({
-          where: eq(vendors.isActive, true),
-          columns: { id: true, companyName: true },
-        }),
-        db.query.owners.findMany({
-          where: eq(owners.isActive, true),
-          columns: { id: true, companyName: true },
-        }),
-        ['Office Furniture', 'Office Electronics'].includes(pillarValue)
-          ? db.query.locations.findMany({
-              where: eq(locations.isActive, true),
-              columns: { id: true, name: true },
-            })
-          : Promise.resolve([]),
-      ]);
+    const [
+      categoriesList,
+      brandsList,
+      modelsList,
+      vendorsList,
+      ownersList,
+      locationsList,
+    ] = await Promise.all([
+      db.query.categories.findMany({
+        where: and(
+          eq(categories.isActive, true),
+          eq(categories.pillar, pillarValue)
+        ),
+        columns: { id: true, name: true, pillar: true, customSchema: true },
+      }),
+      db.query.brands.findMany({
+        where: eq(brands.isActive, true),
+        columns: { id: true, name: true },
+      }),
+      db.query.models.findMany({
+        where: and(
+          eq(models.isActive, true),
+          inArray(
+            models.categoryId,
+            db
+              .select({ id: categories.id })
+              .from(categories)
+              .where(eq(categories.pillar, pillarValue))
+          )
+        ),
+        columns: {
+          id: true,
+          name: true,
+          brandId: true,
+          categoryId: true,
+          imageUrl: true,
+        },
+      }),
+      db.query.vendors.findMany({
+        where: eq(vendors.isActive, true),
+        columns: { id: true, companyName: true },
+      }),
+      db.query.owners.findMany({
+        where: eq(owners.isActive, true),
+        columns: { id: true, companyName: true },
+      }),
+      ['Office Furniture', 'Office Electronics'].includes(pillarValue)
+        ? db.query.locations.findMany({
+            where: eq(locations.isActive, true),
+            columns: { id: true, name: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
     return {
       success: true,
@@ -166,7 +217,9 @@ export async function getRegistrationOptionsAction(pillar: string) {
             label: c.name,
             pillar: c.pillar,
             // Deep clone JSONB to remove [Object: null prototype] which breaks Next.js Server Actions
-            customSchema: c.customSchema ? JSON.parse(JSON.stringify(c.customSchema)) : null,
+            customSchema: c.customSchema
+              ? JSON.parse(JSON.stringify(c.customSchema))
+              : null,
           })
         ),
         brands: brandsList.map((b: { id: number; name: string }) => ({
@@ -203,8 +256,16 @@ export async function getRegistrationOptionsAction(pillar: string) {
       },
     };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'panels.getRegistrationOptionsAction', error });
-    return { success: false, message: 'Failed to load registration options.', data: null };
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getRegistrationOptionsAction',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Failed to load registration options.',
+      data: null,
+    };
   }
 }
 
@@ -240,7 +301,15 @@ export async function getEditDropdownOptionsAction() {
       },
     };
   } catch (error) {
-    logError({ scope: 'ACTION', label: 'panels.getEditDropdownOptionsAction', error });
-    return { success: false, message: 'Failed to load dropdown options.', data: null };
+    logError({
+      scope: 'ACTION',
+      label: 'panels.getEditDropdownOptionsAction',
+      error,
+    });
+    return {
+      success: false,
+      message: 'Failed to load dropdown options.',
+      data: null,
+    };
   }
 }

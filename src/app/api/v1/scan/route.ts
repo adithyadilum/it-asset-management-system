@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
   // --- 4. Execute Business Logic ---
   console.log(`Scan initiated by user ${user.id} with role ${user.role}`);
-  
+
   let assetTag: string | null = null;
   try {
     const body = await req.json();
@@ -38,7 +38,10 @@ export async function POST(req: Request) {
   }
 
   if (!assetTag) {
-    return NextResponse.json({ error: 'Asset tag is required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Asset tag is required' },
+      { status: 400 }
+    );
   }
 
   const assetDetails = await getAssetDetailsById(assetTag);
@@ -46,10 +49,10 @@ export async function POST(req: Request) {
   if (!assetDetails) {
     return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
   }
-  
-  return NextResponse.json({ 
-    success: true, 
+
+  return NextResponse.json({
+    success: true,
     message: 'Asset Scanned Successfully',
-    data: assetDetails
+    data: assetDetails,
   });
 }

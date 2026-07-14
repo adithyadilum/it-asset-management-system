@@ -11,6 +11,7 @@ export function isSoftwareLicenseNearCapacity(
   const assignedSeats = Math.max(0, totalSeats - availableSeats);
   return (
     assignedSeats < totalSeats &&
-    assignedSeats * 100 >= totalSeats * SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT
+    assignedSeats * 100 >=
+      totalSeats * SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT
   );
 }

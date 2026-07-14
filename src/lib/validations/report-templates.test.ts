@@ -28,18 +28,28 @@ describe('reportTemplateSchema', () => {
   });
 
   it('rejects name over 255 chars', () => {
-    const result = reportTemplateSchema.safeParse({ ...validData, name: 'a'.repeat(256) });
+    const result = reportTemplateSchema.safeParse({
+      ...validData,
+      name: 'a'.repeat(256),
+    });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('Report name must be 255 characters or fewer.');
+      expect(result.error.issues[0].message).toBe(
+        'Report name must be 255 characters or fewer.'
+      );
     }
   });
 
   it('requires a dataSource', () => {
-    const result = reportTemplateSchema.safeParse({ ...validData, dataSource: '' });
+    const result = reportTemplateSchema.safeParse({
+      ...validData,
+      dataSource: '',
+    });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('Primary data source is required.');
+      expect(result.error.issues[0].message).toBe(
+        'Primary data source is required.'
+      );
     }
   });
 
@@ -47,12 +57,17 @@ describe('reportTemplateSchema', () => {
     const result = reportTemplateSchema.safeParse({ ...validData, fields: [] });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe('At least one report field must be selected.');
+      expect(result.error.issues[0].message).toBe(
+        'At least one report field must be selected.'
+      );
     }
   });
 
   it('rejects invalid sortDirection', () => {
-    const result = reportTemplateSchema.safeParse({ ...validData, sortDirection: 'invalid' });
+    const result = reportTemplateSchema.safeParse({
+      ...validData,
+      sortDirection: 'invalid',
+    });
     expect(result.success).toBe(false);
   });
 });

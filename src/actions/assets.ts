@@ -809,9 +809,7 @@ export async function editAssetDetailsAction(
             .returning({ id: assetPurchases.id });
 
           if (inserted.length === 0) {
-            throw new Error(
-              'Failed to create asset purchase record.'
-            );
+            throw new Error('Failed to create asset purchase record.');
           }
         }
       }

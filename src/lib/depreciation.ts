@@ -100,7 +100,8 @@ export function calculateStraightLineNBV(params: StraightLineParams): number {
   const depreciableAmount = Math.max(0, cost - salvage);
 
   const monthlyDepreciation = depreciableAmount / lifeMonths;
-  const accumulatedDepreciation = monthlyDepreciation * Math.min(lifeMonths, monthsElapsed);
+  const accumulatedDepreciation =
+    monthlyDepreciation * Math.min(lifeMonths, monthsElapsed);
 
   // Clamp result: NBV is always >= salvage value (never below residual)
   return Math.max(salvage, cost - accumulatedDepreciation);
@@ -110,7 +111,9 @@ export function calculateStraightLineNBV(params: StraightLineParams): number {
  * Returns the annual depreciation amount (straight-line).
  * Useful for audit reports and forecast schedules.
  */
-export function calculateAnnualDepreciation(params: StraightLineParams): number {
+export function calculateAnnualDepreciation(
+  params: StraightLineParams
+): number {
   const { cost } = params;
   if (cost <= 0) return 0;
   const salvage = Math.max(0, params.salvageValue ?? 0);
@@ -122,7 +125,9 @@ export function calculateAnnualDepreciation(params: StraightLineParams): number 
 /**
  * Returns the monthly depreciation amount (straight-line).
  */
-export function calculateMonthlyDepreciation(params: StraightLineParams): number {
+export function calculateMonthlyDepreciation(
+  params: StraightLineParams
+): number {
   const { cost } = params;
   if (cost <= 0) return 0;
   const salvage = Math.max(0, params.salvageValue ?? 0);

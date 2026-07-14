@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { tiqriToast } from '@/components/shared/sonner';
 import { ReportPdfDocument } from '@/components/features/standard-reports/report-pdf-document';

@@ -65,6 +65,9 @@ export async function dispatchWebhookEvent(
       })
     );
   } catch (error) {
-    console.error('[dispatchWebhookEvent] Failed to dispatch webhook event:', error);
+    console.error(
+      '[dispatchWebhookEvent] Failed to dispatch webhook event:',
+      error
+    );
   }
 }

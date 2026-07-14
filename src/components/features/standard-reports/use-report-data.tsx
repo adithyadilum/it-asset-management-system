@@ -45,7 +45,10 @@ export function useReportData() {
             return;
           }
 
-          const message = error instanceof Error ? error.message : 'Failed to fetch report preview';
+          const message =
+            error instanceof Error
+              ? error.message
+              : 'Failed to fetch report preview';
           setErrorMessage(message);
           console.error('Failed to fetch report preview:', error);
           setPreviewData([]);

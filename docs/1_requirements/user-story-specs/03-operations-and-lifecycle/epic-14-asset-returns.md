@@ -51,6 +51,7 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Configure the `Assigned Assets` data grid to automatically apply a `status=Assigned` filter to the API fetch.
 - [x] Ensure the Asset Details slide-out panel correctly maps and prominently displays the active user relationship.
 
@@ -84,10 +85,12 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Add a conditionally rendered "Request Return" button to the Asset Details panel footer.
 - [x] Display a success confirmation toast upon successful return request submission.
 
 #### Backend
+
 - [x] Create the `requestAssetReturnAction` Server Action.
 - [x] Implement the `triggerReturnRequests` repository logic integrating with the notification queue.
 
@@ -116,10 +119,12 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Add a conditionally rendered "Return" button to the Asset Details panel.
 - [x] On successful return, refresh the Next.js cache (`revalidatePath`) to move the row.
 
 #### Backend
+
 - [x] Create the `markAssetReceivedAction` endpoint that closes the active assignment record and sets the status to `Returned`.
 - [x] Wire up `dispatchAssignmentReturnedEvents`.
 
@@ -157,9 +162,11 @@ This epic governs the "Check-In" phase of the hardware lifecycle. It details the
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the `ProcessReturnModal` component incorporating React Hook Form + Zod for validation.
 - [x] Ensure "Confirm" cannot bypass the mandatory notes requirement when selecting negative conditions.
 
 #### Backend
+
 - [x] Create the `processAssetReturnAction` Server Action implementing state-machine logic.
 - [x] Ensure the repository transaction appends the exact condition string and operator notes directly to the System Audit Log during the state transition.

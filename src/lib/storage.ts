@@ -1,15 +1,15 @@
 import { put } from '@vercel/blob';
-import { hasExpectedFileSignature, isInvoiceAttachmentFile, isModelImageFile } from '@/lib/file-types';
+import {
+  hasExpectedFileSignature,
+  isInvoiceAttachmentFile,
+  isModelImageFile,
+} from '@/lib/file-types';
 import { randomUUID } from 'crypto';
 import { serverEnv } from '@/lib/env';
 
 // Define the allowed "folders" so developers don't make typos
 type StorageFolder =
-  | 'models'
-  | 'invoices'
-  | 'warranties'
-  | 'disposals'
-  | 'documents';
+  'models' | 'invoices' | 'warranties' | 'disposals' | 'documents';
 
 export async function uploadFileToStorage(
   file: File,
@@ -51,12 +51,18 @@ export async function uploadFileToStorage(
   const isPublicModelImage = folder === 'models';
   const privateToken = serverEnv.PRIVATE_BLOB_READ_WRITE_TOKEN;
   if (!isPublicModelImage && !privateToken) {
-    throw new Error('PRIVATE_BLOB_READ_WRITE_TOKEN is required for sensitive uploads.');
+    throw new Error(
+      'PRIVATE_BLOB_READ_WRITE_TOKEN is required for sensitive uploads.'
+    );
   }
 
-  const blob = await put(uniquePath, file, isPublicModelImage
-    ? { access: 'public' }
-    : { access: 'private', token: privateToken! });
+  const blob = await put(
+    uniquePath,
+    file,
+    isPublicModelImage
+      ? { access: 'public' }
+      : { access: 'private', token: privateToken! }
+  );
 
   return isPublicModelImage
     ? blob.url

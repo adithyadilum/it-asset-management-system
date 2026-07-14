@@ -1,5 +1,5 @@
 'use client';
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -11,7 +11,7 @@ import {
   Calendar,
   CheckCircle,
   AlertTriangle,
-  Info
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -56,14 +56,16 @@ const UI_CATEGORIES = [
   {
     id: 'hardware-lifecycle',
     title: 'Hardware Lifecycle',
-    description: 'Configure reminders for hardware warranty expiration and software licensing renewal warning thresholds.',
+    description:
+      'Configure reminders for hardware warranty expiration and software licensing renewal warning thresholds.',
     icon: Calendar,
     ruleKeys: ['WARRANTY_EXPIRY_WARNING', 'SOFTWARE_LICENSE_RENEWAL'],
   },
   {
     id: 'operational-workflows',
     title: 'Operational Workflows',
-    description: 'Manage alerts for everyday operations including asset returns, maintenance tickets, and disposal approvals.',
+    description:
+      'Manage alerts for everyday operations including asset returns, maintenance tickets, and disposal approvals.',
     icon: Activity,
     ruleKeys: [
       'RETURN_OVERDUE',
@@ -76,7 +78,8 @@ const UI_CATEGORIES = [
   {
     id: 'security-audits',
     title: 'Security & Audits',
-    description: 'Set alerts for security incidents, role elevations, and critical asset events.',
+    description:
+      'Set alerts for security incidents, role elevations, and critical asset events.',
     icon: ShieldCheck,
     ruleKeys: [
       'ROLE_CHANGE',
@@ -106,7 +109,10 @@ export function AlertsSettingsClient() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  const [integrations, setIntegrations] = useState<{ resendConfigured: boolean; teamsConfigured: boolean } | null>(null);
+  const [integrations, setIntegrations] = useState<{
+    resendConfigured: boolean;
+    teamsConfigured: boolean;
+  } | null>(null);
   const [resendKey, setResendKey] = useState('');
   const [teamsUrl, setTeamsUrl] = useState('');
   const [savingIntegrations, setSavingIntegrations] = useState(false);
@@ -138,9 +144,13 @@ export function AlertsSettingsClient() {
     }
     setTestingEmail(true);
     try {
-      const res = await testIntegrationConnection('email', { resendApiKey: resendKey });
+      const res = await testIntegrationConnection('email', {
+        resendApiKey: resendKey,
+      });
       if (res.success) {
-        tiqriToast.success('Test connection email sent successfully! Please check your inbox.');
+        tiqriToast.success(
+          'Test connection email sent successfully! Please check your inbox.'
+        );
       } else {
         tiqriToast.error(res.error || 'Resend connection test failed');
       }
@@ -153,14 +163,20 @@ export function AlertsSettingsClient() {
 
   const handleTestTeams = async () => {
     if (!teamsUrl) {
-      tiqriToast.error('Please input or configure an MS Teams Webhook URL first');
+      tiqriToast.error(
+        'Please input or configure an MS Teams Webhook URL first'
+      );
       return;
     }
     setTestingTeams(true);
     try {
-      const res = await testIntegrationConnection('teams', { teamsWebhookUrl: teamsUrl });
+      const res = await testIntegrationConnection('teams', {
+        teamsWebhookUrl: teamsUrl,
+      });
       if (res.success) {
-        tiqriToast.success('Teams test card posted successfully! Please check your Teams channel.');
+        tiqriToast.success(
+          'Teams test card posted successfully! Please check your Teams channel.'
+        );
       } else {
         tiqriToast.error(res.error || 'Teams webhook connection test failed');
       }
@@ -174,9 +190,14 @@ export function AlertsSettingsClient() {
   const handleSaveIntegrations = async () => {
     setSavingIntegrations(true);
     try {
-      const payload: Partial<{ resendApiKey: string; teamsWebhookUrl: string }> = {};
-      if (resendKey && resendKey !== '••••••••') payload.resendApiKey = resendKey;
-      if (teamsUrl && teamsUrl !== '••••••••') payload.teamsWebhookUrl = teamsUrl;
+      const payload: Partial<{
+        resendApiKey: string;
+        teamsWebhookUrl: string;
+      }> = {};
+      if (resendKey && resendKey !== '••••••••')
+        payload.resendApiKey = resendKey;
+      if (teamsUrl && teamsUrl !== '••••••••')
+        payload.teamsWebhookUrl = teamsUrl;
 
       if (Object.keys(payload).length === 0) {
         tiqriToast.info('No changes to save.');
@@ -190,8 +211,12 @@ export function AlertsSettingsClient() {
         setIntegrations((prev) => {
           if (!prev) return prev;
           return {
-            resendConfigured: payload.resendApiKey ? true : prev.resendConfigured,
-            teamsConfigured: payload.teamsWebhookUrl ? true : prev.teamsConfigured,
+            resendConfigured: payload.resendApiKey
+              ? true
+              : prev.resendConfigured,
+            teamsConfigured: payload.teamsWebhookUrl
+              ? true
+              : prev.teamsConfigured,
           };
         });
         if (payload.resendApiKey) setResendKey('••••••••');
@@ -213,9 +238,12 @@ export function AlertsSettingsClient() {
         const json = await response.json();
         if (json.success) {
           if (json.data.length === 0) {
-            const seedResponse = await fetch('/api/v1/settings/notification-rules', {
-              method: 'POST',
-            });
+            const seedResponse = await fetch(
+              '/api/v1/settings/notification-rules',
+              {
+                method: 'POST',
+              }
+            );
             const seedJson = await seedResponse.json();
             if (seedJson.success) {
               setRules(seedJson.data);
@@ -241,14 +269,21 @@ export function AlertsSettingsClient() {
 
   const handleUpdateRule = async (
     ruleId: number,
-    updatedFields: Partial<Omit<NotificationRule, 'id' | 'ruleKey' | 'displayName' | 'category' | 'updatedAt'>>
+    updatedFields: Partial<
+      Omit<
+        NotificationRule,
+        'id' | 'ruleKey' | 'displayName' | 'category' | 'updatedAt'
+      >
+    >
   ) => {
     const previousRules = [...rules];
 
     // Optimistically update local UI state
     setRules((prevRules) =>
       prevRules.map((rule) =>
-        rule.id === ruleId ? { ...rule, ...updatedFields } as NotificationRule : rule
+        rule.id === ruleId
+          ? ({ ...rule, ...updatedFields } as NotificationRule)
+          : rule
       )
     );
 
@@ -259,18 +294,36 @@ export function AlertsSettingsClient() {
       if (!targetRule) return;
 
       const payload = {
-        isEnabled: updatedFields.isEnabled !== undefined ? updatedFields.isEnabled : targetRule.isEnabled,
-        thresholdDays: updatedFields.thresholdDays !== undefined ? updatedFields.thresholdDays : targetRule.thresholdDays,
-        channelInApp: updatedFields.channelInApp !== undefined ? updatedFields.channelInApp : targetRule.channelInApp,
-        channelEmail: updatedFields.channelEmail !== undefined ? updatedFields.channelEmail : targetRule.channelEmail,
-        channelTeams: updatedFields.channelTeams !== undefined ? updatedFields.channelTeams : targetRule.channelTeams,
+        isEnabled:
+          updatedFields.isEnabled !== undefined
+            ? updatedFields.isEnabled
+            : targetRule.isEnabled,
+        thresholdDays:
+          updatedFields.thresholdDays !== undefined
+            ? updatedFields.thresholdDays
+            : targetRule.thresholdDays,
+        channelInApp:
+          updatedFields.channelInApp !== undefined
+            ? updatedFields.channelInApp
+            : targetRule.channelInApp,
+        channelEmail:
+          updatedFields.channelEmail !== undefined
+            ? updatedFields.channelEmail
+            : targetRule.channelEmail,
+        channelTeams:
+          updatedFields.channelTeams !== undefined
+            ? updatedFields.channelTeams
+            : targetRule.channelTeams,
       };
 
-      const response = await fetch(`/api/v1/settings/notification-rules/${ruleId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `/api/v1/settings/notification-rules/${ruleId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const json = await response.json();
 
@@ -299,7 +352,6 @@ export function AlertsSettingsClient() {
 
         <ScrollArea className="flex-1 min-h-0">
           <div className="flex w-full flex-col gap-6 p-4 md:p-6 pt-4 md:pt-6">
-
             {/* Pulsing Category Skeletons */}
             {[1, 2, 3].map((catId) => (
               <section key={catId} className="space-y-4">
@@ -364,12 +416,15 @@ export function AlertsSettingsClient() {
     <div className="flex flex-1 flex-col min-h-0 bg-background rounded-2xl border border-border/50">
       {/* Header Summary */}
       <div className="flex items-center justify-between p-4 md:p-6 pb-2 md:pb-4 shrink-0 border-b border-border/50">
-        <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Alerts & Notifications</h1>
+        <h1
+          className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
+        >
+          Alerts & Notifications
+        </h1>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="flex w-full flex-col gap-6 p-4 md:p-6 pt-4 md:pt-6">
-
           {/* Categories rendering */}
           {UI_CATEGORIES.map((category) => {
             const categoryRules = rules.filter((rule) =>
@@ -388,7 +443,9 @@ export function AlertsSettingsClient() {
                     <CategoryIcon className="h-4.5 w-4.5" />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+                    <h2
+                      className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+                    >
                       {category.title}
                     </h2>
                     <TooltipProvider>
@@ -406,7 +463,11 @@ export function AlertsSettingsClient() {
                           side="right"
                           className="max-w-xs border border-border bg-primary text-primary-foreground p-3 rounded-lg shadow-md"
                         >
-                          <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} leading-normal`}>{category.description}</p>
+                          <p
+                            className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} leading-normal`}
+                          >
+                            {category.description}
+                          </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -418,27 +479,30 @@ export function AlertsSettingsClient() {
                   {categoryRules.map((rule) => {
                     const hasThreshold = rule.thresholdDays !== null;
                     const isRuleUpdating = updatingId === rule.id;
-                    const displayName = CUSTOM_DISPLAY_NAMES[rule.ruleKey] || rule.displayName;
+                    const displayName =
+                      CUSTOM_DISPLAY_NAMES[rule.ruleKey] || rule.displayName;
 
                     return (
                       <div
                         key={rule.id}
                         className={cn(
-                          "relative flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border bg-card p-6 transition-all duration-200",
+                          'relative flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-xl border bg-card p-6 transition-all duration-200',
                           rule.isEnabled
-                            ? "border-border hover:border-border"
-                            : "border-border bg-muted/40 opacity-70"
+                            ? 'border-border hover:border-border'
+                            : 'border-border bg-muted/40 opacity-70'
                         )}
                       >
                         {/* Left Block: Icon, Title & Optional Threshold Selector */}
                         <div className="flex-1 space-y-4">
                           <div className="flex items-start gap-3">
-                            <div className={cn(
-                              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border",
-                              rule.isEnabled
-                                ? "bg-primary/10 border-primary/20 text-primary"
-                                : "bg-muted border-border text-muted-foreground"
-                            )}>
+                            <div
+                              className={cn(
+                                'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border',
+                                rule.isEnabled
+                                  ? 'bg-primary/10 border-primary/20 text-primary'
+                                  : 'bg-muted border-border text-muted-foreground'
+                              )}
+                            >
                               {rule.isEnabled ? (
                                 <CheckCircle className="h-4 w-4 text-primary" />
                               ) : (
@@ -446,7 +510,9 @@ export function AlertsSettingsClient() {
                               )}
                             </div>
                             <div className="space-y-3">
-                              <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground block`}>
+                              <h3
+                                className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground block`}
+                              >
                                 {displayName}
                               </h3>
                               <div className="flex items-center gap-2">
@@ -476,7 +542,12 @@ export function AlertsSettingsClient() {
                                   })
                                 }
                               >
-                                <SelectTrigger className={cn("h-8 min-w-25 border-border bg-background hover:border-border", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
+                                <SelectTrigger
+                                  className={cn(
+                                    'h-8 min-w-25 border-border bg-background hover:border-border',
+                                    TYPOGRAPHY_CLASSNAMES.textSmMedium
+                                  )}
+                                >
                                   <SelectValue placeholder="Select period" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -487,7 +558,9 @@ export function AlertsSettingsClient() {
                                   <SelectItem value="90">90 days</SelectItem>
                                 </SelectContent>
                               </Select>
-                              <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+                              <span
+                                className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+                              >
                                 Before Expiry
                               </span>
                             </div>
@@ -498,7 +571,9 @@ export function AlertsSettingsClient() {
                         <div className="flex flex-col sm:flex-row sm:items-center gap-6 self-start md:self-center shrink-0">
                           {/* Channels Checklist */}
                           <div className="space-y-2.5">
-                            <span className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} uppercase tracking-wider text-muted-foreground`}>
+                            <span
+                              className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} uppercase tracking-wider text-muted-foreground`}
+                            >
                               Channels
                             </span>
                             <div className="flex items-center gap-5">
@@ -515,7 +590,11 @@ export function AlertsSettingsClient() {
                                 />
                                 <div className="flex items-center gap-1 text-muted-foreground group-hover:text-foreground transition-colors">
                                   <Bell className="h-3.5 w-3.5" />
-                                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>In-App</span>
+                                  <span
+                                    className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+                                  >
+                                    In-App
+                                  </span>
                                 </div>
                               </label>
 
@@ -532,7 +611,11 @@ export function AlertsSettingsClient() {
                                 />
                                 <div className="flex items-center gap-1 text-muted-foreground group-hover:text-foreground transition-colors">
                                   <Mail className="h-3.5 w-3.5" />
-                                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>Email</span>
+                                  <span
+                                    className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+                                  >
+                                    Email
+                                  </span>
                                 </div>
                               </label>
 
@@ -549,7 +632,11 @@ export function AlertsSettingsClient() {
                                 />
                                 <div className="flex items-center gap-1 text-muted-foreground group-hover:text-foreground transition-colors">
                                   <MessageSquare className="h-3.5 w-3.5" />
-                                  <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>MS Teams</span>
+                                  <span
+                                    className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+                                  >
+                                    MS Teams
+                                  </span>
                                 </div>
                               </label>
                             </div>
@@ -560,20 +647,24 @@ export function AlertsSettingsClient() {
 
                           {/* Master Segmented Toggle Pill (On / Off) */}
                           <div className="space-y-2">
-                            <span className={`block ${TYPOGRAPHY_CLASSNAMES.textXsMedium} uppercase tracking-wider text-muted-foreground`}>
+                            <span
+                              className={`block ${TYPOGRAPHY_CLASSNAMES.textXsMedium} uppercase tracking-wider text-muted-foreground`}
+                            >
                               Status
                             </span>
                             <div className="flex items-center rounded-lg border border-border bg-muted/80 p-0.5 shadow-inner">
                               <button
                                 type="button"
                                 disabled={isRuleUpdating}
-                                onClick={() => handleUpdateRule(rule.id, { isEnabled: true })}
+                                onClick={() =>
+                                  handleUpdateRule(rule.id, { isEnabled: true })
+                                }
                                 className={cn(
-                                  "rounded-md px-3.5 py-1 transition-all duration-200",
+                                  'rounded-md px-3.5 py-1 transition-all duration-200',
                                   TYPOGRAPHY_CLASSNAMES.textXsMedium,
                                   rule.isEnabled
-                                    ? "bg-background text-foreground shadow-xs"
-                                    : "text-muted-foreground hover:text-muted-foreground"
+                                    ? 'bg-background text-foreground shadow-xs'
+                                    : 'text-muted-foreground hover:text-muted-foreground'
                                 )}
                               >
                                 On
@@ -581,13 +672,17 @@ export function AlertsSettingsClient() {
                               <button
                                 type="button"
                                 disabled={isRuleUpdating}
-                                onClick={() => handleUpdateRule(rule.id, { isEnabled: false })}
+                                onClick={() =>
+                                  handleUpdateRule(rule.id, {
+                                    isEnabled: false,
+                                  })
+                                }
                                 className={cn(
-                                  "rounded-md px-3.5 py-1 transition-all duration-200",
+                                  'rounded-md px-3.5 py-1 transition-all duration-200',
                                   TYPOGRAPHY_CLASSNAMES.textXsMedium,
                                   !rule.isEnabled
-                                    ? "bg-background text-foreground shadow-xs"
-                                    : "text-muted-foreground hover:text-muted-foreground"
+                                    ? 'bg-background text-foreground shadow-xs'
+                                    : 'text-muted-foreground hover:text-muted-foreground'
                                 )}
                               >
                                 Off
@@ -610,7 +705,9 @@ export function AlertsSettingsClient() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Info className="h-4.5 w-4.5" />
                 </div>
-                <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+                <h2
+                  className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+                >
                   External Service Integrations
                 </h2>
               </div>
@@ -620,21 +717,31 @@ export function AlertsSettingsClient() {
                 <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
                   <div className="flex items-center gap-2">
                     <Mail className="h-5 w-5 text-primary" />
-                    <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+                    <h3
+                      className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}
+                    >
                       Resend Email Integration
                     </h3>
                   </div>
-                  <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}>
-                    Configure your Resend API Key to send automated alerts directly to users&apos; registered corporate email boxes.
+                  <p
+                    className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}
+                  >
+                    Configure your Resend API Key to send automated alerts
+                    directly to users&apos; registered corporate email boxes.
                   </p>
                   <div className="space-y-1.5">
-                    <label htmlFor="resend-key-input" className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}>
+                    <label
+                      htmlFor="resend-key-input"
+                      className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}
+                    >
                       Resend API Key
                     </label>
                     <input
                       id="resend-key-input"
                       type="password"
-                      placeholder={integrations.resendConfigured ? '••••••••' : 're_...'}
+                      placeholder={
+                        integrations.resendConfigured ? '••••••••' : 're_...'
+                      }
                       value={resendKey === '••••••••' ? '••••••••' : resendKey}
                       onChange={(e) => setResendKey(e.target.value)}
                       className="w-full h-9 px-3 rounded-lg border border-border bg-transparent text-sm focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
@@ -657,21 +764,33 @@ export function AlertsSettingsClient() {
                 <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-primary" />
-                    <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+                    <h3
+                      className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}
+                    >
                       MS Teams Webhook
                     </h3>
                   </div>
-                  <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}>
-                    Configure the Incoming Webhook URL to deliver high-priority alerts directly to designated MS Teams channels.
+                  <p
+                    className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}
+                  >
+                    Configure the Incoming Webhook URL to deliver high-priority
+                    alerts directly to designated MS Teams channels.
                   </p>
                   <div className="space-y-1.5">
-                    <label htmlFor="teams-url-input" className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}>
+                    <label
+                      htmlFor="teams-url-input"
+                      className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}
+                    >
                       Webhook URL
                     </label>
                     <input
                       id="teams-url-input"
                       type="password"
-                      placeholder={integrations.teamsConfigured ? '••••••••' : 'https://outlook.office.com/webhook/...'}
+                      placeholder={
+                        integrations.teamsConfigured
+                          ? '••••••••'
+                          : 'https://outlook.office.com/webhook/...'
+                      }
                       value={teamsUrl === '••••••••' ? '••••••••' : teamsUrl}
                       onChange={(e) => setTeamsUrl(e.target.value)}
                       className="w-full h-9 px-3 rounded-lg border border-border bg-transparent text-sm focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"

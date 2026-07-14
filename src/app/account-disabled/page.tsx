@@ -49,16 +49,21 @@ export default function AccountDisabledPage() {
           <EmptyMedia variant="icon" className="mb-2 bg-red-50 text-red-600">
             <UserX className="h-5 w-5" strokeWidth={1.5} />
           </EmptyMedia>
-          <EmptyTitle className="text-xl text-slate-900">Account Disabled</EmptyTitle>
+          <EmptyTitle className="text-xl text-slate-900">
+            Account Disabled
+          </EmptyTitle>
           <EmptyDescription className="max-w-md text-slate-600">
             Your account has been disabled by an administrator. You no longer
-            have access to this system. Please contact your IT administrator
-            if you believe this is a mistake.
+            have access to this system. Please contact your IT administrator if
+            you believe this is a mistake.
           </EmptyDescription>
         </EmptyHeader>
 
         <EmptyContent className="mt-2 flex-row flex-wrap justify-center gap-3">
-          <Button asChild className="h-11 px-8 bg-[#000066] hover:bg-[#000044] gap-2">
+          <Button
+            asChild
+            className="h-11 px-8 bg-[#000066] hover:bg-[#000044] gap-2"
+          >
             <Link href={keycloakLogoutUrl}>
               <LogOut className="h-4 w-4" />
               Sign Out
@@ -69,4 +74,3 @@ export default function AccountDisabledPage() {
     </div>
   );
 }
-

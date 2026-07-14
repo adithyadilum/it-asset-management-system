@@ -15,8 +15,10 @@ export class DashboardPage {
     // Wait for a dashboard specific element or URL
     await expect(this.page).toHaveURL(/\/?$/);
     // You could also wait for a heading like "Dashboard"
-    await expect(this.page.locator('h1', { hasText: /Dashboard/i })).toBeVisible({ timeout: 10000 }).catch(() => {
+    await expect(this.page.locator('h1', { hasText: /Dashboard/i }))
+      .toBeVisible({ timeout: 10000 })
+      .catch(() => {
         // sometimes dashboard might just have some specific role text or welcome
-    });
+      });
   }
 }

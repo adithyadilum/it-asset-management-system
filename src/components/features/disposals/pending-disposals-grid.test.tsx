@@ -15,7 +15,9 @@ vi.mock('@/components/shared/data-table', () => ({
     return (
       <div data-testid="data-table">
         {selectionActions?.map((action: any) => (
-          <button key={action.id} onClick={action.onClick}>{action.label}</button>
+          <button key={action.id} onClick={action.onClick}>
+            {action.label}
+          </button>
         ))}
         {data.map((row: any, i: number) => (
           <div key={i} data-testid={`row-${i}`} onClick={() => onRowClick(row)}>
@@ -70,7 +72,9 @@ describe('PendingDisposalsGrid', () => {
   ];
 
   it('renders data correctly', () => {
-    render(<PendingDisposalsGrid initialData={mockData} onRowClick={vi.fn()} />);
+    render(
+      <PendingDisposalsGrid initialData={mockData} onRowClick={vi.fn()} />
+    );
 
     expect(screen.getByTestId('data-table')).toBeInTheDocument();
     expect(screen.getByText('TAG-1')).toBeInTheDocument();
@@ -86,14 +90,21 @@ describe('PendingDisposalsGrid', () => {
 
   it('calls onRowClick when a row is clicked', () => {
     const mockOnRowClick = vi.fn();
-    render(<PendingDisposalsGrid initialData={mockData} onRowClick={mockOnRowClick} />);
+    render(
+      <PendingDisposalsGrid
+        initialData={mockData}
+        onRowClick={mockOnRowClick}
+      />
+    );
 
     fireEvent.click(screen.getByTestId('row-0'));
     expect(mockOnRowClick).toHaveBeenCalledWith(mockData[0]);
   });
 
   it('opens bulk action dialogs', () => {
-    render(<PendingDisposalsGrid initialData={mockData} onRowClick={vi.fn()} />);
+    render(
+      <PendingDisposalsGrid initialData={mockData} onRowClick={vi.fn()} />
+    );
 
     fireEvent.click(screen.getByText('Dispose Selected'));
     expect(screen.getByTestId('execute-dialog')).toBeInTheDocument();

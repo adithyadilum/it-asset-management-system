@@ -15,6 +15,9 @@ export async function GET() {
     return NextResponse.json(spec);
   } catch (error) {
     console.error('[GET /api/openapi.json] Spec compilation error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

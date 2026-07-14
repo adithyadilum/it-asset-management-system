@@ -14,8 +14,10 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('pusher-js', () => {
-  const mockPusher = vi.fn(function(this: any) {
-    this.subscribe = vi.fn().mockReturnValue({ bind: vi.fn(), unbind: vi.fn() });
+  const mockPusher = vi.fn(function (this: any) {
+    this.subscribe = vi
+      .fn()
+      .mockReturnValue({ bind: vi.fn(), unbind: vi.fn() });
     this.unsubscribe = vi.fn();
     this.disconnect = vi.fn();
   });
@@ -31,7 +33,9 @@ vi.mock('@/components/auth/device-pairing-modal', () => ({
 }));
 
 vi.mock('@/components/features/devices/devices-list', () => ({
-  DevicesList: (props: any) => <div data-testid="devices-list">Devices: {props.devices.length}</div>,
+  DevicesList: (props: any) => (
+    <div data-testid="devices-list">Devices: {props.devices.length}</div>
+  ),
 }));
 
 describe('DevicesPageClient', () => {
@@ -51,12 +55,18 @@ describe('DevicesPageClient', () => {
 
   it('opens pairing modal when link button is clicked', () => {
     render(<DevicesPageClient devices={[]} />);
-    
-    expect(screen.getByTestId('pairing-modal')).toHaveAttribute('data-open', 'false');
-    
+
+    expect(screen.getByTestId('pairing-modal')).toHaveAttribute(
+      'data-open',
+      'false'
+    );
+
     fireEvent.click(screen.getByRole('button', { name: /Link New Device/i }));
-    
-    expect(screen.getByTestId('pairing-modal')).toHaveAttribute('data-open', 'true');
+
+    expect(screen.getByTestId('pairing-modal')).toHaveAttribute(
+      'data-open',
+      'true'
+    );
   });
 
   it('subscribes to Pusher channel when session exists', () => {

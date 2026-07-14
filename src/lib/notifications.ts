@@ -2,7 +2,7 @@
  * Notification Service Infrastructure
  *
  * This module provides a standardized way to trigger notifications for asset-related actions.
- * Currently implemented as a mock service that logs to the console, it is designed to be 
+ * Currently implemented as a mock service that logs to the console, it is designed to be
  * easily extended to use external providers (e.g., SendGrid, AWS SES, or an internal notification API).
  */
 
@@ -19,7 +19,9 @@ export interface AssetNotificationParams {
  * Sends a notification to a user regarding an asset.
  * In a real implementation, this would send an email, Slack message, or push notification.
  */
-export async function sendAssetNotification(params: AssetNotificationParams): Promise<void> {
+export async function sendAssetNotification(
+  params: AssetNotificationParams
+): Promise<void> {
   const { type, recipientEmail, assetTag, assetName } = params;
 
   // Simulate network latency

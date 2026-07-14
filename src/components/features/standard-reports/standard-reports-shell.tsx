@@ -23,17 +23,34 @@ interface StandardReportsShellProps {
 
 import { useReportData } from './use-report-data';
 
-export function StandardReportsShell({ filterOptions, templates, generatedBy }: StandardReportsShellProps) {
+export function StandardReportsShell({
+  filterOptions,
+  templates,
+  generatedBy,
+}: StandardReportsShellProps) {
   const router = useRouter();
 
-  const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
+  const [filterState, setFilterState] =
+    useState<FilterState>(DEFAULT_FILTER_STATE);
   const [resetKey, setResetKey] = useState(0);
   const [showDataGrid, setShowDataGrid] = useState(false);
-  const { previewData, pageCount, isLoading, errorMessage, loadPreview, clearData, setErrorMessage } = useReportData();
+  const {
+    previewData,
+    pageCount,
+    isLoading,
+    errorMessage,
+    loadPreview,
+    clearData,
+    setErrorMessage,
+  } = useReportData();
 
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [templateName, setTemplateName] = useState<string | undefined>(undefined);
-  const [templateDescription, setTemplateDescription] = useState<string | undefined>(undefined);
+  const [templateName, setTemplateName] = useState<string | undefined>(
+    undefined
+  );
+  const [templateDescription, setTemplateDescription] = useState<
+    string | undefined
+  >(undefined);
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -53,8 +70,11 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
         category: template.filters?.category ?? DEFAULT_FILTER_STATE.category,
         location: template.filters?.location ?? DEFAULT_FILTER_STATE.location,
         status: template.filters?.status ?? DEFAULT_FILTER_STATE.status,
-        assetType: template.filters?.assetType ?? DEFAULT_FILTER_STATE.assetType,
-        masterDataType: template.filters?.masterDataType ?? DEFAULT_FILTER_STATE.masterDataType,
+        assetType:
+          template.filters?.assetType ?? DEFAULT_FILTER_STATE.assetType,
+        masterDataType:
+          template.filters?.masterDataType ??
+          DEFAULT_FILTER_STATE.masterDataType,
       };
 
       setSelectedFields(template.fields || []);
@@ -90,7 +110,7 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
     (field: keyof FilterState, value: string) => {
       setFilterState((prev) => {
         const next = { ...prev, [field]: value };
-        
+
         // Dependent logic: If Asset Type changes, clear Category
         if (field === 'assetType') {
           next.category = '';
@@ -127,7 +147,8 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
           setErrorMessage(result.message || 'Failed to delete template');
         }
       } catch {
-        const message = 'An unexpected error occurred while deleting the template.';
+        const message =
+          'An unexpected error occurred while deleting the template.';
         tiqriToast.error(message);
         setErrorMessage(message);
       }
@@ -141,9 +162,15 @@ export function StandardReportsShell({ filterOptions, templates, generatedBy }: 
   }, [router]);
 
   const handlePaginationChange = useCallback(
-    (updaterOrValue: PaginationState | ((old: PaginationState) => PaginationState)) => {
+    (
+      updaterOrValue:
+        PaginationState | ((old: PaginationState) => PaginationState)
+    ) => {
       setPagination((old) => {
-        const next = typeof updaterOrValue === 'function' ? updaterOrValue(old) : updaterOrValue;
+        const next =
+          typeof updaterOrValue === 'function'
+            ? updaterOrValue(old)
+            : updaterOrValue;
         console.debug('pagination change', { old, next });
         return next;
       });

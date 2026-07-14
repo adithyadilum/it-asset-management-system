@@ -18,8 +18,8 @@ export const isPresetDuration = (value: string): boolean =>
  */
 export function toDateValue(date: Date): string {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
@@ -44,19 +44,21 @@ export function calculateExpectedReturnDate(durationDays: number): string {
  * Returns an empty string if the date is invalid or in the past.
  */
 export function calculateDurationFromDate(dateValue: string): string {
-  const [year, month, day] = dateValue.split("-").map((part) => Number(part));
+  const [year, month, day] = dateValue.split('-').map((part) => Number(part));
 
   if (!year || !month || !day) {
-    return "";
+    return '';
   }
 
   const selectedDate = new Date(year, month - 1, day);
 
   if (Number.isNaN(selectedDate.getTime())) {
-    return "";
+    return '';
   }
 
   const today = getLocalStartOfDay(new Date());
-  const diffDays = Math.round((selectedDate.getTime() - today.getTime()) / DAY_IN_MS);
-  return diffDays > 0 ? String(diffDays) : "";
+  const diffDays = Math.round(
+    (selectedDate.getTime() - today.getTime()) / DAY_IN_MS
+  );
+  return diffDays > 0 ? String(diffDays) : '';
 }

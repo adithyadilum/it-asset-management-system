@@ -19,7 +19,11 @@ export interface BulkImportWizardProps {
   categories: { id: number; name: string; pillar: string }[];
 }
 
-export function BulkImportWizard({ isOpen, onOpenChange, categories }: BulkImportWizardProps) {
+export function BulkImportWizard({
+  isOpen,
+  onOpenChange,
+  categories,
+}: BulkImportWizardProps) {
   const [state, dispatch] = useWizardReducer();
 
   // Reset state when modal is closed
@@ -89,7 +93,11 @@ export function BulkImportWizard({ isOpen, onOpenChange, categories }: BulkImpor
 
         <div className="transition-opacity duration-200 flex flex-col min-h-87.5">
           {state.step === 1 && (
-            <StepCategorySelect categories={categories} state={state} dispatch={dispatch} />
+            <StepCategorySelect
+              categories={categories}
+              state={state}
+              dispatch={dispatch}
+            />
           )}
           {state.step === 2 && (
             <StepFileUpload state={state} dispatch={dispatch} />
@@ -98,7 +106,11 @@ export function BulkImportWizard({ isOpen, onOpenChange, categories }: BulkImpor
             <StepPreview state={state} dispatch={dispatch} />
           )}
           {state.step === 4 && (
-            <StepExecution state={state} dispatch={dispatch} onDone={() => onOpenChange(false)} />
+            <StepExecution
+              state={state}
+              dispatch={dispatch}
+              onDone={() => onOpenChange(false)}
+            />
           )}
         </div>
       </DialogContent>

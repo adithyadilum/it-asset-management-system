@@ -3,7 +3,7 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import {  enforceActionAccess } from '@/actions/auth';
+import { enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,7 +14,7 @@ import {
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { normalizeAssetIds } from '@/actions/disposals/utils';
-import {  canManageAssets } from '@/lib/auth/roles';
+import { canManageAssets } from '@/lib/auth/roles';
 import { createDisposalRequestSchema } from '@/lib/validations/disposals';
 
 export async function createDisposalRequest(input: {
@@ -56,16 +56,15 @@ export async function createDisposalRequest(input: {
       .where(
         and(
           inArray(assets.id, normalizedAssetIds),
-          or(
-            eq(assets.status, 'Disposed'),
-            eq(assets.isArchived, true)
-          )
+          or(eq(assets.status, 'Disposed'), eq(assets.isArchived, true))
         )
       );
 
     if (invalidAssets.length > 0) {
-      const tags = invalidAssets.map(a => a.assetTag).join(', ');
-      throw new Error(`Cannot request disposal: Assets [${tags}] are already disposed or archived.`);
+      const tags = invalidAssets.map((a) => a.assetTag).join(', ');
+      throw new Error(
+        `Cannot request disposal: Assets [${tags}] are already disposed or archived.`
+      );
     }
 
     const existing = await db
@@ -217,4 +216,4 @@ export async function createDisposalRequest(input: {
       startTime: actionTimer,
     });
   }
-}
+}

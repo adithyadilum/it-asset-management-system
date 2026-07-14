@@ -4,7 +4,11 @@ import { db } from '@/db';
 import { apiKeys } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
-import { applyPreAuthRateLimit, applyRateLimit, injectRateLimitHeaders } from '@/lib/api/rate-limiter';
+import {
+  applyPreAuthRateLimit,
+  applyRateLimit,
+  injectRateLimitHeaders,
+} from '@/lib/api/rate-limiter';
 import type { ApiKeyScope } from '@/types/integrations';
 import { hashApiKey } from '@/lib/api/api-key-hash';
 
@@ -65,7 +69,8 @@ export function withApiKey<TContext extends Record<string, unknown>>(
       }
 
       const platformForwardedFor = req.headers.get('x-vercel-forwarded-for');
-      const forwardedFor = platformForwardedFor || req.headers.get('x-forwarded-for');
+      const forwardedFor =
+        platformForwardedFor || req.headers.get('x-forwarded-for');
       const firstIp = forwardedFor ? forwardedFor.split(',')[0].trim() : '';
       const clientIp = firstIp || req.headers.get('x-real-ip') || 'unknown';
       const preAuthLimit = await applyPreAuthRateLimit(clientIp);

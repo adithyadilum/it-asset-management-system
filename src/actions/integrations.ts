@@ -21,16 +21,13 @@ import { serverEnv } from '@/lib/env';
 import { hashApiKey } from '@/lib/api/api-key-hash';
 
 type WebhookSubscriptionResult =
-  | { success: true; secret: string }
-  | { success: false; error: string };
+  { success: true; secret: string } | { success: false; error: string };
 
 type WebhookMutationResult =
-  | { success: true }
-  | { success: false; error: string };
+  { success: true } | { success: false; error: string };
 
 type TestWebhookResult =
-  | { success: true; message: string }
-  | { success: false; error: string };
+  { success: true; message: string } | { success: false; error: string };
 
 function parseStringArrayField(value: FormDataEntryValue | null): string[] {
   if (typeof value !== 'string') {

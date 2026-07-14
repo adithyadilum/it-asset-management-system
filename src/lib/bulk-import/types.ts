@@ -36,11 +36,7 @@ export type ImportErrorRow = {
   assetName: string | null;
   serialNumber: string | null;
   errorStage:
-    | 'STRUCTURAL'
-    | 'TYPE'
-    | 'REFERENTIAL'
-    | 'BUSINESS_RULE'
-    | 'EAV_SCHEMA';
+    'STRUCTURAL' | 'TYPE' | 'REFERENTIAL' | 'BUSINESS_RULE' | 'EAV_SCHEMA';
   errorField: string;
   errorMessage: string;
 };

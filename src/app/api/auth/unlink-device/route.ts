@@ -26,10 +26,7 @@ export async function POST(req: Request) {
     .select()
     .from(linkedDevices)
     .where(
-      and(
-        eq(linkedDevices.id, deviceId),
-        eq(linkedDevices.isRevoked, false)
-      )
+      and(eq(linkedDevices.id, deviceId), eq(linkedDevices.isRevoked, false))
     )
     .limit(1);
 

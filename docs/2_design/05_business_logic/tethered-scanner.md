@@ -270,7 +270,7 @@ By default, the scanned value is injected into **whichever input has focus**. Ho
 ```typescript
 // Desktop form component
 useTetheredScanner({
-  targetFields: ["serialNumber", "assetTag", "rmaTicketNumber"],
+  targetFields: ['serialNumber', 'assetTag', 'rmaTicketNumber'],
   onScan: (value: string, field: string) => {
     // Custom handler per field
   },

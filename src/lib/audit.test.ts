@@ -29,7 +29,11 @@ vi.mock('next/headers', () => ({
 // Import under test
 // ---------------------------------------------------------------------------
 
-import { logAuditAction, logAuditActionTx, extractLabelFromValues } from '@/lib/audit';
+import {
+  logAuditAction,
+  logAuditActionTx,
+  extractLabelFromValues,
+} from '@/lib/audit';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -168,7 +172,9 @@ describe('logAuditActionTx', () => {
   });
 
   it('writes via provided transaction', async () => {
-    const txInsert = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+    const txInsert = vi
+      .fn()
+      .mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
     const tx = { insert: txInsert };
 
     await logAuditActionTx(tx, {
@@ -202,7 +208,10 @@ describe('logAuditActionTx', () => {
 
 describe('extractLabelFromValues', () => {
   it('extracts code + name from newValue', () => {
-    const label = extractLabelFromValues(null, { assetTag: 'HRW-001', name: 'Laptop' });
+    const label = extractLabelFromValues(null, {
+      assetTag: 'HRW-001',
+      name: 'Laptop',
+    });
     expect(label).toBe('HRW-001 · Laptop');
   });
 

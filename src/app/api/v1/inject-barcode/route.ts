@@ -35,15 +35,21 @@ export async function POST(req: Request) {
       cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER,
       useTLS: true,
     });
-    
+
     // Using a private channel format or just a user-specific channel
     await pusher.trigger(`user-${userId}`, 'barcode_scanned', {
       barcode,
     });
-    
-    return NextResponse.json({ success: true, message: 'Barcode injected successfully' });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Barcode injected successfully',
+    });
   } catch (error) {
     console.error('Failed to trigger Pusher barcode event:', error);
-    return NextResponse.json({ error: 'Failed to inject barcode' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to inject barcode' },
+      { status: 500 }
+    );
   }
 }

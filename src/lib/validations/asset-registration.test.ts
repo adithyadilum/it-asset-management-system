@@ -82,13 +82,30 @@ describe('assetRegistrationSchema', () => {
 
   it('rejects basePrice < 0', () => {
     const negativePrice = { ...baseValidHardwareAsset, basePrice: -100 };
-    expect(assetRegistrationSchema.safeParse(negativePrice).success).toBe(false);
+    expect(assetRegistrationSchema.safeParse(negativePrice).success).toBe(
+      false
+    );
   });
 
   it('rejects missing relations (category, brand, model)', () => {
-    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, categoryId: 0 }).success).toBe(false);
-    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, brandId: 0 }).success).toBe(false);
-    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, modelId: 0 }).success).toBe(false);
+    expect(
+      assetRegistrationSchema.safeParse({
+        ...baseValidHardwareAsset,
+        categoryId: 0,
+      }).success
+    ).toBe(false);
+    expect(
+      assetRegistrationSchema.safeParse({
+        ...baseValidHardwareAsset,
+        brandId: 0,
+      }).success
+    ).toBe(false);
+    expect(
+      assetRegistrationSchema.safeParse({
+        ...baseValidHardwareAsset,
+        modelId: 0,
+      }).success
+    ).toBe(false);
   });
 
   // ---------------------------------------------------------------------------
@@ -96,8 +113,18 @@ describe('assetRegistrationSchema', () => {
   // ---------------------------------------------------------------------------
 
   it('requires purchaseDate to be valid YYYY-MM-DD', () => {
-    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, purchaseDate: '2023-13-01' }).success).toBe(false);
-    expect(assetRegistrationSchema.safeParse({ ...baseValidHardwareAsset, purchaseDate: 'not-a-date' }).success).toBe(false);
+    expect(
+      assetRegistrationSchema.safeParse({
+        ...baseValidHardwareAsset,
+        purchaseDate: '2023-13-01',
+      }).success
+    ).toBe(false);
+    expect(
+      assetRegistrationSchema.safeParse({
+        ...baseValidHardwareAsset,
+        purchaseDate: 'not-a-date',
+      }).success
+    ).toBe(false);
   });
 
   // ---------------------------------------------------------------------------
@@ -139,7 +166,9 @@ describe('assetRegistrationSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.licenseType).toContain('License type is required for software.');
+      expect(result.error.flatten().fieldErrors.licenseType).toContain(
+        'License type is required for software.'
+      );
     }
   });
 
@@ -150,7 +179,9 @@ describe('assetRegistrationSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.totalSeats).toContain('Total seats is required for software.');
+      expect(result.error.flatten().fieldErrors.totalSeats).toContain(
+        'Total seats is required for software.'
+      );
     }
   });
 
@@ -170,8 +201,12 @@ describe('assetRegistrationSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.billingCycle).toContain('Billing cycle is required for subscription licenses.');
-      expect(result.error.flatten().fieldErrors.licenseExpiryDate).toContain('Expiry date is required for subscription licenses.');
+      expect(result.error.flatten().fieldErrors.billingCycle).toContain(
+        'Billing cycle is required for subscription licenses.'
+      );
+      expect(result.error.flatten().fieldErrors.licenseExpiryDate).toContain(
+        'Expiry date is required for subscription licenses.'
+      );
     }
   });
 
@@ -184,7 +219,9 @@ describe('assetRegistrationSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.licenseExpiryDate).toContain('Perpetual licenses must not have an expiry date.');
+      expect(result.error.flatten().fieldErrors.licenseExpiryDate).toContain(
+        'Perpetual licenses must not have an expiry date.'
+      );
     }
   });
 
@@ -208,7 +245,9 @@ describe('assetRegistrationSchema', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.flatten().fieldErrors.basePrice).toContain('Free software must have a total cost of 0.');
+      expect(result.error.flatten().fieldErrors.basePrice).toContain(
+        'Free software must have a total cost of 0.'
+      );
     }
   });
 

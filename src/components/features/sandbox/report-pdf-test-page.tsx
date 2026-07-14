@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useMemo, useState } from 'react';
 
@@ -15,15 +15,30 @@ type SandboxPdfDataset = {
 
 function buildSixColumnMockData(): ReportPdfData {
   const rows = Array.from({ length: 40 }, (_, index) => {
-    const statuses = ['Available', 'Assigned', 'In Repair', 'Lost', 'Active', 'Inactive', 'Retired', 'Disposed'];
+    const statuses = [
+      'Available',
+      'Assigned',
+      'In Repair',
+      'Lost',
+      'Active',
+      'Inactive',
+      'Retired',
+      'Disposed',
+    ];
     return {
       id: `asset-${index + 1}`,
       'Asset ID': `AST-${String(index + 1).padStart(4, '0')}`,
       'Asset Name': `Latitude ${index % 2 === 0 ? '5420' : '7430'} ${index + 1}`,
-      Category: index % 3 === 0 ? 'Laptop' : index % 3 === 1 ? 'Monitor' : 'Peripheral',
+      Category:
+        index % 3 === 0 ? 'Laptop' : index % 3 === 1 ? 'Monitor' : 'Peripheral',
       Location: index % 2 === 0 ? 'Colombo HQ' : 'Kandy Branch',
       Status: statuses[index % statuses.length],
-      'Assigned To': index % 4 === 0 ? 'Mark Silva' : index % 4 === 1 ? 'Nimali Perera' : '-',
+      'Assigned To':
+        index % 4 === 0
+          ? 'Mark Silva'
+          : index % 4 === 1
+            ? 'Nimali Perera'
+            : '-',
     };
   });
 
@@ -33,15 +48,37 @@ function buildSixColumnMockData(): ReportPdfData {
     generatedAt: new Date().toISOString(),
     filtersApplied: 'Type: Hardware | Location: Colombo HQ | Status: All',
     dataSource: 'Assets',
-    summary: { totalRecords: rows.length, activeAssets: 24, totalValue: 'LKR 12,450,000' },
-    headers: ['Asset ID', 'Asset Name', 'Category', 'Location', 'Status', 'Assigned To'],
+    summary: {
+      totalRecords: rows.length,
+      activeAssets: 24,
+      totalValue: 'LKR 12,450,000',
+    },
+    headers: [
+      'Asset ID',
+      'Asset Name',
+      'Category',
+      'Location',
+      'Status',
+      'Assigned To',
+    ],
     rows,
   };
 }
 
 function buildTenColumnMockData(): ReportPdfData {
   const rows = Array.from({ length: 32 }, (_, index) => {
-    const statuses = ['Available', 'Assigned', 'New', 'In Repair', 'Lost', 'Defective', 'Retired', 'Disposed', 'Active', 'Inactive'];
+    const statuses = [
+      'Available',
+      'Assigned',
+      'New',
+      'In Repair',
+      'Lost',
+      'Defective',
+      'Retired',
+      'Disposed',
+      'Active',
+      'Inactive',
+    ];
     return {
       id: `asset-wide-${index + 1}`,
       'Asset ID': `AST-${String(index + 100).padStart(4, '0')}`,
@@ -62,7 +99,11 @@ function buildTenColumnMockData(): ReportPdfData {
     generatedAt: new Date().toISOString(),
     filtersApplied: 'Type: Hardware | Location: All | Status: All',
     dataSource: 'Assets',
-    summary: { totalRecords: rows.length, activeAssets: 18, totalValue: 'LKR 9,840,000' },
+    summary: {
+      totalRecords: rows.length,
+      activeAssets: 18,
+      totalValue: 'LKR 9,840,000',
+    },
     headers: [
       'Asset ID',
       'Asset Name',
@@ -77,7 +118,12 @@ function buildTenColumnMockData(): ReportPdfData {
     ],
     rows: rows.map((row, index) => ({
       ...row,
-      'Assigned To': index % 3 === 0 ? 'Mark Silva' : index % 3 === 1 ? 'Nimali Perera' : 'Suresh Fernando',
+      'Assigned To':
+        index % 3 === 0
+          ? 'Mark Silva'
+          : index % 3 === 1
+            ? 'Nimali Perera'
+            : 'Suresh Fernando',
     })),
   };
 }
@@ -92,14 +138,20 @@ export function ReportPdfTestPage() {
     data: MOCK_REPORT_DATA,
   });
 
-  const activePreviewCount = useMemo(() => activeDataset.data.rows.length, [activeDataset.data.rows.length]);
+  const activePreviewCount = useMemo(
+    () => activeDataset.data.rows.length,
+    [activeDataset.data.rows.length]
+  );
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-4">
-        <CardTitle className="text-base font-medium text-card-foreground">PDF Report Sandbox</CardTitle>
+        <CardTitle className="text-base font-medium text-card-foreground">
+          PDF Report Sandbox
+        </CardTitle>
         <CardDescription className="text-sm text-muted-foreground">
-          Generate mock report PDFs without waiting for live filtering and export wiring.
+          Generate mock report PDFs without waiting for live filtering and
+          export wiring.
         </CardDescription>
       </div>
 
@@ -136,7 +188,11 @@ export function ReportPdfTestPage() {
 
       <div className="mt-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
         <p className="font-medium text-foreground">Current dataset</p>
-        <p>{activeDataset.label} | {activePreviewCount} rows | {activeDataset.data.headers.length > 7 ? 'Landscape' : 'Portrait'} orientation</p>
+        <p>
+          {activeDataset.label} | {activePreviewCount} rows |{' '}
+          {activeDataset.data.headers.length > 7 ? 'Landscape' : 'Portrait'}{' '}
+          orientation
+        </p>
       </div>
 
       <GenerateReportPdfModal

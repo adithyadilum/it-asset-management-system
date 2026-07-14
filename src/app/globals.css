@@ -1,14 +1,16 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "./tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import './tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-noto-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans:
+    var(--font-noto-sans), ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -58,7 +60,7 @@
   --radius-3xl: 22px;
   --radius-4xl: 26px;
   --radius-full: 9999px;
-  
+
   --color-alert-reminder-bg: var(--alert-reminder-bg);
   --color-alert-reminder-border: var(--alert-reminder-border);
   --color-alert-reminder-text: var(--alert-reminder-text);
@@ -139,15 +141,15 @@
   --alert-destructive-btn: #6f1d2c;
   --alert-destructive-btn-hover: #5f1825;
 
-  --alert-warning-bg: rgba(255, 247, 237, 0.50);
+  --alert-warning-bg: rgba(255, 247, 237, 0.5);
   --alert-warning-border: #fdba74;
   --alert-warning-text: #431407;
 
-  --alert-success-bg: rgba(236, 253, 245, 0.50);
+  --alert-success-bg: rgba(236, 253, 245, 0.5);
   --alert-success-border: #059669;
   --alert-success-text: #022c22;
 
-  --alert-info-bg: rgba(239, 246, 255, 0.50);
+  --alert-info-bg: rgba(239, 246, 255, 0.5);
   --alert-info-border: #1d4ed8;
   --alert-info-text: var(--foreground);
 }
@@ -159,7 +161,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #5C74F7;
+  --primary: #5c74f7;
   --primary-foreground: hsl(230 92% 10%);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);

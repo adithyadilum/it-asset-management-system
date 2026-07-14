@@ -3,7 +3,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { NextAuthSessionProvider } from './session-provider';
 
 vi.mock('next-auth/react', () => ({
-  SessionProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="session-provider">{children}</div>,
+  SessionProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="session-provider">{children}</div>
+  ),
 }));
 
 describe('NextAuthSessionProvider', () => {

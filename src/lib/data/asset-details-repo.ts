@@ -441,7 +441,10 @@ export async function getAssetDetailsById(
       ? expiry < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
-    const isNearFull = isSoftwareLicenseNearCapacity(totalSeats, availableSeats);
+    const isNearFull = isSoftwareLicenseNearCapacity(
+      totalSeats,
+      availableSeats
+    );
 
     if (isExpired) {
       result.asset.status = 'expired';

@@ -1,13 +1,13 @@
-'use client'
+'use client';
 
-import { Download } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu';
 
 /**
  * Dashboard export button — provides CSV data export and print functionality.
@@ -15,8 +15,8 @@ import {
  */
 export function DashboardExportButton() {
   const handlePrint = () => {
-    window.print()
-  }
+    window.print();
+  };
 
   return (
     <DropdownMenu>
@@ -39,5 +39,5 @@ export function DashboardExportButton() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

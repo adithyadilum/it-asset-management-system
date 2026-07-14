@@ -39,9 +39,10 @@ export async function getOverdueReturnsInternal(
       employeeEmail: users.email,
       department: departments.name,
       expectedReturnDate: assetAssignments.expectedReturnDate,
-      daysOverdue: sql<number>`(CURRENT_DATE - ${assetAssignments.expectedReturnDate}::date)`.as(
-        'days_overdue'
-      ),
+      daysOverdue:
+        sql<number>`(CURRENT_DATE - ${assetAssignments.expectedReturnDate}::date)`.as(
+          'days_overdue'
+        ),
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -81,9 +82,10 @@ export async function getPendingDisposalsInternal(
       assetName: models.name,
       requestedBy: users.name,
       requestedByEmail: users.email,
-      daysPending: sql<number>`GREATEST(0, CURRENT_DATE - ${assetDisposals.requestedAt}::date)`.as(
-        'days_pending'
-      ),
+      daysPending:
+        sql<number>`GREATEST(0, CURRENT_DATE - ${assetDisposals.requestedAt}::date)`.as(
+          'days_pending'
+        ),
     })
     .from(assetDisposals)
     .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
@@ -144,7 +146,6 @@ export async function getHighMaintenanceAssetsInternal(
     totalDowntimeDays: Number(row.totalDowntimeDays ?? 0),
   }));
 }
-
 
 export const getCachedInventoryStatus = unstable_cache(
   async (): Promise<InventoryStatusResponse> => {
@@ -223,10 +224,7 @@ export const getCachedDepartmentAllocation = unstable_cache(
       .innerJoin(users, eq(assetAssignments.assignedToUserId, users.id))
       .innerJoin(departments, eq(users.departmentId, departments.id))
       .where(
-        and(
-          eq(assets.isArchived, false),
-          isNull(assetAssignments.returnedDate)
-        )
+        and(eq(assets.isArchived, false), isNull(assetAssignments.returnedDate))
       )
       .groupBy(departments.name);
 
@@ -263,4 +261,3 @@ export const getCachedAssetsByCategory = unstable_cache(
   ['dashboard-assets-by-category'],
   { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-categories'] }
 );
-

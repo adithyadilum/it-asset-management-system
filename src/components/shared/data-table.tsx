@@ -1,6 +1,6 @@
-"use client"
+'use client';
 
-import * as React from "react"
+import * as React from 'react';
 import {
   type ColumnDef,
   type PaginationState,
@@ -12,21 +12,24 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
-import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
+} from '@tanstack/react-table';
+import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 
-import { TableEmptyState, type TableEmptyStateAction } from "@/components/shared/table-empty-state"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ScrollBar } from "@/components/ui/scroll-area"
-import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
+import {
+  TableEmptyState,
+  type TableEmptyStateAction,
+} from '@/components/shared/table-empty-state';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollBar } from '@/components/ui/scroll-area';
+import { ScrollArea as ScrollAreaPrimitive } from 'radix-ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -34,60 +37,60 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
-type DataTableSelectionActionTone = "secondary" | "destructive" | "primary"
+type DataTableSelectionActionTone = 'secondary' | 'destructive' | 'primary';
 
 const INTERACTIVE_SELECTOR =
-  "button,a,input,textarea,select,[role='checkbox'],[data-row-panel-ignore='true']"
+  "button,a,input,textarea,select,[role='checkbox'],[data-row-panel-ignore='true']";
 
-const DEFAULT_PAGE_SIZE_OPTIONS = [16, 24, 32, 48]
-const DEFAULT_INITIAL_PAGE_SIZE = 16
+const DEFAULT_PAGE_SIZE_OPTIONS = [16, 24, 32, 48];
+const DEFAULT_INITIAL_PAGE_SIZE = 16;
 
 export type DataTableSelectionAction<TData> = {
-  id: string
-  label: string
-  onClick?: (selectedRows: TData[]) => void
-  tone?: DataTableSelectionActionTone
-  disabled?: boolean | ((selectedRows: TData[]) => boolean)
-  hidden?: boolean | ((selectedRows: TData[]) => boolean)
-}
+  id: string;
+  label: string;
+  onClick?: (selectedRows: TData[]) => void;
+  tone?: DataTableSelectionActionTone;
+  disabled?: boolean | ((selectedRows: TData[]) => boolean);
+  hidden?: boolean | ((selectedRows: TData[]) => boolean);
+};
 
 type DataTableProps<TData, TValue> = {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
-  defaultSorting?: SortingState
-  enableRowScroll?: boolean
-  enableRowSelection?: boolean
-  selectionActions?: DataTableSelectionAction<TData>[]
-  selectionLabel?: (selectedCount: number) => string
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  defaultSorting?: SortingState;
+  enableRowScroll?: boolean;
+  enableRowSelection?: boolean;
+  selectionActions?: DataTableSelectionAction<TData>[];
+  selectionLabel?: (selectedCount: number) => string;
   emptyState?: {
-    title?: string
-    description?: string
-    action?: TableEmptyStateAction
-  }
-  onRowClick?: (row: TData, rowIndex: number) => void
-  isRowActive?: (row: TData, rowIndex: number) => boolean
-  activeRowCondition?: (row: TData) => boolean
-  selectionResetSignal?: number | string
-  className?: string
-  manualPagination?: boolean
-  pageCount?: number
-  paginationState?: PaginationState
-  onPaginationChange?: OnChangeFn<PaginationState>
-  footerText?: React.ReactNode
+    title?: string;
+    description?: string;
+    action?: TableEmptyStateAction;
+  };
+  onRowClick?: (row: TData, rowIndex: number) => void;
+  isRowActive?: (row: TData, rowIndex: number) => boolean;
+  activeRowCondition?: (row: TData) => boolean;
+  selectionResetSignal?: number | string;
+  className?: string;
+  manualPagination?: boolean;
+  pageCount?: number;
+  paginationState?: PaginationState;
+  onPaginationChange?: OnChangeFn<PaginationState>;
+  footerText?: React.ReactNode;
 
   // 1. ADDED THESE TWO OPTIONAL PROPS
-  rowSelection?: RowSelectionState
-  onRowSelectionChange?: OnChangeFn<RowSelectionState>
-  pageSizeOptions?: number[]
-  initialPageSize?: number
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  pageSizeOptions?: number[];
+  initialPageSize?: number;
 
   // Prevent selection header replacement
-  disableSelectionHeader?: boolean
-  hideFooter?: boolean
-}
+  disableSelectionHeader?: boolean;
+  hideFooter?: boolean;
+};
 
 export function DataTable<TData, TValue>({
   columns,
@@ -117,74 +120,80 @@ export function DataTable<TData, TValue>({
   disableSelectionHeader = false,
   hideFooter = false,
 }: DataTableProps<TData, TValue>) {
-  const isCompactIdColumn = React.useCallback((columnId: string) => columnId === "id", [])
+  const isCompactIdColumn = React.useCallback(
+    (columnId: string) => columnId === 'id',
+    []
+  );
 
   const getDisplayText = React.useCallback((value: unknown) => {
     if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
     ) {
-      return String(value)
+      return String(value);
     }
 
-    return null
-  }, [])
+    return null;
+  }, []);
 
   const syncOverflowTitle = React.useCallback((element: HTMLElement) => {
-    const fullText = element.dataset.fulltext
+    const fullText = element.dataset.fulltext;
 
     if (!fullText) {
-      element.removeAttribute("title")
-      return
+      element.removeAttribute('title');
+      return;
     }
 
     if (element.scrollWidth > element.clientWidth) {
-      element.title = fullText
-      return
+      element.title = fullText;
+      return;
     }
 
-    element.removeAttribute("title")
-  }, [])
+    element.removeAttribute('title');
+  }, []);
 
   const handleOverflowTooltip = React.useCallback(
     (event: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>) => {
-      syncOverflowTitle(event.currentTarget)
+      syncOverflowTitle(event.currentTarget);
     },
     [syncOverflowTitle]
-  )
+  );
 
   const sortedPageSizes = React.useMemo(() => {
     const normalized = Array.from(
       new Set([...pageSizeOptions, initialPageSize])
-    ).filter((value) => value > 0)
-    normalized.sort((a, b) => a - b)
+    ).filter((value) => value > 0);
+    normalized.sort((a, b) => a - b);
 
-    return normalized
-  }, [pageSizeOptions, initialPageSize])
+    return normalized;
+  }, [pageSizeOptions, initialPageSize]);
 
-  const [sorting, setSorting] = React.useState<SortingState>(defaultSorting)
+  const [sorting, setSorting] = React.useState<SortingState>(defaultSorting);
 
   // 3. UPDATED THIS TO USE EXTERNAL STATE IF PROVIDED (matches pagination logic)
-  const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>({})
-  const rowSelection = externalRowSelection ?? internalRowSelection
-  const setRowSelection = externalOnRowSelectionChange ?? setInternalRowSelection
+  const [internalRowSelection, setInternalRowSelection] =
+    React.useState<RowSelectionState>({});
+  const rowSelection = externalRowSelection ?? internalRowSelection;
+  const setRowSelection =
+    externalOnRowSelectionChange ?? setInternalRowSelection;
 
-  const [internalPagination, setInternalPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: initialPageSize,
-  })
+  const [internalPagination, setInternalPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: initialPageSize,
+    });
 
-  const pagination = paginationState ?? internalPagination
-  const setPagination = onPaginationChange ?? setInternalPagination
+  const pagination = paginationState ?? internalPagination;
+  const setPagination = onPaginationChange ?? setInternalPagination;
 
   React.useEffect(() => {
-    setRowSelection({})
-  }, [selectionResetSignal, setRowSelection])
+    setRowSelection({});
+  }, [selectionResetSignal, setRowSelection]);
 
   const selectionColumn = React.useMemo<ColumnDef<TData, unknown>>(
     () => ({
-      id: "select",
+      id: 'select',
       size: 52,
       enableSorting: false,
       enableHiding: false,
@@ -198,9 +207,11 @@ export function DataTable<TData, TValue>({
             aria-label="Select all rows"
             checked={
               table.getIsAllRowsSelected() ||
-              (table.getIsSomeRowsSelected() ? "indeterminate" : false)
+              (table.getIsSomeRowsSelected() ? 'indeterminate' : false)
             }
-            onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
+            onCheckedChange={(value) =>
+              table.toggleAllRowsSelected(Boolean(value))
+            }
           />
         </div>
       ),
@@ -219,7 +230,7 @@ export function DataTable<TData, TValue>({
       ),
     }),
     []
-  )
+  );
 
   const tableColumns = React.useMemo(
     () =>
@@ -227,7 +238,7 @@ export function DataTable<TData, TValue>({
         ? [selectionColumn, ...(columns as ColumnDef<TData, unknown>[])]
         : (columns as ColumnDef<TData, unknown>[]),
     [columns, enableRowSelection, selectionColumn]
-  )
+  );
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -247,48 +258,63 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-  })
+  });
 
-  const isRowClickable = typeof onRowClick === "function"
+  const isRowClickable = typeof onRowClick === 'function';
 
   const handleRowClick = React.useCallback(
-    (event: React.MouseEvent<HTMLTableRowElement>, rowData: TData, rowIndex: number) => {
+    (
+      event: React.MouseEvent<HTMLTableRowElement>,
+      rowData: TData,
+      rowIndex: number
+    ) => {
       if (!onRowClick) {
-        return
+        return;
       }
 
-      const clickedElement = event.target as HTMLElement
+      const clickedElement = event.target as HTMLElement;
       if (clickedElement.closest(INTERACTIVE_SELECTOR)) {
-        return
+        return;
       }
 
-      onRowClick(rowData, rowIndex)
+      onRowClick(rowData, rowIndex);
     },
     [onRowClick]
-  )
+  );
 
-  const totalRows = table.getCoreRowModel().rows.length
-  const selectedRows = table.getSelectedRowModel().rows.length
-  const selectedRowData = table.getSelectedRowModel().rows.map((row) => row.original)
+  const totalRows = table.getCoreRowModel().rows.length;
+  const selectedRows = table.getSelectedRowModel().rows.length;
+  const selectedRowData = table
+    .getSelectedRowModel()
+    .rows.map((row) => row.original);
   const actionHeaderLabel = selectionLabel
     ? selectionLabel(selectedRows)
-    : `${selectedRows} row(s) selected`
-  const computedPageCount = Math.max(table.getPageCount(), 1)
-  const currentPage = Math.min(table.getState().pagination.pageIndex + 1, computedPageCount)
+    : `${selectedRows} row(s) selected`;
+  const computedPageCount = Math.max(table.getPageCount(), 1);
+  const currentPage = Math.min(
+    table.getState().pagination.pageIndex + 1,
+    computedPageCount
+  );
 
   const tableContent = (
     <Table
-      className={cn("table-fixed min-w-full", table.getRowModel().rows.length === 0 && "h-full")}
-      containerClassName={cn("!overflow-visible", table.getRowModel().rows.length === 0 && "h-full")}
+      className={cn(
+        'table-fixed min-w-full',
+        table.getRowModel().rows.length === 0 && 'h-full'
+      )}
+      containerClassName={cn(
+        '!overflow-visible',
+        table.getRowModel().rows.length === 0 && 'h-full'
+      )}
     >
       <colgroup>
         {table.getAllLeafColumns().map((column) => {
-          const isSelect = column.id === "select"
-          const isId = isCompactIdColumn(column.id)
+          const isSelect = column.id === 'select';
+          const isId = isCompactIdColumn(column.id);
 
-          let width = column.getSize()
-          if (isSelect) width = 52
-          else if (isId) width = 112
+          let width = column.getSize();
+          if (isSelect) width = 52;
+          else if (isId) width = 112;
 
           return (
             <col
@@ -298,11 +324,11 @@ export function DataTable<TData, TValue>({
                 minWidth: width,
               }}
             />
-          )
+          );
         })}
       </colgroup>
       <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0] shadow-border [&_tr]:border-b-0">
-        {(selectedRows > 0 && !disableSelectionHeader) ? (
+        {selectedRows > 0 && !disableSelectionHeader ? (
           <TableRow className="h-13.25 border-border bg-primary hover:bg-primary transition-all duration-200 ease-in-out">
             <TableHead
               colSpan={table.getAllLeafColumns().length}
@@ -310,14 +336,21 @@ export function DataTable<TData, TValue>({
             >
               <div className="flex h-13.25 w-full items-center justify-between pr-6">
                 <div className="flex min-w-0 items-center">
-                  <div className="flex w-13 items-center justify-center" data-row-panel-ignore="true">
+                  <div
+                    className="flex w-13 items-center justify-center"
+                    data-row-panel-ignore="true"
+                  >
                     <Checkbox
                       aria-label="Select all rows"
                       checked={
                         table.getIsAllRowsSelected() ||
-                        (table.getIsSomeRowsSelected() ? "indeterminate" : false)
+                        (table.getIsSomeRowsSelected()
+                          ? 'indeterminate'
+                          : false)
                       }
-                      onCheckedChange={(value) => table.toggleAllRowsSelected(Boolean(value))}
+                      onCheckedChange={(value) =>
+                        table.toggleAllRowsSelected(Boolean(value))
+                      }
                       className="border-primary-foreground/70 data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary data-[state=indeterminate]:border-primary-foreground data-[state=indeterminate]:bg-primary-foreground data-[state=indeterminate]:text-primary dark:border-white/70 dark:data-[state=checked]:border-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-primary dark:data-[state=indeterminate]:border-white dark:data-[state=indeterminate]:bg-white dark:data-[state=indeterminate]:text-primary"
                     />
                   </div>
@@ -326,19 +359,22 @@ export function DataTable<TData, TValue>({
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5" data-row-panel-ignore="true">
+                <div
+                  className="flex flex-wrap items-center gap-1.5"
+                  data-row-panel-ignore="true"
+                >
                   {selectionActions.map((action) => {
                     const isDisabled =
-                      typeof action.disabled === "function"
+                      typeof action.disabled === 'function'
                         ? action.disabled(selectedRowData)
-                        : Boolean(action.disabled)
+                        : Boolean(action.disabled);
 
                     const isHidden =
-                      typeof action.hidden === "function"
+                      typeof action.hidden === 'function'
                         ? action.hidden(selectedRowData)
-                        : Boolean(action.hidden)
+                        : Boolean(action.hidden);
 
-                    if (isHidden) return null
+                    if (isHidden) return null;
 
                     return (
                       <Button
@@ -346,26 +382,26 @@ export function DataTable<TData, TValue>({
                         type="button"
                         size="sm"
                         variant={
-                          action.tone === "destructive"
-                            ? "destructive"
-                            : action.tone === "primary"
-                              ? "default"
-                              : "outline"
+                          action.tone === 'destructive'
+                            ? 'destructive'
+                            : action.tone === 'primary'
+                              ? 'default'
+                              : 'outline'
                         }
                         disabled={isDisabled}
                         onClick={() => action.onClick?.(selectedRowData)}
                         className={cn(
-                          "h-9 rounded-md px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]",
-                          action.tone === "destructive"
-                            ? "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-destructive dark:text-destructive-foreground dark:hover:bg-destructive/80"
-                            : action.tone === "primary"
-                              ? "border-primary-foreground/20 bg-primary-foreground text-primary hover:bg-primary-foreground/90 dark:bg-white dark:text-primary dark:border-white/20 dark:hover:bg-white/90"
-                              : "border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25 dark:border-white/30 dark:bg-white/15 dark:text-white dark:hover:bg-white/25"
+                          'h-9 rounded-md px-4 text-sm font-medium shadow-[0px_1px_2px_rgba(0,0,0,0.10)]',
+                          action.tone === 'destructive'
+                            ? 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-destructive dark:text-destructive-foreground dark:hover:bg-destructive/80'
+                            : action.tone === 'primary'
+                              ? 'border-primary-foreground/20 bg-primary-foreground text-primary hover:bg-primary-foreground/90 dark:bg-white dark:text-primary dark:border-white/20 dark:hover:bg-white/90'
+                              : 'border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25 dark:border-white/30 dark:bg-white/15 dark:text-white dark:hover:bg-white/25'
                         )}
                       >
                         {action.label}
                       </Button>
-                    )
+                    );
                   })}
                 </div>
               </div>
@@ -373,25 +409,28 @@ export function DataTable<TData, TValue>({
           </TableRow>
         ) : (
           table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="h-13.25 border-border transition-all duration-200 ease-in-out">
+            <TableRow
+              key={headerGroup.id}
+              className="h-13.25 border-border transition-all duration-200 ease-in-out"
+            >
               {headerGroup.headers.map((header) => {
-                const canSort = header.column.getCanSort()
-                const sortState = header.column.getIsSorted()
+                const canSort = header.column.getCanSort();
+                const sortState = header.column.getIsSorted();
                 const SortIcon =
-                  sortState === "asc"
+                  sortState === 'asc'
                     ? ChevronUp
-                    : sortState === "desc"
+                    : sortState === 'desc'
                       ? ChevronDown
-                      : ChevronsUpDown
+                      : ChevronsUpDown;
 
                 return (
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "h-13.25 bg-muted px-4 text-foreground",
-                      "font-medium",
-                      header.column.id === "select" && "w-13 px-0",
-                      isCompactIdColumn(header.column.id) && "w-28"
+                      'h-13.25 bg-muted px-4 text-foreground',
+                      'font-medium',
+                      header.column.id === 'select' && 'w-13 px-0',
+                      isCompactIdColumn(header.column.id) && 'w-28'
                     )}
                     style={{
                       width: header.column.getSize(),
@@ -406,33 +445,50 @@ export function DataTable<TData, TValue>({
                       >
                         <span
                           className="truncate"
-                          data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
+                          data-fulltext={
+                            getDisplayText(header.column.columnDef.header) ??
+                            undefined
+                          }
                           onMouseEnter={handleOverflowTooltip}
                           onFocus={handleOverflowTooltip}
                         >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
                         </span>
-                        <SortIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                        <SortIcon
+                          aria-hidden="true"
+                          className="size-3.5 text-muted-foreground"
+                        />
                       </button>
                     ) : (
                       <span
                         className="block truncate"
-                        data-fulltext={getDisplayText(header.column.columnDef.header) ?? undefined}
+                        data-fulltext={
+                          getDisplayText(header.column.columnDef.header) ??
+                          undefined
+                        }
                         onMouseEnter={handleOverflowTooltip}
                         onFocus={handleOverflowTooltip}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                       </span>
                     )}
                   </TableHead>
-                )
+                );
               })}
             </TableRow>
           ))
         )}
       </TableHeader>
 
-      <TableBody className={cn(table.getRowModel().rows.length === 0 && "h-full")}>
+      <TableBody
+        className={cn(table.getRowModel().rows.length === 0 && 'h-full')}
+      >
         {table.getRowModel().rows.length > 0 ? (
           table.getRowModel().rows.map((row) => {
             const isActive =
@@ -442,27 +498,31 @@ export function DataTable<TData, TValue>({
             return (
               <TableRow
                 key={row.id}
-                data-state={(row.getIsSelected() || isActive) ? "selected" : undefined}
-                onClick={(event) => handleRowClick(event, row.original, row.index)}
+                data-state={
+                  row.getIsSelected() || isActive ? 'selected' : undefined
+                }
+                onClick={(event) =>
+                  handleRowClick(event, row.original, row.index)
+                }
                 className={cn(
-                  "h-13.25 border-border",
-                  isRowClickable && "cursor-pointer hover:bg-muted/50",
-                  isActive && "bg-muted"
+                  'h-13.25 border-border',
+                  isRowClickable && 'cursor-pointer hover:bg-muted/50',
+                  isActive && 'bg-muted'
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
-                  const cellValue = cell.getValue()
-                  const cellTitle = getDisplayText(cellValue)
-                  const compactIdColumn = isCompactIdColumn(cell.column.id)
+                  const cellValue = cell.getValue();
+                  const cellTitle = getDisplayText(cellValue);
+                  const compactIdColumn = isCompactIdColumn(cell.column.id);
 
                   return (
                     <TableCell
                       key={cell.id}
                       className={cn(
-                        "h-13.25 overflow-hidden px-4 text-foreground",
-                        "font-normal",
-                        cell.column.id === "select" && "w-13 px-0",
-                        compactIdColumn && "w-28"
+                        'h-13.25 overflow-hidden px-4 text-foreground',
+                        'font-normal',
+                        cell.column.id === 'select' && 'w-13 px-0',
+                        compactIdColumn && 'w-28'
                       )}
                       style={{
                         width: cell.column.getSize(),
@@ -471,22 +531,27 @@ export function DataTable<TData, TValue>({
                     >
                       <div
                         className={cn(
-                          (cell.column.columnDef.meta as { noTruncate?: boolean } | undefined)
-                            ?.noTruncate
-                            ? "min-w-0"
-                            : "truncate"
+                          (
+                            cell.column.columnDef.meta as
+                              { noTruncate?: boolean } | undefined
+                          )?.noTruncate
+                            ? 'min-w-0'
+                            : 'truncate'
                         )}
                         data-fulltext={cellTitle ?? undefined}
                         onMouseEnter={handleOverflowTooltip}
                         onFocus={handleOverflowTooltip}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </div>
                     </TableCell>
-                  )
+                  );
                 })}
               </TableRow>
-            )
+            );
           })
         ) : (
           <TableRow className="h-full border-border hover:bg-transparent">
@@ -506,12 +571,12 @@ export function DataTable<TData, TValue>({
         )}
       </TableBody>
     </Table>
-  )
+  );
 
   return (
     <div
       className={cn(
-        "flex flex-1 min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card font-sans",
+        'flex flex-1 min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card font-sans',
         className
       )}
     >
@@ -528,34 +593,38 @@ export function DataTable<TData, TValue>({
           <ScrollAreaPrimitive.Corner />
         </ScrollAreaPrimitive.Root>
       ) : (
-        <div className="flex-1 min-h-0 overflow-auto">
-          {tableContent}
-        </div>
+        <div className="flex-1 min-h-0 overflow-auto">{tableContent}</div>
       )}
 
       {!hideFooter && (
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border px-4 py-3 text-sm">
           <div className="flex-1 whitespace-nowrap text-muted-foreground">
-            {footerText !== undefined ? (
-              footerText
-            ) : enableRowSelection ? (
-              `${selectedRows} of ${totalRows} row(s) selected`
-            ) : (
-              `Showing ${totalRows} row(s)`
-            )}
+            {footerText !== undefined
+              ? footerText
+              : enableRowSelection
+                ? `${selectedRows} of ${totalRows} row(s) selected`
+                : `Showing ${totalRows} row(s)`}
           </div>
 
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-2">
-              <label htmlFor="rows-per-page" className="whitespace-nowrap text-muted-foreground">
+              <label
+                htmlFor="rows-per-page"
+                className="whitespace-nowrap text-muted-foreground"
+              >
                 Rows per page
               </label>
               <Select
                 value={String(table.getState().pagination.pageSize)}
                 onValueChange={(value) => table.setPageSize(Number(value))}
               >
-                <SelectTrigger id="rows-per-page" className="h-8 w-fit min-w-[70px]">
-                  <SelectValue placeholder={table.getState().pagination.pageSize} />
+                <SelectTrigger
+                  id="rows-per-page"
+                  className="h-8 w-fit min-w-[70px]"
+                >
+                  <SelectValue
+                    placeholder={table.getState().pagination.pageSize}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {sortedPageSizes.map((size) => (
@@ -581,7 +650,7 @@ export function DataTable<TData, TValue>({
                   disabled={!table.getCanPreviousPage()}
                   aria-label="Go to first page"
                 >
-                  {"<<"}
+                  {'<<'}
                 </Button>
                 <Button
                   type="button"
@@ -592,7 +661,7 @@ export function DataTable<TData, TValue>({
                   disabled={!table.getCanPreviousPage()}
                   aria-label="Go to previous page"
                 >
-                  {"<"}
+                  {'<'}
                 </Button>
                 <Button
                   type="button"
@@ -603,7 +672,7 @@ export function DataTable<TData, TValue>({
                   disabled={!table.getCanNextPage()}
                   aria-label="Go to next page"
                 >
-                  {">"}
+                  {'>'}
                 </Button>
                 <Button
                   type="button"
@@ -614,7 +683,7 @@ export function DataTable<TData, TValue>({
                   disabled={!table.getCanNextPage()}
                   aria-label="Go to last page"
                 >
-                  {">>"}
+                  {'>>'}
                 </Button>
               </div>
             </div>
@@ -622,5 +691,5 @@ export function DataTable<TData, TValue>({
         </div>
       )}
     </div>
-  )
+  );
 }

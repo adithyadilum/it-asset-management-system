@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_rethrow } from 'next/navigation';
 import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
-import { getUserNotifications, getUserNotificationsCount } from '@/lib/notifications/services';
+import {
+  getUserNotifications,
+  getUserNotificationsCount,
+} from '@/lib/notifications/services';
 
 export async function GET(request?: NextRequest) {
   try {
     const user = await getAuthenticatedUserFromRequest(request);
 
     if (!user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const searchParams = request
@@ -19,9 +19,15 @@ export async function GET(request?: NextRequest) {
       : new URL('http://localhost/').searchParams;
     const rawLimit = parseInt(searchParams.get('limit') || '10', 10);
     const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
-    
-    const limit = Math.min(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 10, 100);
-    const offset = Math.max(Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0, 0);
+
+    const limit = Math.min(
+      Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 10,
+      100
+    );
+    const offset = Math.max(
+      Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0,
+      0
+    );
 
     const [notifications, total] = await Promise.all([
       getUserNotifications(user.id, limit, offset),

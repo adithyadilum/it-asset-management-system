@@ -21,7 +21,9 @@ const serverEnvSchema = z.object({
   KEYCLOAK_ISSUER: z.string().url(),
 
   // ── Application ───────────────────────────────────────────
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
   JWT_SECRET: z.string().min(1).optional(),
   ENABLE_RUNTIME_LOGS: z.enum(['true', 'false']).default('false'),
   RESEND_FROM: z.string().email().optional(),
@@ -62,7 +64,9 @@ const result = serverEnvSchema.safeParse(process.env);
 if (!result.success) {
   console.error('❌ Invalid server environment variables:');
   console.error(JSON.stringify(result.error.flatten().fieldErrors, null, 2));
-  throw new Error('Invalid server environment variables. Fix them in .env or .env.local');
+  throw new Error(
+    'Invalid server environment variables. Fix them in .env or .env.local'
+  );
 }
 
 export const serverEnv = result.data;

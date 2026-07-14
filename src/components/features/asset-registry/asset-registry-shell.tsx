@@ -14,8 +14,8 @@ import { getManualOverrideStatuses } from '@/actions/statuses';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 
-const getCachedCategoriesByPillar = cache(
-  (pillar: string) => getCategoriesByPillar(pillar)
+const getCachedCategoriesByPillar = cache((pillar: string) =>
+  getCategoriesByPillar(pillar)
 );
 
 export interface AssetRegistryShellProps {
@@ -27,26 +27,35 @@ export interface AssetRegistryShellProps {
   }>;
 }
 
-export async function AssetRegistryShell({ view, searchParams }: AssetRegistryShellProps) {
+export async function AssetRegistryShell({
+  view,
+  searchParams,
+}: AssetRegistryShellProps) {
   const config = REGISTRY_VIEW_CONFIGS[view];
 
   const params = searchParams ? await searchParams : {};
-  const currentPanel = Array.isArray(params.panel) ? params.panel[0] : params.panel;
+  const currentPanel = Array.isArray(params.panel)
+    ? params.panel[0]
+    : params.panel;
   const recordId = Array.isArray(params.id) ? params.id[0] : params.id;
   const closePanelUrl = view === 'unified' ? '/assets' : `/assets/${view}`;
 
-  const fetchFn = config.view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
+  const fetchFn =
+    config.view === 'unified' ? getAllAssetsUnified : getAssetsByPillar;
 
-  const [categories, initialResult, manualStatuses, currentUser] = await Promise.all([
-    config.pillar ? getCachedCategoriesByPillar(config.pillar) : Promise.resolve([]),
-    fetchFn({
-      pillar: config.pillar,
-      page: 1,
-      pageSize: config.defaultPageSize,
-    }),
-    getManualOverrideStatuses(),
-    getAuthenticatedUser(),
-  ]);
+  const [categories, initialResult, manualStatuses, currentUser] =
+    await Promise.all([
+      config.pillar
+        ? getCachedCategoriesByPillar(config.pillar)
+        : Promise.resolve([]),
+      fetchFn({
+        pillar: config.pillar,
+        page: 1,
+        pageSize: config.defaultPageSize,
+      }),
+      getManualOverrideStatuses(),
+      getAuthenticatedUser(),
+    ]);
 
   const canManage = currentUser ? canManageAssets(currentUser.role) : false;
 

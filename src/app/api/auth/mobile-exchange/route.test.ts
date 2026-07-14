@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { revalidatePath } from 'next/cache';
 
 vi.hoisted(() => {
-  process.env.MOBILE_JWT_SECRET = 'super-secret-key-that-is-at-least-32-bytes-long';
+  process.env.MOBILE_JWT_SECRET =
+    'super-secret-key-that-is-at-least-32-bytes-long';
   process.env.UPSTASH_REDIS_REST_URL = 'https://mock.upstash.io';
   process.env.UPSTASH_REDIS_REST_TOKEN = 'mock-token';
 });
@@ -23,7 +24,8 @@ vi.mock('@upstash/redis', () => {
   return {
     Redis: class {
       getdel = (key: string) => mockRedisGetDel(key);
-      set = (key: string, value: unknown, options?: unknown) => mockRedisSet(key, value, options);
+      set = (key: string, value: unknown, options?: unknown) =>
+        mockRedisSet(key, value, options);
     },
   };
 });
@@ -120,7 +122,11 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify Redis calls
     expect(mockRedisGetDel).toHaveBeenCalledWith(`qr_link:${'a'.repeat(64)}`);
-    expect(mockRedisSet).toHaveBeenCalledWith(`qr_claimed:${'a'.repeat(64)}`, '1', { ex: 120 });
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      `qr_claimed:${'a'.repeat(64)}`,
+      '1',
+      { ex: 120 }
+    );
 
     // Verify DB call
     expect(mockInsertValues).toHaveBeenCalledWith(
@@ -134,7 +140,9 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify cache revalidation
     expect(revalidatePath).toHaveBeenCalledWith('/settings/devices');
-    expect(revalidatePath).toHaveBeenCalledWith('/(app-shell)/(management)/settings/devices');
+    expect(revalidatePath).toHaveBeenCalledWith(
+      '/(app-shell)/(management)/settings/devices'
+    );
   });
 
   it('successfully exchanges a valid legacy "linkToken" format and returns JWT token', async () => {
@@ -156,11 +164,17 @@ describe('POST /api/auth/mobile-exchange', () => {
 
     // Verify Redis calls
     expect(mockRedisGetDel).toHaveBeenCalledWith(`qr_link:${'b'.repeat(64)}`);
-    expect(mockRedisSet).toHaveBeenCalledWith(`qr_claimed:${'b'.repeat(64)}`, '1', { ex: 120 });
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      `qr_claimed:${'b'.repeat(64)}`,
+      '1',
+      { ex: 120 }
+    );
 
     // Verify cache revalidation
     expect(revalidatePath).toHaveBeenCalledWith('/settings/devices');
-    expect(revalidatePath).toHaveBeenCalledWith('/(app-shell)/(management)/settings/devices');
+    expect(revalidatePath).toHaveBeenCalledWith(
+      '/(app-shell)/(management)/settings/devices'
+    );
   });
 });
 

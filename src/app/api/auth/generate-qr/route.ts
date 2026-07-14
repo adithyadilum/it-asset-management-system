@@ -13,7 +13,8 @@ const redis = new Redis({
 
 export async function POST() {
   const user = await getAuthenticatedUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // RBAC: Only GlobalAdmin may generate a mobile pairing QR token.
   if (!isGlobalAdmin(user.role)) {
@@ -24,12 +25,16 @@ export async function POST() {
       performedById: user.id,
       newData: {
         attemptedByRole: user.role,
-        reason: 'Non-admin user attempted to generate a mobile pairing QR token.',
+        reason:
+          'Non-admin user attempted to generate a mobile pairing QR token.',
       },
     });
     return NextResponse.json(
-      { error: 'Forbidden: Only Global Administrators can link a mobile device.' },
-      { status: 403 },
+      {
+        error:
+          'Forbidden: Only Global Administrators can link a mobile device.',
+      },
+      { status: 403 }
     );
   }
 
@@ -39,12 +44,16 @@ export async function POST() {
   // Store the mapping in Upstash Redis for exactly 60 seconds.
   // Include a status field so check-qr-status can distinguish pending vs claimed vs expired.
   try {
-    await redis.set(`qr_link:${linkToken}`, JSON.stringify({
-      id: user.id,
-      role: user.role,
-      email: user.email,
-      status: 'pending',
-    }), { ex: 60 });
+    await redis.set(
+      `qr_link:${linkToken}`,
+      JSON.stringify({
+        id: user.id,
+        role: user.role,
+        email: user.email,
+        status: 'pending',
+      }),
+      { ex: 60 }
+    );
   } catch {
     return NextResponse.json({ error: 'Redis error' }, { status: 500 });
   }

@@ -97,7 +97,12 @@ export function useAssetColumns(
           header: 'Status',
           cell: ({ row }) => {
             if (row.original.pillar === 'Software') {
-              return <SoftwareExpiryStatus status={row.original.status} expiryDate={row.original.expiryDate} />;
+              return (
+                <SoftwareExpiryStatus
+                  status={row.original.status}
+                  expiryDate={row.original.expiryDate}
+                />
+              );
             }
             return <StatusBadge value={row.original.status} showIcon />;
           },
@@ -108,9 +113,19 @@ export function useAssetColumns(
           cell: ({ row }) => {
             if (row.original.pillar === 'Software') {
               const coreTotal = row.original.totalSeats || 0;
-              const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
-              const total = coreTotal > 0 ? coreTotal : (isNaN(attrTotal) ? 0 : attrTotal);
-              const available = coreTotal > 0 ? (row.original.availableSeats ?? 0) : total;
+              const attrTotal = parseInt(
+                String(
+                  row.original.instanceAttributes?.['total_seats'] ??
+                    row.original.instanceAttributes?.['Total Seats'] ??
+                    row.original.instanceAttributes?.['max_seats'] ??
+                    '0'
+                ),
+                10
+              );
+              const total =
+                coreTotal > 0 ? coreTotal : isNaN(attrTotal) ? 0 : attrTotal;
+              const available =
+                coreTotal > 0 ? (row.original.availableSeats ?? 0) : total;
               const assigned = Math.max(0, total - available);
               return (
                 <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-muted text-foreground ring-border whitespace-nowrap">
@@ -164,14 +179,17 @@ export function useAssetColumns(
         {
           id: 'ipOrMacAddress',
           header: 'IP/MAC Address',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['IP/MAC Address'] ?? '-'),
+          cell: ({ row }) =>
+            String(row.original.instanceAttributes?.['IP/MAC Address'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'electronicsCondition',
           header: 'Condition',
           cell: ({ row }) =>
-            renderElectronicsConditionBadge(toElectronicsDisplayCondition(row.original)),
+            renderElectronicsConditionBadge(
+              toElectronicsDisplayCondition(row.original)
+            ),
           enableSorting: false,
         },
       ];
@@ -194,7 +212,11 @@ export function useAssetColumns(
           cell: ({ row }) => {
             const serialNumber =
               row.original.serialNumber ||
-              String(row.original.instanceAttributes?.['license_key'] ?? row.original.instanceAttributes?.['License Key'] ?? '');
+              String(
+                row.original.instanceAttributes?.['license_key'] ??
+                  row.original.instanceAttributes?.['License Key'] ??
+                  ''
+              );
 
             if (!serialNumber || serialNumber === '-') return '-';
 
@@ -223,9 +245,18 @@ export function useAssetColumns(
             const coreAvailable = row.original.availableSeats;
 
             // Fallbacks from instance attributes
-            const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
+            const attrTotal = parseInt(
+              String(
+                row.original.instanceAttributes?.['total_seats'] ??
+                  row.original.instanceAttributes?.['Total Seats'] ??
+                  row.original.instanceAttributes?.['max_seats'] ??
+                  '0'
+              ),
+              10
+            );
 
-            const total = coreTotal > 0 ? coreTotal : (isNaN(attrTotal) ? 0 : attrTotal);
+            const total =
+              coreTotal > 0 ? coreTotal : isNaN(attrTotal) ? 0 : attrTotal;
             // Crude fallback for availability if coreTotal is 0
             const available = coreTotal > 0 ? (coreAvailable ?? 0) : total;
 
@@ -235,12 +266,15 @@ export function useAssetColumns(
 
             return (
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${available === 0
-                  ? 'bg-red-50 text-red-700 ring-red-600/10'
-                  : isLow
-                    ? 'bg-amber-50 text-amber-700 ring-amber-600/10'
-                    : 'bg-green-50 text-green-700 ring-green-600/10'
-                  }`}>
+                <span
+                  className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                    available === 0
+                      ? 'bg-red-50 text-red-700 ring-red-600/10'
+                      : isLow
+                        ? 'bg-amber-50 text-amber-700 ring-amber-600/10'
+                        : 'bg-green-50 text-green-700 ring-green-600/10'
+                  }`}
+                >
                   {available} / {total} Available
                 </span>
               </div>
@@ -253,7 +287,12 @@ export function useAssetColumns(
           header: 'Expiration Date',
           cell: ({ row }) => {
             const coreExpiry = row.original.expiryDate;
-            const attrExpiry = String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? row.original.instanceAttributes?.['license_expiry'] ?? '');
+            const attrExpiry = String(
+              row.original.instanceAttributes?.['expiry_date'] ??
+                row.original.instanceAttributes?.['Expiration Date'] ??
+                row.original.instanceAttributes?.['license_expiry'] ??
+                ''
+            );
 
             const expiryStr = coreExpiry || attrExpiry;
             if (!expiryStr || expiryStr === 'null') return '-';
@@ -302,7 +341,9 @@ export function useAssetColumns(
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => {
-          const statusConfig = manualStatuses.find(s => s.value === row.original.status);
+          const statusConfig = manualStatuses.find(
+            (s) => s.value === row.original.status
+          );
           return (
             <StatusBadge
               value={row.original.status}

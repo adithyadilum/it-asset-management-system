@@ -5,7 +5,7 @@ import type { SupportedCurrency } from '@/lib/currency';
 
 interface CurrencyFormattedProps {
   amount: number | string | null | undefined;
-  /** 
+  /**
    * Optional override. If not provided, it falls back to the globally selected currency.
    */
   currencyCode?: SupportedCurrency;
@@ -25,13 +25,14 @@ export function CurrencyFormatted({
   compact = false,
 }: CurrencyFormattedProps) {
   const globalContext = useCurrency();
-  
+
   if (amount === null || amount === undefined) {
     return <span>-</span>;
   }
 
-  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  
+  const numericAmount =
+    typeof amount === 'string' ? parseFloat(amount) : amount;
+
   if (Number.isNaN(numericAmount)) {
     return <span>-</span>;
   }

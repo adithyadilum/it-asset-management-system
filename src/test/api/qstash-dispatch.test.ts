@@ -2,8 +2,6 @@
  * @vitest-environment node
  */
 
- 
-
 process.env.ENCRYPTION_SECRET = 'IUr+UelUGH0oEhuAoI63Uvbcd+7Ra5o7Uo8PU2PaUHE=';
 
 import { NextRequest } from 'next/server';

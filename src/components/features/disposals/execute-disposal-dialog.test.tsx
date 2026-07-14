@@ -1,7 +1,7 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -38,11 +38,15 @@ vi.mock('@/components/ui/select', () => ({
   Select: ({ value, onValueChange, children }: any) => (
     <div data-testid="select-mock" data-value={value}>
       {children}
-      <button onClick={() => onValueChange('Defective')}>Select Defective</button>
+      <button onClick={() => onValueChange('Defective')}>
+        Select Defective
+      </button>
       <button onClick={() => onValueChange('E-waste')}>Select E-waste</button>
     </div>
   ),
-  SelectTrigger: ({ children }: any) => <div data-testid="select-trigger">{children}</div>,
+  SelectTrigger: ({ children }: any) => (
+    <div data-testid="select-trigger">{children}</div>
+  ),
   SelectValue: ({ children }: any) => <div>{children}</div>,
   SelectContent: ({ children }: any) => <div>{children}</div>,
   SelectItem: ({ children }: any) => <div>{children}</div>,
@@ -80,7 +84,14 @@ describe('ExecuteDisposalDialog', () => {
   const mockOnOpenChange = vi.fn();
   const mockOnSuccess = vi.fn();
   const mockAssets: any[] = [
-    { id: 1, assetId: 'A1', assetTag: 'TAG-1', assetName: 'Laptop', flaggedBy: 'User A', requestedAt: new Date() },
+    {
+      id: 1,
+      assetId: 'A1',
+      assetTag: 'TAG-1',
+      assetName: 'Laptop',
+      flaggedBy: 'User A',
+      requestedAt: new Date(),
+    },
   ];
 
   beforeEach(() => {
@@ -116,11 +127,13 @@ describe('ExecuteDisposalDialog', () => {
 
     // Check checkboxes
     fireEvent.click(screen.getByLabelText(/Data wiped/));
-    fireEvent.click(screen.getByLabelText(/All physical TIQRI asset tags removed/));
+    fireEvent.click(
+      screen.getByLabelText(/All physical TIQRI asset tags removed/)
+    );
 
     // Upload receipt
     fireEvent.click(screen.getByText('Simulate Upload'));
-    
+
     // Select reason
     fireEvent.click(screen.getAllByText('Select Defective')[0]);
 

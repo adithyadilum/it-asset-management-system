@@ -1,45 +1,45 @@
-"use client"
+'use client';
 
-import { useState, useMemo } from "react"
-import { Search } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { Input } from "@/components/ui/input"
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import { CreateApiKeyDialog } from "./create-api-key-dialog"
-import { ApiKeyTable } from "./api-key-table"
-import { SecretRevealDialog } from "./secret-reveal-dialog"
-import type { ApiKeyDisplay } from "@/types/integrations"
+import { useState, useMemo } from 'react';
+import { Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { CreateApiKeyDialog } from './create-api-key-dialog';
+import { ApiKeyTable } from './api-key-table';
+import { SecretRevealDialog } from './secret-reveal-dialog';
+import type { ApiKeyDisplay } from '@/types/integrations';
 
 interface ApiKeysTabProps {
-  keys: ApiKeyDisplay[]
+  keys: ApiKeyDisplay[];
 }
 
 export function ApiKeysTab({ keys }: ApiKeysTabProps) {
-  const router = useRouter()
-  const [secret, setSecret] = useState<string | null>(null)
-  const [revealOpen, setRevealOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter();
+  const [secret, setSecret] = useState<string | null>(null);
+  const [revealOpen, setRevealOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleChanged = () => {
-    router.refresh()
-  }
+    router.refresh();
+  };
 
   const handleCreated = (plain: string) => {
-    handleChanged()
-    setSecret(plain)
-    setRevealOpen(true)
-  }
+    handleChanged();
+    setSecret(plain);
+    setRevealOpen(true);
+  };
 
   const filteredKeys = useMemo(() => {
-    if (!searchQuery.trim()) return keys
-    const q = searchQuery.toLowerCase()
+    if (!searchQuery.trim()) return keys;
+    const q = searchQuery.toLowerCase();
     return keys.filter(
       (k) =>
         k.name.toLowerCase().includes(q) ||
         k.keyPrefix.toLowerCase().includes(q) ||
         k.keySuffix.toLowerCase().includes(q)
-    )
-  }, [keys, searchQuery])
+    );
+  }, [keys, searchQuery]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -65,9 +65,12 @@ export function ApiKeysTab({ keys }: ApiKeysTabProps) {
 
       <SecretRevealDialog
         open={revealOpen}
-        onOpenChange={(v) => { setRevealOpen(v); if (!v) setSecret(null) }}
+        onOpenChange={(v) => {
+          setRevealOpen(v);
+          if (!v) setSecret(null);
+        }}
         secret={secret}
       />
     </div>
-  )
-}
+  );
+}

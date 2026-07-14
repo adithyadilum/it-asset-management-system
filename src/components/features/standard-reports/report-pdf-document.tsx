@@ -1,6 +1,14 @@
-"use client";
+'use client';
 
-import { Font, Image, Page, Document, Text, View, StyleSheet } from '@react-pdf/renderer';
+import {
+  Font,
+  Image,
+  Page,
+  Document,
+  Text,
+  View,
+  StyleSheet,
+} from '@react-pdf/renderer';
 
 import type { ReportPdfData } from '@/types/standard-reports';
 
@@ -269,9 +277,7 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
             <Image src="/tiqri-logo.png" style={styles.logo} />
             <View style={styles.headerTitleBlock}>
               <Text style={styles.title}>{data.title}</Text>
-              <Text style={styles.metadataBlock}>
-                {generatedAtLabel}
-              </Text>
+              <Text style={styles.metadataBlock}>{generatedAtLabel}</Text>
             </View>
           </View>
         </View>
@@ -279,7 +285,9 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
         <View style={styles.cover}>
           <View>
             <Text style={styles.coverHeading}>{data.title}</Text>
-            <Text style={styles.coverSubheading}>Report overview and generation details</Text>
+            <Text style={styles.coverSubheading}>
+              Report overview and generation details
+            </Text>
           </View>
 
           <View style={styles.infoGrid}>
@@ -301,15 +309,23 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
           <View style={styles.coverPanel}>
             <Text style={styles.coverPanelTitle}>Report Description</Text>
             <Text style={styles.coverPanelText}>
-              {data.description?.trim().length ? data.description : 'No report description provided.'}
+              {data.description?.trim().length
+                ? data.description
+                : 'No report description provided.'}
             </Text>
           </View>
 
           <View style={styles.coverPanel}>
             <Text style={styles.coverPanelTitle}>Applied Filters</Text>
             <View style={styles.filterGrid}>
-              {(data.filterDetails?.length ? data.filterDetails : [{ label: 'Filters', value: data.filtersApplied }]).map((item) => (
-                <View key={item.label} style={[styles.filterCard, { width: coverColumnWidth }]}>
+              {(data.filterDetails?.length
+                ? data.filterDetails
+                : [{ label: 'Filters', value: data.filtersApplied }]
+              ).map((item) => (
+                <View
+                  key={item.label}
+                  style={[styles.filterCard, { width: coverColumnWidth }]}
+                >
                   <Text style={styles.filterLabel}>{item.label}</Text>
                   <Text style={styles.filterValue}>{item.value}</Text>
                 </View>
@@ -319,7 +335,11 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
         </View>
         <View fixed style={styles.footer}>
           <Text>Confidential - Internal TIQRI Use Only</Text>
-          <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          <Text
+            render={({ pageNumber, totalPages }) =>
+              `Page ${pageNumber} of ${totalPages}`
+            }
+          />
         </View>
       </Page>
 
@@ -338,7 +358,10 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
         <View style={styles.table}>
           <View fixed style={styles.tableHeader}>
             {data.headers.map((header) => (
-              <Text key={header} style={[styles.tableHeaderCell, { width: colWidth }]}>
+              <Text
+                key={header}
+                style={[styles.tableHeaderCell, { width: colWidth }]}
+              >
                 {header}
               </Text>
             ))}
@@ -348,20 +371,33 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
             <View
               key={row.id ?? `${index}`}
               wrap={false}
-              style={index % 2 !== 0 ? [styles.tableRow, styles.tableRowZebra] : styles.tableRow}
+              style={
+                index % 2 !== 0
+                  ? [styles.tableRow, styles.tableRowZebra]
+                  : styles.tableRow
+              }
             >
               {data.headers.map((header) => {
                 const rawValue = row[header];
                 const value = formatValue(rawValue);
                 const isStatusColumn = header.toLowerCase() === 'status';
-                const statusColor = isStatusColumn ? getStatusColor(value) : '#334155';
+                const statusColor = isStatusColumn
+                  ? getStatusColor(value)
+                  : '#334155';
 
                 return (
                   <Text
                     key={`${row.id}-${header}`}
                     style={[
                       styles.tableCell,
-                      { width: colWidth, color: statusColor, borderRightWidth: header === data.headers[data.headers.length - 1] ? 0 : 0.5 },
+                      {
+                        width: colWidth,
+                        color: statusColor,
+                        borderRightWidth:
+                          header === data.headers[data.headers.length - 1]
+                            ? 0
+                            : 0.5,
+                      },
                     ]}
                   >
                     {value}
@@ -374,7 +410,11 @@ export function ReportPdfDocument({ data }: { data: ReportPdfData }) {
 
         <View fixed style={styles.footer}>
           <Text>Confidential - Internal TIQRI Use Only</Text>
-          <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          <Text
+            render={({ pageNumber, totalPages }) =>
+              `Page ${pageNumber} of ${totalPages}`
+            }
+          />
         </View>
       </Page>
     </Document>

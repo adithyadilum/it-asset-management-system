@@ -1,7 +1,12 @@
 'use server';
 
 import { db } from '@/db';
-import { departments, linkedDevices, userRefreshTokens, users } from '@/db/schema';
+import {
+  departments,
+  linkedDevices,
+  userRefreshTokens,
+  users,
+} from '@/db/schema';
 import { eq, ilike, or, inArray, sql, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -14,7 +19,9 @@ import { requireAccess, isGlobalAdmin } from '@/lib/auth/roles';
 
 /** Safely casts an unknown value to a valid UserRole or returns null. */
 function normalizeTokenRole(role: unknown): UserRole | null {
-  return typeof role === 'string' && USER_ROLES.includes(role as UserRole) ? (role as UserRole) : null;
+  return typeof role === 'string' && USER_ROLES.includes(role as UserRole)
+    ? (role as UserRole)
+    : null;
 }
 
 /** Deduplicates and validates an array of user IDs. */
@@ -36,7 +43,9 @@ export async function getRolesPageData(selectedRole: UserRole) {
         email: users.email,
         // .as() alias is required — without it Drizzle maps the result column
         // as 'coalesce' (the Postgres auto-name) instead of 'department'.
-        department: sql<string>`coalesce(${departments.name}, 'Unassigned')`.as('department'),
+        department: sql<string>`coalesce(${departments.name}, 'Unassigned')`.as(
+          'department'
+        ),
         role: users.role,
         isActive: users.isActive,
       })
@@ -57,7 +66,6 @@ export async function getRolesPageData(selectedRole: UserRole) {
 
   return { usersInRole, roleCountsRows };
 }
-
 
 /** Searches the user directory by name or email. Capped at 100 chars, min 2 chars. */
 export async function searchUsers(query: string) {
@@ -80,7 +88,10 @@ export async function searchUsers(query: string) {
           id: users.id,
           name: users.name,
           email: users.email,
-          department: sql<string>`coalesce(${departments.name}, 'Unassigned')`.as('department'),
+          department:
+            sql<string>`coalesce(${departments.name}, 'Unassigned')`.as(
+              'department'
+            ),
           role: users.role,
           isActive: users.isActive,
         })
@@ -193,7 +204,9 @@ export async function assignUsersRoleBulk(
             entityId: updatedUser.updatedId,
             actionType: 'UPDATE',
             performedById: currentUser.id,
-            oldData: previousUser ? { role: previousUser.role } : { role: null },
+            oldData: previousUser
+              ? { role: previousUser.role }
+              : { role: null },
             newData: { role: updatedUser.updatedRole },
           });
         })
@@ -333,7 +346,10 @@ export async function removeUserFromManagedRole(targetUserId: string) {
 }
 
 /** Activates or deactivates a user account. GlobalAdmin only. */
-export async function setUserActiveStatus(targetUserId: string, isActive: boolean) {
+export async function setUserActiveStatus(
+  targetUserId: string,
+  isActive: boolean
+) {
   const actionTimer = startLatencyTimer();
   const currentUser = await getAuthenticatedUser();
 
@@ -348,7 +364,9 @@ export async function setUserActiveStatus(targetUserId: string, isActive: boolea
 
   // Anti-Lockout Guard
   if (targetUserId === currentUser.id) {
-    throw new Error('Action Prohibited: You cannot modify your own active status.');
+    throw new Error(
+      'Action Prohibited: You cannot modify your own active status.'
+    );
   }
 
   try {
@@ -388,7 +406,9 @@ export async function setUserActiveStatus(targetUserId: string, isActive: boolea
 
       if (!isActive) {
         await Promise.all([
-          tx.delete(userRefreshTokens).where(eq(userRefreshTokens.userId, targetUserId)),
+          tx
+            .delete(userRefreshTokens)
+            .where(eq(userRefreshTokens.userId, targetUserId)),
           tx
             .update(linkedDevices)
             .set({ isRevoked: true })
@@ -435,4 +455,3 @@ export async function setUserActiveStatus(targetUserId: string, isActive: boolea
     });
   }
 }
-

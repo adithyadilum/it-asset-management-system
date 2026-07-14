@@ -22,10 +22,38 @@ function MicrosoftMark() {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <rect x="3" y="3" width="8" height="8" fill="currentColor" opacity="0.95" />
-      <rect x="13" y="3" width="8" height="8" fill="currentColor" opacity="0.75" />
-      <rect x="3" y="13" width="8" height="8" fill="currentColor" opacity="0.75" />
-      <rect x="13" y="13" width="8" height="8" fill="currentColor" opacity="0.95" />
+      <rect
+        x="3"
+        y="3"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.95"
+      />
+      <rect
+        x="13"
+        y="3"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.75"
+      />
+      <rect
+        x="3"
+        y="13"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.75"
+      />
+      <rect
+        x="13"
+        y="13"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.95"
+      />
     </svg>
   );
 }
@@ -55,7 +83,9 @@ export function KeycloakLogin({ redirectTo }: KeycloakLoginProps) {
 
             {isProcessing ? (
               <div className="animate-in fade-in zoom-in w-full px-6 py-2 text-center duration-300">
-                <h2 className="mb-8 text-xl font-medium text-foreground">Redirecting to login...</h2>
+                <h2 className="mb-8 text-xl font-medium text-foreground">
+                  Redirecting to login...
+                </h2>
                 <div className="flex justify-center">
                   <div className="size-10 animate-spin rounded-full border-4 border-border border-t-primary" />
                 </div>

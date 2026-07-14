@@ -1,28 +1,28 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
 
-import { tiqriToast } from "@/components/shared/sonner";
-import { processAssetReturnAction } from "@/actions/assignments";
-import type { ProcessReturnPayload } from "@/lib/validations/asset-assignment";
-import { Button } from "@/components/ui/button";
+import { tiqriToast } from '@/components/shared/sonner';
+import { processAssetReturnAction } from '@/actions/assignments';
+import type { ProcessReturnPayload } from '@/lib/validations/asset-assignment';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
 export type ReturnAssetItem = {
   assetId: string;
@@ -44,17 +44,17 @@ export function ProcessReturnModal({
   onOpenChange,
 }: ProcessReturnModalProps) {
   const router = useRouter();
-  const [condition, setCondition] = React.useState("");
-  const [physicalCondition, setPhysicalCondition] = React.useState("Excellent");
-  const [notes, setNotes] = React.useState("");
+  const [condition, setCondition] = React.useState('');
+  const [physicalCondition, setPhysicalCondition] = React.useState('Excellent');
+  const [notes, setNotes] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
       if (!open) {
-        setCondition("");
-        setPhysicalCondition("Excellent");
-        setNotes("");
+        setCondition('');
+        setPhysicalCondition('Excellent');
+        setNotes('');
       }
       onOpenChange(open);
     },
@@ -69,12 +69,12 @@ export function ProcessReturnModal({
     }
 
     if (!condition) {
-      tiqriToast.warning("Please select a status outcome condition.");
+      tiqriToast.warning('Please select a status outcome condition.');
       return;
     }
 
     if (!physicalCondition) {
-      tiqriToast.warning("Please select a physical condition.");
+      tiqriToast.warning('Please select a physical condition.');
       return;
     }
 
@@ -83,22 +83,25 @@ export function ProcessReturnModal({
     try {
       const payload: ProcessReturnPayload = {
         assetId: asset.assetId,
-        condition: condition as ProcessReturnPayload["condition"],
-        physicalCondition: physicalCondition as ProcessReturnPayload["physicalCondition"],
+        condition: condition as ProcessReturnPayload['condition'],
+        physicalCondition:
+          physicalCondition as ProcessReturnPayload['physicalCondition'],
         notes: notes.trim(),
       };
-      
+
       const result = await processAssetReturnAction(payload);
-      
+
       if (!result.success) {
-        throw new Error(result.error ?? "Failed to process return.");
+        throw new Error(result.error ?? 'Failed to process return.');
       }
 
-      tiqriToast.success("Asset returned successfully.");
+      tiqriToast.success('Asset returned successfully.');
       handleOpenChange(false);
       router.refresh();
     } catch (error) {
-      tiqriToast.error(error instanceof Error ? error.message : "Failed to process return.");
+      tiqriToast.error(
+        error instanceof Error ? error.message : 'Failed to process return.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -108,9 +111,11 @@ export function ProcessReturnModal({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Process Return: {asset?.assetName ?? asset?.assetTag}</DialogTitle>
+          <DialogTitle>
+            Process Return: {asset?.assetName ?? asset?.assetTag}
+          </DialogTitle>
           <DialogDescription>
-            Previously assigned to: {asset?.assignee ?? "Unknown"}
+            Previously assigned to: {asset?.assignee ?? 'Unknown'}
           </DialogDescription>
         </DialogHeader>
 
@@ -123,7 +128,7 @@ export function ProcessReturnModal({
                   type="radio"
                   name="condition"
                   value="Good Working Condition"
-                  checked={condition === "Good Working Condition"}
+                  checked={condition === 'Good Working Condition'}
                   onChange={(e) => setCondition(e.target.value)}
                 />
                 Good Working Condition
@@ -133,7 +138,7 @@ export function ProcessReturnModal({
                   type="radio"
                   name="condition"
                   value="Minor Issues"
-                  checked={condition === "Minor Issues"}
+                  checked={condition === 'Minor Issues'}
                   onChange={(e) => setCondition(e.target.value)}
                 />
                 Minor Issues
@@ -143,7 +148,7 @@ export function ProcessReturnModal({
                   type="radio"
                   name="condition"
                   value="Needs Repair"
-                  checked={condition === "Needs Repair"}
+                  checked={condition === 'Needs Repair'}
                   onChange={(e) => setCondition(e.target.value)}
                 />
                 Needs Repair
@@ -153,7 +158,7 @@ export function ProcessReturnModal({
                   type="radio"
                   name="condition"
                   value="Beyond Repair"
-                  checked={condition === "Beyond Repair"}
+                  checked={condition === 'Beyond Repair'}
                   onChange={(e) => setCondition(e.target.value)}
                 />
                 Beyond Repair
@@ -163,7 +168,10 @@ export function ProcessReturnModal({
 
           <div className="flex flex-col gap-3">
             <Label>Physical Condition</Label>
-            <Select value={physicalCondition} onValueChange={setPhysicalCondition}>
+            <Select
+              value={physicalCondition}
+              onValueChange={setPhysicalCondition}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select physical condition" />
               </SelectTrigger>

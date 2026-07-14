@@ -11,7 +11,6 @@ dotenv.config({ path: '.env.local' });
 const sql = neon(serverEnv.DATABASE_URL);
 const db = drizzle(sql);
 
-
 async function seedNotificationRules() {
   const defaultRules = [
     // HARDWARE_LIFECYCLE

@@ -34,7 +34,8 @@ import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authentica
 export async function GET(req: Request) {
   // --- 1. Authenticate via mobile JWT ---
   const user = await getAuthenticatedMobileUserFromRequest(req);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // --- 2. Fetch dashboard KPI metrics (system-wide) ---
   try {

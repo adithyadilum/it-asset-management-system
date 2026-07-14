@@ -224,9 +224,7 @@ describe('rejectDisposalSchema', () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.rejectionReason).toBe(
-        'Still under warranty coverage'
-      );
+      expect(result.data.rejectionReason).toBe('Still under warranty coverage');
     }
   });
 

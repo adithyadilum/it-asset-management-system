@@ -12,7 +12,7 @@ describe('useIsMobile', () => {
     window.innerWidth = 500;
     const addEventListener = vi.fn();
     const removeEventListener = vi.fn();
-    
+
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation((query) => ({
@@ -26,17 +26,20 @@ describe('useIsMobile', () => {
     });
 
     const { result } = renderHook(() => useIsMobile());
-    
+
     expect(result.current).toBe(true);
     expect(window.matchMedia).toHaveBeenCalledWith('(max-width: 767px)');
-    expect(addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+    expect(addEventListener).toHaveBeenCalledWith(
+      'change',
+      expect.any(Function)
+    );
   });
 
   it('returns false when window innerWidth is >= 768px', () => {
     window.innerWidth = 800;
     const addEventListener = vi.fn();
     const removeEventListener = vi.fn();
-    
+
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation((query) => ({
@@ -50,19 +53,19 @@ describe('useIsMobile', () => {
     });
 
     const { result } = renderHook(() => useIsMobile());
-    
+
     expect(result.current).toBe(false);
   });
 
   it('updates state dynamically on window resize', () => {
     window.innerWidth = 800;
-    
+
     let changeListener: (() => void) | undefined;
     const addEventListener = vi.fn().mockImplementation((event, listener) => {
       changeListener = listener;
     });
     const removeEventListener = vi.fn();
-    
+
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation((query) => ({
@@ -76,7 +79,7 @@ describe('useIsMobile', () => {
     });
 
     const { result } = renderHook(() => useIsMobile());
-    
+
     expect(result.current).toBe(false);
 
     // Simulate resize

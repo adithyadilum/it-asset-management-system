@@ -11,9 +11,7 @@ export { canManageAssets } from '@/lib/auth/roles';
 export type { AuthenticatedUser };
 export type { UserRole } from '@/types/auth';
 
-const MOBILE_SECRET = new TextEncoder().encode(
-  serverEnv.MOBILE_JWT_SECRET
-);
+const MOBILE_SECRET = new TextEncoder().encode(serverEnv.MOBILE_JWT_SECRET);
 
 export const MOBILE_JWT_ISSUER = new URL(serverEnv.NEXTAUTH_URL).origin;
 export const MOBILE_JWT_AUDIENCE = 'eitams-mobile';
@@ -79,7 +77,9 @@ export async function getAuthenticatedMobileUserFromRequest(
   }
 }
 
-export async function getAuthenticatedUserFromRequest(req?: Request): Promise<AuthenticatedUser | null> {
+export async function getAuthenticatedUserFromRequest(
+  req?: Request
+): Promise<AuthenticatedUser | null> {
   // If request object is passed, check for Bearer Token in Authorization header
   if (req) {
     const authHeader = req.headers.get('authorization');
@@ -91,4 +91,3 @@ export async function getAuthenticatedUserFromRequest(req?: Request): Promise<Au
   // Fallback to cookie-based authentication
   return getAuthenticatedUser();
 }
-

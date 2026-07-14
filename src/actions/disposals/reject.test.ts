@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { revalidatePath } from 'next/cache';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 import type { DisposalFormState } from '@/types/disposals';
 
 const mockGetAuthenticatedUser = vi.fn();
@@ -17,9 +21,19 @@ vi.mock('@/actions/auth', () => ({
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from', 'groupBy'].forEach(
-      (m) => (c[m] = vi.fn().mockReturnThis())
-    );
+    [
+      'values',
+      'set',
+      'where',
+      'returning',
+      'limit',
+      'offset',
+      'innerJoin',
+      'leftJoin',
+      'orderBy',
+      'from',
+      'groupBy',
+    ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     const proxy = new Proxy(c, {
       get(t, p) {
@@ -47,9 +61,21 @@ const { mockDb, chain } = vi.hoisted(() => {
 
 vi.mock('@/db', () => ({ db: mockDb }));
 vi.mock('@/db/schema', () => ({
-  assetDisposals: { id: 'assetDisposals.id', assetId: 'assetDisposals.assetId', status: 'assetDisposals.status' },
-  assetPurchases: { id: 'assetPurchases.id', assetId: 'assetPurchases.assetId' },
-  assets: { id: 'assets.id', assetTag: 'assets.assetTag', status: 'assets.status', isArchived: 'assets.isArchived' },
+  assetDisposals: {
+    id: 'assetDisposals.id',
+    assetId: 'assetDisposals.assetId',
+    status: 'assetDisposals.status',
+  },
+  assetPurchases: {
+    id: 'assetPurchases.id',
+    assetId: 'assetPurchases.assetId',
+  },
+  assets: {
+    id: 'assets.id',
+    assetTag: 'assets.assetTag',
+    status: 'assets.status',
+    isArchived: 'assets.isArchived',
+  },
   users: { id: 'users.id' },
   models: { id: 'models.id' },
   categories: { id: 'categories.id' },
@@ -57,15 +83,21 @@ vi.mock('@/db/schema', () => ({
   systemAuditLogs: { id: 'systemAuditLogs.id' },
   maintenanceTickets: { id: 'maintenanceTickets.id' },
   assetDocuments: { id: 'assetDocuments.id' },
-  assetAssignments: { assetId: 'assetAssignments.assetId', returnedDate: 'assetAssignments.returnedDate' },
+  assetAssignments: {
+    assetId: 'assetAssignments.assetId',
+    returnedDate: 'assetAssignments.returnedDate',
+  },
 }));
 
 const mockDispatchWebhookEvent = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/webhooks/dispatcher', () => ({
-  dispatchWebhookEvent: (...args: unknown[]) => mockDispatchWebhookEvent(...args),
+  dispatchWebhookEvent: (...args: unknown[]) =>
+    mockDispatchWebhookEvent(...args),
 }));
 
-const mockUploadFileToStorage = vi.fn().mockResolvedValue('https://storage.example.com/receipt.pdf');
+const mockUploadFileToStorage = vi
+  .fn()
+  .mockResolvedValue('https://storage.example.com/receipt.pdf');
 vi.mock('@/lib/storage', () => ({
   uploadFileToStorage: (...args: unknown[]) => mockUploadFileToStorage(...args),
 }));
@@ -89,7 +121,7 @@ const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
 
 describe('rejectDisposalRequest', () => {
   let formData: FormData;
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
     formData = new FormData();
@@ -98,5 +130,7 @@ describe('rejectDisposalRequest', () => {
     formData.append('rejectionReason', 'Still useful');
     formData.append('fallbackStatus', 'Available');
   });
-  it('dummy test', () => { expect(true).toBe(true); });
+  it('dummy test', () => {
+    expect(true).toBe(true);
+  });
 });

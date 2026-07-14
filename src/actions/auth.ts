@@ -2,7 +2,6 @@
 
 import { getServerSession } from 'next-auth';
 
-
 import { authOptions } from '@/lib/auth/auth-options';
 import { logAuditAction } from '@/lib/audit';
 import type { UserRole } from '@/types/auth';
@@ -66,7 +65,11 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   });
   if (!currentUser?.isActive) return null;
 
-  return { ...currentUser, role: normalizeRole(currentUser.role), isActive: true };
+  return {
+    ...currentUser,
+    role: normalizeRole(currentUser.role),
+    isActive: true,
+  };
 }
 
 /**
@@ -89,7 +92,7 @@ export async function getFederatedLogoutUrl() {
 
   const idToken = session?.idToken || '';
   const endSessionUrl = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/logout`;
-  
+
   // Use NEXT_PUBLIC_SITE_URL or NEXTAUTH_URL to dynamically determine the callback origin
   const baseUrl = serverEnv.NEXTAUTH_URL || 'http://localhost:3000';
   const redirectUri = encodeURIComponent(`${baseUrl}/login`);
@@ -100,37 +103,50 @@ export async function getFederatedLogoutUrl() {
 /**
  * Server action helper to enforce authentication and RBAC in a single call.
  * If authentication fails, or if the role predicate fails, it throws a standard error.
- * 
+ *
  * @param predicate Optional function to check if the user's role has permission.
  * @returns The authenticated user object.
  */
-export async function enforceActionAccess(predicate?: (role: UserRole) => boolean): Promise<AuthenticatedUser> {
+export async function enforceActionAccess(
+  predicate?: (role: UserRole) => boolean
+): Promise<AuthenticatedUser> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Unauthorized');
-  
+
   if (predicate && !predicate(user.role)) {
     throw new Error('FORBIDDEN: Forbidden');
   }
-  
+
   return user;
 }
 
 /**
  * Form action helper to enforce authentication and RBAC.
  * Instead of throwing, it returns a standard failure payload.
- * 
+ *
  * @param predicate Optional function to check if the user's role has permission.
  * @returns An object with { ok: true, user } or { ok: false, payload }
  */
-export async function enforceFormAccess(predicate?: (role: UserRole) => boolean) {
+export async function enforceFormAccess(
+  predicate?: (role: UserRole) => boolean
+) {
   const user = await getAuthenticatedUser();
   if (!user) {
-    return { ok: false as const, payload: { success: false, message: 'Unauthorized.' } };
+    return {
+      ok: false as const,
+      payload: { success: false, message: 'Unauthorized.' },
+    };
   }
-  
+
   if (predicate && !predicate(user.role)) {
-    return { ok: false as const, payload: { success: false, message: 'Forbidden: insufficient permissions.' } };
+    return {
+      ok: false as const,
+      payload: {
+        success: false,
+        message: 'Forbidden: insufficient permissions.',
+      },
+    };
   }
-  
+
   return { ok: true as const, user };
 }

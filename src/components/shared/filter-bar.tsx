@@ -5,8 +5,18 @@ import { Search, ChevronDown, Filter, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export type FilterOperator = 'is' | 'is not';
 
@@ -48,7 +58,9 @@ export function FilterBar({
   defaultField,
 }: FilterBarProps) {
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-  const [draftField, setDraftField] = useState<string>(defaultField || fields[0]?.value || '');
+  const [draftField, setDraftField] = useState<string>(
+    defaultField || fields[0]?.value || ''
+  );
   const [draftOperator, setDraftOperator] = useState<FilterOperator>('is');
   const [draftValue, setDraftValue] = useState<string>('');
 
@@ -66,7 +78,11 @@ export function FilterBar({
 
   const handleApplyFilter = () => {
     if (draftValue.trim().length > 0) {
-      onApplyFilter({ field: draftField, operator: draftOperator, value: draftValue });
+      onApplyFilter({
+        field: draftField,
+        operator: draftOperator,
+        value: draftValue,
+      });
       setIsFilterPopoverOpen(false);
     }
   };
@@ -85,8 +101,10 @@ export function FilterBar({
         </div>
 
         <div className="flex items-center gap-2">
-
-          <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+          <Popover
+            open={isFilterPopoverOpen}
+            onOpenChange={setIsFilterPopoverOpen}
+          >
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -108,7 +126,9 @@ export function FilterBar({
             >
               <div className="border-b border-border px-3 py-2">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-foreground">Filter by</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Filter by
+                  </h3>
                   <button
                     type="button"
                     className="text-muted-foreground transition-colors hover:text-muted-foreground"
@@ -121,7 +141,9 @@ export function FilterBar({
 
               <div className="space-y-3 px-3 py-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Field</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Field
+                  </label>
                   <Select value={draftField} onValueChange={handleFieldChange}>
                     <SelectTrigger className="h-8 w-full rounded-lg border-border text-sm text-foreground">
                       <SelectValue placeholder="Select field" />
@@ -158,8 +180,11 @@ export function FilterBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Value</label>
-                  {currentFieldConfig?.options && currentFieldConfig.options.length > 0 ? (
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Value
+                  </label>
+                  {currentFieldConfig?.options &&
+                  currentFieldConfig.options.length > 0 ? (
                     <Select value={draftValue} onValueChange={setDraftValue}>
                       <SelectTrigger className="h-8 w-full rounded-lg border-border text-sm text-foreground">
                         <SelectValue placeholder="Select value" />

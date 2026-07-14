@@ -128,7 +128,10 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
         licenseType: softwareLicenses.licenseType,
       })
       .from(softwareAllocations)
-      .innerJoin(softwareLicenses, eq(softwareAllocations.licenseId, softwareLicenses.id))
+      .innerJoin(
+        softwareLicenses,
+        eq(softwareAllocations.licenseId, softwareLicenses.id)
+      )
       .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
       .innerJoin(models, eq(softwareLicenses.modelId, models.id))
       .where(

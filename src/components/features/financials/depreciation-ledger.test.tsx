@@ -28,7 +28,11 @@ describe('DepreciationLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<CurrencyProvider initialCurrency="USD"><DepreciationLedger initialData={mockData} /></CurrencyProvider>);
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <DepreciationLedger initialData={mockData} />
+      </CurrencyProvider>
+    );
     expect(screen.getByText('AST-001')).toBeInTheDocument();
     expect(screen.getByText('Laptops')).toBeInTheDocument();
   });

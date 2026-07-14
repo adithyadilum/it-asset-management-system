@@ -20,7 +20,7 @@ describe('DestructiveConfirmationDialog', () => {
   it('opens dialog when trigger is clicked', async () => {
     const user = userEvent.setup();
     render(<DestructiveConfirmationDialog {...defaultProps} />);
-    
+
     await user.click(screen.getByRole('button', { name: /delete/i }));
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
     expect(screen.getByText('Delete Item')).toBeInTheDocument();
@@ -29,24 +29,31 @@ describe('DestructiveConfirmationDialog', () => {
   it('calls onConfirm when confirm button is clicked', async () => {
     const user = userEvent.setup();
     const onConfirmMock = vi.fn().mockResolvedValue(undefined);
-    
-    render(<DestructiveConfirmationDialog {...defaultProps} open={true} onOpenChange={vi.fn()} onConfirm={onConfirmMock} />);
-    
+
+    render(
+      <DestructiveConfirmationDialog
+        {...defaultProps}
+        open={true}
+        onOpenChange={vi.fn()}
+        onConfirm={onConfirmMock}
+      />
+    );
+
     await user.click(screen.getByRole('button', { name: 'Delete' }));
     expect(onConfirmMock).toHaveBeenCalled();
   });
 
   it('renders error message when canDelete is false', () => {
     render(
-      <DestructiveConfirmationDialog 
-        {...defaultProps} 
-        open={true} 
-        onOpenChange={vi.fn()} 
-        canDelete={false} 
-        errorMessage="Cannot delete item" 
+      <DestructiveConfirmationDialog
+        {...defaultProps}
+        open={true}
+        onOpenChange={vi.fn()}
+        canDelete={false}
+        errorMessage="Cannot delete item"
       />
     );
-    
+
     expect(screen.getByText('Cannot delete item')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
   });

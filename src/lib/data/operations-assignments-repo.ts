@@ -788,11 +788,7 @@ export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {
 export async function updateAssignmentsState(
   assignmentIds: number[],
   newState:
-    | 'pending approval'
-    | 'assigned'
-    | 'overdue'
-    | 'requested'
-    | 'returned'
+    'pending approval' | 'assigned' | 'overdue' | 'requested' | 'returned'
 ): Promise<void> {
   if (assignmentIds.length === 0) return;
 
@@ -852,7 +848,10 @@ export async function triggerAssignmentReminders(
             targetUrl: '/dashboard',
           });
         } catch (error) {
-          console.error('Failed to dispatch in-app return reminder alert:', error);
+          console.error(
+            'Failed to dispatch in-app return reminder alert:',
+            error
+          );
         }
       }
 
@@ -1146,10 +1145,10 @@ export async function processAssetReturn(
     // 1. Update asset status and physical condition
     const updated = await tx
       .update(assets)
-      .set({ 
-        status: newStatus, 
+      .set({
+        status: newStatus,
         condition: input.physicalCondition,
-        updatedAt: new Date() 
+        updatedAt: new Date(),
       })
       .where(and(eq(assets.id, input.assetId), eq(assets.status, 'Returned')))
       .returning({ id: assets.id });

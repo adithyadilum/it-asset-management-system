@@ -1,7 +1,14 @@
 import { cookies } from 'next/headers';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { db } from '@/db';
-import { assetDisposals, assets, users, models, categories, assetDocuments } from '@/db/schema';
+import {
+  assetDisposals,
+  assets,
+  users,
+  models,
+  categories,
+  assetDocuments,
+} from '@/db/schema';
 import { eq, desc, inArray, and, sql, or, ilike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DisposalsLayout } from '@/components/features/disposals/disposals-layout';
@@ -14,13 +21,16 @@ interface DisposalsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function DisposalsPage({ searchParams }: DisposalsPageProps) {
+export default async function DisposalsPage({
+  searchParams,
+}: DisposalsPageProps) {
   const user = await requirePageAuth(
-    (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor',
+    (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor'
   );
 
   const cookieStore = await cookies();
-  const preferredCurrency = cookieStore.get('preferred_currency')?.value || 'LKR';
+  const preferredCurrency =
+    cookieStore.get('preferred_currency')?.value || 'LKR';
 
   // Aliases for users table since we join it twice for requester and approver
   const requester = alias(users, 'requester');
@@ -28,9 +38,18 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
 
   // Parse search params for server-side pagination and search
   const resolvedSearchParams = await searchParams;
-  const searchQuery = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search : '';
-  const page = typeof resolvedSearchParams?.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
-  const pageSize = typeof resolvedSearchParams?.pageSize === 'string' ? parseInt(resolvedSearchParams.pageSize, 10) : 10;
+  const searchQuery =
+    typeof resolvedSearchParams?.search === 'string'
+      ? resolvedSearchParams.search
+      : '';
+  const page =
+    typeof resolvedSearchParams?.page === 'string'
+      ? parseInt(resolvedSearchParams.page, 10)
+      : 1;
+  const pageSize =
+    typeof resolvedSearchParams?.pageSize === 'string'
+      ? parseInt(resolvedSearchParams.pageSize, 10)
+      : 10;
 
   const validPage = isNaN(page) || page < 1 ? 1 : page;
   const validPageSize = isNaN(pageSize) || pageSize < 1 ? 10 : pageSize;
@@ -55,12 +74,12 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   // Base condition for disposal history
   const searchCondition = searchQuery
     ? or(
-      ilike(assets.assetTag, `%${searchQuery}%`),
-      ilike(categories.name, `%${searchQuery}%`),
-      ilike(assetDisposals.reason, `%${searchQuery}%`),
-      ilike(requester.name, `%${searchQuery}%`),
-      ilike(approver.name, `%${searchQuery}%`)
-    )
+        ilike(assets.assetTag, `%${searchQuery}%`),
+        ilike(categories.name, `%${searchQuery}%`),
+        ilike(assetDisposals.reason, `%${searchQuery}%`),
+        ilike(requester.name, `%${searchQuery}%`),
+        ilike(approver.name, `%${searchQuery}%`)
+      )
     : undefined;
 
   const historyBaseCondition = and(
@@ -70,7 +89,9 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
 
   // 2. Fetch disposal history count for pagination
   const [countResult] = await db
-    .select({ count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)` })
+    .select({
+      count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)`,
+    })
     .from(assetDisposals)
     .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
     .innerJoin(models, eq(assets.modelId, models.id))
@@ -95,7 +116,9 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
       disposalDate: assetDisposals.resolvedAt,
       status: assetDisposals.status,
       // Group document URLs into an array to handle multiple uploads per disposal
-      documentUrls: sql<string[]>`COALESCE(array_agg(DISTINCT ${assetDocuments.fileUrl}) FILTER (WHERE ${assetDocuments.fileUrl} IS NOT NULL), '{}')`,
+      documentUrls: sql<
+        string[]
+      >`COALESCE(array_agg(DISTINCT ${assetDocuments.fileUrl}) FILTER (WHERE ${assetDocuments.fileUrl} IS NOT NULL), '{}')`,
     })
     .from(assetDisposals)
     .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
@@ -127,7 +150,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
     .offset((validPage - 1) * validPageSize);
 
   // Format the history data to match the expected props
-  const historyData = historyDataRaw.map(row => ({
+  const historyData = historyDataRaw.map((row) => ({
     ...row,
     flaggedBy: row.flaggedBy || 'Unknown',
   }));

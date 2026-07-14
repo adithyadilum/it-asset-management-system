@@ -6,7 +6,6 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { TabsContent } from '@/components/ui/tabs';
 import { ModuleNavigationTabs } from '@/components/shared/module-navigation-tabs';
 
-
 import { PendingDisposalsGrid } from './pending-disposals-grid';
 import { DisposalHistoryGrid } from './disposal-history-grid';
 import type { PendingDisposalRow, HistoryDisposalRow } from '@/types/disposals';
@@ -51,13 +50,15 @@ export function DisposalsLayout({
   const defaultTab = userRole === 'FinancialAuditor' ? 'history' : 'pending';
   const [activeTab, setActiveTab] = useState(defaultTab);
 
-  const selectedRow = isReviewOpen && numericRecordId
-    ? pendingData.find((row) => row.id === numericRecordId) || null
-    : null;
+  const selectedRow =
+    isReviewOpen && numericRecordId
+      ? pendingData.find((row) => row.id === numericRecordId) || null
+      : null;
 
-  const selectedHistoryRow = isRecordOpen && recordId
-    ? historyData.find((row) => row.assetId === recordId) || null
-    : null;
+  const selectedHistoryRow =
+    isRecordOpen && recordId
+      ? historyData.find((row) => row.assetId === recordId) || null
+      : null;
 
   const closeReviewPanel = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -109,41 +110,48 @@ export function DisposalsLayout({
 
   return (
     <div className="flex h-full w-full items-stretch gap-0 overflow-hidden bg-muted">
-
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-background p-6">
-
           <div className="mb-4 shrink-0">
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
+            <h1
+              className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
+            >
               Disposals
             </h1>
           </div>
 
-
           <ModuleNavigationTabs
             tabs={[
-              ...(userRole !== 'FinancialAuditor' ? [{ id: 'pending', label: `Pending Disposal (${pendingData.length})` }] : []),
-              { id: 'history', label: 'Disposal History' }
+              ...(userRole !== 'FinancialAuditor'
+                ? [
+                    {
+                      id: 'pending',
+                      label: `Pending Disposal (${pendingData.length})`,
+                    },
+                  ]
+                : []),
+              { id: 'history', label: 'Disposal History' },
             ]}
             defaultTab={activeTab}
             onTabChange={handleTabChange}
             containerClassName="flex flex-1 flex-col overflow-hidden [&>div.mt-4]:flex [&>div.mt-4]:min-h-0 [&>div.mt-4]:flex-1 [&>div.mt-4]:flex-col [&>div.mt-4]:overflow-hidden"
           >
-
             {userRole !== 'FinancialAuditor' && (
-            <TabsContent
-              value="pending"
-              className="m-0 flex flex-1 flex-col min-h-0 outline-none"
-            >
-              <PendingDisposalsGrid
-                initialData={pendingData}
-                onRowClick={openReviewPanel}
-              />
-            </TabsContent>
+              <TabsContent
+                value="pending"
+                className="m-0 flex flex-1 flex-col min-h-0 outline-none"
+              >
+                <PendingDisposalsGrid
+                  initialData={pendingData}
+                  onRowClick={openReviewPanel}
+                />
+              </TabsContent>
             )}
 
-
-            <TabsContent value="history" className="m-0 flex flex-1 flex-col min-h-0 outline-none">
+            <TabsContent
+              value="history"
+              className="m-0 flex flex-1 flex-col min-h-0 outline-none"
+            >
               <DisposalHistoryGrid
                 initialData={historyData}
                 pageCount={historyPageCount}
@@ -157,7 +165,6 @@ export function DisposalsLayout({
         </div>
       </div>
 
-
       <DisposalReviewPanelWrapper
         isOpen={isReviewOpen}
         onClose={closeReviewPanel}
@@ -169,14 +176,22 @@ export function DisposalsLayout({
         isOpen={isRecordOpen}
         onClose={closeReviewPanel}
         assetId={recordId ?? ''}
-        disposalDetails={selectedHistoryRow ? {
-          reason: selectedHistoryRow.reason,
-          flaggedBy: selectedHistoryRow.flaggedBy,
-          disposedBy: selectedHistoryRow.disposedBy,
-          disposalDate: selectedHistoryRow.disposalDate ? new Date(selectedHistoryRow.disposalDate).toLocaleDateString() : null,
-          status: selectedHistoryRow.status,
-          documentUrls: selectedHistoryRow.documentUrls
-        } : undefined}
+        disposalDetails={
+          selectedHistoryRow
+            ? {
+                reason: selectedHistoryRow.reason,
+                flaggedBy: selectedHistoryRow.flaggedBy,
+                disposedBy: selectedHistoryRow.disposedBy,
+                disposalDate: selectedHistoryRow.disposalDate
+                  ? new Date(
+                      selectedHistoryRow.disposalDate
+                    ).toLocaleDateString()
+                  : null,
+                status: selectedHistoryRow.status,
+                documentUrls: selectedHistoryRow.documentUrls,
+              }
+            : undefined
+        }
       />
     </div>
   );

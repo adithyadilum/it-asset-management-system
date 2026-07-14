@@ -4,13 +4,13 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ITOperatorDashboardView } from './it-operator-dashboard-view';
 
 vi.mock('../shared/kpi-metrics-row', () => ({
-  KpiMetricsRow: () => <div data-testid="kpi-metrics" />
+  KpiMetricsRow: () => <div data-testid="kpi-metrics" />,
 }));
 vi.mock('../shared/data-tables-container', () => ({
-  DataTablesContainer: () => <div data-testid="data-tables" />
+  DataTablesContainer: () => <div data-testid="data-tables" />,
 }));
 vi.mock('@/components/shared/data-table', () => ({
-  DataTable: () => <div data-testid="data-table" />
+  DataTable: () => <div data-testid="data-table" />,
 }));
 
 describe('ITOperatorDashboardView', () => {
@@ -28,10 +28,14 @@ describe('ITOperatorDashboardView', () => {
       recentActivities: [],
       overdueReturns: [],
       highMaintenance: [],
-      systemHealth: []
+      systemHealth: [],
     };
-    
-    render(<CurrencyProvider initialCurrency="USD"><ITOperatorDashboardView data={mockData as any} /></CurrencyProvider>);
+
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <ITOperatorDashboardView data={mockData as any} />
+      </CurrencyProvider>
+    );
     expect(screen.getByTestId('kpi-metrics')).toBeInTheDocument();
   });
 });
