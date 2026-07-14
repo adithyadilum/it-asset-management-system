@@ -13,10 +13,29 @@ export default defineConfig({
     },
     exclude: ['e2e/**', 'node_modules/**', 'dist/**', 'src/lib/env.test.ts'],
     css: false,
-    
+
     // --- MEMORY LEAK FIX (Modern Vitest API) ---
     // Use isolated forks to completely flush RAM between files
     pool: 'forks',
-    isolate: true, 
+    isolate: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/db/migrations/**',
+        'src/db/seed*.ts',
+        'src/components/ui/**',
+        'src/types/**',
+      ],
+      thresholds: {
+        statements: 25,
+        branches: 20,
+        functions: 20,
+        lines: 25,
+      },
+    },
   },
 });

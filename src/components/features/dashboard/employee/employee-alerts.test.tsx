@@ -2,9 +2,10 @@ import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { EmployeeAlerts } from './employee-alerts';
+import type { PortalAlerts } from '@/lib/data/portal-repo';
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() })
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
 describe('EmployeeAlerts', () => {
@@ -15,21 +16,27 @@ describe('EmployeeAlerts', () => {
   });
 
   it('renders employee alerts component', () => {
-    const mockAlerts = {
-      pendingAcceptance: [{
-        assignmentId: 'a1',
-        assetId: '1',
-        assetTag: 'AST-1',
-        assetName: 'Laptop',
-        assignedDate: '2023-01-01',
-        status: 'pending'
-      }],
+    const mockAlerts: PortalAlerts = {
+      pendingAcceptance: [
+        {
+          assignmentId: 1,
+          assetId: '1',
+          assetTag: 'AST-1',
+          modelName: 'Laptop',
+          category: 'Laptop',
+          assignedDate: '2023-01-01',
+          assignedByName: 'IT',
+        },
+      ],
       returnRequested: [],
-      upcomingReturns: []
+      upcomingReturns: [],
     };
-    // @ts-ignore
-    render(<CurrencyProvider initialCurrency="USD"><EmployeeAlerts alerts={mockAlerts as any} onAccept={vi.fn()} onReject={vi.fn()} onReport={vi.fn()} /></CurrencyProvider>);
-    
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <EmployeeAlerts alerts={mockAlerts} />
+      </CurrencyProvider>
+    );
+
     expect(screen.getByText(/Action Required/i)).toBeInTheDocument();
   });
 });

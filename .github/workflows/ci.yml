@@ -67,8 +67,8 @@ jobs:
       - name: Lint and typecheck
         run: npm run check
 
-      - name: Run unit and component tests
-        run: npm run test:run
+      - name: Run tests with coverage thresholds
+        run: npm run test:coverage
 
       - name: Build production application
         run: npm run build
