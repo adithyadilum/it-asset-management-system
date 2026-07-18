@@ -60,7 +60,7 @@
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.7",
     "react-dropzone": "^17.0.0",
-    "react-email": "^6.8.1",
+    "react-email": "^6.9.0",
     "recharts": "^3.9.2",
     "resend": "^6.17.2",
     "serwist": "^9.5.11",
