@@ -11,6 +11,7 @@ import { decrypt } from '@/lib/crypto';
 import type { WebhookEnvelope, WebhookEventType } from '@/types/integrations';
 
 import { calculateHmacSignature } from './signature';
+import { isAllowedWebhookDestination } from './validate-destination';
 
 function getQStashClient() {
   const token = serverEnv.QSTASH_TOKEN;
@@ -34,7 +35,17 @@ export async function dispatchWebhookEvent(
       ),
     });
 
-    if (subscriptions.length === 0) {
+    // Re-checked at dispatch so rows written before the destination guard
+    // existed cannot be used to reach an internal host.
+    const deliverable = subscriptions.filter((subscription) => {
+      if (isAllowedWebhookDestination(subscription.url)) return true;
+      console.error(
+        `[dispatchWebhookEvent] Skipping disallowed destination for subscription ${subscription.id}`
+      );
+      return false;
+    });
+
+    if (deliverable.length === 0) {
       return;
     }
 
@@ -49,7 +60,7 @@ export async function dispatchWebhookEvent(
     const qstash = getQStashClient();
 
     await Promise.allSettled(
-      subscriptions.map(async (subscription) => {
+      deliverable.map(async (subscription) => {
         const secret = decrypt(subscription.secret);
         const signature = calculateHmacSignature(bodyString, secret);
 
