@@ -143,3 +143,13 @@ export const API_KEY_PREFIX = 'eitams_live_';
 // Rate limit: defaults to 100 req/min if not configured
 export const API_RATE_LIMIT_MAX = 100;
 export const API_RATE_LIMIT_WINDOW_SECONDS = 60;
+
+// Bulk import
+//
+// Imports are submitted through a Server Action, and `serverActions.bodySizeLimit`
+// in next.config.ts caps the whole request at 5 MB. A ceiling above that cap is
+// unreachable: the framework rejects the request before the action body runs, so
+// the user sees an opaque error instead of a validation message. Keep this value
+// below that limit, and change both together.
+export const MAX_IMPORT_FILE_BYTES = Math.floor(4.5 * 1024 * 1024);
+export const MAX_IMPORT_FILE_LABEL = '4.5MB';

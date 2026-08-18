@@ -1,3 +1,4 @@
+import { MAX_IMPORT_FILE_BYTES, MAX_IMPORT_FILE_LABEL } from '@/lib/constants';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import React, { useState, useRef } from 'react';
 import { DialogFooter } from '@/components/ui/dialog';
@@ -69,9 +70,12 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
       return;
     }
 
-    // Check file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      tiqriToast.warning('File is too large. Maximum size is 10MB.');
+    // Rejected here so the user gets a real message; the Server Action body
+    // limit would otherwise reject the upload opaquely.
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      tiqriToast.warning(
+        `File is too large. Maximum size is ${MAX_IMPORT_FILE_LABEL}.`
+      );
       return;
     }
 
@@ -226,7 +230,7 @@ export function StepFileUpload({ state, dispatch }: StepFileUploadProps) {
                 </span>
               </p>
               <p className="text-xs text-muted-foreground mt-2">
-                Supports .csv and .xlsx files up to 10MB
+                Supports .csv and .xlsx files up to {MAX_IMPORT_FILE_LABEL}
               </p>
             </div>
           )}

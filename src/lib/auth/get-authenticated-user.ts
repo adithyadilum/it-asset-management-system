@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { users, linkedDevices } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/actions/auth';
+import { TtlCache } from '@/lib/ttl-cache';
 import type { AuthenticatedUser } from '@/actions/auth';
 
 export { getAuthenticatedUser };
@@ -15,6 +16,30 @@ const MOBILE_SECRET = new TextEncoder().encode(serverEnv.MOBILE_JWT_SECRET);
 
 export const MOBILE_JWT_ISSUER = new URL(serverEnv.NEXTAUTH_URL).origin;
 export const MOBILE_JWT_AUDIENCE = 'eitams-mobile';
+
+/**
+ * `lastActiveAt` is a presence indicator on the devices settings page, so
+ * second-level precision has no value. Writing it on every authenticated
+ * request put a row lock and a WAL record on the critical path of every mobile
+ * call — a continuous write stream from a device that merely polls.
+ */
+const DEVICE_ACTIVITY_TTL_MS = 5 * 60 * 1000;
+const deviceActivityThrottle = new TtlCache<true>(DEVICE_ACTIVITY_TTL_MS);
+
+function recordDeviceActivity(deviceId: string): void {
+  if (deviceActivityThrottle.has(deviceId)) return;
+  deviceActivityThrottle.set(deviceId, true);
+
+  // Fire and forget: a missed heartbeat is not worth delaying the response.
+  void Promise.resolve(
+    db
+      .update(linkedDevices)
+      .set({ lastActiveAt: new Date() })
+      .where(eq(linkedDevices.id, deviceId))
+  ).catch((error) => {
+    console.error('[auth] Failed to record device activity:', error);
+  });
+}
 
 export type AuthenticatedMobileUser = AuthenticatedUser & {
   deviceId: string;
@@ -66,10 +91,7 @@ export async function getAuthenticatedMobileUserFromRequest(
       .limit(1);
     if (!user) return null;
 
-    await db
-      .update(linkedDevices)
-      .set({ lastActiveAt: new Date() })
-      .where(eq(linkedDevices.id, device.id));
+    recordDeviceActivity(device.id);
 
     return { ...user, deviceId: device.id, jwtId };
   } catch {

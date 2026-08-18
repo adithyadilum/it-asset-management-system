@@ -1,14 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { parseFile } from '@/lib/bulk-import/parse-file';
+import { MAX_IMPORT_FILE_BYTES, MAX_IMPORT_FILE_LABEL } from '@/lib/constants';
 
 describe('parseFile', () => {
-  it('rejects files larger than 10MB', async () => {
-    const file = new File([new ArrayBuffer(11 * 1024 * 1024)], 'test.csv', {
-      type: 'text/csv',
-    });
-    await expect(parseFile(file)).rejects.toThrow(
-      'File exceeds the maximum limit of 10MB'
+  it('rejects files above the import ceiling', async () => {
+    const file = new File(
+      [new ArrayBuffer(MAX_IMPORT_FILE_BYTES + 1024)],
+      'test.csv',
+      { type: 'text/csv' }
     );
+    await expect(parseFile(file)).rejects.toThrow(
+      `File exceeds the maximum limit of ${MAX_IMPORT_FILE_LABEL}`
+    );
+  });
+
+  it('keeps the import ceiling under the Server Action body limit', () => {
+    // next.config.ts sets serverActions.bodySizeLimit to 5mb. A ceiling at or
+    // above that is unreachable — the request is rejected before validation runs.
+    expect(MAX_IMPORT_FILE_BYTES).toBeLessThan(5 * 1024 * 1024);
   });
 
   it('rejects unsupported file types', async () => {

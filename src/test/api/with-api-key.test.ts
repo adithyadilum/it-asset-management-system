@@ -9,7 +9,7 @@ import { db } from '@/db';
 import { withApiKey } from '@/lib/api/with-api-key';
 import { applyRateLimit } from '@/lib/api/rate-limiter';
 import { logAuditAction } from '@/lib/audit';
-import { hashApiKey } from '@/lib/api/api-key-hash';
+import { hashApiKey, hashApiKeyLegacy } from '@/lib/api/api-key-hash';
 
 vi.mock('@/db', () => ({
   db: {
@@ -115,6 +115,29 @@ describe('withApiKey middleware', () => {
     expect(body.error.code).toBe('INVALID_API_KEY');
   });
 
+  it('verifies a legacy PBKDF2 key and rewrites it to the current scheme', async () => {
+    const legacyHash = await hashApiKeyLegacy(validToken);
+    vi.mocked(applyRateLimit).mockResolvedValue({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+
+    // First lookup (current scheme) misses; the legacy lookup finds the row.
+    vi.mocked(db.query.apiKeys.findFirst)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ ...mockApiKeyRecord, keyHash: legacyHash });
+
+    const req = createRequest(`Bearer ${validToken}`);
+    const res = await wrappedHandler(req, {});
+
+    expect(res.status).toBe(200);
+    expect(mockHandler).toHaveBeenCalled();
+    // The stored hash is upgraded so the next request takes the fast path.
+    expect(db.update).toHaveBeenCalled();
+  });
+
   it('fails if API key has been revoked', async () => {
     vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({
       ...mockApiKeyRecord,
@@ -188,8 +211,33 @@ describe('withApiKey middleware', () => {
     expect(res.status).toBe(200);
     expect(mockHandler).toHaveBeenCalledWith(req, { apiKey: mockApiKeyRecord });
     expect(applyRateLimit).toHaveBeenCalledWith('key-test-id:1.2.3.4');
-    expect(db.update).toHaveBeenCalled();
+    // The audit write stays fail-closed on every request.
     expect(logAuditAction).toHaveBeenCalled();
+  });
+
+  it('throttles the lastUsedAt write instead of updating on every request', async () => {
+    vi.mocked(applyRateLimit).mockResolvedValue({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValue(mockApiKeyRecord);
+
+    // The throttle is module-level, so a prior test in this file may already
+    // have consumed the window for this key. What matters is that a burst does
+    // not produce one write per request.
+    vi.mocked(db.update).mockClear();
+    for (let i = 0; i < 5; i += 1) {
+      await wrappedHandler(
+        createRequest(`Bearer ${validToken}`, '1.2.3.4'),
+        {}
+      );
+    }
+
+    expect(vi.mocked(db.update).mock.calls.length).toBeLessThanOrEqual(1);
+    // Auditing is unaffected by the throttle.
+    expect(vi.mocked(logAuditAction).mock.calls.length).toBe(5);
   });
 
   it('succeeds and calls handler if valid x-api-key header is provided', async () => {
