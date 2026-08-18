@@ -1,3 +1,4 @@
+import { logInfo } from '@/lib/latency';
 import {
   and,
   desc,
@@ -1090,7 +1091,7 @@ export async function refreshOverdueAssignments(): Promise<void> {
     .returning({ id: assetAssignments.id });
 
   if (updated.length > 0) {
-    console.log(`Refreshed ${updated.length} overdue assignments.`);
+    logInfo(`Refreshed ${updated.length} overdue assignments.`);
   }
 
   // Optional: We can log how many were overdue, but for now we just satisfy the returning rule.

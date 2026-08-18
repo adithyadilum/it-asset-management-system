@@ -1,3 +1,4 @@
+import { logInfo } from '@/lib/latency';
 import '@/lib/auth/patch-url-parse';
 
 import type { NextAuthOptions } from 'next-auth';
@@ -96,7 +97,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         stored.accessTokenExpires.getTime() > Date.now() + BUFFER_MS
       ) {
         // Another worker already refreshed — return without hitting Keycloak.
-        console.log(
+        logInfo(
           `[AUTH] Token already refreshed by peer worker for user ${userId}, skipping Keycloak call`
         );
         return {
@@ -167,7 +168,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         });
 
       // Lock is automatically released when the transaction commits here.
-      console.log(`[AUTH] Successfully refreshed token for user ${userId}`);
+      logInfo(`[AUTH] Successfully refreshed token for user ${userId}`);
 
       // ── 5. Re-read isActive so disabled accounts are reflected at the next
       //       refresh cycle (~5 min window) without a DB call on every request.
@@ -271,7 +272,7 @@ export const authOptions: NextAuthOptions = {
       const profileDepartment =
         typeof deptRaw === 'string' ? deptRaw : undefined;
 
-      console.log(
+      logInfo(
         '[AUTH] Keycloak raw dept claim:',
         rawDept,
         '→ resolved:',
@@ -327,7 +328,7 @@ export const authOptions: NextAuthOptions = {
                 .where(eq(departments.id, newId));
 
               userDepartmentId = newId;
-              console.log(
+              logInfo(
                 `[AUTH] Auto-provisioned new department: ${deptName} (${shortCode})`
               );
             } else {
@@ -337,7 +338,7 @@ export const authOptions: NextAuthOptions = {
               });
               if (raceDept) {
                 userDepartmentId = raceDept.id;
-                console.log(
+                logInfo(
                   `[AUTH] Department "${deptName}" already inserted by peer worker, using id=${raceDept.id}`
                 );
               }
@@ -368,7 +369,7 @@ export const authOptions: NextAuthOptions = {
             isActive: true,
             departmentId: userDepartmentId,
           });
-          console.log(`[AUTH] JIT Provisioned new user: ${normalizedEmail}`);
+          logInfo(`[AUTH] JIT Provisioned new user: ${normalizedEmail}`);
         } catch (error) {
           console.error('Failed to auto-provision user:', error);
           return false; // Reject login if DB insert fails
@@ -391,7 +392,7 @@ export const authOptions: NextAuthOptions = {
               .update(users)
               .set({ departmentId: userDepartmentId })
               .where(eq(users.id, existingUser.id));
-            console.log(
+            logInfo(
               `[AUTH] Synced department for existing user: ${normalizedEmail}`
             );
           } catch (error) {

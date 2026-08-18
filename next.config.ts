@@ -1,4 +1,5 @@
-/** @type {import('next').NextConfig} */
+import type { NextConfig } from 'next';
+
 import './src/lib/env';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -27,7 +28,7 @@ const contentSecurityPolicy = [
   ...(isProduction ? ['upgrade-insecure-requests'] : []),
 ].join('; ');
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   allowedDevOrigins: isProduction ? [] : ['localhost:3000', '127.0.0.1'],
@@ -82,4 +83,4 @@ const nextConfig = {
     ];
   },
 };
-module.exports = nextConfig;
+export default nextConfig;
