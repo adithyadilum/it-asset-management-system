@@ -3,7 +3,8 @@ import { db } from '@/db';
 import { systemAuditLogs, users } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { extractLabelFromValues } from '@/lib/audit';
-import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authenticated-user';
+import { withMobileAuth } from '@/lib/api/with-auth';
+import { canViewAuditLog } from '@/lib/auth/roles';
 
 /** Humanise camelCase / snake_case entity type strings into readable words. */
 function humanizeEntityType(entityType: string): string {
@@ -86,14 +87,8 @@ function buildEventDetails(
  *   }>
  * }
  */
-export async function GET(req: Request) {
-  // --- 1. Authenticate via mobile JWT ---
-  const user = await getAuthenticatedMobileUserFromRequest(req);
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // --- 2. Fetch the 5 most recent audit log entries ---
+export const GET = withMobileAuth(canViewAuditLog, async () => {
+  // Fetch the 5 most recent audit log entries.
   try {
     const records = await db
       .select({
@@ -153,4 +148,4 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});
