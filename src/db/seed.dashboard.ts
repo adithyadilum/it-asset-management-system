@@ -8,14 +8,12 @@
  * Run: npx tsx src/db/seed.dashboard.ts
  */
 
-import * as dotenv from 'dotenv';
+import '../lib/load-env';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { serverEnv } from '../lib/env';
 import { eq, and, isNull } from 'drizzle-orm';
 import { assetAssignments, assets, maintenanceTickets, users } from './schema';
-
-dotenv.config({ path: '.env.local' });
 
 async function first<T>(query: Promise<T[]>): Promise<T | null> {
   const rows = await query;
