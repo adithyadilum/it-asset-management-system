@@ -31,7 +31,9 @@ const contentSecurityPolicy = [
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
-  allowedDevOrigins: isProduction ? [] : ['localhost:3000', '127.0.0.1'],
+  allowedDevOrigins: isProduction
+    ? []
+    : ['localhost:3000', '127.0.0.1', '192.168.8.101'],
   reactCompiler: true,
   cacheComponents: true,
   experimental: {
