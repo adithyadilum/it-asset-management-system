@@ -691,7 +691,7 @@ If it is not intended, remove `cacheComponents: true` and keep `unstable_cache`.
 
 ### CQ-A — High — Migration `0006` indexes are not declared in `schema.ts`
 
-**Evidence:** [src/db/migrations/0006_security_performance_indexes.sql](../src/db/migrations/0006_security_performance_indexes.sql) creates 23 indexes plus the `pg_trgm` extension. `src/db/schema.ts` declares 33 indexes, and **none** of them are the ones from `0006` — `system_audit_logs_performed_at_id_idx`, `assets_asset_tag_trgm_idx`, `asset_assignments_active_user_idx`, and the rest are absent.
+**Evidence:** [src/db/migrations-archive/0006_security_performance_indexes.sql](../src/db/migrations-archive/0006_security_performance_indexes.sql) creates 23 indexes plus the `pg_trgm` extension. `src/db/schema.ts` declares 33 indexes, and **none** of them are the ones from `0006` — `system_audit_logs_performed_at_id_idx`, `assets_asset_tag_trgm_idx`, `asset_assignments_active_user_idx`, and the rest are absent.
 
 `systemAuditLogs` in particular is declared with no index configuration at all, despite being the table that migration `0006` gave three indexes.
 
