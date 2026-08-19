@@ -61,6 +61,15 @@ jobs:
       - name: Apply migrations from zero
         run: npm run db:migrate
 
+      # The deployed databases were provisioned with `drizzle-kit push`, so they
+      # already hold every object the baseline creates. Re-running proves the
+      # migration no-ops against a populated database instead of failing on the
+      # first CREATE that already exists.
+      - name: Re-apply migrations to prove they are idempotent
+        run: |
+          psql "$DATABASE_URL" -c 'DELETE FROM drizzle.__drizzle_migrations;'
+          npm run db:migrate
+
       - name: Check formatting
         run: npm run format:check
 

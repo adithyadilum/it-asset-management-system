@@ -1362,3 +1362,129 @@ now asserting empty allowlists in both directions. Docker was unavailable, so
 **this has not been applied to a real PostgreSQL locally** — the CI `db:migrate`
 step against `postgres:17-alpine` is the verification, and its result should be
 checked before this is treated as closed.
+
+## NEW-5 reopened, then closed by squashing the migration chain — 2026-08-19
+
+The `0007` reconciliation above was not enough, and the reason matters more than
+the fix: it was signed off on structural validation instead of being run. CI
+failed again on the next push, at a different statement.
+
+The visible output was misleading. The only thing printed was the `NOTICE` the
+new guard in `0002` raises, followed by `exit code 1`:
+
+```
+[⣯] applying migrations...{
+  severity: 'NOTICE',
+  message: 'notification_queue does not exist yet; migration 0007 creates it with this index.',
+}
+[⣯] applying migrations...
+Error: Process completed with exit code 1
+```
+
+That `NOTICE` is the guard working. drizzle-kit swallows the actual error behind
+its spinner, so the failing statement never appears. Driving the migrator
+directly and printing `error.cause` produced it:
+
+```
+Failed query: CREATE EXTENSION IF NOT EXISTS "pg_trgm"; …
+cause: PostgresError: column "asset_id" does not exist
+```
+
+Migration `0006` builds `software_licenses_asset_id_idx` on
+`software_licenses.asset_id`. No migration adds that column until `0007` — one
+file too late. `CREATE INDEX IF NOT EXISTS` guards the index name, not the
+column, so the guard that made `0002` safe could never have helped here.
+
+This is the same defect as `0002`, not a new one: the migration history was
+written against a schema `drizzle-kit push` had already moved on from, so
+several files reference objects that arrive later or never. Fixing them one at a
+time is whack-a-mole, and each round costs a CI cycle to discover.
+
+### What was done
+
+The chain is squashed to a single baseline generated from `schema.ts`, which is
+the only artifact that describes the schema correctly.
+
+- `src/db/migrations/0000_baseline_schema.sql` — 29 tables, 15 enums, 54
+  indexes, 38 foreign keys. Every statement idempotent: `IF NOT EXISTS` on all
+  83 `CREATE TABLE`/`CREATE INDEX` statements, and a `DO $$ … EXCEPTION WHEN
+duplicate_object` wrapper on each of the 53 enum and constraint statements,
+  which have no `IF NOT EXISTS` form. Nothing is dropped.
+- `CREATE EXTENSION IF NOT EXISTS "pg_trgm"` is prepended by hand. drizzle-kit
+  does not manage extensions, so it emits the five `gin_trgm_ops` indexes
+  without the extension they require. This was previously supplied by `0006` and
+  would have been lost silently in any regenerated baseline — there is now a
+  test for it.
+- A short reconciliation block sits after the tables and **before** the foreign
+  keys, adding the three columns and the enum value that `0007` introduced. It
+  only matters for a database built by the old migrate-only chain, where the
+  tables already exist and so are skipped by `CREATE TABLE IF NOT EXISTS`. The
+  ordering is load-bearing and was found by testing, not by reading: placed at
+  the end of the file, the run failed with `column "asset_id" referenced in
+foreign key constraint does not exist` — the original bug, reintroduced.
+- Migrations `0000`–`0007` moved to `src/db/migrations-archive/`, out of the
+  journal. They are kept for reference; nothing reads them.
+
+The journal timestamp of the baseline is newer than the archived `0007`, so a
+database that already applied the old chain still picks the baseline up and
+no-ops through it.
+
+### Verification
+
+A disposable PostgreSQL 18 cluster (`initdb` on port 54322 — Docker was still
+unavailable, but the server binaries were installed locally). Four scenarios:
+
+| Scenario                                                                        | Result             |
+| ------------------------------------------------------------------------------- | ------------------ |
+| Empty database                                                                  | `MIGRATED OK`      |
+| Objects present, `__drizzle_migrations` cleared — a `push`-provisioned database | `MIGRATED OK`      |
+| Database built by archived `0000`–`0005`, then the baseline                     | `MIGRATED OK`      |
+| `drizzle-kit migrate` from zero vs `drizzle-kit push` from `schema.ts`          | **byte-identical** |
+
+The last row is the strongest of the four. Dumping every column, index,
+constraint and enum label from both databases and diffing gives 725 identical
+lines, which means the baseline reproduces `schema.ts` exactly rather than
+approximately.
+
+The legacy-lineage database differs from the fresh one by exactly one column,
+`users.password`, which the old chain created and `schema.ts` no longer
+declares. That is the column deliberately not dropped, so the difference is
+expected.
+
+CI now applies the migrations twice, clearing `__drizzle_migrations` in between,
+so the idempotency the squash depends on is checked on every run against a real
+database rather than asserted in a comment.
+
+### The Playwright job
+
+Two defects, one shared with the above.
+
+`e2e/global-setup.ts` runs `npm run db:migrate`, so the migration failure took
+the e2e job down as well; that is fixed by the baseline. Behind it sat a second
+failure that only appeared once the migration succeeded:
+
+```
+Error: Cannot find module '@/types/master-data'
+   at ..\src\db\schema.ts:23
+```
+
+`tsconfig.json` lists `playwright.config.ts` in `exclude`. Playwright resolves
+`paths` from the tsconfig covering its config file, finds none, and every `@/…`
+import in setup or a spec fails. `tsconfig: './tsconfig.json'` in the Playwright
+config states it explicitly.
+
+Global setup also no longer imports the application's `db` module. It opens a
+`postgres` connection directly and closes it in a `finally`: two rows of fixture
+data do not need the ORM, and the app module both drags in the path aliases
+above and opens a pool with no exposed way to close it — an open handle in the
+runner process for the rest of the run.
+
+**On the 30-minute cancellation: not reproduced, and not explained.** Locally the
+job now runs to completion and exits. Two guards were added so the same symptom
+cannot recur silently rather than because the cause is known: `globalTimeout` of
+20 minutes, under the job's 30-minute cap, so a wedged run fails with a report
+and uploaded artifacts instead of being killed with nothing; and `stdout`/
+`stderr` piped from the dev server, which otherwise fails to boot invisibly. The
+HTML reporter was ruled out by reading Playwright 1.61's source — `onExit`
+returns immediately when `CI` is set, so it never serves the report and blocks.
+If the job stalls again, the report and trace will now survive it.
