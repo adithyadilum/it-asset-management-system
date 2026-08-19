@@ -50,6 +50,13 @@
       "when": 1784004531710,
       "tag": "0006_security_performance_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787156420547,
+      "tag": "0007_reconcile_untracked_schema",
+      "breakpoints": true
     }
   ]
 }

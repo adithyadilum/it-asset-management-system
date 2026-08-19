@@ -1309,3 +1309,56 @@ Not run: the Playwright end-to-end suite and any migration against a real databa
 require services unavailable in this environment. NEW-5 in particular means `npm run db:migrate`
 against an empty database is known to produce an incomplete schema and must not be treated as
 verified.
+
+## NEW-5 resolved — 2026-08-19
+
+CI proved the finding. `npm run db:migrate` failed on a clean PostgreSQL, taking
+both the quality job and the Playwright job down with it:
+
+```
+> drizzle-kit migrate
+[⣷] applying migrations...
+Error: Process completed with exit code 1
+```
+
+The immediate cause is migration `0002`, which deduplicates `notification_queue`
+and adds a unique index to it. That table is one of the nine created by no
+migration, so from an empty database the statement hit a relation that did not
+exist. Every migration run from zero had been failing; the prior audit's
+CICD-02 ("CI migrates a clean PostgreSQL database") was never true.
+
+**What was done.** `drizzle-kit generate` produced the reconciliation once the
+create/delete ambiguity was removed — the legacy `sessions` table is now
+declared in `schema.ts`, since it exists in every deployed database and the
+model should describe reality rather than a create/rename prompt drizzle cannot
+resolve without a TTY. The generated migration showed the drift was wider than
+nine tables: six enums, a `Returned` value on `asset_status`, and columns
+including `asset_assignments.state`, `asset_purchases.exchange_rate` and
+`software_licenses.asset_id` were also absent from the history. All of it
+confirms these databases were built with `drizzle-kit push`.
+
+Migration `0007` therefore creates 9 tables, 6 enums, 42 indexes and 17
+constraints, and every statement is idempotent — `CREATE TABLE IF NOT EXISTS`,
+`ADD COLUMN IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS`, and `DO $$ … EXCEPTION
+WHEN duplicate_object` around enum and constraint creation. An environment that
+was pushed to skips all of it; a database built from zero gets it.
+
+Migration `0002` is now guarded on `to_regclass('public.notification_queue')`
+and returns early when the table is absent, which is the case at that point in a
+from-zero run. `0007` creates the table with that unique index already in place,
+so nothing is lost. Editing an applied migration is safe here because drizzle
+applies by journal order rather than re-verifying old file hashes, and on a
+pushed database `0002` had already run.
+
+**Deliberately excluded.** The generated migration contained one destructive
+statement, `ALTER TABLE "users" DROP COLUMN "password"`, because `schema.ts`
+stopped declaring the column when the app moved to Keycloak. It was removed.
+The column is unused but may still hold data, and dropping it belongs in its own
+reviewed migration with a backup — not folded into a CI fix.
+
+**Verification.** Structural validation only: balanced `DO` blocks, balanced
+quotes and parentheses, zero destructive statements, and `schema-migration-drift.test.ts`
+now asserting empty allowlists in both directions. Docker was unavailable, so
+**this has not been applied to a real PostgreSQL locally** — the CI `db:migrate`
+step against `postgres:17-alpine` is the verification, and its result should be
+checked before this is treated as closed.

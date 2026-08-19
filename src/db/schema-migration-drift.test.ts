@@ -23,26 +23,22 @@ const MIGRATIONS_DIR = join(DB_DIR, 'migrations');
 
 /**
  * Tables declared in `schema.ts` that no migration creates.
- * Every entry here is a table a from-zero database will be missing.
- * See NEW-5 in docs/AUDIT_REPORT_2026-08-18.md. Do not add to this list.
+ *
+ * Empty, and it must stay that way. Migration 0007 reconciled the nine tables
+ * that were only ever created by `drizzle-kit push`. A new entry here means a
+ * from-zero database would be missing that table — which is how migration 0002
+ * came to fail in CI.
  */
-const KNOWN_MISSING_FROM_MIGRATIONS = [
-  'api_keys',
-  'app_notifications',
-  'integration_settings',
-  'linked_devices',
-  'notification_logs',
-  'notification_queue',
-  'notification_rules',
-  'user_refresh_tokens',
-  'webhook_subscriptions',
-];
+const KNOWN_MISSING_FROM_MIGRATIONS: string[] = [];
 
 /**
  * Tables a migration creates that `schema.ts` no longer declares.
- * `sessions` predates the move to Keycloak-backed sessions and is unused.
+ *
+ * Empty. `sessions` predates the move to Keycloak and nothing reads it, but it
+ * exists in every deployed database, so the model declares it rather than
+ * pretending otherwise. Dropping it is a separate, reviewed migration.
  */
-const KNOWN_ORPHANED_IN_MIGRATIONS = ['sessions'];
+const KNOWN_ORPHANED_IN_MIGRATIONS: string[] = [];
 
 function schemaTables(): Set<string> {
   const source = readFileSync(join(DB_DIR, 'schema.ts'), 'utf8');

@@ -500,6 +500,25 @@ export const assetDisposals = pgTable(
 // -----------------------------------------------------------------------------
 // 6. SYSTEM AUDIT LOG
 // -----------------------------------------------------------------------------
+/**
+ * Legacy session store, created by migration 0000 and superseded by
+ * Keycloak-backed sessions. Nothing reads or writes it, but it exists in every
+ * deployed database, so the model describes it rather than pretending it is
+ * gone. Dropping it is a separate, reviewed migration.
+ */
+export const sessions = pgTable('sessions', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenId: text('token_id').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+});
+
 export const systemAuditLogs = pgTable(
   'system_audit_logs',
   {
