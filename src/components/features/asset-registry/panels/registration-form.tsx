@@ -1,5 +1,5 @@
-"use client";
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+'use client';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import * as React from 'react';
 
@@ -20,7 +20,10 @@ import type {
   ModelRegistrationOption,
   RegistrationOption,
 } from './form-field-primitives';
-import { useRegistrationForm, formatDateForInput } from './use-registration-form';
+import {
+  useRegistrationForm,
+  formatDateForInput,
+} from './use-registration-form';
 
 export type { RegistrationOption, ModelRegistrationOption };
 
@@ -204,27 +207,27 @@ export function RegistrationForm({
   const panelActions: SlidePanelAction[] = isLoading
     ? []
     : [
-      {
-        id: 'discard',
-        label: 'Discard',
-        variant: 'outline',
-        onClick: () => onClose(false),
-        disabled: isPending,
-      },
-      {
-        id: 'submit',
-        label: isPending ? (
-          <span className="inline-flex items-center gap-2">
-            <LoadingSpinner size="sm" />
-            <span>{config.submittingLabel}</span>
-          </span>
-        ) : (
-          config.submitLabel
-        ),
-        onClick: () => formRef.current?.requestSubmit(),
-        disabled: isPending,
-      },
-    ];
+        {
+          id: 'discard',
+          label: 'Discard',
+          variant: 'outline',
+          onClick: () => onClose(false),
+          disabled: isPending,
+        },
+        {
+          id: 'submit',
+          label: isPending ? (
+            <span className="inline-flex items-center gap-2">
+              <LoadingSpinner size="sm" />
+              <span>{config.submittingLabel}</span>
+            </span>
+          ) : (
+            config.submitLabel
+          ),
+          onClick: () => formRef.current?.requestSubmit(),
+          disabled: isPending,
+        },
+      ];
 
   const panelContent = isLoading ? (
     <RegistrationFormSkeleton />
@@ -343,7 +346,6 @@ export function RegistrationForm({
         handleInvoiceDrop={handleInvoiceDrop}
         invoiceFileName={invoiceFileName}
       />
-
     </form>
   );
 

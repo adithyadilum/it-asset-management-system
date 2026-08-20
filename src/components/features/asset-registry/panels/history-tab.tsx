@@ -1,5 +1,5 @@
 'use client';
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertCircle } from 'lucide-react';
@@ -16,10 +16,7 @@ export interface HistoryTabProps {
   className?: string;
 }
 
-export function HistoryTab({
-  assetId,
-  className = '',
-}: HistoryTabProps) {
+export function HistoryTab({ assetId, className = '' }: HistoryTabProps) {
   const [logs, setLogs] = useState<AuditLogRow[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -27,36 +24,49 @@ export function HistoryTab({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLogs = useCallback(async (pageNum: number, isLoadMore: boolean = false) => {
-    try {
-      setError(null);
+  const fetchLogs = useCallback(
+    async (pageNum: number, isLoadMore: boolean = false) => {
+      try {
+        setError(null);
 
-      // Keep the spinner scoped to the initial load or the pagination request.
-      if (isLoadMore) {
-        setIsLoadingMore(true);
-      } else {
-        setIsLoading(true);
+        // Keep the spinner scoped to the initial load or the pagination request.
+        if (isLoadMore) {
+          setIsLoadingMore(true);
+        } else {
+          setIsLoading(true);
+        }
+
+        const { data, hasMore: more } = await getAssetAuditHistory(
+          assetId,
+          pageNum,
+          PAGE_SIZE
+        );
+
+        if (isLoadMore) {
+          setLogs((prev) => {
+            const newLogs = data.filter(
+              (d) => !prev.some((p) => p.id === d.id)
+            );
+            return [...prev, ...newLogs];
+          });
+        } else {
+          setLogs(data);
+        }
+        setHasMore(more);
+      } catch (error) {
+        console.error('Failed to fetch asset history:', error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load asset history.'
+        );
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
       }
-
-      const { data, hasMore: more } = await getAssetAuditHistory(assetId, pageNum, PAGE_SIZE);
-
-      if (isLoadMore) {
-        setLogs((prev) => {
-          const newLogs = data.filter((d) => !prev.some((p) => p.id === d.id));
-          return [...prev, ...newLogs];
-        });
-      } else {
-        setLogs(data);
-      }
-      setHasMore(more);
-    } catch (error) {
-      console.error('Failed to fetch asset history:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load asset history.');
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  }, [assetId]);
+    },
+    [assetId]
+  );
 
   useEffect(() => {
     if (assetId) {
@@ -87,7 +97,12 @@ export function HistoryTab({
 
   if (isLoading) {
     return (
-      <div className={cn('flex w-full items-center justify-center py-12', className)}>
+      <div
+        className={cn(
+          'flex w-full items-center justify-center py-12',
+          className
+        )}
+      >
         <LoadingSpinner size="sm" />
       </div>
     );
@@ -95,13 +110,26 @@ export function HistoryTab({
 
   if (error && logs.length === 0) {
     return (
-      <div className={cn('flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-12', className)}>
+      <div
+        className={cn(
+          'flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-12',
+          className
+        )}
+      >
         <AlertCircle className="h-6 w-6 text-rose-500" />
         <div className="text-center">
-          <p className="text-sm font-medium text-rose-900">Unable to load asset history</p>
+          <p className="text-sm font-medium text-rose-900">
+            Unable to load asset history
+          </p>
           <p className="mt-1 text-sm text-rose-700">{error}</p>
         </div>
-        <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-background text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="border-rose-200 bg-background text-rose-700 hover:bg-rose-50"
+          onClick={handleRetry}
+        >
           Retry
         </Button>
       </div>
@@ -110,8 +138,15 @@ export function HistoryTab({
 
   if (logs.length === 0) {
     return (
-      <div className={cn('flex w-full flex-col items-center justify-center py-12 border border-dashed border-border rounded-xl bg-muted', className)}>
-        <p className="text-sm text-muted-foreground">No history records found for this asset.</p>
+      <div
+        className={cn(
+          'flex w-full flex-col items-center justify-center py-12 border border-dashed border-border rounded-xl bg-muted',
+          className
+        )}
+      >
+        <p className="text-sm text-muted-foreground">
+          No history records found for this asset.
+        </p>
       </div>
     );
   }
@@ -124,7 +159,13 @@ export function HistoryTab({
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
-          <Button type="button" variant="outline" size="sm" className="border-rose-200 bg-background text-rose-700 hover:bg-rose-50" onClick={handleRetry}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="border-rose-200 bg-background text-rose-700 hover:bg-rose-50"
+            onClick={handleRetry}
+          >
             Retry
           </Button>
         </div>

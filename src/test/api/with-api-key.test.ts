@@ -2,8 +2,6 @@
  * @vitest-environment node
  */
 
- 
-
 import { NextRequest, NextResponse } from 'next/server';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,7 +9,7 @@ import { db } from '@/db';
 import { withApiKey } from '@/lib/api/with-api-key';
 import { applyRateLimit } from '@/lib/api/rate-limiter';
 import { logAuditAction } from '@/lib/audit';
-import { hashApiKey } from '@/lib/api/api-key-hash';
+import { hashApiKey, hashApiKeyLegacy } from '@/lib/api/api-key-hash';
 
 vi.mock('@/db', () => ({
   db: {
@@ -31,6 +29,12 @@ vi.mock('@/db', () => ({
 }));
 
 vi.mock('@/lib/api/rate-limiter', () => ({
+  applyPreAuthRateLimit: vi.fn().mockResolvedValue({
+    success: true,
+    limit: 20,
+    remaining: 19,
+    reset: 1234,
+  }),
   applyRateLimit: vi.fn(),
   injectRateLimitHeaders: vi.fn((resp: any) => resp),
 }));
@@ -42,14 +46,16 @@ vi.mock('@/lib/audit', () => ({
 }));
 
 describe('withApiKey middleware', () => {
-  const mockHandler = vi.fn().mockResolvedValue(NextResponse.json({ success: true }));
+  const mockHandler = vi
+    .fn()
+    .mockResolvedValue(NextResponse.json({ success: true }));
   const requiredScope = 'read:assets';
   const validToken = 'test-token-123';
   let hashedToken = '';
 
   const wrappedHandler = withApiKey(requiredScope, mockHandler);
 
-const mockApiKeyRecord: any = {
+  const mockApiKeyRecord: any = {
     id: 'key-test-id',
     name: 'Test Key',
     keyHash: hashedToken,
@@ -72,7 +78,11 @@ const mockApiKeyRecord: any = {
     vi.clearAllMocks();
   });
 
-  function createRequest(authHeader?: string, ip?: string, xApiKeyHeader?: string) {
+  function createRequest(
+    authHeader?: string,
+    ip?: string,
+    xApiKeyHeader?: string
+  ) {
     const headers = new Headers();
     if (authHeader !== undefined) headers.set('authorization', authHeader);
     if (xApiKeyHeader !== undefined) headers.set('x-api-key', xApiKeyHeader);
@@ -105,8 +115,34 @@ const mockApiKeyRecord: any = {
     expect(body.error.code).toBe('INVALID_API_KEY');
   });
 
+  it('verifies a legacy PBKDF2 key and rewrites it to the current scheme', async () => {
+    const legacyHash = await hashApiKeyLegacy(validToken);
+    vi.mocked(applyRateLimit).mockResolvedValue({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+
+    // First lookup (current scheme) misses; the legacy lookup finds the row.
+    vi.mocked(db.query.apiKeys.findFirst)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ ...mockApiKeyRecord, keyHash: legacyHash });
+
+    const req = createRequest(`Bearer ${validToken}`);
+    const res = await wrappedHandler(req, {});
+
+    expect(res.status).toBe(200);
+    expect(mockHandler).toHaveBeenCalled();
+    // The stored hash is upgraded so the next request takes the fast path.
+    expect(db.update).toHaveBeenCalled();
+  });
+
   it('fails if API key has been revoked', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({ ...mockApiKeyRecord, isRevoked: true });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({
+      ...mockApiKeyRecord,
+      isRevoked: true,
+    });
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(401);
@@ -117,7 +153,10 @@ const mockApiKeyRecord: any = {
   it('fails if API key has expired', async () => {
     const pastDate = new Date();
     pastDate.setFullYear(pastDate.getFullYear() - 1);
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({ ...mockApiKeyRecord, expiresAt: pastDate });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({
+      ...mockApiKeyRecord,
+      expiresAt: pastDate,
+    });
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(401);
@@ -126,7 +165,10 @@ const mockApiKeyRecord: any = {
   });
 
   it('fails if API key lacks required scope', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({ ...mockApiKeyRecord, scopes: ['read:users'] });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce({
+      ...mockApiKeyRecord,
+      scopes: ['read:users'],
+    });
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(403);
@@ -135,8 +177,15 @@ const mockApiKeyRecord: any = {
   });
 
   it('fails if rate limited', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(mockApiKeyRecord);
-    vi.mocked(applyRateLimit).mockResolvedValueOnce({ success: false, limit: 100, remaining: 0, reset: 1234 });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
+      mockApiKeyRecord
+    );
+    vi.mocked(applyRateLimit).mockResolvedValueOnce({
+      success: false,
+      limit: 100,
+      remaining: 0,
+      reset: 1234,
+    });
     const req = createRequest(`Bearer   ${validToken}   `, '1.2.3.4');
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(429);
@@ -146,32 +195,73 @@ const mockApiKeyRecord: any = {
   });
 
   it('succeeds and calls handler if valid, checking IPs and white spaces', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(mockApiKeyRecord);
-    vi.mocked(applyRateLimit).mockResolvedValueOnce({ success: true, limit: 100, remaining: 99, reset: 1234 });
-    
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
+      mockApiKeyRecord
+    );
+    vi.mocked(applyRateLimit).mockResolvedValueOnce({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+
     const req = createRequest(`Bearer   ${validToken}   `, '1.2.3.4');
     const res = await wrappedHandler(req, {});
-    
+
     expect(res.status).toBe(200);
     expect(mockHandler).toHaveBeenCalledWith(req, { apiKey: mockApiKeyRecord });
     expect(applyRateLimit).toHaveBeenCalledWith('key-test-id:1.2.3.4');
-    expect(db.update).toHaveBeenCalled();
+    // The audit write stays fail-closed on every request.
     expect(logAuditAction).toHaveBeenCalled();
   });
 
+  it('throttles the lastUsedAt write instead of updating on every request', async () => {
+    vi.mocked(applyRateLimit).mockResolvedValue({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValue(mockApiKeyRecord);
+
+    // The throttle is module-level, so a prior test in this file may already
+    // have consumed the window for this key. What matters is that a burst does
+    // not produce one write per request.
+    vi.mocked(db.update).mockClear();
+    for (let i = 0; i < 5; i += 1) {
+      await wrappedHandler(
+        createRequest(`Bearer ${validToken}`, '1.2.3.4'),
+        {}
+      );
+    }
+
+    expect(vi.mocked(db.update).mock.calls.length).toBeLessThanOrEqual(1);
+    // Auditing is unaffected by the throttle.
+    expect(vi.mocked(logAuditAction).mock.calls.length).toBe(5);
+  });
+
   it('succeeds and calls handler if valid x-api-key header is provided', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(mockApiKeyRecord);
-    vi.mocked(applyRateLimit).mockResolvedValueOnce({ success: true, limit: 100, remaining: 99, reset: 1234 });
-    
+    vi.mocked(db.query.apiKeys.findFirst).mockResolvedValueOnce(
+      mockApiKeyRecord
+    );
+    vi.mocked(applyRateLimit).mockResolvedValueOnce({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
+
     const req = createRequest(undefined, '1.2.3.4', validToken);
     const res = await wrappedHandler(req, {});
-    
+
     expect(res.status).toBe(200);
     expect(mockHandler).toHaveBeenCalledWith(req, { apiKey: mockApiKeyRecord });
   });
 
   it('returns INTERNAL_ERROR for unhandled faults', async () => {
-    vi.mocked(db.query.apiKeys.findFirst).mockRejectedValueOnce(new Error('DB connection failed'));
+    vi.mocked(db.query.apiKeys.findFirst).mockRejectedValueOnce(
+      new Error('DB connection failed')
+    );
     const req = createRequest(`Bearer ${validToken}`);
     const res = await wrappedHandler(req, {});
     expect(res.status).toBe(500);

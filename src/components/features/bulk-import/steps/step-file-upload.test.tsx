@@ -24,12 +24,12 @@ describe('StepFileUpload', () => {
     const mockDispatch = vi.fn();
     // @ts-ignore
     render(<StepFileUpload state={mockState} dispatch={mockDispatch} />);
-    
+
     expect(screen.getByText(/Drag & drop your file here/i)).toBeInTheDocument();
-    
+
     const validateBtn = screen.getByRole('button', { name: 'Validate' });
     expect(validateBtn).toBeDisabled();
-    
+
     const backBtn = screen.getByRole('button', { name: 'Back' });
     fireEvent.click(backBtn);
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'RESET' });

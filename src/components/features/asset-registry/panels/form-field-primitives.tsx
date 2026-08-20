@@ -168,7 +168,9 @@ export function CurrencyInput({
         id={id}
         name={name}
         value={value}
-        onChange={(event) => onChange(sanitizeCurrencyInput(event.target.value))}
+        onChange={(event) =>
+          onChange(sanitizeCurrencyInput(event.target.value))
+        }
         onBlur={() => {
           if (value.length > 0) {
             onChange(parseCurrencyAmount(value).toFixed(2));

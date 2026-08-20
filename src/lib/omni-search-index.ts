@@ -92,19 +92,16 @@ function matchesQuery(item: OmniStaticItem, normalizedQuery: string) {
     return true;
   }
 
-  const haystack = `${item.label} ${item.description} ${item.keywords}`.toLowerCase();
+  const haystack =
+    `${item.label} ${item.description} ${item.keywords}`.toLowerCase();
   return haystack.includes(normalizedQuery);
 }
 
-export function getVisibleOmniStaticItems(
-  query: string,
-  role: UserRole
-) {
+export function getVisibleOmniStaticItems(query: string, role: UserRole) {
   const normalizedQuery = query.trim().toLowerCase();
 
   return OMNI_STATIC_ITEMS.filter(
     (item) =>
-      canAccessRoute(role, item.href) &&
-      matchesQuery(item, normalizedQuery)
+      canAccessRoute(role, item.href) && matchesQuery(item, normalizedQuery)
   );
 }

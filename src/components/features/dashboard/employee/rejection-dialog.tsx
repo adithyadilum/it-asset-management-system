@@ -1,5 +1,5 @@
 'use client';
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import * as React from 'react';
 import { TriangleAlert } from 'lucide-react';
@@ -69,7 +69,10 @@ export function RejectionDialog({
     setIsSubmitting(true);
 
     try {
-      const result = await rejectAssignmentAction(assignment.assignmentId, trimmedReason);
+      const result = await rejectAssignmentAction(
+        assignment.assignmentId,
+        trimmedReason
+      );
 
       if (!result.success) {
         throw new Error(result.error ?? 'Failed to submit the report.');
@@ -91,7 +94,10 @@ export function RejectionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[92vw] gap-4 rounded-xl p-0 sm:max-w-130" showCloseButton={false}>
+      <DialogContent
+        className="w-[92vw] gap-4 rounded-xl p-0 sm:max-w-130"
+        showCloseButton={false}
+      >
         <div className="border-b border-border px-6 pt-6 pb-4">
           <DialogHeader className="gap-3">
             <div className="flex items-start gap-3">
@@ -103,7 +109,8 @@ export function RejectionDialog({
                   Report Issue
                 </DialogTitle>
                 <DialogDescription className="text-sm text-muted-foreground">
-                  Use this form if the asset was not received or there is a blocking issue with the assignment.
+                  Use this form if the asset was not received or there is a
+                  blocking issue with the assignment.
                 </DialogDescription>
               </div>
             </div>
@@ -112,7 +119,10 @@ export function RejectionDialog({
 
         <form onSubmit={handleSubmit} className="space-y-5 px-6 pb-6">
           <div className="space-y-2">
-            <Label htmlFor="portal-rejection-reason" className="text-sm font-medium text-foreground">
+            <Label
+              htmlFor="portal-rejection-reason"
+              className="text-sm font-medium text-foreground"
+            >
               Reason <span className="text-destructive">*</span>
             </Label>
             <Textarea
@@ -138,7 +148,10 @@ export function RejectionDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || reason.trim().length < 10}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || reason.trim().length < 10}
+            >
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
                   <LoadingSpinner size="sm" />

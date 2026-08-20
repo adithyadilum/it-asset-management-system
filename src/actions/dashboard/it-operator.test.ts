@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getITDashboardData } from './it-operator';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
@@ -8,7 +12,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
@@ -27,7 +32,8 @@ vi.mock('./queries/inventory', () => ({
   getCachedInventoryStatus: () => mockGetCachedInventoryStatus(),
   getCachedDepartmentAllocation: () => mockGetCachedDepartmentAllocation(),
   getOverdueReturnsInternal: () => mockGetOverdueReturnsInternal(),
-  getHighMaintenanceAssetsInternal: () => mockGetHighMaintenanceAssetsInternal(),
+  getHighMaintenanceAssetsInternal: () =>
+    mockGetHighMaintenanceAssetsInternal(),
 }));
 
 describe('getITDashboardData', () => {
@@ -47,9 +53,13 @@ describe('getITDashboardData', () => {
 
   it('returns aggregated data for ITOperator when all queries succeed', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
-    mockGetCachedDashboardKpiMetrics.mockResolvedValue({ totalActiveAssets: 100 });
+    mockGetCachedDashboardKpiMetrics.mockResolvedValue({
+      totalActiveAssets: 100,
+    });
     mockGetCachedInventoryStatus.mockResolvedValue({ inventoryData: [] });
-    mockGetCachedDepartmentAllocation.mockResolvedValue([{ dept: 'IT', count: 5 }]);
+    mockGetCachedDepartmentAllocation.mockResolvedValue([
+      { name: 'IT', value: 5 },
+    ]);
     mockGetOverdueReturnsInternal.mockResolvedValue([{ id: 1 }]);
     mockGetHighMaintenanceAssetsInternal.mockResolvedValue([{ id: 2 }]);
 
@@ -66,7 +76,9 @@ describe('getITDashboardData', () => {
     mockGetCachedInventoryStatus.mockRejectedValue(new Error('DB Error'));
     mockGetCachedDepartmentAllocation.mockRejectedValue(new Error('DB Error'));
     mockGetOverdueReturnsInternal.mockRejectedValue(new Error('DB Error'));
-    mockGetHighMaintenanceAssetsInternal.mockRejectedValue(new Error('DB Error'));
+    mockGetHighMaintenanceAssetsInternal.mockRejectedValue(
+      new Error('DB Error')
+    );
 
     const result = await getITDashboardData();
     expect(result.kpiMetrics.totalActiveAssets).toBe(0);

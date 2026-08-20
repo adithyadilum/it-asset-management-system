@@ -7,18 +7,47 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { serverEnv } from '@/lib/env';
 
-// Export as base PgDatabase so TypeScript can resolve queries properly across both drivers
-let db: PgDatabase<PgQueryResultHKT, typeof schema>;
+type AppDatabase = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-// Use standard postgres.js driver for local docker testing
-if (serverEnv.DATABASE_URL?.includes('localhost')) {
-  const queryClient = postgres(serverEnv.DATABASE_URL);
-  db = drizzle(queryClient, { schema }) as unknown as PgDatabase<PgQueryResultHKT, typeof schema>;
-} else {
-  // Use Neon serverless driver for dev/production
+function createDatabase(): AppDatabase {
+  const databaseHostname = new URL(serverEnv.DATABASE_URL).hostname;
+  const isLocalDatabase = ['localhost', '127.0.0.1', '::1'].includes(
+    databaseHostname
+  );
+
+  if (isLocalDatabase) {
+    const queryClient = postgres(serverEnv.DATABASE_URL, {
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      connection: { application_name: 'eitams' },
+    });
+    return drizzle(queryClient, { schema }) as unknown as AppDatabase;
+  }
+
   neonConfig.webSocketConstructor = ws;
-  const pool = new Pool({ connectionString: serverEnv.DATABASE_URL });
-  db = drizzleNeon(pool, { schema }) as unknown as PgDatabase<PgQueryResultHKT, typeof schema>;
+  const pool = new Pool({
+    connectionString: serverEnv.DATABASE_URL,
+    max: 10,
+    idleTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 10_000,
+    query_timeout: 30_000,
+    application_name: 'eitams',
+  });
+
+  // Pool emits idle-client errors asynchronously. Without a listener Node
+  // treats them as uncaught exceptions and can terminate the dev/prod worker.
+  pool.on('error', (error: Error) => {
+    console.error('[DB] Unexpected idle Neon connection error:', error.message);
+  });
+
+  return drizzleNeon(pool, { schema }) as unknown as AppDatabase;
 }
+
+const globalForDatabase = globalThis as typeof globalThis & {
+  eitamsDb?: AppDatabase;
+};
+const db = globalForDatabase.eitamsDb ?? createDatabase();
+if (serverEnv.NODE_ENV !== 'production') globalForDatabase.eitamsDb = db;
 
 export { db };

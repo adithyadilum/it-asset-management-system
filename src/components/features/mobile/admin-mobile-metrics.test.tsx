@@ -6,8 +6,8 @@ vi.mock('@/actions/mobile', () => ({
   getAdminMobileMetrics: vi.fn().mockResolvedValue({
     assignedAssetCount: 10,
     pendingApprovalsCount: 5,
-    recentActivities: []
-  })
+    recentActivities: [],
+  }),
 }));
 
 describe('AdminMobileMetrics', () => {

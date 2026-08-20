@@ -24,11 +24,15 @@ export function BulkImportStepper({ currentStep }: BulkImportStepperProps) {
 
         return (
           <React.Fragment key={s.step}>
-            <div className="flex flex-col items-center justify-center gap-2 min-w-15" aria-current={isActive ? 'step' : undefined}>
+            <div
+              className="flex flex-col items-center justify-center gap-2 min-w-15"
+              aria-current={isActive ? 'step' : undefined}
+            >
               <div
                 className={cn(
                   'flex size-8 items-center justify-center rounded-full text-sm font-semibold transition-all duration-300',
-                  isActive && 'bg-primary text-primary-foreground ring-4 ring-primary/20',
+                  isActive &&
+                    'bg-primary text-primary-foreground ring-4 ring-primary/20',
                   isCompleted && 'bg-primary text-primary-foreground scale-100',
                   isFuture && 'bg-muted text-muted-foreground'
                 )}

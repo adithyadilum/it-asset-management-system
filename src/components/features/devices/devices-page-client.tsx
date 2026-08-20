@@ -25,9 +25,13 @@ export function DevicesPageClient({ devices }: DevicesPageClientProps) {
 
     const pusher = new Pusher(clientEnv.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER!,
+      channelAuthorization: {
+        endpoint: '/api/v1/pusher/auth',
+        transport: 'ajax',
+      },
     });
 
-    const channelName = `user-${session.user.id}`;
+    const channelName = `private-user-${session.user.id}`;
     const channel = pusher.subscribe(channelName);
 
     channel.bind('devices_updated', () => {

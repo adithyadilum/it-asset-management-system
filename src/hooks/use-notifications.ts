@@ -3,11 +3,12 @@
 import { useCallback } from 'react';
 import useSWR from 'swr';
 import {
+  getNotificationSummary,
   getNotifications,
-  getUnreadCount,
   markAllAsRead,
   markAsRead,
 } from '@/actions/notifications';
+import { clientEnv } from '@/lib/env.client';
 
 export interface Notification {
   id: string;
@@ -20,93 +21,106 @@ export interface Notification {
   createdAt: Date;
 }
 
-export function useNotifications() {
-  const { data: unreadCount = 0, mutate: mutateUnreadCount } = useSWR<number>(
-    'notifications-unread-count',
-    getUnreadCount,
-    {
-      refreshInterval: 30000, // Poll every 30 seconds while the tab is active
-      revalidateOnFocus: true, // Instantly fetch when the user clicks back into this tab
-      revalidateOnReconnect: true, // Instantly fetch if the internet drops and comes back
-      dedupingInterval: 10000, // Throttle requests: ignore duplicate calls within 10 seconds
-      errorRetryCount: 3, // Stop retrying after 3 fails to prevent infinite error loops
-    }
-  );
+interface NotificationSummary {
+  notifications: Notification[];
+  unreadCount: number;
+}
 
+export function useNotifications() {
   const {
-    data: notifications = [],
+    data: summary = { notifications: [], unreadCount: 0 },
     isLoading,
     error,
-    mutate: mutateNotifications,
-  } = useSWR<Notification[]>('notifications-list', async () => {
-    const data = await getNotifications(10, 0);
-    return data as Notification[];
-  }, {
-    revalidateOnFocus: false, // Prevents hammering the DB when tabbing back
-  });
+    mutate: mutateSummary,
+  } = useSWR<NotificationSummary>(
+    'notifications-summary',
+    async () => {
+      const data = await getNotificationSummary(10, 0);
+      return data as NotificationSummary;
+    },
+    {
+      refreshInterval: Math.max(
+        clientEnv.NEXT_PUBLIC_NOTIFICATION_POLL_INTERVAL,
+        60000
+      ),
+      refreshWhenHidden: false,
+      refreshWhenOffline: false,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 10000,
+      errorRetryCount: 3,
+    }
+  );
+  const { notifications, unreadCount } = summary;
 
   const fetchNotifications = useCallback(
     async (limit = 10, offset = 0) => {
       const data = await getNotifications(limit, offset);
-      mutateNotifications(data as Notification[], false);
+      await mutateSummary(
+        (current) => ({
+          notifications: data as Notification[],
+          unreadCount: current?.unreadCount ?? 0,
+        }),
+        false
+      );
     },
-    [mutateNotifications]
+    [mutateSummary]
   );
 
   const handleMarkAsRead = useCallback(
     async (notificationId: string) => {
-      const promise = markAsRead(notificationId);
+      const previousSummary = summary;
+      const wasUnread = notifications.some(
+        (notification) =>
+          notification.id === notificationId && !notification.isRead
+      );
+
+      await mutateSummary(
+        {
+          notifications: notifications.map((notification) =>
+            notification.id === notificationId
+              ? { ...notification, isRead: true }
+              : notification
+          ),
+          unreadCount: wasUnread ? Math.max(0, unreadCount - 1) : unreadCount,
+        },
+        false
+      );
 
       try {
-        await Promise.all([
-          mutateNotifications(promise as unknown as Promise<Notification[]>, {
-            optimisticData: (prev = []) =>
-              prev.map((notif) =>
-                notif.id === notificationId ? { ...notif, isRead: true } : notif
-              ),
-            rollbackOnError: true,
-            populateCache: false,
-            revalidate: true,
-          }),
-          mutateUnreadCount(promise as unknown as Promise<number>, {
-            optimisticData: (prev = 0) => Math.max(0, prev - 1),
-            rollbackOnError: true,
-            populateCache: false,
-            revalidate: true,
-          }),
-        ]);
+        await markAsRead(notificationId);
+        await mutateSummary();
       } catch (err) {
+        await mutateSummary(previousSummary, false);
         console.error('Failed to mark notification as read:', err);
         throw err;
       }
     },
-    [mutateNotifications, mutateUnreadCount]
+    [mutateSummary, notifications, summary, unreadCount]
   );
 
   const handleMarkAllAsRead = useCallback(async () => {
-    const promise = markAllAsRead();
+    const previousSummary = summary;
+    await mutateSummary(
+      {
+        notifications: notifications.map((notification) => ({
+          ...notification,
+          isRead: true,
+        })),
+        unreadCount: 0,
+      },
+      false
+    );
 
     try {
-      await Promise.all([
-        mutateNotifications(promise as unknown as Promise<Notification[]>, {
-          optimisticData: (prev = []) =>
-            prev.map((notif) => ({ ...notif, isRead: true })),
-          rollbackOnError: true,
-          populateCache: false,
-          revalidate: true,
-        }),
-        mutateUnreadCount(promise as unknown as Promise<number>, {
-          optimisticData: 0,
-          rollbackOnError: true,
-          populateCache: false,
-          revalidate: true,
-        }),
-      ]);
+      await markAllAsRead();
+      await mutateSummary();
     } catch (err) {
+      await mutateSummary(previousSummary, false);
       console.error('Failed to mark all notifications as read:', err);
       throw err;
     }
-  }, [mutateNotifications, mutateUnreadCount]);
+  }, [mutateSummary, notifications, summary]);
 
   return {
     notifications,
@@ -116,6 +130,6 @@ export function useNotifications() {
     fetchNotifications,
     markAsRead: handleMarkAsRead,
     markAllAsRead: handleMarkAllAsRead,
-    fetchUnreadCount: mutateUnreadCount,
+    fetchUnreadCount: async () => (await mutateSummary())?.unreadCount ?? 0,
   };
 }

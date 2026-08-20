@@ -16,7 +16,7 @@ describe('crypto module', () => {
   beforeEach(async () => {
     vi.resetModules();
     vi.doMock('@/lib/env', () => ({
-      serverEnv: { ENCRYPTION_SECRET: VALID_SECRET_BASE64 }
+      serverEnv: { ENCRYPTION_SECRET: VALID_SECRET_BASE64 },
     }));
     const mod = await import('@/lib/crypto');
     encrypt = mod.encrypt;
@@ -88,7 +88,7 @@ describe('crypto module - missing key', () => {
   it('throws when ENCRYPTION_SECRET is unset', async () => {
     vi.resetModules();
     vi.doMock('@/lib/env', () => ({
-      serverEnv: { ENCRYPTION_SECRET: undefined }
+      serverEnv: { ENCRYPTION_SECRET: undefined },
     }));
 
     const mod = await import('@/lib/crypto');
@@ -98,7 +98,9 @@ describe('crypto module - missing key', () => {
   it('throws when ENCRYPTION_SECRET is not 32 bytes', async () => {
     vi.resetModules();
     vi.doMock('@/lib/env', () => ({
-      serverEnv: { ENCRYPTION_SECRET: Buffer.from('tooshort').toString('base64') }
+      serverEnv: {
+        ENCRYPTION_SECRET: Buffer.from('tooshort').toString('base64'),
+      },
     }));
 
     const mod = await import('@/lib/crypto');

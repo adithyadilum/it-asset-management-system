@@ -48,7 +48,7 @@ export const processReturnPayloadSchema = z.object({
     'Good Working Condition',
     'Minor Issues',
     'Needs Repair',
-    'Beyond Repair'
+    'Beyond Repair',
   ]),
   physicalCondition: z.enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged']),
   notes: z.string().optional(),

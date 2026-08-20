@@ -183,13 +183,21 @@ export async function fetchReportPreview(
       case 'Return History':
         return await fetchReturnHistory(validatedFilters, pageSize, offset);
       case 'Maintenance Records':
-        return await fetchMaintenanceRecords(validatedFilters, pageSize, offset);
+        return await fetchMaintenanceRecords(
+          validatedFilters,
+          pageSize,
+          offset
+        );
       case 'Disposal Records':
         return await fetchDisposalRecords(validatedFilters, pageSize, offset);
       case 'Purchase Records':
         return await fetchPurchaseRecords(validatedFilters, pageSize, offset);
       case 'Depreciation Ledger':
-        return await fetchDepreciationLedger(validatedFilters, pageSize, offset);
+        return await fetchDepreciationLedger(
+          validatedFilters,
+          pageSize,
+          offset
+        );
       case 'TCO Overview':
         return await fetchTcoOverview(validatedFilters, pageSize, offset);
       case 'Software Licenses':

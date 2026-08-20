@@ -21,11 +21,15 @@ vi.mock('@/components/shared/slide-panel', () => ({
         </>
       )}
     </div>
-  )
+  ),
 }));
 
 // Mock ResizeObserver
-class ResizeObserver { observe() {} unobserve() {} disconnect() {} }
+class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('MasterDataCreatePanel', () => {
@@ -55,13 +59,19 @@ describe('MasterDataCreatePanel', () => {
 
   it('renders correctly when open', () => {
     render(<MasterDataCreatePanel {...defaultProps} />);
-    expect(screen.getByTestId('slide-panel')).toHaveAttribute('data-open', 'true');
+    expect(screen.getByTestId('slide-panel')).toHaveAttribute(
+      'data-open',
+      'true'
+    );
     expect(screen.getByText(/Add New Category/i)).toBeInTheDocument();
   });
 
   it('does not render content when closed', () => {
     render(<MasterDataCreatePanel {...defaultProps} isOpen={false} />);
-    expect(screen.getByTestId('slide-panel')).toHaveAttribute('data-open', 'false');
+    expect(screen.getByTestId('slide-panel')).toHaveAttribute(
+      'data-open',
+      'false'
+    );
     expect(screen.queryByText(/Add New Category/i)).not.toBeInTheDocument();
   });
 });

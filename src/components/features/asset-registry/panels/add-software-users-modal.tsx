@@ -1,5 +1,5 @@
 'use client';
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import * as React from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
@@ -58,18 +58,25 @@ export function AddSoftwareUsersModal({
   existingAllocations = [],
 }: AddSoftwareUsersModalProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [selectedUsers, setSelectedUsers] = React.useState<UserSearchResult[]>([]);
+  const [selectedUsers, setSelectedUsers] = React.useState<UserSearchResult[]>(
+    []
+  );
 
   // Search state
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const debouncedQuery = useDebounce(searchQuery, 300);
-  const [searchResults, setSearchResults] = React.useState<UserSearchResult[]>([]);
+  const [searchResults, setSearchResults] = React.useState<UserSearchResult[]>(
+    []
+  );
   const [isSearching, setIsSearching] = React.useState(false);
 
   // Memoize allocated IDs to prevent infinite re-renders
   const allocatedIdsString = React.useMemo(() => {
-    return existingAllocations.map(a => a.id).sort().join(',');
+    return existingAllocations
+      .map((a) => a.id)
+      .sort()
+      .join(',');
   }, [existingAllocations]);
 
   // Reset state when modal opens
@@ -93,8 +100,12 @@ export function AddSoftwareUsersModal({
         .then((result) => {
           if (isMounted) {
             if (result.success && result.data) {
-              const allocatedIds = new Set(allocatedIdsString ? allocatedIdsString.split(',') : []);
-              setSearchResults(result.data.filter(u => !allocatedIds.has(u.id)));
+              const allocatedIds = new Set(
+                allocatedIdsString ? allocatedIdsString.split(',') : []
+              );
+              setSearchResults(
+                result.data.filter((u) => !allocatedIds.has(u.id))
+              );
             } else {
               setSearchResults([]);
             }
@@ -120,7 +131,9 @@ export function AddSoftwareUsersModal({
       }
 
       if (prev.length >= availableSeats) {
-        tiqriToast.error(`You can only allocate up to ${availableSeats} users.`);
+        tiqriToast.error(
+          `You can only allocate up to ${availableSeats} users.`
+        );
         return prev;
       }
 
@@ -146,7 +159,9 @@ export function AddSoftwareUsersModal({
       );
 
       if (result.success) {
-        tiqriToast.success(`Successfully allocated ${result.allocatedCount} user(s).`);
+        tiqriToast.success(
+          `Successfully allocated ${result.allocatedCount} user(s).`
+        );
         onClose(true);
       } else {
         tiqriToast.error(result.error || 'Failed to allocate users.');
@@ -160,12 +175,16 @@ export function AddSoftwareUsersModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose(false)}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => !open && !isSubmitting && onClose(false)}
+    >
       <DialogContent className="sm:max-w-125 max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Allocate Software License</DialogTitle>
           <DialogDescription>
-            Search and select users to allocate to this software license. You have {availableSeats} seat(s) available.
+            Search and select users to allocate to this software license. You
+            have {availableSeats} seat(s) available.
           </DialogDescription>
         </DialogHeader>
 
@@ -204,7 +223,9 @@ export function AddSoftwareUsersModal({
                   {!isSearching && searchResults.length > 0 && (
                     <CommandGroup>
                       {searchResults.map((user) => {
-                        const isSelected = selectedUsers.some((u) => u.id === user.id);
+                        const isSelected = selectedUsers.some(
+                          (u) => u.id === user.id
+                        );
                         return (
                           <CommandItem
                             key={user.id}
@@ -282,7 +303,11 @@ export function AddSoftwareUsersModal({
         </div>
 
         <DialogFooter className="shrink-0">
-          <Button variant="outline" onClick={() => onClose(false)} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={() => onClose(false)}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button

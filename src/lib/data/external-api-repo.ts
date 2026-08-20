@@ -1,6 +1,6 @@
-import { and, asc, eq, isNull, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 
-import { db } from '@/db'
+import { db } from '@/db';
 import {
   assetAssignments,
   assets,
@@ -11,89 +11,89 @@ import {
   models,
   owners,
   users,
-} from '@/db/schema'
-import { isValidUuid } from '@/lib/auth/uuid'
+} from '@/db/schema';
+import { isValidUuid } from '@/lib/auth/uuid';
 
 export type ExternalApiFilters = {
-  status?: string
-  pillar?: string
-  locationId?: number
-  categoryId?: number
-}
+  status?: string;
+  pillar?: string;
+  locationId?: number;
+  categoryId?: number;
+};
 
 export type ExternalApiPagination = {
-  limit: number
-  offset: number
-}
+  limit: number;
+  offset: number;
+};
 
 export type ExternalApiAsset = {
-  id: string
-  assetTag: string
-  serialNumber: string | null
-  name: string | null
-  status: string
-  condition: string | null
-  category: { id: number; name: string; pillar: string }
-  brand: { id: number; name: string }
-  model: { id: number; name: string }
-  location: { id: number; name: string } | null
-  owner: { id: number; companyName: string } | null
-  createdAt: Date
-  updatedAt: Date
-}
+  id: string;
+  assetTag: string;
+  serialNumber: string | null;
+  name: string | null;
+  status: string;
+  condition: string | null;
+  category: { id: number; name: string; pillar: string };
+  brand: { id: number; name: string };
+  model: { id: number; name: string };
+  location: { id: number; name: string } | null;
+  owner: { id: number; companyName: string } | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type ExternalApiEmployeeAssets = {
   employee: {
-    id: string
-    name: string
-    email: string
-    department: string | null
-  }
-  assets: ExternalApiAsset[]
-}
+    id: string;
+    name: string;
+    email: string;
+    department: string | null;
+  };
+  assets: ExternalApiAsset[];
+};
 
 function buildAssetFilters(filters: ExternalApiFilters) {
-  const conditions: SQL[] = []
+  const conditions: SQL[] = [];
 
   if (filters.status) {
-    conditions.push(eq(assets.status, filters.status))
+    conditions.push(eq(assets.status, filters.status));
   }
 
   if (filters.pillar) {
-    conditions.push(sql<boolean>`${categories.pillar} = ${filters.pillar}`)
+    conditions.push(sql<boolean>`${categories.pillar} = ${filters.pillar}`);
   }
 
   if (typeof filters.locationId === 'number') {
-    conditions.push(eq(assets.locationId, filters.locationId))
+    conditions.push(eq(assets.locationId, filters.locationId));
   }
 
   if (typeof filters.categoryId === 'number') {
-    conditions.push(eq(models.categoryId, filters.categoryId))
+    conditions.push(eq(models.categoryId, filters.categoryId));
   }
 
-  return conditions.length > 0 ? and(...conditions) : undefined
+  return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 function mapAssetRow(row: {
-  assetId: string
-  assetTag: string
-  serialNumber: string | null
-  assetName: string | null
-  status: string
-  condition: string | null
-  categoryId: number
-  categoryName: string
-  categoryPillar: string
-  brandId: number
-  brandName: string
-  modelId: number
-  modelName: string
-  locationId: number | null
-  locationName: string | null
-  ownerId: number | null
-  ownerCompanyName: string | null
-  createdAt: Date
-  updatedAt: Date
+  assetId: string;
+  assetTag: string;
+  serialNumber: string | null;
+  assetName: string | null;
+  status: string;
+  condition: string | null;
+  categoryId: number;
+  categoryName: string;
+  categoryPillar: string;
+  brandId: number;
+  brandName: string;
+  modelId: number;
+  modelName: string;
+  locationId: number | null;
+  locationName: string | null;
+  ownerId: number | null;
+  ownerCompanyName: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }): ExternalApiAsset {
   return {
     id: row.assetId,
@@ -123,14 +123,14 @@ function mapAssetRow(row: {
       : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-  }
+  };
 }
 
 export async function getAssetsForExternalApi(
   filters: ExternalApiFilters,
   pagination: ExternalApiPagination
 ): Promise<ExternalApiAsset[]> {
-  const whereClause = buildAssetFilters(filters)
+  const whereClause = buildAssetFilters(filters);
 
   const rows = await db
     .select({
@@ -163,13 +163,15 @@ export async function getAssetsForExternalApi(
     .where(whereClause ?? sql`true`)
     .orderBy(asc(assets.assetTag))
     .limit(pagination.limit)
-    .offset(pagination.offset)
+    .offset(pagination.offset);
 
-  return rows.map(mapAssetRow)
+  return rows.map(mapAssetRow);
 }
 
-export async function countAssetsForExternalApi(filters: ExternalApiFilters): Promise<number> {
-  const whereClause = buildAssetFilters(filters)
+export async function countAssetsForExternalApi(
+  filters: ExternalApiFilters
+): Promise<number> {
+  const whereClause = buildAssetFilters(filters);
 
   const rows = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -179,14 +181,16 @@ export async function countAssetsForExternalApi(filters: ExternalApiFilters): Pr
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(owners, eq(assets.ownerId, owners.id))
-    .where(whereClause ?? sql`true`)
+    .where(whereClause ?? sql`true`);
 
-  return rows[0]?.count ?? 0
+  return rows[0]?.count ?? 0;
 }
 
-export async function getAssetsByEmployeeId(employeeId: string): Promise<ExternalApiEmployeeAssets | null> {
+export async function getAssetsByEmployeeId(
+  employeeId: string
+): Promise<ExternalApiEmployeeAssets | null> {
   if (!isValidUuid(employeeId)) {
-    return null
+    return null;
   }
 
   const employeeRows = await db
@@ -199,11 +203,11 @@ export async function getAssetsByEmployeeId(employeeId: string): Promise<Externa
     .from(users)
     .leftJoin(departments, eq(users.departmentId, departments.id))
     .where(eq(users.id, employeeId))
-    .limit(1)
+    .limit(1);
 
-  const employee = employeeRows[0]
+  const employee = employeeRows[0];
   if (!employee) {
-    return null
+    return null;
   }
 
   const rows = await db
@@ -241,7 +245,7 @@ export async function getAssetsByEmployeeId(employeeId: string): Promise<Externa
         isNull(assetAssignments.returnedDate)
       )
     )
-    .orderBy(asc(assets.assetTag))
+    .orderBy(asc(assets.assetTag));
 
   return {
     employee: {
@@ -251,5 +255,5 @@ export async function getAssetsByEmployeeId(employeeId: string): Promise<Externa
       department: employee.department ?? null,
     },
     assets: rows.map(mapAssetRow),
-  }
+  };
 }

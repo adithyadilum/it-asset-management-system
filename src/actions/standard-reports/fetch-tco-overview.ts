@@ -1,8 +1,17 @@
 import { eq, and, inArray, desc, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { assets, models, categories, assetPurchases, maintenanceTickets } from '@/db/schema';
+import {
+  assets,
+  models,
+  categories,
+  assetPurchases,
+  maintenanceTickets,
+} from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchTcoOverview(
   filters: ReportPreviewFilters,
@@ -27,8 +36,7 @@ export async function fetchTcoOverview(
     conditions.push(eq(categories.pillar, dbPillar as never));
   }
 
-  const whereCondition =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
   const baseQuery = db
     .select({

@@ -16,7 +16,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
@@ -55,11 +56,16 @@ const {
 
 vi.mock('@/lib/data/operations-assignments-repo', () => ({
   assignSingleAsset: (...args: unknown[]) => mockAssignSingleAsset(...args),
-  assignMultipleAssets: (...args: unknown[]) => mockAssignMultipleAssets(...args),
-  getAssignmentsDashboardData: (...args: unknown[]) => mockGetAssignmentsDashboardData(...args),
-  triggerAssignmentReminders: (...args: unknown[]) => mockTriggerAssignmentReminders(...args),
-  triggerReturnRequests: (...args: unknown[]) => mockTriggerReturnRequests(...args),
-  markAssignmentsAsReceived: (...args: unknown[]) => mockMarkAssignmentsAsReceived(...args),
+  assignMultipleAssets: (...args: unknown[]) =>
+    mockAssignMultipleAssets(...args),
+  getAssignmentsDashboardData: (...args: unknown[]) =>
+    mockGetAssignmentsDashboardData(...args),
+  triggerAssignmentReminders: (...args: unknown[]) =>
+    mockTriggerAssignmentReminders(...args),
+  triggerReturnRequests: (...args: unknown[]) =>
+    mockTriggerReturnRequests(...args),
+  markAssignmentsAsReceived: (...args: unknown[]) =>
+    mockMarkAssignmentsAsReceived(...args),
   processAssetReturn: (...args: unknown[]) => mockProcessAssetReturn(...args),
   AssignmentServiceError: MockAssignmentServiceError,
 }));
@@ -69,7 +75,8 @@ vi.mock('@/lib/data/operations-assignments-repo', () => ({
 // ---------------------------------------------------------------------------
 const mockDispatchWebhookEvent = vi.fn();
 vi.mock('@/lib/webhooks/dispatcher', () => ({
-  dispatchWebhookEvent: (...args: unknown[]) => mockDispatchWebhookEvent(...args),
+  dispatchWebhookEvent: (...args: unknown[]) =>
+    mockDispatchWebhookEvent(...args),
 }));
 
 vi.mock('next/cache', () => ({
@@ -192,7 +199,11 @@ describe('assignAssetAction', () => {
   it('returns normalized error for AssignmentServiceError', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockAssignSingleAsset.mockRejectedValue(
-      new MockAssignmentServiceError('Asset not available', 'ASSET_NOT_AVAILABLE', 409)
+      new MockAssignmentServiceError(
+        'Asset not available',
+        'ASSET_NOT_AVAILABLE',
+        409
+      )
     );
     const result = await assignAssetAction(validSingleInput);
     expect(result.success).toBe(false);
@@ -275,7 +286,11 @@ describe('bulkAssignAssetsAction', () => {
   it('returns normalized error for service failures', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockAssignMultipleAssets.mockRejectedValue(
-      new MockAssignmentServiceError('Some assets not available', 'PARTIAL_FAILURE', 409)
+      new MockAssignmentServiceError(
+        'Some assets not available',
+        'PARTIAL_FAILURE',
+        409
+      )
     );
     const result = await bulkAssignAssetsAction(validBulkInput);
     expect(result.success).toBe(false);
@@ -288,12 +303,16 @@ describe('getOperationsAssignmentsDataAction', () => {
 
   it('throws for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getOperationsAssignmentsDataAction()).rejects.toThrow('Forbidden');
+    await expect(getOperationsAssignmentsDataAction()).rejects.toThrow(
+      'Unauthorized'
+    );
   });
 
   it('throws for Employee role', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    await expect(getOperationsAssignmentsDataAction()).rejects.toThrow('Forbidden');
+    await expect(getOperationsAssignmentsDataAction()).rejects.toThrow(
+      'Forbidden'
+    );
   });
 
   it('returns dashboard data for admin', async () => {
@@ -327,7 +346,10 @@ describe('sendAssignmentReminderAction', () => {
     mockTriggerAssignmentReminders.mockResolvedValue(undefined);
     const result = await sendAssignmentReminderAction([1, 2]);
     expect(result.success).toBe(true);
-    expect(mockTriggerAssignmentReminders).toHaveBeenCalledWith([1, 2], ADMIN_USER.id);
+    expect(mockTriggerAssignmentReminders).toHaveBeenCalledWith(
+      [1, 2],
+      ADMIN_USER.id
+    );
     expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
   });
 });
@@ -365,7 +387,10 @@ describe('requestAssetReturnAction', () => {
     mockTriggerReturnRequests.mockResolvedValue(undefined);
     const result = await requestAssetReturnAction([1, 2]);
     expect(result.success).toBe(true);
-    expect(mockTriggerReturnRequests).toHaveBeenCalledWith([1, 2], ADMIN_USER.id);
+    expect(mockTriggerReturnRequests).toHaveBeenCalledWith(
+      [1, 2],
+      ADMIN_USER.id
+    );
     expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
@@ -405,7 +430,10 @@ describe('markAssetReceivedAction', () => {
     });
     const result = await markAssetReceivedAction([1]);
     expect(result.success).toBe(true);
-    expect(mockMarkAssignmentsAsReceived).toHaveBeenCalledWith([1], ADMIN_USER.id);
+    expect(mockMarkAssignmentsAsReceived).toHaveBeenCalledWith(
+      [1],
+      ADMIN_USER.id
+    );
     expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
@@ -459,7 +487,10 @@ describe('processAssetReturnAction', () => {
     mockProcessAssetReturn.mockResolvedValue(undefined);
     const result = await processAssetReturnAction(validInput);
     expect(result.success).toBe(true);
-    expect(mockProcessAssetReturn).toHaveBeenCalledWith(validInput, ADMIN_USER.id);
+    expect(mockProcessAssetReturn).toHaveBeenCalledWith(
+      validInput,
+      ADMIN_USER.id
+    );
     expect(revalidatePath).toHaveBeenCalledWith('/operations/assignments');
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
   });
@@ -467,7 +498,11 @@ describe('processAssetReturnAction', () => {
   it('returns normalized error on service failure', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockProcessAssetReturn.mockRejectedValue(
-      new MockAssignmentServiceError('Return already processed', 'ALREADY_RETURNED', 409)
+      new MockAssignmentServiceError(
+        'Return already processed',
+        'ALREADY_RETURNED',
+        409
+      )
     );
     const result = await processAssetReturnAction(validInput);
     expect(result.success).toBe(false);

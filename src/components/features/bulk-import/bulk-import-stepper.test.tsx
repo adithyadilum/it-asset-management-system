@@ -12,7 +12,7 @@ describe('BulkImportStepper', () => {
   it('renders all steps', () => {
     // @ts-ignore
     render(<BulkImportStepper currentStep={0} />);
-    
+
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();

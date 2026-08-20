@@ -3,11 +3,15 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AssetRegistryContent } from './asset-registry-content';
 
 vi.mock('./asset-registry-client', () => ({
-  AssetRegistryClient: (props: any) => <div data-testid="client">Client: {props.currentPanel}</div>
+  AssetRegistryClient: (props: any) => (
+    <div data-testid="client">Client: {props.currentPanel}</div>
+  ),
 }));
 
 vi.mock('./asset-registry-panels', () => ({
-  AssetRegistryPanels: (props: any) => <div data-testid="panels">Panels: {props.currentPanel}</div>
+  AssetRegistryPanels: (props: any) => (
+    <div data-testid="panels">Panels: {props.currentPanel}</div>
+  ),
 }));
 
 describe('AssetRegistryContent', () => {
@@ -17,14 +21,21 @@ describe('AssetRegistryContent', () => {
     vi.clearAllMocks();
   });
 
-  const mockConfig = { view: 'unified', pillar: '', defaultPageSize: 50 } as any;
+  const mockConfig = {
+    view: 'unified',
+    pillar: '',
+    defaultPageSize: 50,
+  } as any;
 
   it('renders Client and Panels with provided props', () => {
     render(
       <AssetRegistryContent
         config={mockConfig}
         initialCategories={[]}
-        initialResult={{ data: [], meta: { total: 0, page: 1, pageSize: 50, totalPages: 1 } }}
+        initialResult={{
+          data: [],
+          meta: { total: 0, page: 1, pageSize: 50, totalPages: 1 },
+        }}
         currentPanel="add-asset"
         recordId="123"
         closePanelUrl="/assets"

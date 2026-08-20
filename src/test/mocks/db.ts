@@ -72,10 +72,12 @@ export function createMockDb() {
     update: vi.fn().mockReturnValue(updateChain),
     delete: vi.fn().mockReturnValue(deleteChain),
     execute: vi.fn().mockResolvedValue([]),
-    transaction: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      const txMock = createMockDb();
-      return fn(txMock);
-    }),
+    transaction: vi
+      .fn()
+      .mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const txMock = createMockDb();
+        return fn(txMock);
+      }),
     query: {
       users: {
         findFirst: vi.fn().mockResolvedValue(null),

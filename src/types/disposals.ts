@@ -63,4 +63,4 @@ export type SelectedAssetLite = {
   id: string;
   assetTag: string;
   assetName: string;
-};
+};

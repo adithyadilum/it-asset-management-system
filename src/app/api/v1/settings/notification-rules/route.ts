@@ -2,24 +2,11 @@ import { NextResponse } from 'next/server';
 import { unstable_rethrow } from 'next/navigation';
 import { db } from '@/db';
 import { notificationRules } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { withSessionAuth } from '@/lib/api/with-auth';
 import { canManageAssets } from '@/lib/auth/roles';
 
-export async function GET() {
+export const GET = withSessionAuth(canManageAssets, async () => {
   try {
-    const user = await getAuthenticatedUser();
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!canManageAssets(user.role)) {
-      return NextResponse.json(
-        { error: 'Forbidden: Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
     const rules = await db
       .select()
       .from(notificationRules)
@@ -40,23 +27,9 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
-
-export async function POST() {
+});
+export const POST = withSessionAuth(canManageAssets, async () => {
   try {
-    const user = await getAuthenticatedUser();
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!canManageAssets(user.role)) {
-      return NextResponse.json(
-        { error: 'Forbidden: Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
     let rules = await db
       .select()
       .from(notificationRules)
@@ -196,7 +169,9 @@ export async function POST() {
     ];
 
     const existingKeys = new Set(rules.map((r) => r.ruleKey));
-    const missingRules = defaultRules.filter((r) => !existingKeys.has(r.ruleKey));
+    const missingRules = defaultRules.filter(
+      (r) => !existingKeys.has(r.ruleKey)
+    );
 
     if (missingRules.length > 0) {
       const inserted = await db
@@ -227,4 +202,4 @@ export async function POST() {
       { status: 500 }
     );
   }
-}
+});

@@ -14,7 +14,7 @@ import {
   type BulkAssetUpdatePayload,
   type RegistryPillar,
 } from '@/lib/data/asset-registry-repo';
-import {  enforceActionAccess } from '@/actions/auth';
+import { enforceActionAccess } from '@/actions/auth';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { isValidUuid } from '@/lib/auth/uuid';
@@ -450,4 +450,4 @@ export async function bulkUpdateAssets(input: BulkUpdateAssetsInput) {
       },
     });
   }
-}
+}

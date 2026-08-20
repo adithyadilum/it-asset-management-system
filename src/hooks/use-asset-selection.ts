@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { 
-  getAssetDetails, 
-  getAssetHistory, 
+import {
+  getAssetDetails,
+  getAssetHistory,
   getAssetMaintenance,
 } from '@/actions/assets';
 
@@ -56,7 +56,8 @@ export function useAssetSelection(): UseAssetSelectionReturn {
 
       setAssetData({ details, history, maintenance });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch asset details';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch asset details';
       setError(errorMessage);
       setSelectedAssetId(null);
     } finally {

@@ -12,7 +12,7 @@ import {
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
-import {  enforceActionAccess } from '@/actions/auth';
+import { enforceActionAccess } from '@/actions/auth';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 import {
   depreciationLedgerParamsSchema,
@@ -31,8 +31,6 @@ async function enforceFinanceAccess() {
   }
   return user;
 }
-
-
 
 // --- Pagination Interface ---
 export interface LedgerPaginationParams {
@@ -56,7 +54,13 @@ export async function getDepreciationLedger(
     if (!resultParse.success) {
       throw new Error('Invalid query parameters.');
     }
-    const { page: validPage, pageSize: validPageSize, search, category, ageFilter } = resultParse.data;
+    const {
+      page: validPage,
+      pageSize: validPageSize,
+      search,
+      category,
+      ageFilter,
+    } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
@@ -93,20 +97,9 @@ export async function getDepreciationLedger(
 
     const whereClause = and(...conditions);
 
-    // 2. Get Total Count for Pagination Metadata
-    const totalCountRes = await db
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch ONLY the requested page slice
     const result = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -124,6 +117,18 @@ export async function getDepreciationLedger(
       .orderBy(desc(assetPurchases.purchaseDate))
       .limit(validPageSize)
       .offset(offset);
+
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
 
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
@@ -188,7 +193,13 @@ export async function getTCOLedger(
     if (!resultParse.success) {
       throw new Error('Invalid query parameters.');
     }
-    const { page: validPage, pageSize: validPageSize, search, category, costFilter } = resultParse.data;
+    const {
+      page: validPage,
+      pageSize: validPageSize,
+      search,
+      category,
+      costFilter,
+    } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     const repairCostsSq = db.$with('repair_costs_sq').as(
@@ -233,23 +244,10 @@ export async function getTCOLedger(
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    // 2. Get Total Count
-    const totalCountRes = await db
-      .with(repairCostsSq)
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch Page Slice
     const result = await db
       .with(repairCostsSq)
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -267,6 +265,20 @@ export async function getTCOLedger(
       .orderBy(desc(assetPurchases.purchaseDate))
       .limit(validPageSize)
       .offset(offset);
+
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .with(repairCostsSq)
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
 
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
@@ -325,7 +337,13 @@ export async function getWriteOffsLedger(
     if (!resultParse.success) {
       throw new Error('Invalid query parameters.');
     }
-    const { page: validPage, pageSize: validPageSize, search, category, salvageFilter } = resultParse.data;
+    const {
+      page: validPage,
+      pageSize: validPageSize,
+      search,
+      category,
+      salvageFilter,
+    } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
@@ -365,21 +383,9 @@ export async function getWriteOffsLedger(
 
     const whereClause = and(...conditions);
 
-    // 2. Get Total Count
-    const totalCountRes = await db
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch Page Slice
     const result = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -400,6 +406,19 @@ export async function getWriteOffsLedger(
       .limit(validPageSize)
       .offset(offset);
 
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
+
     const ledgers = result.map((row) => ({
       id: row.id,
       assetId: row.assetTag,
@@ -408,7 +427,9 @@ export async function getWriteOffsLedger(
       originalPrice: parseFloat(row.originalPrice?.toString() || '0'),
       currencyCode: row.currencyCode || 'LKR',
       bookValue: parseFloat(row.bookValueAtDisposal?.toString() || '0'),
-      estimatedSalvageValue: parseFloat(row.estimatedSalvageValue?.toString() || '0'),
+      estimatedSalvageValue: parseFloat(
+        row.estimatedSalvageValue?.toString() || '0'
+      ),
       actualSalvageValue: parseFloat(row.actualSalvageValue?.toString() || '0'),
     }));
 
@@ -437,4 +458,4 @@ export async function getWriteOffsLedger(
     }
     throw new Error('Failed to load write-offs ledger.');
   }
-}
+}

@@ -59,11 +59,13 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the `Assignments & Returns` layout component with the 3-tab navigation structure (Available Assets, Assigned Assets, Returned Assets).
 - [x] Configure the `Available Assets` data grid to automatically apply a `status=Available` filter to the API fetch.
 - [x] Add an "Assign" action button to the Asset Details panel footer, conditionally rendered only when `asset.status === 'Available'`.
 
 #### Backend
+
 - [x] Create a `getOperationsAssignmentsDataAction` Server Action that returns filtered asset data.
 
 ---
@@ -95,10 +97,12 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Add a "Bulk Assign" button to the Bulk Actions toolbar that only renders when `selectedRows > 1` and all selected rows have `status === 'Available'`.
 - [x] Adapt the Assignment Modal to accept an array of asset IDs and display a summary header (e.g., "Assigning 3 Assets").
 
 #### Backend
+
 - [x] Create the `bulkAssignAssetsAction` that accepts an array of asset IDs and a target user/location, processing them atomically.
 - [x] Integrate `dispatchWebhookEvent` to trigger Epic 12 Digital Acceptance notifications for each asset in the batch.
 - [x] Implement Zod validation (`bulkAssignAssetsPayloadSchema`) for the bulk payload.
@@ -127,13 +131,16 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Assign Asset" modal with a "User" vs. "Location" toggle that dynamically switches the searchable dropdown data source.
 - [x] Add an optional "Expected Return Date" date picker for temporary loaner assignments.
 
 #### Backend
+
 - [x] Create the `assignAssetAction` that accepts the Zod validated payload (`assignmentType`, `targetId`, `expectedReturnDate`, `notes`), updates the asset status to `Assigned`, and creates an Assignment record.
 
 #### Database
+
 - [x] Create an `asset_assignments` table with columns: `id`, `asset_id`, `state`, `assigned_to_user_id`, `assigned_to_location_id`, `assigned_by_id`, `expected_return_date`, `returned_date`, `created_at`.
 
 ---
@@ -160,10 +167,12 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Write frontend logic to conditionally hide/disable the "Assign" button based on `asset.status`: only show for `Available` status.
 - [x] Display a user-friendly error toast when the Server Action returns a failure payload.
 
 #### Backend
+
 - [x] Implement optimistic concurrency control or row-level locking: before processing an assignment, verify `asset.status === 'Available'` within the same database transaction.
 - [x] Throw an explicit `AssignmentServiceError` if the status has changed mid-flight.
 
@@ -196,9 +205,11 @@ This epic governs the core logistics of checking hardware in and out. It introdu
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Update the Bulk Action toolbar logic to evaluate the `pillar` and `subcategory.isPortable` flag of selected rows: hide "Change Location" for Software and portable Hardware.
 - [x] Build the "Change Location" bulk action modal with a searchable Location dropdown.
 
 #### Backend
+
 - [x] Create a `bulkUpdateAssets` endpoint (Epic 6 logic) that accepts an array of asset IDs and a target `location_id`, validates pillar constraints server-side, and writes individual Audit Log entries.
 - [x] Enforce pillar validation server-side to reject incompatible state changes.

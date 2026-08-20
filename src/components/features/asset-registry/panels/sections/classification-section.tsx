@@ -153,7 +153,10 @@ export function ClassificationSection({
               {selectedModelImageUrl ? (
                 <Image
                   src={selectedModelImageUrl}
-                  alt={selectedModelLabel || `Selected ${config.modelLabel.toLowerCase()}`}
+                  alt={
+                    selectedModelLabel ||
+                    `Selected ${config.modelLabel.toLowerCase()}`
+                  }
                   width={80}
                   height={80}
                   className="h-full w-full object-cover"
@@ -164,11 +167,14 @@ export function ClassificationSection({
             </div>
 
             <div className="min-w-0 flex-1 space-y-1">
-              <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              <div
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+              >
                 {`Selected ${config.modelLabel}`}
               </div>
               <p className="truncate text-sm text-muted-foreground">
-                {selectedModelLabel || `Select a ${config.modelLabel.toLowerCase()} to load its image and custom inputs.`}
+                {selectedModelLabel ||
+                  `Select a ${config.modelLabel.toLowerCase()} to load its image and custom inputs.`}
               </p>
             </div>
           </div>

@@ -1,7 +1,7 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -18,7 +18,7 @@ describe('InitiateRepairDialog', () => {
 
   const mockOnClose = vi.fn();
   const mockOnConfirm = vi.fn();
-  
+
   const mockVendors = [
     { id: 1, companyName: 'Vendor A' },
     { id: 2, companyName: 'Vendor B' },
@@ -56,11 +56,13 @@ describe('InitiateRepairDialog', () => {
 
   it('validates required fields on submit', async () => {
     renderDialog();
-    
+
     // Initial state: submit button should be disabled because Vendor and RMA are required
-    const confirmBtn = screen.getByRole('button', { name: 'Confirm & Dispatch' });
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Confirm & Dispatch',
+    });
     expect(confirmBtn).toBeDisabled();
-    
+
     // But let's say we try to click it (somehow if enabled)
     // Actually the button is disabled by `!isFormValid`.
     // isFormValid = formData.vendorId.trim() !== '' && formData.rmaNumber.trim() !== ''
@@ -68,11 +70,13 @@ describe('InitiateRepairDialog', () => {
 
   it('submits successfully when valid data is entered', async () => {
     renderDialog();
-    
+
     // Select Vendor
     const vendorSelect = screen.getByRole('combobox', { name: /Vendor/i });
     fireEvent.click(vendorSelect);
-    const vendorOption = await screen.findByRole('option', { name: 'Vendor A' });
+    const vendorOption = await screen.findByRole('option', {
+      name: 'Vendor A',
+    });
     fireEvent.click(vendorOption);
 
     // Enter RMA
@@ -84,9 +88,11 @@ describe('InitiateRepairDialog', () => {
     fireEvent.change(costInput, { target: { value: '150.00' } });
 
     // Button should be enabled now
-    const confirmBtn = screen.getByRole('button', { name: 'Confirm & Dispatch' });
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Confirm & Dispatch',
+    });
     expect(confirmBtn).not.toBeDisabled();
-    
+
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
@@ -102,21 +108,27 @@ describe('InitiateRepairDialog', () => {
 
   it('shows error if RMA is too short on submit', async () => {
     renderDialog();
-    
+
     const vendorSelect = screen.getByRole('combobox', { name: /Vendor/i });
     fireEvent.click(vendorSelect);
-    const vendorOption = await screen.findByRole('option', { name: 'Vendor A' });
+    const vendorOption = await screen.findByRole('option', {
+      name: 'Vendor A',
+    });
     fireEvent.click(vendorOption);
 
     const rmaInput = screen.getByLabelText(/RMA \/ Ticket Number/i);
     fireEvent.change(rmaInput, { target: { value: 'RM' } }); // length 2
 
-    const confirmBtn = screen.getByRole('button', { name: 'Confirm & Dispatch' });
+    const confirmBtn = screen.getByRole('button', {
+      name: 'Confirm & Dispatch',
+    });
     expect(confirmBtn).not.toBeDisabled();
-    
+
     fireEvent.click(confirmBtn);
 
-    expect(await screen.findByText('RMA/Ticket Number must be at least 3 characters')).toBeInTheDocument();
+    expect(
+      await screen.findByText('RMA/Ticket Number must be at least 3 characters')
+    ).toBeInTheDocument();
     expect(mockOnConfirm).not.toHaveBeenCalled();
   });
 });

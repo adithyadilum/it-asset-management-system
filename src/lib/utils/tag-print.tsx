@@ -70,8 +70,6 @@ export async function generateAndPrintTagPdf({
     };
   } else {
     URL.revokeObjectURL(blobUrl);
-    tiqriToast.error(
-      'Popup blocker prevented opening the print window.'
-    );
+    tiqriToast.error('Popup blocker prevented opening the print window.');
   }
 }

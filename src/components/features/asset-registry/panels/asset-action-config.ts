@@ -93,31 +93,44 @@ const PROCESS_RETURN_ACTION: AssetActionConfig = {
 // ─── Status → Actions mapping (Hardware) ──────────────────────────────────────
 
 const HARDWARE_STATUS_ACTIONS: Record<string, AssetActionConfig[]> = {
-  'Available':        [EDIT_ACTION, SEND_FOR_REPAIR_ACTION, REQUEST_DISPOSAL_ACTION, ASSIGN_ACTION],
-  'Assigned':         [EDIT_ACTION, REQUEST_RETURN_ACTION],
-  'In Repair':        [], // User chose to hide all buttons for "In Repair"
-  'Defective':        [EDIT_ACTION, SEND_FOR_REPAIR_ACTION, REQUEST_DISPOSAL_ACTION],
-  'Lost':             [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
-  'Retired':          [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
+  Available: [
+    EDIT_ACTION,
+    SEND_FOR_REPAIR_ACTION,
+    REQUEST_DISPOSAL_ACTION,
+    ASSIGN_ACTION,
+  ],
+  Assigned: [EDIT_ACTION, REQUEST_RETURN_ACTION],
+  'In Repair': [], // User chose to hide all buttons for "In Repair"
+  Defective: [EDIT_ACTION, SEND_FOR_REPAIR_ACTION, REQUEST_DISPOSAL_ACTION],
+  Lost: [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
+  Retired: [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
   'Pending Disposal': [],
-  'Disposed':         [],
-  'Returned':         [EDIT_ACTION, PROCESS_RETURN_ACTION],
+  Disposed: [],
+  Returned: [EDIT_ACTION, PROCESS_RETURN_ACTION],
 };
 
 // ─── Status → Actions mapping (Furniture / Office Electronics) ────────────────
 // Same as hardware but "Assign" becomes "Transfer" (location-only),
 // and "Assigned" shows "Transfer" instead of "Request Return".
 
-const FURNITURE_ELECTRONICS_STATUS_ACTIONS: Record<string, AssetActionConfig[]> = {
-  'Available':        [EDIT_ACTION, SEND_FOR_REPAIR_ACTION, REQUEST_DISPOSAL_ACTION, TRANSFER_ACTION],
-  'Assigned':         [EDIT_ACTION, TRANSFER_ACTION],
-  'In Repair':        [],
-  'Defective':        [EDIT_ACTION, SEND_FOR_REPAIR_ACTION, REQUEST_DISPOSAL_ACTION],
-  'Lost':             [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
-  'Retired':          [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
+const FURNITURE_ELECTRONICS_STATUS_ACTIONS: Record<
+  string,
+  AssetActionConfig[]
+> = {
+  Available: [
+    EDIT_ACTION,
+    SEND_FOR_REPAIR_ACTION,
+    REQUEST_DISPOSAL_ACTION,
+    TRANSFER_ACTION,
+  ],
+  Assigned: [EDIT_ACTION, TRANSFER_ACTION],
+  'In Repair': [],
+  Defective: [EDIT_ACTION, SEND_FOR_REPAIR_ACTION, REQUEST_DISPOSAL_ACTION],
+  Lost: [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
+  Retired: [EDIT_ACTION, REQUEST_DISPOSAL_ACTION],
   'Pending Disposal': [],
-  'Disposed':         [],
-  'Returned':         [EDIT_ACTION, PROCESS_RETURN_ACTION],
+  Disposed: [],
+  Returned: [EDIT_ACTION, PROCESS_RETURN_ACTION],
 };
 
 // ─── Default actions for unknown/custom statuses ──────────────────────────────
@@ -158,8 +171,17 @@ export interface GetActionsOptions {
  * Returns the list of action button configs that should be rendered in the
  * asset detail panel footer for the given asset state.
  */
-export function getActionsForStatus(options: GetActionsOptions): AssetActionConfig[] {
-  const { status, pillar, seatsAvailable, isExpired, customStatusAllowedActions, assignmentState } = options;
+export function getActionsForStatus(
+  options: GetActionsOptions
+): AssetActionConfig[] {
+  const {
+    status,
+    pillar,
+    seatsAvailable,
+    isExpired,
+    customStatusAllowedActions,
+    assignmentState,
+  } = options;
 
   // ── Software pillar ──
   if (pillar === 'Software') {
@@ -232,16 +254,19 @@ export function getActionsForStatus(options: GetActionsOptions): AssetActionConf
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ACTION_ID_TO_CONFIG: Record<AssetActionId, (isFurniture: boolean) => AssetActionConfig> = {
-  'edit':              () => EDIT_ACTION,
-  'assign':            (isFurniture) => isFurniture ? TRANSFER_ACTION : ASSIGN_ACTION,
-  'request-return':    () => REQUEST_RETURN_ACTION,
-  'remind-return':     () => REMIND_RETURN_ACTION,
-  'mark-returned':     () => MARK_RETURNED_ACTION,
-  'send-for-repair':   () => SEND_FOR_REPAIR_ACTION,
-  'request-disposal':  () => REQUEST_DISPOSAL_ACTION,
-  'add-user':          () => ADD_USER_ACTION,
-  'process-return':    () => PROCESS_RETURN_ACTION,
+const ACTION_ID_TO_CONFIG: Record<
+  AssetActionId,
+  (isFurniture: boolean) => AssetActionConfig
+> = {
+  edit: () => EDIT_ACTION,
+  assign: (isFurniture) => (isFurniture ? TRANSFER_ACTION : ASSIGN_ACTION),
+  'request-return': () => REQUEST_RETURN_ACTION,
+  'remind-return': () => REMIND_RETURN_ACTION,
+  'mark-returned': () => MARK_RETURNED_ACTION,
+  'send-for-repair': () => SEND_FOR_REPAIR_ACTION,
+  'request-disposal': () => REQUEST_DISPOSAL_ACTION,
+  'add-user': () => ADD_USER_ACTION,
+  'process-return': () => PROCESS_RETURN_ACTION,
 };
 
 function resolveCustomActions(

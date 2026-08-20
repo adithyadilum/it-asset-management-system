@@ -23,15 +23,26 @@ describe('AddUsersToRoleModal', () => {
         defaultRole="GlobalAdmin"
       />
     );
-    
-    expect(screen.getAllByText('Assign Users to Global Admin')[0]).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/search company directory/i)).toBeInTheDocument();
+
+    expect(
+      screen.getAllByText('Assign Users to Global Admin')[0]
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/search company directory/i)
+    ).toBeInTheDocument();
   });
 
   it('searches for users when typing', async () => {
     const user = userEvent.setup();
     vi.mocked(roleActions.searchUsers).mockResolvedValue([
-      { id: 'user-1', name: 'Jane Doe', email: 'jane@example.com', department: 'HR', role: 'Employee', isActive: true },
+      {
+        id: 'user-1',
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        department: 'HR',
+        role: 'Employee',
+        isActive: true,
+      },
     ]);
 
     render(
@@ -62,6 +73,8 @@ describe('AddUsersToRoleModal', () => {
 
     const submitButton = screen.getByText('Confirm Mapping');
     expect(submitButton).toBeDisabled();
-    expect(screen.getByText('No users selected for this role.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No users selected for this role.')
+    ).toBeInTheDocument();
   });
 });

@@ -113,7 +113,9 @@ export interface BulkUpdateAssetsResult {
 }
 
 function normalizeAssetIds(assetIds: string[]) {
-  return [...new Set(assetIds.map((assetId) => assetId.trim()).filter(Boolean))];
+  return [
+    ...new Set(assetIds.map((assetId) => assetId.trim()).filter(Boolean)),
+  ];
 }
 
 export async function getCategoriesByPillar(
@@ -151,7 +153,9 @@ export async function getAssetsByPillar(
     typeof filters.categoryId === 'number'
       ? eq(categories.id, filters.categoryId)
       : undefined,
-    filters.status && filters.pillar !== 'Software' ? eq(assets.status, filters.status) : undefined,
+    filters.status && filters.pillar !== 'Software'
+      ? eq(assets.status, filters.status)
+      : undefined,
     !filters.status ? eq(assets.isArchived, false) : undefined,
     normalizedQuery
       ? or(
@@ -175,55 +179,75 @@ export async function getAssetsByPillar(
     .groupBy(softwareAllocations.licenseId)
     .as('assigned_seats');
 
+  const latestAssignedUser = sql<string | null>`(
+    select ${users.name}
+    from ${assetAssignments}
+    left join ${users} on ${assetAssignments.assignedToUserId} = ${users.id}
+    where ${assetAssignments.assetId} = ${assets.id}
+      and ${assetAssignments.returnedDate} is null
+    order by ${assetAssignments.assignedDate} desc
+    limit 1
+  )`;
+
   // Dynamic Status Filtering for Software
   let softwareStatusCondition = undefined;
   if (filters.status && filters.pillar === 'Software') {
     const now = new Date().toISOString().split('T')[0];
-    const warningDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
+    const warningDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+
     if (filters.status === 'expired') {
       softwareStatusCondition = lt(softwareLicenses.expiryDate, now);
     } else if (filters.status === 'full') {
       softwareStatusCondition = and(
-        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
-        lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`)
+        or(
+          isNull(softwareLicenses.expiryDate),
+          gte(softwareLicenses.expiryDate, now)
+        ),
+        lte(
+          softwareLicenses.totalSeats,
+          sql`coalesce(${assignedSeatsSubquery.count}, 0)`
+        )
       );
     } else if (filters.status === 'warning') {
       softwareStatusCondition = and(
-        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
         or(
-          and(isNotNull(softwareLicenses.expiryDate), lt(softwareLicenses.expiryDate, warningDate)),
+          isNull(softwareLicenses.expiryDate),
+          gte(softwareLicenses.expiryDate, now)
+        ),
+        or(
           and(
-            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+            isNotNull(softwareLicenses.expiryDate),
+            lt(softwareLicenses.expiryDate, warningDate)
+          ),
+          and(
+            gt(
+              softwareLicenses.totalSeats,
+              sql`coalesce(${assignedSeatsSubquery.count}, 0)`
+            ),
             sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 >= ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
           )
         )
       );
     } else if (filters.status === 'available') {
       softwareStatusCondition = and(
-        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, warningDate)),
-        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+        or(
+          isNull(softwareLicenses.expiryDate),
+          gte(softwareLicenses.expiryDate, warningDate)
+        ),
+        gt(
+          softwareLicenses.totalSeats,
+          sql`coalesce(${assignedSeatsSubquery.count}, 0)`
+        ),
         sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 < ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
       );
     }
   }
 
-  const totalRows = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(assets)
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(locations, eq(assets.locationId, locations.id))
-    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
-    .leftJoin(assignedSeatsSubquery, eq(softwareLicenses.id, assignedSeatsSubquery.licenseId))
-    .where(and(whereCondition, softwareStatusCondition));
-
-  const total = totalRows[0]?.total ?? 0;
-
-  // Subquery already defined above
-
   const rows = await db
     .select({
+      totalCount: sql<number>`count(*) over()::int`,
       id: assets.id,
       assetTag: assets.assetTag,
       name: assets.name,
@@ -236,6 +260,10 @@ export async function getAssetsByPillar(
       model: models.name,
       locationId: assets.locationId,
       location: locations.name,
+      assignedTo:
+        filters.pillar === 'Software'
+          ? sql<string | null>`null`
+          : latestAssignedUser,
       instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
       // SAM fields
@@ -258,47 +286,22 @@ export async function getAssetsByPillar(
     .limit(safePageSize)
     .offset(offset);
 
-  const assetIds = rows.map((row) => row.id);
-
-  const assignedUserByAssetId = new Map<string, string>();
-  if (assetIds.length > 0) {
-    const activeAssignments = await db
-      .select({
-        assetId: assetAssignments.assetId,
-        assignedTo: users.name,
-      })
-      .from(assetAssignments)
-      .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-      .where(
-        and(
-          inArray(assetAssignments.assetId, assetIds),
-          isNull(assetAssignments.returnedDate)
-        )
-      )
-      .orderBy(desc(assetAssignments.assignedDate));
-
-    for (const activeAssignment of activeAssignments) {
-      if (
-        !assignedUserByAssetId.has(activeAssignment.assetId) &&
-        activeAssignment.assignedTo
-      ) {
-        assignedUserByAssetId.set(
-          activeAssignment.assetId,
-          activeAssignment.assignedTo
-        );
-      }
-    }
-  }
-
+  const total = rows[0]?.totalCount ?? 0;
   const data: AssetRegistryRow[] = rows.map((row) => {
     const totalSeats = typeof row.totalSeats === 'number' ? row.totalSeats : 0;
-    const assignedSeats = typeof row.assignedSeats === 'number' ? row.assignedSeats : 0;
+    const assignedSeats =
+      typeof row.assignedSeats === 'number' ? row.assignedSeats : 0;
     const availableSeats = Math.max(0, totalSeats - assignedSeats);
     const expiryDate = row.expiryDate ? new Date(row.expiryDate) : null;
     const isExpired = expiryDate ? expiryDate < new Date() : false;
-    const isNearExpiry = expiryDate ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
+    const isNearExpiry = expiryDate
+      ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
-    const isNearFull = isSoftwareLicenseNearCapacity(totalSeats, availableSeats);
+    const isNearFull = isSoftwareLicenseNearCapacity(
+      totalSeats,
+      availableSeats
+    );
 
     let calculatedStatus = row.status;
     if (row.pillar === 'Software') {
@@ -314,11 +317,26 @@ export async function getAssetsByPillar(
     }
 
     return {
-      ...row,
+      id: row.id,
+      assetTag: row.assetTag,
+      name: row.name,
+      serialNumber: row.serialNumber,
       status: calculatedStatus,
-      instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
-      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      condition: row.condition,
+      categoryId: row.categoryId,
+      category: row.category,
+      pillar: row.pillar,
+      model: row.model,
+      locationId: row.locationId,
+      location: row.location,
+      instanceAttributes:
+        (row.instanceAttributes as Record<string, unknown>) ?? null,
+      updatedAt: row.updatedAt,
+      assignedTo: row.assignedTo,
+      totalSeats: row.totalSeats,
       availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
+      expiryDate: row.expiryDate,
+      licenseType: row.licenseType,
     };
   });
 
@@ -357,34 +375,70 @@ export async function getAllAssetsUnified(
     .groupBy(softwareAllocations.licenseId)
     .as('assigned_seats');
 
+  const latestAssignedUser = sql<string | null>`case
+    when ${categories.pillar} = 'Software' then null
+    else (
+      select ${users.name}
+      from ${assetAssignments}
+      left join ${users} on ${assetAssignments.assignedToUserId} = ${users.id}
+      where ${assetAssignments.assetId} = ${assets.id}
+        and ${assetAssignments.returnedDate} is null
+      order by ${assetAssignments.assignedDate} desc
+      limit 1
+    )
+  end`;
+
   // Dynamic Status Filtering for Software
   let softwareStatusCondition = undefined;
   const now = new Date().toISOString().split('T')[0];
-  const warningDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  
+  const warningDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split('T')[0];
+
   if (filters.status) {
     if (filters.status === 'expired') {
       softwareStatusCondition = lt(softwareLicenses.expiryDate, now);
     } else if (filters.status === 'full') {
       softwareStatusCondition = and(
-        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
-        lte(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`)
+        or(
+          isNull(softwareLicenses.expiryDate),
+          gte(softwareLicenses.expiryDate, now)
+        ),
+        lte(
+          softwareLicenses.totalSeats,
+          sql`coalesce(${assignedSeatsSubquery.count}, 0)`
+        )
       );
     } else if (filters.status === 'warning') {
       softwareStatusCondition = and(
-        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, now)),
         or(
-          and(isNotNull(softwareLicenses.expiryDate), lt(softwareLicenses.expiryDate, warningDate)),
+          isNull(softwareLicenses.expiryDate),
+          gte(softwareLicenses.expiryDate, now)
+        ),
+        or(
           and(
-            gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+            isNotNull(softwareLicenses.expiryDate),
+            lt(softwareLicenses.expiryDate, warningDate)
+          ),
+          and(
+            gt(
+              softwareLicenses.totalSeats,
+              sql`coalesce(${assignedSeatsSubquery.count}, 0)`
+            ),
             sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 >= ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
           )
         )
       );
     } else if (filters.status === 'available') {
       softwareStatusCondition = and(
-        or(isNull(softwareLicenses.expiryDate), gte(softwareLicenses.expiryDate, warningDate)),
-        gt(softwareLicenses.totalSeats, sql`coalesce(${assignedSeatsSubquery.count}, 0)`),
+        or(
+          isNull(softwareLicenses.expiryDate),
+          gte(softwareLicenses.expiryDate, warningDate)
+        ),
+        gt(
+          softwareLicenses.totalSeats,
+          sql`coalesce(${assignedSeatsSubquery.count}, 0)`
+        ),
         sql`coalesce(${assignedSeatsSubquery.count}, 0) * 100 < ${softwareLicenses.totalSeats} * ${SOFTWARE_LICENSE_WARNING_UTILIZATION_PERCENT}`
       );
     }
@@ -393,7 +447,7 @@ export async function getAllAssetsUnified(
   const whereCondition = and(
     eq(categories.isActive, true),
     filters.pillar ? eq(categories.pillar, filters.pillar) : undefined,
-    filters.status 
+    filters.status
       ? or(
           eq(assets.status, filters.status as AssetStatus),
           softwareStatusCondition
@@ -411,20 +465,9 @@ export async function getAllAssetsUnified(
       : undefined
   );
 
-  const totalRows = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(assets)
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(locations, eq(assets.locationId, locations.id))
-    .leftJoin(softwareLicenses, eq(assets.id, softwareLicenses.assetId))
-    .leftJoin(assignedSeatsSubquery, eq(softwareLicenses.id, assignedSeatsSubquery.licenseId))
-    .where(whereCondition);
-
-  const total = totalRows[0]?.total ?? 0;
-
   const rows = await db
     .select({
+      totalCount: sql<number>`count(*) over()::int`,
       id: assets.id,
       assetTag: assets.assetTag,
       name: assets.name,
@@ -437,6 +480,7 @@ export async function getAllAssetsUnified(
       model: models.name,
       locationId: assets.locationId,
       location: locations.name,
+      assignedTo: latestAssignedUser,
       instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
       // SAM fields
@@ -459,47 +503,22 @@ export async function getAllAssetsUnified(
     .limit(safePageSize)
     .offset(offset);
 
-  const assetIds = rows.map((row) => row.id);
-
-  const assignedUserByAssetId = new Map<string, string>();
-  if (assetIds.length > 0) {
-    const activeAssignments = await db
-      .select({
-        assetId: assetAssignments.assetId,
-        assignedTo: users.name,
-      })
-      .from(assetAssignments)
-      .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
-      .where(
-        and(
-          inArray(assetAssignments.assetId, assetIds),
-          isNull(assetAssignments.returnedDate)
-        )
-      )
-      .orderBy(desc(assetAssignments.assignedDate));
-
-    for (const activeAssignment of activeAssignments) {
-      if (
-        !assignedUserByAssetId.has(activeAssignment.assetId) &&
-        activeAssignment.assignedTo
-      ) {
-        assignedUserByAssetId.set(
-          activeAssignment.assetId,
-          activeAssignment.assignedTo
-        );
-      }
-    }
-  }
-
+  const total = rows[0]?.totalCount ?? 0;
   const data: AssetRegistryRow[] = rows.map((row) => {
     const totalSeats = typeof row.totalSeats === 'number' ? row.totalSeats : 0;
-    const assignedSeats = typeof row.assignedSeats === 'number' ? row.assignedSeats : 0;
+    const assignedSeats =
+      typeof row.assignedSeats === 'number' ? row.assignedSeats : 0;
     const availableSeats = Math.max(0, totalSeats - assignedSeats);
     const expiryDate = row.expiryDate ? new Date(row.expiryDate) : null;
     const isExpired = expiryDate ? expiryDate < new Date() : false;
-    const isNearExpiry = expiryDate ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false;
+    const isNearExpiry = expiryDate
+      ? expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
-    const isNearFull = isSoftwareLicenseNearCapacity(totalSeats, availableSeats);
+    const isNearFull = isSoftwareLicenseNearCapacity(
+      totalSeats,
+      availableSeats
+    );
 
     let calculatedStatus = row.status;
     if (row.pillar === 'Software') {
@@ -515,12 +534,26 @@ export async function getAllAssetsUnified(
     }
 
     return {
-      ...row,
+      id: row.id,
+      assetTag: row.assetTag,
+      name: row.name,
+      serialNumber: row.serialNumber,
       status: calculatedStatus,
-      instanceAttributes: (row.instanceAttributes as Record<string, unknown>) ?? null,
-      assignedTo: assignedUserByAssetId.get(row.id) ?? null,
+      condition: row.condition,
+      categoryId: row.categoryId,
+      category: row.category,
+      pillar: row.pillar,
+      model: row.model,
+      locationId: row.locationId,
+      location: row.location,
+      instanceAttributes:
+        (row.instanceAttributes as Record<string, unknown>) ?? null,
+      updatedAt: row.updatedAt,
+      assignedTo: row.assignedTo,
+      totalSeats: row.totalSeats,
       availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
-      assignedSeats: row.pillar === 'Software' ? assignedSeats : undefined,
+      expiryDate: row.expiryDate,
+      licenseType: row.licenseType,
     };
   });
 
@@ -593,7 +626,9 @@ export async function bulkUpdateAssets({
       };
     }
 
-    const existingAssetIds = existingAssets.map((existingAsset) => existingAsset.id);
+    const existingAssetIds = existingAssets.map(
+      (existingAsset) => existingAsset.id
+    );
 
     const updatedAssets = await tx
       .update(assets)
@@ -627,7 +662,10 @@ export async function bulkUpdateAssets({
     return {
       requestedCount: normalizedAssetIds.length,
       updatedCount: updatedAssets.length,
-      skippedCount: Math.max(0, normalizedAssetIds.length - updatedAssets.length),
+      skippedCount: Math.max(
+        0,
+        normalizedAssetIds.length - updatedAssets.length
+      ),
     };
   });
 }

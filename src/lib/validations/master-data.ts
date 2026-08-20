@@ -97,7 +97,9 @@ export const vendorSchema = z.object({
       }
       return val;
     })
-    .pipe(z.string().url('Enter a valid website URL').optional().or(z.literal(''))),
+    .pipe(
+      z.string().url('Enter a valid website URL').optional().or(z.literal(''))
+    ),
   isActive: z.boolean(),
 });
 

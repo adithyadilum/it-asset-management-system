@@ -42,7 +42,11 @@ function toLegacyLikeUrl(input: string): Record<string, unknown> {
 }
 
 if (!globalThis.__codexPatchedUrlParse) {
-  const safeParse = ((input: unknown, parseQueryString?: boolean, slashesDenoteHost?: boolean) => {
+  const safeParse = ((
+    input: unknown,
+    parseQueryString?: boolean,
+    slashesDenoteHost?: boolean
+  ) => {
     if (typeof input !== 'string') {
       return legacyParse(
         input as string,

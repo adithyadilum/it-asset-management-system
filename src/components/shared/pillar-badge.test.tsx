@@ -34,7 +34,9 @@ describe('PillarBadge', () => {
   });
 
   it('applies custom className', () => {
-    const { container } = render(<PillarBadge pillar="Software" className="custom-class" />);
+    const { container } = render(
+      <PillarBadge pillar="Software" className="custom-class" />
+    );
     expect(container.firstChild).toHaveClass('custom-class');
   });
 });

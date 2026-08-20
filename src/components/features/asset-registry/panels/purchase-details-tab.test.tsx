@@ -21,10 +21,10 @@ describe('PurchaseDetailsTab', () => {
       vendor: {
         vendorId: 'v1',
         vendorCode: 'V-001',
-        vendorName: 'Apple'
-      }
+        vendorName: 'Apple',
+      },
     };
-    render(<PurchaseDetailsTab {...mockDetails as any} />);
+    render(<PurchaseDetailsTab {...(mockDetails as any)} />);
     expect(screen.getByText('Apple')).toBeInTheDocument();
   });
 
@@ -41,11 +41,11 @@ describe('PurchaseDetailsTab', () => {
       vendor: {
         vendorId: 'v1',
         vendorCode: 'V-001',
-        vendorName: 'Apple'
-      }
+        vendorName: 'Apple',
+      },
     };
 
-    render(<PurchaseDetailsTab {...mockDetails as any} />);
+    render(<PurchaseDetailsTab {...(mockDetails as any)} />);
     expect(screen.queryByText('Shipping Cost')).not.toBeInTheDocument();
   });
 });

@@ -11,7 +11,11 @@ import {
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
@@ -75,7 +79,9 @@ export function SoftwareLicensingSection({
       <hr className="my-5 border-border" />
 
       <section className="rounded-lg border border-border bg-muted/30 p-4">
-        <h3 className={`mb-3 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+        <h3
+          className={`mb-3 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+        >
           Software Licensing
         </h3>
 
@@ -134,7 +140,9 @@ export function SoftwareLicensingSection({
                     variant="outline"
                     className={cn(
                       'h-9 w-full justify-between rounded-lg px-3 text-left font-normal',
-                      !licenseStartDate ? 'text-muted-foreground' : 'text-foreground'
+                      !licenseStartDate
+                        ? 'text-muted-foreground'
+                        : 'text-foreground'
                     )}
                     aria-invalid={Boolean(getError(state, 'licenseStartDate'))}
                   >
@@ -153,7 +161,12 @@ export function SoftwareLicensingSection({
                   />
                 </PopoverContent>
               </Popover>
-              <input type="hidden" id="licenseStartDate" name="licenseStartDate" value={licenseStartDate} />
+              <input
+                type="hidden"
+                id="licenseStartDate"
+                name="licenseStartDate"
+                value={licenseStartDate}
+              />
             </>
           </InlineFieldRow>
 
@@ -171,9 +184,13 @@ export function SoftwareLicensingSection({
                       variant="outline"
                       className={cn(
                         'h-9 w-full justify-between rounded-lg px-3 text-left font-normal',
-                        !licenseExpiryDate ? 'text-muted-foreground' : 'text-foreground'
+                        !licenseExpiryDate
+                          ? 'text-muted-foreground'
+                          : 'text-foreground'
                       )}
-                      aria-invalid={Boolean(getError(state, 'licenseExpiryDate'))}
+                      aria-invalid={Boolean(
+                        getError(state, 'licenseExpiryDate')
+                      )}
                     >
                       <span>{licenseExpiryDateLabel}</span>
                       <CalendarDays className="size-4 text-muted-foreground" />
@@ -184,17 +201,29 @@ export function SoftwareLicensingSection({
                       mode="single"
                       selected={licenseExpiryDateValue}
                       onSelect={(date) =>
-                        setLicenseExpiryDate(date ? formatDateForInput(date) : '')
+                        setLicenseExpiryDate(
+                          date ? formatDateForInput(date) : ''
+                        )
                       }
                       autoFocus
                     />
                   </PopoverContent>
                 </Popover>
-                <input type="hidden" id="licenseExpiryDate" name="licenseExpiryDate" value={licenseExpiryDate} />
+                <input
+                  type="hidden"
+                  id="licenseExpiryDate"
+                  name="licenseExpiryDate"
+                  value={licenseExpiryDate}
+                />
               </>
             </InlineFieldRow>
           ) : (
-            <input type="hidden" id="licenseExpiryDate" name="licenseExpiryDate" value="" />
+            <input
+              type="hidden"
+              id="licenseExpiryDate"
+              name="licenseExpiryDate"
+              value=""
+            />
           )}
         </div>
       </section>

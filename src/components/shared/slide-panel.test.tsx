@@ -26,9 +26,9 @@ describe('SlidePanel', () => {
   it('calls onClose when close button is clicked', async () => {
     const user = userEvent.setup();
     const onCloseMock = vi.fn();
-    
+
     render(<SlidePanel {...defaultProps} onClose={onCloseMock} />);
-    
+
     await user.click(screen.getByRole('button', { name: /close panel/i }));
     expect(onCloseMock).toHaveBeenCalledWith(false);
   });
@@ -36,14 +36,14 @@ describe('SlidePanel', () => {
   it('renders actions and calls onClick', async () => {
     const user = userEvent.setup();
     const actionMock = vi.fn();
-    
+
     render(
-      <SlidePanel 
-        {...defaultProps} 
-        actions={[{ label: 'Save', onClick: actionMock }]} 
+      <SlidePanel
+        {...defaultProps}
+        actions={[{ label: 'Save', onClick: actionMock }]}
       />
     );
-    
+
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(actionMock).toHaveBeenCalled();
   });

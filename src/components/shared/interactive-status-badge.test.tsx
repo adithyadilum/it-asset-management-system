@@ -29,13 +29,13 @@ describe('InteractiveStatusBadge', () => {
 
   it('renders a locked badge for Disposed status', () => {
     render(
-      <InteractiveStatusBadge 
-        assetId="AST-1" 
-        currentStatus="Disposed" 
-        availableStatuses={mockAvailableStatuses} 
+      <InteractiveStatusBadge
+        assetId="AST-1"
+        currentStatus="Disposed"
+        availableStatuses={mockAvailableStatuses}
       />
     );
-    
+
     // It should render just the StatusBadge, no chevron/dropdown trigger
     expect(screen.getByText('Disposed')).toBeInTheDocument();
     // Dropdown trigger role or chevron shouldn't be present
@@ -45,10 +45,10 @@ describe('InteractiveStatusBadge', () => {
   it('opens dropdown and displays other available statuses', async () => {
     const user = userEvent.setup();
     render(
-      <InteractiveStatusBadge 
-        assetId="AST-1" 
-        currentStatus="Available" 
-        availableStatuses={mockAvailableStatuses} 
+      <InteractiveStatusBadge
+        assetId="AST-1"
+        currentStatus="Available"
+        availableStatuses={mockAvailableStatuses}
       />
     );
 
@@ -58,7 +58,7 @@ describe('InteractiveStatusBadge', () => {
     // Dropdown items
     expect(screen.getByText('In Repair')).toBeInTheDocument();
     expect(screen.getByText('Lost')).toBeInTheDocument();
-    
+
     // Current status shouldn't be in the dropdown
     const availableItems = screen.getAllByText('Available');
     expect(availableItems.length).toBe(1); // Only the trigger, not the menu item
@@ -67,10 +67,10 @@ describe('InteractiveStatusBadge', () => {
   it('opens modal on status selection', async () => {
     const user = userEvent.setup();
     render(
-      <InteractiveStatusBadge 
-        assetId="AST-1" 
-        currentStatus="Available" 
-        availableStatuses={mockAvailableStatuses} 
+      <InteractiveStatusBadge
+        assetId="AST-1"
+        currentStatus="Available"
+        availableStatuses={mockAvailableStatuses}
       />
     );
 
@@ -85,10 +85,10 @@ describe('InteractiveStatusBadge', () => {
   it('shows assignment warning if hasActiveAssignment is true', async () => {
     const user = userEvent.setup();
     render(
-      <InteractiveStatusBadge 
-        assetId="AST-1" 
-        currentStatus="Available" 
-        availableStatuses={mockAvailableStatuses} 
+      <InteractiveStatusBadge
+        assetId="AST-1"
+        currentStatus="Available"
+        availableStatuses={mockAvailableStatuses}
         hasActiveAssignment={true}
       />
     );
@@ -96,19 +96,24 @@ describe('InteractiveStatusBadge', () => {
     await user.click(screen.getByText('Available'));
     await user.click(screen.getByText('Lost'));
 
-    expect(screen.getByText(/This asset is currently assigned/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This asset is currently assigned/i)
+    ).toBeInTheDocument();
   });
 
   it('submits form and calls server action with justification', async () => {
     const user = userEvent.setup();
     const onStatusChangedMock = vi.fn();
-    vi.mocked(manualStatusOverrideAction).mockResolvedValue({ success: true, message: 'Updated' });
+    vi.mocked(manualStatusOverrideAction).mockResolvedValue({
+      success: true,
+      message: 'Updated',
+    });
 
     render(
-      <InteractiveStatusBadge 
-        assetId="AST-1" 
-        currentStatus="Available" 
-        availableStatuses={mockAvailableStatuses} 
+      <InteractiveStatusBadge
+        assetId="AST-1"
+        currentStatus="Available"
+        availableStatuses={mockAvailableStatuses}
         onStatusChanged={onStatusChangedMock}
       />
     );
@@ -121,18 +126,24 @@ describe('InteractiveStatusBadge', () => {
     const textarea = screen.getByRole('textbox', { name: /justification/i });
     await user.type(textarea, 'Screen is shattered');
 
-    const confirmButton = screen.getByRole('button', { name: 'Confirm Override' });
+    const confirmButton = screen.getByRole('button', {
+      name: 'Confirm Override',
+    });
     expect(confirmButton).toBeEnabled();
-    
+
     await user.click(confirmButton);
 
     await waitFor(() => {
-      expect(manualStatusOverrideAction).toHaveBeenCalledWith('AST-1', 'In Repair', 'Screen is shattered');
+      expect(manualStatusOverrideAction).toHaveBeenCalledWith(
+        'AST-1',
+        'In Repair',
+        'Screen is shattered'
+      );
     });
-    
+
     expect(tiqriToast.success).toHaveBeenCalledWith('Updated');
     expect(onStatusChangedMock).toHaveBeenCalledWith('In Repair');
-    
+
     // Status should be updated locally
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getAllByText('In Repair')[0]).toBeInTheDocument();
@@ -140,13 +151,16 @@ describe('InteractiveStatusBadge', () => {
 
   it('shows error toast on server action failure', async () => {
     const user = userEvent.setup();
-    vi.mocked(manualStatusOverrideAction).mockResolvedValue({ success: false, message: 'Override failed' });
+    vi.mocked(manualStatusOverrideAction).mockResolvedValue({
+      success: false,
+      message: 'Override failed',
+    });
 
     render(
-      <InteractiveStatusBadge 
-        assetId="AST-1" 
-        currentStatus="Available" 
-        availableStatuses={mockAvailableStatuses} 
+      <InteractiveStatusBadge
+        assetId="AST-1"
+        currentStatus="Available"
+        availableStatuses={mockAvailableStatuses}
       />
     );
 
@@ -156,7 +170,9 @@ describe('InteractiveStatusBadge', () => {
     const textarea = screen.getByRole('textbox', { name: /justification/i });
     await user.type(textarea, 'Valid Reason');
 
-    const confirmButton = screen.getByRole('button', { name: 'Confirm Override' });
+    const confirmButton = screen.getByRole('button', {
+      name: 'Confirm Override',
+    });
     await user.click(confirmButton);
 
     await waitFor(() => {

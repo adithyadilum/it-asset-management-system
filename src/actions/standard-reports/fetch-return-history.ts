@@ -1,9 +1,18 @@
 import { eq, and, isNotNull, sql, desc } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
-import { assetAssignments, assets, models, categories, users } from '@/db/schema';
+import {
+  assetAssignments,
+  assets,
+  models,
+  categories,
+  users,
+} from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchReturnHistory(
   filters: ReportPreviewFilters,
@@ -47,8 +56,7 @@ export async function fetchReturnHistory(
     conditions.push(eq(categories.pillar, dbPillar as never));
   }
 
-  const whereCondition =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
   const assignedToUser = alias(users, 'assignedToUser');
 
   const baseQuery = db

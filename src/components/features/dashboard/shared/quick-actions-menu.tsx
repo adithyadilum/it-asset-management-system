@@ -1,45 +1,39 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import {
-  Zap,
-  Package,
-  UserCheck,
-  Wrench,
-  FileBarChart,
-} from 'lucide-react'
-import type { UserRole } from '@/types/auth'
-import { AssetPillarSelectionDialog } from '@/components/shared/asset-pillar-selection-dialog'
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Zap, Package, UserCheck, Wrench, FileBarChart } from 'lucide-react';
+import type { UserRole } from '@/types/auth';
+import { AssetPillarSelectionDialog } from '@/components/shared/asset-pillar-selection-dialog';
 
 interface QuickActionsMenuProps {
-  userRole: UserRole
+  userRole: UserRole;
 }
 
 export function QuickActionsMenu({ userRole }: QuickActionsMenuProps) {
-  const router = useRouter()
-  const [pillarDialogOpen, setPillarDialogOpen] = useState(false)
+  const router = useRouter();
+  const [pillarDialogOpen, setPillarDialogOpen] = useState(false);
 
   const handlePillarSelect = (slug: string) => {
-    setPillarDialogOpen(false)
-    router.push(`/assets/${slug}?panel=registration`)
-  }
+    setPillarDialogOpen(false);
+    router.push(`/assets/${slug}?panel=registration`);
+  };
 
-  const isAdmin = userRole === 'GlobalAdmin'
-  const isOperator = userRole === 'ITOperator'
-  const isAuditor = userRole === 'FinancialAuditor'
-  const canRegister = isAdmin || isOperator
-  const canAssign = isAdmin || isOperator
-  const canMaintenance = isAdmin || isOperator
-  const canReport = isAdmin || isAuditor
+  const isAdmin = userRole === 'GlobalAdmin';
+  const isOperator = userRole === 'ITOperator';
+  const isAuditor = userRole === 'FinancialAuditor';
+  const canRegister = isAdmin || isOperator;
+  const canAssign = isAdmin || isOperator;
+  const canMaintenance = isAdmin || isOperator;
+  const canReport = isAdmin || isAuditor;
 
   return (
     <>
@@ -101,5 +95,5 @@ export function QuickActionsMenu({ userRole }: QuickActionsMenuProps) {
         onSelect={handlePillarSelect}
       />
     </>
-  )
+  );
 }

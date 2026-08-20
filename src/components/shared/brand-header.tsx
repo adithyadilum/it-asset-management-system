@@ -1,8 +1,8 @@
-import Image from "next/image"
+import Image from 'next/image';
 
 type BrandHeaderProps = {
-  collapsed?: boolean
-}
+  collapsed?: boolean;
+};
 
 export function BrandHeader({ collapsed = false }: BrandHeaderProps) {
   if (collapsed) {
@@ -17,7 +17,7 @@ export function BrandHeader({ collapsed = false }: BrandHeaderProps) {
           className="size-8 object-contain dark:brightness-0 dark:invert"
         />
       </div>
-    )
+    );
   }
 
   return (
@@ -30,11 +30,13 @@ export function BrandHeader({ collapsed = false }: BrandHeaderProps) {
         priority
         className="h-7 w-auto md:h-12.5 md:w-22.25 object-contain dark:brightness-0 dark:invert"
       />
-      <span className="text-2xl md:text-4xl md:leading-12.5 font-semibold text-primary dark:text-white">Assets</span>
+      <span className="text-2xl md:text-4xl md:leading-12.5 font-semibold text-primary dark:text-white">
+        Assets
+      </span>
     </div>
-  )
+  );
 }
 
 export function LoginBrandHeader() {
-  return <BrandHeader />
+  return <BrandHeader />;
 }

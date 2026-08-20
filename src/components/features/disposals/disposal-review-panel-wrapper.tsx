@@ -73,13 +73,23 @@ export function DisposalReviewPanelWrapper({
     onClose(false);
   };
 
-  const convertedOriginalCost = extendedData?.originalCost != null
-    ? convertCurrencyAmount(extendedData.originalCost, extendedData.currencyCode || 'LKR', preferredCurrency)
-    : undefined;
+  const convertedOriginalCost =
+    extendedData?.originalCost != null
+      ? convertCurrencyAmount(
+          extendedData.originalCost,
+          extendedData.currencyCode || 'LKR',
+          preferredCurrency
+        )
+      : undefined;
 
-  const convertedBookValue = extendedData?.currentBookValue != null
-    ? convertCurrencyAmount(extendedData.currentBookValue, extendedData.currencyCode || 'LKR', preferredCurrency)
-    : undefined;
+  const convertedBookValue =
+    extendedData?.currentBookValue != null
+      ? convertCurrencyAmount(
+          extendedData.currentBookValue,
+          extendedData.currencyCode || 'LKR',
+          preferredCurrency
+        )
+      : undefined;
 
   return (
     <>

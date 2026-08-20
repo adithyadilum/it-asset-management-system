@@ -1,8 +1,8 @@
 'use server';
 
-import {  enforceActionAccess } from '@/actions/auth';
+import { enforceActionAccess } from '@/actions/auth';
 import { getWriteOffsLedger } from '@/actions/financials';
-import {  isGlobalAdmin } from '@/lib/auth/roles';
+import { isGlobalAdmin } from '@/lib/auth/roles';
 import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
   getCachedInventoryStatus,
@@ -105,21 +105,37 @@ export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboar
         ? results[1].value
         : { inventoryData: [], utilizationRate: 0 },
     departmentAllocation:
-      results[2].status === 'fulfilled' ? (results[2].value as DepartmentAllocationItem[]) : [],
+      results[2].status === 'fulfilled'
+        ? (results[2].value as DepartmentAllocationItem[])
+        : [],
     overdueReturns:
-      results[3].status === 'fulfilled' ? (results[3].value as OverdueReturnRow[]) : [],
+      results[3].status === 'fulfilled'
+        ? (results[3].value as OverdueReturnRow[])
+        : [],
     pendingDisposals:
-      results[4].status === 'fulfilled' ? (results[4].value as PendingDisposalRow[]) : [],
+      results[4].status === 'fulfilled'
+        ? (results[4].value as PendingDisposalRow[])
+        : [],
     highMaintenanceAssets:
-      results[5].status === 'fulfilled' ? (results[5].value as HighMaintenanceRow[]) : [],
+      results[5].status === 'fulfilled'
+        ? (results[5].value as HighMaintenanceRow[])
+        : [],
     recentActivities:
-      results[6].status === 'fulfilled' ? (results[6].value as RecentActivity[]) : [],
+      results[6].status === 'fulfilled'
+        ? (results[6].value as RecentActivity[])
+        : [],
     topHighValueAssets:
-      results[7].status === 'fulfilled' ? (results[7].value as TopHighValueAssetRow[]) : [],
+      results[7].status === 'fulfilled'
+        ? (results[7].value as TopHighValueAssetRow[])
+        : [],
     writeOffsLedger:
-      results[8].status === 'fulfilled' ? (results[8].value as WriteOffLedgerRow[]) : [],
+      results[8].status === 'fulfilled'
+        ? (results[8].value as WriteOffLedgerRow[])
+        : [],
     softwareOptimization:
-      results[9].status === 'fulfilled' ? (results[9].value as SoftwareOptimizationRow[]) : [],
+      results[9].status === 'fulfilled'
+        ? (results[9].value as SoftwareOptimizationRow[])
+        : [],
     dataErrors,
   };
-}
+}

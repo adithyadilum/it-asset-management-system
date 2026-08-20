@@ -493,4 +493,3 @@ flowchart TB
 | API Gateway → External Systems          | REQ-FND-1.12, REQ-FND-1.13, NFR-PERF-06 |
 
 [< Back to Requirements](../README.md)
-

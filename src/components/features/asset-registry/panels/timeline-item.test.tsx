@@ -11,12 +11,12 @@ describe('TimelineItem', () => {
 
   it('renders timeline item', () => {
     render(
-      <TimelineItem 
-        title="Created" 
-        description="Asset was created" 
-    // @ts-ignore
-        date="2023-01-01" 
-        isLast={false} 
+      <TimelineItem
+        title="Created"
+        description="Asset was created"
+        // @ts-ignore
+        date="2023-01-01"
+        isLast={false}
       />
     );
     expect(screen.getByText('Created')).toBeInTheDocument();

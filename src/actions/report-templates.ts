@@ -10,7 +10,10 @@ import { canManageAssets } from '@/lib/auth/roles';
 import { logAuditAction } from '@/lib/audit';
 import { reportTemplateSchema } from '@/lib/validations/report-templates';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportTemplateRow, CreateReportTemplateResult } from '@/types/standard-reports';
+import type {
+  ReportTemplateRow,
+  CreateReportTemplateResult,
+} from '@/types/standard-reports';
 
 // ---------------------------------------------------------------------------
 // Fetch all report templates
@@ -60,30 +63,29 @@ export async function getReportTemplates(): Promise<ReportTemplateRow[]> {
 // ---------------------------------------------------------------------------
 // Create a new report template
 // ---------------------------------------------------------------------------
-export async function createReportTemplate(
-  data: {
-    name: string;
-    description?: string;
-    isActive: boolean;
-    dataSource: string;
-    filters: {
-      assetType?: string;
-      category?: string;
-      location?: string;
-      status?: string;
-      masterDataType?: string;
-    };
-    fields: string[];
-    sortDirection: string;
-  }
-): Promise<CreateReportTemplateResult> {
+export async function createReportTemplate(data: {
+  name: string;
+  description?: string;
+  isActive: boolean;
+  dataSource: string;
+  filters: {
+    assetType?: string;
+    category?: string;
+    location?: string;
+    status?: string;
+    masterDataType?: string;
+  };
+  fields: string[];
+  sortDirection: string;
+}): Promise<CreateReportTemplateResult> {
   const actionTimer = startLatencyTimer();
 
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || !canManageAssets(currentUser.role)) {
     return {
       success: false,
-      message: 'Forbidden: You do not have permission to create report templates.',
+      message:
+        'Forbidden: You do not have permission to create report templates.',
     };
   }
 
@@ -196,7 +198,8 @@ export async function updateReportTemplate(
   if (!currentUser || !canManageAssets(currentUser.role)) {
     return {
       success: false,
-      message: 'Forbidden: You do not have permission to update report templates.',
+      message:
+        'Forbidden: You do not have permission to update report templates.',
     };
   }
 
@@ -293,14 +296,17 @@ export async function updateReportTemplate(
 // ---------------------------------------------------------------------------
 // Delete a report template
 // ---------------------------------------------------------------------------
-export async function deleteReportTemplate(id: number): Promise<{ success: boolean; message: string }> {
+export async function deleteReportTemplate(
+  id: number
+): Promise<{ success: boolean; message: string }> {
   const actionTimer = startLatencyTimer();
 
   const currentUser = await getAuthenticatedUser();
   if (!currentUser || !canManageAssets(currentUser.role)) {
     return {
       success: false,
-      message: 'Forbidden: You do not have permission to delete report templates.',
+      message:
+        'Forbidden: You do not have permission to delete report templates.',
     };
   }
 
@@ -311,7 +317,10 @@ export async function deleteReportTemplate(id: number): Promise<{ success: boole
       .where(eq(reportTemplates.id, id));
 
     if (existing.length === 0) {
-      return { success: false, message: 'Report template not found or already deleted.' };
+      return {
+        success: false,
+        message: 'Report template not found or already deleted.',
+      };
     }
     const oldRecord = existing[0];
 
@@ -321,7 +330,10 @@ export async function deleteReportTemplate(id: number): Promise<{ success: boole
       .returning({ id: reportTemplates.id });
 
     if (deleted.length === 0) {
-      return { success: false, message: 'Report template not found or already deleted.' };
+      return {
+        success: false,
+        message: 'Report template not found or already deleted.',
+      };
     }
 
     await logAuditAction({
@@ -356,4 +368,3 @@ export async function deleteReportTemplate(id: number): Promise<{ success: boole
     });
   }
 }
-

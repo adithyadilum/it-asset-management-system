@@ -123,7 +123,10 @@ describe('validateRows', () => {
     it('fails when Purchase Date is in the future', () => {
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 1);
-      const row = { ...validRow, 'Purchase Date': futureDate.toISOString().split('T')[0] };
+      const row = {
+        ...validRow,
+        'Purchase Date': futureDate.toISOString().split('T')[0],
+      };
       const result = validateRows([row], mockCache, defaultCategory);
       expect(result.success).toBe(false);
       expect(result.errorRows?.[0].errorStage).toBe('BUSINESS_RULE');
@@ -140,7 +143,11 @@ describe('validateRows', () => {
 
     it('rejects both rows on intra-batch duplicate detection', () => {
       const row1 = { ...validRow, 'Serial Number': 'BATCH-DUP' };
-      const row2 = { ...validRow, 'Serial Number': 'BATCH-DUP', 'Asset Name': 'Second' };
+      const row2 = {
+        ...validRow,
+        'Serial Number': 'BATCH-DUP',
+        'Asset Name': 'Second',
+      };
       const result = validateRows([row1, row2], mockCache, defaultCategory);
       expect(result.success).toBe(false);
       expect(result.errorRows?.length).toBe(2);

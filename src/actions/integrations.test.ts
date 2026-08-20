@@ -12,7 +12,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
@@ -47,7 +48,11 @@ const { mockDb, chain } = vi.hoisted(() => {
 vi.mock('@/db', () => ({ db: mockDb }));
 
 vi.mock('@/db/schema', () => ({
-  apiKeys: { id: 'apiKeys.id', name: 'apiKeys.name', isRevoked: 'apiKeys.isRevoked' },
+  apiKeys: {
+    id: 'apiKeys.id',
+    name: 'apiKeys.name',
+    isRevoked: 'apiKeys.isRevoked',
+  },
   webhookSubscriptions: { id: 'webhookSubscriptions.id' },
 }));
 
@@ -68,7 +73,7 @@ const mockQStashEndpointsDelete = vi.fn();
 
 vi.mock('@upstash/qstash', () => {
   return {
-    Client: vi.fn().mockImplementation(function() {
+    Client: vi.fn().mockImplementation(function () {
       return {
         publishJSON: mockQStashPublishJSON,
         endpoints: {
@@ -123,21 +128,30 @@ describe('createApiKey', () => {
 
   it('returns unauthorized for non-admin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    const result = await createApiKey(formData({ name: 'Test', scopes: '["read:assets"]' }));
+    const result = await createApiKey(
+      formData({ name: 'Test', scopes: '["read:assets"]' })
+    );
     expect(result.success).toBe(false);
     expect(result).toHaveProperty('error', 'Unauthorized');
   });
 
   it('validates scopes and returns error on syntax error', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    const result = await createApiKey(formData({ name: 'Test', scopes: 'not-json' }));
+    const result = await createApiKey(
+      formData({ name: 'Test', scopes: 'not-json' })
+    );
     expect(result.success).toBe(false);
-    expect(result).toHaveProperty('error', expect.stringContaining('valid API key scopes'));
+    expect(result).toHaveProperty(
+      'error',
+      expect.stringContaining('valid API key scopes')
+    );
   });
 
   it('validates schema (name too short)', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    const result = await createApiKey(formData({ name: 'A', scopes: '["read:assets"]' }));
+    const result = await createApiKey(
+      formData({ name: 'A', scopes: '["read:assets"]' })
+    );
     expect(result.success).toBe(false);
     expect(result).toHaveProperty('error');
   });
@@ -146,7 +160,9 @@ describe('createApiKey', () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockDb.insert.mockReturnValue(chain([{ id: 'key-1' }]));
 
-    const result = await createApiKey(formData({ name: 'Prod Key', scopes: '["read:assets"]' }));
+    const result = await createApiKey(
+      formData({ name: 'Prod Key', scopes: '["read:assets"]' })
+    );
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.plainTextKey).toMatch(/^eitams_live_[0-9a-f]+$/);
@@ -198,7 +214,10 @@ describe('revokeApiKey', () => {
   it('revokes key and logs audit', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     const keyId = '00000000-0000-4000-a000-000000000000';
-    mockDb.query.apiKeys.findFirst.mockResolvedValue({ id: keyId, isRevoked: false });
+    mockDb.query.apiKeys.findFirst.mockResolvedValue({
+      id: keyId,
+      isRevoked: false,
+    });
     mockDb.update.mockReturnValue(chain([{ id: keyId }]));
 
     const result = await revokeApiKey(keyId);
@@ -228,7 +247,11 @@ describe('deleteApiKey', () => {
   it('deletes key and logs audit', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     const keyId = '00000000-0000-4000-a000-000000000000';
-    mockDb.query.apiKeys.findFirst.mockResolvedValue({ id: keyId, name: 'Test Key', isRevoked: true });
+    mockDb.query.apiKeys.findFirst.mockResolvedValue({
+      id: keyId,
+      name: 'Test Key',
+      isRevoked: true,
+    });
     mockDb.delete.mockReturnValue(chain([{ id: keyId }]));
 
     const result = await deleteApiKey(keyId);
@@ -251,7 +274,9 @@ describe('createWebhook', () => {
 
   it('returns unauthorized for non-admin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    const result = await createWebhookSubscription(formData({ name: 'Hook', url: 'https://test.com', events: '["ping"]' }));
+    const result = await createWebhookSubscription(
+      formData({ name: 'Hook', url: 'https://test.com', events: '["ping"]' })
+    );
     expect(result.success).toBe(false);
   });
 
@@ -260,7 +285,11 @@ describe('createWebhook', () => {
     mockDb.insert.mockReturnValue(chain([{ id: 'wh_1' }]));
 
     const result = await createWebhookSubscription(
-      formData({ name: 'Prod Hook', url: 'https://test.com/hook', events: '["asset.created"]' })
+      formData({
+        name: 'Prod Hook',
+        url: 'https://test.com/hook',
+        events: '["asset.created"]',
+      })
     );
 
     expect(result.success).toBe(true);
@@ -282,7 +311,10 @@ describe('updateWebhook', () => {
 
   it('returns unauthorized for non-admin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    const result = await updateWebhookSubscription('id', formData({ name: 'New' }));
+    const result = await updateWebhookSubscription(
+      'id',
+      formData({ name: 'New' })
+    );
     expect(result.success).toBe(false);
   });
 
@@ -295,7 +327,10 @@ describe('updateWebhook', () => {
     });
     mockDb.update.mockReturnValue(chain([{ id: webhookId }]));
 
-    const result = await updateWebhookSubscription(webhookId, formData({ isActive: 'false' }));
+    const result = await updateWebhookSubscription(
+      webhookId,
+      formData({ isActive: 'false' })
+    );
 
     expect(result.success).toBe(true);
     // QStash update shouldn't be called if URL isn't changing
@@ -315,7 +350,10 @@ describe('updateWebhook', () => {
     });
     mockDb.update.mockReturnValue(chain([{ id: webhookId }]));
 
-    await updateWebhookSubscription(webhookId, formData({ url: 'https://new.com/hook' }));
+    await updateWebhookSubscription(
+      webhookId,
+      formData({ url: 'https://new.com/hook' })
+    );
 
     expect(mockLogAuditAction).toHaveBeenCalledWith(
       expect.objectContaining({ actionType: 'WEBHOOK_UPDATED' })

@@ -1,62 +1,62 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Clipboard, KeyRound, X } from "lucide-react"
+import { useState } from 'react';
+import { Clipboard, KeyRound, X } from 'lucide-react';
 
-import { tiqriToast } from "@/components/shared/sonner"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { tiqriToast } from '@/components/shared/sonner';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 interface SecretRevealDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  secret: string | null
-  title?: string
-  description?: string
-  warningText?: string
-  closeLabel?: string
-  copyLabel?: string
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  secret: string | null;
+  title?: string;
+  description?: string;
+  warningText?: string;
+  closeLabel?: string;
+  copyLabel?: string;
 }
 
 export function SecretRevealDialog({
   open,
   onOpenChange,
   secret,
-  title = "API Key - Copy & Store Securely",
-  description = "This is the only time the plaintext key will be shown. Store it securely.",
-  warningText = "Please copy this key and store it securely. For security reasons, you will never be able to view it again.",
-  closeLabel = "I have copied my key (Close)",
-  copyLabel = "Copy",
+  title = 'API Key - Copy & Store Securely',
+  description = 'This is the only time the plaintext key will be shown. Store it securely.',
+  warningText = 'Please copy this key and store it securely. For security reasons, you will never be able to view it again.',
+  closeLabel = 'I have copied my key (Close)',
+  copyLabel = 'Copy',
 }: SecretRevealDialogProps) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     if (!secret) {
-      return
+      return;
     }
 
     try {
-      await navigator.clipboard.writeText(secret)
-      setCopied(true)
-      tiqriToast.success("Key copied to clipboard")
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+      tiqriToast.success('Key copied to clipboard');
     } catch {
-      tiqriToast.error("Failed to copy to clipboard")
+      tiqriToast.error('Failed to copy to clipboard');
     }
-  }
+  };
 
   const handleClose = () => {
-    onOpenChange(false)
-    setCopied(false)
-  }
+    onOpenChange(false);
+    setCopied(false);
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
-          onOpenChange(true)
+          onOpenChange(true);
         } else {
-          handleClose()
+          handleClose();
         }
       }}
     >
@@ -81,11 +81,13 @@ export function SecretRevealDialog({
             </Button>
           </div>
 
-          <p className="mb-5 text-base leading-7 text-muted-foreground">{description}</p>
+          <p className="mb-5 text-base leading-7 text-muted-foreground">
+            {description}
+          </p>
 
           <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-muted px-4 py-3 shadow-sm">
             <code className="min-w-0 truncate font-mono text-sm font-medium text-foreground">
-              {secret ?? ""}
+              {secret ?? ''}
             </code>
             <Button
               onClick={handleCopy}
@@ -93,7 +95,7 @@ export function SecretRevealDialog({
               className="h-9 shrink-0 gap-2 rounded-md border border-border bg-background px-4 text-sm font-semibold text-foreground hover:bg-muted"
             >
               <Clipboard className="h-4 w-4 text-foreground" />
-              {copied ? "Copied" : copyLabel}
+              {copied ? 'Copied' : copyLabel}
             </Button>
           </div>
 
@@ -110,5 +112,5 @@ export function SecretRevealDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

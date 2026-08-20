@@ -60,8 +60,13 @@ describe('createApiKeySchema', () => {
 
   it('accepts all valid scope values', () => {
     const allScopes = [
-      'read:assets', 'read:assets:by-user', 'write:assets',
-      'read:users', 'read:maintenance', 'read:disposals', 'read:financials',
+      'read:assets',
+      'read:assets:by-user',
+      'write:assets',
+      'read:users',
+      'read:maintenance',
+      'read:disposals',
+      'read:financials',
     ];
     const result = createApiKeySchema.safeParse({
       name: 'Full Access Key',
@@ -184,10 +189,14 @@ describe('createWebhookSchema', () => {
 
   it('accepts all valid event types', () => {
     const allEvents = [
-      'asset.created', 'asset.status_changed',
-      'assignment.created', 'assignment.returned',
-      'maintenance.created', 'maintenance.completed',
-      'disposal.requested', 'disposal.approved',
+      'asset.created',
+      'asset.status_changed',
+      'assignment.created',
+      'assignment.returned',
+      'maintenance.created',
+      'maintenance.completed',
+      'disposal.requested',
+      'disposal.approved',
       'ping',
     ];
     const result = createWebhookSchema.safeParse({

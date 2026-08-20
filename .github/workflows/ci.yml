@@ -1,45 +1,86 @@
-name: CI Pipeline (Lint & Type Check)
+name: CI
 
-# 1. When does this run?
-# Every time someone opens or updates a Pull Request targeting 'dev' or 'main'
 on:
+  push:
+    branches: [dev, main]
   pull_request:
-    branches: ['dev', 'main']
-    paths-ignore:
-      - '**/*.md' # Ignores any markdown file anywhere
-      - 'docs/**' # Ignores the entire docs folder
-      - '.gitignore' # Ignores git config changes
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  code-quality-checks:
-    name: Lint & Type Check
+  quality:
+    name: Quality, tests, migrations, and build
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: .
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: eitams_test
+        ports:
+          - 54322:5432
+        options: >-
+          --health-cmd "pg_isready -U test_user -d eitams_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://test_user:test_password@localhost:54322/eitams_test
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-nextauth-secret-at-least-32-characters
+      MOBILE_JWT_SECRET: ci-mobile-jwt-secret-at-least-32-characters
+      KEYCLOAK_CLIENT_ID: ci-client
+      KEYCLOAK_CLIENT_SECRET: ci-client-secret
+      KEYCLOAK_ISSUER: https://keycloak.example.test/realms/eitams
+      ENCRYPTION_SECRET: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      UPSTASH_REDIS_REST_URL: https://redis.example.test
+      UPSTASH_REDIS_REST_TOKEN: ci-redis-token
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
 
     steps:
-      # 3. Download the code onto the temporary GitHub server
-      - name: Checkout Code
-        uses: actions/checkout@v7
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
-      # 4. Install Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '20' # Use the latest stable LTS version
-          cache: 'npm'
-          cache-dependency-path: './package-lock.json'
+          node-version: '22'
+          cache: npm
 
-      # 5. Install the project dependencies (using ci for strict lockfile adherence)
-      - name: Install Dependencies
-        run: npm install
+      - name: Install dependencies
+        run: npm ci
 
-      # 6. Run the Next.js Linter (Catches syntax errors and unused variables)
-      - name: Run ESLint
-        run: npm run lint
+      - name: Apply migrations from zero
+        run: npm run db:migrate
 
-      # 7. Run TypeScript (Catches type mismatch errors without building the app)
-      - name: Run Type Check
-        run: npx tsc --noEmit
+      # The deployed databases were provisioned with `drizzle-kit push`, so they
+      # already hold every object the baseline creates. Re-running proves the
+      # migration no-ops against a populated database instead of failing on the
+      # first CREATE that already exists.
+      - name: Re-apply migrations to prove they are idempotent
+        run: |
+          psql "$DATABASE_URL" -c 'DELETE FROM drizzle.__drizzle_migrations;'
+          npm run db:migrate
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint and typecheck
+        run: npm run check
+
+      - name: Run tests with coverage thresholds
+        run: npm run test:coverage
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Audit high-severity dependencies
+        run: npm audit --audit-level=high

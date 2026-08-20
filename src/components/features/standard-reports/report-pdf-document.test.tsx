@@ -3,7 +3,9 @@ import { ReportPdfDocument } from './report-pdf-document';
 
 // Mock react-pdf since it relies on node/browser streams not present in pure jsdom effectively
 vi.mock('@react-pdf/renderer', () => ({
-  Document: ({ children }: any) => <div data-testid="pdf-document">{children}</div>,
+  Document: ({ children }: any) => (
+    <div data-testid="pdf-document">{children}</div>
+  ),
   Page: ({ children }: any) => <div data-testid="pdf-page">{children}</div>,
   View: ({ children }: any) => <div data-testid="pdf-view">{children}</div>,
   Text: ({ children }: any) => <div data-testid="pdf-text">{children}</div>,

@@ -59,9 +59,7 @@ describe('auditLogQuerySchema', () => {
 
   it('accepts valid filter with field, operator, value', () => {
     const result = auditLogQuerySchema.safeParse({
-      filters: [
-        { field: 'Action Taken', operator: 'is', value: 'CREATE' },
-      ],
+      filters: [{ field: 'Action Taken', operator: 'is', value: 'CREATE' }],
     });
     expect(result.success).toBe(true);
   });
@@ -78,18 +76,14 @@ describe('auditLogQuerySchema', () => {
 
   it('rejects filter with invalid field', () => {
     const result = auditLogQuerySchema.safeParse({
-      filters: [
-        { field: 'Invalid Field', operator: 'is', value: 'test' },
-      ],
+      filters: [{ field: 'Invalid Field', operator: 'is', value: 'test' }],
     });
     expect(result.success).toBe(false);
   });
 
   it('rejects filter with empty value', () => {
     const result = auditLogQuerySchema.safeParse({
-      filters: [
-        { field: 'Action Taken', operator: 'is', value: '' },
-      ],
+      filters: [{ field: 'Action Taken', operator: 'is', value: '' }],
     });
     expect(result.success).toBe(false);
   });
@@ -122,7 +116,13 @@ describe('auditLogQuerySchema', () => {
   });
 
   it('accepts all valid field values', () => {
-    const validFields = ['Action Taken', 'User', 'Target Entity', 'IP Address', 'Event Details'];
+    const validFields = [
+      'Action Taken',
+      'User',
+      'Target Entity',
+      'IP Address',
+      'Event Details',
+    ];
     for (const field of validFields) {
       const result = auditLogQuerySchema.safeParse({
         filters: [{ field, operator: 'is', value: 'test' }],

@@ -14,8 +14,8 @@ vi.mock('server-only', () => ({}));
 // Provide dummy environment variables for tests so Zod validation doesn't crash
 process.env.DATABASE_URL = 'postgresql://test:test@localhost/test';
 process.env.NEXTAUTH_URL = 'http://localhost:3000';
-process.env.NEXTAUTH_SECRET = 'test-secret-min-16-chars!';
-process.env.MOBILE_JWT_SECRET = 'test-secret-min-16-chars!';
+process.env.NEXTAUTH_SECRET = 'test-nextauth-secret-at-least-32-characters';
+process.env.MOBILE_JWT_SECRET = 'test-mobile-jwt-secret-at-least-32-characters';
 process.env.ENCRYPTION_SECRET = 'dGVzdC1zZWNyZXQtbWluLTE2LWNoYXJzLWZvci1lcmk=';
 process.env.QSTASH_CURRENT_SIGNING_KEY = 'mock-current-signing-key';
 process.env.QSTASH_NEXT_SIGNING_KEY = 'mock-next-signing-key';

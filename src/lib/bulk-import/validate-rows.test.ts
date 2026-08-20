@@ -5,10 +5,30 @@ import { MasterDataCache } from '@/lib/bulk-import/resolve-references';
 describe('validateRows', () => {
   const getMockCache = (): MasterDataCache => ({
     brands: new Map([['apple', { id: 1, name: 'Apple', isActive: true }]]),
-    models: new Map([['macbook pro|1', { id: 1, name: 'MacBook Pro', isActive: true, brandId: 1, categoryId: 1 }]]),
-    locations: new Map([['hq', { id: 1, name: 'HQ', isActive: true, type: 'Building', parentId: null }]]),
-    owners: new Map([['john doe', { id: 1, name: 'John Doe', isActive: true }]]),
-    vendors: new Map([['best buy', { id: 1, name: 'Best Buy', isActive: true }]]),
+    models: new Map([
+      [
+        'macbook pro|1',
+        {
+          id: 1,
+          name: 'MacBook Pro',
+          isActive: true,
+          brandId: 1,
+          categoryId: 1,
+        },
+      ],
+    ]),
+    locations: new Map([
+      [
+        'hq',
+        { id: 1, name: 'HQ', isActive: true, type: 'Building', parentId: null },
+      ],
+    ]),
+    owners: new Map([
+      ['john doe', { id: 1, name: 'John Doe', isActive: true }],
+    ]),
+    vendors: new Map([
+      ['best buy', { id: 1, name: 'Best Buy', isActive: true }],
+    ]),
     serialNumbers: new Set(['already-exists-sn']),
   });
 
@@ -26,7 +46,7 @@ describe('validateRows', () => {
     'Serial Number': 'NEW-SN-123',
     'Location Name': 'HQ',
     'Owner Name': 'John Doe',
-    'Condition': 'New',
+    Condition: 'New',
     'Currency Code': 'USD',
   };
 
@@ -62,8 +82,8 @@ describe('validateRows', () => {
   });
 
   it('collects all validation errors in one pass', () => {
-    const invalidRow = { 
-      'Brand Name': '', 
+    const invalidRow = {
+      'Brand Name': '',
       'Model Name': 'MacBook Pro',
       'Purchase Date': '2023-01-01',
       'Base Price': '1500',

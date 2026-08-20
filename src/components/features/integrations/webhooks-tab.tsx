@@ -1,11 +1,11 @@
-import type { WebhookSubscriptionDisplay } from "@/types/integrations"
+import type { WebhookSubscriptionDisplay } from '@/types/integrations';
 
-import { WebhooksTabClient } from "./webhooks-tab-client"
+import { WebhooksTabClient } from './webhooks-tab-client';
 
 interface WebhooksTabProps {
-  subscriptions: WebhookSubscriptionDisplay[]
+  subscriptions: WebhookSubscriptionDisplay[];
 }
 
 export function WebhooksTab({ subscriptions }: WebhooksTabProps) {
-  return <WebhooksTabClient subscriptions={subscriptions} />
+  return <WebhooksTabClient subscriptions={subscriptions} />;
 }

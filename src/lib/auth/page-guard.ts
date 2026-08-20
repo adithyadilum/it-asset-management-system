@@ -23,7 +23,7 @@ import type { UserRole } from '@/types/auth';
  * const user = await requirePageAuth(canManageAssets);
  */
 export async function requirePageAuth(
-  canAccess?: (role: UserRole) => boolean,
+  canAccess?: (role: UserRole) => boolean
 ): Promise<AuthenticatedUser> {
   const user = await getAuthenticatedUser();
 

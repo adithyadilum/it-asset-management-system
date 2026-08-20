@@ -1,6 +1,6 @@
-"use client"
+'use client';
 
-import * as React from "react"
+import * as React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,17 +8,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 interface StandardModalProps {
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  title: string
-  description?: string
-  children: React.ReactNode
-  footer?: React.ReactNode
-  className?: string
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  className?: string;
 }
 
 /**
@@ -36,7 +36,7 @@ export function StandardModal({
 }: StandardModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("sm:max-w-[425px] rounded-xl", className)}>
+      <DialogContent className={cn('sm:max-w-[425px] rounded-xl', className)}>
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-foreground">
             {title}
@@ -47,10 +47,8 @@ export function StandardModal({
             </DialogDescription>
           )}
         </DialogHeader>
-        
-        <div className="py-4">
-          {children}
-        </div>
+
+        <div className="py-4">{children}</div>
 
         {footer && (
           <DialogFooter className="gap-2 sm:gap-0 bg-background px-4 py-3 rounded-b-xl">
@@ -59,5 +57,5 @@ export function StandardModal({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

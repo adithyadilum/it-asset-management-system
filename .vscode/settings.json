@@ -1,10 +1,10 @@
 {
-    "css.lint.unknownAtRules": "ignore",
-    "scss.lint.unknownAtRules": "ignore",
-    "less.lint.unknownAtRules": "ignore",
-    "chat.tools.terminal.autoApprove": {
-        "npm run lint": true,
-        "npm run build": true
-    },
-    "git.addAICoAuthor": "off"
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+  "chat.tools.terminal.autoApprove": {
+    "npm run lint": true,
+    "npm run build": true
+  },
+  "git.addAICoAuthor": "off"
 }

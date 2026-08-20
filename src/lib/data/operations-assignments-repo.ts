@@ -1,3 +1,4 @@
+import { logInfo } from '@/lib/latency';
 import {
   and,
   desc,
@@ -30,6 +31,25 @@ import { sendAssetNotification } from '../notifications';
 type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
 
 export type AssignmentsDashboardTab = 'available' | 'assigned' | 'returned';
+
+const OVERDUE_REFRESH_INTERVAL_MS = 60_000;
+let lastOverdueRefreshAt = 0;
+let inFlightOverdueRefresh: Promise<void> | null = null;
+
+async function refreshOverdueAssignmentsForDashboard() {
+  if (Date.now() - lastOverdueRefreshAt < OVERDUE_REFRESH_INTERVAL_MS) return;
+  if (inFlightOverdueRefresh) return inFlightOverdueRefresh;
+
+  inFlightOverdueRefresh = refreshOverdueAssignments()
+    .then(() => {
+      lastOverdueRefreshAt = Date.now();
+    })
+    .finally(() => {
+      inFlightOverdueRefresh = null;
+    });
+
+  return inFlightOverdueRefresh;
+}
 
 export interface AssignmentsDashboardRow {
   id: string;
@@ -487,7 +507,7 @@ export async function getAssignmentsDashboardData(
   tab?: AssignmentsDashboardTab
 ): Promise<AssignmentsDashboardData> {
   // Automatic refresh of overdue states on data load
-  await refreshOverdueAssignments();
+  await refreshOverdueAssignmentsForDashboard();
 
   if (tab === 'assigned') {
     const assigned = await loadAssetsByStatus('Assigned');
@@ -788,11 +808,7 @@ export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {
 export async function updateAssignmentsState(
   assignmentIds: number[],
   newState:
-    | 'pending approval'
-    | 'assigned'
-    | 'overdue'
-    | 'requested'
-    | 'returned'
+    'pending approval' | 'assigned' | 'overdue' | 'requested' | 'returned'
 ): Promise<void> {
   if (assignmentIds.length === 0) return;
 
@@ -852,7 +868,10 @@ export async function triggerAssignmentReminders(
             targetUrl: '/dashboard',
           });
         } catch (error) {
-          console.error('Failed to dispatch in-app return reminder alert:', error);
+          console.error(
+            'Failed to dispatch in-app return reminder alert:',
+            error
+          );
         }
       }
 
@@ -1072,7 +1091,7 @@ export async function refreshOverdueAssignments(): Promise<void> {
     .returning({ id: assetAssignments.id });
 
   if (updated.length > 0) {
-    console.log(`Refreshed ${updated.length} overdue assignments.`);
+    logInfo(`Refreshed ${updated.length} overdue assignments.`);
   }
 
   // Optional: We can log how many were overdue, but for now we just satisfy the returning rule.
@@ -1146,10 +1165,10 @@ export async function processAssetReturn(
     // 1. Update asset status and physical condition
     const updated = await tx
       .update(assets)
-      .set({ 
-        status: newStatus, 
+      .set({
+        status: newStatus,
         condition: input.physicalCondition,
-        updatedAt: new Date() 
+        updatedAt: new Date(),
       })
       .where(and(eq(assets.id, input.assetId), eq(assets.status, 'Returned')))
       .returning({ id: assets.id });

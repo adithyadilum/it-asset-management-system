@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { serverEnv } from '@/lib/env';
-import * as jose from 'jose';
 import { db } from '@/db';
-import { systemAuditLogs, users, linkedDevices } from '@/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { systemAuditLogs, users } from '@/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { extractLabelFromValues } from '@/lib/audit';
-
-const MOBILE_SECRET = new TextEncoder().encode(
-  serverEnv.MOBILE_JWT_SECRET
-);
+import { withMobileAuth } from '@/lib/api/with-auth';
+import { canViewAuditLog } from '@/lib/auth/roles';
 
 /** Humanise camelCase / snake_case entity type strings into readable words. */
 function humanizeEntityType(entityType: string): string {
@@ -41,8 +37,10 @@ function buildEventDetails(
   }
 
   if (!oldValue && !newValue) {
-    if (action === 'CREATE') return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
-    if (action === 'DELETE') return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
+    if (action === 'CREATE')
+      return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
+    if (action === 'DELETE')
+      return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
     return 'Updated record';
   }
 
@@ -63,8 +61,10 @@ function buildEventDetails(
     }
   }
 
-  if (action === 'CREATE') return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
-  if (action === 'DELETE') return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
+  if (action === 'CREATE')
+    return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
+  if (action === 'DELETE')
+    return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
   return 'Updated record';
 }
 
@@ -87,50 +87,8 @@ function buildEventDetails(
  *   }>
  * }
  */
-export async function GET(req: Request) {
-  // --- 1. Authenticate via mobile JWT ---
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const token = authHeader.slice(7).trim();
-
-  let userId: string;
-  try {
-    const { payload } = await jose.jwtVerify(token, MOBILE_SECRET);
-
-    // Verify the device is still active (not revoked)
-    if (payload.jti) {
-      const [device] = await db
-        .select({ id: linkedDevices.id, isRevoked: linkedDevices.isRevoked })
-        .from(linkedDevices)
-        .where(
-          and(
-            eq(linkedDevices.jwtId, payload.jti),
-            eq(linkedDevices.isRevoked, false)
-          )
-        )
-        .limit(1);
-
-      if (!device) {
-        return NextResponse.json(
-          { error: 'Device has been unlinked. Please re-pair your device.' },
-          { status: 401 }
-        );
-      }
-    }
-
-    userId = String(payload.id);
-  } catch {
-    return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
-  }
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // --- 2. Fetch the 5 most recent audit log entries ---
+export const GET = withMobileAuth(canViewAuditLog, async () => {
+  // Fetch the 5 most recent audit log entries.
   try {
     const records = await db
       .select({
@@ -164,7 +122,12 @@ export async function GET(req: Request) {
       return {
         id: record.id,
         action: record.actionType,
-        event: buildEventDetails(record.actionType, record.entityType, oldValue, newValue),
+        event: buildEventDetails(
+          record.actionType,
+          record.entityType,
+          oldValue,
+          newValue
+        ),
         entityType: record.entityType,
         entityLabel,
         performedBy: record.performedById
@@ -180,6 +143,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ data });
   } catch (error) {
     console.error('[GET /api/v1/activity/recent] DB error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
-}
+});

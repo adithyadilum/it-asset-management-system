@@ -37,57 +37,55 @@ This document outlines the key end-to-end workflows for each persona using the I
 - [3. Cross-Persona Handoff Matrix](#3-cross-persona-handoff-matrix)
 - [4. Error & Exception Path Catalogue](#4-error--exception-path-catalogue)
 
-
-
 ## 1. Personas
 
 ### 1.1 Global Administrator
 
-| Attribute          | Detail                                                                                                     |
-| :----------------- | :--------------------------------------------------------------------------------------------------------- |
-| **Azure AD Group** | Mapped via Settings → User Roles & Access (REQ-FND-1.4); auto-assigned from AD Group attributes (REQ-FND-1.5). |
-| **Description**    | Primary power users and custodians of the asset registry. Responsible for all administrative functions, system configuration, and compliance oversight. |
-| **Frequency**      | Daily / Continuous.                                                                                        |
+| Attribute          | Detail                                                                                                                                                                                                                                                                        |
+| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Azure AD Group** | Mapped via Settings → User Roles & Access (REQ-FND-1.4); auto-assigned from AD Group attributes (REQ-FND-1.5).                                                                                                                                                                |
+| **Description**    | Primary power users and custodians of the asset registry. Responsible for all administrative functions, system configuration, and compliance oversight.                                                                                                                       |
+| **Frequency**      | Daily / Continuous.                                                                                                                                                                                                                                                           |
 | **Permissions**    | Full CRUD on all modules. Register assets, override lifecycle statuses, manage master data & categories, view all financial data, configure alert thresholds, generate/revoke API keys, register webhooks, approve/reject disposals, assign roles, bulk import, bulk dispose. |
-| **Key Needs**      | Efficiency via keyboard shortcuts (`Ctrl+K` search, `Ctrl+/` sidebar), detailed inline error messages, fast page loads (<2 s). |
+| **Key Needs**      | Efficiency via keyboard shortcuts (`Ctrl+K` search, `Ctrl+/` sidebar), detailed inline error messages, fast page loads (<2 s).                                                                                                                                                |
 
 ### 1.2 IT Operations Admin
 
-| Attribute          | Detail                                                                                                     |
-| :----------------- | :--------------------------------------------------------------------------------------------------------- |
-| **Azure AD Group** | Auto-assigned via AD group; overridable by Global Admin.                                                   |
-| **Description**    | Manages day-to-day asset lifecycle operations — assignments, returns, repairs, triage, and disposal intake. |
-| **Frequency**      | Daily.                                                                                                     |
+| Attribute          | Detail                                                                                                                                                                                                       |
+| :----------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Azure AD Group** | Auto-assigned via AD group; overridable by Global Admin.                                                                                                                                                     |
+| **Description**    | Manages day-to-day asset lifecycle operations — assignments, returns, repairs, triage, and disposal intake.                                                                                                  |
+| **Frequency**      | Daily.                                                                                                                                                                                                       |
 | **Permissions**    | Assign assets, request returns, process check-ins, dispatch vendor repairs, close repairs, flag for disposal, flag as Missing/Lost. **Cannot** approve disposals, access Financials module, or manage roles. |
-| **Key Needs**      | Fast triage flow, slide-out panels with financial context (warranty status, book value), overdue repair visibility. |
+| **Key Needs**      | Fast triage flow, slide-out panels with financial context (warranty status, book value), overdue repair visibility.                                                                                          |
 
 ### 1.3 Finance Admin
 
-| Attribute          | Detail                                                                                                     |
-| :----------------- | :--------------------------------------------------------------------------------------------------------- |
-| **Azure AD Group** | Auto-assigned from "Finance Team" AD group → baseline "Finance Read-Only".                                 |
-| **Description**    | Reviews dashboards, reports, and cost analysis. Approves or rejects disposal requests with financial context. |
-| **Frequency**      | Periodic (monthly audits, annual budgets) plus as-needed for disposal approvals.                           |
+| Attribute          | Detail                                                                                                                                                                                                                            |
+| :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Azure AD Group** | Auto-assigned from "Finance Team" AD group → baseline "Finance Read-Only".                                                                                                                                                        |
+| **Description**    | Reviews dashboards, reports, and cost analysis. Approves or rejects disposal requests with financial context.                                                                                                                     |
+| **Frequency**      | Periodic (monthly audits, annual budgets) plus as-needed for disposal approvals.                                                                                                                                                  |
 | **Permissions**    | Read-only for Dashboards, Reports, Depreciation Ledger, TCO Ledger, Write-Offs & Salvage (REQ-FIN-5.3). Can reject disposal or approve via Hard-Stop Compliance modal. **Cannot** register assets, assign, or manage master data. |
-| **Key Needs**      | Accurate summarised data, clear visualisations, exportable formats (Excel / PDF / CSV).                    |
+| **Key Needs**      | Accurate summarised data, clear visualisations, exportable formats (Excel / PDF / CSV).                                                                                                                                           |
 
 ### 1.4 Standard Employee
 
-| Attribute          | Detail                                                                                                     |
-| :----------------- | :--------------------------------------------------------------------------------------------------------- |
-| **Azure AD Group** | Default baseline role auto-assigned to all authenticated users.                                            |
-| **Description**    | General staff (developers, HR, sales) who are assigned IT assets. Interact only with self-service features. |
-| **Frequency**      | Infrequent (onboarding, asset return, incident reporting).                                                 |
+| Attribute          | Detail                                                                                                                                                                                                                               |
+| :----------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Azure AD Group** | Default baseline role auto-assigned to all authenticated users.                                                                                                                                                                      |
+| **Description**    | General staff (developers, HR, sales) who are assigned IT assets. Interact only with self-service features.                                                                                                                          |
+| **Frequency**      | Infrequent (onboarding, asset return, incident reporting).                                                                                                                                                                           |
 | **Permissions**    | Read-only "My Assets" portal (REQ-OPS-3.1). Confirm custody via Digital Acceptance link. Submit "Report Issue" damage tickets (REQ-OPS-3.15). **Cannot** edit asset details, access the registry grid, financials, or admin screens. |
-| **Key Needs**      | Clarity on assigned equipment, mobile-friendly interface, zero-training required.                          |
+| **Key Needs**      | Clarity on assigned equipment, mobile-friendly interface, zero-training required.                                                                                                                                                    |
 
 ### 1.5 System Actors
 
-| Actor                   | Description                                                                                                |
-| :---------------------- | :--------------------------------------------------------------------------------------------------------- |
-| **CRON Alert Engine**   | Nightly scheduler (02:00 AM UTC) that scans for threshold breaches and dispatches alert digests via Email, Teams, and In-App. |
-| **External API Consumer** | Third-party systems (e.g., HR, Finance) authenticated via hashed API keys. Rate-limited (100 req/min/key) read-only data fetches and webhook event reception. |
-| **External Auditor / Vendor** | No direct system login. Compliance data delivered via exported reports and the immutable audit log CSV export. |
+| Actor                         | Description                                                                                                                                                   |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **CRON Alert Engine**         | Nightly scheduler (02:00 AM UTC) that scans for threshold breaches and dispatches alert digests via Email, Teams, and In-App.                                 |
+| **External API Consumer**     | Third-party systems (e.g., HR, Finance) authenticated via hashed API keys. Rate-limited (100 req/min/key) read-only data fetches and webhook event reception. |
+| **External Auditor / Vendor** | No direct system login. Compliance data delivered via exported reports and the immutable audit log CSV export.                                                |
 
 ---
 
@@ -95,11 +93,11 @@ This document outlines the key end-to-end workflows for each persona using the I
 
 ### J1 — Authentication & Role-Based Routing
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | All personas.                                           |
-| **Trigger**     | User navigates to `assets.tiqri.com`.                   |
-| **Precondition**| Active Azure AD (Entra ID) account with TIQRI tenant.   |
+| Attribute        | Detail                                                |
+| :--------------- | :---------------------------------------------------- |
+| **Actors**       | All personas.                                         |
+| **Trigger**      | User navigates to `assets.tiqri.com`.                 |
+| **Precondition** | Active Azure AD (Entra ID) account with TIQRI tenant. |
 
 **Steps:**
 
@@ -113,21 +111,21 @@ This document outlines the key end-to-end workflows for each persona using the I
 
 **Error Paths:**
 
-| Condition                      | Response                                                        |
-| :----------------------------- | :-------------------------------------------------------------- |
-| Invalid credentials            | Azure AD error page (outside IDAMS).                            |
-| Disabled AD account            | JWT rejected → "Account disabled. Contact IT support."          |
-| Unauthorised route access      | `403 Forbidden` + audit log entry (NFR-SEC-02).                 |
+| Condition                 | Response                                               |
+| :------------------------ | :----------------------------------------------------- |
+| Invalid credentials       | Azure AD error page (outside IDAMS).                   |
+| Disabled AD account       | JWT rejected → "Account disabled. Contact IT support." |
+| Unauthorised route access | `403 Forbidden` + audit log entry (NFR-SEC-02).        |
 
 ---
 
 ### J2 — Role Mapping
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin.                                           |
-| **Trigger**     | Admin navigates to Settings → User Roles & Access.      |
-| **Screen**      | Role Mapping — Split-View UI (§1.1 wireframe).          |
+| Attribute   | Detail                                             |
+| :---------- | :------------------------------------------------- |
+| **Actors**  | Global Admin.                                      |
+| **Trigger** | Admin navigates to Settings → User Roles & Access. |
+| **Screen**  | Role Mapping — Split-View UI (§1.1 wireframe).     |
 
 **Steps:**
 
@@ -144,11 +142,11 @@ This document outlines the key end-to-end workflows for each persona using the I
 
 ### J3 — Master Data Management
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin.                                           |
-| **Trigger**     | Admin navigates to Settings → Master Data.              |
-| **Screen**      | Master Data — Table & CRUD Modals (§1.3 wireframe).     |
+| Attribute   | Detail                                              |
+| :---------- | :-------------------------------------------------- |
+| **Actors**  | Global Admin.                                       |
+| **Trigger** | Admin navigates to Settings → Master Data.          |
+| **Screen**  | Master Data — Table & CRUD Modals (§1.3 wireframe). |
 
 **Steps:**
 
@@ -164,20 +162,20 @@ This document outlines the key end-to-end workflows for each persona using the I
 
 **Error Paths:**
 
-| Condition                   | Response                                                             |
-| :-------------------------- | :------------------------------------------------------------------- |
-| Dependent assets exist      | Delete blocked with count: _"Contains 142 active assets."_          |
-| Duplicate name              | Inline validation error.                                            |
+| Condition              | Response                                                   |
+| :--------------------- | :--------------------------------------------------------- |
+| Dependent assets exist | Delete blocked with count: _"Contains 142 active assets."_ |
+| Duplicate name         | Inline validation error.                                   |
 
 ---
 
 ### J4 — Category & EAV Schema Builder
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin.                                           |
-| **Trigger**     | Admin creates or edits an asset category.               |
-| **Screen**      | Category Builder — Slide-Out Panel (§1.2 wireframe).    |
+| Attribute   | Detail                                               |
+| :---------- | :--------------------------------------------------- |
+| **Actors**  | Global Admin.                                        |
+| **Trigger** | Admin creates or edits an asset category.            |
+| **Screen**  | Category Builder — Slide-Out Panel (§1.2 wireframe). |
 
 **Steps:**
 
@@ -194,22 +192,23 @@ This document outlines the key end-to-end workflows for each persona using the I
 
 ### J5 — Single Asset Registration
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, IT Operations Admin.                      |
-| **Trigger**     | Admin clicks "+ New Asset" from the Asset Registry grid. |
-| **Screen**      | Asset Registration Wizard (§2.1 wireframe).              |
+| Attribute   | Detail                                                   |
+| :---------- | :------------------------------------------------------- |
+| **Actors**  | Global Admin, IT Operations Admin.                       |
+| **Trigger** | Admin clicks "+ New Asset" from the Asset Registry grid. |
+| **Screen**  | Asset Registration Wizard (§2.1 wireframe).              |
 
 **Steps:**
 
-| Step | Screen                        | Actions                                                                                             |
-| :--- | :---------------------------- | :-------------------------------------------------------------------------------------------------- |
-| 1    | **Basic Info**                | Select Category (triggers dynamic field loading), enter Asset Name, Serial Number (unique validation), select Location (Building > Floor > Room), Brand → cascading Model, Vendor. |
-| 2    | **Technical Details**         | Dynamic EAV fields rendered from category schema. E.g., Laptops: CPU, RAM, Storage, OS. Furniture: Dimensions, Material. Fields swap instantly on category change. |
-| 3    | **Financial Info** (§2.2)     | Base Price, Tax, Shipping (auto-calculated Total). Currency selector (NOK / USD / LKR). Invoice PDF drag-and-drop upload. |
-| 4    | **Review & Submit**           | Read-only summary of all data. "Submit" commits the record.                                         |
+| Step | Screen                    | Actions                                                                                                                                                                            |
+| :--- | :------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | **Basic Info**            | Select Category (triggers dynamic field loading), enter Asset Name, Serial Number (unique validation), select Location (Building > Floor > Room), Brand → cascading Model, Vendor. |
+| 2    | **Technical Details**     | Dynamic EAV fields rendered from category schema. E.g., Laptops: CPU, RAM, Storage, OS. Furniture: Dimensions, Material. Fields swap instantly on category change.                 |
+| 3    | **Financial Info** (§2.2) | Base Price, Tax, Shipping (auto-calculated Total). Currency selector (NOK / USD / LKR). Invoice PDF drag-and-drop upload.                                                          |
+| 4    | **Review & Submit**       | Read-only summary of all data. "Submit" commits the record.                                                                                                                        |
 
 On submit:
+
 - System auto-generates Asset ID (`{PREFIX}-{SEQUENCE}`, e.g., `LAP-0142`).
 - QR code generated encoding `assets.tiqri.com/asset/{ASSET_ID}`.
 - Initial status set to `Available`.
@@ -217,10 +216,10 @@ On submit:
 
 **Decision Points:**
 
-| Condition                   | Outcome                                                        |
-| :-------------------------- | :------------------------------------------------------------- |
-| Duplicate Serial Number     | Submission blocked: _"Duplicate Serial Number detected (linked to AST-00045)."_ (REQ-REG-2.16). |
-| Consumable category         | Serial number field bypassed; quantity tracking enabled instead (REQ-REG-2.5). |
+| Condition               | Outcome                                                                                         |
+| :---------------------- | :---------------------------------------------------------------------------------------------- |
+| Duplicate Serial Number | Submission blocked: _"Duplicate Serial Number detected (linked to AST-00045)."_ (REQ-REG-2.16). |
+| Consumable category     | Serial number field bypassed; quantity tracking enabled instead (REQ-REG-2.5).                  |
 
 **End State:** Asset registered with unique ID, QR code generated, audit event logged.
 
@@ -228,11 +227,11 @@ On submit:
 
 ### J6 — Bulk Import (CSV / Excel)
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, IT Operations Admin.                      |
-| **Trigger**     | Admin uploads a CSV/Excel file from the registry toolbar. |
-| **Screens**     | Column Mapping UI, Post-Import Summary Modal.            |
+| Attribute   | Detail                                                    |
+| :---------- | :-------------------------------------------------------- |
+| **Actors**  | Global Admin, IT Operations Admin.                        |
+| **Trigger** | Admin uploads a CSV/Excel file from the registry toolbar. |
+| **Screens** | Column Mapping UI, Post-Import Summary Modal.             |
 
 **Steps:**
 
@@ -249,11 +248,11 @@ On submit:
 
 **Error Paths:**
 
-| Condition                        | Response                                                        |
-| :------------------------------- | :-------------------------------------------------------------- |
-| Intra-batch duplicate serials    | Both rows rejected with cross-reference message.                |
-| Concurrent import in progress    | _"A bulk import is currently in progress."_ (advisory lock).    |
-| Invalid file format              | Parse error toast.                                              |
+| Condition                     | Response                                                     |
+| :---------------------------- | :----------------------------------------------------------- |
+| Intra-batch duplicate serials | Both rows rejected with cross-reference message.             |
+| Concurrent import in progress | _"A bulk import is currently in progress."_ (advisory lock). |
+| Invalid file format           | Parse error toast.                                           |
 
 **End State:** Valid assets registered; error report available for review and re-import of failed rows.
 
@@ -261,11 +260,11 @@ On submit:
 
 ### J7 — Asset Assignment
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, IT Operations Admin → triggers Employee handoff. |
-| **Trigger**     | Admin clicks "Assign" from slide-out footer or grid action menu (⋯). |
-| **Screen**      | Asset Assignment Modal (§3.3 wireframe).                 |
+| Attribute   | Detail                                                               |
+| :---------- | :------------------------------------------------------------------- |
+| **Actors**  | Global Admin, IT Operations Admin → triggers Employee handoff.       |
+| **Trigger** | Admin clicks "Assign" from slide-out footer or grid action menu (⋯). |
+| **Screen**  | Asset Assignment Modal (§3.3 wireframe).                             |
 
 **Steps:**
 
@@ -282,11 +281,11 @@ On submit:
 
 **Decision Points:**
 
-| Condition                   | Outcome                                       |
-| :-------------------------- | :-------------------------------------------- |
-| Asset not `Available`       | Assignment blocked.                           |
+| Condition                   | Outcome                                                           |
+| :-------------------------- | :---------------------------------------------------------------- |
+| Asset not `Available`       | Assignment blocked.                                               |
 | Target is a Team            | Blocked: _"Assets can only be assigned to a User or a Location."_ |
-| Software license seats full | Blocked per BR-04.                            |
+| Software license seats full | Blocked per BR-04.                                                |
 
 **End State:** Asset assigned, custody notification dispatched, awaiting employee confirmation (→ J20).
 
@@ -294,11 +293,11 @@ On submit:
 
 ### J8 — Return Request & Check-In
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, IT Operations Admin (initiator); Employee (physical return). |
-| **Trigger**     | Admin clicks "Request Return" in Asset Details panel footer. |
-| **Screen**      | Condition Review Modal (§3.4 wireframe).                 |
+| Attribute   | Detail                                                                     |
+| :---------- | :------------------------------------------------------------------------- |
+| **Actors**  | Global Admin, IT Operations Admin (initiator); Employee (physical return). |
+| **Trigger** | Admin clicks "Request Return" in Asset Details panel footer.               |
+| **Screen**  | Condition Review Modal (§3.4 wireframe).                                   |
 
 **Phase 1 — Return Request:**
 
@@ -318,11 +317,11 @@ On submit:
 3. Condition Notes textarea for detailed observations.
 4. **Status Routing** based on selection:
 
-| Condition               | Next Status          | Route                        |
-| :---------------------- | :------------------- | :--------------------------- |
-| Good / Minor Issues     | `Available`          | Re-enters active pool.       |
-| Needs Repair            | `In Repair`          | Routes to Maintenance Ledger (→ J10). |
-| Beyond Repair           | `Pending Disposal`   | Routes to Disposal queue (→ J11). |
+| Condition           | Next Status        | Route                                 |
+| :------------------ | :----------------- | :------------------------------------ |
+| Good / Minor Issues | `Available`        | Re-enters active pool.                |
+| Needs Repair        | `In Repair`        | Routes to Maintenance Ledger (→ J10). |
+| Beyond Repair       | `Pending Disposal` | Routes to Disposal queue (→ J11).     |
 
 5. Assignment record closed, audit event logged.
 
@@ -332,11 +331,11 @@ On submit:
 
 ### J9 — Tethered Companion Scanning
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, IT Operations Admin (desktop + mobile).   |
-| **Trigger**     | Admin clicks "Enable Mobile Scanner" on the desktop registration form. |
-| **Screens**     | Desktop status indicator; Mobile PWA Scanner Interface.  |
+| Attribute   | Detail                                                                 |
+| :---------- | :--------------------------------------------------------------------- |
+| **Actors**  | Global Admin, IT Operations Admin (desktop + mobile).                  |
+| **Trigger** | Admin clicks "Enable Mobile Scanner" on the desktop registration form. |
+| **Screens** | Desktop status indicator; Mobile PWA Scanner Interface.                |
 
 **Steps:**
 
@@ -356,12 +355,12 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 **Error Paths:**
 
-| Condition                   | Response                                                             |
-| :-------------------------- | :------------------------------------------------------------------- |
+| Condition                   | Response                                                                   |
+| :-------------------------- | :------------------------------------------------------------------------- |
 | No focused desktop field    | Scan buffered 10 s → discarded. Mobile: _"⚠ No field focused on desktop."_ |
 | WiFi lost                   | Auto-reconnect with exponential backoff (1 s → 2 s → 4 s → 8 s, 60 s max). |
-| Camera permission denied    | "Camera Permission Required" page with device settings link.         |
-| Desktop-only view on mobile | "Desktop Required" empty-state card listing mobile-available actions. |
+| Camera permission denied    | "Camera Permission Required" page with device settings link.               |
+| Desktop-only view on mobile | "Desktop Required" empty-state card listing mobile-available actions.      |
 
 **End State:** Serial numbers injected from mobile camera into desktop form fields in real time.
 
@@ -369,11 +368,11 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J10 — Maintenance Triage & Repair
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | IT Operations Admin, Global Admin.                      |
-| **Trigger**     | Employee submits "Report Issue" (→ J21) OR asset returned defective (→ J8). |
-| **Screens**     | Maintenance Ledger (§3.5), Triage Slide-Out (§3.6), Dispatch Modal (§3.7), Close Repair Modal (§3.7). |
+| Attribute   | Detail                                                                                                |
+| :---------- | :---------------------------------------------------------------------------------------------------- |
+| **Actors**  | IT Operations Admin, Global Admin.                                                                    |
+| **Trigger** | Employee submits "Report Issue" (→ J21) OR asset returned defective (→ J8).                           |
+| **Screens** | Maintenance Ledger (§3.5), Triage Slide-Out (§3.6), Dispatch Modal (§3.7), Close Repair Modal (§3.7). |
 
 **Steps:**
 
@@ -381,19 +380,19 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 2. Admin clicks row → **Triage Review Slide-Out:** issue details (reporter, date, description, photos) + asset context (warranty status, current book value, assignment history).
 3. **Decision Point:**
 
-| Decision              | Action                                                                  |
-| :-------------------- | :---------------------------------------------------------------------- |
-| Resolve Internally    | Close ticket → status reset to `Available` or custom status.            |
-| Log Repair Ticket     | Opens **Initiate Repair (Dispatch) Modal** → proceeds to step 4.       |
+| Decision           | Action                                                           |
+| :----------------- | :--------------------------------------------------------------- |
+| Resolve Internally | Close ticket → status reset to `Available` or custom status.     |
+| Log Repair Ticket  | Opens **Initiate Repair (Dispatch) Modal** → proceeds to step 4. |
 
 4. **Dispatch Modal:** Vendor selector, RMA Ticket Number, Estimated Cost, Expected Return Date, Notes. Confirm → status → `In Repair`, asset un-assigned, record moves to **Active Repairs** tab.
 5. **Active Repairs** tab monitors: Asset ID, Vendor, RMA #, Estimated Cost, Expected Return Date, Days Elapsed. Overdue repairs highlighted red.
 6. Vendor completes repair → Admin clicks "Complete Repair" → **Close Repair Modal:** Service Date, Final Cost, Post-Repair Action:
 
-| Post-Repair Action     | Next Status          | Route                        |
-| :--------------------- | :------------------- | :--------------------------- |
-| Return to Service      | `Available`          | Re-enters active pool.       |
-| Flag for Disposal      | `Pending Disposal`   | Routes to Disposal queue (→ J11). |
+| Post-Repair Action | Next Status        | Route                             |
+| :----------------- | :----------------- | :-------------------------------- |
+| Return to Service  | `Available`        | Re-enters active pool.            |
+| Flag for Disposal  | `Pending Disposal` | Routes to Disposal queue (→ J11). |
 
 7. Final Cost updates the TCO engine. Record moves to **Repair History** tab (read-only).
 
@@ -403,10 +402,10 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J11 — Disposal Intake
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | IT Operations Admin, Global Admin.                      |
-| **Trigger**     | Admin flags a Defective, Available, or post-repair asset for retirement. |
+| Attribute   | Detail                                                                   |
+| :---------- | :----------------------------------------------------------------------- |
+| **Actors**  | IT Operations Admin, Global Admin.                                       |
+| **Trigger** | Admin flags a Defective, Available, or post-repair asset for retirement. |
 
 **Steps:**
 
@@ -423,24 +422,24 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J12 — Disposal Approval (Hard-Stop Compliance)
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Finance Admin, Global Admin. (**Segregation of duties:** requester ≠ approver, BR-01.) |
-| **Trigger**     | Reviewer clicks a pending disposal row in the Disposals Ledger. |
-| **Screens**     | Disposal Review Slide-Out (§4.2), Hard-Stop Compliance Modal (§4.3). |
+| Attribute   | Detail                                                                                 |
+| :---------- | :------------------------------------------------------------------------------------- |
+| **Actors**  | Finance Admin, Global Admin. (**Segregation of duties:** requester ≠ approver, BR-01.) |
+| **Trigger** | Reviewer clicks a pending disposal row in the Disposals Ledger.                        |
+| **Screens** | Disposal Review Slide-Out (§4.2), Hard-Stop Compliance Modal (§4.3).                   |
 
 **Steps:**
 
 1. **Disposal Review Slide-Out:** Original Purchase Cost, Depreciated Book Value, IT admin's justification notes, lifecycle summary (last repair date, total maintenance costs, total assignments).
 2. Click **"Approve & Dispose"** → opens **Hard-Stop Compliance Modal**:
 
-| Section                  | Requirement                                                                   |
-| :----------------------- | :---------------------------------------------------------------------------- |
-| Security Checklist       | ☐ _"Confirm: All data has been securely wiped."_ ☐ _"Confirm: Physical asset tags have been removed."_ Both mandatory checkboxes. |
-| E-Waste Certificate      | Drag-and-drop PDF upload (Certificate of Destruction). Stored with 7-year retention. |
-| Disposal Method          | Mandatory Select: E-Waste Recycling, Sold, Donated.                           |
-| Asset ID Confirmation    | Text input requiring exact Asset ID (e.g., `LAP-0089`). Compared server-side. |
-| Salvage Value            | Optional numeric input (shown for Sold / Donated). Feeds Write-Offs & Salvage Ledger. |
+| Section               | Requirement                                                                                                                       |
+| :-------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| Security Checklist    | ☐ _"Confirm: All data has been securely wiped."_ ☐ _"Confirm: Physical asset tags have been removed."_ Both mandatory checkboxes. |
+| E-Waste Certificate   | Drag-and-drop PDF upload (Certificate of Destruction). Stored with 7-year retention.                                              |
+| Disposal Method       | Mandatory Select: E-Waste Recycling, Sold, Donated.                                                                               |
+| Asset ID Confirmation | Text input requiring exact Asset ID (e.g., `LAP-0089`). Compared server-side.                                                     |
+| Salvage Value         | Optional numeric input (shown for Sold / Donated). Feeds Write-Offs & Salvage Ledger.                                             |
 
 3. **"Confirm Disposal"** button remains **disabled** until all conditions are satisfied.
 4. On confirm: status → `Disposed` or `Donated`. `is_archived = true`. All fields permanently locked. Audit event logged.
@@ -449,22 +448,22 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 **Error Paths:**
 
-| Condition                   | Response                                       |
-| :-------------------------- | :--------------------------------------------- |
-| Checkbox unchecked          | Submit button stays disabled.                  |
-| E-Waste cert missing        | Submit button stays disabled.                  |
-| Asset ID mismatch           | Inline validation error.                       |
-| Self-approval attempt       | Blocked by BR-01 — must route to different user. |
+| Condition             | Response                                         |
+| :-------------------- | :----------------------------------------------- |
+| Checkbox unchecked    | Submit button stays disabled.                    |
+| E-Waste cert missing  | Submit button stays disabled.                    |
+| Asset ID mismatch     | Inline validation error.                         |
+| Self-approval attempt | Blocked by BR-01 — must route to different user. |
 
 ---
 
 ### J13 — Disposal Rejection
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Finance Admin, Global Admin.                            |
-| **Trigger**     | Reviewer clicks "Reject Request" on a pending disposal. |
-| **Screen**      | Disposal Rejection Modal (§4.4 wireframe).               |
+| Attribute   | Detail                                                  |
+| :---------- | :------------------------------------------------------ |
+| **Actors**  | Finance Admin, Global Admin.                            |
+| **Trigger** | Reviewer clicks "Reject Request" on a pending disposal. |
+| **Screen**  | Disposal Rejection Modal (§4.4 wireframe).              |
 
 **Steps:**
 
@@ -478,11 +477,11 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J14 — Bulk Disposal
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Finance Admin, Global Admin.                            |
-| **Trigger**     | Admin selects multiple rows in Disposals Ledger → clicks "Bulk Dispose". |
-| **Screen**      | Bulk Disposal Processing Modal (§4.5 wireframe).         |
+| Attribute   | Detail                                                                   |
+| :---------- | :----------------------------------------------------------------------- |
+| **Actors**  | Finance Admin, Global Admin.                                             |
+| **Trigger** | Admin selects multiple rows in Disposals Ledger → clicks "Bulk Dispose". |
+| **Screen**  | Bulk Disposal Processing Modal (§4.5 wireframe).                         |
 
 **Steps:**
 
@@ -497,21 +496,21 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J15 — Financial Reporting & Dashboards
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, Finance Admin.                            |
-| **Trigger**     | User logs in (dashboard auto-loads) or navigates to Financials / Reports. |
-| **Screens**     | Dashboard (§5.1), Depreciation Ledger (§5.3), TCO Ledger (§5.4), Write-Offs & Salvage (§5.5), Report Generation (§5.2). |
+| Attribute   | Detail                                                                                                                  |
+| :---------- | :---------------------------------------------------------------------------------------------------------------------- |
+| **Actors**  | Global Admin, Finance Admin.                                                                                            |
+| **Trigger** | User logs in (dashboard auto-loads) or navigates to Financials / Reports.                                               |
+| **Screens** | Dashboard (§5.1), Depreciation Ledger (§5.3), TCO Ledger (§5.4), Write-Offs & Salvage (§5.5), Report Generation (§5.2). |
 
 **Steps:**
 
-| Step | Screen                            | Detail                                                                                      |
-| :--- | :-------------------------------- | :------------------------------------------------------------------------------------------ |
-| 1    | **Admin KPI Dashboard** (§5.1)    | Widget grid: Total Assets, Pending Approvals, Overdue Returns, Low Stock, Recent Activity, Problem Asset Counts (≥3 repair tickets). Full render <2 s. Widget clicks deep-link to filtered views. |
-| 2    | **Depreciation Ledger** (§5.3)    | Real-time straight-line depreciation: `Book Value = Base Cost − ((Base Cost − Salvage) / Useful Life × Age)`. Sort by Book Value to surface near-zero EOL assets. RBAC-restricted to Finance / Global Admin. |
-| 3    | **TCO Ledger** (§5.4)             | Original Cost + Total Repair Costs = TCO. Rows where repairs exceed book value highlighted amber/red (repair-vs-replace signal). |
-| 4    | **Write-Offs & Salvage** (§5.5)   | Disposed assets + salvage values recovered. Summary footer: Total Write-Offs, Total Salvage, Net Position. |
-| 5    | **Report Generation** (§5.2)      | Select report type (Inventory by Dept, Assets by Status, Financial Summary, Compliance Audit), date range, location filter → Generate → HTML preview → export PDF / CSV / Excel (up to 50,000 rows, <10 s download). |
+| Step | Screen                          | Detail                                                                                                                                                                                                               |
+| :--- | :------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | **Admin KPI Dashboard** (§5.1)  | Widget grid: Total Assets, Pending Approvals, Overdue Returns, Low Stock, Recent Activity, Problem Asset Counts (≥3 repair tickets). Full render <2 s. Widget clicks deep-link to filtered views.                    |
+| 2    | **Depreciation Ledger** (§5.3)  | Real-time straight-line depreciation: `Book Value = Base Cost − ((Base Cost − Salvage) / Useful Life × Age)`. Sort by Book Value to surface near-zero EOL assets. RBAC-restricted to Finance / Global Admin.         |
+| 3    | **TCO Ledger** (§5.4)           | Original Cost + Total Repair Costs = TCO. Rows where repairs exceed book value highlighted amber/red (repair-vs-replace signal).                                                                                     |
+| 4    | **Write-Offs & Salvage** (§5.5) | Disposed assets + salvage values recovered. Summary footer: Total Write-Offs, Total Salvage, Net Position.                                                                                                           |
+| 5    | **Report Generation** (§5.2)    | Select report type (Inventory by Dept, Assets by Status, Financial Summary, Compliance Audit), date range, location filter → Generate → HTML preview → export PDF / CSV / Excel (up to 50,000 rows, <10 s download). |
 
 **End State:** Data-driven decision support for budgeting, compliance, and asset lifecycle planning.
 
@@ -519,23 +518,23 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J16 — Alert Configuration
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin.                                           |
-| **Trigger**     | Admin navigates to Settings → Alert Configuration.      |
-| **Screen**      | Alert Configuration — Settings (§5.6 wireframe).         |
+| Attribute   | Detail                                             |
+| :---------- | :------------------------------------------------- |
+| **Actors**  | Global Admin.                                      |
+| **Trigger** | Admin navigates to Settings → Alert Configuration. |
+| **Screen**  | Alert Configuration — Settings (§5.6 wireframe).   |
 
 **Steps:**
 
 1. Toggle on/off per alert rule:
 
-| Rule                  | Threshold Setting                                                  |
-| :-------------------- | :----------------------------------------------------------------- |
-| Warranty Expiration   | Alert X days before expiry (30 / 60 / 90 days).                   |
-| License Renewal       | Alert X days before expiry (30 / 60 / 90 days).                   |
-| Overdue Returns       | Triggers when an assigned asset passes its Expected Return Date.   |
-| Overdue Repairs       | Alert X days after expected return date (7 / 14 / 30 days).       |
-| Low Stock             | Alert when consumable quantity falls below X (configurable per category). |
+| Rule                | Threshold Setting                                                         |
+| :------------------ | :------------------------------------------------------------------------ |
+| Warranty Expiration | Alert X days before expiry (30 / 60 / 90 days).                           |
+| License Renewal     | Alert X days before expiry (30 / 60 / 90 days).                           |
+| Overdue Returns     | Triggers when an assigned asset passes its Expected Return Date.          |
+| Overdue Repairs     | Alert X days after expected return date (7 / 14 / 30 days).               |
+| Low Stock           | Alert when consumable quantity falls below X (configurable per category). |
 
 2. Configure email distribution and Teams webhook URL.
 3. Save → settings persisted. Next nightly CRON run picks up changes.
@@ -546,11 +545,11 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J17 — Audit Log Review
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin.                                           |
-| **Trigger**     | Admin navigates to Settings → System Audit Log.         |
-| **Screen**      | System Audit Log — Filterable Grid (§1.4 wireframe).     |
+| Attribute   | Detail                                               |
+| :---------- | :--------------------------------------------------- |
+| **Actors**  | Global Admin.                                        |
+| **Trigger** | Admin navigates to Settings → System Audit Log.      |
+| **Screen**  | System Audit Log — Filterable Grid (§1.4 wireframe). |
 
 **Steps:**
 
@@ -567,11 +566,11 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J18 — QR Code Print
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, IT Operations Admin.                      |
-| **Trigger**     | Admin views QR tab in Asset Details or selects assets in grid → "Print Labels". |
-| **Screen**      | QR Code Preview & Print (§2.5 wireframe).                |
+| Attribute   | Detail                                                                          |
+| :---------- | :------------------------------------------------------------------------------ |
+| **Actors**  | Global Admin, IT Operations Admin.                                              |
+| **Trigger** | Admin views QR tab in Asset Details or selects assets in grid → "Print Labels". |
+| **Screen**  | QR Code Preview & Print (§2.5 wireframe).                                       |
 
 **Steps:**
 
@@ -586,11 +585,11 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J19 — Employee "My Assets" Portal
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Standard Employee.                                      |
-| **Trigger**     | Employee logs in (auto-routed).                         |
-| **Screen**      | Employee "My Assets" Portal (§3.1 wireframe).            |
+| Attribute   | Detail                                        |
+| :---------- | :-------------------------------------------- |
+| **Actors**  | Standard Employee.                            |
+| **Trigger** | Employee logs in (auto-routed).               |
+| **Screen**  | Employee "My Assets" Portal (§3.1 wireframe). |
 
 **Steps:**
 
@@ -606,11 +605,11 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J20 — Digital Acceptance (Custody Confirmation)
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Standard Employee (triggered by Admin assignment, J7).  |
-| **Trigger**     | Employee receives custody notification via Email / Teams / In-App. |
-| **Screen**      | Digital Acceptance — Confirmation Page (§3.2 wireframe). |
+| Attribute   | Detail                                                             |
+| :---------- | :----------------------------------------------------------------- |
+| **Actors**  | Standard Employee (triggered by Admin assignment, J7).             |
+| **Trigger** | Employee receives custody notification via Email / Teams / In-App. |
+| **Screen**  | Digital Acceptance — Confirmation Page (§3.2 wireframe).           |
 
 **Steps:**
 
@@ -625,19 +624,19 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 **Escalation Timeline:**
 
-| Day | Event                                                                |
-| :-- | :------------------------------------------------------------------- |
-| 0   | Notification dispatched.                                             |
-| 5   | CRON engine sends reminder to employee.                              |
-| 7   | Token expires. CRON alerts admin.                                    |
+| Day | Event                                                                  |
+| :-- | :--------------------------------------------------------------------- |
+| 0   | Notification dispatched.                                               |
+| 5   | CRON engine sends reminder to employee.                                |
+| 7   | Token expires. CRON alerts admin.                                      |
 | 7+  | Admin decides: resend confirmation (new token, reset TTL) or unassign. |
 
 **Error Paths:**
 
-| Condition              | Response                                                           |
-| :--------------------- | :----------------------------------------------------------------- |
-| Token expired (>7 days)| _"This confirmation link expired on {date}. Please contact IT."_   |
-| Token already used     | _"ℹ Already Confirmed"_ info page with confirmation timestamp.     |
+| Condition               | Response                                                         |
+| :---------------------- | :--------------------------------------------------------------- |
+| Token expired (>7 days) | _"This confirmation link expired on {date}. Please contact IT."_ |
+| Token already used      | _"ℹ Already Confirmed"_ info page with confirmation timestamp.   |
 
 **End State:** Custody digitally confirmed with timestamp and IP logged.
 
@@ -645,10 +644,10 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J21 — Employee Issue Reporting
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Standard Employee → routes to IT Operations Admin.      |
-| **Trigger**     | Employee clicks "Report Issue" from a My Assets row.    |
+| Attribute   | Detail                                               |
+| :---------- | :--------------------------------------------------- |
+| **Actors**  | Standard Employee → routes to IT Operations Admin.   |
+| **Trigger** | Employee clicks "Report Issue" from a My Assets row. |
 
 **Steps:**
 
@@ -664,10 +663,10 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ### J22 — Nightly CRON Alert Engine
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | CRON Engine (System).                                   |
-| **Trigger**     | Time-based: `0 2 * * *` (02:00 AM UTC daily).          |
+| Attribute   | Detail                                        |
+| :---------- | :-------------------------------------------- |
+| **Actors**  | CRON Engine (System).                         |
+| **Trigger** | Time-based: `0 2 * * *` (02:00 AM UTC daily). |
 
 **Steps:**
 
@@ -675,13 +674,13 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 2. Load active alert configuration rules from the database.
 3. Run **5 parallel scans:**
 
-| Scan                | Query Logic                                                                   |
-| :------------------ | :---------------------------------------------------------------------------- |
-| `WARRANTY_EXPIRY`   | Assets where `warranty_expiry_date` falls within configured threshold.        |
-| `LICENSE_RENEWAL`   | Software assets where `license_expiry_date` falls within threshold.           |
-| `OVERDUE_RETURN`    | Assignments past `expected_return_date` with no check-in.                     |
-| `OVERDUE_REPAIR`    | Maintenance records past `expected_return_date` with status `In Repair`.      |
-| `LOW_STOCK`         | Consumables where current quantity < configured threshold.                    |
+| Scan              | Query Logic                                                              |
+| :---------------- | :----------------------------------------------------------------------- |
+| `WARRANTY_EXPIRY` | Assets where `warranty_expiry_date` falls within configured threshold.   |
+| `LICENSE_RENEWAL` | Software assets where `license_expiry_date` falls within threshold.      |
+| `OVERDUE_RETURN`  | Assignments past `expected_return_date` with no check-in.                |
+| `OVERDUE_REPAIR`  | Maintenance records past `expected_return_date` with status `In Repair`. |
+| `LOW_STOCK`       | Consumables where current quantity < configured threshold.               |
 
 4. Collect matching rows → deduplicate via `notification_key = {entity_id}:{rule_type}:{threshold_date}` (idempotent — no re-notification for the same event).
 5. Route alerts to targeted recipients (e.g., overdue repair alerts → dispatching IT Admin, not a global list).
@@ -696,20 +695,20 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 **Error Paths:**
 
-| Condition                  | Response                                                        |
-| :------------------------- | :-------------------------------------------------------------- |
-| DB connection loss         | Terminate, release lock, log `CRITICAL`, retry next night.      |
-| SMTP / Teams failure       | Independent retry per channel (5 attempts with backoff).        |
-| Digest >50 items           | Truncated with "View all in IDAMS" deep-link.                   |
+| Condition            | Response                                                   |
+| :------------------- | :--------------------------------------------------------- |
+| DB connection loss   | Terminate, release lock, log `CRITICAL`, retry next night. |
+| SMTP / Teams failure | Independent retry per channel (5 attempts with backoff).   |
+| Digest >50 items     | Truncated with "View all in IDAMS" deep-link.              |
 
 ---
 
 ### J23 — Exception Status Handling (Lost / Missing)
 
-| Attribute       | Detail                                                  |
-| :-------------- | :------------------------------------------------------ |
-| **Actors**      | Global Admin, IT Operations Admin.                      |
-| **Trigger**     | Admin manually changes asset status during physical inventory audit. |
+| Attribute   | Detail                                                               |
+| :---------- | :------------------------------------------------------------------- |
+| **Actors**  | Global Admin, IT Operations Admin.                                   |
+| **Trigger** | Admin manually changes asset status during physical inventory audit. |
 
 **Steps:**
 
@@ -718,11 +717,11 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 3. Status updated. Asset removed from the `Available` pool.
 4. **Recovery Paths:**
 
-| Current Status | Action      | Next Status  | Notes                                              |
-| :------------- | :---------- | :----------- | :------------------------------------------------- |
-| Missing        | Located     | `Available`  | Verification notes required.                       |
-| Missing        | Upgraded    | `Lost`       | After prolonged search.                            |
-| Lost           | Found       | `Available`  | Verification notes required.                       |
+| Current Status | Action   | Next Status | Notes                        |
+| :------------- | :------- | :---------- | :--------------------------- |
+| Missing        | Located  | `Available` | Verification notes required. |
+| Missing        | Upgraded | `Lost`      | After prolonged search.      |
+| Lost           | Found    | `Available` | Verification notes required. |
 
 5. **Blocked Transitions:** `Lost → Assigned` and `Missing → Assigned` are invalid — asset must be recovered first.
 6. Audit event logged with justification.
@@ -733,48 +732,48 @@ Scanning a TIQRI QR code on mobile → navigates to the asset's URL → mobile b
 
 ## 3. Cross-Persona Handoff Matrix
 
-| Source Persona          | Target Persona                | Handoff Event                                          | Journey Link |
-| :---------------------- | :---------------------------- | :----------------------------------------------------- | :----------- |
-| Global / IT Admin       | Standard Employee             | Asset assignment triggers custody notification.         | J7 → J20     |
-| Global / IT Admin       | Standard Employee             | Return request notification dispatched.                 | J8 → Employee |
-| Standard Employee       | IT Operations Admin           | "Report Issue" creates triage ticket.                   | J21 → J10    |
-| IT Operations Admin     | Finance Admin / Global Admin  | Disposal intake flags asset for executive review.       | J11 → J12/J13 |
-| Finance Admin           | IT Operations Admin           | Disposal rejection notification sent to requester.      | J13 → notification |
-| CRON Engine             | IT Operations Admin           | Overdue repair / return alerts dispatched.              | J22 → J10    |
-| CRON Engine             | Standard Employee             | Day-5 custody reminder notification.                    | J22 → J20    |
-| CRON Engine             | Global Admin / Finance Admin  | Warranty / license expiry digest.                       | J22 → J15    |
-| External API Consumer   | IDAMS                         | API triggers assignment workflow.                       | External → J7 |
+| Source Persona        | Target Persona               | Handoff Event                                      | Journey Link       |
+| :-------------------- | :--------------------------- | :------------------------------------------------- | :----------------- |
+| Global / IT Admin     | Standard Employee            | Asset assignment triggers custody notification.    | J7 → J20           |
+| Global / IT Admin     | Standard Employee            | Return request notification dispatched.            | J8 → Employee      |
+| Standard Employee     | IT Operations Admin          | "Report Issue" creates triage ticket.              | J21 → J10          |
+| IT Operations Admin   | Finance Admin / Global Admin | Disposal intake flags asset for executive review.  | J11 → J12/J13      |
+| Finance Admin         | IT Operations Admin          | Disposal rejection notification sent to requester. | J13 → notification |
+| CRON Engine           | IT Operations Admin          | Overdue repair / return alerts dispatched.         | J22 → J10          |
+| CRON Engine           | Standard Employee            | Day-5 custody reminder notification.               | J22 → J20          |
+| CRON Engine           | Global Admin / Finance Admin | Warranty / license expiry digest.                  | J22 → J15          |
+| External API Consumer | IDAMS                        | API triggers assignment workflow.                  | External → J7      |
 
 ---
 
 ## 4. Error & Exception Path Catalogue
 
-| ID   | Context                | Error Condition                              | System Response                                                                              | Requirement     |
-| :--- | :--------------------- | :------------------------------------------- | :------------------------------------------------------------------------------------------- | :-------------- |
-| E-01 | Asset Registration     | Duplicate Serial Number                      | Block submission: _"Duplicate Serial Number detected (linked to AST-00045)."_                | REQ-REG-2.16    |
-| E-02 | Assignment             | Target is a Team / Department                | Block: _"Assets can only be assigned to a User or a Location."_                              | REQ-OPS-3.3     |
-| E-03 | Assignment             | Asset not `Available`                        | Block: _"Asset is currently checked out to [User Name]."_                                    | State Machine   |
-| E-04 | State Transition       | Invalid transition attempted                 | `400 Bad Request` with descriptive message.                                                  | REQ-OPS-3.13    |
-| E-05 | State Transition       | Missing justification for Lost/Missing       | Submission blocked until mandatory notes provided.                                           | REQ-OPS-3.13    |
-| E-06 | Master Data Delete     | Referential dependencies exist               | Block: _"Cannot delete: Category contains 142 active assets."_ Suggest archival.             | REQ-FND-1.10    |
-| E-07 | Category Creation      | Prefix Code collision                        | Auto-resolve: append numeric suffix (e.g., `LAP` → `LAP2`).                                 | REQ-FND-1.15    |
-| E-08 | Disposal Hard Stop     | Checkboxes unchecked / cert missing / ID mismatch | "Confirm Disposal" button stays disabled.                                                | REQ-DSP-4.4     |
-| E-09 | Disposed Asset Edit    | PUT/PATCH on archived asset                  | `403 Forbidden`: _"Disposed assets are permanently archived and cannot change state."_       | NFR-SEC-07      |
-| E-10 | Bulk Import            | Row validation failure                       | Skip row, add to error bucket. Downloadable error CSV with per-row details.                  | REQ-REG-2.10    |
-| E-11 | Bulk Import            | Intra-batch duplicate serial                 | Both rows rejected: _"Duplicate Serial Number within uploaded file (rows 12 and 47)."_       | REQ-REG-2.10    |
-| E-12 | Bulk Import            | Concurrent import in progress                | Block: _"A bulk import is currently in progress."_                                           | Advisory Lock   |
-| E-13 | Digital Acceptance     | Token expired (>7 days)                      | _"This confirmation link expired on {date}. Please contact IT."_                             | REQ-OPS-3.2     |
-| E-14 | Digital Acceptance     | Token already consumed                       | _"ℹ Already Confirmed"_ info page.                                                          | REQ-OPS-3.2     |
-| E-15 | Tethered Scanner       | No focused desktop field                     | Scan buffered 10 s → discarded. Mobile: _"⚠ No field focused on desktop."_                   | REQ-REG-2.14    |
-| E-16 | Tethered Scanner       | WiFi connection lost                         | Auto-reconnect with exponential backoff (1 s → 60 s max).                                    | REQ-REG-2.14    |
-| E-17 | Tethered Scanner       | Camera permission denied                     | "Camera Permission Required" page with settings link.                                        | REQ-REG-2.13    |
-| E-18 | Mobile Navigation      | Desktop-only view on mobile                  | "Desktop Required" empty-state card listing mobile-available actions.                        | REQ-REG-2.15    |
-| E-19 | CRON Engine            | Database connection loss                     | Terminate, release lock, log `CRITICAL`, retry next night.                                   | NFR-REL-05      |
-| E-20 | CRON Engine            | SMTP / Teams delivery failure                | Exponential backoff (5 attempts). Channels independent.                                      | NFR-REL-05      |
-| E-21 | API Gateway            | Rate limit exceeded (100 req/min/key)        | `429 Too Many Requests`.                                                                     | NFR-PERF-06     |
-| E-22 | RBAC                   | Unauthorised route access                    | `403 Forbidden` + audit log entry.                                                           | NFR-SEC-02      |
-| E-23 | Disposal Approval      | Self-approval attempt (requester = approver) | Blocked by BR-01 (segregation of duties).                                                    | BR-01           |
-| E-24 | Software Licence       | Over-allocation (seats exhausted)            | Blocked: _"All licence seats are allocated."_                                                | BR-04           |
+| ID   | Context             | Error Condition                                   | System Response                                                                        | Requirement   |
+| :--- | :------------------ | :------------------------------------------------ | :------------------------------------------------------------------------------------- | :------------ |
+| E-01 | Asset Registration  | Duplicate Serial Number                           | Block submission: _"Duplicate Serial Number detected (linked to AST-00045)."_          | REQ-REG-2.16  |
+| E-02 | Assignment          | Target is a Team / Department                     | Block: _"Assets can only be assigned to a User or a Location."_                        | REQ-OPS-3.3   |
+| E-03 | Assignment          | Asset not `Available`                             | Block: _"Asset is currently checked out to [User Name]."_                              | State Machine |
+| E-04 | State Transition    | Invalid transition attempted                      | `400 Bad Request` with descriptive message.                                            | REQ-OPS-3.13  |
+| E-05 | State Transition    | Missing justification for Lost/Missing            | Submission blocked until mandatory notes provided.                                     | REQ-OPS-3.13  |
+| E-06 | Master Data Delete  | Referential dependencies exist                    | Block: _"Cannot delete: Category contains 142 active assets."_ Suggest archival.       | REQ-FND-1.10  |
+| E-07 | Category Creation   | Prefix Code collision                             | Auto-resolve: append numeric suffix (e.g., `LAP` → `LAP2`).                            | REQ-FND-1.15  |
+| E-08 | Disposal Hard Stop  | Checkboxes unchecked / cert missing / ID mismatch | "Confirm Disposal" button stays disabled.                                              | REQ-DSP-4.4   |
+| E-09 | Disposed Asset Edit | PUT/PATCH on archived asset                       | `403 Forbidden`: _"Disposed assets are permanently archived and cannot change state."_ | NFR-SEC-07    |
+| E-10 | Bulk Import         | Row validation failure                            | Skip row, add to error bucket. Downloadable error CSV with per-row details.            | REQ-REG-2.10  |
+| E-11 | Bulk Import         | Intra-batch duplicate serial                      | Both rows rejected: _"Duplicate Serial Number within uploaded file (rows 12 and 47)."_ | REQ-REG-2.10  |
+| E-12 | Bulk Import         | Concurrent import in progress                     | Block: _"A bulk import is currently in progress."_                                     | Advisory Lock |
+| E-13 | Digital Acceptance  | Token expired (>7 days)                           | _"This confirmation link expired on {date}. Please contact IT."_                       | REQ-OPS-3.2   |
+| E-14 | Digital Acceptance  | Token already consumed                            | _"ℹ Already Confirmed"_ info page.                                                     | REQ-OPS-3.2   |
+| E-15 | Tethered Scanner    | No focused desktop field                          | Scan buffered 10 s → discarded. Mobile: _"⚠ No field focused on desktop."_             | REQ-REG-2.14  |
+| E-16 | Tethered Scanner    | WiFi connection lost                              | Auto-reconnect with exponential backoff (1 s → 60 s max).                              | REQ-REG-2.14  |
+| E-17 | Tethered Scanner    | Camera permission denied                          | "Camera Permission Required" page with settings link.                                  | REQ-REG-2.13  |
+| E-18 | Mobile Navigation   | Desktop-only view on mobile                       | "Desktop Required" empty-state card listing mobile-available actions.                  | REQ-REG-2.15  |
+| E-19 | CRON Engine         | Database connection loss                          | Terminate, release lock, log `CRITICAL`, retry next night.                             | NFR-REL-05    |
+| E-20 | CRON Engine         | SMTP / Teams delivery failure                     | Exponential backoff (5 attempts). Channels independent.                                | NFR-REL-05    |
+| E-21 | API Gateway         | Rate limit exceeded (100 req/min/key)             | `429 Too Many Requests`.                                                               | NFR-PERF-06   |
+| E-22 | RBAC                | Unauthorised route access                         | `403 Forbidden` + audit log entry.                                                     | NFR-SEC-02    |
+| E-23 | Disposal Approval   | Self-approval attempt (requester = approver)      | Blocked by BR-01 (segregation of duties).                                              | BR-01         |
+| E-24 | Software Licence    | Over-allocation (seats exhausted)                 | Blocked: _"All licence seats are allocated."_                                          | BR-04         |
 
 ---
 

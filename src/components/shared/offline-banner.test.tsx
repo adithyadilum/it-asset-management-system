@@ -25,6 +25,8 @@ describe('OfflineBanner', () => {
     setOnlineStatus(false);
     render(<OfflineBanner />);
     expect(screen.getByText('You are offline')).toBeInTheDocument();
-    expect(screen.getByText(/Some features may be unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Some features may be unavailable/i)
+    ).toBeInTheDocument();
   });
 });

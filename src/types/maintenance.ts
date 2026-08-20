@@ -1,6 +1,13 @@
 export type MaintenanceTicketType = 'VENDOR' | 'INTERNAL';
 export type MaintenanceTicketStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-export type AssetStatus = 'Available' | 'Assigned' | 'In Repair' | 'Defective' | 'Lost' | 'Retired' | 'Disposed';
+export type AssetStatus =
+  | 'Available'
+  | 'Assigned'
+  | 'In Repair'
+  | 'Defective'
+  | 'Lost'
+  | 'Retired'
+  | 'Disposed';
 export type WarrantyStatus = 'Active' | 'Expired';
 
 export interface MaintenanceTicket {
@@ -97,8 +104,8 @@ export interface Vendor {
 export interface InitiateRepairFormData {
   vendorId: string;
   rmaNumber: string;
-  estimatedCost?: string;       
-  expectedReturnDate?: string;   
+  estimatedCost?: string;
+  expectedReturnDate?: string;
 }
 
 export interface ActiveRepairTicket {
@@ -110,7 +117,7 @@ export interface ActiveRepairTicket {
   rmaNumber: string | null;
   reportedIssue: string;
   estimatedCost: string | null;
-  estimatedReturnDate: string | null; 
+  estimatedReturnDate: string | null;
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   createdAt: Date;
   updatedAt: Date;

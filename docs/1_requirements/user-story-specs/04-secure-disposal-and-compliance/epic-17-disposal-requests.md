@@ -51,15 +51,18 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Initiate Disposal" intake modal (`dispose-assets-request-dialog`) capturing reason and justification.
 - [x] Build the `Operations > Disposals` layout component (`disposals-layout`) with the tab structure (`Pending Disposal`, `Disposal History`).
 - [x] Configure the `Pending Disposal` data grid (`pending-disposals-grid`) to filter by `status === 'Pending Disposal'`.
 
 #### Backend
+
 - [x] Create the `createDisposalRequest` Server Action handling the atomic multi-table insertions (disposals, assets, assignments, systemAuditLogs).
 - [x] Automatically dispatch the `disposal.requested` Webhook event.
 
 #### Database
+
 - [x] Create an `asset_disposals` table via Drizzle ORM mapping the requested details.
 
 ---
@@ -83,10 +86,12 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Disposal Request Review" slide-out panel displaying disposal context and a distinct financial summary block.
 - [x] Add "Reject" (secondary style) and "Initiate Disposal" (destructive red) action buttons to the panel footer.
 
 #### Backend
+
 - [x] Create the `getDisposalReviewDetails` Server Action that aggregates disposal context alongside real-time financial book value computations.
 
 ---
@@ -122,9 +127,11 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Reject Disposal Request" modal integrating React Hook Form and Zod to conditionally disable the submit button until validation passes.
 
 #### Backend
+
 - [x] Create the `rejectDisposalRequest` Server Action managing atomic updates.
 - [x] Enforce the strict soft-delete reversal (`isArchived: false`) inside the `assets` table.
 - [x] Implement conditional logic: dynamically insert a new `maintenance_tickets` row if the admin selects the `In Repair` fallback status.

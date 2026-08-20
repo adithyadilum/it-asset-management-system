@@ -4,13 +4,13 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { FinancialAuditorDashboardView } from './financial-auditor-dashboard-view';
 
 vi.mock('../shared/kpi-metrics-row', () => ({
-  KpiMetricsRow: () => <div data-testid="kpi-metrics" />
+  KpiMetricsRow: () => <div data-testid="kpi-metrics" />,
 }));
 vi.mock('../shared/data-tables-container', () => ({
-  DataTablesContainer: () => <div data-testid="data-tables" />
+  DataTablesContainer: () => <div data-testid="data-tables" />,
 }));
 vi.mock('@/components/shared/data-table', () => ({
-  DataTable: () => <div data-testid="data-table" />
+  DataTable: () => <div data-testid="data-table" />,
 }));
 
 describe('FinancialAuditorDashboardView', () => {
@@ -27,10 +27,14 @@ describe('FinancialAuditorDashboardView', () => {
       inventoryStatus: { inventoryData: [], utilizationRate: 0 },
       recentActivities: [],
       pendingAudits: [],
-      highValueAssets: []
+      highValueAssets: [],
     };
-    
-    render(<CurrencyProvider initialCurrency="USD"><FinancialAuditorDashboardView data={mockData as any} /></CurrencyProvider>);
+
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <FinancialAuditorDashboardView data={mockData as any} />
+      </CurrencyProvider>
+    );
     expect(screen.getByTestId('kpi-metrics')).toBeInTheDocument();
   });
 });

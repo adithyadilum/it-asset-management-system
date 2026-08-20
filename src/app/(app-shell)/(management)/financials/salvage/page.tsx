@@ -1,9 +1,9 @@
-﻿import { getWriteOffsLedger } from "@/actions/financials";
-import { WriteOffsLedger } from "@/components/features/financials/write-offs-ledger";
+﻿import { getWriteOffsLedger } from '@/actions/financials';
+import { WriteOffsLedger } from '@/components/features/financials/write-offs-ledger';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 export const metadata = {
-  title: "Write-Offs & Salvage | Tiqri Assets",
+  title: 'Write-Offs & Salvage | Tiqri Assets',
 };
 
 export default async function SalvageLedgerPage() {
@@ -12,9 +12,15 @@ export default async function SalvageLedgerPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6 overflow-y-auto">
-      <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Write-Offs & Salvage</h1>
-      {/* 2. Pass ONLY the array slice to initialData */}
-      <WriteOffsLedger initialData={response.data} />
+      <h1
+        className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
+      >
+        Write-Offs & Salvage
+      </h1>
+      <WriteOffsLedger
+        initialData={response.data}
+        initialPageCount={response.meta.totalPages}
+      />
     </div>
   );
 }

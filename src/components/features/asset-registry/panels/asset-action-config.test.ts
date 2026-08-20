@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { getActionsForStatus, type AssetActionConfig, type AssetActionId } from './asset-action-config';
+import {
+  getActionsForStatus,
+  type AssetActionConfig,
+  type AssetActionId,
+} from './asset-action-config';
 
 /** Helper to extract action IDs from a result */
 function ids(actions: AssetActionConfig[]): AssetActionId[] {
@@ -14,7 +18,12 @@ describe('getActionsForStatus', () => {
 
     it('Available → edit, send-for-repair, request-disposal, assign', () => {
       const result = getActionsForStatus({ status: 'Available', pillar });
-      expect(ids(result)).toEqual(['edit', 'send-for-repair', 'request-disposal', 'assign']);
+      expect(ids(result)).toEqual([
+        'edit',
+        'send-for-repair',
+        'request-disposal',
+        'assign',
+      ]);
     });
 
     it('Assigned → edit, request-return', () => {
@@ -29,7 +38,11 @@ describe('getActionsForStatus', () => {
 
     it('Defective → edit, send-for-repair, request-disposal', () => {
       const result = getActionsForStatus({ status: 'Defective', pillar });
-      expect(ids(result)).toEqual(['edit', 'send-for-repair', 'request-disposal']);
+      expect(ids(result)).toEqual([
+        'edit',
+        'send-for-repair',
+        'request-disposal',
+      ]);
     });
 
     it('Lost → edit, request-disposal', () => {
@@ -43,7 +56,10 @@ describe('getActionsForStatus', () => {
     });
 
     it('Pending Disposal → empty (locked)', () => {
-      const result = getActionsForStatus({ status: 'Pending Disposal', pillar });
+      const result = getActionsForStatus({
+        status: 'Pending Disposal',
+        pillar,
+      });
       expect(result).toHaveLength(0);
     });
 
@@ -54,7 +70,12 @@ describe('getActionsForStatus', () => {
 
     it('Unknown/custom status → defaults to Available-like actions', () => {
       const result = getActionsForStatus({ status: 'Quarantine', pillar });
-      expect(ids(result)).toEqual(['edit', 'send-for-repair', 'request-disposal', 'assign']);
+      expect(ids(result)).toEqual([
+        'edit',
+        'send-for-repair',
+        'request-disposal',
+        'assign',
+      ]);
     });
 
     it('Custom status with configured allowed actions → respects config', () => {
@@ -74,7 +95,12 @@ describe('getActionsForStatus', () => {
 
     it('Available → edit, send-for-repair, request-disposal, assign (label=Transfer)', () => {
       const result = getActionsForStatus({ status: 'Available', pillar });
-      expect(ids(result)).toEqual(['edit', 'send-for-repair', 'request-disposal', 'assign']);
+      expect(ids(result)).toEqual([
+        'edit',
+        'send-for-repair',
+        'request-disposal',
+        'assign',
+      ]);
       // The assign button should be labeled "Transfer"
       const assignAction = result.find((a) => a.id === 'assign');
       expect(assignAction?.label).toBe('Transfer');

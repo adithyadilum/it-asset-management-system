@@ -1,11 +1,7 @@
 import type { RegistryPillar } from '@/lib/data/asset-registry-repo';
 
 export type RegistryView =
-  | 'hardware'
-  | 'software'
-  | 'furniture'
-  | 'office-electronics'
-  | 'unified';
+  'hardware' | 'software' | 'furniture' | 'office-electronics' | 'unified';
 
 export type RegistryFilterField =
   | 'Status'

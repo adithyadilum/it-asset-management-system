@@ -12,19 +12,28 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 
-const mockGetAssetsByPillarRepo = vi.fn().mockResolvedValue({ items: [], total: 0 });
-const mockGetAllAssetsUnifiedRepo = vi.fn().mockResolvedValue({ items: [], total: 0 });
+const mockGetAssetsByPillarRepo = vi
+  .fn()
+  .mockResolvedValue({ items: [], total: 0 });
+const mockGetAllAssetsUnifiedRepo = vi
+  .fn()
+  .mockResolvedValue({ items: [], total: 0 });
 const mockGetCategoriesByPillarRepo = vi.fn().mockResolvedValue([]);
-const mockBulkUpdateAssetsRepo = vi.fn().mockResolvedValue({ updatedCount: 1, failedCount: 0 });
+const mockBulkUpdateAssetsRepo = vi
+  .fn()
+  .mockResolvedValue({ updatedCount: 1, failedCount: 0 });
 
 vi.mock('@/lib/data/asset-registry-repo', () => ({
   getAssetsByPillar: (...args: unknown[]) => mockGetAssetsByPillarRepo(...args),
-  getAllAssetsUnified: (...args: unknown[]) => mockGetAllAssetsUnifiedRepo(...args),
-  getCategoriesByPillar: (...args: unknown[]) => mockGetCategoriesByPillarRepo(...args),
+  getAllAssetsUnified: (...args: unknown[]) =>
+    mockGetAllAssetsUnifiedRepo(...args),
+  getCategoriesByPillar: (...args: unknown[]) =>
+    mockGetCategoriesByPillarRepo(...args),
   bulkUpdateAssets: (...args: unknown[]) => mockBulkUpdateAssetsRepo(...args),
 }));
 
@@ -54,17 +63,23 @@ describe('getAssetsByPillar', () => {
 
   it('throws unauthorized for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getAssetsByPillar({ pillar: 'Hardware' })).rejects.toThrow('Forbidden');
+    await expect(getAssetsByPillar({ pillar: 'Hardware' })).rejects.toThrow(
+      'Unauthorized'
+    );
   });
 
   it('throws unauthorized for employee role', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    await expect(getAssetsByPillar({ pillar: 'Hardware' })).rejects.toThrow('Forbidden');
+    await expect(getAssetsByPillar({ pillar: 'Hardware' })).rejects.toThrow(
+      'Forbidden'
+    );
   });
 
   it('throws error for invalid pillar', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    await expect(getAssetsByPillar({ pillar: 'InvalidPillar' })).rejects.toThrow('Invalid pillar');
+    await expect(
+      getAssetsByPillar({ pillar: 'InvalidPillar' })
+    ).rejects.toThrow('Invalid pillar');
   });
 
   it('successfully calls getAssetsByPillarRepo with normalized inputs', async () => {
@@ -73,7 +88,7 @@ describe('getAssetsByPillar', () => {
       pillar: 'Hardware',
       status: 'Available',
       page: '2',
-      pageSize: '50'
+      pageSize: '50',
     });
 
     expect(mockGetAssetsByPillarRepo).toHaveBeenCalledWith({
@@ -94,7 +109,9 @@ describe('getAllAssetsUnified', () => {
 
   it('throws unauthorized for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getAllAssetsUnified({ pillar: 'Hardware' })).rejects.toThrow('Forbidden');
+    await expect(getAllAssetsUnified({ pillar: 'Hardware' })).rejects.toThrow(
+      'Unauthorized'
+    );
   });
 
   it('successfully calls getAllAssetsUnifiedRepo with normalized inputs', async () => {
@@ -103,7 +120,7 @@ describe('getAllAssetsUnified', () => {
       pillar: 'Hardware',
       query: '  test  ',
       page: 3,
-      pageSize: 15
+      pageSize: 15,
     });
 
     expect(mockGetAllAssetsUnifiedRepo).toHaveBeenCalledWith({
@@ -123,7 +140,9 @@ describe('getCategoriesByPillar', () => {
 
   it('throws unauthorized for unauthenticated user', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(null);
-    await expect(getCategoriesByPillar('Hardware')).rejects.toThrow('Forbidden');
+    await expect(getCategoriesByPillar('Hardware')).rejects.toThrow(
+      'Unauthorized'
+    );
   });
 
   it('delegates to repo for valid pillar', async () => {
@@ -150,21 +169,30 @@ describe('bulkUpdateAssets', () => {
 
   it('returns error if assetIds array is empty', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    const result = await bulkUpdateAssets({ assetIds: [], updates: { status: 'Available' } });
+    const result = await bulkUpdateAssets({
+      assetIds: [],
+      updates: { status: 'Available' },
+    });
     expect(result.success).toBe(false);
     expect(result.error).toContain('Select at least one valid asset');
   });
 
   it('returns error if assetIds array contains no valid UUIDs', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    const result = await bulkUpdateAssets({ assetIds: ['invalid-id'], updates: { status: 'Available' } });
+    const result = await bulkUpdateAssets({
+      assetIds: ['invalid-id'],
+      updates: { status: 'Available' },
+    });
     expect(result.success).toBe(false);
     expect(result.error).toContain('Select at least one valid asset');
   });
 
   it('returns error if updates payload is empty', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    const result = await bulkUpdateAssets({ assetIds: ['00000000-0000-4000-a000-000000000000'], updates: {} });
+    const result = await bulkUpdateAssets({
+      assetIds: ['00000000-0000-4000-a000-000000000000'],
+      updates: {},
+    });
     expect(result.success).toBe(false);
     expect(result.error).toContain('Provide at least one valid update field');
   });
@@ -173,7 +201,7 @@ describe('bulkUpdateAssets', () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     const result = await bulkUpdateAssets({
       assetIds: ['00000000-0000-4000-a000-000000000000'],
-      updates: { status: 'Assigned', condition: 'Excellent' }
+      updates: { status: 'Assigned', condition: 'Excellent' },
     });
 
     expect(result.success).toBe(true);

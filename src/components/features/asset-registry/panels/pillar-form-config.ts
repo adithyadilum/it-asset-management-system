@@ -45,7 +45,7 @@ const DEFAULT_CONFIG: PillarFormConfig = {
   noteLabel: 'Note :',
   notePlaceholder: 'Add a note about this asset',
   purchaseSectionTitle: 'Purchase Details',
-  
+
   showSerialNumber: true,
   showLocationField: false,
   showConditionField: false,
@@ -58,11 +58,11 @@ const DEFAULT_CONFIG: PillarFormConfig = {
 };
 
 export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
-  'Hardware': {
+  Hardware: {
     ...DEFAULT_CONFIG,
     panelDescription: 'Hardware',
   },
-  'Software': {
+  Software: {
     ...DEFAULT_CONFIG,
     panelTitle: 'Software Registry',
     panelDescription: 'Software',
@@ -71,7 +71,8 @@ export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
     submitLabel: 'Add Software',
     submittingLabel: 'Adding software...',
     modelEmptyMessage: 'No products found.',
-    modelFilteredEmptyMessage: 'No products found for selected category and brand.',
+    modelFilteredEmptyMessage:
+      'No products found for selected category and brand.',
     purchaseSectionTitle: 'Licensing & Purchase Details',
 
     showSoftwareLicensingSection: true,
@@ -98,5 +99,7 @@ export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
 
 export function getPillarFormConfig(pillar?: string | null): PillarFormConfig {
   if (!pillar) return PILLAR_FORM_CONFIGS['Hardware'];
-  return PILLAR_FORM_CONFIGS[pillar as DbPillar] ?? PILLAR_FORM_CONFIGS['Hardware'];
+  return (
+    PILLAR_FORM_CONFIGS[pillar as DbPillar] ?? PILLAR_FORM_CONFIGS['Hardware']
+  );
 }

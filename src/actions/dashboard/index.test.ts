@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getDashboardBatchData } from '@/actions/dashboard';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
@@ -8,7 +12,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: vi.fn(async (validator) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('Unauthorized');
-    if (validator && !validator(user)) throw new Error('Forbidden');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
   }),
 }));
 

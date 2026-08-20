@@ -70,11 +70,13 @@ The panel acts as the operational hub for single assets, integrating data fetche
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Implement the `selectedAssetId` state management at the grid level via Next.js `useSearchParams()`.
 - [x] Build the base Slide-Out Sheet React component that does not trap focus, enabling interaction with the underlying DOM data table.
 - [x] Implement active row highlighting in the data grid based on the active query parameter.
 
 #### Backend
+
 - [x] Create the `getAssetDetailsById` repository function returning the complete asset profile including base details, custom fields, and assignments.
 - [x] Implement the `/[assetId]/page.tsx` dynamic router that automatically redirects UUIDs or Tags to their respective Pillar dashboard with the active query parameters.
 - [x] Implement null-check fallback redirection in `/[assetId]/page.tsx`.
@@ -113,11 +115,13 @@ The panel acts as the operational hub for single assets, integrating data fetche
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Asset Details" summary tab: device image, status badge, 2-column CSS Grid.
 - [x] Build inline editing components utilizing the `editAssetDetailsAction` Server Action.
 - [x] Build the QR Code icon button that triggers the Epic 9 tag preview modal.
 
 #### Backend
+
 - [x] Create the `editAssetDetailsAction` Zod-validated Server Action.
 - [x] Implement backend guards ensuring inline edits to `instanceAttributes` cannot inject unknown schema keys.
 - [x] Create `getAssetMaintenanceById` and `getAssetDisposalById` endpoint functions returning specialized historical data for the summary cards.
@@ -147,10 +151,12 @@ The panel acts as the operational hub for single assets, integrating data fetche
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Implement conditional tab rendering for Software showing Details, Purchase Details, and Assignments.
 - [x] Ensure Maintenance Records section and QR Code button are hidden for Software assets.
 
 #### Backend
+
 - [x] Create `getAssetAllocationsById` to query and return unified seat allocations explicitly tracking active assignments across the `software_licenses` relations.
 - [x] Implement dynamic status computation logic based on date and seat capacity limits.
 
@@ -175,6 +181,7 @@ The panel acts as the operational hub for single assets, integrating data fetche
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Asset Details tab variant with Location and Condition prominently displayed instead of user assignment.
 - [x] Build the "Physical Details" tab mapping and rendering key-value pairs from `instanceAttributes`.
 
@@ -195,6 +202,7 @@ The panel acts as the operational hub for single assets, integrating data fetche
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Office Electronics conditional tabs.
 
 ---
@@ -220,10 +228,12 @@ The panel acts as the operational hub for single assets, integrating data fetche
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Purchase Details" tab component.
 - [x] Build the "History" tab component rendering a vertical chronological timeline.
 
 #### Backend
+
 - [x] Create the `getAssetHistoryById` repository function that filters `systemAuditLogs` dynamically by `entityType = 'Asset'` and `entityId`.
 
 ---
@@ -258,9 +268,11 @@ The panel acts as the operational hub for single assets, integrating data fetche
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Manual Status Override Modal component triggering the Server Action.
 
 #### Backend
+
 - [x] Create the `manualStatusOverrideAction` restricted exclusively to `GlobalAdmin` roles.
 - [x] Implement transactional logic closing active user assignments if a forced manual status change occurs.
 - [x] Implement backend guards rejecting manual transitions into `WORKFLOW_GATED_STATUSES` (e.g., 'Pending Disposal').

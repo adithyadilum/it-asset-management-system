@@ -15,7 +15,10 @@ import {
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { rejectDisposalSchema } from '@/lib/validations/disposals';
 import type { DisposalFormState } from '@/types/disposals';
-import { normalizeDisposalIds, normalizeAssetIds } from '@/actions/disposals/utils';
+import {
+  normalizeDisposalIds,
+  normalizeAssetIds,
+} from '@/actions/disposals/utils';
 
 export async function rejectDisposalRequest(
   _prevState: DisposalFormState,
@@ -74,11 +77,17 @@ export async function rejectDisposalRequest(
   const normalizedAssetIds = normalizeAssetIds(validAssetIds);
 
   if (normalizedDisposalIds.length === 0 || normalizedAssetIds.length === 0) {
-    return { success: false, message: 'No valid disposal or asset IDs provided.' };
+    return {
+      success: false,
+      message: 'No valid disposal or asset IDs provided.',
+    };
   }
 
   if (normalizedDisposalIds.length !== normalizedAssetIds.length) {
-    return { success: false, message: 'Disposal and asset ID counts do not match.' };
+    return {
+      success: false,
+      message: 'Disposal and asset ID counts do not match.',
+    };
   }
 
   try {
@@ -105,7 +114,9 @@ export async function rejectDisposalRequest(
         (d) => d.status === 'Pending Approval'
       );
       if (!allPending) {
-        throw new Error('One or more requested disposals are not eligible for rejection.');
+        throw new Error(
+          'One or more requested disposals are not eligible for rejection.'
+        );
       }
 
       // 2. Verify asset IDs match disposal records (prevent tampering)
@@ -116,7 +127,9 @@ export async function rejectDisposalRequest(
         disposalAssetIds.length !== normalizedAssetIds.length ||
         !disposalAssetIds.every((id) => requestedAssetIdSet.has(id))
       ) {
-        throw new Error('Submitted assets do not match the selected disposal requests.');
+        throw new Error(
+          'Submitted assets do not match the selected disposal requests.'
+        );
       }
 
       // 3. Fetch current asset data for audit trail

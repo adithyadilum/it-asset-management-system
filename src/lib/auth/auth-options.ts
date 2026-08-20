@@ -1,3 +1,4 @@
+import { logInfo } from '@/lib/latency';
 import '@/lib/auth/patch-url-parse';
 
 import type { NextAuthOptions } from 'next-auth';
@@ -10,6 +11,20 @@ import { serverEnv } from '@/lib/env';
 import { db } from '@/db';
 import { users, userRefreshTokens, departments } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
+import { decrypt, encrypt } from '@/lib/crypto';
+
+const ENCRYPTED_TOKEN_PREFIX = 'enc:v1:';
+
+function encryptToken(value: string): string {
+  return `${ENCRYPTED_TOKEN_PREFIX}${encrypt(value)}`;
+}
+
+function decryptToken(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.startsWith(ENCRYPTED_TOKEN_PREFIX)
+    ? decrypt(value.slice(ENCRYPTED_TOKEN_PREFIX.length))
+    : value;
+}
 
 function normalizeRole(role: unknown): UserRole {
   if (
@@ -77,21 +92,29 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         .limit(1);
 
       const BUFFER_MS = 60 * 1000; // 60-second pre-expiry buffer
-      if (stored && stored.accessTokenExpires.getTime() > Date.now() + BUFFER_MS) {
+      if (
+        stored &&
+        stored.accessTokenExpires.getTime() > Date.now() + BUFFER_MS
+      ) {
         // Another worker already refreshed — return without hitting Keycloak.
-        console.log(`[AUTH] Token already refreshed by peer worker for user ${userId}, skipping Keycloak call`);
+        logInfo(
+          `[AUTH] Token already refreshed by peer worker for user ${userId}, skipping Keycloak call`
+        );
         return {
           ...token,
-          accessToken: stored.accessToken ?? (token.accessToken as string),
-          idToken: stored.idToken ?? (token.idToken as string),
-          refreshToken: stored.refreshToken,
+          accessToken:
+            decryptToken(stored.accessToken) ?? (token.accessToken as string),
+          idToken: decryptToken(stored.idToken) ?? (token.idToken as string),
+          refreshToken:
+            decryptToken(stored.refreshToken) ?? (token.refreshToken as string),
           accessTokenExpires: stored.accessTokenExpires.getTime(),
           error: undefined,
         };
       }
 
       // ── 3. Hit Keycloak — we are the one worker that won the lock ────────
-      const refreshTokenToUse = stored?.refreshToken ?? (token.refreshToken as string);
+      const refreshTokenToUse =
+        decryptToken(stored?.refreshToken) ?? (token.refreshToken as string);
       const url = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
 
       const response = await fetch(url, {
@@ -111,8 +134,11 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         throw refreshedTokens;
       }
 
-      const newRefreshToken: string = refreshedTokens.refresh_token ?? refreshTokenToUse;
-      const newExpires = new Date(Date.now() + (refreshedTokens.expires_in as number) * 1000);
+      const newRefreshToken: string =
+        refreshedTokens.refresh_token ?? refreshTokenToUse;
+      const newExpires = new Date(
+        Date.now() + (refreshedTokens.expires_in as number) * 1000
+      );
       // refresh_expires_in is the Keycloak field for how long the refresh token
       // itself is valid (seconds). Fall back to 30 days if not present.
       const newRefreshExpires =
@@ -125,24 +151,24 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         .insert(userRefreshTokens)
         .values({
           userId,
-          refreshToken: newRefreshToken,
-          accessToken: refreshedTokens.access_token as string,
-          idToken: refreshedTokens.id_token as string,
+          refreshToken: encryptToken(newRefreshToken),
+          accessToken: encryptToken(refreshedTokens.access_token as string),
+          idToken: encryptToken(refreshedTokens.id_token as string),
           accessTokenExpires: newExpires,
         })
         .onConflictDoUpdate({
           target: userRefreshTokens.userId,
           set: {
-            refreshToken: newRefreshToken,
-            accessToken: refreshedTokens.access_token as string,
-            idToken: refreshedTokens.id_token as string,
+            refreshToken: encryptToken(newRefreshToken),
+            accessToken: encryptToken(refreshedTokens.access_token as string),
+            idToken: encryptToken(refreshedTokens.id_token as string),
             accessTokenExpires: newExpires,
             updatedAt: new Date(),
           },
         });
 
       // Lock is automatically released when the transaction commits here.
-      console.log(`[AUTH] Successfully refreshed token for user ${userId}`);
+      logInfo(`[AUTH] Successfully refreshed token for user ${userId}`);
 
       // ── 5. Re-read isActive so disabled accounts are reflected at the next
       //       refresh cycle (~5 min window) without a DB call on every request.
@@ -205,10 +231,27 @@ export const authOptions: NextAuthOptions = {
 
       const normalizedEmail = email.toLowerCase();
 
-      // Check if user already exists in PostgreSQL
-      const existingUser = await db.query.users.findFirst({
-        where: eq(users.email, normalizedEmail),
-      });
+      // Check if user already exists in PostgreSQL. Keep infrastructure error
+      // details server-side so NextAuth does not place SQL/PII in an OAuth
+      // error redirect URL.
+      let existingUser: typeof users.$inferSelect | undefined;
+      try {
+        existingUser = await db.query.users.findFirst({
+          where: eq(users.email, normalizedEmail),
+        });
+      } catch (error) {
+        const cause =
+          error instanceof Error && 'cause' in error ? error.cause : undefined;
+        const code =
+          typeof cause === 'object' &&
+          cause !== null &&
+          'code' in cause &&
+          typeof cause.code === 'string'
+            ? cause.code
+            : 'UNKNOWN';
+        console.error(`[AUTH] Login database lookup failed (code: ${code})`);
+        return false;
+      }
 
       // ── Sync Department from Keycloak Profile ──────────────────────────────
       let userDepartmentId: number | undefined;
@@ -221,17 +264,24 @@ export const authOptions: NextAuthOptions = {
         // flat claim — Keycloak "User Attribute" mapper with token claim name "department"
         profileRecord?.department ??
         // nested under "attributes" — some realm configs use this path
-        (profileRecord?.attributes as Record<string, unknown> | undefined)?.department;
+        (profileRecord?.attributes as Record<string, unknown> | undefined)
+          ?.department;
 
       // Normalise array → first element, then coerce to string
       const deptRaw = Array.isArray(rawDept) ? rawDept[0] : rawDept;
-      const profileDepartment = typeof deptRaw === 'string' ? deptRaw : undefined;
+      const profileDepartment =
+        typeof deptRaw === 'string' ? deptRaw : undefined;
 
-      console.log('[AUTH] Keycloak raw dept claim:', rawDept, '→ resolved:', profileDepartment);
+      logInfo(
+        '[AUTH] Keycloak raw dept claim:',
+        rawDept,
+        '→ resolved:',
+        profileDepartment
+      );
 
       if (profileDepartment && profileDepartment.trim()) {
         const deptName = profileDepartment.trim();
-        
+
         try {
           // ── 1. Case-insensitive lookup so "Engineering" and "engineering" resolve
           //       to the same department record.
@@ -278,7 +328,9 @@ export const authOptions: NextAuthOptions = {
                 .where(eq(departments.id, newId));
 
               userDepartmentId = newId;
-              console.log(`[AUTH] Auto-provisioned new department: ${deptName} (${shortCode})`);
+              logInfo(
+                `[AUTH] Auto-provisioned new department: ${deptName} (${shortCode})`
+              );
             } else {
               // Another worker inserted the row first – re-fetch it.
               const raceDept = await db.query.departments.findFirst({
@@ -286,12 +338,17 @@ export const authOptions: NextAuthOptions = {
               });
               if (raceDept) {
                 userDepartmentId = raceDept.id;
-                console.log(`[AUTH] Department "${deptName}" already inserted by peer worker, using id=${raceDept.id}`);
+                logInfo(
+                  `[AUTH] Department "${deptName}" already inserted by peer worker, using id=${raceDept.id}`
+                );
               }
             }
           }
         } catch (error) {
-          console.error('[AUTH] Failed to sync department from Keycloak profile:', error);
+          console.error(
+            '[AUTH] Failed to sync department from Keycloak profile:',
+            error
+          );
         }
       }
 
@@ -301,13 +358,18 @@ export const authOptions: NextAuthOptions = {
           await db.insert(users).values({
             email: normalizedEmail,
             // Fallback to preferred_username if name isn't set in Keycloak/Entra
-            name: profile?.name || (profile as Record<string, unknown>)?.preferred_username as string || user?.name || 'New User',
+            name:
+              profile?.name ||
+              ((profile as Record<string, unknown>)
+                ?.preferred_username as string) ||
+              user?.name ||
+              'New User',
             // CRITICAL: Always default to the lowest privilege tier
             role: 'Employee',
             isActive: true,
             departmentId: userDepartmentId,
           });
-          console.log(`[AUTH] JIT Provisioned new user: ${normalizedEmail}`);
+          logInfo(`[AUTH] JIT Provisioned new user: ${normalizedEmail}`);
         } catch (error) {
           console.error('Failed to auto-provision user:', error);
           return false; // Reject login if DB insert fails
@@ -321,13 +383,19 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Keep user department in sync
-        if (userDepartmentId && existingUser.departmentId !== userDepartmentId) {
+        if (
+          userDepartmentId &&
+          existingUser.departmentId !== userDepartmentId
+        ) {
           try {
-            await db.update(users)
+            await db
+              .update(users)
               .set({ departmentId: userDepartmentId })
               .where(eq(users.id, existingUser.id));
-            console.log(`[AUTH] Synced department for existing user: ${normalizedEmail}`);
-          } catch(error) {
+            logInfo(
+              `[AUTH] Synced department for existing user: ${normalizedEmail}`
+            );
+          } catch (error) {
             console.error('Failed to sync user department:', error);
           }
         }
@@ -376,8 +444,10 @@ export const authOptions: NextAuthOptions = {
               // a completely dead session without a DB call from the edge runtime.
               // Keycloak returns refresh_expires_in (seconds); fall back to 30 days.
               const refreshExpiresIn =
-                typeof (account as Record<string, unknown>).refresh_expires_in === 'number'
-                  ? (account as Record<string, unknown>).refresh_expires_in as number
+                typeof (account as Record<string, unknown>)
+                  .refresh_expires_in === 'number'
+                  ? ((account as Record<string, unknown>)
+                      .refresh_expires_in as number)
                   : 30 * 24 * 60 * 60;
               token.refreshTokenExpires = Date.now() + refreshExpiresIn * 1000;
 
@@ -385,18 +455,22 @@ export const authOptions: NextAuthOptions = {
                 .insert(userRefreshTokens)
                 .values({
                   userId: dbUser.id,
-                  refreshToken: account.refresh_token,
-                  accessToken: account.access_token,
-                  idToken: account.id_token,
-                  accessTokenExpires: new Date((account.expires_at as number) * 1000),
+                  refreshToken: encryptToken(account.refresh_token),
+                  accessToken: encryptToken(account.access_token as string),
+                  idToken: encryptToken(account.id_token as string),
+                  accessTokenExpires: new Date(
+                    (account.expires_at as number) * 1000
+                  ),
                 })
                 .onConflictDoUpdate({
                   target: userRefreshTokens.userId,
                   set: {
-                    refreshToken: account.refresh_token,
-                    accessToken: account.access_token,
-                    idToken: account.id_token,
-                    accessTokenExpires: new Date((account.expires_at as number) * 1000),
+                    refreshToken: encryptToken(account.refresh_token),
+                    accessToken: encryptToken(account.access_token as string),
+                    idToken: encryptToken(account.id_token as string),
+                    accessTokenExpires: new Date(
+                      (account.expires_at as number) * 1000
+                    ),
                     updatedAt: new Date(),
                   },
                 });

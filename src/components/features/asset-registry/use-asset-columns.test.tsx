@@ -30,7 +30,9 @@ describe('useAssetColumns', () => {
   });
 
   it('returns office-electronics columns when view is office-electronics', () => {
-    const { result } = renderHook(() => useAssetColumns('office-electronics', []));
+    const { result } = renderHook(() =>
+      useAssetColumns('office-electronics', [])
+    );
     const columns = result.current;
 
     expect(columns).toBeDefined();

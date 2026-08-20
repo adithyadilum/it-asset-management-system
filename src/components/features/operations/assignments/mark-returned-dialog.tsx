@@ -55,7 +55,8 @@ export function MarkReturnedDialog({
           <DialogTitle>Mark Returned</DialogTitle>
           <DialogDescription>
             Are you sure you want to mark {assetLabel} as physically returned?
-            This will update the asset status and resolve the active return request.
+            This will update the asset status and resolve the active return
+            request.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

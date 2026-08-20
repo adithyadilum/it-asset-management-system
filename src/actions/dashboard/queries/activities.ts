@@ -46,8 +46,7 @@ export async function getRecentActivitiesInternal(): Promise<RecentActivity[]> {
 
   return logs.map((log) => {
     const performer = log.performedByName || 'System';
-    const entityLabel =
-      assetMap.get(log.entityId) || log.entityId.slice(0, 8);
+    const entityLabel = assetMap.get(log.entityId) || log.entityId.slice(0, 8);
 
     const actionPhrase = formatActionType(log.actionType);
     let text = `${performer} ${actionPhrase} ${log.entityType.toLowerCase()}`;
@@ -69,4 +68,3 @@ export async function getRecentActivitiesInternal(): Promise<RecentActivity[]> {
     };
   });
 }
-

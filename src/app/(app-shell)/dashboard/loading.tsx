@@ -1,5 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 function KpiCardSkeleton() {
   return (
@@ -16,7 +16,7 @@ function KpiCardSkeleton() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function ChartCardSkeleton() {
@@ -30,7 +30,7 @@ function ChartCardSkeleton() {
         <Skeleton className="h-full w-full rounded-md" />
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function TableSectionSkeleton({ isTabs = true }: { isTabs?: boolean }) {
@@ -49,11 +49,14 @@ function TableSectionSkeleton({ isTabs = true }: { isTabs?: boolean }) {
       <div className="border rounded-md flex flex-col overflow-hidden h-53 bg-background">
         <Skeleton className="h-10 w-full rounded-none border-b" />
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="flex-1 w-full rounded-none border-b last:border-b-0" />
+          <Skeleton
+            key={i}
+            className="flex-1 w-full rounded-none border-b last:border-b-0"
+          />
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 export default function DashboardLoading() {
@@ -105,5 +108,5 @@ export default function DashboardLoading() {
         </div>
       </div>
     </main>
-  )
+  );
 }

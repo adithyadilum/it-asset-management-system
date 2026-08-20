@@ -10,7 +10,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock ResizeObserver
-class ResizeObserver { observe() {} unobserve() {} disconnect() {} }
+class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('MasterDataManagementClient', () => {
@@ -28,7 +32,16 @@ describe('MasterDataManagementClient', () => {
   });
 
   const defaultProps = {
-    categories: [{ id: 1, _originalId: 'cat-1', name: 'Category 1', code: 'C1', description: 'Desc', createdAt: new Date() } as any],
+    categories: [
+      {
+        id: 1,
+        _originalId: 'cat-1',
+        name: 'Category 1',
+        code: 'C1',
+        description: 'Desc',
+        createdAt: new Date(),
+      } as any,
+    ],
     locations: [],
     brands: [],
     deviceModels: [],
@@ -40,14 +53,16 @@ describe('MasterDataManagementClient', () => {
 
   it('renders the master data table and tabs', () => {
     render(<MasterDataManagementClient {...defaultProps} />);
-    
+
     // Check if the title is there
     expect(screen.getByText('Master Data Management')).toBeInTheDocument();
-    
+
     // Check if the tabs exist
-    expect(screen.getByRole('tab', { name: /Categories/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: /Categories/i })
+    ).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Locations/i })).toBeInTheDocument();
-    
+
     // It should render categories by default since it's the first tab (if not from URL)
     expect(screen.getByText('Category 1')).toBeInTheDocument();
   });

@@ -1,7 +1,9 @@
 import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { WriteOffsLedger } from './write-offs-ledger';
+import { getWriteOffsLedger } from '@/actions/financials';
 
 vi.mock('@/actions/financials', () => ({
   getWriteOffsLedger: vi.fn(),
@@ -29,8 +31,15 @@ describe('WriteOffsLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<CurrencyProvider initialCurrency="USD"><WriteOffsLedger initialData={mockData} /></CurrencyProvider>);
+    render(
+      <StrictMode>
+        <CurrencyProvider initialCurrency="USD">
+          <WriteOffsLedger initialData={mockData} />
+        </CurrencyProvider>
+      </StrictMode>
+    );
     expect(screen.getByText('AST-003')).toBeInTheDocument();
     expect(screen.getByText('Monitors')).toBeInTheDocument();
+    expect(getWriteOffsLedger).not.toHaveBeenCalled();
   });
 });

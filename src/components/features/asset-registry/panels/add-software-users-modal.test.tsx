@@ -10,7 +10,14 @@ describe('AddSoftwareUsersModal', () => {
   });
 
   it('renders modal and handles close', () => {
-    render(<AddSoftwareUsersModal isOpen={true} onClose={vi.fn()} assetId="1" availableSeats={5} />);
+    render(
+      <AddSoftwareUsersModal
+        isOpen={true}
+        onClose={vi.fn()}
+        assetId="1"
+        availableSeats={5}
+      />
+    );
     expect(screen.getByText(/Allocate Software License/i)).toBeInTheDocument();
   });
 });

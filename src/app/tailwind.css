@@ -1,870 +1,872 @@
 @layer components {
-    .all-\[unset\] {
-        all: unset;
-    }
+  .all-\[unset\] {
+    all: unset;
+  }
 }
 
 :root {
-    --box-shadow-destructive: 0px 0px 0px 3px rgba(220, 38, 38, 0.2);
-    --box-shadow-focus-ring: 0px 0px 0px 3px rgba(161, 161, 161, 0.5);
-    --box-shadow-shadow-2xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.25);
-    --box-shadow-shadow-2xs: 0px 1px 0px 0px rgba(0, 0, 0, 0.05);
-    --box-shadow-shadow-lg: 0px 4px 6px -4px rgba(0, 0, 0, 0.1), 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --box-shadow-shadow-md: 0px 2px 4px -2px rgba(0, 0, 0, 0.1), 0px 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --box-shadow-shadow-none: 0px 0px 0px 0px rgba(0, 0, 0, 0);
-    --box-shadow-shadow-sm: 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
-    --box-shadow-shadow-xl: 0px 8px 10px -6px rgba(0, 0, 0, 0.1), 0px 20px 25px -5px rgba(0, 0, 0, 0.1);
-    --box-shadow-shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
-
-    --text-xs-thin-font-family: "Noto Sans", Helvetica;
-    --text-xs-thin-font-size: 12px;
-    --text-xs-thin-font-style: normal;
-    --text-xs-thin-font-weight: 100;
-    --text-xs-thin-letter-spacing: 0px;
-    --text-xs-thin-line-height: 16px;
-
-    --text-xs-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-xs-extra-light-font-size: 12px;
-    --text-xs-extra-light-font-style: normal;
-    --text-xs-extra-light-font-weight: 200;
-    --text-xs-extra-light-letter-spacing: 0px;
-    --text-xs-extra-light-line-height: 16px;
-
-    --text-xs-light-font-family: "Noto Sans", Helvetica;
-    --text-xs-light-font-size: 12px;
-    --text-xs-light-font-style: normal;
-    --text-xs-light-font-weight: 300;
-    --text-xs-light-letter-spacing: 0px;
-    --text-xs-light-line-height: 16px;
-
-    --text-xs-regular-font-family: "Noto Sans", Helvetica;
-    --text-xs-regular-font-size: 12px;
-    --text-xs-regular-font-style: normal;
-    --text-xs-regular-font-weight: 400;
-    --text-xs-regular-letter-spacing: 0px;
-    --text-xs-regular-line-height: 16px;
-
-    --text-xs-medium-font-family: "Noto Sans", Helvetica;
-    --text-xs-medium-font-size: 12px;
-    --text-xs-medium-font-style: normal;
-    --text-xs-medium-font-weight: 500;
-    --text-xs-medium-letter-spacing: 0px;
-    --text-xs-medium-line-height: 16px;
-
-    --text-xs-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-xs-semi-bold-font-size: 12px;
-    --text-xs-semi-bold-font-style: normal;
-    --text-xs-semi-bold-font-weight: 600;
-    --text-xs-semi-bold-letter-spacing: 0px;
-    --text-xs-semi-bold-line-height: 16px;
-
-    --text-xs-bold-font-family: "Noto Sans", Helvetica;
-    --text-xs-bold-font-size: 12px;
-    --text-xs-bold-font-style: normal;
-    --text-xs-bold-font-weight: 700;
-    --text-xs-bold-letter-spacing: 0px;
-    --text-xs-bold-line-height: 16px;
-
-    --text-xs-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-xs-extra-bold-font-size: 12px;
-    --text-xs-extra-bold-font-style: normal;
-    --text-xs-extra-bold-font-weight: 800;
-    --text-xs-extra-bold-letter-spacing: 0px;
-    --text-xs-extra-bold-line-height: 16px;
-
-    --text-xs-black-font-family: "Noto Sans", Helvetica;
-    --text-xs-black-font-size: 12px;
-    --text-xs-black-font-style: normal;
-    --text-xs-black-font-weight: 900;
-    --text-xs-black-letter-spacing: 0px;
-    --text-xs-black-line-height: 16px;
-
-    --text-sm-thin-font-family: "Noto Sans", Helvetica;
-    --text-sm-thin-font-size: 14px;
-    --text-sm-thin-font-style: normal;
-    --text-sm-thin-font-weight: 100;
-    --text-sm-thin-letter-spacing: 0px;
-    --text-sm-thin-line-height: 20px;
-
-    --text-sm-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-sm-extra-light-font-size: 14px;
-    --text-sm-extra-light-font-style: normal;
-    --text-sm-extra-light-font-weight: 200;
-    --text-sm-extra-light-letter-spacing: 0px;
-    --text-sm-extra-light-line-height: 20px;
-
-    --text-sm-light-font-family: "Noto Sans", Helvetica;
-    --text-sm-light-font-size: 14px;
-    --text-sm-light-font-style: normal;
-    --text-sm-light-font-weight: 300;
-    --text-sm-light-letter-spacing: 0px;
-    --text-sm-light-line-height: 20px;
-
-    --text-sm-regular-font-family: "Noto Sans", Helvetica;
-    --text-sm-regular-font-size: 14px;
-    --text-sm-regular-font-style: normal;
-    --text-sm-regular-font-weight: 400;
-    --text-sm-regular-letter-spacing: 0px;
-    --text-sm-regular-line-height: 20px;
-
-    --text-sm-medium-font-family: "Noto Sans", Helvetica;
-    --text-sm-medium-font-size: 14px;
-    --text-sm-medium-font-style: normal;
-    --text-sm-medium-font-weight: 500;
-    --text-sm-medium-letter-spacing: 0px;
-    --text-sm-medium-line-height: 20px;
-
-    --text-sm-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-sm-semi-bold-font-size: 14px;
-    --text-sm-semi-bold-font-style: normal;
-    --text-sm-semi-bold-font-weight: 600;
-    --text-sm-semi-bold-letter-spacing: 0px;
-    --text-sm-semi-bold-line-height: 20px;
-
-    --text-sm-bold-font-family: "Noto Sans", Helvetica;
-    --text-sm-bold-font-size: 14px;
-    --text-sm-bold-font-style: normal;
-    --text-sm-bold-font-weight: 700;
-    --text-sm-bold-letter-spacing: 0px;
-    --text-sm-bold-line-height: 20px;
-
-    --text-sm-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-sm-extra-bold-font-size: 14px;
-    --text-sm-extra-bold-font-style: normal;
-    --text-sm-extra-bold-font-weight: 800;
-    --text-sm-extra-bold-letter-spacing: 0px;
-    --text-sm-extra-bold-line-height: 20px;
-
-    --text-sm-black-font-family: "Noto Sans", Helvetica;
-    --text-sm-black-font-size: 14px;
-    --text-sm-black-font-style: normal;
-    --text-sm-black-font-weight: 900;
-    --text-sm-black-letter-spacing: 0px;
-    --text-sm-black-line-height: 20px;
-
-    --text-base-thin-font-family: "Noto Sans", Helvetica;
-    --text-base-thin-font-size: 16px;
-    --text-base-thin-font-style: normal;
-    --text-base-thin-font-weight: 100;
-    --text-base-thin-letter-spacing: 0px;
-    --text-base-thin-line-height: 24px;
-
-    --text-base-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-base-extra-light-font-size: 16px;
-    --text-base-extra-light-font-style: normal;
-    --text-base-extra-light-font-weight: 200;
-    --text-base-extra-light-letter-spacing: 0px;
-    --text-base-extra-light-line-height: 24px;
-
-    --text-base-light-font-family: "Noto Sans", Helvetica;
-    --text-base-light-font-size: 16px;
-    --text-base-light-font-style: normal;
-    --text-base-light-font-weight: 300;
-    --text-base-light-letter-spacing: 0px;
-    --text-base-light-line-height: 24px;
-
-    --text-base-regular-font-family: "Noto Sans", Helvetica;
-    --text-base-regular-font-size: 16px;
-    --text-base-regular-font-style: normal;
-    --text-base-regular-font-weight: 400;
-    --text-base-regular-letter-spacing: 0px;
-    --text-base-regular-line-height: 24px;
-
-    --text-base-medium-font-family: "Noto Sans", Helvetica;
-    --text-base-medium-font-size: 16px;
-    --text-base-medium-font-style: normal;
-    --text-base-medium-font-weight: 500;
-    --text-base-medium-letter-spacing: 0px;
-    --text-base-medium-line-height: 24px;
-
-    --text-base-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-base-semi-bold-font-size: 16px;
-    --text-base-semi-bold-font-style: normal;
-    --text-base-semi-bold-font-weight: 600;
-    --text-base-semi-bold-letter-spacing: 0px;
-    --text-base-semi-bold-line-height: 24px;
-
-    --text-base-bold-font-family: "Noto Sans", Helvetica;
-    --text-base-bold-font-size: 16px;
-    --text-base-bold-font-style: normal;
-    --text-base-bold-font-weight: 700;
-    --text-base-bold-letter-spacing: 0px;
-    --text-base-bold-line-height: 24px;
-
-    --text-base-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-base-extra-bold-font-size: 16px;
-    --text-base-extra-bold-font-style: normal;
-    --text-base-extra-bold-font-weight: 800;
-    --text-base-extra-bold-letter-spacing: 0px;
-    --text-base-extra-bold-line-height: 24px;
-
-    --text-base-black-font-family: "Noto Sans", Helvetica;
-    --text-base-black-font-size: 16px;
-    --text-base-black-font-style: normal;
-    --text-base-black-font-weight: 900;
-    --text-base-black-letter-spacing: 0px;
-    --text-base-black-line-height: 24px;
-
-    --text-lg-thin-font-family: "Noto Sans", Helvetica;
-    --text-lg-thin-font-size: 18px;
-    --text-lg-thin-font-style: normal;
-    --text-lg-thin-font-weight: 100;
-    --text-lg-thin-letter-spacing: 0px;
-    --text-lg-thin-line-height: 28px;
-
-    --text-lg-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-lg-extra-light-font-size: 18px;
-    --text-lg-extra-light-font-style: normal;
-    --text-lg-extra-light-font-weight: 200;
-    --text-lg-extra-light-letter-spacing: 0px;
-    --text-lg-extra-light-line-height: 28px;
-
-    --text-lg-light-font-family: "Noto Sans", Helvetica;
-    --text-lg-light-font-size: 18px;
-    --text-lg-light-font-style: normal;
-    --text-lg-light-font-weight: 300;
-    --text-lg-light-letter-spacing: 0px;
-    --text-lg-light-line-height: 28px;
-
-    --text-lg-regular-font-family: "Noto Sans", Helvetica;
-    --text-lg-regular-font-size: 18px;
-    --text-lg-regular-font-style: normal;
-    --text-lg-regular-font-weight: 400;
-    --text-lg-regular-letter-spacing: 0px;
-    --text-lg-regular-line-height: 28px;
-
-    --text-lg-medium-font-family: "Noto Sans", Helvetica;
-    --text-lg-medium-font-size: 18px;
-    --text-lg-medium-font-style: normal;
-    --text-lg-medium-font-weight: 500;
-    --text-lg-medium-letter-spacing: 0px;
-    --text-lg-medium-line-height: 28px;
-
-    --text-lg-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-lg-semi-bold-font-size: 18px;
-    --text-lg-semi-bold-font-style: normal;
-    --text-lg-semi-bold-font-weight: 600;
-    --text-lg-semi-bold-letter-spacing: 0px;
-    --text-lg-semi-bold-line-height: 28px;
-
-    --text-lg-bold-font-family: "Noto Sans", Helvetica;
-    --text-lg-bold-font-size: 18px;
-    --text-lg-bold-font-style: normal;
-    --text-lg-bold-font-weight: 700;
-    --text-lg-bold-letter-spacing: 0px;
-    --text-lg-bold-line-height: 28px;
-
-    --text-lg-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-lg-extra-bold-font-size: 18px;
-    --text-lg-extra-bold-font-style: normal;
-    --text-lg-extra-bold-font-weight: 800;
-    --text-lg-extra-bold-letter-spacing: 0px;
-    --text-lg-extra-bold-line-height: 28px;
-
-    --text-lg-black-font-family: "Noto Sans", Helvetica;
-    --text-lg-black-font-size: 18px;
-    --text-lg-black-font-style: normal;
-    --text-lg-black-font-weight: 900;
-    --text-lg-black-letter-spacing: 0px;
-    --text-lg-black-line-height: 28px;
-
-    --text-xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-xl-thin-font-size: 20px;
-    --text-xl-thin-font-style: normal;
-    --text-xl-thin-font-weight: 100;
-    --text-xl-thin-letter-spacing: 0px;
-    --text-xl-thin-line-height: 28px;
-
-    --text-xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-xl-extra-light-font-size: 20px;
-    --text-xl-extra-light-font-style: normal;
-    --text-xl-extra-light-font-weight: 200;
-    --text-xl-extra-light-letter-spacing: 0px;
-    --text-xl-extra-light-line-height: 28px;
-
-    --text-xl-light-font-family: "Noto Sans", Helvetica;
-    --text-xl-light-font-size: 20px;
-    --text-xl-light-font-style: normal;
-    --text-xl-light-font-weight: 300;
-    --text-xl-light-letter-spacing: 0px;
-    --text-xl-light-line-height: 28px;
-
-    --text-xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-xl-regular-font-size: 20px;
-    --text-xl-regular-font-style: normal;
-    --text-xl-regular-font-weight: 400;
-    --text-xl-regular-letter-spacing: 0px;
-    --text-xl-regular-line-height: 28px;
-
-    --text-xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-xl-medium-font-size: 20px;
-    --text-xl-medium-font-style: normal;
-    --text-xl-medium-font-weight: 500;
-    --text-xl-medium-letter-spacing: 0px;
-    --text-xl-medium-line-height: 28px;
-
-    --text-xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-xl-semi-bold-font-size: 20px;
-    --text-xl-semi-bold-font-style: normal;
-    --text-xl-semi-bold-font-weight: 600;
-    --text-xl-semi-bold-letter-spacing: 0px;
-    --text-xl-semi-bold-line-height: 28px;
-
-    --text-xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-xl-bold-font-size: 20px;
-    --text-xl-bold-font-style: normal;
-    --text-xl-bold-font-weight: 700;
-    --text-xl-bold-letter-spacing: 0px;
-    --text-xl-bold-line-height: 28px;
-
-    --text-xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-xl-extra-bold-font-size: 20px;
-    --text-xl-extra-bold-font-style: normal;
-    --text-xl-extra-bold-font-weight: 800;
-    --text-xl-extra-bold-letter-spacing: 0px;
-    --text-xl-extra-bold-line-height: 28px;
-
-    --text-xl-black-font-family: "Noto Sans", Helvetica;
-    --text-xl-black-font-size: 20px;
-    --text-xl-black-font-style: normal;
-    --text-xl-black-font-weight: 900;
-    --text-xl-black-letter-spacing: 0px;
-    --text-xl-black-line-height: 28px;
-
-    --text-2xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-2xl-thin-font-size: 24px;
-    --text-2xl-thin-font-style: normal;
-    --text-2xl-thin-font-weight: 100;
-    --text-2xl-thin-letter-spacing: 0px;
-    --text-2xl-thin-line-height: 32px;
-
-    --text-2xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-2xl-extra-light-font-size: 24px;
-    --text-2xl-extra-light-font-style: normal;
-    --text-2xl-extra-light-font-weight: 200;
-    --text-2xl-extra-light-letter-spacing: 0px;
-    --text-2xl-extra-light-line-height: 32px;
-
-    --text-2xl-light-font-family: "Noto Sans", Helvetica;
-    --text-2xl-light-font-size: 24px;
-    --text-2xl-light-font-style: normal;
-    --text-2xl-light-font-weight: 300;
-    --text-2xl-light-letter-spacing: 0px;
-    --text-2xl-light-line-height: 32px;
-
-    --text-2xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-2xl-regular-font-size: 24px;
-    --text-2xl-regular-font-style: normal;
-    --text-2xl-regular-font-weight: 400;
-    --text-2xl-regular-letter-spacing: 0px;
-    --text-2xl-regular-line-height: 32px;
-
-    --text-2xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-2xl-medium-font-size: 24px;
-    --text-2xl-medium-font-style: normal;
-    --text-2xl-medium-font-weight: 500;
-    --text-2xl-medium-letter-spacing: 0px;
-    --text-2xl-medium-line-height: 32px;
-
-    --text-2xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-2xl-semi-bold-font-size: 24px;
-    --text-2xl-semi-bold-font-style: normal;
-    --text-2xl-semi-bold-font-weight: 600;
-    --text-2xl-semi-bold-letter-spacing: 0px;
-    --text-2xl-semi-bold-line-height: 32px;
-
-    --text-2xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-2xl-bold-font-size: 24px;
-    --text-2xl-bold-font-style: normal;
-    --text-2xl-bold-font-weight: 700;
-    --text-2xl-bold-letter-spacing: 0px;
-    --text-2xl-bold-line-height: 32px;
-
-    --text-2xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-2xl-extra-bold-font-size: 24px;
-    --text-2xl-extra-bold-font-style: normal;
-    --text-2xl-extra-bold-font-weight: 800;
-    --text-2xl-extra-bold-letter-spacing: 0px;
-    --text-2xl-extra-bold-line-height: 32px;
-
-    --text-2xl-black-font-family: "Noto Sans", Helvetica;
-    --text-2xl-black-font-size: 24px;
-    --text-2xl-black-font-style: normal;
-    --text-2xl-black-font-weight: 900;
-    --text-2xl-black-letter-spacing: 0px;
-    --text-2xl-black-line-height: 32px;
-
-    --text-3xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-3xl-thin-font-size: 30px;
-    --text-3xl-thin-font-style: normal;
-    --text-3xl-thin-font-weight: 100;
-    --text-3xl-thin-letter-spacing: 0px;
-    --text-3xl-thin-line-height: 36px;
-
-    --text-3xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-3xl-extra-light-font-size: 30px;
-    --text-3xl-extra-light-font-style: normal;
-    --text-3xl-extra-light-font-weight: 200;
-    --text-3xl-extra-light-letter-spacing: 0px;
-    --text-3xl-extra-light-line-height: 36px;
-
-    --text-3xl-light-font-family: "Noto Sans", Helvetica;
-    --text-3xl-light-font-size: 30px;
-    --text-3xl-light-font-style: normal;
-    --text-3xl-light-font-weight: 300;
-    --text-3xl-light-letter-spacing: 0px;
-    --text-3xl-light-line-height: 36px;
-
-    --text-3xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-3xl-regular-font-size: 30px;
-    --text-3xl-regular-font-style: normal;
-    --text-3xl-regular-font-weight: 400;
-    --text-3xl-regular-letter-spacing: 0px;
-    --text-3xl-regular-line-height: 36px;
-
-    --text-3xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-3xl-medium-font-size: 30px;
-    --text-3xl-medium-font-style: normal;
-    --text-3xl-medium-font-weight: 500;
-    --text-3xl-medium-letter-spacing: 0px;
-    --text-3xl-medium-line-height: 36px;
-
-    --text-3xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-3xl-semi-bold-font-size: 30px;
-    --text-3xl-semi-bold-font-style: normal;
-    --text-3xl-semi-bold-font-weight: 600;
-    --text-3xl-semi-bold-letter-spacing: 0px;
-    --text-3xl-semi-bold-line-height: 36px;
-
-    --text-3xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-3xl-bold-font-size: 30px;
-    --text-3xl-bold-font-style: normal;
-    --text-3xl-bold-font-weight: 700;
-    --text-3xl-bold-letter-spacing: 0px;
-    --text-3xl-bold-line-height: 36px;
-
-    --text-3xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-3xl-extra-bold-font-size: 30px;
-    --text-3xl-extra-bold-font-style: normal;
-    --text-3xl-extra-bold-font-weight: 800;
-    --text-3xl-extra-bold-letter-spacing: 0px;
-    --text-3xl-extra-bold-line-height: 36px;
-
-    --text-3xl-black-font-family: "Noto Sans", Helvetica;
-    --text-3xl-black-font-size: 30px;
-    --text-3xl-black-font-style: normal;
-    --text-3xl-black-font-weight: 900;
-    --text-3xl-black-letter-spacing: 0px;
-    --text-3xl-black-line-height: 36px;
-
-    --text-4xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-4xl-thin-font-size: 36px;
-    --text-4xl-thin-font-style: normal;
-    --text-4xl-thin-font-weight: 100;
-    --text-4xl-thin-letter-spacing: 0px;
-    --text-4xl-thin-line-height: 40px;
-
-    --text-4xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-4xl-extra-light-font-size: 36px;
-    --text-4xl-extra-light-font-style: normal;
-    --text-4xl-extra-light-font-weight: 200;
-    --text-4xl-extra-light-letter-spacing: 0px;
-    --text-4xl-extra-light-line-height: 40px;
-
-    --text-4xl-light-font-family: "Noto Sans", Helvetica;
-    --text-4xl-light-font-size: 36px;
-    --text-4xl-light-font-style: normal;
-    --text-4xl-light-font-weight: 300;
-    --text-4xl-light-letter-spacing: 0px;
-    --text-4xl-light-line-height: 40px;
-
-    --text-4xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-4xl-regular-font-size: 36px;
-    --text-4xl-regular-font-style: normal;
-    --text-4xl-regular-font-weight: 400;
-    --text-4xl-regular-letter-spacing: 0px;
-    --text-4xl-regular-line-height: 40px;
-
-    --text-4xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-4xl-medium-font-size: 36px;
-    --text-4xl-medium-font-style: normal;
-    --text-4xl-medium-font-weight: 500;
-    --text-4xl-medium-letter-spacing: 0px;
-    --text-4xl-medium-line-height: 40px;
-
-    --text-4xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-4xl-semi-bold-font-size: 36px;
-    --text-4xl-semi-bold-font-style: normal;
-    --text-4xl-semi-bold-font-weight: 600;
-    --text-4xl-semi-bold-letter-spacing: 0px;
-    --text-4xl-semi-bold-line-height: 50px;
-
-    --text-4xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-4xl-bold-font-size: 36px;
-    --text-4xl-bold-font-style: normal;
-    --text-4xl-bold-font-weight: 700;
-    --text-4xl-bold-letter-spacing: 0px;
-    --text-4xl-bold-line-height: 40px;
-
-    --text-4xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-4xl-extra-bold-font-size: 36px;
-    --text-4xl-extra-bold-font-style: normal;
-    --text-4xl-extra-bold-font-weight: 800;
-    --text-4xl-extra-bold-letter-spacing: 0px;
-    --text-4xl-extra-bold-line-height: 40px;
-
-    --text-4xl-black-font-family: "Noto Sans", Helvetica;
-    --text-4xl-black-font-size: 36px;
-    --text-4xl-black-font-style: normal;
-    --text-4xl-black-font-weight: 900;
-    --text-4xl-black-letter-spacing: 0px;
-    --text-4xl-black-line-height: 40px;
-
-    --text-5xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-5xl-thin-font-size: 48px;
-    --text-5xl-thin-font-style: normal;
-    --text-5xl-thin-font-weight: 100;
-    --text-5xl-thin-letter-spacing: 0px;
-    --text-5xl-thin-line-height: 48px;
-
-    --text-5xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-5xl-extra-light-font-size: 48px;
-    --text-5xl-extra-light-font-style: normal;
-    --text-5xl-extra-light-font-weight: 200;
-    --text-5xl-extra-light-letter-spacing: 0px;
-    --text-5xl-extra-light-line-height: 48px;
-
-    --text-5xl-light-font-family: "Noto Sans", Helvetica;
-    --text-5xl-light-font-size: 48px;
-    --text-5xl-light-font-style: normal;
-    --text-5xl-light-font-weight: 300;
-    --text-5xl-light-letter-spacing: 0px;
-    --text-5xl-light-line-height: 48px;
-
-    --text-5xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-5xl-regular-font-size: 48px;
-    --text-5xl-regular-font-style: normal;
-    --text-5xl-regular-font-weight: 400;
-    --text-5xl-regular-letter-spacing: 0px;
-    --text-5xl-regular-line-height: 48px;
-
-    --text-5xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-5xl-medium-font-size: 48px;
-    --text-5xl-medium-font-style: normal;
-    --text-5xl-medium-font-weight: 500;
-    --text-5xl-medium-letter-spacing: 0px;
-    --text-5xl-medium-line-height: 48px;
-
-    --text-5xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-5xl-semi-bold-font-size: 48px;
-    --text-5xl-semi-bold-font-style: normal;
-    --text-5xl-semi-bold-font-weight: 600;
-    --text-5xl-semi-bold-letter-spacing: 0px;
-    --text-5xl-semi-bold-line-height: 48px;
-
-    --text-5xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-5xl-bold-font-size: 48px;
-    --text-5xl-bold-font-style: normal;
-    --text-5xl-bold-font-weight: 700;
-    --text-5xl-bold-letter-spacing: 0px;
-    --text-5xl-bold-line-height: 48px;
-
-    --text-5xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-5xl-extra-bold-font-size: 48px;
-    --text-5xl-extra-bold-font-style: normal;
-    --text-5xl-extra-bold-font-weight: 800;
-    --text-5xl-extra-bold-letter-spacing: 0px;
-    --text-5xl-extra-bold-line-height: 48px;
-
-    --text-5xl-black-font-family: "Noto Sans", Helvetica;
-    --text-5xl-black-font-size: 48px;
-    --text-5xl-black-font-style: normal;
-    --text-5xl-black-font-weight: 900;
-    --text-5xl-black-letter-spacing: 0px;
-    --text-5xl-black-line-height: 48px;
-
-    --text-6xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-6xl-thin-font-size: 60px;
-    --text-6xl-thin-font-style: normal;
-    --text-6xl-thin-font-weight: 100;
-    --text-6xl-thin-letter-spacing: 0px;
-    --text-6xl-thin-line-height: 60px;
-
-    --text-6xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-6xl-extra-light-font-size: 60px;
-    --text-6xl-extra-light-font-style: normal;
-    --text-6xl-extra-light-font-weight: 200;
-    --text-6xl-extra-light-letter-spacing: 0px;
-    --text-6xl-extra-light-line-height: 60px;
-
-    --text-6xl-light-font-family: "Noto Sans", Helvetica;
-    --text-6xl-light-font-size: 60px;
-    --text-6xl-light-font-style: normal;
-    --text-6xl-light-font-weight: 300;
-    --text-6xl-light-letter-spacing: 0px;
-    --text-6xl-light-line-height: 60px;
-
-    --text-6xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-6xl-regular-font-size: 60px;
-    --text-6xl-regular-font-style: normal;
-    --text-6xl-regular-font-weight: 400;
-    --text-6xl-regular-letter-spacing: 0px;
-    --text-6xl-regular-line-height: 60px;
-
-    --text-6xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-6xl-medium-font-size: 60px;
-    --text-6xl-medium-font-style: normal;
-    --text-6xl-medium-font-weight: 500;
-    --text-6xl-medium-letter-spacing: 0px;
-    --text-6xl-medium-line-height: 60px;
-
-    --text-6xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-6xl-semi-bold-font-size: 60px;
-    --text-6xl-semi-bold-font-style: normal;
-    --text-6xl-semi-bold-font-weight: 600;
-    --text-6xl-semi-bold-letter-spacing: 0px;
-    --text-6xl-semi-bold-line-height: 60px;
-
-    --text-6xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-6xl-bold-font-size: 60px;
-    --text-6xl-bold-font-style: normal;
-    --text-6xl-bold-font-weight: 700;
-    --text-6xl-bold-letter-spacing: 0px;
-    --text-6xl-bold-line-height: 60px;
-
-    --text-6xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-6xl-extra-bold-font-size: 60px;
-    --text-6xl-extra-bold-font-style: normal;
-    --text-6xl-extra-bold-font-weight: 800;
-    --text-6xl-extra-bold-letter-spacing: 0px;
-    --text-6xl-extra-bold-line-height: 60px;
-
-    --text-6xl-black-font-family: "Noto Sans", Helvetica;
-    --text-6xl-black-font-size: 60px;
-    --text-6xl-black-font-style: normal;
-    --text-6xl-black-font-weight: 900;
-    --text-6xl-black-letter-spacing: 0px;
-    --text-6xl-black-line-height: 60px;
-
-    --text-7xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-7xl-thin-font-size: 72px;
-    --text-7xl-thin-font-style: normal;
-    --text-7xl-thin-font-weight: 100;
-    --text-7xl-thin-letter-spacing: 0px;
-    --text-7xl-thin-line-height: 72px;
-
-    --text-7xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-7xl-extra-light-font-size: 72px;
-    --text-7xl-extra-light-font-style: normal;
-    --text-7xl-extra-light-font-weight: 200;
-    --text-7xl-extra-light-letter-spacing: 0px;
-    --text-7xl-extra-light-line-height: 72px;
-
-    --text-7xl-light-font-family: "Noto Sans", Helvetica;
-    --text-7xl-light-font-size: 72px;
-    --text-7xl-light-font-style: normal;
-    --text-7xl-light-font-weight: 300;
-    --text-7xl-light-letter-spacing: 0px;
-    --text-7xl-light-line-height: 72px;
-
-    --text-7xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-7xl-regular-font-size: 72px;
-    --text-7xl-regular-font-style: normal;
-    --text-7xl-regular-font-weight: 400;
-    --text-7xl-regular-letter-spacing: 0px;
-    --text-7xl-regular-line-height: 72px;
-
-    --text-7xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-7xl-medium-font-size: 72px;
-    --text-7xl-medium-font-style: normal;
-    --text-7xl-medium-font-weight: 500;
-    --text-7xl-medium-letter-spacing: 0px;
-    --text-7xl-medium-line-height: 72px;
-
-    --text-7xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-7xl-semi-bold-font-size: 72px;
-    --text-7xl-semi-bold-font-style: normal;
-    --text-7xl-semi-bold-font-weight: 600;
-    --text-7xl-semi-bold-letter-spacing: 0px;
-    --text-7xl-semi-bold-line-height: 72px;
-
-    --text-7xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-7xl-bold-font-size: 72px;
-    --text-7xl-bold-font-style: normal;
-    --text-7xl-bold-font-weight: 700;
-    --text-7xl-bold-letter-spacing: 0px;
-    --text-7xl-bold-line-height: 72px;
-
-    --text-7xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-7xl-extra-bold-font-size: 72px;
-    --text-7xl-extra-bold-font-style: normal;
-    --text-7xl-extra-bold-font-weight: 800;
-    --text-7xl-extra-bold-letter-spacing: 0px;
-    --text-7xl-extra-bold-line-height: 72px;
-
-    --text-7xl-black-font-family: "Noto Sans", Helvetica;
-    --text-7xl-black-font-size: 72px;
-    --text-7xl-black-font-style: normal;
-    --text-7xl-black-font-weight: 900;
-    --text-7xl-black-letter-spacing: 0px;
-    --text-7xl-black-line-height: 72px;
-
-    --text-8xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-8xl-thin-font-size: 96px;
-    --text-8xl-thin-font-style: normal;
-    --text-8xl-thin-font-weight: 100;
-    --text-8xl-thin-letter-spacing: 0px;
-    --text-8xl-thin-line-height: 96px;
-
-    --text-8xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-8xl-extra-light-font-size: 96px;
-    --text-8xl-extra-light-font-style: normal;
-    --text-8xl-extra-light-font-weight: 200;
-    --text-8xl-extra-light-letter-spacing: 0px;
-    --text-8xl-extra-light-line-height: 96px;
-
-    --text-8xl-light-font-family: "Noto Sans", Helvetica;
-    --text-8xl-light-font-size: 96px;
-    --text-8xl-light-font-style: normal;
-    --text-8xl-light-font-weight: 300;
-    --text-8xl-light-letter-spacing: 0px;
-    --text-8xl-light-line-height: 96px;
-
-    --text-8xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-8xl-regular-font-size: 96px;
-    --text-8xl-regular-font-style: normal;
-    --text-8xl-regular-font-weight: 400;
-    --text-8xl-regular-letter-spacing: 0px;
-    --text-8xl-regular-line-height: 96px;
-
-    --text-8xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-8xl-medium-font-size: 96px;
-    --text-8xl-medium-font-style: normal;
-    --text-8xl-medium-font-weight: 500;
-    --text-8xl-medium-letter-spacing: 0px;
-    --text-8xl-medium-line-height: 96px;
-
-    --text-8xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-8xl-semi-bold-font-size: 96px;
-    --text-8xl-semi-bold-font-style: normal;
-    --text-8xl-semi-bold-font-weight: 600;
-    --text-8xl-semi-bold-letter-spacing: 0px;
-    --text-8xl-semi-bold-line-height: 96px;
-
-    --text-8xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-8xl-bold-font-size: 96px;
-    --text-8xl-bold-font-style: normal;
-    --text-8xl-bold-font-weight: 700;
-    --text-8xl-bold-letter-spacing: 0px;
-    --text-8xl-bold-line-height: 96px;
-
-    --text-8xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-8xl-extra-bold-font-size: 96px;
-    --text-8xl-extra-bold-font-style: normal;
-    --text-8xl-extra-bold-font-weight: 800;
-    --text-8xl-extra-bold-letter-spacing: 0px;
-    --text-8xl-extra-bold-line-height: 96px;
-
-    --text-8xl-black-font-family: "Noto Sans", Helvetica;
-    --text-8xl-black-font-size: 96px;
-    --text-8xl-black-font-style: normal;
-    --text-8xl-black-font-weight: 900;
-    --text-8xl-black-letter-spacing: 0px;
-    --text-8xl-black-line-height: 96px;
-
-    --text-9xl-thin-font-family: "Noto Sans", Helvetica;
-    --text-9xl-thin-font-size: 128px;
-    --text-9xl-thin-font-style: normal;
-    --text-9xl-thin-font-weight: 100;
-    --text-9xl-thin-letter-spacing: 0px;
-    --text-9xl-thin-line-height: 128px;
-
-    --text-9xl-extra-light-font-family: "Noto Sans", Helvetica;
-    --text-9xl-extra-light-font-size: 128px;
-    --text-9xl-extra-light-font-style: normal;
-    --text-9xl-extra-light-font-weight: 200;
-    --text-9xl-extra-light-letter-spacing: 0px;
-    --text-9xl-extra-light-line-height: 128px;
-
-    --text-9xl-light-font-family: "Noto Sans", Helvetica;
-    --text-9xl-light-font-size: 128px;
-    --text-9xl-light-font-style: normal;
-    --text-9xl-light-font-weight: 300;
-    --text-9xl-light-letter-spacing: 0px;
-    --text-9xl-light-line-height: 128px;
-
-    --text-9xl-regular-font-family: "Noto Sans", Helvetica;
-    --text-9xl-regular-font-size: 128px;
-    --text-9xl-regular-font-style: normal;
-    --text-9xl-regular-font-weight: 400;
-    --text-9xl-regular-letter-spacing: 0px;
-    --text-9xl-regular-line-height: 128px;
-
-    --text-9xl-medium-font-family: "Noto Sans", Helvetica;
-    --text-9xl-medium-font-size: 128px;
-    --text-9xl-medium-font-style: normal;
-    --text-9xl-medium-font-weight: 500;
-    --text-9xl-medium-letter-spacing: 0px;
-    --text-9xl-medium-line-height: 128px;
-
-    --text-9xl-semi-bold-font-family: "Noto Sans", Helvetica;
-    --text-9xl-semi-bold-font-size: 128px;
-    --text-9xl-semi-bold-font-style: normal;
-    --text-9xl-semi-bold-font-weight: 600;
-    --text-9xl-semi-bold-letter-spacing: 0px;
-    --text-9xl-semi-bold-line-height: 128px;
-
-    --text-9xl-bold-font-family: "Noto Sans", Helvetica;
-    --text-9xl-bold-font-size: 128px;
-    --text-9xl-bold-font-style: normal;
-    --text-9xl-bold-font-weight: 700;
-    --text-9xl-bold-letter-spacing: 0px;
-    --text-9xl-bold-line-height: 128px;
-
-    --text-9xl-extra-bold-font-family: "Noto Sans", Helvetica;
-    --text-9xl-extra-bold-font-size: 128px;
-    --text-9xl-extra-bold-font-style: normal;
-    --text-9xl-extra-bold-font-weight: 800;
-    --text-9xl-extra-bold-letter-spacing: 0px;
-    --text-9xl-extra-bold-line-height: 128px;
-
-    --text-9xl-black-font-family: "Noto Sans", Helvetica;
-    --text-9xl-black-font-size: 128px;
-    --text-9xl-black-font-style: normal;
-    --text-9xl-black-font-weight: 900;
-    --text-9xl-black-letter-spacing: 0px;
-    --text-9xl-black-line-height: 128px;
-
+  --box-shadow-destructive: 0px 0px 0px 3px rgba(220, 38, 38, 0.2);
+  --box-shadow-focus-ring: 0px 0px 0px 3px rgba(161, 161, 161, 0.5);
+  --box-shadow-shadow-2xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --box-shadow-shadow-2xs: 0px 1px 0px 0px rgba(0, 0, 0, 0.05);
+  --box-shadow-shadow-lg:
+    0px 4px 6px -4px rgba(0, 0, 0, 0.1), 0px 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --box-shadow-shadow-md:
+    0px 2px 4px -2px rgba(0, 0, 0, 0.1), 0px 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --box-shadow-shadow-none: 0px 0px 0px 0px rgba(0, 0, 0, 0);
+  --box-shadow-shadow-sm: 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+  --box-shadow-shadow-xl:
+    0px 8px 10px -6px rgba(0, 0, 0, 0.1), 0px 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --box-shadow-shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
+
+  --text-xs-thin-font-family: 'Noto Sans', Helvetica;
+  --text-xs-thin-font-size: 12px;
+  --text-xs-thin-font-style: normal;
+  --text-xs-thin-font-weight: 100;
+  --text-xs-thin-letter-spacing: 0px;
+  --text-xs-thin-line-height: 16px;
+
+  --text-xs-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-xs-extra-light-font-size: 12px;
+  --text-xs-extra-light-font-style: normal;
+  --text-xs-extra-light-font-weight: 200;
+  --text-xs-extra-light-letter-spacing: 0px;
+  --text-xs-extra-light-line-height: 16px;
+
+  --text-xs-light-font-family: 'Noto Sans', Helvetica;
+  --text-xs-light-font-size: 12px;
+  --text-xs-light-font-style: normal;
+  --text-xs-light-font-weight: 300;
+  --text-xs-light-letter-spacing: 0px;
+  --text-xs-light-line-height: 16px;
+
+  --text-xs-regular-font-family: 'Noto Sans', Helvetica;
+  --text-xs-regular-font-size: 12px;
+  --text-xs-regular-font-style: normal;
+  --text-xs-regular-font-weight: 400;
+  --text-xs-regular-letter-spacing: 0px;
+  --text-xs-regular-line-height: 16px;
+
+  --text-xs-medium-font-family: 'Noto Sans', Helvetica;
+  --text-xs-medium-font-size: 12px;
+  --text-xs-medium-font-style: normal;
+  --text-xs-medium-font-weight: 500;
+  --text-xs-medium-letter-spacing: 0px;
+  --text-xs-medium-line-height: 16px;
+
+  --text-xs-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-xs-semi-bold-font-size: 12px;
+  --text-xs-semi-bold-font-style: normal;
+  --text-xs-semi-bold-font-weight: 600;
+  --text-xs-semi-bold-letter-spacing: 0px;
+  --text-xs-semi-bold-line-height: 16px;
+
+  --text-xs-bold-font-family: 'Noto Sans', Helvetica;
+  --text-xs-bold-font-size: 12px;
+  --text-xs-bold-font-style: normal;
+  --text-xs-bold-font-weight: 700;
+  --text-xs-bold-letter-spacing: 0px;
+  --text-xs-bold-line-height: 16px;
+
+  --text-xs-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-xs-extra-bold-font-size: 12px;
+  --text-xs-extra-bold-font-style: normal;
+  --text-xs-extra-bold-font-weight: 800;
+  --text-xs-extra-bold-letter-spacing: 0px;
+  --text-xs-extra-bold-line-height: 16px;
+
+  --text-xs-black-font-family: 'Noto Sans', Helvetica;
+  --text-xs-black-font-size: 12px;
+  --text-xs-black-font-style: normal;
+  --text-xs-black-font-weight: 900;
+  --text-xs-black-letter-spacing: 0px;
+  --text-xs-black-line-height: 16px;
+
+  --text-sm-thin-font-family: 'Noto Sans', Helvetica;
+  --text-sm-thin-font-size: 14px;
+  --text-sm-thin-font-style: normal;
+  --text-sm-thin-font-weight: 100;
+  --text-sm-thin-letter-spacing: 0px;
+  --text-sm-thin-line-height: 20px;
+
+  --text-sm-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-sm-extra-light-font-size: 14px;
+  --text-sm-extra-light-font-style: normal;
+  --text-sm-extra-light-font-weight: 200;
+  --text-sm-extra-light-letter-spacing: 0px;
+  --text-sm-extra-light-line-height: 20px;
+
+  --text-sm-light-font-family: 'Noto Sans', Helvetica;
+  --text-sm-light-font-size: 14px;
+  --text-sm-light-font-style: normal;
+  --text-sm-light-font-weight: 300;
+  --text-sm-light-letter-spacing: 0px;
+  --text-sm-light-line-height: 20px;
+
+  --text-sm-regular-font-family: 'Noto Sans', Helvetica;
+  --text-sm-regular-font-size: 14px;
+  --text-sm-regular-font-style: normal;
+  --text-sm-regular-font-weight: 400;
+  --text-sm-regular-letter-spacing: 0px;
+  --text-sm-regular-line-height: 20px;
+
+  --text-sm-medium-font-family: 'Noto Sans', Helvetica;
+  --text-sm-medium-font-size: 14px;
+  --text-sm-medium-font-style: normal;
+  --text-sm-medium-font-weight: 500;
+  --text-sm-medium-letter-spacing: 0px;
+  --text-sm-medium-line-height: 20px;
+
+  --text-sm-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-sm-semi-bold-font-size: 14px;
+  --text-sm-semi-bold-font-style: normal;
+  --text-sm-semi-bold-font-weight: 600;
+  --text-sm-semi-bold-letter-spacing: 0px;
+  --text-sm-semi-bold-line-height: 20px;
+
+  --text-sm-bold-font-family: 'Noto Sans', Helvetica;
+  --text-sm-bold-font-size: 14px;
+  --text-sm-bold-font-style: normal;
+  --text-sm-bold-font-weight: 700;
+  --text-sm-bold-letter-spacing: 0px;
+  --text-sm-bold-line-height: 20px;
+
+  --text-sm-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-sm-extra-bold-font-size: 14px;
+  --text-sm-extra-bold-font-style: normal;
+  --text-sm-extra-bold-font-weight: 800;
+  --text-sm-extra-bold-letter-spacing: 0px;
+  --text-sm-extra-bold-line-height: 20px;
+
+  --text-sm-black-font-family: 'Noto Sans', Helvetica;
+  --text-sm-black-font-size: 14px;
+  --text-sm-black-font-style: normal;
+  --text-sm-black-font-weight: 900;
+  --text-sm-black-letter-spacing: 0px;
+  --text-sm-black-line-height: 20px;
+
+  --text-base-thin-font-family: 'Noto Sans', Helvetica;
+  --text-base-thin-font-size: 16px;
+  --text-base-thin-font-style: normal;
+  --text-base-thin-font-weight: 100;
+  --text-base-thin-letter-spacing: 0px;
+  --text-base-thin-line-height: 24px;
+
+  --text-base-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-base-extra-light-font-size: 16px;
+  --text-base-extra-light-font-style: normal;
+  --text-base-extra-light-font-weight: 200;
+  --text-base-extra-light-letter-spacing: 0px;
+  --text-base-extra-light-line-height: 24px;
+
+  --text-base-light-font-family: 'Noto Sans', Helvetica;
+  --text-base-light-font-size: 16px;
+  --text-base-light-font-style: normal;
+  --text-base-light-font-weight: 300;
+  --text-base-light-letter-spacing: 0px;
+  --text-base-light-line-height: 24px;
+
+  --text-base-regular-font-family: 'Noto Sans', Helvetica;
+  --text-base-regular-font-size: 16px;
+  --text-base-regular-font-style: normal;
+  --text-base-regular-font-weight: 400;
+  --text-base-regular-letter-spacing: 0px;
+  --text-base-regular-line-height: 24px;
+
+  --text-base-medium-font-family: 'Noto Sans', Helvetica;
+  --text-base-medium-font-size: 16px;
+  --text-base-medium-font-style: normal;
+  --text-base-medium-font-weight: 500;
+  --text-base-medium-letter-spacing: 0px;
+  --text-base-medium-line-height: 24px;
+
+  --text-base-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-base-semi-bold-font-size: 16px;
+  --text-base-semi-bold-font-style: normal;
+  --text-base-semi-bold-font-weight: 600;
+  --text-base-semi-bold-letter-spacing: 0px;
+  --text-base-semi-bold-line-height: 24px;
+
+  --text-base-bold-font-family: 'Noto Sans', Helvetica;
+  --text-base-bold-font-size: 16px;
+  --text-base-bold-font-style: normal;
+  --text-base-bold-font-weight: 700;
+  --text-base-bold-letter-spacing: 0px;
+  --text-base-bold-line-height: 24px;
+
+  --text-base-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-base-extra-bold-font-size: 16px;
+  --text-base-extra-bold-font-style: normal;
+  --text-base-extra-bold-font-weight: 800;
+  --text-base-extra-bold-letter-spacing: 0px;
+  --text-base-extra-bold-line-height: 24px;
+
+  --text-base-black-font-family: 'Noto Sans', Helvetica;
+  --text-base-black-font-size: 16px;
+  --text-base-black-font-style: normal;
+  --text-base-black-font-weight: 900;
+  --text-base-black-letter-spacing: 0px;
+  --text-base-black-line-height: 24px;
+
+  --text-lg-thin-font-family: 'Noto Sans', Helvetica;
+  --text-lg-thin-font-size: 18px;
+  --text-lg-thin-font-style: normal;
+  --text-lg-thin-font-weight: 100;
+  --text-lg-thin-letter-spacing: 0px;
+  --text-lg-thin-line-height: 28px;
+
+  --text-lg-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-lg-extra-light-font-size: 18px;
+  --text-lg-extra-light-font-style: normal;
+  --text-lg-extra-light-font-weight: 200;
+  --text-lg-extra-light-letter-spacing: 0px;
+  --text-lg-extra-light-line-height: 28px;
+
+  --text-lg-light-font-family: 'Noto Sans', Helvetica;
+  --text-lg-light-font-size: 18px;
+  --text-lg-light-font-style: normal;
+  --text-lg-light-font-weight: 300;
+  --text-lg-light-letter-spacing: 0px;
+  --text-lg-light-line-height: 28px;
+
+  --text-lg-regular-font-family: 'Noto Sans', Helvetica;
+  --text-lg-regular-font-size: 18px;
+  --text-lg-regular-font-style: normal;
+  --text-lg-regular-font-weight: 400;
+  --text-lg-regular-letter-spacing: 0px;
+  --text-lg-regular-line-height: 28px;
+
+  --text-lg-medium-font-family: 'Noto Sans', Helvetica;
+  --text-lg-medium-font-size: 18px;
+  --text-lg-medium-font-style: normal;
+  --text-lg-medium-font-weight: 500;
+  --text-lg-medium-letter-spacing: 0px;
+  --text-lg-medium-line-height: 28px;
+
+  --text-lg-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-lg-semi-bold-font-size: 18px;
+  --text-lg-semi-bold-font-style: normal;
+  --text-lg-semi-bold-font-weight: 600;
+  --text-lg-semi-bold-letter-spacing: 0px;
+  --text-lg-semi-bold-line-height: 28px;
+
+  --text-lg-bold-font-family: 'Noto Sans', Helvetica;
+  --text-lg-bold-font-size: 18px;
+  --text-lg-bold-font-style: normal;
+  --text-lg-bold-font-weight: 700;
+  --text-lg-bold-letter-spacing: 0px;
+  --text-lg-bold-line-height: 28px;
+
+  --text-lg-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-lg-extra-bold-font-size: 18px;
+  --text-lg-extra-bold-font-style: normal;
+  --text-lg-extra-bold-font-weight: 800;
+  --text-lg-extra-bold-letter-spacing: 0px;
+  --text-lg-extra-bold-line-height: 28px;
+
+  --text-lg-black-font-family: 'Noto Sans', Helvetica;
+  --text-lg-black-font-size: 18px;
+  --text-lg-black-font-style: normal;
+  --text-lg-black-font-weight: 900;
+  --text-lg-black-letter-spacing: 0px;
+  --text-lg-black-line-height: 28px;
+
+  --text-xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-xl-thin-font-size: 20px;
+  --text-xl-thin-font-style: normal;
+  --text-xl-thin-font-weight: 100;
+  --text-xl-thin-letter-spacing: 0px;
+  --text-xl-thin-line-height: 28px;
+
+  --text-xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-xl-extra-light-font-size: 20px;
+  --text-xl-extra-light-font-style: normal;
+  --text-xl-extra-light-font-weight: 200;
+  --text-xl-extra-light-letter-spacing: 0px;
+  --text-xl-extra-light-line-height: 28px;
+
+  --text-xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-xl-light-font-size: 20px;
+  --text-xl-light-font-style: normal;
+  --text-xl-light-font-weight: 300;
+  --text-xl-light-letter-spacing: 0px;
+  --text-xl-light-line-height: 28px;
+
+  --text-xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-xl-regular-font-size: 20px;
+  --text-xl-regular-font-style: normal;
+  --text-xl-regular-font-weight: 400;
+  --text-xl-regular-letter-spacing: 0px;
+  --text-xl-regular-line-height: 28px;
+
+  --text-xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-xl-medium-font-size: 20px;
+  --text-xl-medium-font-style: normal;
+  --text-xl-medium-font-weight: 500;
+  --text-xl-medium-letter-spacing: 0px;
+  --text-xl-medium-line-height: 28px;
+
+  --text-xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-xl-semi-bold-font-size: 20px;
+  --text-xl-semi-bold-font-style: normal;
+  --text-xl-semi-bold-font-weight: 600;
+  --text-xl-semi-bold-letter-spacing: 0px;
+  --text-xl-semi-bold-line-height: 28px;
+
+  --text-xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-xl-bold-font-size: 20px;
+  --text-xl-bold-font-style: normal;
+  --text-xl-bold-font-weight: 700;
+  --text-xl-bold-letter-spacing: 0px;
+  --text-xl-bold-line-height: 28px;
+
+  --text-xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-xl-extra-bold-font-size: 20px;
+  --text-xl-extra-bold-font-style: normal;
+  --text-xl-extra-bold-font-weight: 800;
+  --text-xl-extra-bold-letter-spacing: 0px;
+  --text-xl-extra-bold-line-height: 28px;
+
+  --text-xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-xl-black-font-size: 20px;
+  --text-xl-black-font-style: normal;
+  --text-xl-black-font-weight: 900;
+  --text-xl-black-letter-spacing: 0px;
+  --text-xl-black-line-height: 28px;
+
+  --text-2xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-thin-font-size: 24px;
+  --text-2xl-thin-font-style: normal;
+  --text-2xl-thin-font-weight: 100;
+  --text-2xl-thin-letter-spacing: 0px;
+  --text-2xl-thin-line-height: 32px;
+
+  --text-2xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-extra-light-font-size: 24px;
+  --text-2xl-extra-light-font-style: normal;
+  --text-2xl-extra-light-font-weight: 200;
+  --text-2xl-extra-light-letter-spacing: 0px;
+  --text-2xl-extra-light-line-height: 32px;
+
+  --text-2xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-light-font-size: 24px;
+  --text-2xl-light-font-style: normal;
+  --text-2xl-light-font-weight: 300;
+  --text-2xl-light-letter-spacing: 0px;
+  --text-2xl-light-line-height: 32px;
+
+  --text-2xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-regular-font-size: 24px;
+  --text-2xl-regular-font-style: normal;
+  --text-2xl-regular-font-weight: 400;
+  --text-2xl-regular-letter-spacing: 0px;
+  --text-2xl-regular-line-height: 32px;
+
+  --text-2xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-medium-font-size: 24px;
+  --text-2xl-medium-font-style: normal;
+  --text-2xl-medium-font-weight: 500;
+  --text-2xl-medium-letter-spacing: 0px;
+  --text-2xl-medium-line-height: 32px;
+
+  --text-2xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-semi-bold-font-size: 24px;
+  --text-2xl-semi-bold-font-style: normal;
+  --text-2xl-semi-bold-font-weight: 600;
+  --text-2xl-semi-bold-letter-spacing: 0px;
+  --text-2xl-semi-bold-line-height: 32px;
+
+  --text-2xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-bold-font-size: 24px;
+  --text-2xl-bold-font-style: normal;
+  --text-2xl-bold-font-weight: 700;
+  --text-2xl-bold-letter-spacing: 0px;
+  --text-2xl-bold-line-height: 32px;
+
+  --text-2xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-extra-bold-font-size: 24px;
+  --text-2xl-extra-bold-font-style: normal;
+  --text-2xl-extra-bold-font-weight: 800;
+  --text-2xl-extra-bold-letter-spacing: 0px;
+  --text-2xl-extra-bold-line-height: 32px;
+
+  --text-2xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-2xl-black-font-size: 24px;
+  --text-2xl-black-font-style: normal;
+  --text-2xl-black-font-weight: 900;
+  --text-2xl-black-letter-spacing: 0px;
+  --text-2xl-black-line-height: 32px;
+
+  --text-3xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-thin-font-size: 30px;
+  --text-3xl-thin-font-style: normal;
+  --text-3xl-thin-font-weight: 100;
+  --text-3xl-thin-letter-spacing: 0px;
+  --text-3xl-thin-line-height: 36px;
+
+  --text-3xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-extra-light-font-size: 30px;
+  --text-3xl-extra-light-font-style: normal;
+  --text-3xl-extra-light-font-weight: 200;
+  --text-3xl-extra-light-letter-spacing: 0px;
+  --text-3xl-extra-light-line-height: 36px;
+
+  --text-3xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-light-font-size: 30px;
+  --text-3xl-light-font-style: normal;
+  --text-3xl-light-font-weight: 300;
+  --text-3xl-light-letter-spacing: 0px;
+  --text-3xl-light-line-height: 36px;
+
+  --text-3xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-regular-font-size: 30px;
+  --text-3xl-regular-font-style: normal;
+  --text-3xl-regular-font-weight: 400;
+  --text-3xl-regular-letter-spacing: 0px;
+  --text-3xl-regular-line-height: 36px;
+
+  --text-3xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-medium-font-size: 30px;
+  --text-3xl-medium-font-style: normal;
+  --text-3xl-medium-font-weight: 500;
+  --text-3xl-medium-letter-spacing: 0px;
+  --text-3xl-medium-line-height: 36px;
+
+  --text-3xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-semi-bold-font-size: 30px;
+  --text-3xl-semi-bold-font-style: normal;
+  --text-3xl-semi-bold-font-weight: 600;
+  --text-3xl-semi-bold-letter-spacing: 0px;
+  --text-3xl-semi-bold-line-height: 36px;
+
+  --text-3xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-bold-font-size: 30px;
+  --text-3xl-bold-font-style: normal;
+  --text-3xl-bold-font-weight: 700;
+  --text-3xl-bold-letter-spacing: 0px;
+  --text-3xl-bold-line-height: 36px;
+
+  --text-3xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-extra-bold-font-size: 30px;
+  --text-3xl-extra-bold-font-style: normal;
+  --text-3xl-extra-bold-font-weight: 800;
+  --text-3xl-extra-bold-letter-spacing: 0px;
+  --text-3xl-extra-bold-line-height: 36px;
+
+  --text-3xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-3xl-black-font-size: 30px;
+  --text-3xl-black-font-style: normal;
+  --text-3xl-black-font-weight: 900;
+  --text-3xl-black-letter-spacing: 0px;
+  --text-3xl-black-line-height: 36px;
+
+  --text-4xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-thin-font-size: 36px;
+  --text-4xl-thin-font-style: normal;
+  --text-4xl-thin-font-weight: 100;
+  --text-4xl-thin-letter-spacing: 0px;
+  --text-4xl-thin-line-height: 40px;
+
+  --text-4xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-extra-light-font-size: 36px;
+  --text-4xl-extra-light-font-style: normal;
+  --text-4xl-extra-light-font-weight: 200;
+  --text-4xl-extra-light-letter-spacing: 0px;
+  --text-4xl-extra-light-line-height: 40px;
+
+  --text-4xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-light-font-size: 36px;
+  --text-4xl-light-font-style: normal;
+  --text-4xl-light-font-weight: 300;
+  --text-4xl-light-letter-spacing: 0px;
+  --text-4xl-light-line-height: 40px;
+
+  --text-4xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-regular-font-size: 36px;
+  --text-4xl-regular-font-style: normal;
+  --text-4xl-regular-font-weight: 400;
+  --text-4xl-regular-letter-spacing: 0px;
+  --text-4xl-regular-line-height: 40px;
+
+  --text-4xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-medium-font-size: 36px;
+  --text-4xl-medium-font-style: normal;
+  --text-4xl-medium-font-weight: 500;
+  --text-4xl-medium-letter-spacing: 0px;
+  --text-4xl-medium-line-height: 40px;
+
+  --text-4xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-semi-bold-font-size: 36px;
+  --text-4xl-semi-bold-font-style: normal;
+  --text-4xl-semi-bold-font-weight: 600;
+  --text-4xl-semi-bold-letter-spacing: 0px;
+  --text-4xl-semi-bold-line-height: 50px;
+
+  --text-4xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-bold-font-size: 36px;
+  --text-4xl-bold-font-style: normal;
+  --text-4xl-bold-font-weight: 700;
+  --text-4xl-bold-letter-spacing: 0px;
+  --text-4xl-bold-line-height: 40px;
+
+  --text-4xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-extra-bold-font-size: 36px;
+  --text-4xl-extra-bold-font-style: normal;
+  --text-4xl-extra-bold-font-weight: 800;
+  --text-4xl-extra-bold-letter-spacing: 0px;
+  --text-4xl-extra-bold-line-height: 40px;
+
+  --text-4xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-4xl-black-font-size: 36px;
+  --text-4xl-black-font-style: normal;
+  --text-4xl-black-font-weight: 900;
+  --text-4xl-black-letter-spacing: 0px;
+  --text-4xl-black-line-height: 40px;
+
+  --text-5xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-thin-font-size: 48px;
+  --text-5xl-thin-font-style: normal;
+  --text-5xl-thin-font-weight: 100;
+  --text-5xl-thin-letter-spacing: 0px;
+  --text-5xl-thin-line-height: 48px;
+
+  --text-5xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-extra-light-font-size: 48px;
+  --text-5xl-extra-light-font-style: normal;
+  --text-5xl-extra-light-font-weight: 200;
+  --text-5xl-extra-light-letter-spacing: 0px;
+  --text-5xl-extra-light-line-height: 48px;
+
+  --text-5xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-light-font-size: 48px;
+  --text-5xl-light-font-style: normal;
+  --text-5xl-light-font-weight: 300;
+  --text-5xl-light-letter-spacing: 0px;
+  --text-5xl-light-line-height: 48px;
+
+  --text-5xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-regular-font-size: 48px;
+  --text-5xl-regular-font-style: normal;
+  --text-5xl-regular-font-weight: 400;
+  --text-5xl-regular-letter-spacing: 0px;
+  --text-5xl-regular-line-height: 48px;
+
+  --text-5xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-medium-font-size: 48px;
+  --text-5xl-medium-font-style: normal;
+  --text-5xl-medium-font-weight: 500;
+  --text-5xl-medium-letter-spacing: 0px;
+  --text-5xl-medium-line-height: 48px;
+
+  --text-5xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-semi-bold-font-size: 48px;
+  --text-5xl-semi-bold-font-style: normal;
+  --text-5xl-semi-bold-font-weight: 600;
+  --text-5xl-semi-bold-letter-spacing: 0px;
+  --text-5xl-semi-bold-line-height: 48px;
+
+  --text-5xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-bold-font-size: 48px;
+  --text-5xl-bold-font-style: normal;
+  --text-5xl-bold-font-weight: 700;
+  --text-5xl-bold-letter-spacing: 0px;
+  --text-5xl-bold-line-height: 48px;
+
+  --text-5xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-extra-bold-font-size: 48px;
+  --text-5xl-extra-bold-font-style: normal;
+  --text-5xl-extra-bold-font-weight: 800;
+  --text-5xl-extra-bold-letter-spacing: 0px;
+  --text-5xl-extra-bold-line-height: 48px;
+
+  --text-5xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-5xl-black-font-size: 48px;
+  --text-5xl-black-font-style: normal;
+  --text-5xl-black-font-weight: 900;
+  --text-5xl-black-letter-spacing: 0px;
+  --text-5xl-black-line-height: 48px;
+
+  --text-6xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-thin-font-size: 60px;
+  --text-6xl-thin-font-style: normal;
+  --text-6xl-thin-font-weight: 100;
+  --text-6xl-thin-letter-spacing: 0px;
+  --text-6xl-thin-line-height: 60px;
+
+  --text-6xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-extra-light-font-size: 60px;
+  --text-6xl-extra-light-font-style: normal;
+  --text-6xl-extra-light-font-weight: 200;
+  --text-6xl-extra-light-letter-spacing: 0px;
+  --text-6xl-extra-light-line-height: 60px;
+
+  --text-6xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-light-font-size: 60px;
+  --text-6xl-light-font-style: normal;
+  --text-6xl-light-font-weight: 300;
+  --text-6xl-light-letter-spacing: 0px;
+  --text-6xl-light-line-height: 60px;
+
+  --text-6xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-regular-font-size: 60px;
+  --text-6xl-regular-font-style: normal;
+  --text-6xl-regular-font-weight: 400;
+  --text-6xl-regular-letter-spacing: 0px;
+  --text-6xl-regular-line-height: 60px;
+
+  --text-6xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-medium-font-size: 60px;
+  --text-6xl-medium-font-style: normal;
+  --text-6xl-medium-font-weight: 500;
+  --text-6xl-medium-letter-spacing: 0px;
+  --text-6xl-medium-line-height: 60px;
+
+  --text-6xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-semi-bold-font-size: 60px;
+  --text-6xl-semi-bold-font-style: normal;
+  --text-6xl-semi-bold-font-weight: 600;
+  --text-6xl-semi-bold-letter-spacing: 0px;
+  --text-6xl-semi-bold-line-height: 60px;
+
+  --text-6xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-bold-font-size: 60px;
+  --text-6xl-bold-font-style: normal;
+  --text-6xl-bold-font-weight: 700;
+  --text-6xl-bold-letter-spacing: 0px;
+  --text-6xl-bold-line-height: 60px;
+
+  --text-6xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-extra-bold-font-size: 60px;
+  --text-6xl-extra-bold-font-style: normal;
+  --text-6xl-extra-bold-font-weight: 800;
+  --text-6xl-extra-bold-letter-spacing: 0px;
+  --text-6xl-extra-bold-line-height: 60px;
+
+  --text-6xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-6xl-black-font-size: 60px;
+  --text-6xl-black-font-style: normal;
+  --text-6xl-black-font-weight: 900;
+  --text-6xl-black-letter-spacing: 0px;
+  --text-6xl-black-line-height: 60px;
+
+  --text-7xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-thin-font-size: 72px;
+  --text-7xl-thin-font-style: normal;
+  --text-7xl-thin-font-weight: 100;
+  --text-7xl-thin-letter-spacing: 0px;
+  --text-7xl-thin-line-height: 72px;
+
+  --text-7xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-extra-light-font-size: 72px;
+  --text-7xl-extra-light-font-style: normal;
+  --text-7xl-extra-light-font-weight: 200;
+  --text-7xl-extra-light-letter-spacing: 0px;
+  --text-7xl-extra-light-line-height: 72px;
+
+  --text-7xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-light-font-size: 72px;
+  --text-7xl-light-font-style: normal;
+  --text-7xl-light-font-weight: 300;
+  --text-7xl-light-letter-spacing: 0px;
+  --text-7xl-light-line-height: 72px;
+
+  --text-7xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-regular-font-size: 72px;
+  --text-7xl-regular-font-style: normal;
+  --text-7xl-regular-font-weight: 400;
+  --text-7xl-regular-letter-spacing: 0px;
+  --text-7xl-regular-line-height: 72px;
+
+  --text-7xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-medium-font-size: 72px;
+  --text-7xl-medium-font-style: normal;
+  --text-7xl-medium-font-weight: 500;
+  --text-7xl-medium-letter-spacing: 0px;
+  --text-7xl-medium-line-height: 72px;
+
+  --text-7xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-semi-bold-font-size: 72px;
+  --text-7xl-semi-bold-font-style: normal;
+  --text-7xl-semi-bold-font-weight: 600;
+  --text-7xl-semi-bold-letter-spacing: 0px;
+  --text-7xl-semi-bold-line-height: 72px;
+
+  --text-7xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-bold-font-size: 72px;
+  --text-7xl-bold-font-style: normal;
+  --text-7xl-bold-font-weight: 700;
+  --text-7xl-bold-letter-spacing: 0px;
+  --text-7xl-bold-line-height: 72px;
+
+  --text-7xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-extra-bold-font-size: 72px;
+  --text-7xl-extra-bold-font-style: normal;
+  --text-7xl-extra-bold-font-weight: 800;
+  --text-7xl-extra-bold-letter-spacing: 0px;
+  --text-7xl-extra-bold-line-height: 72px;
+
+  --text-7xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-7xl-black-font-size: 72px;
+  --text-7xl-black-font-style: normal;
+  --text-7xl-black-font-weight: 900;
+  --text-7xl-black-letter-spacing: 0px;
+  --text-7xl-black-line-height: 72px;
+
+  --text-8xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-thin-font-size: 96px;
+  --text-8xl-thin-font-style: normal;
+  --text-8xl-thin-font-weight: 100;
+  --text-8xl-thin-letter-spacing: 0px;
+  --text-8xl-thin-line-height: 96px;
+
+  --text-8xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-extra-light-font-size: 96px;
+  --text-8xl-extra-light-font-style: normal;
+  --text-8xl-extra-light-font-weight: 200;
+  --text-8xl-extra-light-letter-spacing: 0px;
+  --text-8xl-extra-light-line-height: 96px;
+
+  --text-8xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-light-font-size: 96px;
+  --text-8xl-light-font-style: normal;
+  --text-8xl-light-font-weight: 300;
+  --text-8xl-light-letter-spacing: 0px;
+  --text-8xl-light-line-height: 96px;
+
+  --text-8xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-regular-font-size: 96px;
+  --text-8xl-regular-font-style: normal;
+  --text-8xl-regular-font-weight: 400;
+  --text-8xl-regular-letter-spacing: 0px;
+  --text-8xl-regular-line-height: 96px;
+
+  --text-8xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-medium-font-size: 96px;
+  --text-8xl-medium-font-style: normal;
+  --text-8xl-medium-font-weight: 500;
+  --text-8xl-medium-letter-spacing: 0px;
+  --text-8xl-medium-line-height: 96px;
+
+  --text-8xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-semi-bold-font-size: 96px;
+  --text-8xl-semi-bold-font-style: normal;
+  --text-8xl-semi-bold-font-weight: 600;
+  --text-8xl-semi-bold-letter-spacing: 0px;
+  --text-8xl-semi-bold-line-height: 96px;
+
+  --text-8xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-bold-font-size: 96px;
+  --text-8xl-bold-font-style: normal;
+  --text-8xl-bold-font-weight: 700;
+  --text-8xl-bold-letter-spacing: 0px;
+  --text-8xl-bold-line-height: 96px;
+
+  --text-8xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-extra-bold-font-size: 96px;
+  --text-8xl-extra-bold-font-style: normal;
+  --text-8xl-extra-bold-font-weight: 800;
+  --text-8xl-extra-bold-letter-spacing: 0px;
+  --text-8xl-extra-bold-line-height: 96px;
+
+  --text-8xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-8xl-black-font-size: 96px;
+  --text-8xl-black-font-style: normal;
+  --text-8xl-black-font-weight: 900;
+  --text-8xl-black-letter-spacing: 0px;
+  --text-8xl-black-line-height: 96px;
+
+  --text-9xl-thin-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-thin-font-size: 128px;
+  --text-9xl-thin-font-style: normal;
+  --text-9xl-thin-font-weight: 100;
+  --text-9xl-thin-letter-spacing: 0px;
+  --text-9xl-thin-line-height: 128px;
+
+  --text-9xl-extra-light-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-extra-light-font-size: 128px;
+  --text-9xl-extra-light-font-style: normal;
+  --text-9xl-extra-light-font-weight: 200;
+  --text-9xl-extra-light-letter-spacing: 0px;
+  --text-9xl-extra-light-line-height: 128px;
+
+  --text-9xl-light-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-light-font-size: 128px;
+  --text-9xl-light-font-style: normal;
+  --text-9xl-light-font-weight: 300;
+  --text-9xl-light-letter-spacing: 0px;
+  --text-9xl-light-line-height: 128px;
+
+  --text-9xl-regular-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-regular-font-size: 128px;
+  --text-9xl-regular-font-style: normal;
+  --text-9xl-regular-font-weight: 400;
+  --text-9xl-regular-letter-spacing: 0px;
+  --text-9xl-regular-line-height: 128px;
+
+  --text-9xl-medium-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-medium-font-size: 128px;
+  --text-9xl-medium-font-style: normal;
+  --text-9xl-medium-font-weight: 500;
+  --text-9xl-medium-letter-spacing: 0px;
+  --text-9xl-medium-line-height: 128px;
+
+  --text-9xl-semi-bold-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-semi-bold-font-size: 128px;
+  --text-9xl-semi-bold-font-style: normal;
+  --text-9xl-semi-bold-font-weight: 600;
+  --text-9xl-semi-bold-letter-spacing: 0px;
+  --text-9xl-semi-bold-line-height: 128px;
+
+  --text-9xl-bold-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-bold-font-size: 128px;
+  --text-9xl-bold-font-style: normal;
+  --text-9xl-bold-font-weight: 700;
+  --text-9xl-bold-letter-spacing: 0px;
+  --text-9xl-bold-line-height: 128px;
+
+  --text-9xl-extra-bold-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-extra-bold-font-size: 128px;
+  --text-9xl-extra-bold-font-style: normal;
+  --text-9xl-extra-bold-font-weight: 800;
+  --text-9xl-extra-bold-letter-spacing: 0px;
+  --text-9xl-extra-bold-line-height: 128px;
+
+  --text-9xl-black-font-family: 'Noto Sans', Helvetica;
+  --text-9xl-black-font-size: 128px;
+  --text-9xl-black-font-style: normal;
+  --text-9xl-black-font-weight: 900;
+  --text-9xl-black-letter-spacing: 0px;
+  --text-9xl-black-line-height: 128px;
 }
 
 @keyframes fade-in {
-    from {
-        opacity: 0;
-    }
+  from {
+    opacity: 0;
+  }
 
-    to {
-        opacity: 1;
-    }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer utilities {
-    .animate-fade-in {
-        animation: fade-in 240ms ease-out;
-    }
+  .animate-fade-in {
+    animation: fade-in 240ms ease-out;
+  }
 
-    .animate-slide-up {
-        animation: slide-up 280ms ease-out;
-    }
+  .animate-slide-up {
+    animation: slide-up 280ms ease-out;
+  }
 }

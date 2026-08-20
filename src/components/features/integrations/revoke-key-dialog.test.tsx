@@ -10,7 +10,14 @@ describe('RevokeKeyDialog', () => {
   });
 
   it('renders correctly', () => {
-    const mockKey = { id: '1', name: 'Test Key', prefix: 'test_', permissions: [], lastUsed: '', created: '' };
+    const mockKey = {
+      id: '1',
+      name: 'Test Key',
+      prefix: 'test_',
+      permissions: [],
+      lastUsed: '',
+      created: '',
+    };
     render(
       <RevokeKeyDialog
         open={true}
@@ -19,7 +26,7 @@ describe('RevokeKeyDialog', () => {
         keyName={mockKey.name}
       />
     );
-    
+
     expect(screen.getByText('Revoke API Key')).toBeInTheDocument();
     expect(screen.getByText(/Test Key/i)).toBeInTheDocument();
   });

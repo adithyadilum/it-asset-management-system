@@ -19,7 +19,12 @@ function formatInGroups(value: string, size: number = 4): string {
   return cleanValue.match(regex)?.join(' ') ?? value;
 }
 
-export function CopyableField({ value, label, isMasked = true, className }: CopyableFieldProps) {
+export function CopyableField({
+  value,
+  label,
+  isMasked = true,
+  className,
+}: CopyableFieldProps) {
   const [isVisible, setIsVisible] = React.useState(!isMasked);
   const [isCopied, setIsCopied] = React.useState(false);
 
@@ -47,11 +52,16 @@ export function CopyableField({ value, label, isMasked = true, className }: Copy
   };
 
   return (
-    <div className={cn('flex items-center gap-1.5 group min-w-0 max-w-full', className)}>
+    <div
+      className={cn(
+        'flex items-center gap-1.5 group min-w-0 max-w-full',
+        className
+      )}
+    >
       <code
         className={cn(
-          "relative block rounded bg-muted/50 px-2 py-1 font-mono text-sm font-medium text-foreground transition-colors group-hover:bg-muted",
-          "min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left [&::-webkit-scrollbar]:hidden"
+          'relative block rounded bg-muted/50 px-2 py-1 font-mono text-sm font-medium text-foreground transition-colors group-hover:bg-muted',
+          'min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-left [&::-webkit-scrollbar]:hidden'
         )}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
@@ -66,20 +76,30 @@ export function CopyableField({ value, label, isMasked = true, className }: Copy
           onClick={() => setIsVisible(!isVisible)}
           title={isVisible ? 'Hide' : 'Show'}
         >
-          {isVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          {isVisible ? (
+            <EyeOff className="h-3.5 w-3.5" />
+          ) : (
+            <Eye className="h-3.5 w-3.5" />
+          )}
         </Button>
 
         <Button
           variant="ghost"
           size="icon-xs"
           className={cn(
-            "h-7 w-7 transition-colors",
-            isCopied ? "text-green-600" : "text-muted-foreground hover:text-foreground"
+            'h-7 w-7 transition-colors',
+            isCopied
+              ? 'text-green-600'
+              : 'text-muted-foreground hover:text-foreground'
           )}
           onClick={handleCopy}
           title="Copy to clipboard"
         >
-          {isCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {isCopied ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
         </Button>
       </div>
     </div>

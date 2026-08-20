@@ -1,16 +1,14 @@
 //src/db/seed.notifications.ts
-import * as dotenv from 'dotenv';
+import '../lib/load-env';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { notificationRules } from './schema';
 import { serverEnv } from '@/lib/env';
 
 // Load environment variables
-dotenv.config({ path: '.env.local' });
 
 const sql = neon(serverEnv.DATABASE_URL);
 const db = drizzle(sql);
-
 
 async function seedNotificationRules() {
   const defaultRules = [

@@ -19,6 +19,15 @@ import { revalidatePath } from 'next/cache';
 import Papa from 'papaparse';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
+import { Redis } from '@upstash/redis';
+import { randomUUID } from 'crypto';
+
+let bulkImportRedis: Redis | null = null;
+
+function getBulkImportRedis() {
+  bulkImportRedis ??= Redis.fromEnv();
+  return bulkImportRedis;
+}
 
 function addMonths(value: Date, months: number) {
   const nextDate = new Date(value);
@@ -187,12 +196,13 @@ export async function executeBulkImport(
     };
   }
 
-  const BULK_IMPORT_LOCK_ID = 7777;
-  const lockResult = await db.execute(
-    sql`SELECT pg_try_advisory_lock(${BULK_IMPORT_LOCK_ID})`
-  );
-  const rows = Array.isArray(lockResult) ? lockResult : (lockResult as { rows?: unknown[] }).rows;
-  const lockGranted = (rows?.[0] as Record<string, unknown> | undefined)?.pg_try_advisory_lock;
+  const lockKey = `eitams:bulk-import:category:${categoryId}`;
+  const lockOwner = randomUUID();
+  const redis = getBulkImportRedis();
+  const lockGranted = await redis.set(lockKey, lockOwner, {
+    nx: true,
+    ex: 3600,
+  });
 
   if (!lockGranted) {
     return {
@@ -226,7 +236,7 @@ export async function executeBulkImport(
     const importedAssetTags: string[] = [];
     const failedRows: Record<string, string | number>[] = [];
 
-    const apiRates = await fetchLiveExchangeRates() ?? undefined;
+    const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
 
     for (const row of resolvedRows) {
       let assetTag = '';
@@ -246,12 +256,7 @@ export async function executeBulkImport(
               locationId: row.locationId,
               ownerId: row.ownerId,
               condition: row.condition as
-                | 'New'
-                | 'Excellent'
-                | 'Fair'
-                | 'Poor'
-                | 'Damaged'
-                | null,
+                'New' | 'Excellent' | 'Fair' | 'Poor' | 'Damaged' | null,
               status: 'Available',
               instanceAttributes: row.instanceAttributes,
             })
@@ -265,7 +270,12 @@ export async function executeBulkImport(
               )
             : null;
 
-          const conversionRate = convertCurrencyAmount(1, row.currencyCode || 'LKR', 'LKR', apiRates).toFixed(6);
+          const conversionRate = convertCurrencyAmount(
+            1,
+            row.currencyCode || 'LKR',
+            'LKR',
+            apiRates
+          ).toFixed(6);
 
           await tx.insert(assetPurchases).values({
             assetId: newAsset.id,
@@ -334,6 +344,10 @@ export async function executeBulkImport(
       message: 'An unexpected error occurred during import execution.',
     };
   } finally {
-    await db.execute(sql`SELECT pg_advisory_unlock(${BULK_IMPORT_LOCK_ID})`);
+    await redis.eval(
+      "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+      [lockKey],
+      [lockOwner]
+    );
   }
 }

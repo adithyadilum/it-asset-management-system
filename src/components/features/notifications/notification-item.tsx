@@ -60,7 +60,9 @@ export function NotificationItem({
             {notification.message}
           </p>
           <span className="font-text-xs-regular text-xs text-muted-foreground mt-2 inline-block">
-            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+            {formatDistanceToNow(new Date(notification.createdAt), {
+              addSuffix: true,
+            })}
           </span>
         </div>
 

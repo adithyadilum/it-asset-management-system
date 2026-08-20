@@ -12,11 +12,20 @@ describe('RecentActivitiesList', () => {
 
   it('renders recent activities list', () => {
     const mockActivities = [
-      { id: '1', text: 'John Doe assigned a Laptop', actionType: 'assigned', performedAt: '2023-01-01T00:00:00Z' }
+      {
+        id: '1',
+        text: 'John Doe assigned a Laptop',
+        actionType: 'assigned',
+        performedAt: '2023-01-01T00:00:00Z',
+      },
     ];
-    
-    render(<CurrencyProvider initialCurrency="USD"><RecentActivitiesList activities={mockActivities as any} /></CurrencyProvider>);
-    
+
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <RecentActivitiesList activities={mockActivities as any} />
+      </CurrencyProvider>
+    );
+
     expect(screen.getByText(/John Doe assigned a Laptop/i)).toBeInTheDocument();
   });
 });

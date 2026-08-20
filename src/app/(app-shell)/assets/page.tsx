@@ -3,7 +3,11 @@ import { AssetRegistryShell } from '@/components/features/asset-registry/asset-r
 export default function AssetsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ panel?: string | string[]; animate?: string | string[]; id?: string | string[] }>;
+  searchParams: Promise<{
+    panel?: string | string[];
+    animate?: string | string[];
+    id?: string | string[];
+  }>;
 }) {
   return <AssetRegistryShell view="unified" searchParams={searchParams} />;
 }

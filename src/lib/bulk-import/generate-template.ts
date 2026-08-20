@@ -119,7 +119,7 @@ export async function generateTemplateWorkbook(categoryId: number) {
   // Enforce Date Formatting across columns
   dataSheet.getColumn('H').numFmt = 'yyyy-mm-dd'; // Purchase Date
   let formatColIndex = 15;
-  customFields.forEach(field => {
+  customFields.forEach((field) => {
     if (field.inputType === 'Date') {
       dataSheet.getColumn(formatColIndex).numFmt = 'yyyy-mm-dd';
     }

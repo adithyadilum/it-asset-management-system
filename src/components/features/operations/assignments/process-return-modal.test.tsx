@@ -23,7 +23,7 @@ vi.mock('@/components/shared/sonner', () => ({
 describe('ProcessReturnModal', () => {
   const mockOnOpenChange = vi.fn();
   const mockRouterRefresh = vi.fn();
-  
+
   const mockAsset = {
     assetId: 'asset-1',
     assetTag: 'TAG-123',
@@ -52,7 +52,7 @@ describe('ProcessReturnModal', () => {
 
   it('renders correctly', () => {
     renderModal();
-    
+
     expect(screen.getByText(/Process Return:/)).toBeInTheDocument();
     expect(screen.getByText(/MacBook Pro/)).toBeInTheDocument();
     expect(screen.getByText(/John Doe/)).toBeInTheDocument();
@@ -60,25 +60,27 @@ describe('ProcessReturnModal', () => {
 
   it('submits return correctly', async () => {
     (processAssetReturnAction as any).mockResolvedValue({ success: true });
-    
+
     renderModal();
-    
+
     const conditionRadio = screen.getByLabelText('Good Working Condition');
     fireEvent.click(conditionRadio);
-    
+
     // Add notes
-    const notesTextarea = screen.getByPlaceholderText('E.g., Screen is heavily scratched...');
+    const notesTextarea = screen.getByPlaceholderText(
+      'E.g., Screen is heavily scratched...'
+    );
     fireEvent.change(notesTextarea, { target: { value: 'Looks fine' } });
-    
+
     const submitBtn = screen.getByRole('button', { name: 'Confirm' });
     fireEvent.click(submitBtn);
-    
+
     await waitFor(() => {
       expect(processAssetReturnAction).toHaveBeenCalledWith({
         assetId: 'asset-1',
         condition: 'Good Working Condition',
         physicalCondition: 'Excellent',
-        notes: 'Looks fine'
+        notes: 'Looks fine',
       });
       expect(mockRouterRefresh).toHaveBeenCalled();
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);
@@ -87,10 +89,10 @@ describe('ProcessReturnModal', () => {
 
   it('requires condition to be selected', async () => {
     renderModal();
-    
+
     const submitBtn = screen.getByRole('button', { name: 'Confirm' });
     fireEvent.click(submitBtn);
-    
+
     // It should not call the action if condition is empty
     expect(processAssetReturnAction).not.toHaveBeenCalled();
   });

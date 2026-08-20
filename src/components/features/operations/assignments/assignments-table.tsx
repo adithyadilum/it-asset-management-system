@@ -1,11 +1,19 @@
-"use client";
+'use client';
 
 import {
   DataTable,
   type DataTableSelectionAction,
-} from "@/components/shared/data-table";
-import { FilterBar, type AppliedFilter, type FilterFieldConfig } from "@/components/shared/filter-bar";
-import type { ColumnDef, RowSelectionState, OnChangeFn } from "@tanstack/react-table";
+} from '@/components/shared/data-table';
+import {
+  FilterBar,
+  type AppliedFilter,
+  type FilterFieldConfig,
+} from '@/components/shared/filter-bar';
+import type {
+  ColumnDef,
+  RowSelectionState,
+  OnChangeFn,
+} from '@tanstack/react-table';
 
 export type AssetAssignmentRow = {
   assetId: string;
@@ -68,7 +76,9 @@ export function AssignmentsTable({
 }: AssignmentsTableProps) {
   const tableColumns = showStatusColumn
     ? columns
-    : columns.filter((col) => !("accessorKey" in col) || col.accessorKey !== "state");
+    : columns.filter(
+        (col) => !('accessorKey' in col) || col.accessorKey !== 'state'
+      );
 
   return (
     <div className="flex flex-col gap-4 flex-1 overflow-hidden min-h-0 mt-1">

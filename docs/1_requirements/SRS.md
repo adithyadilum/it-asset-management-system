@@ -11,11 +11,11 @@
 
 ## Revision History
 
-| Name | Date       | Reason For Changes                        | Version |
-| :--- | :--------- | :---------------------------------------- | :------ |
-| Team | 12/02/2026 | Initial draft                             | 1.0     |
-| Team | 02/26/2026 | Aligned with updated FRs/NFRs (Epics 1–5) | 1.1     |
-| Team | 05/23/2026 | Added Report Engine and Dashboards Epics (6-7) and supporting requirements | 1.2 |
+| Name | Date       | Reason For Changes                                                         | Version |
+| :--- | :--------- | :------------------------------------------------------------------------- | :------ |
+| Team | 12/02/2026 | Initial draft                                                              | 1.0     |
+| Team | 02/26/2026 | Aligned with updated FRs/NFRs (Epics 1–5)                                  | 1.1     |
+| Team | 05/23/2026 | Added Report Engine and Dashboards Epics (6-7) and supporting requirements | 1.2     |
 
 ---
 
@@ -1490,16 +1490,14 @@ erDiagram
 
 The following items have been identified as To Be Determined (TBD). These values or definitions are not currently available but are required prior to the Deployment/Release phase.
 
-| TBD ID     | Section | Description                                                                                                                                              | Responsibility       | Status / Resolution |
-| :--------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- | :------------------ |
-| **TBD-01** | 2.4     | **Production Hosting URL:** The final public-facing domain name (e.g., assets.tiqri.com) for the production environment has not yet been assigned.       | TIQRI IT Ops         | **Pending:** Awaiting final production domain from TIQRI IT Ops; Vercel deployment server actively functions. |
+| TBD ID     | Section | Description                                                                                                                                              | Responsibility       | Status / Resolution                                                                                                                                                                                                                  |
+| :--------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **TBD-01** | 2.4     | **Production Hosting URL:** The final public-facing domain name (e.g., assets.tiqri.com) for the production environment has not yet been assigned.       | TIQRI IT Ops         | **Pending:** Awaiting final production domain from TIQRI IT Ops; Vercel deployment server actively functions.                                                                                                                        |
 | **TBD-02** | 3.3     | **Azure AD Tenant Credentials:** The specific Tenant ID, Client ID, and Client Secret for the production identity provider are pending provision.        | TIQRI Security       | **Resolved:** NextAuth.js uses standard Entra ID environment variables (`AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID`) in production, with bcryptjs local credentials serving as development/admin fallbacks. |
-| **TBD-03** | 3.4     | **SMTP Relay Configuration:** The exact Hostname, Port, and Allow-list configurations for the corporate SMTP email relay are pending.                    | TIQRI Infrastructure | **Resolved:** The system supports both **Resend API keys** and direct **SMTP servers** (host, port, user) dynamically managed in the `integration_settings` database table and encrypted at rest via AES-256 (`lib/crypto.ts`). |
-| **TBD-04** | 4.5     | **Disposal Reason Codes:** The finalized list of legally compliant "Disposal Reasons" (e.g., WEEE-Category-A) is pending review by the Legal department. | TIQRI Compliance     | **Resolved:** The `disposal_status` enum ('Pending Approval', 'Approved', 'Rejected', 'Completed') and disposal method string capture specific compliance reasons (E-waste, Sold, Donated, Stolen) on final transaction. |
-| **TBD-05** | 6.1     | **Exchange Rate Source:** The specific API source or fixed monthly rate policy for converting NOK/USD to LKR is to be decided by Finance.                | TIQRI Finance        | **Resolved:** Cost tracking maps acquisition values in NOK, USD, and LKR using precise decimals, with transaction-level conversion rate storage mapping baseline values. |
+| **TBD-03** | 3.4     | **SMTP Relay Configuration:** The exact Hostname, Port, and Allow-list configurations for the corporate SMTP email relay are pending.                    | TIQRI Infrastructure | **Resolved:** The system supports both **Resend API keys** and direct **SMTP servers** (host, port, user) dynamically managed in the `integration_settings` database table and encrypted at rest via AES-256 (`lib/crypto.ts`).      |
+| **TBD-04** | 4.5     | **Disposal Reason Codes:** The finalized list of legally compliant "Disposal Reasons" (e.g., WEEE-Category-A) is pending review by the Legal department. | TIQRI Compliance     | **Resolved:** The `disposal_status` enum ('Pending Approval', 'Approved', 'Rejected', 'Completed') and disposal method string capture specific compliance reasons (E-waste, Sold, Donated, Stolen) on final transaction.             |
+| **TBD-05** | 6.1     | **Exchange Rate Source:** The specific API source or fixed monthly rate policy for converting NOK/USD to LKR is to be decided by Finance.                | TIQRI Finance        | **Resolved:** Cost tracking maps acquisition values in NOK, USD, and LKR using precise decimals, with transaction-level conversion rate storage mapping baseline values.                                                             |
 
 ---
 
 [< Back to Requirements](./README.md)
-
-
