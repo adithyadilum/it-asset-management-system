@@ -153,9 +153,10 @@ function getLoginRedirectResponse(request: NextRequest) {
  * The enforced policy in next.config.ts still carries `script-src 'unsafe-inline'`,
  * which nullifies most of CSP's XSS value. This header runs the stricter policy
  * alongside it so violations surface in the browser console without breaking
- * anything. Next.js streaming and the Serwist service worker both inject
- * scripts, so promoting this to the enforced `Content-Security-Policy` header
- * requires verifying those paths in a real browser first.
+ * anything. Next.js streaming injects scripts, so promoting this to the
+ * enforced `Content-Security-Policy` header requires verifying that path in a
+ * real browser first. (Serwist was named here too, but the PWA was never wired
+ * up and the packages have since been removed.)
  */
 function buildNoncePolicy(nonce: string) {
   return [

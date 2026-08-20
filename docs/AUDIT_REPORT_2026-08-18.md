@@ -1488,3 +1488,105 @@ and uploaded artifacts instead of being killed with nothing; and `stdout`/
 HTML reporter was ruled out by reading Playwright 1.61's source — `onExit`
 returns immediately when `CI` is set, so it never serves the report and blocks.
 If the job stalls again, the report and trace will now survive it.
+
+## Dependency audit gate — 2026-08-20
+
+The migration, test and build steps all passed; the job failed on its last step,
+`npm audit --audit-level=high`, with 16 advisories (9 high, 1 critical).
+
+Unlike the mobile repository — where the same gate could never pass, because
+every advisory arrived through the Expo SDK and `expo` is a production
+dependency — **every advisory here had a semver-compatible fix**. So this one is
+fixed rather than gated.
+
+### Dependencies removed
+
+Three of the vulnerable subtrees existed only to support packages nothing
+imports. They were removed before touching versions, since a dependency that is
+not there needs no patching:
+
+| Removed                        | Why                                                                                                                                                                                                                                                | Subtree it pulled in                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `react-email`                  | Emails are hand-written HTML template strings sent through Resend in `src/app/api/qstash/email/route.ts`. No `@react-email/*` import exists anywhere.                                                                                              | `socket.io`, `socket.io-parser` (high) |
+| `@serwist/next`, `serwist`     | The PWA was never wired up: no service worker file, no `withSerwist` in `next.config.ts`. The only mention in source was a comment in `src/proxy.ts` claiming the Serwist service worker injects scripts — it does not, because it does not exist. | —                                      |
+| `eslint-config-prettier`       | Not referenced in `eslint.config.mjs`, so it disables nothing.                                                                                                                                                                                     | —                                      |
+| `eslint-plugin-unused-imports` | Not referenced in `eslint.config.mjs`, so it lints nothing.                                                                                                                                                                                        | —                                      |
+
+`@types/ws` moved from `dependencies` to `devDependencies`. It is types-only and
+`output: 'standalone'` bundles runtime dependencies into the image.
+
+Removing these took the count from 13 to 11.
+
+**Kept**, despite looking removable: `bufferutil` and `utf-8-validate` are
+optional native accelerators that `ws` loads at runtime by name, and `ws`
+carries the Neon driver's WebSocket pool in production — nothing imports them
+because nothing is supposed to. The `@types/*` packages, `@vitest/ui`,
+`dotenv-cli` and `babel-plugin-react-compiler` are reached through tooling
+rather than imports.
+
+`shadcn` was removed and then restored. It reads as a CLI — nothing imports it
+and no npm script runs it — but `src/app/globals.css` line 3 is
+`@import 'shadcn/tailwind.css'`, so it is a real build input and the production
+build fails without it: `Can't resolve 'shadcn/tailwind.css'`. The import scan
+had it right; it was overruled by reasoning about what the package looked like,
+and only the build caught that. It carries `@modelcontextprotocol/sdk`, `hono`,
+`@hono/node-server`, `vite` and `undici` behind it, all of which stay — the
+high-severity `undici` advisory in that subtree is resolved by the version bumps
+below rather than by removal.
+
+### Versions raised
+
+`npm audit fix`, without `--force`, so every change is within the declared
+semver range:
+
+| Package                | From    | To      |
+| ---------------------- | ------- | ------- |
+| `next`                 | 16.2.10 | 16.3.1  |
+| `next-auth`            | 4.24.14 | 4.24.15 |
+| `sharp`                | 0.34.5  | 0.35.3  |
+| `undici`               | 6.27.0  | 6.28.0  |
+| `nanoid`               | 3.3.12  | 3.3.18  |
+| `brace-expansion`      | 1.1.15  | 1.1.18  |
+| `js-yaml`              | 4.3.0   | 4.3.1   |
+| `@tailwindcss/postcss` | 4.3.2   | 4.3.3   |
+
+The Next minor bump required one source change: `instantNavigationDevToolsToggle`
+was dropped from `ExperimentalConfig` in 16.3 with no replacement, and `tsc`
+failed on it. It only controlled the dev overlay, so it was removed.
+
+`npm audit --audit-level=high` now exits 0. Four moderate advisories remain, all
+of them `postcss` reached through `next`, `vite` and `@tailwindcss/postcss`;
+npm offers no non-breaking fix for them and the gate does not cover moderate.
+They are visible on every run rather than suppressed.
+
+### One e2e test added
+
+`e2e/tests/rbac.spec.ts` asserts the role boundary end to end: an Employee
+session is accepted at `/` (which redirects to `/my-assets`, since employees
+have no dashboard) and refused at `/financials`, landing on `/403`.
+
+The test asserts the outcome rather than either mechanism, and the reason is
+worth recording because the first two drafts were wrong.
+
+The initial version targeted `/settings` and was documented as covering the edge
+RBAC gate in `src/proxy.ts`. Mutation testing killed that claim: with
+`canAccessRoute` forced to return `true` for Employees, the test still passed,
+because `/settings` redirects into `settings/master-data`, which repeats the
+role check itself.
+
+The second version moved to `/financials` on the belief that only one of the
+seventeen pages under `(management)` had a guard of its own. That was an
+artefact of grepping `page.tsx` and nothing else: `financials/layout.tsx` guards
+its whole subtree, and ten more routes call `requireRole` from
+`src/lib/auth/page-guard.ts`. **Every route under `(management)` has both the
+edge gate and a second check.** That is a positive finding, and it corrects the
+claim made earlier in this section's first draft.
+
+Which means no route exists where an e2e test could isolate the edge gate, so
+the test does not pretend to. It was falsified by removing both layers together
+— the run then ends on `/financials/depreciation` and the assertion fails with
+`Expected pattern: /\/403$/`.
+
+The control half is load-bearing: a redirect away from `/financials` proves
+nothing by itself, because an unrecognised session cookie produces the same
+shape of failure.
