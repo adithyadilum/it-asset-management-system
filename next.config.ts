@@ -37,7 +37,8 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   cacheComponents: true,
   experimental: {
-    instantNavigationDevToolsToggle: true,
+    // `instantNavigationDevToolsToggle` was dropped in Next 16.3 with no
+    // replacement. It only controlled the dev overlay, so nothing is lost.
     serverActions: {
       bodySizeLimit: '5mb',
       allowedOrigins: serverActionOrigins,
