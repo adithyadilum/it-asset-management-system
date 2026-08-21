@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import Link from 'next/link';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { getRolesPageData } from '@/actions/roles';
@@ -51,7 +53,7 @@ function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
   return VALID_ROLES.has(selected) ? (selected as UserRole) : 'GlobalAdmin';
 }
 
-export default async function RolesPage({ searchParams }: RolesPageProps) {
+async function RolesPageContent({ searchParams }: RolesPageProps) {
   const currentUser = await requirePageAuth((role) => role === 'GlobalAdmin');
 
   const params = await searchParams;
@@ -142,5 +144,22 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
         />
       </section>
     </div>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function RolesPage(props: RolesPageProps) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <RolesPageContent {...props} />
+    </Suspense>
   );
 }

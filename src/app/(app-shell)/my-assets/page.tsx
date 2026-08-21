@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import {
   getCurrentEmployeeAssets,
@@ -69,7 +71,7 @@ function getAssetPresentation(pillar: string | undefined, modelName: string) {
   return { label: 'Asset', icon: <HardDrive className="h-8 w-8" /> };
 }
 
-export default async function MyAssetsPage() {
+async function MyAssetsPageContent() {
   const user = await requirePageAuth();
 
   const [employeeAssets, softwareAssets, alerts] = await Promise.all([
@@ -175,5 +177,22 @@ export default async function MyAssetsPage() {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function MyAssetsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <MyAssetsPageContent />
+    </Suspense>
   );
 }

@@ -130,30 +130,47 @@ describe('Notifications Actions', () => {
   });
 
   describe('getNotificationSummary', () => {
-    it('loads notifications and the unread badge in one query', async () => {
+    it('loads the page and the unread badge as two parallel queries', async () => {
+      // Deliberately two queries, not one with `count(*) OVER ()`: the window
+      // aggregate had to scan the user's entire notification history before
+      // LIMIT could apply. They are issued together, so it is still one round
+      // trip's worth of latency.
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      mockDb.select.mockReturnValueOnce(
-        chain([
-          {
-            id: 'notification-id',
-            userId: EMPLOYEE_USER.id,
-            title: 'Title',
-            message: 'Message',
-            targetUrl: null,
-            isRead: false,
-            eventType: 'ASSIGNMENT_CREATED',
-            createdAt: new Date('2026-07-14T00:00:00Z'),
-            unreadCount: 4,
-          },
-        ])
-      );
+      mockDb.select
+        .mockReturnValueOnce(
+          chain([
+            {
+              id: 'notification-id',
+              userId: EMPLOYEE_USER.id,
+              title: 'Title',
+              message: 'Message',
+              targetUrl: null,
+              isRead: false,
+              eventType: 'ASSIGNMENT_CREATED',
+              createdAt: new Date('2026-07-14T00:00:00Z'),
+            },
+          ])
+        )
+        .mockReturnValueOnce(chain([{ count: 4 }]));
 
       const result = await getNotificationSummary();
 
-      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      expect(mockDb.select).toHaveBeenCalledTimes(2);
       expect(result.unreadCount).toBe(4);
       expect(result.notifications).toHaveLength(1);
       expect(result.notifications[0]).not.toHaveProperty('unreadCount');
+    });
+
+    it('reports zero unread when the count query returns nothing', async () => {
+      mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
+      mockDb.select
+        .mockReturnValueOnce(chain([]))
+        .mockReturnValueOnce(chain([]));
+
+      const result = await getNotificationSummary();
+
+      expect(result.unreadCount).toBe(0);
+      expect(result.notifications).toEqual([]);
     });
   });
 

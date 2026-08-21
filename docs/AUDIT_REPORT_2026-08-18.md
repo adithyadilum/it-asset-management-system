@@ -1783,14 +1783,43 @@ every visit.
 
 `instant = false` on the shell layout does **not** suppress this for the pages
 beneath it, and it would not be the right fix anyway: it makes the route block,
-which is the behaviour being complained about. The five registry pages now wrap
-`AssetRegistryShell` in `<Suspense>` with a skeleton that mirrors its chrome, and
-`src/app/(app-shell)/loading.tsx` gives every other page in the shell the same
-treatment in one file. The sidebar and header come from the layout and stay put,
-so only the content region changes.
+which is the behaviour being complained about.
 
-Verified by rendering six routes against the running dev server with a real
-session cookie: all 200, and zero prerender errors in the server log.
+A shared `loading.tsx` was not enough either. It gives a navigation something to
+show, but Next validates the boundary per route, so a page whose own default
+export is `async` still reports the error — which is why the registry pages went
+quiet after being wrapped individually while every other route did not.
+
+The fix is applied per page. Each `async` page is now split into a synchronous
+default export and an inner `…Content` component that does the awaiting:
+
+```tsx
+async function AuditLogPageContent() {
+  /* session + queries */
+}
+
+export default function AuditLogPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AuditLogPageContent />
+    </Suspense>
+  );
+}
+```
+
+Nineteen pages in total. The five redirect-only routes — `/financials`,
+`/reports`, `/settings`, `/operations` and `/assets/[assetId]` — get
+`export const instant = false` instead: they render no markup, so there is
+nothing to stream and blocking is the honest answer.
+
+`PageSkeleton` is deliberately one generic component rather than nineteen
+bespoke ones, which would drift out of step with the pages they stand for. The
+asset registry and dashboard keep their own, because their shape genuinely
+differs.
+
+Verified by rendering **all 24 sidebar routes** against the running dev server
+with a real session cookie: every one returned 200, with **zero** prerender
+errors and zero errors of any kind in the server log.
 
 ### The database round trip is the budget, and connections are the cost
 

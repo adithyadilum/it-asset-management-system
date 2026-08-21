@@ -29,7 +29,6 @@ const contentSecurityPolicy = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   reactStrictMode: true,
   allowedDevOrigins: isProduction
     ? []

@@ -1,4 +1,6 @@
-﻿import { getTCOLedger } from '@/actions/financials';
+﻿import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
+import { getTCOLedger } from '@/actions/financials';
 import { TCOLedger } from '@/components/features/financials/tco-ledger';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
@@ -6,7 +8,7 @@ export const metadata = {
   title: 'Total Cost of Ownership | Tiqri Assets',
 };
 
-export default async function TCOLedgerPage() {
+async function TCOLedgerPageContent() {
   // 1. Pass the initial pagination parameters
   const response = await getTCOLedger({ page: 1, pageSize: 16 });
 
@@ -22,5 +24,22 @@ export default async function TCOLedgerPage() {
         initialPageCount={response.meta.totalPages}
       />
     </div>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function TCOLedgerPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <TCOLedgerPageContent />
+    </Suspense>
   );
 }

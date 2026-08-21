@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import {
   getApiKeys,
@@ -10,7 +12,7 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
 
-export default async function IntegrationsPage() {
+async function IntegrationsPageContent() {
   await requirePageAuth((role) => role === 'GlobalAdmin');
 
   const apiKeys = await getApiKeys();
@@ -58,5 +60,22 @@ export default async function IntegrationsPage() {
         containerClassName="flex-1 flex flex-col min-h-0"
       />
     </div>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <IntegrationsPageContent />
+    </Suspense>
   );
 }

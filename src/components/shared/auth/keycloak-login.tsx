@@ -2,16 +2,18 @@
 
 import { signIn } from 'next-auth/react';
 import { AlertCircle } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LoginBrandHeader } from '@/components/shared/brand-header';
-
-type KeycloakLoginProps = {
-  redirectTo: string;
-};
+import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
+import {
+  DEFAULT_POST_LOGIN_REDIRECT,
+  sanitizeRedirectPath,
+} from '@/lib/auth/auth-redirect';
 
 function MicrosoftMark() {
   return (
@@ -58,7 +60,16 @@ function MicrosoftMark() {
   );
 }
 
-export function KeycloakLogin({ redirectTo }: KeycloakLoginProps) {
+export function KeycloakLogin() {
+  // Read on the client so the page itself stays static. `sanitizeRedirectPath`
+  // is a pure function and does the same filtering it did on the server:
+  // same-origin paths only, never back to /login.
+  const searchParams = useSearchParams();
+  const redirectTo = sanitizeRedirectPath(
+    searchParams.get('redirectTo'),
+    DEFAULT_POST_LOGIN_REDIRECT
+  );
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -130,7 +141,13 @@ export function KeycloakLogin({ redirectTo }: KeycloakLoginProps) {
 
         <footer className="inline-flex items-center justify-center">
           <p className="w-57.25 text-center text-xs leading-4 text-muted-foreground">
-            Need help? Contact TIQRI IT Support
+            Need help?{' '}
+            <a
+              href={SUPPORT_MAILTO}
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Contact {SUPPORT_LABEL}
+            </a>
           </p>
         </footer>
       </div>

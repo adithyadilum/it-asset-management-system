@@ -11,7 +11,17 @@ import { OfflineBanner } from '@/components/shared/offline-banner';
 import { BottomNavigation } from '@/components/layout/bottom-navigation';
 import { CurrencyProvider } from '@/components/providers/currency-provider';
 
-export const unstable_instant = false;
+/**
+ * Every screen behind this layout is per-user: the sidebar, header and currency
+ * all come from the session, so there is nothing to prerender. Opting out of
+ * instant navigation lets the layout block on `connection()` instead of Next
+ * treating that as an error.
+ *
+ * Renamed from `unstable_instant` in Next 16.3 — the old name is silently
+ * ignored rather than rejected, which is why the warning came back after the
+ * version bump.
+ */
+export const instant = false;
 
 export default async function AppShellLayout({
   children,

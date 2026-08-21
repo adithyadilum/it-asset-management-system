@@ -1,4 +1,6 @@
-﻿import { getWriteOffsLedger } from '@/actions/financials';
+﻿import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
+import { getWriteOffsLedger } from '@/actions/financials';
 import { WriteOffsLedger } from '@/components/features/financials/write-offs-ledger';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
@@ -6,7 +8,7 @@ export const metadata = {
   title: 'Write-Offs & Salvage | Tiqri Assets',
 };
 
-export default async function SalvageLedgerPage() {
+async function SalvageLedgerPageContent() {
   // 1. Pass the initial pagination parameters
   const response = await getWriteOffsLedger({ page: 1, pageSize: 16 });
 
@@ -22,5 +24,22 @@ export default async function SalvageLedgerPage() {
         initialPageCount={response.meta.totalPages}
       />
     </div>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function SalvageLedgerPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <SalvageLedgerPageContent />
+    </Suspense>
   );
 }

@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { getAuthenticatedUser } from '@/actions/auth';
 
 import { DashboardHeader } from '@/components/features/dashboard/shared/dashboard-header';
@@ -17,7 +19,7 @@ import { GlobalAdminDashboardView } from '@/components/features/dashboard/global
 import { ITOperatorDashboardView } from '@/components/features/dashboard/it-operator/it-operator-dashboard-view';
 import { FinancialAuditorDashboardView } from '@/components/features/dashboard/financial-auditor/financial-auditor-dashboard-view';
 
-export default async function DashboardPage() {
+async function DashboardPageContent() {
   const user = await getAuthenticatedUser();
 
   if (user?.role === 'Employee') {
@@ -65,5 +67,22 @@ export default async function DashboardPage() {
         <ScrollArea className="flex-1 min-h-0">{dashboardView}</ScrollArea>
       </main>
     </DashboardRefreshProvider>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { cookies } from 'next/headers';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { db } from '@/db';
@@ -22,9 +24,7 @@ interface DisposalsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function DisposalsPage({
-  searchParams,
-}: DisposalsPageProps) {
+async function DisposalsPageContent({ searchParams }: DisposalsPageProps) {
   const user = await requirePageAuth(
     (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor'
   );
@@ -175,5 +175,22 @@ export default async function DisposalsPage({
       userRole={user.role}
       preferredCurrency={preferredCurrency}
     />
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function DisposalsPage(props: DisposalsPageProps) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DisposalsPageContent {...props} />
+    </Suspense>
   );
 }
