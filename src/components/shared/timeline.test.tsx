@@ -28,7 +28,10 @@ describe('AssetHistoryTimeline', () => {
   it('renders log details including user and action type', () => {
     render(<AssetHistoryTimeline historyLogs={[mockHistoryLog]} />);
 
-    expect(screen.getByText('UPDATE')).toBeInTheDocument();
+    // The headline is the human verb phrase, not the raw enum: the timeline
+    // used to print 'UPDATE', 'ACCESS DENIED', 'STATUS CHANGE'.
+    expect(screen.getByText('Updated')).toBeInTheDocument();
+    expect(screen.queryByText('UPDATE')).not.toBeInTheDocument();
     expect(screen.getByText('AST-001 · Dell Laptop')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('john@example.com')).toBeInTheDocument();

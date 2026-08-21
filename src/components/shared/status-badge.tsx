@@ -101,6 +101,44 @@ const BADGE_DICTIONARY: Record<
       'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800',
     icon: XCircle,
   },
+  // The remaining `asset_condition` enum values. Without these, every asset
+  // whose condition is Excellent, Fair or Poor fell through to the grey
+  // question-mark fallback -- which is most of the Office Furniture and Office
+  // Electronics registry.
+  excellent: {
+    label: 'Excellent',
+    className:
+      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800',
+    icon: BadgeCheck,
+  },
+  fair: {
+    label: 'Fair',
+    className:
+      'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800',
+    icon: AlertCircle,
+  },
+  poor: {
+    label: 'Poor',
+    className:
+      'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800',
+    icon: AlertTriangle,
+  },
+
+  // Assignment state. The stored enum value is 'pending approval'; the label
+  // here is what users read. 'assigned', 'overdue' and 'returned' are already
+  // defined above. See src/lib/assignments/labels.ts.
+  pending_approval: {
+    label: 'Pending assignment',
+    className:
+      'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800',
+    icon: AlertCircle,
+  },
+  overdue: {
+    label: 'Overdue',
+    className:
+      'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800',
+    icon: AlertTriangle,
+  },
 
   // Pending Alert States
   critical: {

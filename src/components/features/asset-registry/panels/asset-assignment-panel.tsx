@@ -45,6 +45,7 @@ export interface AssetAssignmentPanelProps {
   onSendReminder?: () => void;
   onRequestReturn?: () => void;
   onMarkReceived?: () => void;
+  onCancelAssignment?: () => void;
   onClose?: () => void;
 }
 
@@ -111,6 +112,10 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
     </div>
   );
   const showReminder = ['pending approval', 'overdue'].includes(props.state);
+  // Only an unacknowledged assignment can be withdrawn. Once accepted, giving
+  // the asset back is a return, not a cancellation.
+  const showCancel =
+    props.state === 'pending approval' && Boolean(props.onCancelAssignment);
   const showReturn = props.state === 'assigned';
   const showRequestAgain = props.state === 'requested';
   const showMarkReceived = ['overdue'].includes(props.state);
@@ -143,6 +148,18 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
                 className:
                   'h-9 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90',
                 onClick: props.onMarkReceived,
+              },
+            ]
+          : []),
+        ...(showCancel
+          ? [
+              {
+                id: 'cancel-assignment',
+                label: 'Cancel Assignment',
+                variant: 'outline' as const,
+                className:
+                  'h-9 rounded-lg border-destructive/40 px-4 text-sm text-destructive hover:bg-destructive/10',
+                onClick: props.onCancelAssignment,
               },
             ]
           : []),

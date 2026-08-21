@@ -35,6 +35,7 @@ import {
 } from '@/lib/validations/asset-edit';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
+import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -167,8 +168,13 @@ export async function registerAsset(
     const input = {
       ...parsed.data,
       pillar: parsed.data.pillar,
-      usefulLifeMonths:
-        parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
+      // Comes from the validated Expected Lifespan field now. It used to be
+      // read straight off formData, outside the schema, with a hardcoded 60 --
+      // and since no form input ever set it, every asset silently got 5 years
+      // whether or not that was right for it.
+      usefulLifeMonths: parsed.data.expectedLifespanYears
+        ? parsed.data.expectedLifespanYears * 12
+        : DEFAULT_USEFUL_LIFE_MONTHS,
       invoiceFile: formData.get('invoiceFile') as File | null,
     };
     const instanceAttributes = {
@@ -739,6 +745,14 @@ export async function editAssetDetailsAction(
       assetUpdatePayload.locationId = assetFields.locationId;
     if (assetFields.ownerId !== undefined)
       assetUpdatePayload.ownerId = assetFields.ownerId;
+    if (assetFields.expectedLifespanYears !== undefined) {
+      // Stored in months; null clears it and falls back to the default when
+      // depreciation is computed.
+      assetUpdatePayload.usefulLifeMonths =
+        assetFields.expectedLifespanYears === null
+          ? null
+          : assetFields.expectedLifespanYears * 12;
+    }
     if (assetFields.instanceAttributes !== undefined) {
       // Only allow keys that already exist on the asset's instance attributes
       const existingKeys = new Set(

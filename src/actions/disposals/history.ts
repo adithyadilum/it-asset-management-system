@@ -2,6 +2,7 @@
 
 import { and, desc, eq, inArray, or, ilike, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { disposalDocumentJoin } from '@/lib/data/disposal-documents';
 
 import { enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
@@ -90,13 +91,7 @@ export async function getDisposalHistory(params: {
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
       .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
-      .leftJoin(
-        assetDocuments,
-        and(
-          eq(assetDocuments.assetId, assets.id),
-          eq(assetDocuments.documentType, 'disposal-certificate')
-        )
-      )
+      .leftJoin(assetDocuments, disposalDocumentJoin)
       .where(historyBaseCondition)
       .groupBy(
         assetDisposals.id,

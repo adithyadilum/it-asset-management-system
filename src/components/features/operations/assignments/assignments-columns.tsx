@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
+import { formatAssignmentState } from '@/lib/assignments/labels';
 import type { AssetAssignmentRow } from './assignments-table';
 
 export const getAssignmentColumns = (): ColumnDef<AssetAssignmentRow>[] => [
@@ -57,9 +58,9 @@ export const getAssignmentColumns = (): ColumnDef<AssetAssignmentRow>[] => [
       return (
         <Badge
           variant="outline"
-          className={`h-5 rounded-full px-2 text-[11px] font-medium capitalize ${colorClass}`}
+          className={`h-5 rounded-full px-2 text-[11px] font-medium ${colorClass}`}
         >
-          {state}
+          {formatAssignmentState(state)}
         </Badge>
       );
     },

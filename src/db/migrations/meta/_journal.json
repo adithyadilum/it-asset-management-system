@@ -8,6 +8,13 @@
       "when": 1787162352371,
       "tag": "0000_baseline_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787223168678,
+      "tag": "0001_disposal_documents_and_location_assignments",
+      "breakpoints": true
     }
   ]
 }

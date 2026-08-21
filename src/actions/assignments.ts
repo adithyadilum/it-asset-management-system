@@ -16,6 +16,7 @@ import {
   triggerReturnRequests,
   markAssignmentsAsReceived,
   processAssetReturn,
+  cancelPendingAssignment,
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
@@ -304,6 +305,54 @@ export async function sendAssignmentReminderAction(
     logLatency({
       scope: 'ACTION',
       label: 'assignments.sendAssignmentReminderAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+/**
+ * Withdraws an assignment the assignee has not acknowledged yet.
+ *
+ * Authorised for whoever created the assignment, plus GlobalAdmin — an
+ * assignment made by someone who has since left or is unavailable would
+ * otherwise be impossible to undo. ITOperator deliberately does not get a
+ * blanket pass: they can cancel their own, like anyone else.
+ */
+export async function cancelAssignmentAction(
+  assignmentId: number
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult(
+      'Forbidden: You do not have permission to cancel assignments.'
+    );
+  }
+
+  try {
+    const { assetId } = await cancelPendingAssignment(
+      assignmentId,
+      currentUser.id,
+      { allowAnyInitiator: currentUser.role === 'GlobalAdmin' }
+    );
+
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    revalidatePath(`/assets/${assetId}`);
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.cancelAssignmentAction',
+      error,
+      metadata: { assignmentId },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.cancelAssignmentAction',
       startTime: actionTimer,
     });
   }

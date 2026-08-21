@@ -11,6 +11,7 @@ import {
 } from '@/db/schema';
 import { eq, desc, inArray, and, sql, or, ilike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { disposalDocumentJoin } from '@/lib/data/disposal-documents';
 import { DisposalsLayout } from '@/components/features/disposals/disposals-layout';
 
 export const metadata = {
@@ -110,13 +111,7 @@ export default async function DisposalsPage({
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
     .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
-    .leftJoin(
-      assetDocuments,
-      and(
-        eq(assetDocuments.assetId, assets.id),
-        eq(assetDocuments.documentType, 'disposal-certificate')
-      )
-    )
+    .leftJoin(assetDocuments, disposalDocumentJoin)
     .where(historyBaseCondition)
     .groupBy(
       assetDisposals.id,

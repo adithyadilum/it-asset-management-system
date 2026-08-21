@@ -332,7 +332,7 @@ export function DataTable<TData, TValue>({
           <TableRow className="h-13.25 border-border bg-primary hover:bg-primary transition-all duration-200 ease-in-out">
             <TableHead
               colSpan={table.getAllLeafColumns().length}
-              className="h-13.25 bg-primary px-6 py-0 font-medium text-primary-foreground [&:has([role=checkbox])]:pr-6 transition-all duration-200 ease-in-out"
+              className="h-13.25 bg-primary px-6 py-0 font-medium text-primary-foreground has-[[role=checkbox]]:pr-6 transition-all duration-200 ease-in-out"
             >
               <div className="flex h-13.25 w-full items-center justify-between pr-6">
                 <div className="flex min-w-0 items-center">
@@ -620,7 +620,7 @@ export function DataTable<TData, TValue>({
               >
                 <SelectTrigger
                   id="rows-per-page"
-                  className="h-8 w-fit min-w-[70px]"
+                  className="h-8 w-fit min-w-17.5"
                 >
                   <SelectValue
                     placeholder={table.getState().pagination.pageSize}

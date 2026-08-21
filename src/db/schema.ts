@@ -348,6 +348,13 @@ export const assetDocuments = pgTable(
       .references(() => assets.id, { onDelete: 'cascade' }),
     documentType: varchar('document_type', { length: 100 }),
     fileUrl: varchar('file_url', { length: 500 }).notNull(),
+    // Which disposal produced this document, for 'disposal-certificate' rows.
+    // Without it a document could only be tied to an asset, so an asset
+    // disposed more than once showed every receipt on every disposal row.
+    // Nullable: documents unrelated to a disposal have no disposal.
+    disposalId: integer('disposal_id').references(() => assetDisposals.id, {
+      onDelete: 'set null',
+    }),
     uploadedById: uuid('uploaded_by_id')
       .notNull()
       .references(() => users.id),
@@ -355,6 +362,9 @@ export const assetDocuments = pgTable(
   },
   (table) => ({
     assetIdIdx: index('asset_documents_asset_id_idx').on(table.assetId),
+    disposalIdIdx: index('asset_documents_disposal_id_idx').on(
+      table.disposalId
+    ),
   })
 );
 

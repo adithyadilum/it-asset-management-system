@@ -158,6 +158,23 @@ export const assetRegistrationSchema = z
         .max(120, { message: 'Warranty months must be 120 or less.' })
         .optional()
     ),
+    // Expected lifespan, captured in years because that is how people talk
+    // about it; stored as `assets.useful_life_months`. Drives the straight-line
+    // depreciation in lib/depreciation.ts. Optional, and defaulted downstream,
+    // so an asset registered without one still depreciates over 5 years.
+    expectedLifespanYears: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce
+        .number({ message: 'Expected lifespan must be a valid number.' })
+        .int({ message: 'Expected lifespan must be a whole number of years.' })
+        .min(1, { message: 'Expected lifespan must be at least 1 year.' })
+        .max(30, { message: 'Expected lifespan must be 30 years or less.' })
+        .optional()
+    ),
     vendorId: z.coerce
       .number({ message: 'Vendor is required.' })
       .int({ message: 'Vendor is required.' })

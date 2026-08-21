@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AssetAssignmentDetailsPanel } from '@/components/features/asset-registry/panels/asset-assignment-panel';
 import { AssetAssignmentModal } from './asset-assignment-modal';
 import {
@@ -11,6 +12,7 @@ import {
   sendAssignmentReminderAction,
   requestAssetReturnAction,
   markAssetReceivedAction,
+  cancelAssignmentAction,
 } from '@/actions/assignments';
 import { toast } from 'sonner';
 import {
@@ -55,6 +57,7 @@ export function AssignmentsPanels({
   selectedAsset,
   onClose,
 }: AssignmentsPanelsProps) {
+  const router = useRouter();
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [cachedAsset, setCachedAsset] = useState<AssignmentPanelAsset | null>(
     selectedAsset
@@ -132,6 +135,17 @@ export function AssignmentsPanels({
     }
   };
 
+  const handleCancelAssignment = async () => {
+    if (!cachedAsset.assignmentId) return;
+    const result = await cancelAssignmentAction(cachedAsset.assignmentId);
+    if (result.success) {
+      toast.success('Assignment cancelled');
+      router.refresh();
+    } else {
+      toast.error(result.error || 'Failed to cancel assignment');
+    }
+  };
+
   const handleRequestReturn = async () => {
     if (!cachedAsset.assignmentId) return;
     const result = await requestAssetReturnAction([cachedAsset.assignmentId]);
@@ -165,6 +179,10 @@ export function AssignmentsPanels({
         assetName={cachedAsset.assetName}
         category={cachedAsset.category ?? ''}
         model={fetchedData?.details?.model?.name ?? cachedAsset.model ?? ''}
+        // The details fetch above already carries the model image; it was
+        // simply never passed on, so this panel always fell through to the
+        // "No image available" placeholder.
+        imageUrl={fetchedData?.details?.model?.imageUrl ?? ''}
         brand={
           fetchedData?.details?.model?.brand?.name ?? cachedAsset.brand ?? ''
         }
@@ -206,6 +224,7 @@ export function AssignmentsPanels({
         onSendReminder={handleSendReminder}
         onRequestReturn={handleRequestReturn}
         onMarkReceived={handleMarkReceived}
+        onCancelAssignment={handleCancelAssignment}
       />
 
       <AssetAssignmentModal

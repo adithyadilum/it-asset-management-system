@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { PillarBadge } from '@/components/shared/pillar-badge';
-import { SoftwareExpiryStatus } from '@/components/shared/software-expiry-status';
 import { CopyableField } from '@/components/shared/copyable-field';
 import type { RegistryView } from './registry-config';
 import type { AssetRegistryRow } from './asset-registry.types';
@@ -16,7 +15,24 @@ export interface ManualStatus {
   iconName?: string;
 }
 
+/**
+ * Badge colours for the Office Electronics condition column.
+ *
+ * Two different vocabularies land in this column and both need entries. When an
+ * asset has a `condition` set, that enum value is shown verbatim; only when it
+ * is null does `toElectronicsDisplayCondition` derive a status word. The map
+ * previously held the derived words alone, so every asset that actually had a
+ * condition recorded fell through to the grey default -- which is most of them.
+ */
 const ELECTRONICS_CONDITION_STYLES: Record<string, string> = {
+  // asset_condition enum values.
+  New: 'border border-emerald-300 bg-emerald-50 text-emerald-700',
+  Excellent: 'border border-green-300 bg-green-50 text-green-700',
+  Fair: 'border border-amber-300 bg-amber-50 text-amber-700',
+  Poor: 'border border-orange-300 bg-orange-50 text-orange-700',
+  Damaged: 'border border-red-300 bg-red-50 text-red-700',
+
+  // Derived from asset status when no condition has been recorded.
   Active: 'border border-green-300 bg-green-50 text-green-700',
   'Inspection Due': 'border border-blue-300 bg-blue-50 text-blue-700',
   'Under Maintenance': 'border border-orange-300 bg-orange-50 text-orange-700',
@@ -95,17 +111,15 @@ export function useAssetColumns(
         {
           accessorKey: 'status',
           header: 'Status',
-          cell: ({ row }) => {
-            if (row.original.pillar === 'Software') {
-              return (
-                <SoftwareExpiryStatus
-                  status={row.original.status}
-                  expiryDate={row.original.expiryDate}
-                />
-              );
-            }
-            return <StatusBadge value={row.original.status} showIcon />;
-          },
+          // One badge for every row, software included. `status` has already
+          // been replaced with the derived licence state upstream in
+          // asset-registry-repo, so rendering SoftwareExpiryStatus here stacked
+          // a second, redundant reading of the same thing ("Expired" above
+          // "Expired") under the badge. Expiry dates remain on the licence
+          // detail panel and in the dedicated Software view.
+          cell: ({ row }) => (
+            <StatusBadge value={row.original.status} showIcon />
+          ),
         },
         {
           id: 'assignment',

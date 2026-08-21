@@ -27,6 +27,10 @@ import {
   sql,
 } from 'drizzle-orm';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
+import {
+  adminAssignmentUrl,
+  employeeAssignmentUrl,
+} from '@/lib/notifications/target-urls';
 import { formatDate } from '@/lib/date';
 import { serverEnv } from '@/lib/env';
 
@@ -276,7 +280,7 @@ async function dispatchPendingAcceptanceAlert(
     return;
   }
 
-  const targetUrl = `/portal/my-assets?assignmentId=${assignmentId}`;
+  const targetUrl = employeeAssignmentUrl(assignmentId);
 
   if (eventType === 'REMINDER_24H') {
     await dispatchAlert({
@@ -305,7 +309,7 @@ async function dispatchPendingAcceptanceAlert(
     userId: recipientId,
     title: 'Escalation: Assignment Not Acknowledged',
     message: `Assignment #${details.assignmentId} assigned to user ${details.assignedToUserId ?? 'unknown'} has not been acknowledged after 72 hours.`,
-    targetUrl: `/operations/assignments?assignmentId=${assignmentId}`,
+    targetUrl: adminAssignmentUrl(assignmentId),
   });
 }
 
@@ -350,7 +354,10 @@ async function runUpcomingReturnCheck() {
   );
 
   for (const a of rows) {
-    const targetUrl = `/portal/my-assets?assignmentId=${a.assignmentId}`;
+    // Doubles as the dedup key below, so changing it re-sends at most one
+    // upcoming-return notice per assignment. Worth it: the old `/portal/...`
+    // form pointed at a route that does not exist and 404'd on click.
+    const targetUrl = employeeAssignmentUrl(a.assignmentId);
 
     // Deduplicate via notification_logs
     if (!a.assignedToUserId) continue;

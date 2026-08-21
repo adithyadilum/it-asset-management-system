@@ -22,6 +22,7 @@ import {
   Armchair,
   Speaker,
 } from 'lucide-react';
+import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
 
 // ── Asset icon resolver using category pillar ────────────────────────────────
 
@@ -159,8 +160,14 @@ export default async function MyAssetsPage() {
                   We couldn&apos;t find any equipment or software linked to your
                   profile.
                   <br />
-                  If you&apos;re expecting access, please check back later or
-                  contact the IT Helpdesk.
+                  If you&apos;re expecting access, check back later or contact{' '}
+                  <a
+                    href={SUPPORT_MAILTO}
+                    className="underline underline-offset-2"
+                  >
+                    {SUPPORT_LABEL}
+                  </a>
+                  .
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

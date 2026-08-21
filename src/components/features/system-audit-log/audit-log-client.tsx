@@ -18,7 +18,10 @@ import {
 } from '@/actions/audit-log';
 import type { PaginationState } from '@tanstack/react-table';
 
-import { formatMoneyByCurrency } from '@/lib/currency';
+import {
+  buildEventDetailsSentence,
+  humanizeFieldName,
+} from '@/lib/audit-events';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -98,169 +101,18 @@ function formatAuditTimestamp(value: string | Date) {
   return format(date, 'yyyy-MM-dd HH:mm:ss');
 }
 
-function humanizeFieldName(field: string): string {
-  return field
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/_/g, ' ')
-    .replace(/\bId\b/gi, 'ID')
-    .replace(/\bMac\b/gi, 'MAC')
-    .replace(/\bIp\b/gi, 'IP')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .map((word) =>
-      word.toUpperCase() === 'ID' ||
-      word.toUpperCase() === 'IP' ||
-      word.toUpperCase() === 'MAC'
-        ? word.toUpperCase()
-        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    )
-    .join(' ');
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function areValuesEqual(left: unknown, right: unknown): boolean {
-  if (Object.is(left, right)) {
-    return true;
-  }
-
-  if (Array.isArray(left) && Array.isArray(right)) {
-    if (left.length !== right.length) {
-      return false;
-    }
-
-    for (let index = 0; index < left.length; index += 1) {
-      if (!areValuesEqual(left[index], right[index])) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  if (isPlainObject(left) && isPlainObject(right)) {
-    const leftKeys = Object.keys(left);
-    const rightKeys = Object.keys(right);
-
-    if (leftKeys.length !== rightKeys.length) {
-      return false;
-    }
-
-    for (const key of leftKeys) {
-      if (!Object.prototype.hasOwnProperty.call(right, key)) {
-        return false;
-      }
-
-      if (!areValuesEqual(left[key], right[key])) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-function formatAuditValue(field: string, value: unknown) {
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-
-  if (typeof value === 'number') {
-    if (
-      /cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(
-        field
-      )
-    ) {
-      return formatMoneyByCurrency(value, 'USD'); // Kept string for audit display
-    }
-
-    return new Intl.NumberFormat('en-US').format(value);
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item)).join(', ');
-  }
-
-  if (isPlainObject(value)) {
-    return JSON.stringify(value);
-  }
-
-  const text = String(value);
-  if (
-    /cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(
-      field
-    )
-  ) {
-    const parsed = Number(text.replace(/[^0-9.-]/g, ''));
-    if (Number.isFinite(parsed) && text.trim().length > 0) {
-      return formatMoneyByCurrency(parsed, 'USD');
-    }
-  }
-
-  return text;
-}
-
+/**
+ * Row description, shared with the dashboard feed, the asset history
+ * timeline and the mobile activity endpoint. This file used to carry its own
+ * copy; they had drifted apart, and only this one knew about ACCESS_DENIED.
+ */
 function buildEventDetails(row: AuditLogRow) {
-  const action = row.actionType.trim().toUpperCase();
-  const oldValue = row.oldValue;
-  const newValue = row.newValue;
-
-  // Login/logout rows are simple audit events with no diff payload.
-  if (action === 'LOGIN') {
-    return 'User logged in';
-  }
-
-  if (action === 'LOGOUT') {
-    return 'User logged out';
-  }
-
-  if (!oldValue || !newValue) {
-    if (action === 'CREATE') {
-      return `Created ${humanizeFieldName(row.entityType).toLowerCase()}`;
-    }
-
-    if (action === 'DELETE') {
-      return `Deleted ${humanizeFieldName(row.entityType).toLowerCase()}`;
-    }
-
-    if (action === 'ACCESS_DENIED') {
-      const role = row.newValue?.role ? String(row.newValue.role) : 'Unknown';
-      return `Access denied for role [${humanizeFieldName(role)}]`;
-    }
-
-    return 'Updated record';
-  }
-
-  // Show the first changed field so the table stays compact.
-  const keys = new Set([...Object.keys(oldValue), ...Object.keys(newValue)]);
-  for (const key of keys) {
-    if (!areValuesEqual(oldValue[key], newValue[key])) {
-      const oldDisplay = formatAuditValue(key, oldValue[key]);
-      const newDisplay = formatAuditValue(key, newValue[key]);
-      const label = humanizeFieldName(key);
-
-      if (action === 'CREATE') {
-        return `Created ${label} as [${newDisplay}]`;
-      }
-
-      if (action === 'DELETE') {
-        return `Deleted ${label} [${oldDisplay}]`;
-      }
-
-      return `Changed ${label} from [${oldDisplay}] → [${newDisplay}]`;
-    }
-  }
-
-  return 'Updated record';
+  return buildEventDetailsSentence(
+    row.actionType,
+    row.entityType,
+    row.oldValue,
+    row.newValue
+  );
 }
 
 function buildTargetEntity(row: AuditLogRow) {

@@ -635,10 +635,11 @@ export async function getAssetDisposalById(
     return null;
   }
 
-  // Fetch documents related to this asset and disposal
+  // Scoped to this disposal record, not just the asset: an asset disposed more
+  // than once would otherwise show every receipt it had ever accumulated.
   const documents = await db.query.assetDocuments.findMany({
     where: and(
-      eq(assetDocuments.assetId, resolvedAssetId),
+      eq(assetDocuments.disposalId, disposalRecord.id),
       eq(assetDocuments.documentType, 'disposal-certificate')
     ),
   });

@@ -2,6 +2,7 @@
 
 import { db } from '@/db';
 import {
+  assetAssignments,
   assets,
   brands,
   categories,
@@ -869,6 +870,33 @@ export async function getAuditLogs(
   }
 }
 
+/**
+ * Everything that belongs on one asset's history.
+ *
+ * Assignment events are logged against the assignment rather than the asset —
+ * `entityType: 'asset_assignment'`, with the assignment id as `entityId` — so
+ * matching only on 'Asset' showed an assignment being created but never its
+ * acceptance, decline, cancellation or return.
+ */
+function assetHistoryCondition(assetId: string) {
+  return or(
+    and(
+      eq(systemAuditLogs.entityType, 'Asset'),
+      eq(systemAuditLogs.entityId, assetId)
+    ),
+    and(
+      eq(systemAuditLogs.entityType, 'asset_assignment'),
+      // Raw fragment rather than a nested `db.select()`: this stays one
+      // statement, and the query builder is not invoked a second time.
+      sql`${systemAuditLogs.entityId} IN (
+        SELECT ${assetAssignments.id}::text
+        FROM ${assetAssignments}
+        WHERE ${assetAssignments.assetId} = ${assetId}
+      )`
+    )
+  );
+}
+
 export async function getAssetAuditHistory(
   assetId: string,
   page: number = 1,
@@ -886,10 +914,7 @@ export async function getAssetAuditHistory(
     // Fetch one extra record to determine if there is a next page
     const limit = validatedPageSize + 1;
 
-    const whereCondition = and(
-      eq(systemAuditLogs.entityType, 'Asset'),
-      eq(systemAuditLogs.entityId, assetId)
-    );
+    const whereCondition = assetHistoryCondition(assetId);
 
     const records = await db
       .select({
@@ -987,10 +1012,7 @@ export async function getAllAssetAuditHistory(
   try {
     await enforceActionAccess(canViewAssetRegistry);
 
-    const whereCondition = and(
-      eq(systemAuditLogs.entityType, 'Asset'),
-      eq(systemAuditLogs.entityId, assetId)
-    );
+    const whereCondition = assetHistoryCondition(assetId);
 
     const records = await db
       .select({

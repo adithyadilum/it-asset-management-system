@@ -1,5 +1,6 @@
 // src/app/api/qstash/email/route.ts
 import { serverEnv } from '@/lib/env';
+import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
 import { clientEnv } from '@/lib/env.client';
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
@@ -330,7 +331,7 @@ function generateEmailHtml({
 
       <!-- FOOTER HELP -->
       <div style="font-size: 12px; line-height: 16px; color: #64748b; margin-top: 20px;">
-        Need help? Contact TIQRI IT Support
+        Need help? <a href="${SUPPORT_MAILTO}" style="color: #64748b;">Contact ${SUPPORT_LABEL}</a>
       </div>
     </div>
   </div>
