@@ -1,7 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AssetRegistryShell } from './asset-registry-shell';
-import { getAssetsByPillar, getCategoriesByPillar, getAllAssetsUnified } from '@/actions/asset-registry';
+import {
+  getAssetsByPillar,
+  getCategoriesByPillar,
+  getAllAssetsUnified,
+} from '@/actions/asset-registry';
 import { getManualOverrideStatuses } from '@/actions/statuses';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
@@ -26,7 +30,11 @@ vi.mock('@/lib/auth/roles', () => ({
 }));
 
 vi.mock('./asset-registry-content', () => ({
-  AssetRegistryContent: (props: any) => <div data-testid="content">Content: {props.config.view} - canManage: {String(props.canManage)}</div>
+  AssetRegistryContent: (props: any) => (
+    <div data-testid="content">
+      Content: {props.config.view} - canManage: {String(props.canManage)}
+    </div>
+  ),
 }));
 
 describe('AssetRegistryShell', () => {
@@ -44,22 +52,30 @@ describe('AssetRegistryShell', () => {
     const Component = await AssetRegistryShell({ view: 'unified' });
     render(Component as React.ReactElement);
 
-    expect(getAllAssetsUnified).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
-    expect(screen.getByTestId('content')).toHaveTextContent('Content: unified - canManage: true');
+    expect(getAllAssetsUnified).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1 })
+    );
+    expect(screen.getByTestId('content')).toHaveTextContent(
+      'Content: unified - canManage: true'
+    );
   });
 
   it('fetches assets by pillar when view is hardware', async () => {
     const Component = await AssetRegistryShell({ view: 'hardware' });
     render(Component as React.ReactElement);
 
-    expect(getAssetsByPillar).toHaveBeenCalledWith(expect.objectContaining({ pillar: 'Hardware' }));
-    expect(screen.getByTestId('content')).toHaveTextContent('Content: hardware - canManage: true');
+    expect(getAssetsByPillar).toHaveBeenCalledWith(
+      expect.objectContaining({ pillar: 'Hardware' })
+    );
+    expect(screen.getByTestId('content')).toHaveTextContent(
+      'Content: hardware - canManage: true'
+    );
   });
 
   it('parses searchParams correctly', async () => {
-    const Component = await AssetRegistryShell({ 
-      view: 'unified', 
-      searchParams: Promise.resolve({ panel: 'details', id: '123' }) 
+    const Component = await AssetRegistryShell({
+      view: 'unified',
+      searchParams: Promise.resolve({ panel: 'details', id: '123' }),
     });
     render(Component as React.ReactElement);
     expect(screen.getByTestId('content')).toBeInTheDocument();

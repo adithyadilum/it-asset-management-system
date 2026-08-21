@@ -4,9 +4,22 @@ import { db } from '@/db';
 import { apiKeys } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
-import { applyRateLimit, injectRateLimitHeaders } from '@/lib/api/rate-limiter';
+import {
+  applyPreAuthRateLimit,
+  applyRateLimit,
+  injectRateLimitHeaders,
+} from '@/lib/api/rate-limiter';
 import type { ApiKeyScope } from '@/types/integrations';
-import { hashApiKey } from '@/lib/api/api-key-hash';
+import { hashApiKey, hashApiKeyLegacy } from '@/lib/api/api-key-hash';
+import { TtlCache } from '@/lib/ttl-cache';
+import { serverEnv } from '@/lib/env';
+
+/**
+ * `lastUsedAt` is displayed to the second-of-last-use at best, so updating it on
+ * every request only amplifies writes on a hot per-integration row.
+ */
+const LAST_USED_TTL_MS = 60_000;
+const lastUsedThrottle = new TtlCache<true>(LAST_USED_TTL_MS);
 
 export type ApiKeyRecord = {
   id: string;
@@ -63,11 +76,41 @@ export function withApiKey<TContext extends Record<string, unknown>>(
           'Missing or invalid API key. Provide via Authorization header as a Bearer token or via x-api-key header.'
         );
       }
-      const hash = await hashApiKey(token);
 
-      const found = (await db.query.apiKeys.findFirst({
+      const platformForwardedFor = req.headers.get('x-vercel-forwarded-for');
+      const forwardedFor =
+        platformForwardedFor || req.headers.get('x-forwarded-for');
+      const firstIp = forwardedFor ? forwardedFor.split(',')[0].trim() : '';
+      const clientIp = firstIp || req.headers.get('x-real-ip') || 'unknown';
+      const preAuthLimit = await applyPreAuthRateLimit(clientIp);
+      if (!preAuthLimit.success) {
+        const response = apiError(429, 'RATE_LIMITED', 'Rate limit exceeded');
+        injectRateLimitHeaders(response, preAuthLimit);
+        return response;
+      }
+
+      const hash = hashApiKey(token);
+
+      let found = (await db.query.apiKeys.findFirst({
         where: eq(apiKeys.keyHash, hash),
       })) as ApiKeyRecord | undefined;
+
+      // Keys issued under the superseded PBKDF2 scheme are verified once with
+      // the old hash and rewritten, so each key pays that cost at most once.
+      if (!found && serverEnv.API_KEY_LEGACY_HASH_FALLBACK === 'true') {
+        const legacyHash = await hashApiKeyLegacy(token);
+        found = (await db.query.apiKeys.findFirst({
+          where: eq(apiKeys.keyHash, legacyHash),
+        })) as ApiKeyRecord | undefined;
+
+        if (found) {
+          await db
+            .update(apiKeys)
+            .set({ keyHash: hash })
+            .where(eq(apiKeys.id, found.id));
+        }
+      }
+
       if (!found) return apiError(401, 'INVALID_API_KEY', 'Invalid API key');
       if (found.isRevoked)
         return apiError(401, 'REVOKED_API_KEY', 'API key has been revoked');
@@ -85,9 +128,6 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         );
       }
 
-      const forwardedFor = req.headers.get('x-forwarded-for');
-      const firstIp = forwardedFor ? forwardedFor.split(',')[0].trim() : '';
-      const clientIp = firstIp || req.headers.get('x-real-ip') || 'unknown';
       const rlIdentifier = `${found.id}:${clientIp}`;
       const rl = await applyRateLimit(rlIdentifier);
       if (!rl.success) {
@@ -96,16 +136,22 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         return resp;
       }
 
-      // fire-and-forget updates
-      void db
-        .update(apiKeys)
-        .set({ lastUsedAt: new Date() })
-        .where(eq(apiKeys.id, found.id))
-        .catch((err) =>
-          console.error('Failed to update API key lastUsedAt:', err)
-        );
+      if (!lastUsedThrottle.has(found.id)) {
+        lastUsedThrottle.set(found.id, true);
+        void Promise.resolve(
+          db
+            .update(apiKeys)
+            .set({ lastUsedAt: new Date() })
+            .where(eq(apiKeys.id, found.id))
+        ).catch((error) => {
+          console.error('[api] lastUsedAt update failed:', error);
+        });
+      }
 
-      void logAuditAction({
+      // The audit write stays awaited before the response — external API access
+      // logging is deliberately fail-closed — but it no longer serializes ahead
+      // of the handler.
+      const auditWrite = logAuditAction({
         entityType: 'ExternalApi',
         entityId: req.nextUrl.pathname,
         actionType: 'EXTERNAL_API_ACCESS',
@@ -115,14 +161,12 @@ export function withApiKey<TContext extends Record<string, unknown>>(
           scope: requiredScope,
           method: req.method,
         },
-      }).catch((err) =>
-        console.error(
-          'Failed to log audit action for external API access:',
-          err
-        )
-      );
+      });
 
-      const response = await handler(req, { ...ctx, apiKey: found });
+      const [response] = await Promise.all([
+        handler(req, { ...ctx, apiKey: found }),
+        auditWrite,
+      ]);
       injectRateLimitHeaders(response, rl);
       return response;
     } catch (err) {

@@ -4,10 +4,18 @@ import { useEffect, useState, useCallback, useReducer } from 'react';
 import { MaintenanceTabs } from '@/components/features/maintenance/maintenance-tabs';
 import { IssueReviewPanelWrapper } from '@/components/features/maintenance/issue-review-panel-wrapper';
 import { LogCompleteRepairDialog } from '@/components/features/maintenance/log-complete-repair-dialog';
-import { getPendingMaintenanceTickets, getActiveRepairTickets, getRepairHistory, completeRepairTicket } from '@/actions/maintenance';
+import {
+  getMaintenanceOverview,
+  completeRepairTicket,
+} from '@/actions/maintenance';
 import { useSidebar } from '@/components/ui/sidebar';
 import { toast } from 'sonner';
-import type { PendingReviewTicket, ActiveRepairTicket, RepairHistoryTicket, CompleteRepairFormData } from '@/types/maintenance';
+import type {
+  PendingReviewTicket,
+  ActiveRepairTicket,
+  RepairHistoryTicket,
+  CompleteRepairFormData,
+} from '@/types/maintenance';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface UIState {
@@ -34,6 +42,29 @@ const initialUIState: UIState = {
   isCompletingRepair: false,
 };
 
+type MaintenanceOverview = Awaited<ReturnType<typeof getMaintenanceOverview>>;
+const inFlightOverviewRequests = new Map<
+  string,
+  Promise<MaintenanceOverview>
+>();
+
+function requestMaintenanceOverview(
+  userRole: string | undefined,
+  query: string
+) {
+  const requestKey = `${userRole ?? 'unknown'}:${query}`;
+  const existingRequest = inFlightOverviewRequests.get(requestKey);
+  if (existingRequest) return existingRequest;
+
+  const request = getMaintenanceOverview(query).finally(() => {
+    if (inFlightOverviewRequests.get(requestKey) === request) {
+      inFlightOverviewRequests.delete(requestKey);
+    }
+  });
+  inFlightOverviewRequests.set(requestKey, request);
+  return request;
+}
+
 function uiReducer(state: UIState, action: UIAction): UIState {
   switch (action.type) {
     case 'OPEN_PANEL':
@@ -43,7 +74,11 @@ function uiReducer(state: UIState, action: UIAction): UIState {
     case 'CLEAR_SELECTED_TICKET':
       return { ...state, selectedTicketId: null };
     case 'OPEN_COMPLETE_DIALOG':
-      return { ...state, showCompleteDialog: true, activeRepairDetails: action.payload };
+      return {
+        ...state,
+        showCompleteDialog: true,
+        activeRepairDetails: action.payload,
+      };
     case 'CLOSE_COMPLETE_DIALOG':
       return { ...state, showCompleteDialog: false, activeRepairDetails: null };
     case 'SET_COMPLETING':
@@ -54,9 +89,15 @@ function uiReducer(state: UIState, action: UIAction): UIState {
 }
 
 export function MaintenanceShell({ userRole }: { userRole?: string }) {
-  const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>([]);
-  const [activeRepairTickets, setActiveRepairTickets] = useState<ActiveRepairTicket[]>([]);
-  const [repairHistoryTickets, setRepairHistoryTickets] = useState<RepairHistoryTicket[]>([]);
+  const [pendingTickets, setPendingTickets] = useState<PendingReviewTicket[]>(
+    []
+  );
+  const [activeRepairTickets, setActiveRepairTickets] = useState<
+    ActiveRepairTicket[]
+  >([]);
+  const [repairHistoryTickets, setRepairHistoryTickets] = useState<
+    RepairHistoryTicket[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,23 +113,25 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const loadData = useCallback(async (query: string) => {
-    try {
-      setIsLoading(true);
-      const [ticketsResult, activeResult, historyResult] = await Promise.all([
-        userRole !== 'FinancialAuditor' ? getPendingMaintenanceTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
-        userRole !== 'FinancialAuditor' ? getActiveRepairTickets(query) : Promise.resolve({ tickets: [], total: 0 }),
-        getRepairHistory(1, 100, query)
-      ]);
-      setPendingTickets(ticketsResult.tickets);
-      setActiveRepairTickets(activeResult.tickets);
-      setRepairHistoryTickets(historyResult.tickets);
-    } catch (err) {
-      console.error('[MaintenanceShell] Failed to load data:', err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userRole]);
+  const loadData = useCallback(
+    async (query: string) => {
+      try {
+        setIsLoading(true);
+        const result = await requestMaintenanceOverview(userRole, query);
+        setPendingTickets(result.pendingTickets);
+        setActiveRepairTickets(result.activeRepairTickets);
+        setRepairHistoryTickets(result.repairHistoryTickets);
+      } catch (err) {
+        console.error(
+          '[MaintenanceShell] Failed to load data:',
+          err instanceof Error ? err.message : 'Unknown error'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [userRole]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -133,8 +176,12 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
       dispatch({ type: 'CLOSE_COMPLETE_DIALOG' });
       await loadData(debouncedSearch);
     } catch (err) {
-      console.error('[MaintenanceShell] Failed to complete repair:', err instanceof Error ? err.message : 'Unknown error');
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      console.error(
+        '[MaintenanceShell] Failed to complete repair:',
+        err instanceof Error ? err.message : 'Unknown error'
+      );
+      const errorMessage =
+        err instanceof Error ? err.message : 'An unexpected error occurred.';
       toast.error(`Failed: ${errorMessage}`);
     } finally {
       dispatch({ type: 'SET_COMPLETING', payload: false });
@@ -143,12 +190,15 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
 
   return (
     <div className="flex h-[calc(100vh-64px)] w-full bg-muted overflow-hidden">
-
       {/* LEFT CARD (Main Tabs) */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <main className="flex min-h-0 flex-1 flex-col rounded-xl bg-background p-6">
           <div className="mb-4 shrink-0">
-            <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>Maintenance & Repairs</h1>
+            <h1
+              className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
+            >
+              Maintenance & Repairs
+            </h1>
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden flex flex-col">

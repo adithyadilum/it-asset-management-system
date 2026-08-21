@@ -12,7 +12,11 @@ import {
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import { cn } from '@/lib/utils';
@@ -21,7 +25,7 @@ import { INVOICE_ATTACHMENT_ACCEPT } from '@/lib/file-types';
 type PurchaseDetailsSectionProps = {
   config: PillarFormConfig;
   state: RegisterAssetActionState;
-  
+
   currencyCode: string;
   setCurrencyCode: (v: string) => void;
   CURRENCY_OPTIONS: RegistrationOption[];
@@ -51,6 +55,10 @@ type PurchaseDetailsSectionProps = {
   warrantyMonths: string;
   setWarrantyMonths: (v: string) => void;
   WARRANTY_MONTH_OPTIONS: RegistrationOption[];
+
+  expectedLifespanYears: string;
+  setExpectedLifespanYears: (v: string) => void;
+  EXPECTED_LIFESPAN_OPTIONS: RegistrationOption[];
 
   invoiceInputRef: React.RefObject<HTMLInputElement | null>;
   showInvoiceUploader: boolean;
@@ -90,6 +98,9 @@ export function PurchaseDetailsSection({
   warrantyMonths,
   setWarrantyMonths,
   WARRANTY_MONTH_OPTIONS,
+  expectedLifespanYears,
+  setExpectedLifespanYears,
+  EXPECTED_LIFESPAN_OPTIONS,
   invoiceInputRef,
   showInvoiceUploader,
   setShowInvoiceUploader,
@@ -102,7 +113,9 @@ export function PurchaseDetailsSection({
   return (
     <section className="rounded-lg border border-border bg-muted/60 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+        <h3
+          className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+        >
           {config.purchaseSectionTitle}
         </h3>
 
@@ -151,7 +164,12 @@ export function PurchaseDetailsSection({
                 />
               </PopoverContent>
             </Popover>
-            <input type="hidden" id="purchaseDate" name="purchaseDate" value={purchaseDate} />
+            <input
+              type="hidden"
+              id="purchaseDate"
+              name="purchaseDate"
+              value={purchaseDate}
+            />
           </>
         </InlineFieldRow>
 
@@ -199,7 +217,11 @@ export function PurchaseDetailsSection({
           </InlineFieldRow>
         )}
 
-        <InlineFieldRow label="Tax :" htmlFor="tax" error={getError(state, 'tax')}>
+        <InlineFieldRow
+          label="Tax :"
+          htmlFor="tax"
+          error={getError(state, 'tax')}
+        >
           <CurrencyInput
             id="tax"
             name="tax"
@@ -223,7 +245,11 @@ export function PurchaseDetailsSection({
         </InlineFieldRow>
 
         {config.showCostPerSeat && (
-          <InlineFieldRow label="Cost Per Seat :" htmlFor="costPerSeat" alignTop>
+          <InlineFieldRow
+            label="Cost Per Seat :"
+            htmlFor="costPerSeat"
+            alignTop
+          >
             <CurrencyInput
               id="costPerSeat"
               name="costPerSeat"
@@ -235,6 +261,29 @@ export function PurchaseDetailsSection({
             />
           </InlineFieldRow>
         )}
+
+        <InlineFieldRow
+          label="Expected Lifespan :"
+          error={getError(state, 'expectedLifespanYears')}
+          alignTop
+        >
+          <>
+            <SearchableDropdown
+              options={EXPECTED_LIFESPAN_OPTIONS}
+              placeholder="Expected Lifespan.."
+              emptyMessage="No lifespan options found."
+              onSelect={setExpectedLifespanYears}
+              value={expectedLifespanYears}
+            />
+            {/* Drives straight-line depreciation. Editable later from the
+                asset edit panel. */}
+            <input
+              type="hidden"
+              name="expectedLifespanYears"
+              value={expectedLifespanYears}
+            />
+          </>
+        </InlineFieldRow>
 
         {config.showWarrantyPeriod && (
           <InlineFieldRow
@@ -250,7 +299,11 @@ export function PurchaseDetailsSection({
                 onSelect={setWarrantyMonths}
                 value={warrantyMonths}
               />
-              <input type="hidden" name="warrantyMonths" value={warrantyMonths} />
+              <input
+                type="hidden"
+                name="warrantyMonths"
+                value={warrantyMonths}
+              />
             </>
           </InlineFieldRow>
         )}
@@ -289,7 +342,9 @@ export function PurchaseDetailsSection({
                   type="file"
                   accept={INVOICE_ATTACHMENT_ACCEPT}
                   className="sr-only"
-                  onChange={(event) => handleInvoiceSelection(event.target.files)}
+                  onChange={(event) =>
+                    handleInvoiceSelection(event.target.files)
+                  }
                 />
 
                 {!showInvoiceUploader ? (
@@ -331,7 +386,9 @@ export function PurchaseDetailsSection({
                   >
                     <div className="flex flex-col items-center gap-2 text-center">
                       <Upload className="h-5 w-5 text-muted-foreground" />
-                      <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                      <p
+                        className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+                      >
                         Drag and drop invoice attachment, or click to browse
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -342,7 +399,9 @@ export function PurchaseDetailsSection({
                 )}
 
                 {invoiceFileName ? (
-                  <p className="text-xs text-muted-foreground">{invoiceFileName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {invoiceFileName}
+                  </p>
                 ) : null}
               </div>
             </InlineFieldRow>

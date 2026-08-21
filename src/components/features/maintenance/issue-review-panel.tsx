@@ -1,18 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { CurrencyFormatted, DateFormatted } from '@/components/shared/formatters';
+import {
+  CurrencyFormatted,
+  DateFormatted,
+} from '@/components/shared/formatters';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
+import {
+  SlidePanel,
+  type SlidePanelAction,
+} from '@/components/shared/slide-panel';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { cn } from '@/lib/utils';
 import { ResolveInternallyDialog } from './resolve-internally-dialog';
 import { InitiateRepairDialog } from './initiate-repair-dialog';
-import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from '@/types/maintenance';
+import type {
+  IssueReviewPanelData,
+  Vendor,
+  InitiateRepairFormData,
+} from '@/types/maintenance';
 
 interface IssueReviewPanelProps {
   isOpen: boolean;
@@ -55,8 +65,16 @@ export function IssueReviewPanel({
           <Skeleton className="w-45 h-30 rounded-lg" />
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </div>
         </div>
         <Skeleton className="h-28 w-full rounded-xl shrink-0" />
       </div>
@@ -77,8 +95,13 @@ export function IssueReviewPanel({
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
-      <span className="truncate">{ticket.asset.name || ticket.model?.name || 'Asset'}</span>
-      <StatusBadge variant="metadata" label={`ID: ${ticket.asset.assetTag || '-'}`} />
+      <span className="truncate">
+        {ticket.asset.name || ticket.model?.name || 'Asset'}
+      </span>
+      <StatusBadge
+        variant="metadata"
+        label={`ID: ${ticket.asset.assetTag || '-'}`}
+      />
       <StatusBadge value={ticket.asset.status} showIcon />
     </div>
   );
@@ -93,22 +116,36 @@ export function IssueReviewPanel({
   ];
 
   const financialFields = [
-    { label: 'Purchase Date', value: formatDate(ticket.purchase?.purchaseDate || null) },
+    {
+      label: 'Purchase Date',
+      value: formatDate(ticket.purchase?.purchaseDate || null),
+    },
     { label: 'Original Cost', value: formatCurrency(originalCost) },
     { label: 'Current Book Value', value: formatCurrency(bookValue) },
     {
       label: 'Warranty Status',
       value: (
-        <Badge variant="outline" className={warrantyStatus === 'Active' ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm' : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'}>
+        <Badge
+          variant="outline"
+          className={
+            warrantyStatus === 'Active'
+              ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm'
+              : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'
+          }
+        >
           {warrantyStatus}
         </Badge>
-      )
+      ),
     },
   ];
   if (data.totalTCO != null) {
     financialFields.push({
       label: 'Total TCO',
-      value: <span className="font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
+      value: (
+        <span className="font-semibold text-primary">
+          {formatCurrency(data.totalTCO)}
+        </span>
+      ),
     });
   }
 
@@ -118,7 +155,12 @@ export function IssueReviewPanel({
       <div className="mt-2 flex w-full flex-col items-center gap-2.5">
         {ticket.asset.imageUrl ? (
           <div className="relative w-38.25 h-30.25 rounded bg-background overflow-hidden border border-border">
-            <Image src={ticket.asset.imageUrl} alt="Asset Image" fill className="object-contain p-2" />
+            <Image
+              src={ticket.asset.imageUrl}
+              alt="Asset Image"
+              fill
+              className="object-contain p-2"
+            />
           </div>
         ) : (
           <div className="flex h-30.25 w-38.25 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
@@ -130,9 +172,27 @@ export function IssueReviewPanel({
       {/* Details Grid */}
       <div className="mt-4 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
         {detailsFields.map((item, index) => (
-          <div key={`detail-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground', item.label === 'Asset ID' && 'font-mono tracking-wide')}>{item.value || '-'}</div>
+          <div
+            key={`detail-${index}`}
+            className="flex items-center justify-between border-b border-border/40 py-2.5"
+          >
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'shrink-0 pr-4 text-muted-foreground'
+              )}
+            >
+              {item.label}
+            </div>
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'text-right text-foreground',
+                item.label === 'Asset ID' && 'font-mono tracking-wide'
+              )}
+            >
+              {item.value || '-'}
+            </div>
           </div>
         ))}
       </div>
@@ -141,11 +201,30 @@ export function IssueReviewPanel({
 
       {/* Financials Grid */}
       <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-        <h3 className="col-span-full text-base font-medium leading-6 text-foreground mb-2">Financial Vitals</h3>
+        <h3 className="col-span-full text-base font-medium leading-6 text-foreground mb-2">
+          Financial Vitals
+        </h3>
         {financialFields.map((item, index) => (
-          <div key={`financial-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground')}>{item.value || '-'}</div>
+          <div
+            key={`financial-${index}`}
+            className="flex items-center justify-between border-b border-border/40 py-2.5"
+          >
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'shrink-0 pr-4 text-muted-foreground'
+              )}
+            >
+              {item.label}
+            </div>
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'text-right text-foreground'
+              )}
+            >
+              {item.value || '-'}
+            </div>
           </div>
         ))}
       </div>
@@ -155,10 +234,23 @@ export function IssueReviewPanel({
       {/* Reported Issue Section */}
       <div className="w-full mt-2">
         <div className="space-y-2">
-          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
-            Reported Issue (Dispatched By: <span className="font-semibold text-foreground">{ticket.reportedBy?.name || 'Unknown'}</span>)
+          <div
+            className={cn(
+              TYPOGRAPHY_CLASSNAMES.textSmMedium,
+              'text-muted-foreground'
+            )}
+          >
+            Reported Issue (Dispatched By:{' '}
+            <span className="font-semibold text-foreground">
+              {ticket.reportedBy?.name || 'Unknown'}
+            </span>
+            )
           </div>
-          <Textarea readOnly value={ticket.reportedIssue} className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0" />
+          <Textarea
+            readOnly
+            value={ticket.reportedIssue}
+            className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0"
+          />
         </div>
       </div>
     </div>
@@ -211,7 +303,9 @@ export function IssueReviewPanel({
             vendors={vendors}
             isLoading={isInitiatingRepair}
             assetId={data.ticket.asset.assetTag}
-            assetName={data.ticket.model?.name || data.ticket.asset.name || undefined}
+            assetName={
+              data.ticket.model?.name || data.ticket.asset.name || undefined
+            }
             assetSerial={data.ticket.asset.serialNumber || undefined}
             reportedBy={data.ticket.reportedBy?.name || undefined}
             reportedDate={data.ticket.createdAt}

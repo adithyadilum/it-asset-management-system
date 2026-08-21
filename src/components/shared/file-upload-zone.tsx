@@ -1,5 +1,5 @@
 'use client';
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import React, { useCallback, useState, useTransition } from 'react';
 import { useDropzone, FileRejection } from 'react-dropzone';
@@ -13,7 +13,9 @@ export interface FileUploadZoneProps {
   /** Callback fired on validation or upload failure */
   onUploadError: (error: string) => void;
   /** The server action or API call to handle the actual upload */
-  uploadAction: (formData: FormData) => Promise<{ success: boolean; fileUrl?: string; url?: string }>;
+  uploadAction: (
+    formData: FormData
+  ) => Promise<{ success: boolean; fileUrl?: string; url?: string }>;
   /** Accepted file types (react-dropzone format) */
   accept?: Record<string, string[]>;
   /** Maximum file size in bytes */
@@ -24,9 +26,9 @@ export interface FileUploadZoneProps {
   subLabel?: string;
 }
 
-export function FileUploadZone({ 
-  onUploadSuccess, 
-  onUploadError, 
+export function FileUploadZone({
+  onUploadSuccess,
+  onUploadError,
   uploadAction,
   accept = {
     'application/pdf': ['.pdf'],
@@ -34,27 +36,30 @@ export function FileUploadZone({
     'image/png': ['.png'],
   },
   maxSize = 4.5 * 1024 * 1024, // Updated Default 4.5MB to match your backend
-  label = "Drag & drop your files here, or click to browse",
-  subLabel = "Supports .PDF, .JPG, .PNG up to 4.5MB"
+  label = 'Drag & drop your files here, or click to browse',
+  subLabel = 'Supports .PDF, .JPG, .PNG up to 4.5MB',
 }: FileUploadZoneProps) {
   // CHANGED: Now tracks an array of files instead of a single file
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, startUpload] = useTransition();
 
-  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
-    // Handle validation errors (wrong file type, too large, etc.)
-    if (rejectedFiles.length > 0) {
-      const error = rejectedFiles[0].errors[0];
-      onUploadError(error.message);
-      return;
-    }
+  const onDrop = useCallback(
+    (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
+      // Handle validation errors (wrong file type, too large, etc.)
+      if (rejectedFiles.length > 0) {
+        const error = rejectedFiles[0].errors[0];
+        onUploadError(error.message);
+        return;
+      }
 
-    // Handle valid file selection (Append to existing files)
-    if (acceptedFiles.length > 0) {
-      setFiles((prev) => [...prev, ...acceptedFiles]);
-      onUploadError(''); // Clear any previous errors
-    }
-  }, [onUploadError]);
+      // Handle valid file selection (Append to existing files)
+      if (acceptedFiles.length > 0) {
+        setFiles((prev) => [...prev, ...acceptedFiles]);
+        onUploadError(''); // Clear any previous errors
+      }
+    },
+    [onUploadError]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -72,12 +77,12 @@ export function FileUploadZone({
         try {
           const formData = new FormData();
           formData.append('file', file);
-          
+
           const response = await uploadAction(formData);
-          
+
           // Check for either url or fileUrl based on our backend fix
           const uploadedUrl = response.url || response.fileUrl;
-          
+
           if (response.success && uploadedUrl) {
             onUploadSuccess(uploadedUrl);
           } else {
@@ -96,7 +101,7 @@ export function FileUploadZone({
   // CHANGED: Requires an index to know which file to remove
   const removeFile = (indexToRemove: number) => {
     setFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-    onUploadError(''); 
+    onUploadError('');
   };
 
   return (
@@ -105,13 +110,15 @@ export function FileUploadZone({
       <div
         {...getRootProps()}
         className={`relative flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${
-          isDragActive 
-            ? 'border-primary bg-primary/5 shadow-sm' 
+          isDragActive
+            ? 'border-primary bg-primary/5 shadow-sm'
             : 'border-border bg-muted/30 hover:bg-muted/50 hover:border-muted-foreground/30'
         }`}
       >
         <input {...getInputProps()} />
-        <UploadCloud className={`mb-3 h-8 w-8 transition-colors ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`} />
+        <UploadCloud
+          className={`mb-3 h-8 w-8 transition-colors ${isDragActive ? 'text-primary' : 'text-muted-foreground'}`}
+        />
         <p className="text-sm font-medium text-foreground text-center">
           {label}
         </p>
@@ -126,9 +133,12 @@ export function FileUploadZone({
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
             Ready to Upload ({files.length})
           </span>
-          
+
           {files.map((file, idx) => (
-            <div key={`${file.name}-${idx}`} className="flex w-full items-start justify-between rounded-md border border-border bg-background p-3 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+            <div
+              key={`${file.name}-${idx}`}
+              className="flex w-full items-start justify-between rounded-md border border-border bg-background p-3 shadow-sm animate-in fade-in zoom-in-95 duration-200"
+            >
               <div className="flex items-start gap-3 overflow-hidden pr-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
                   <FileIcon className="h-5 w-5 text-muted-foreground" />
@@ -143,13 +153,13 @@ export function FileUploadZone({
                   </span>
                 </div>
               </div>
-              
+
               <div className="flex shrink-0 items-center gap-2">
                 {!isUploading && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => removeFile(idx)} 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeFile(idx)}
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     title="Remove file"
                   >
@@ -160,9 +170,9 @@ export function FileUploadZone({
             </div>
           ))}
 
-          <Button 
+          <Button
             type="button"
-            onClick={handleUpload} 
+            onClick={handleUpload}
             disabled={isUploading}
             className="w-full mt-2"
           >

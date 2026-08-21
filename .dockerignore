@@ -2,5 +2,13 @@ node_modules
 .next
 out
 build
-.env*.local
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+coverage
+playwright-report
+test-results
 .git

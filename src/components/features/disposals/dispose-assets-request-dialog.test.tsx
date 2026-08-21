@@ -1,7 +1,7 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -24,10 +24,14 @@ vi.mock('@/components/ui/select', () => ({
   Select: ({ value, onValueChange, children }: any) => (
     <div data-testid="select-mock" data-value={value}>
       {children}
-      <button onClick={() => onValueChange('Damaged beyond repair')}>Select Damaged</button>
+      <button onClick={() => onValueChange('Damaged beyond repair')}>
+        Select Damaged
+      </button>
     </div>
   ),
-  SelectTrigger: ({ children }: any) => <div data-testid="select-trigger">{children}</div>,
+  SelectTrigger: ({ children }: any) => (
+    <div data-testid="select-trigger">{children}</div>
+  ),
   SelectValue: ({ children }: any) => <div>{children}</div>,
   SelectContent: ({ children }: any) => <div>{children}</div>,
   SelectItem: ({ children }: any) => <div>{children}</div>,
@@ -64,9 +68,7 @@ describe('DisposeAssetsRequestDialog', () => {
 
   const mockOnOpenChange = vi.fn();
   const mockOnSubmitted = vi.fn();
-  const mockAssets = [
-    { id: '1', assetTag: 'TAG-1', assetName: 'Laptop' },
-  ];
+  const mockAssets = [{ id: '1', assetTag: 'TAG-1', assetName: 'Laptop' }];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -87,7 +89,10 @@ describe('DisposeAssetsRequestDialog', () => {
   });
 
   it('validates and submits successfully', async () => {
-    (createDisposalRequest as any).mockResolvedValue({ inserted: 1, skipped: 0 });
+    (createDisposalRequest as any).mockResolvedValue({
+      inserted: 1,
+      skipped: 0,
+    });
 
     render(
       <DisposeAssetsRequestDialog
@@ -124,7 +129,9 @@ describe('DisposeAssetsRequestDialog', () => {
   });
 
   it('handles error on submit', async () => {
-    (createDisposalRequest as any).mockRejectedValue(new Error('Submit failed'));
+    (createDisposalRequest as any).mockRejectedValue(
+      new Error('Submit failed')
+    );
 
     render(
       <DisposeAssetsRequestDialog

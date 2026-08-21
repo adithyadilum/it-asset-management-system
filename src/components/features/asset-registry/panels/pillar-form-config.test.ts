@@ -50,7 +50,9 @@ describe('getPillarFormConfig', () => {
   });
 
   it('should fallback to Hardware config for unknown pillar', () => {
-    const config = getPillarFormConfig('Unknown Pillar' as RegistrationPillarInput);
+    const config = getPillarFormConfig(
+      'Unknown Pillar' as RegistrationPillarInput
+    );
     expect(config.panelTitle).toBe('Asset Registry');
     expect(config.panelDescription).toBe('Hardware');
   });

@@ -1,47 +1,56 @@
-"use client"
+'use client';
 
-import { useMemo, useState } from "react"
-import { type ColumnDef } from "@tanstack/react-table"
-import { Edit3, Trash2 } from "lucide-react"
+import { useMemo, useState } from 'react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { Edit3, Trash2 } from 'lucide-react';
 
-import { DataTable } from "@/components/shared/data-table"
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import type { WebhookSubscriptionDisplay } from "@/types/integrations"
+import { DataTable } from '@/components/shared/data-table';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import type { WebhookSubscriptionDisplay } from '@/types/integrations';
 
-import { DeleteWebhookDialog } from "./delete-webhook-dialog"
-import { EditWebhookDialog } from "./edit-webhook-dialog"
+import { DeleteWebhookDialog } from './delete-webhook-dialog';
+import { EditWebhookDialog } from './edit-webhook-dialog';
 
 interface WebhookTableProps {
-  subscriptions: WebhookSubscriptionDisplay[]
-  onChanged?: () => void
+  subscriptions: WebhookSubscriptionDisplay[];
+  onChanged?: () => void;
 }
 
 export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
-  const [editOpen, setEditOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [selectedSubscription, setSelectedSubscription] = useState<WebhookSubscriptionDisplay | null>(null)
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] =
+    useState<WebhookSubscriptionDisplay | null>(null);
 
   const columns = useMemo<ColumnDef<WebhookSubscriptionDisplay, unknown>[]>(
     () => [
       {
-        accessorKey: "name",
-        header: "Description",
-        cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{row.original.name}</span>,
+        accessorKey: 'name',
+        header: 'Description',
+        cell: ({ row }) => (
+          <span
+            className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+          >
+            {row.original.name}
+          </span>
+        ),
       },
       {
-        accessorKey: "url",
-        header: "Target URL",
+        accessorKey: 'url',
+        header: 'Target URL',
         cell: ({ row }) => (
-          <span className={`block max-w-[320px] truncate text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
+          <span
+            className={`block max-w-[320px] truncate text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+          >
             {row.original.url}
           </span>
         ),
       },
       {
-        id: "events",
-        header: "Trigger Events",
+        id: 'events',
+        header: 'Trigger Events',
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1.5">
             {row.original.events.map((event) => (
@@ -57,31 +66,33 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
         ),
       },
       {
-        id: "status",
-        header: "Status",
+        id: 'status',
+        header: 'Status',
         cell: ({ row }) => {
-          const active = row.original.isActive
+          const active = row.original.isActive;
 
           return (
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${TYPOGRAPHY_CLASSNAMES.textXsMedium} ${
                 active
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-border bg-muted text-muted-foreground"
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-border bg-muted text-muted-foreground'
               }`}
             >
-              <span className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-slate-400"}`} />
-              {active ? "Active" : "Inactive"}
+              <span
+                className={`h-2 w-2 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-400'}`}
+              />
+              {active ? 'Active' : 'Inactive'}
             </span>
-          )
+          );
         },
       },
       {
-        id: "actions",
-        header: "",
+        id: 'actions',
+        header: '',
         size: 84,
         cell: ({ row }) => {
-          const subscription = row.original
+          const subscription = row.original;
 
           return (
             <div className="flex items-center justify-end gap-1.5">
@@ -90,8 +101,8 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  setSelectedSubscription(subscription)
-                  setEditOpen(true)
+                  setSelectedSubscription(subscription);
+                  setEditOpen(true);
                 }}
                 className={`h-8 w-8 text-[#1e2b6d] hover:bg-[#1e2b6d]/10 hover:text-[#1e2b6d] ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
                 aria-label="Edit webhook"
@@ -104,8 +115,8 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  setSelectedSubscription(subscription)
-                  setDeleteOpen(true)
+                  setSelectedSubscription(subscription);
+                  setDeleteOpen(true);
                 }}
                 className={`h-8 w-8 text-rose-500 hover:bg-rose-50 hover:text-rose-600 ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
                 aria-label="Delete webhook"
@@ -113,19 +124,23 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
-          )
+          );
         },
       },
     ],
     []
-  )
+  );
 
   return (
     <>
-      <DataTable columns={columns} data={subscriptions} enableRowSelection={false} />
+      <DataTable
+        columns={columns}
+        data={subscriptions}
+        enableRowSelection={false}
+      />
 
       <EditWebhookDialog
-        key={`${selectedSubscription?.id ?? "none"}-${editOpen ? "open" : "closed"}`}
+        key={`${selectedSubscription?.id ?? 'none'}-${editOpen ? 'open' : 'closed'}`}
         open={editOpen}
         onOpenChange={setEditOpen}
         subscription={selectedSubscription}
@@ -141,5 +156,5 @@ export function WebhookTable({ subscriptions, onChanged }: WebhookTableProps) {
         onChanged={onChanged}
       />
     </>
-  )
+  );
 }

@@ -1,24 +1,13 @@
 import { NextResponse } from 'next/server';
 import { unstable_rethrow } from 'next/navigation';
 
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { withSessionAuth } from '@/lib/api/with-auth';
+import { isEmployee } from '@/lib/auth/roles';
 import { getPortalAlerts } from '@/lib/data/portal-repo';
 
-export async function GET() {
+// The employee portal is the only surface that renders these alerts.
+export const GET = withSessionAuth(isEmployee, async (_request, { user }) => {
   try {
-    const user = await getAuthenticatedUser();
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (user.role !== 'Employee') {
-      return NextResponse.json(
-        { error: 'Forbidden: Employee role required' },
-        { status: 403 }
-      );
-    }
-
     const alerts = await getPortalAlerts(user.id);
 
     return NextResponse.json(
@@ -36,4 +25,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});

@@ -1,19 +1,22 @@
-import { useId } from "react";
+import { useId } from 'react';
 
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 interface LoadingSpinnerProps {
   className?: string;
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export function LoadingSpinner({ className, size = "md" }: LoadingSpinnerProps) {
+export function LoadingSpinner({
+  className,
+  size = 'md',
+}: LoadingSpinnerProps) {
   const titleId = useId();
 
   const sizeClasses = {
-    sm: "h-4 w-4",
-    md: "h-6 w-6",
-    lg: "h-8 w-8",
+    sm: 'h-4 w-4',
+    md: 'h-6 w-6',
+    lg: 'h-8 w-8',
   };
 
   return (
@@ -25,7 +28,10 @@ export function LoadingSpinner({ className, size = "md" }: LoadingSpinnerProps) 
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={cn(`animate-spin text-foreground ${sizeClasses[size]}`, className)}
+      className={cn(
+        `animate-spin text-foreground ${sizeClasses[size]}`,
+        className
+      )}
       role="status"
       aria-labelledby={titleId}
     >

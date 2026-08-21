@@ -27,8 +27,11 @@ describe('AssetHistoryTimeline', () => {
 
   it('renders log details including user and action type', () => {
     render(<AssetHistoryTimeline historyLogs={[mockHistoryLog]} />);
-    
-    expect(screen.getByText('UPDATE')).toBeInTheDocument();
+
+    // The headline is the human verb phrase, not the raw enum: the timeline
+    // used to print 'UPDATE', 'ACCESS DENIED', 'STATUS CHANGE'.
+    expect(screen.getByText('Updated')).toBeInTheDocument();
+    expect(screen.queryByText('UPDATE')).not.toBeInTheDocument();
     expect(screen.getByText('AST-001 · Dell Laptop')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('john@example.com')).toBeInTheDocument();
@@ -43,7 +46,7 @@ describe('AssetHistoryTimeline', () => {
 
   it('renders formatted field changes', () => {
     render(<AssetHistoryTimeline historyLogs={[mockHistoryLog]} />);
-    
+
     expect(screen.getByText('Status:')).toBeInTheDocument();
     expect(screen.getByText('Available')).toBeInTheDocument(); // old value
     expect(screen.getByText('Assigned')).toBeInTheDocument(); // new value
@@ -55,7 +58,7 @@ describe('AssetHistoryTimeline', () => {
       oldValue: { basePrice: 1000 },
       newValue: { basePrice: 1500 },
     };
-    
+
     render(<AssetHistoryTimeline historyLogs={[financeLog]} />);
     expect(screen.getByText('Base Price:')).toBeInTheDocument();
     expect(screen.getByText('$1,000.00')).toBeInTheDocument();
@@ -63,7 +66,12 @@ describe('AssetHistoryTimeline', () => {
   });
 
   it('hides entity label when showEntityLabel is false', () => {
-    render(<AssetHistoryTimeline historyLogs={[mockHistoryLog]} showEntityLabel={false} />);
+    render(
+      <AssetHistoryTimeline
+        historyLogs={[mockHistoryLog]}
+        showEntityLabel={false}
+      />
+    );
     expect(screen.queryByText('AST-001 · Dell Laptop')).not.toBeInTheDocument();
   });
 });

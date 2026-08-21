@@ -69,7 +69,10 @@ export async function getUnreadCount(userId: string) {
 /**
  * Mark a single notification as read, scoped to the user for security
  */
-export async function markNotificationAsRead(notificationId: string, userId: string) {
+export async function markNotificationAsRead(
+  notificationId: string,
+  userId: string
+) {
   try {
     const result = await db
       .update(appNotifications)
@@ -109,4 +112,4 @@ export async function markAllNotificationsAsRead(userId: string) {
     console.error('Error marking all notifications as read:', error);
     throw new Error('Failed to mark all notifications as read');
   }
-}
+}

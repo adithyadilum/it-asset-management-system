@@ -50,12 +50,7 @@ const DEFAULT_HISTORY_LIMIT = 3;
 // READ OPERATIONS
 // ============================================================================
 
-export async function getPendingMaintenanceTickets(searchTerm = '') {
-  // Fix A — FinanceAuditor must not access operational pending tickets
-  const user = await enforceActionAccess();
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
-    throw new Error('Forbidden');
-
+async function loadPendingMaintenanceTickets(searchTerm = '') {
   try {
     const baseCondition = and(
       eq(maintenanceTickets.status, 'ACTIVE'),
@@ -112,6 +107,14 @@ export async function getPendingMaintenanceTickets(searchTerm = '') {
     );
     throw new Error('Failed to load maintenance data.');
   }
+}
+
+export async function getPendingMaintenanceTickets(searchTerm = '') {
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
+  return loadPendingMaintenanceTickets(searchTerm);
 }
 
 export async function getTicketForIssueReview(
@@ -248,12 +251,7 @@ export async function getVendors() {
   }
 }
 
-export async function getActiveRepairTickets(searchTerm = '') {
-  // Fix A — FinanceAuditor must not access active repair operational data
-  const user = await enforceActionAccess();
-  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
-    throw new Error('Forbidden');
-
+async function loadActiveRepairTickets(searchTerm = '') {
   try {
     const baseCondition = and(
       eq(maintenanceTickets.status, 'ACTIVE'),
@@ -294,21 +292,16 @@ export async function getActiveRepairTickets(searchTerm = '') {
   }
 }
 
-export async function getRepairHistory(
-  page = 1,
-  pageSize = 10,
-  searchTerm = ''
-) {
-  // FinanceAuditor allowed — history is their permitted view
+export async function getActiveRepairTickets(searchTerm = '') {
   const user = await enforceActionAccess();
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinancialAuditor'
-  )
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
-  // Fix B — Validate and bound pagination parameters
+  return loadActiveRepairTickets(searchTerm);
+}
+
+async function loadRepairHistory(page = 1, pageSize = 10, searchTerm = '') {
+  // Validate and bound pagination parameters.
   const paramsResult = getRepairHistoryParamsSchema.safeParse({
     page,
     pageSize,
@@ -332,18 +325,9 @@ export async function getRepairHistory(
         )
       : undefined;
 
-    const countResult = await db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(maintenanceTickets)
-      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-      .where(
-        searchCondition ? and(baseCondition, searchCondition) : baseCondition
-      );
-
-    const total = countResult[0]?.count || 0;
-
     const result = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         ticket: {
           id: maintenanceTickets.id,
           assetId: assets.assetTag,
@@ -365,6 +349,18 @@ export async function getRepairHistory(
       .limit(safeParams.pageSize)
       .offset(offset);
 
+    let total = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && safeParams.page > 1) {
+      const countResult = await db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(maintenanceTickets)
+        .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+        .where(
+          searchCondition ? and(baseCondition, searchCondition) : baseCondition
+        );
+      total = countResult[0]?.count ?? 0;
+    }
+
     const tickets = result.map((row) => row.ticket) as RepairHistoryTicket[];
 
     return {
@@ -381,6 +377,50 @@ export async function getRepairHistory(
     );
     throw new Error('Failed to load maintenance data.');
   }
+}
+
+export async function getRepairHistory(
+  page = 1,
+  pageSize = 10,
+  searchTerm = ''
+) {
+  const user = await enforceActionAccess();
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
+    throw new Error('Forbidden');
+
+  return loadRepairHistory(page, pageSize, searchTerm);
+}
+
+/** Load all maintenance tabs through one authenticated action request. */
+export async function getMaintenanceOverview(searchTerm = '') {
+  const user = await enforceActionAccess();
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
+    throw new Error('Forbidden');
+
+  const canReadOperationalTickets = user.role !== 'FinancialAuditor';
+  const [pendingResult, activeResult, historyResult] = await Promise.all([
+    canReadOperationalTickets
+      ? loadPendingMaintenanceTickets(searchTerm)
+      : Promise.resolve({ tickets: [], total: 0 }),
+    canReadOperationalTickets
+      ? loadActiveRepairTickets(searchTerm)
+      : Promise.resolve({ tickets: [], total: 0 }),
+    loadRepairHistory(1, MAX_QUERY_LIMIT, searchTerm),
+  ]);
+
+  return {
+    pendingTickets: pendingResult.tickets,
+    activeRepairTickets: activeResult.tickets,
+    repairHistoryTickets: historyResult.tickets,
+  };
 }
 
 export async function getAssetMaintenanceHistory(

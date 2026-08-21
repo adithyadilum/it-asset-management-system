@@ -10,6 +10,7 @@ import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { logAuditAction } from '@/lib/audit';
 import { USER_ROLES, type UserRole } from '@/types/auth';
 import { canAccessMobile } from '@/lib/auth/roles';
+import { isPublicAssetPath } from '@/lib/auth/public-paths';
 
 /** Validates an unknown JWT claim against the known role enum. */
 function normalizeTokenRole(role: unknown): UserRole | null {
@@ -56,7 +57,12 @@ async function verifyTokenAndRole(request: NextRequest) {
       return null;
     }
 
-    return { role, sub: token.id as string | undefined, isAccessTokenFresh, isActive: token.isActive as boolean ?? true };
+    return {
+      role,
+      sub: token.id as string | undefined,
+      isAccessTokenFresh,
+      isActive: (token.isActive as boolean) ?? true,
+    };
   } finally {
     logLatency({
       scope: 'PROXY AUTH',
@@ -66,22 +72,8 @@ async function verifyTokenAndRole(request: NextRequest) {
   }
 }
 
-
-
 function getTopLevelSegment(pathname: string) {
   return pathname.split('/').filter(Boolean)[0] ?? null;
-}
-
-/** Static assets, build output, and metadata files that bypass auth. */
-function isPublicAssetPath(pathname: string) {
-  return (
-    pathname.startsWith('/_next/') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/robots.txt' ||
-    pathname === '/sitemap.xml' ||
-    pathname === '/manifest.json' ||
-    /\.[a-z0-9]+$/i.test(pathname)
-  );
 }
 
 /**
@@ -155,6 +147,34 @@ function getLoginRedirectResponse(request: NextRequest) {
 
   return response;
 }
+/**
+ * Nonce-based CSP, emitted in report-only mode (SEC-G).
+ *
+ * The enforced policy in next.config.ts still carries `script-src 'unsafe-inline'`,
+ * which nullifies most of CSP's XSS value. This header runs the stricter policy
+ * alongside it so violations surface in the browser console without breaking
+ * anything. Next.js streaming injects scripts, so promoting this to the
+ * enforced `Content-Security-Policy` header requires verifying that path in a
+ * real browser first. (Serwist was named here too, but the PWA was never wired
+ * up and the packages have since been removed.)
+ */
+function buildNoncePolicy(nonce: string) {
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    // Tailwind emits inline style attributes; these are not a script vector.
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https: wss:",
+    "worker-src 'self' blob:",
+  ].join('; ');
+}
+
 /** Main edge proxy — handles auth, RBAC, mobile routing, and account-status gates. */
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
@@ -197,7 +217,9 @@ export async function proxy(request: NextRequest) {
 
     // Re-enabled users shouldn't stay on the disabled page.
     if (payload && payload.isActive && isAccountDisabledRoute) {
-      return NextResponse.redirect(new URL(DEFAULT_POST_LOGIN_REDIRECT, request.url));
+      return NextResponse.redirect(
+        new URL(DEFAULT_POST_LOGIN_REDIRECT, request.url)
+      );
     }
 
     if (payload && isProtectedRoute) {
@@ -214,7 +236,12 @@ export async function proxy(request: NextRequest) {
       }
 
       // Employees don't have a dashboard — send them to /my-assets.
-      if (payload.role === 'Employee' && (pathname === '/' || pathname === '/dashboard' || pathname === '/dashboard/')) {
+      if (
+        payload.role === 'Employee' &&
+        (pathname === '/' ||
+          pathname === '/dashboard' ||
+          pathname === '/dashboard/')
+      ) {
         return NextResponse.redirect(new URL('/my-assets', request.url));
       }
 
@@ -231,7 +258,20 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    return NextResponse.next();
+    // Forwarded so server components can attach the nonce to any script they
+    // render once the policy is enforced.
+    const nonce = crypto.randomUUID().replace(/-/g, '');
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-nonce', nonce);
+
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    response.headers.set(
+      'Content-Security-Policy-Report-Only',
+      buildNoncePolicy(nonce)
+    );
+    return response;
   } finally {
     logLatency({
       scope: 'PROXY',
@@ -242,7 +282,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
- matcher: [
+  matcher: [
     // All paths except API routes, static assets, and PWA files.
     '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons).*)',
   ],

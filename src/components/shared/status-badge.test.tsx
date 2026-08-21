@@ -17,12 +17,14 @@ describe('StatusBadge', () => {
   });
 
   it('handles custom variants like linkedAssets correctly', () => {
-    const { rerender } = render(<StatusBadge variant="linkedAssets" count={3} />);
+    const { rerender } = render(
+      <StatusBadge variant="linkedAssets" count={3} />
+    );
     expect(screen.getByText('3 Assets')).toBeInTheDocument();
 
     rerender(<StatusBadge variant="linkedAssets" count={1} />);
     expect(screen.getByText('1 Asset')).toBeInTheDocument();
-    
+
     rerender(<StatusBadge variant="linkedAssets" count={-1} />);
     expect(screen.getByText('0 Assets')).toBeInTheDocument();
   });
@@ -38,13 +40,17 @@ describe('StatusBadge', () => {
   });
 
   it('hides the icon when showIcon is false', () => {
-    const { container } = render(<StatusBadge value="available" showIcon={false} />);
+    const { container } = render(
+      <StatusBadge value="available" showIcon={false} />
+    );
     const svg = container.querySelector('svg');
     expect(svg).not.toBeInTheDocument();
   });
 
   it('allows custom icon names and themes', () => {
-    render(<StatusBadge value="Custom" colorTheme="red" iconName="AlertTriangle" />);
+    render(
+      <StatusBadge value="Custom" colorTheme="red" iconName="AlertTriangle" />
+    );
     const badge = screen.getByText('Custom');
     expect(badge).toBeInTheDocument();
   });

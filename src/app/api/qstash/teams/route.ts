@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
       ],
     };
 
-    // 5. Post to Teams Webhook with automatic retries
+    // QStash owns retry/backoff; each worker invocation performs one attempt.
     await sendTeamsNotificationWithRetry({
       webhookUrl: decryptedWebhookUrl,
       cardPayload: teamsCard,
@@ -162,10 +162,9 @@ export async function POST(req: NextRequest) {
       message: 'Teams notification dispatched successfully',
     });
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Teams dispatch worker failed:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error', details: errMsg },
+      { error: 'Teams delivery failed' },
       { status: 500 }
     );
   }
@@ -180,8 +179,7 @@ interface TeamsRetryParams {
 }
 
 /**
- * Send HTTP POST to Teams Incoming Webhook with backoff retry handling.
- * Logs failure on complete exhaustion to Dead Letter Log.
+ * Send one HTTP request and let QStash retry failed worker invocations.
  */
 async function sendTeamsNotificationWithRetry({
   webhookUrl,
@@ -190,57 +188,28 @@ async function sendTeamsNotificationWithRetry({
   userId,
   targetUrl,
 }: TeamsRetryParams) {
-  const delays = [1000, 2000, 4000, 8000];
-  let attempt = 0;
-
-  while (attempt < 5) {
-    try {
-      attempt++;
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(cardPayload),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Teams Webhook responded with status: ${response.status} ${response.statusText}`
-        );
-      }
-
-      console.log(`Teams card successfully posted on attempt ${attempt}`);
-      return;
-    } catch (err) {
-      console.warn(`Teams card delivery attempt ${attempt} failed:`, err);
-
-      if (attempt >= 5) {
-        // Log to Dead Letter Queue
-        const errMsg = err instanceof Error ? err.message : String(err);
-        try {
-          await db.insert(notificationLogs).values({
-            eventType,
-            channel: 'teams',
-            status: 'failed',
-            errorMessage: `Exhausted 5 attempts. Last error: ${errMsg}`,
-            sentAt: new Date(),
-            userId,
-            targetUrl,
-          });
-        } catch (dbErr) {
-          console.error(
-            'Failed to log Dead Letter Queue entry for Teams to DB:',
-            dbErr
-          );
-        }
-
-        // Return gracefully so QStash does not retry
-        return null;
-      }
-
-      const backoffDelay = delays[attempt - 1] || 8000;
-      await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cardPayload),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Teams Webhook responded with status: ${response.status}`
+      );
     }
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    await db.insert(notificationLogs).values({
+      eventType,
+      channel: 'teams',
+      status: 'failed',
+      errorMessage: errMsg.slice(0, 1000),
+      sentAt: new Date(),
+      userId,
+      targetUrl,
+    });
+    throw err;
   }
 }

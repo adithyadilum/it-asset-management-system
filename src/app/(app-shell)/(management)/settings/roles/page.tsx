@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import Link from 'next/link';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { getRolesPageData } from '@/actions/roles';
@@ -12,31 +14,30 @@ const ROLE_CONFIG: Array<{
   name: string;
   description: string;
 }> = [
-    {
-      id: 'GlobalAdmin',
-      name: 'Global Admin',
-      description: 'These users manage all system settings and role assignments.',
-    },
-    {
-      id: 'ITOperator',
-      name: 'IT Operations',
-      description:
-        'These users have full read/write access to the Asset Registry and Maintenance modules.',
-    },
-    {
-      id: 'FinancialAuditor',
-      name: 'Financial Auditor',
-      description:
-        'These users have read-only access to financial ledgers and audit records.',
-    },
-    {
-      id: 'Employee',
-      name: 'Employee',
-      description:
-        'Standard users who can view their assigned assets and submit requests.',
-    },
-  ];
-
+  {
+    id: 'GlobalAdmin',
+    name: 'Global Admin',
+    description: 'These users manage all system settings and role assignments.',
+  },
+  {
+    id: 'ITOperator',
+    name: 'IT Operations',
+    description:
+      'These users have full read/write access to the Asset Registry and Maintenance modules.',
+  },
+  {
+    id: 'FinancialAuditor',
+    name: 'Financial Auditor',
+    description:
+      'These users have read-only access to financial ledgers and audit records.',
+  },
+  {
+    id: 'Employee',
+    name: 'Employee',
+    description:
+      'Standard users who can view their assigned assets and submit requests.',
+  },
+];
 
 type RolesPageProps = {
   searchParams: Promise<{
@@ -48,11 +49,11 @@ const VALID_ROLES = new Set<string>(USER_ROLES);
 
 /** Extracts and validates the ?role= query param, defaulting to GlobalAdmin. */
 function normalizeSelectedRole(value: string | string[] | undefined): UserRole {
-  const selected = Array.isArray(value) ? value[0] : value ?? '';
+  const selected = Array.isArray(value) ? value[0] : (value ?? '');
   return VALID_ROLES.has(selected) ? (selected as UserRole) : 'GlobalAdmin';
 }
 
-export default async function RolesPage({ searchParams }: RolesPageProps) {
+async function RolesPageContent({ searchParams }: RolesPageProps) {
   const currentUser = await requirePageAuth((role) => role === 'GlobalAdmin');
 
   const params = await searchParams;
@@ -77,7 +78,9 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-stretch gap-2.5 bg-muted lg:flex-row">
       <section className="flex w-full flex-col items-start gap-4 rounded-lg bg-card text-card-foreground p-6 shadow-box-shadow-shadow-sm lg:max-w-100 border border-border">
-        <h1 className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}>
+        <h1
+          className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
+        >
           Role Assignment
         </h1>
 
@@ -95,12 +98,16 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
                 ].join(' ')}
               >
                 <div className="flex w-full items-center gap-2.5 px-6 py-0">
-                  <span className={`flex-1 text-left ${TYPOGRAPHY_CLASSNAMES.textBaseSemiBold}`}>
+                  <span
+                    className={`flex-1 text-left ${TYPOGRAPHY_CLASSNAMES.textBaseSemiBold}`}
+                  >
                     {role.name}
                   </span>
 
                   <div className="inline-flex h-5.5 items-center justify-center gap-1 rounded-lg border border-primary bg-transparent px-1.5 py-0.5">
-                    <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-primary`}>
+                    <span
+                      className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-primary`}
+                    >
                       {roleCounts[role.id]} Users
                     </span>
                   </div>
@@ -122,7 +129,9 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
         </h2>
 
         <div className="flex w-full flex-col items-start justify-between gap-3 lg:flex-row lg:items-center">
-          <p className={`max-w-175 text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
+          <p
+            className={`max-w-175 text-muted-foreground ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+          >
             {selectedRoleInfo.description}
           </p>
         </div>
@@ -135,5 +144,22 @@ export default async function RolesPage({ searchParams }: RolesPageProps) {
         />
       </section>
     </div>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function RolesPage(props: RolesPageProps) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <RolesPageContent {...props} />
+    </Suspense>
   );
 }

@@ -54,8 +54,9 @@ export function RemindReturnDialog({
         <DialogHeader>
           <DialogTitle>Send Reminder</DialogTitle>
           <DialogDescription>
-            Are you sure you want to send another return reminder for {assetLabel}?
-            This will send a new notification to the assigned user.
+            Are you sure you want to send another return reminder for{' '}
+            {assetLabel}? This will send a new notification to the assigned
+            user.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

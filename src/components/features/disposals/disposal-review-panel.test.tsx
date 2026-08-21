@@ -12,7 +12,11 @@ vi.mock('@/components/shared/slide-panel', () => ({
         <div>{content}</div>
         <div>
           {actions.map((action: any) => (
-            <button key={action.id} onClick={action.onClick} disabled={action.disabled}>
+            <button
+              key={action.id}
+              onClick={action.onClick}
+              disabled={action.disabled}
+            >
               {action.label}
             </button>
           ))}
@@ -55,27 +59,31 @@ describe('DisposalReviewPanel', () => {
     render(<DisposalReviewPanel {...mockProps} />);
 
     expect(screen.getByTestId('slide-panel')).toBeInTheDocument();
-    
+
     // Details
     expect(screen.getByText('TAG-123')).toBeInTheDocument();
     expect(screen.getByText('Laptop Pro')).toBeInTheDocument();
     expect(screen.getByText('SN-123')).toBeInTheDocument();
     expect(screen.getByText('BrandX')).toBeInTheDocument();
-    
+
     // Disposal request details
     expect(screen.getByText('User A')).toBeInTheDocument();
     expect(screen.getByText('End of Life')).toBeInTheDocument();
     expect(screen.getByText('Device is 5 years old')).toBeInTheDocument();
-    
+
     // Financials
-    expect(screen.getByText(formatMoneyByCurrency(1000, 'USD'))).toBeInTheDocument();
-    expect(screen.getByText(formatMoneyByCurrency(0, 'USD'))).toBeInTheDocument();
+    expect(
+      screen.getByText(formatMoneyByCurrency(1000, 'USD'))
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(formatMoneyByCurrency(0, 'USD'))
+    ).toBeInTheDocument();
     expect(screen.getByText('Expired')).toBeInTheDocument();
   });
 
   it('renders skeleton when loading', () => {
     render(<DisposalReviewPanel {...mockProps} isLoading={true} />);
-    
+
     expect(screen.getByTestId('slide-panel')).toBeInTheDocument();
     expect(screen.queryByText('TAG-123')).not.toBeInTheDocument();
   });

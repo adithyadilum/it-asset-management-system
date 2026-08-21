@@ -1,25 +1,33 @@
-"use client"
+'use client';
 
-import { useState, useTransition } from "react"
-import { Webhook } from "lucide-react"
+import { useState, useTransition } from 'react';
+import { Webhook } from 'lucide-react';
 
-import { updateWebhookSubscription } from "@/actions/integrations"
-import { DialogClose } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import { tiqriToast } from "@/components/shared/sonner"
-import type { WebhookSubscriptionDisplay, WebhookEventType } from "@/types/integrations"
+import { updateWebhookSubscription } from '@/actions/integrations';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { tiqriToast } from '@/components/shared/sonner';
+import type {
+  WebhookSubscriptionDisplay,
+  WebhookEventType,
+} from '@/types/integrations';
 
-import { WebhookEventSelector } from "./webhook-event-selector"
+import { WebhookEventSelector } from './webhook-event-selector';
 
 interface EditWebhookDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  subscription: WebhookSubscriptionDisplay | null
-  onChanged?: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  subscription: WebhookSubscriptionDisplay | null;
+  onChanged?: () => void;
 }
 
 export function EditWebhookDialog({
@@ -28,43 +36,45 @@ export function EditWebhookDialog({
   subscription,
   onChanged,
 }: EditWebhookDialogProps) {
-  const originalName = subscription?.name.trim() ?? ""
-  const originalUrl = subscription?.url.trim() ?? ""
-  const originalEvents = [...(subscription?.events ?? [])].sort()
+  const originalName = subscription?.name.trim() ?? '';
+  const originalUrl = subscription?.url.trim() ?? '';
+  const originalEvents = [...(subscription?.events ?? [])].sort();
 
-  const [name, setName] = useState(subscription?.name ?? "")
-  const [url, setUrl] = useState(subscription?.url ?? "")
-  const [selectedEvents, setSelectedEvents] = useState<WebhookEventType[]>(subscription?.events ?? [])
-  const [isPending, startTransition] = useTransition()
+  const [name, setName] = useState(subscription?.name ?? '');
+  const [url, setUrl] = useState(subscription?.url ?? '');
+  const [selectedEvents, setSelectedEvents] = useState<WebhookEventType[]>(
+    subscription?.events ?? []
+  );
+  const [isPending, startTransition] = useTransition();
 
   const hasChanges =
     name.trim() !== originalName ||
     url.trim() !== originalUrl ||
-    [...selectedEvents].sort().join("|") !== originalEvents.join("|")
+    [...selectedEvents].sort().join('|') !== originalEvents.join('|');
 
   const handleSubmit = () => {
     if (!subscription) {
-      return
+      return;
     }
 
     startTransition(async () => {
-      const form = new FormData()
-      form.append("name", name.trim())
-      form.append("url", url.trim())
-      form.append("events", JSON.stringify(selectedEvents))
+      const form = new FormData();
+      form.append('name', name.trim());
+      form.append('url', url.trim());
+      form.append('events', JSON.stringify(selectedEvents));
 
-      const result = await updateWebhookSubscription(subscription.id, form)
+      const result = await updateWebhookSubscription(subscription.id, form);
 
       if (!result.success) {
-        tiqriToast.error(result.error)
-        return
+        tiqriToast.error(result.error);
+        return;
       }
 
-      tiqriToast.success("Webhook subscription updated")
-      onOpenChange(false)
-      onChanged?.()
-    })
-  }
+      tiqriToast.success('Webhook subscription updated');
+      onOpenChange(false);
+      onChanged?.();
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,7 +103,10 @@ export function EditWebhookDialog({
 
         <div className="grid gap-4 px-6 pb-6">
           <div className="grid gap-2">
-            <Label htmlFor="edit-webhook-name" className="text-sm font-medium text-foreground">
+            <Label
+              htmlFor="edit-webhook-name"
+              className="text-sm font-medium text-foreground"
+            >
               Description <span className="text-rose-500">*</span>
             </Label>
             <Input
@@ -106,7 +119,10 @@ export function EditWebhookDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="edit-webhook-url" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+            <Label
+              htmlFor="edit-webhook-url"
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+            >
               Endpoint URL <span className="text-rose-500">*</span>
             </Label>
             <Input
@@ -120,7 +136,11 @@ export function EditWebhookDialog({
           </div>
 
           <div className="grid gap-3 pt-1">
-            <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Events</div>
+            <div
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+            >
+              Events
+            </div>
             <WebhookEventSelector
               selectedEvents={selectedEvents}
               onSelectedEventsChange={setSelectedEvents}
@@ -133,20 +153,20 @@ export function EditWebhookDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
-                className={`h-9 rounded-md border-border px-4 text-foreground hover:bg-muted ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
+              className={`h-9 rounded-md border-border px-4 text-foreground hover:bg-muted ${TYPOGRAPHY_CLASSNAMES.textSmMedium}`}
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={isPending || !hasChanges}
-                className={`h-9 rounded-md bg-primary px-4 text-primary-foreground hover:bg-primary/90 ${TYPOGRAPHY_CLASSNAMES.textSmSemiBold}`}
+              className={`h-9 rounded-md bg-primary px-4 text-primary-foreground hover:bg-primary/90 ${TYPOGRAPHY_CLASSNAMES.textSmSemiBold}`}
             >
-              {isPending ? "Saving..." : "Save Webhook"}
+              {isPending ? 'Saving...' : 'Save Webhook'}
             </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

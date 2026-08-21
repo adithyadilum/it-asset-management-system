@@ -1,6 +1,6 @@
 {
-  "id": "2fcdcdeb-a0ba-41ce-a4b8-dfd741ddbc92",
-  "prevId": "5c1f7cd7-024f-4b0b-a8f0-211524c13410",
+  "id": "5c1f7cd7-024f-4b0b-a8f0-211524c13410",
+  "prevId": "592e08ba-f215-4da7-ae15-471b6a16e8f7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -94,52 +94,36 @@
         "asset_assignments_asset_id_assets_id_fk": {
           "name": "asset_assignments_asset_id_assets_id_fk",
           "tableFrom": "asset_assignments",
-          "columnsFrom": [
-            "asset_id"
-          ],
+          "columnsFrom": ["asset_id"],
           "tableTo": "assets",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "asset_assignments_assigned_to_user_id_users_id_fk": {
           "name": "asset_assignments_assigned_to_user_id_users_id_fk",
           "tableFrom": "asset_assignments",
-          "columnsFrom": [
-            "assigned_to_user_id"
-          ],
+          "columnsFrom": ["assigned_to_user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "asset_assignments_assigned_to_location_id_locations_id_fk": {
           "name": "asset_assignments_assigned_to_location_id_locations_id_fk",
           "tableFrom": "asset_assignments",
-          "columnsFrom": [
-            "assigned_to_location_id"
-          ],
+          "columnsFrom": ["assigned_to_location_id"],
           "tableTo": "locations",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "asset_assignments_assigned_by_id_users_id_fk": {
           "name": "asset_assignments_assigned_by_id_users_id_fk",
           "tableFrom": "asset_assignments",
-          "columnsFrom": [
-            "assigned_by_id"
-          ],
+          "columnsFrom": ["assigned_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -343,39 +327,27 @@
         "asset_disposals_asset_id_assets_id_fk": {
           "name": "asset_disposals_asset_id_assets_id_fk",
           "tableFrom": "asset_disposals",
-          "columnsFrom": [
-            "asset_id"
-          ],
+          "columnsFrom": ["asset_id"],
           "tableTo": "assets",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "restrict"
         },
         "asset_disposals_requested_by_id_users_id_fk": {
           "name": "asset_disposals_requested_by_id_users_id_fk",
           "tableFrom": "asset_disposals",
-          "columnsFrom": [
-            "requested_by_id"
-          ],
+          "columnsFrom": ["requested_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "asset_disposals_approved_by_id_users_id_fk": {
           "name": "asset_disposals_approved_by_id_users_id_fk",
           "tableFrom": "asset_disposals",
-          "columnsFrom": [
-            "approved_by_id"
-          ],
+          "columnsFrom": ["approved_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -433,26 +405,18 @@
         "asset_documents_asset_id_assets_id_fk": {
           "name": "asset_documents_asset_id_assets_id_fk",
           "tableFrom": "asset_documents",
-          "columnsFrom": [
-            "asset_id"
-          ],
+          "columnsFrom": ["asset_id"],
           "tableTo": "assets",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "asset_documents_uploaded_by_id_users_id_fk": {
           "name": "asset_documents_uploaded_by_id_users_id_fk",
           "tableFrom": "asset_documents",
-          "columnsFrom": [
-            "uploaded_by_id"
-          ],
+          "columnsFrom": ["uploaded_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -554,26 +518,18 @@
         "asset_purchases_asset_id_assets_id_fk": {
           "name": "asset_purchases_asset_id_assets_id_fk",
           "tableFrom": "asset_purchases",
-          "columnsFrom": [
-            "asset_id"
-          ],
+          "columnsFrom": ["asset_id"],
           "tableTo": "assets",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "asset_purchases_vendor_id_vendors_id_fk": {
           "name": "asset_purchases_vendor_id_vendors_id_fk",
           "tableFrom": "asset_purchases",
-          "columnsFrom": [
-            "vendor_id"
-          ],
+          "columnsFrom": ["vendor_id"],
           "tableTo": "vendors",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -772,39 +728,27 @@
         "assets_model_id_models_id_fk": {
           "name": "assets_model_id_models_id_fk",
           "tableFrom": "assets",
-          "columnsFrom": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
           "tableTo": "models",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "restrict"
         },
         "assets_location_id_locations_id_fk": {
           "name": "assets_location_id_locations_id_fk",
           "tableFrom": "assets",
-          "columnsFrom": [
-            "location_id"
-          ],
+          "columnsFrom": ["location_id"],
           "tableTo": "locations",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "assets_owner_id_owners_id_fk": {
           "name": "assets_owner_id_owners_id_fk",
           "tableFrom": "assets",
-          "columnsFrom": [
-            "owner_id"
-          ],
+          "columnsFrom": ["owner_id"],
           "tableTo": "owners",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -813,9 +757,7 @@
       "uniqueConstraints": {
         "assets_asset_tag_unique": {
           "name": "assets_asset_tag_unique",
-          "columns": [
-            "asset_tag"
-          ],
+          "columns": ["asset_tag"],
           "nullsNotDistinct": false
         }
       },
@@ -866,23 +808,17 @@
       "uniqueConstraints": {
         "brands_uuid_unique": {
           "name": "brands_uuid_unique",
-          "columns": [
-            "uuid"
-          ],
+          "columns": ["uuid"],
           "nullsNotDistinct": false
         },
         "brands_brand_code_unique": {
           "name": "brands_brand_code_unique",
-          "columns": [
-            "brand_code"
-          ],
+          "columns": ["brand_code"],
           "nullsNotDistinct": false
         },
         "brands_name_unique": {
           "name": "brands_name_unique",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "nullsNotDistinct": false
         }
       },
@@ -966,31 +902,22 @@
       "uniqueConstraints": {
         "categories_uuid_unique": {
           "name": "categories_uuid_unique",
-          "columns": [
-            "uuid"
-          ],
+          "columns": ["uuid"],
           "nullsNotDistinct": false
         },
         "categories_category_code_unique": {
           "name": "categories_category_code_unique",
-          "columns": [
-            "category_code"
-          ],
+          "columns": ["category_code"],
           "nullsNotDistinct": false
         },
         "categories_prefix_unique": {
           "name": "categories_prefix_unique",
-          "columns": [
-            "prefix"
-          ],
+          "columns": ["prefix"],
           "nullsNotDistinct": false
         },
         "pillar_name_idx": {
           "name": "pillar_name_idx",
-          "columns": [
-            "pillar",
-            "name"
-          ],
+          "columns": ["pillar", "name"],
           "nullsNotDistinct": false
         }
       },
@@ -1054,13 +981,9 @@
         "custom_statuses_created_by_id_users_id_fk": {
           "name": "custom_statuses_created_by_id_users_id_fk",
           "tableFrom": "custom_statuses",
-          "columnsFrom": [
-            "created_by_id"
-          ],
+          "columnsFrom": ["created_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1126,37 +1049,27 @@
       "uniqueConstraints": {
         "departments_uuid_unique": {
           "name": "departments_uuid_unique",
-          "columns": [
-            "uuid"
-          ],
+          "columns": ["uuid"],
           "nullsNotDistinct": false
         },
         "departments_department_code_unique": {
           "name": "departments_department_code_unique",
-          "columns": [
-            "department_code"
-          ],
+          "columns": ["department_code"],
           "nullsNotDistinct": false
         },
         "departments_name_unique": {
           "name": "departments_name_unique",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "nullsNotDistinct": false
         },
         "departments_short_code_unique": {
           "name": "departments_short_code_unique",
-          "columns": [
-            "short_code"
-          ],
+          "columns": ["short_code"],
           "nullsNotDistinct": false
         },
         "departments_cost_center_id_unique": {
           "name": "departments_cost_center_id_unique",
-          "columns": [
-            "cost_center_id"
-          ],
+          "columns": ["cost_center_id"],
           "nullsNotDistinct": false
         }
       },
@@ -1219,13 +1132,9 @@
         "locations_parent_id_fkey": {
           "name": "locations_parent_id_fkey",
           "tableFrom": "locations",
-          "columnsFrom": [
-            "parent_id"
-          ],
+          "columnsFrom": ["parent_id"],
           "tableTo": "locations",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1234,16 +1143,12 @@
       "uniqueConstraints": {
         "locations_uuid_unique": {
           "name": "locations_uuid_unique",
-          "columns": [
-            "uuid"
-          ],
+          "columns": ["uuid"],
           "nullsNotDistinct": false
         },
         "locations_location_code_unique": {
           "name": "locations_location_code_unique",
-          "columns": [
-            "location_code"
-          ],
+          "columns": ["location_code"],
           "nullsNotDistinct": false
         }
       },
@@ -1356,26 +1261,18 @@
         "maintenance_tickets_asset_id_assets_id_fk": {
           "name": "maintenance_tickets_asset_id_assets_id_fk",
           "tableFrom": "maintenance_tickets",
-          "columnsFrom": [
-            "asset_id"
-          ],
+          "columnsFrom": ["asset_id"],
           "tableTo": "assets",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "maintenance_tickets_dispatched_by_id_users_id_fk": {
           "name": "maintenance_tickets_dispatched_by_id_users_id_fk",
           "tableFrom": "maintenance_tickets",
-          "columnsFrom": [
-            "dispatched_by_id"
-          ],
+          "columnsFrom": ["dispatched_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1483,26 +1380,18 @@
         "models_brand_id_brands_id_fk": {
           "name": "models_brand_id_brands_id_fk",
           "tableFrom": "models",
-          "columnsFrom": [
-            "brand_id"
-          ],
+          "columnsFrom": ["brand_id"],
           "tableTo": "brands",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "restrict"
         },
         "models_category_id_categories_id_fk": {
           "name": "models_category_id_categories_id_fk",
           "tableFrom": "models",
-          "columnsFrom": [
-            "category_id"
-          ],
+          "columnsFrom": ["category_id"],
           "tableTo": "categories",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "restrict"
         }
@@ -1511,24 +1400,17 @@
       "uniqueConstraints": {
         "models_uuid_unique": {
           "name": "models_uuid_unique",
-          "columns": [
-            "uuid"
-          ],
+          "columns": ["uuid"],
           "nullsNotDistinct": false
         },
         "models_model_code_unique": {
           "name": "models_model_code_unique",
-          "columns": [
-            "model_code"
-          ],
+          "columns": ["model_code"],
           "nullsNotDistinct": false
         },
         "brand_model_idx": {
           "name": "brand_model_idx",
-          "columns": [
-            "brand_id",
-            "name"
-          ],
+          "columns": ["brand_id", "name"],
           "nullsNotDistinct": false
         }
       },
@@ -1579,23 +1461,17 @@
       "uniqueConstraints": {
         "owners_uuid_unique": {
           "name": "owners_uuid_unique",
-          "columns": [
-            "uuid"
-          ],
+          "columns": ["uuid"],
           "nullsNotDistinct": false
         },
         "owners_owner_code_unique": {
           "name": "owners_owner_code_unique",
-          "columns": [
-            "owner_code"
-          ],
+          "columns": ["owner_code"],
           "nullsNotDistinct": false
         },
         "owners_company_name_unique": {
           "name": "owners_company_name_unique",
-          "columns": [
-            "company_name"
-          ],
+          "columns": ["company_name"],
           "nullsNotDistinct": false
         }
       },
@@ -1689,13 +1565,9 @@
         "report_templates_created_by_id_users_id_fk": {
           "name": "report_templates_created_by_id_users_id_fk",
           "tableFrom": "report_templates",
-          "columnsFrom": [
-            "created_by_id"
-          ],
+          "columnsFrom": ["created_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1704,9 +1576,7 @@
       "uniqueConstraints": {
         "report_templates_report_code_unique": {
           "name": "report_templates_report_code_unique",
-          "columns": [
-            "report_code"
-          ],
+          "columns": ["report_code"],
           "nullsNotDistinct": false
         }
       },
@@ -1761,13 +1631,9 @@
         "sessions_user_id_users_id_fk": {
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1776,9 +1642,7 @@
       "uniqueConstraints": {
         "sessions_token_id_unique": {
           "name": "sessions_token_id_unique",
-          "columns": [
-            "token_id"
-          ],
+          "columns": ["token_id"],
           "nullsNotDistinct": false
         }
       },
@@ -1827,26 +1691,18 @@
         "software_allocations_license_id_software_licenses_id_fk": {
           "name": "software_allocations_license_id_software_licenses_id_fk",
           "tableFrom": "software_allocations",
-          "columnsFrom": [
-            "license_id"
-          ],
+          "columnsFrom": ["license_id"],
           "tableTo": "software_licenses",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "software_allocations_assigned_to_user_id_users_id_fk": {
           "name": "software_allocations_assigned_to_user_id_users_id_fk",
           "tableFrom": "software_allocations",
-          "columnsFrom": [
-            "assigned_to_user_id"
-          ],
+          "columnsFrom": ["assigned_to_user_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1933,13 +1789,9 @@
         "software_licenses_model_id_models_id_fk": {
           "name": "software_licenses_model_id_models_id_fk",
           "tableFrom": "software_licenses",
-          "columnsFrom": [
-            "model_id"
-          ],
+          "columnsFrom": ["model_id"],
           "tableTo": "models",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "restrict"
         }
@@ -2015,13 +1867,9 @@
         "system_audit_logs_performed_by_id_users_id_fk": {
           "name": "system_audit_logs_performed_by_id_users_id_fk",
           "tableFrom": "system_audit_logs",
-          "columnsFrom": [
-            "performed_by_id"
-          ],
+          "columnsFrom": ["performed_by_id"],
           "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -2095,13 +1943,9 @@
         "users_department_id_departments_id_fk": {
           "name": "users_department_id_departments_id_fk",
           "tableFrom": "users",
-          "columnsFrom": [
-            "department_id"
-          ],
+          "columnsFrom": ["department_id"],
           "tableTo": "departments",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -2110,9 +1954,7 @@
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "nullsNotDistinct": false
         }
       },
@@ -2181,23 +2023,17 @@
       "uniqueConstraints": {
         "vendors_uuid_unique": {
           "name": "vendors_uuid_unique",
-          "columns": [
-            "uuid"
-          ],
+          "columns": ["uuid"],
           "nullsNotDistinct": false
         },
         "vendors_vendor_code_unique": {
           "name": "vendors_vendor_code_unique",
-          "columns": [
-            "vendor_code"
-          ],
+          "columns": ["vendor_code"],
           "nullsNotDistinct": false
         },
         "vendors_company_name_unique": {
           "name": "vendors_company_name_unique",
-          "columns": [
-            "company_name"
-          ],
+          "columns": ["company_name"],
           "nullsNotDistinct": false
         }
       },
@@ -2224,60 +2060,32 @@
     "public.asset_condition": {
       "name": "asset_condition",
       "schema": "public",
-      "values": [
-        "New",
-        "Excellent",
-        "Fair",
-        "Poor",
-        "Damaged"
-      ]
+      "values": ["New", "Excellent", "Fair", "Poor", "Damaged"]
     },
     "public.disposal_status": {
       "name": "disposal_status",
       "schema": "public",
-      "values": [
-        "Pending Approval",
-        "Approved",
-        "Rejected",
-        "Completed"
-      ]
+      "values": ["Pending Approval", "Approved", "Rejected", "Completed"]
     },
     "public.license_type": {
       "name": "license_type",
       "schema": "public",
-      "values": [
-        "Perpetual",
-        "Subscription",
-        "Open Source / Free"
-      ]
+      "values": ["Perpetual", "Subscription", "Open Source / Free"]
     },
     "public.location_type": {
       "name": "location_type",
       "schema": "public",
-      "values": [
-        "HQ",
-        "Branch",
-        "Floor",
-        "Room",
-        "Remote"
-      ]
+      "values": ["HQ", "Branch", "Floor", "Room", "Remote"]
     },
     "public.maintenance_ticket_status": {
       "name": "maintenance_ticket_status",
       "schema": "public",
-      "values": [
-        "ACTIVE",
-        "COMPLETED",
-        "CANCELLED"
-      ]
+      "values": ["ACTIVE", "COMPLETED", "CANCELLED"]
     },
     "public.maintenance_ticket_type": {
       "name": "maintenance_ticket_type",
       "schema": "public",
-      "values": [
-        "VENDOR",
-        "INTERNAL"
-      ]
+      "values": ["VENDOR", "INTERNAL"]
     },
     "public.pillar": {
       "name": "pillar",
@@ -2292,12 +2100,7 @@
     "public.role": {
       "name": "role",
       "schema": "public",
-      "values": [
-        "GlobalAdmin",
-        "ITOperator",
-        "FinancialAuditor",
-        "Employee"
-      ]
+      "values": ["GlobalAdmin", "ITOperator", "FinancialAuditor", "Employee"]
     }
   },
   "schemas": {},

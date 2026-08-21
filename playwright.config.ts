@@ -13,8 +13,16 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // Without this the loader resolves no `paths` mapping, because tsconfig.json
+  // excludes this very file, and every `@/...` import in setup or a spec fails
+  // with "Cannot find module".
+  tsconfig: './tsconfig.json',
   globalSetup: require.resolve('./e2e/global-setup.ts'),
   globalTeardown: require.resolve('./e2e/global-teardown.ts'),
+  // The CI job is capped at 30 minutes. Stopping first means a run that wedges
+  // fails with a report and uploaded artifacts, instead of being killed by the
+  // runner with nothing to show for it.
+  globalTimeout: process.env.CI ? 20 * 60 * 1000 : undefined,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -24,7 +32,9 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: process.env.CI
+    ? [['github'], ['list'], ['html', { open: 'never' }]]
+    : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
@@ -73,11 +83,15 @@ export default defineConfig({
     // },
   ],
 
-/* Run your local Next.js dev server before starting the tests */
+  /* Run your local Next.js dev server before starting the tests */
   webServer: {
     command: 'npm run dev -- -p 3001',
     url: 'http://127.0.0.1:3001',
     reuseExistingServer: false,
     timeout: 120 * 1000,
-   },
+    // Surfaced in the CI log. A dev server that fails to boot otherwise shows
+    // up only as an unexplained timeout.
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
 });

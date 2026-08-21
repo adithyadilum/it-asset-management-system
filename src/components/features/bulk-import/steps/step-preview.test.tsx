@@ -19,24 +19,29 @@ describe('StepPreview', () => {
       previewResult: {
         validRows: [{ test: 'row' }],
         errorRows: [
-          { rowNumber: 2, errorMessage: 'Invalid Name', errorStage: 'TYPE', errorField: 'name' }
+          {
+            rowNumber: 2,
+            errorMessage: 'Invalid Name',
+            errorStage: 'TYPE',
+            errorField: 'name',
+          },
         ],
-        summary: { skippedEmptyRows: 0 }
+        summary: { skippedEmptyRows: 0 },
       },
       isExecuting: false,
       executionResult: null,
     };
-    
+
     const mockDispatch = vi.fn();
     // @ts-ignore
     render(<StepPreview state={mockState} dispatch={mockDispatch} />);
-    
+
     expect(screen.getByText('Ready to import')).toBeInTheDocument();
     expect(screen.getByText('Invalid Name')).toBeInTheDocument();
-    
+
     const importBtn = screen.getByRole('button', { name: /Import 1 Asset/i });
     expect(importBtn).not.toBeDisabled();
-    
+
     fireEvent.click(importBtn);
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'START_EXECUTION' });
   });

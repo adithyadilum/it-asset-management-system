@@ -62,12 +62,14 @@ This epic acts as the system's black box flight recorder. To meet strict ISO 270
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Write a reusable `logAuditAction` utility function that captures `entityType`, `entityId`, `actionType`, `performedById`, `oldData`, and `newData`.
 - [x] Implement deep recursive JSON diffing (`areAuditValuesEqual`) to isolate the exact changed properties.
 - [x] Implement IP address extraction logic from the Next.js `headers()` object (`x-forwarded-for`).
 - [x] Include a transactional equivalent (`logAuditActionTx`) for database operations requiring atomicity.
 
 #### Database
+
 - [x] Create an append-only `system_audit_logs` table via Drizzle ORM with columns: `id`, `performed_by_id`, `action_type`, `entity_type`, `entity_id`, `ip_address`, `old_value` (JSONB), `new_value` (JSONB), `performed_at`.
 
 ---
@@ -106,10 +108,12 @@ This epic acts as the system's black box flight recorder. To meet strict ISO 270
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Audit Log page in React at `src/app/(app-shell)/(management)/reports/audit-log/page.tsx`.
 - [x] Build the `AuditLogClient` containing the filterable, paginated data table component.
 
 #### Backend
+
 - [x] Create a `getAuditLogs` Server Action that safely authenticates the user and fetches paginated results from `system_audit_logs`.
 - [x] Implement the `resolveAuditValueLabels` function to bulk-fetch and swap internal IDs (e.g. `locationId`, `departmentId`, `vendorId`) with explicit display codes/names.
 - [x] Create `getAssetAuditHistory` to scope the audit query to a specific asset UUID for granular tracking.

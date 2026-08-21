@@ -1,11 +1,13 @@
-import { asc, eq, sql } from "drizzle-orm";
-import { cache } from "react";
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
+import { asc, eq, sql } from 'drizzle-orm';
+import { cache } from 'react';
+import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
 
-import { MasterDataManagementClient } from "@/components/features/master-data/master-data-management-client";
-import { MasterDataPanels } from "@/components/features/master-data/master-data-panels";
-import { db } from "@/db";
+import { MasterDataManagementClient } from '@/components/features/master-data/master-data-management-client';
+import { MasterDataPanels } from '@/components/features/master-data/master-data-panels';
+import { db } from '@/db';
 import {
   assets,
   assetPurchases,
@@ -17,31 +19,33 @@ import {
   owners,
   customStatuses,
   vendors,
-} from "@/db/schema";
-import { authOptions } from "@/lib/auth/auth-options";
+} from '@/db/schema';
+import { authOptions } from '@/lib/auth/auth-options';
 
 type MasterDataTabId =
-  | "locations"
-  | "asset-categories"
-  | "brands"
-  | "device-models"
-  | "vendors"
-  | "owners"
-  | "departments"
-  | "statuses";
+  | 'locations'
+  | 'asset-categories'
+  | 'brands'
+  | 'device-models'
+  | 'vendors'
+  | 'owners'
+  | 'departments'
+  | 'statuses';
 
 const MASTER_DATA_TAB_IDS = new Set<MasterDataTabId>([
-  "locations",
-  "asset-categories",
-  "brands",
-  "device-models",
-  "vendors",
-  "owners",
-  "departments",
-  "statuses",
+  'locations',
+  'asset-categories',
+  'brands',
+  'device-models',
+  'vendors',
+  'owners',
+  'departments',
+  'statuses',
 ]);
 
-function normalizeMasterDataTab(value: string | undefined): MasterDataTabId | undefined {
+function normalizeMasterDataTab(
+  value: string | undefined
+): MasterDataTabId | undefined {
   if (!value) {
     return undefined;
   }
@@ -54,23 +58,23 @@ function normalizeMasterDataTab(value: string | undefined): MasterDataTabId | un
 function normalizePillarsValue(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
-      .map((item) => String(item ?? "").trim())
+      .map((item) => String(item ?? '').trim())
       .filter((item) => item.length > 0);
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const trimmed = value.trim();
 
     if (trimmed.length === 0) {
       return [];
     }
 
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
           return parsed
-            .map((item) => String(item ?? "").trim())
+            .map((item) => String(item ?? '').trim())
             .filter((item) => item.length > 0);
         }
       } catch {
@@ -78,15 +82,15 @@ function normalizePillarsValue(value: unknown): string[] {
       }
     }
 
-    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       const inner = trimmed.slice(1, -1).trim();
       if (inner.length === 0) {
         return [];
       }
 
       return inner
-        .split(",")
-        .map((item) => item.trim().replace(/^"|"$/g, ""))
+        .split(',')
+        .map((item) => item.trim().replace(/^"|"$/g, ''))
         .filter((item) => item.length > 0);
     }
 
@@ -123,11 +127,7 @@ function normalizeModelTechnicalDetails(
 }
 
 type CustomSchemaInputType =
-  | "Text"
-  | "Number"
-  | "Date"
-  | "Dropdown"
-  | "Boolean";
+  'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean';
 
 type CategoryCustomSchemaField = {
   fieldName: string;
@@ -141,21 +141,25 @@ type CategoryCustomSchema = {
 };
 
 const VALID_CUSTOM_INPUT_TYPES: ReadonlySet<CustomSchemaInputType> = new Set([
-  "Text",
-  "Number",
-  "Date",
-  "Dropdown",
-  "Boolean",
+  'Text',
+  'Number',
+  'Date',
+  'Dropdown',
+  'Boolean',
 ]);
 
-function normalizeCustomSchemaField(value: unknown): CategoryCustomSchemaField | null {
-  if (typeof value !== "object" || value === null) {
+function normalizeCustomSchemaField(
+  value: unknown
+): CategoryCustomSchemaField | null {
+  if (typeof value !== 'object' || value === null) {
     return null;
   }
 
   const record = value as Record<string, unknown>;
-  const fieldName = String(record.fieldName ?? "").trim();
-  const inputType = String(record.inputType ?? "").trim() as CustomSchemaInputType;
+  const fieldName = String(record.fieldName ?? '').trim();
+  const inputType = String(
+    record.inputType ?? ''
+  ).trim() as CustomSchemaInputType;
 
   if (fieldName.length === 0 || !VALID_CUSTOM_INPUT_TYPES.has(inputType)) {
     return null;
@@ -168,7 +172,9 @@ function normalizeCustomSchemaField(value: unknown): CategoryCustomSchemaField |
   };
 }
 
-function normalizeCustomSchemaList(value: unknown): CategoryCustomSchemaField[] {
+function normalizeCustomSchemaList(
+  value: unknown
+): CategoryCustomSchemaField[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -179,7 +185,7 @@ function normalizeCustomSchemaList(value: unknown): CategoryCustomSchemaField[] 
 }
 
 function normalizeCategoryCustomSchema(value: unknown): CategoryCustomSchema {
-  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
 
     return {
@@ -262,8 +268,9 @@ const getVendorsData = cache(() =>
       email: vendors.email,
       phone: vendors.phone,
       website: vendors.website,
-      pillars:
-        sql<string[]>`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
+      pillars: sql<
+        string[]
+      >`coalesce(array_remove(array_agg(distinct ${categories.pillar}), null), '{}')`,
       linkedAssets: sql<number>`coalesce(count(distinct ${assetPurchases.assetId}), 0)::int`,
       isActive: vendors.isActive,
     })
@@ -310,12 +317,7 @@ const getOwnersData = cache(() =>
     })
     .from(owners)
     .leftJoin(assets, eq(assets.ownerId, owners.id))
-    .groupBy(
-      owners.id,
-      owners.ownerCode,
-      owners.companyName,
-      owners.isActive
-    )
+    .groupBy(owners.id, owners.ownerCode, owners.companyName, owners.isActive)
     .orderBy(asc(owners.companyName))
 );
 
@@ -399,22 +401,26 @@ const getDeviceModelsData = cache(() =>
     .orderBy(asc(models.name))
 );
 
-export default async function MasterDataPage({ searchParams }: MasterDataPageProps) {
+async function MasterDataPageContent({ searchParams }: MasterDataPageProps) {
   await assertMasterDataPageAccess();
 
   const params = await searchParams;
-  const currentPanel = Array.isArray(params.panel) ? params.panel[0] : params.panel;
+  const currentPanel = Array.isArray(params.panel)
+    ? params.panel[0]
+    : params.panel;
   const panelAnimation = Array.isArray(params.animate)
     ? params.animate[0]
     : params.animate;
   const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-  const recordEntity = Array.isArray(params.entity) ? params.entity[0] : params.entity;
+  const recordEntity = Array.isArray(params.entity)
+    ? params.entity[0]
+    : params.entity;
   const recordId = Array.isArray(params.id) ? params.id[0] : params.id;
   const recordMode = Array.isArray(params.mode) ? params.mode[0] : params.mode;
   const activeTab = normalizeMasterDataTab(requestedTab);
   const closePanelUrl = activeTab
     ? `/settings/master-data?tab=${encodeURIComponent(activeTab)}`
-    : "/settings/master-data";
+    : '/settings/master-data';
 
   const [
     locationsData,
@@ -440,9 +446,9 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
     ...row,
     brandId: row.brandId,
     categoryId: row.categoryId,
-    brandName: row.brandName ?? "Unknown",
-    categoryName: row.categoryName ?? "Unknown",
-    pillar: row.pillar ?? "Hardware",
+    brandName: row.brandName ?? 'Unknown',
+    categoryName: row.categoryName ?? 'Unknown',
+    pillar: row.pillar ?? 'Hardware',
     imageUrl: row.imageUrl ?? null,
     technicalDetails: normalizeModelTechnicalDetails(row.technicalDetails),
   }));
@@ -458,11 +464,9 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
   }));
 
   return (
-    <div
-      className="flex h-full w-full overflow-hidden bg-muted"
-    >
+    <div className="flex h-full w-full overflow-hidden bg-muted">
       <MasterDataManagementClient
-        key={`master-data-${activeTab ?? "asset-categories"}`}
+        key={`master-data-${activeTab ?? 'asset-categories'}`}
         categories={normalizedCategories}
         locations={locationsData}
         brands={brandsData}
@@ -494,14 +498,31 @@ export default async function MasterDataPage({ searchParams }: MasterDataPagePro
   );
 }
 
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function MasterDataPage(props: MasterDataPageProps) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <MasterDataPageContent {...props} />
+    </Suspense>
+  );
+}
+
 async function assertMasterDataPageAccess() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
-    redirect("/login");
+    redirect('/login');
   }
 
-  if (session.user.role !== "GlobalAdmin") {
-    redirect("/403");
+  if (session.user.role !== 'GlobalAdmin') {
+    redirect('/403');
   }
 }

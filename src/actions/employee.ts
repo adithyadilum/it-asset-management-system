@@ -1,5 +1,6 @@
 'use server';
 
+import { logInfo } from '@/lib/latency';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { ZodError } from 'zod';
@@ -84,7 +85,7 @@ export async function getCurrentEmployeeAssets(): Promise<
         )
       )
       .orderBy(desc(assetAssignments.assignedDate));
-    console.info('getCurrentEmployeeAssets succeeded', {
+    logInfo('getCurrentEmployeeAssets succeeded', {
       userId: currentUser.id,
       durationMs: Date.now() - startTime,
       rowCount: rows.length,
@@ -128,7 +129,10 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
         licenseType: softwareLicenses.licenseType,
       })
       .from(softwareAllocations)
-      .innerJoin(softwareLicenses, eq(softwareAllocations.licenseId, softwareLicenses.id))
+      .innerJoin(
+        softwareLicenses,
+        eq(softwareAllocations.licenseId, softwareLicenses.id)
+      )
       .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
       .innerJoin(models, eq(softwareLicenses.modelId, models.id))
       .where(
@@ -140,7 +144,7 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
       )
       .orderBy(desc(softwareAllocations.allocatedAt));
 
-    console.info('getCurrentEmployeeSoftwareAssets succeeded', {
+    logInfo('getCurrentEmployeeSoftwareAssets succeeded', {
       userId: currentUser.id,
       durationMs: Date.now() - startTime,
       rowCount: rows.length,

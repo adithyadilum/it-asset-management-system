@@ -1,7 +1,7 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -55,7 +55,9 @@ describe('LogCompleteRepairDialog', () => {
     fireEvent.change(costInput, { target: { value: '250.00' } });
 
     // Notes
-    const notesInput = screen.getByPlaceholderText(/e.g., "Replaced display cable"/i);
+    const notesInput = screen.getByPlaceholderText(
+      /e.g., "Replaced display cable"/i
+    );
     fireEvent.change(notesInput, { target: { value: 'Replaced motherboard' } });
 
     // The status select has default value 'Available', so button should be enabled
@@ -79,7 +81,9 @@ describe('LogCompleteRepairDialog', () => {
     const costInput = screen.getByPlaceholderText('10.00');
     fireEvent.change(costInput, { target: { value: '250.00' } });
 
-    const notesInput = screen.getByPlaceholderText(/e.g., "Replaced display cable"/i);
+    const notesInput = screen.getByPlaceholderText(
+      /e.g., "Replaced display cable"/i
+    );
     fireEvent.change(notesInput, { target: { value: 'Replaced motherboard' } });
 
     // Change status using Shadcn Select
@@ -88,9 +92,11 @@ describe('LogCompleteRepairDialog', () => {
     // Wait, there are two Selects: Currency and Status!
     const selects = screen.getAllByRole('combobox');
     const statusSelect = selects[1]; // second one is status
-    
+
     fireEvent.click(statusSelect);
-    const disposedOption = await screen.findByRole('option', { name: 'Disposed' });
+    const disposedOption = await screen.findByRole('option', {
+      name: 'Disposed',
+    });
     fireEvent.click(disposedOption);
 
     const submitBtn = screen.getByRole('button', { name: 'Confirm' });

@@ -16,11 +16,12 @@ import {
   triggerReturnRequests,
   markAssignmentsAsReceived,
   processAssetReturn,
+  cancelPendingAssignment,
   type AssignAssetInput,
   type BulkAssignAssetsInput,
 } from '@/lib/data/operations-assignments-repo';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import {
@@ -66,10 +67,18 @@ function normalizeActionError(error: unknown): AssignmentActionResult {
 
 function dispatchAssignmentCreatedEvents(
   result:
-    | { assignedAssetIds: string[]; assignments: { assignmentId: number; assetId: string }[] }
+    | {
+        assignedAssetIds: string[];
+        assignments: { assignmentId: number; assetId: string }[];
+      }
     | null
     | undefined,
-  input: { assignmentType: string; targetId: string | number; notes?: string; expectedReturnDate?: string },
+  input: {
+    assignmentType: string;
+    targetId: string | number;
+    notes?: string;
+    expectedReturnDate?: string;
+  },
   performedById: string
 ) {
   if (!result || result.assignments.length === 0) {
@@ -80,13 +89,17 @@ function dispatchAssignmentCreatedEvents(
   const targetPayload = isUserAssignment
     ? {
         assignedToUserId:
-          typeof input.targetId === 'string' ? input.targetId : String(input.targetId),
+          typeof input.targetId === 'string'
+            ? input.targetId
+            : String(input.targetId),
         assignedToLocationId: null,
       }
     : {
         assignedToUserId: null,
         assignedToLocationId:
-          typeof input.targetId === 'number' ? input.targetId : Number(input.targetId),
+          typeof input.targetId === 'number'
+            ? input.targetId
+            : Number(input.targetId),
       };
 
   result.assignments.forEach(({ assignmentId, assetId }) => {
@@ -297,6 +310,54 @@ export async function sendAssignmentReminderAction(
   }
 }
 
+/**
+ * Withdraws an assignment the assignee has not acknowledged yet.
+ *
+ * Authorised for whoever created the assignment, plus GlobalAdmin — an
+ * assignment made by someone who has since left or is unavailable would
+ * otherwise be impossible to undo. ITOperator deliberately does not get a
+ * blanket pass: they can cancel their own, like anyone else.
+ */
+export async function cancelAssignmentAction(
+  assignmentId: number
+): Promise<AssignmentActionResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser || !canManageAssets(currentUser.role)) {
+    return forbiddenResult(
+      'Forbidden: You do not have permission to cancel assignments.'
+    );
+  }
+
+  try {
+    const { assetId } = await cancelPendingAssignment(
+      assignmentId,
+      currentUser.id,
+      { allowAnyInitiator: currentUser.role === 'GlobalAdmin' }
+    );
+
+    revalidatePath('/operations/assignments');
+    revalidatePath('/assets');
+    revalidatePath(`/assets/${assetId}`);
+    return { success: true };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'assignments.cancelAssignmentAction',
+      error,
+      metadata: { assignmentId },
+    });
+    return normalizeActionError(error);
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'assignments.cancelAssignmentAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
 export async function requestAssetReturnAction(
   assignmentIds: number[]
 ): Promise<AssignmentActionResult> {
@@ -344,10 +405,16 @@ export async function markAssetReceivedAction(
   }
 
   try {
-    const result = await markAssignmentsAsReceived(assignmentIds, currentUser.id);
+    const result = await markAssignmentsAsReceived(
+      assignmentIds,
+      currentUser.id
+    );
 
     if (result.assignments.length > 0) {
-      dispatchAssignmentReturnedEvents(result.assignments, new Date().toISOString());
+      dispatchAssignmentReturnedEvents(
+        result.assignments,
+        new Date().toISOString()
+      );
     }
 
     revalidatePath('/operations/assignments');
@@ -406,4 +473,4 @@ export async function processAssetReturnAction(
       startTime: actionTimer,
     });
   }
-}
+}

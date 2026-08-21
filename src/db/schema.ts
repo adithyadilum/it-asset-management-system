@@ -92,7 +92,10 @@ export const customStatuses = pgTable('custom_statuses', {
   // New visual metadata columns
   iconName: varchar('icon_name', { length: 50 }).notNull().default('CircleDot'),
   colorTheme: varchar('color_theme', { length: 50 }).notNull().default('gray'),
-  allowedActions: jsonb('allowed_actions').$type<string[]>().default(['edit']).notNull(),
+  allowedActions: jsonb('allowed_actions')
+    .$type<string[]>()
+    .default(['edit'])
+    .notNull(),
   createdById: uuid('created_by_id').references(() => users.id),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -118,17 +121,34 @@ export const departments = pgTable('departments', {
   isActive: boolean('is_active').default(true).notNull(),
 });
 
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  name: text('name').notNull(),
-  departmentId: integer('department_id').references(() => departments.id),
-  role: roleEnum('role').default('Employee').notNull(),
-  isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    name: text('name').notNull(),
+    departmentId: integer('department_id').references(() => departments.id),
+    role: roleEnum('role').default('Employee').notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    departmentActiveIdx: index('users_department_active_idx').on(
+      table.departmentId,
+      table.isActive
+    ),
+    nameTrgmIdx: index('users_name_trgm_idx').using(
+      'gin',
+      sql`${table.name} gin_trgm_ops`
+    ),
+    emailTrgmIdx: index('users_email_trgm_idx').using(
+      'gin',
+      sql`${table.email} gin_trgm_ops`
+    ),
+  })
+);
 
 // -----------------------------------------------------------------------------
 // 3. MASTER DATA (Categories, Brands, Models)
@@ -269,42 +289,84 @@ export const assets = pgTable(
       table.status,
       table.isArchived
     ),
+
+    // Trigram indexes backing the contains-search in omni-search.
+    assetTagTrgmIdx: index('assets_asset_tag_trgm_idx').using(
+      'gin',
+      sql`${table.assetTag} gin_trgm_ops`
+    ),
+    nameTrgmIdx: index('assets_name_trgm_idx').using(
+      'gin',
+      sql`${table.name} gin_trgm_ops`
+    ),
+    serialNumberTrgmIdx: index('assets_serial_number_trgm_idx').using(
+      'gin',
+      sql`${table.serialNumber} gin_trgm_ops`
+    ),
   })
 );
 
-export const assetPurchases = pgTable('asset_purchases', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),
-  vendorId: integer('vendor_id').references(() => vendors.id),
-  purchaseDate: date('purchase_date'),
-  basePrice: decimal('base_price', { precision: 12, scale: 2 }),
-  tax: decimal('tax', { precision: 12, scale: 2 }),
-  shippingCost: decimal('shipping_cost', { precision: 12, scale: 2 }),
-  totalCost: decimal('total_cost', { precision: 12, scale: 2 }),
-  currencyCode: varchar('currency_code', { length: 3 }).default('LKR'),
-  exchangeRate: decimal('exchange_rate', { precision: 15, scale: 6 }).default(
-    '1'
-  ),
-  warrantyExpiry: date('warranty_expiry'),
-  invoiceUrl: varchar('invoice_url', { length: 500 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const assetPurchases = pgTable(
+  'asset_purchases',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'cascade' }),
+    vendorId: integer('vendor_id').references(() => vendors.id),
+    purchaseDate: date('purchase_date'),
+    basePrice: decimal('base_price', { precision: 12, scale: 2 }),
+    tax: decimal('tax', { precision: 12, scale: 2 }),
+    shippingCost: decimal('shipping_cost', { precision: 12, scale: 2 }),
+    totalCost: decimal('total_cost', { precision: 12, scale: 2 }),
+    currencyCode: varchar('currency_code', { length: 3 }).default('LKR'),
+    exchangeRate: decimal('exchange_rate', { precision: 15, scale: 6 }).default(
+      '1'
+    ),
+    warrantyExpiry: date('warranty_expiry'),
+    invoiceUrl: varchar('invoice_url', { length: 500 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    assetIdIdx: index('asset_purchases_asset_id_idx').on(table.assetId),
+    warrantyExpiryIdx: index('asset_purchases_warranty_expiry_idx').on(
+      table.warrantyExpiry
+    ),
+    purchaseDateIdx: index('asset_purchases_purchase_date_idx').on(
+      table.purchaseDate
+    ),
+  })
+);
 
-export const assetDocuments = pgTable('asset_documents', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),
-  documentType: varchar('document_type', { length: 100 }),
-  fileUrl: varchar('file_url', { length: 500 }).notNull(),
-  uploadedById: uuid('uploaded_by_id')
-    .notNull()
-    .references(() => users.id),
-  uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
-});
+export const assetDocuments = pgTable(
+  'asset_documents',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'cascade' }),
+    documentType: varchar('document_type', { length: 100 }),
+    fileUrl: varchar('file_url', { length: 500 }).notNull(),
+    // Which disposal produced this document, for 'disposal-certificate' rows.
+    // Without it a document could only be tied to an asset, so an asset
+    // disposed more than once showed every receipt on every disposal row.
+    // Nullable: documents unrelated to a disposal have no disposal.
+    disposalId: integer('disposal_id').references(() => assetDisposals.id, {
+      onDelete: 'set null',
+    }),
+    uploadedById: uuid('uploaded_by_id')
+      .notNull()
+      .references(() => users.id),
+    uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    assetIdIdx: index('asset_documents_asset_id_idx').on(table.assetId),
+    disposalIdIdx: index('asset_documents_disposal_id_idx').on(
+      table.disposalId
+    ),
+  })
+);
 
 // -----------------------------------------------------------------------------
 // 5. OPERATIONS & LIFECYCLE (Assignments, Maintenance, Disposals)
@@ -344,38 +406,54 @@ export const assetAssignments = pgTable(
     assignedToUserIdx: index('asset_assignments_user_idx').on(
       table.assignedToUserId
     ),
+
+    // Partial index covering the open-assignment lookups.
+    activeUserIdx: index('asset_assignments_active_user_idx')
+      .on(table.assignedToUserId, table.expectedReturnDate)
+      .where(sql`${table.returnedDate} IS NULL`),
   })
 );
 
 // Epic 15: New Maintenance Tickets System
-export const maintenanceTickets = pgTable('maintenance_tickets', {
-  id: serial('id').primaryKey(),
-  assetId: uuid('asset_id')
-    .notNull()
-    .references(() => assets.id, { onDelete: 'cascade' }),
+export const maintenanceTickets = pgTable(
+  'maintenance_tickets',
+  {
+    id: serial('id').primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'cascade' }),
 
-  ticketType: maintenanceTicketTypeEnum('ticket_type').notNull(), // VENDOR or INTERNAL
-  vendorName: varchar('vendor_name', { length: 255 }),
-  rmaNumber: varchar('rma_number', { length: 100 }),
+    ticketType: maintenanceTicketTypeEnum('ticket_type').notNull(), // VENDOR or INTERNAL
+    vendorName: varchar('vendor_name', { length: 255 }),
+    rmaNumber: varchar('rma_number', { length: 100 }),
 
-  reportedIssue: text('reported_issue').notNull(),
-  resolutionNotes: text('resolution_notes'),
+    reportedIssue: text('reported_issue').notNull(),
+    resolutionNotes: text('resolution_notes'),
 
-  estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
-  actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
+    estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
+    actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
 
-  estimatedReturnDate: date('estimated_return_date'),
-  actualCompletionDate: timestamp('actual_completion_date'),
+    estimatedReturnDate: date('estimated_return_date'),
+    actualCompletionDate: timestamp('actual_completion_date'),
 
-  status: maintenanceTicketStatusEnum('status').default('ACTIVE').notNull(),
+    status: maintenanceTicketStatusEnum('status').default('ACTIVE').notNull(),
 
-  dispatchedById: uuid('dispatched_by_id')
-    .notNull()
-    .references(() => users.id),
+    dispatchedById: uuid('dispatched_by_id')
+      .notNull()
+      .references(() => users.id),
 
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    assetStatusCreatedIdx: index(
+      'maintenance_tickets_asset_status_created_idx'
+    ).on(table.assetId, table.status, table.createdAt),
+    statusEstimatedReturnIdx: index(
+      'maintenance_tickets_status_estimated_return_idx'
+    ).on(table.status, table.estimatedReturnDate),
+  })
+);
 
 export const assetDisposals = pgTable(
   'asset_disposals',
@@ -432,20 +510,57 @@ export const assetDisposals = pgTable(
 // -----------------------------------------------------------------------------
 // 6. SYSTEM AUDIT LOG
 // -----------------------------------------------------------------------------
-export const systemAuditLogs = pgTable('system_audit_logs', {
+/**
+ * Legacy session store, created by migration 0000 and superseded by
+ * Keycloak-backed sessions. Nothing reads or writes it, but it exists in every
+ * deployed database, so the model describes it rather than pretending it is
+ * gone. Dropping it is a separate, reviewed migration.
+ */
+export const sessions = pgTable('sessions', {
   id: serial('id').primaryKey(),
-  entityType: varchar('entity_type', { length: 100 }).notNull(),
-  entityId: varchar('entity_id', { length: 255 }).notNull(),
-  actionType: varchar('action_type', { length: 100 }).notNull(),
-  performedById: uuid('performed_by_id')
+  userId: uuid('user_id')
     .notNull()
-    .references(() => users.id),
-
-  oldValue: jsonb('old_value'),
-  newValue: jsonb('new_value'),
-  ipAddress: varchar('ip_address', { length: 45 }),
-  performedAt: timestamp('performed_at').defaultNow().notNull(),
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenId: text('token_id').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
 });
+
+export const systemAuditLogs = pgTable(
+  'system_audit_logs',
+  {
+    id: serial('id').primaryKey(),
+    entityType: varchar('entity_type', { length: 100 }).notNull(),
+    entityId: varchar('entity_id', { length: 255 }).notNull(),
+    actionType: varchar('action_type', { length: 100 }).notNull(),
+    performedById: uuid('performed_by_id')
+      .notNull()
+      .references(() => users.id),
+
+    oldValue: jsonb('old_value'),
+    newValue: jsonb('new_value'),
+    ipAddress: varchar('ip_address', { length: 45 }),
+    performedAt: timestamp('performed_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    performedAtIdIdx: index('system_audit_logs_performed_at_id_idx').on(
+      table.performedAt.desc(),
+      table.id.desc()
+    ),
+    entityTimelineIdx: index('system_audit_logs_entity_timeline_idx').on(
+      table.entityType,
+      table.entityId,
+      table.performedAt.desc()
+    ),
+    actorTimelineIdx: index('system_audit_logs_actor_timeline_idx').on(
+      table.performedById,
+      table.performedAt.desc()
+    ),
+  })
+);
 
 // =====================================================================
 // EPIC 23: NOTIFICATION SYSTEM TABLES
@@ -614,44 +729,68 @@ export const notificationLogs = pgTable(
 // -----------------------------------------------------------------------------
 // SOFTWARE ASSET MANAGEMENT (SAM)
 // -----------------------------------------------------------------------------
-export const softwareLicenses = pgTable('software_licenses', {
-  id: uuid('id').defaultRandom().primaryKey(),
+export const softwareLicenses = pgTable(
+  'software_licenses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
 
-  modelId: integer('model_id')
-    .notNull()
-    .references(() => models.id, { onDelete: 'restrict' }),
-  assetId: uuid('asset_id').references(() => assets.id, {
-    onDelete: 'cascade',
-  }),
+    modelId: integer('model_id')
+      .notNull()
+      .references(() => models.id, { onDelete: 'restrict' }),
+    assetId: uuid('asset_id').references(() => assets.id, {
+      onDelete: 'cascade',
+    }),
 
-  licenseKey: varchar('license_key', { length: 255 }),
-  licenseType: licenseTypeEnum('license_type').notNull(),
+    licenseKey: varchar('license_key', { length: 255 }),
+    licenseType: licenseTypeEnum('license_type').notNull(),
 
-  totalSeats: integer('total_seats').notNull().default(1),
+    totalSeats: integer('total_seats').notNull().default(1),
 
-  startDate: date('start_date'),
-  expiryDate: date('expiry_date'),
+    startDate: date('start_date'),
+    expiryDate: date('expiry_date'),
 
-  isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    activeExpiryIdx: index('software_licenses_active_expiry_idx').on(
+      table.isActive,
+      table.expiryDate
+    ),
+    modelIdIdx: index('software_licenses_model_id_idx').on(table.modelId),
+    assetIdIdx: index('software_licenses_asset_id_idx').on(table.assetId),
+  })
+);
 
-export const softwareAllocations = pgTable('software_allocations', {
-  id: serial('id').primaryKey(),
-  licenseId: uuid('license_id')
-    .notNull()
-    .references(() => softwareLicenses.id, { onDelete: 'cascade' }),
-  assignedToUserId: uuid('assigned_to_user_id')
-    .notNull()
-    .references(() => users.id),
+export const softwareAllocations = pgTable(
+  'software_allocations',
+  {
+    id: serial('id').primaryKey(),
+    licenseId: uuid('license_id')
+      .notNull()
+      .references(() => softwareLicenses.id, { onDelete: 'cascade' }),
+    assignedToUserId: uuid('assigned_to_user_id')
+      .notNull()
+      .references(() => users.id),
 
-  allocatedAt: timestamp('allocated_at').defaultNow().notNull(),
-  revokedAt: timestamp('revoked_at'),
-});
+    allocatedAt: timestamp('allocated_at').defaultNow().notNull(),
+    revokedAt: timestamp('revoked_at'),
+  },
+  (table) => ({
+    licenseRevokedIdx: index('software_allocations_license_revoked_idx').on(
+      table.licenseId,
+      table.revokedAt
+    ),
+    userRevokedIdx: index('software_allocations_user_revoked_idx').on(
+      table.assignedToUserId,
+      table.revokedAt
+    ),
+  })
+);
 
 // -----------------------------------------------------------------------------
 // 7. CUSTOM REPORT TEMPLATES
@@ -997,13 +1136,20 @@ export const userRefreshTokens = pgTable('user_refresh_tokens', {
   refreshToken: text('refresh_token').notNull(),
   accessToken: text('access_token'),
   idToken: text('id_token'),
-  accessTokenExpires: timestamp('access_token_expires', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  accessTokenExpires: timestamp('access_token_expires', {
+    withTimezone: true,
+  }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
-export const userRefreshTokensRelations = relations(userRefreshTokens, ({ one }) => ({
-  user: one(users, {
-    fields: [userRefreshTokens.userId],
-    references: [users.id],
-  }),
-}));
+export const userRefreshTokensRelations = relations(
+  userRefreshTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userRefreshTokens.userId],
+      references: [users.id],
+    }),
+  })
+);

@@ -1,20 +1,25 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { KeyRound, X } from "lucide-react"
+import { useState } from 'react';
+import { KeyRound, X } from 'lucide-react';
 
-import { deleteWebhookSubscription } from "@/actions/integrations"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { tiqriToast } from "@/components/shared/sonner"
+import { deleteWebhookSubscription } from '@/actions/integrations';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { tiqriToast } from '@/components/shared/sonner';
 
 interface DeleteWebhookDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  webhookId: string | null
-  name?: string | null
-  url?: string | null
-  onChanged?: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  webhookId: string | null;
+  name?: string | null;
+  url?: string | null;
+  onChanged?: () => void;
 }
 
 export function DeleteWebhookDialog({
@@ -25,32 +30,32 @@ export function DeleteWebhookDialog({
   url,
   onChanged,
 }: DeleteWebhookDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleDelete = async () => {
     if (!webhookId) {
-      return
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
-      const result = await deleteWebhookSubscription(webhookId)
+      const result = await deleteWebhookSubscription(webhookId);
 
       if (!result.success) {
-        tiqriToast.error(result.error)
-        return
+        tiqriToast.error(result.error);
+        return;
       }
 
-      tiqriToast.success("Webhook deleted")
-      onOpenChange(false)
-      onChanged?.()
+      tiqriToast.success('Webhook deleted');
+      onOpenChange(false);
+      onChanged?.();
     } catch {
-      tiqriToast.error("Failed to delete webhook")
+      tiqriToast.error('Failed to delete webhook');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -77,16 +82,25 @@ export function DeleteWebhookDialog({
           </div>
 
           <div className="mb-6 rounded-lg border border-border bg-muted px-4 py-3 shadow-sm">
-            <p className="truncate text-sm font-medium text-foreground">{name ?? "This webhook"}</p>
-            {url ? <p className="truncate text-xs text-muted-foreground">{url}</p> : null}
+            <p className="truncate text-sm font-medium text-foreground">
+              {name ?? 'This webhook'}
+            </p>
+            {url ? (
+              <p className="truncate text-xs text-muted-foreground">{url}</p>
+            ) : null}
           </div>
 
           <DialogDescription className="mb-8 text-base font-regular leading-7 text-foreground">
-            This will permanently delete the {name ?? "selected"} webhook and stop all event delivery to {url ?? "the configured URL"}.
+            This will permanently delete the {name ?? 'selected'} webhook and
+            stop all event delivery to {url ?? 'the configured URL'}.
           </DialogDescription>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            <Button
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button
@@ -94,11 +108,11 @@ export function DeleteWebhookDialog({
               disabled={isSubmitting}
               variant="destructive"
             >
-              {isSubmitting ? "Deleting..." : "Delete Webhook"}
+              {isSubmitting ? 'Deleting...' : 'Delete Webhook'}
             </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

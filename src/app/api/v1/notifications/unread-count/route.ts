@@ -1,19 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { unstable_rethrow } from 'next/navigation';
-import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
+import { allowAnyRole, withAuth } from '@/lib/api/with-auth';
 import { getUnreadCount } from '@/lib/notifications/services';
 
-export async function GET(request?: NextRequest) {
+// Scoped to the caller's own id.
+export const GET = withAuth(allowAnyRole, async (_request, { user }) => {
   try {
-    const user = await getAuthenticatedUserFromRequest(request);
-
-    if (!user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const unreadCount = await getUnreadCount(user.id);
 
     return NextResponse.json(
@@ -31,4 +23,4 @@ export async function GET(request?: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

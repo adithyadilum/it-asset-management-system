@@ -11,15 +11,26 @@ describe('KpiMetricsRow', () => {
   });
 
   it('renders metrics row', () => {
-    const mockMetrics = new Proxy({}, {
-      get: (target, prop) => {
-        if (prop === 'totalActiveAssetsChange' || prop === 'totalAssetValueTrend') return 5;
-        if (prop === 'totalAssetValue') return 50000;
-        return 1200;
+    const mockMetrics = new Proxy(
+      {},
+      {
+        get: (target, prop) => {
+          if (
+            prop === 'totalActiveAssetsChange' ||
+            prop === 'totalAssetValueTrend'
+          )
+            return 5;
+          if (prop === 'totalAssetValue') return 50000;
+          return 1200;
+        },
       }
-    });
-    
-    render(<CurrencyProvider initialCurrency="USD"><KpiMetricsRow metrics={mockMetrics as any} /></CurrencyProvider>);
+    );
+
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <KpiMetricsRow metrics={mockMetrics as any} />
+      </CurrencyProvider>
+    );
     expect(screen.getByText('Total Assets')).toBeInTheDocument();
     expect(screen.getByText('1,200')).toBeInTheDocument();
   });

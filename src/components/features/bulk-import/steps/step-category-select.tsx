@@ -11,8 +11,14 @@ interface StepCategorySelectProps {
   dispatch: React.Dispatch<WizardAction>;
 }
 
-export function StepCategorySelect({ categories, state, dispatch }: StepCategorySelectProps) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(state.categoryId);
+export function StepCategorySelect({
+  categories,
+  state,
+  dispatch,
+}: StepCategorySelectProps) {
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+    state.categoryId
+  );
 
   const handleNext = () => {
     if (!selectedCategoryId) return;
@@ -31,7 +37,10 @@ export function StepCategorySelect({ categories, state, dispatch }: StepCategory
     <div className="flex flex-col h-full overflow-visible">
       <div className="flex flex-col flex-1 gap-6 px-8 py-6 relative overflow-visible">
         <div className="flex flex-col gap-2">
-          <label htmlFor="category-select" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          <label
+            htmlFor="category-select"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
             Asset Category
           </label>
           <SearchableDropdown
@@ -39,7 +48,7 @@ export function StepCategorySelect({ categories, state, dispatch }: StepCategory
               value: String(c.id),
               label: `${c.name} (${c.pillar})`,
             }))}
-            value={selectedCategoryId ? String(selectedCategoryId) : ""}
+            value={selectedCategoryId ? String(selectedCategoryId) : ''}
             onSelect={(val) => setSelectedCategoryId(Number(val))}
             placeholder="Select a category..."
             emptyMessage="No category found."
@@ -49,7 +58,9 @@ export function StepCategorySelect({ categories, state, dispatch }: StepCategory
         <div className="flex items-start justify-center gap-3 rounded-lg bg-secondary/50 p-4 border border-border">
           <InfoIcon className="size-5 text-muted-foreground mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
-            The import template and validation rules are specific to the selected category. You will be able to download the correct template on the next step.
+            The import template and validation rules are specific to the
+            selected category. You will be able to download the correct template
+            on the next step.
           </p>
         </div>
       </div>

@@ -8,13 +8,15 @@ import {
   countAssetsForExternalApi,
   getAssetsForExternalApi,
 } from '@/lib/data/external-api-repo';
-import { assetRegistrationSchema, PILLAR_PREFIX_MAP } from '@/lib/validations/asset-registration';
+import {
+  assetRegistrationSchema,
+  PILLAR_PREFIX_MAP,
+} from '@/lib/validations/asset-registration';
 import { logAuditAction } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
-
-
+import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 
 function toDateString(date: Date) {
   return date.toISOString().split('T')[0];
@@ -43,12 +45,25 @@ export const GET = withApiKey('read:assets', async (request: NextRequest) => {
 
     const limitResult = parseBoundedInt(searchParams.get('limit'), 50, 1, 200);
     if (!limitResult.ok) {
-      return apiError(400, 'INVALID_PARAM', 'limit must be an integer between 1 and 200');
+      return apiError(
+        400,
+        'INVALID_PARAM',
+        'limit must be an integer between 1 and 200'
+      );
     }
 
-    const offsetResult = parseBoundedInt(searchParams.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER);
+    const offsetResult = parseBoundedInt(
+      searchParams.get('offset'),
+      0,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
     if (!offsetResult.ok) {
-      return apiError(400, 'INVALID_PARAM', 'offset must be a non-negative integer');
+      return apiError(
+        400,
+        'INVALID_PARAM',
+        'offset must be a non-negative integer'
+      );
     }
 
     const status = searchParams.get('status')?.trim() || undefined;
@@ -82,197 +97,212 @@ export const GET = withApiKey('read:assets', async (request: NextRequest) => {
 });
 
 // POST /api/v1/external/assets - scope: write:assets
-export const POST = withApiKey('write:assets', async (request: NextRequest, { apiKey }) => {
-  try {
-    const bodyText = await request.text();
-    let bodyJson;
+export const POST = withApiKey(
+  'write:assets',
+  async (request: NextRequest, { apiKey }) => {
     try {
-      bodyJson = JSON.parse(bodyText);
-    } catch {
-      return apiError(400, 'INVALID_JSON', 'Invalid JSON body');
-    }
-
-    // 1. Validate inputs with Zod
-    const parsed = assetRegistrationSchema.safeParse(bodyJson);
-    if (!parsed.success) {
-      return apiError(400, 'VALIDATION_FAILED', 'Input validation failed', parsed.error.format());
-    }
-
-    const input = parsed.data;
-    const instanceAttributes = {
-      ...(input.instanceAttributes ?? {}),
-      ...(input.pillar === 'Software' &&
-      input.licenseType === 'Subscription' &&
-      input.billingCycle
-        ? { billing_cycle: input.billingCycle }
-        : {}),
-    };
-
-    // 2. Fetch the selected model to verify existence and get prefix
-    const modelWithCategory = await db.query.models.findFirst({
-      where: eq(models.id, input.modelId),
-      with: { category: true },
-    });
-
-    if (!modelWithCategory) {
-      return apiError(400, 'MODEL_NOT_FOUND', 'The selected modelId does not exist.');
-    }
-
-    const categoryPrefix = PILLAR_PREFIX_MAP[input.pillar];
-    const resolvedCategoryPrefix =
-      modelWithCategory.category.prefix.trim().toUpperCase() || categoryPrefix;
-
-    // 3. Resolve currency conversion rate
-    const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
-    const conversionRate = convertCurrencyAmount(
-      1,
-      input.currencyCode || 'LKR',
-      'LKR',
-      apiRates
-    ).toFixed(6);
-
-    const usefulLifeMonths = 60; // Default useful life of 5 years
-
-    // 4. Database Transaction
-    const insertedAsset = await db.transaction(async (tx) => {
-      let insertedAsset = null;
-      let lastInsertError = null;
-
-      // Retry sequence-based tag generation up to 2 times for race conditions
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          const countResult = await tx
-            .select({ value: sql<number>`cast(count(*) as integer)` })
-            .from(assets)
-            .where(
-              sql`${assets.assetTag} LIKE ${resolvedCategoryPrefix + '-%'}`
-            );
-
-          const nextSequence = (countResult[0]?.value ?? 0) + 1;
-          const assetTag = `${resolvedCategoryPrefix}-${String(nextSequence).padStart(3, '0')}`;
-
-          const [newAsset] = await tx
-            .insert(assets)
-            .values({
-              assetTag,
-              name: input.name,
-              modelId: input.modelId,
-              serialNumber: input.serialNumber,
-              locationId: input.locationId,
-              ownerId: input.ownerId,
-              status: 'Available',
-              condition: input.condition,
-              usefulLifeMonths,
-              instanceAttributes,
-            })
-            .returning({ id: assets.id, assetTag: assets.assetTag });
-
-          insertedAsset = newAsset;
-          break;
-        } catch (error) {
-          lastInsertError = error;
-          if (!isAssetTagUniqueViolation(error) || attempt === 2) {
-            throw error;
-          }
-        }
+      const bodyText = await request.text();
+      let bodyJson;
+      try {
+        bodyJson = JSON.parse(bodyText);
+      } catch {
+        return apiError(400, 'INVALID_JSON', 'Invalid JSON body');
       }
 
-      if (!insertedAsset) {
-        throw lastInsertError ?? new Error('Unable to create asset.');
+      // 1. Validate inputs with Zod
+      const parsed = assetRegistrationSchema.safeParse(bodyJson);
+      if (!parsed.success) {
+        return apiError(
+          400,
+          'VALIDATION_FAILED',
+          'Input validation failed',
+          parsed.error.format()
+        );
       }
 
-      const shippingCost = input.shippingCost ?? 0;
-      const tax = input.tax ?? 0;
-      const basePrice = input.basePrice;
-      const totalCost = basePrice + tax + shippingCost;
+      const input = parsed.data;
+      const instanceAttributes = {
+        ...(input.instanceAttributes ?? {}),
+        ...(input.pillar === 'Software' &&
+        input.licenseType === 'Subscription' &&
+        input.billingCycle
+          ? { billing_cycle: input.billingCycle }
+          : {}),
+      };
 
-      const purchaseDate = input.purchaseDate;
-      const warrantyExpiry = input.warrantyMonths
-        ? new Date(
-            purchaseDate.getFullYear(),
-            purchaseDate.getMonth() + input.warrantyMonths,
-            purchaseDate.getDate()
-          )
-        : null;
-
-      // Insert Purchase record
-      await tx.insert(assetPurchases).values({
-        assetId: insertedAsset.id,
-        vendorId: input.vendorId,
-        purchaseDate: toDateString(purchaseDate),
-        basePrice: basePrice.toFixed(2),
-        tax: tax.toFixed(2),
-        shippingCost: shippingCost.toFixed(2),
-        totalCost: totalCost.toFixed(2),
-        currencyCode: input.currencyCode,
-        exchangeRate: conversionRate,
-        warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
+      // 2. Fetch the selected model to verify existence and get prefix
+      const modelWithCategory = await db.query.models.findFirst({
+        where: eq(models.id, input.modelId),
+        with: { category: true },
       });
 
-      // If Software category, insert software licenses
-      if (input.pillar === 'Software') {
-        await tx.insert(softwareLicenses).values({
-          modelId: input.modelId,
-          assetId: insertedAsset.id,
-          licenseKey: input.serialNumber || null,
-          licenseType: input.licenseType || 'Subscription',
-          totalSeats: input.totalSeats ?? 1,
-          startDate: input.licenseStartDate
-            ? toDateString(input.licenseStartDate)
-            : null,
-          expiryDate: input.licenseExpiryDate
-            ? toDateString(input.licenseExpiryDate)
-            : null,
-        });
+      if (!modelWithCategory) {
+        return apiError(
+          400,
+          'MODEL_NOT_FOUND',
+          'The selected modelId does not exist.'
+        );
       }
 
-      return insertedAsset;
-    });
+      const categoryPrefix = PILLAR_PREFIX_MAP[input.pillar];
+      const resolvedCategoryPrefix =
+        modelWithCategory.category.prefix.trim().toUpperCase() ||
+        categoryPrefix;
 
-    // 5. Audit Logging and Webhook Dispatch
-    await logAuditAction({
-      entityType: 'Asset',
-      entityId: insertedAsset.id,
-      actionType: 'CREATE',
-      performedById: apiKey.createdById, // Audit logs track user who created the API key
-      newData: {
-        assetTag: insertedAsset.assetTag,
-        modelId: input.modelId,
-        ...(input.pillar === 'Software' && input.licenseType
-          ? {
-              licenseType: input.licenseType,
-              billingCycle:
-                input.licenseType === 'Subscription'
-                  ? input.billingCycle
-                  : undefined,
-              totalSeats: input.totalSeats ?? 1,
+      // 3. Resolve currency conversion rate
+      const apiRates = (await fetchLiveExchangeRates()) ?? undefined;
+      const conversionRate = convertCurrencyAmount(
+        1,
+        input.currencyCode || 'LKR',
+        'LKR',
+        apiRates
+      ).toFixed(6);
+
+      // Same default the registration form applies, from the one constant, so
+      // an asset created through the API depreciates like any other.
+      const usefulLifeMonths = DEFAULT_USEFUL_LIFE_MONTHS;
+
+      // 4. Database Transaction
+      const insertedAsset = await db.transaction(async (tx) => {
+        let insertedAsset = null;
+        let lastInsertError = null;
+
+        // Retry sequence-based tag generation up to 2 times for race conditions
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const countResult = await tx
+              .select({ value: sql<number>`cast(count(*) as integer)` })
+              .from(assets)
+              .where(
+                sql`${assets.assetTag} LIKE ${resolvedCategoryPrefix + '-%'}`
+              );
+
+            const nextSequence = (countResult[0]?.value ?? 0) + 1;
+            const assetTag = `${resolvedCategoryPrefix}-${String(nextSequence).padStart(3, '0')}`;
+
+            const [newAsset] = await tx
+              .insert(assets)
+              .values({
+                assetTag,
+                name: input.name,
+                modelId: input.modelId,
+                serialNumber: input.serialNumber,
+                locationId: input.locationId,
+                ownerId: input.ownerId,
+                status: 'Available',
+                condition: input.condition,
+                usefulLifeMonths,
+                instanceAttributes,
+              })
+              .returning({ id: assets.id, assetTag: assets.assetTag });
+
+            insertedAsset = newAsset;
+            break;
+          } catch (error) {
+            lastInsertError = error;
+            if (!isAssetTagUniqueViolation(error) || attempt === 2) {
+              throw error;
             }
-          : {}),
-        source: 'API',
-      },
-    });
+          }
+        }
 
-    void dispatchWebhookEvent('asset.created', {
-      assetTag: insertedAsset.assetTag,
-      assetId: insertedAsset.id,
-      modelId: input.modelId,
-      pillar: input.pillar,
-      source: 'API',
-    });
+        if (!insertedAsset) {
+          throw lastInsertError ?? new Error('Unable to create asset.');
+        }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: `Asset ${insertedAsset.assetTag} was registered successfully.`,
-        data: {
-          id: insertedAsset.id,
+        const shippingCost = input.shippingCost ?? 0;
+        const tax = input.tax ?? 0;
+        const basePrice = input.basePrice;
+        const totalCost = basePrice + tax + shippingCost;
+
+        const purchaseDate = input.purchaseDate;
+        const warrantyExpiry = input.warrantyMonths
+          ? new Date(
+              purchaseDate.getFullYear(),
+              purchaseDate.getMonth() + input.warrantyMonths,
+              purchaseDate.getDate()
+            )
+          : null;
+
+        // Insert Purchase record
+        await tx.insert(assetPurchases).values({
+          assetId: insertedAsset.id,
+          vendorId: input.vendorId,
+          purchaseDate: toDateString(purchaseDate),
+          basePrice: basePrice.toFixed(2),
+          tax: tax.toFixed(2),
+          shippingCost: shippingCost.toFixed(2),
+          totalCost: totalCost.toFixed(2),
+          currencyCode: input.currencyCode,
+          exchangeRate: conversionRate,
+          warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,
+        });
+
+        // If Software category, insert software licenses
+        if (input.pillar === 'Software') {
+          await tx.insert(softwareLicenses).values({
+            modelId: input.modelId,
+            assetId: insertedAsset.id,
+            licenseKey: input.serialNumber || null,
+            licenseType: input.licenseType || 'Subscription',
+            totalSeats: input.totalSeats ?? 1,
+            startDate: input.licenseStartDate
+              ? toDateString(input.licenseStartDate)
+              : null,
+            expiryDate: input.licenseExpiryDate
+              ? toDateString(input.licenseExpiryDate)
+              : null,
+          });
+        }
+
+        return insertedAsset;
+      });
+
+      // 5. Audit Logging and Webhook Dispatch
+      await logAuditAction({
+        entityType: 'Asset',
+        entityId: insertedAsset.id,
+        actionType: 'CREATE',
+        performedById: apiKey.createdById, // Audit logs track user who created the API key
+        newData: {
           assetTag: insertedAsset.assetTag,
+          modelId: input.modelId,
+          ...(input.pillar === 'Software' && input.licenseType
+            ? {
+                licenseType: input.licenseType,
+                billingCycle:
+                  input.licenseType === 'Subscription'
+                    ? input.billingCycle
+                    : undefined,
+                totalSeats: input.totalSeats ?? 1,
+              }
+            : {}),
+          source: 'API',
         },
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error('POST /api/v1/external/assets error:', error);
-    return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
+      });
+
+      void dispatchWebhookEvent('asset.created', {
+        assetTag: insertedAsset.assetTag,
+        assetId: insertedAsset.id,
+        modelId: input.modelId,
+        pillar: input.pillar,
+        source: 'API',
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: `Asset ${insertedAsset.assetTag} was registered successfully.`,
+          data: {
+            id: insertedAsset.id,
+            assetTag: insertedAsset.assetTag,
+          },
+        },
+        { status: 201 }
+      );
+    } catch (error) {
+      console.error('POST /api/v1/external/assets error:', error);
+      return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
+    }
   }
-});
+);

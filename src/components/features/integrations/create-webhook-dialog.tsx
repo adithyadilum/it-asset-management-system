@@ -1,96 +1,105 @@
-"use client"
+'use client';
 
-import { useState, useTransition } from "react"
-import { Webhook } from "lucide-react"
+import { useState, useTransition } from 'react';
+import { Webhook } from 'lucide-react';
 
-import { createWebhookSubscription } from "@/actions/integrations"
-import { DialogClose } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import { tiqriToast } from "@/components/shared/sonner"
-import type { WebhookEventType } from "@/types/integrations"
+import { createWebhookSubscription } from '@/actions/integrations';
+import { DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { tiqriToast } from '@/components/shared/sonner';
+import type { WebhookEventType } from '@/types/integrations';
 
-import { SecretRevealDialog } from "./secret-reveal-dialog"
-import { WebhookEventSelector } from "./webhook-event-selector"
+import { SecretRevealDialog } from './secret-reveal-dialog';
+import { WebhookEventSelector } from './webhook-event-selector';
 
 interface CreateWebhookDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onCreated?: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated?: () => void;
 }
 
-export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWebhookDialogProps) {
-  const [name, setName] = useState("")
-  const [url, setUrl] = useState("")
-  const [selectedEvents, setSelectedEvents] = useState<WebhookEventType[]>([])
-  const [isPending, startTransition] = useTransition()
-  const [revealOpen, setRevealOpen] = useState(false)
-  const [secret, setSecret] = useState<string | null>(null)
+export function CreateWebhookDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: CreateWebhookDialogProps) {
+  const [name, setName] = useState('');
+  const [url, setUrl] = useState('');
+  const [selectedEvents, setSelectedEvents] = useState<WebhookEventType[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const [revealOpen, setRevealOpen] = useState(false);
+  const [secret, setSecret] = useState<string | null>(null);
 
   const resetInputs = () => {
-    setName("")
-    setUrl("")
-    setSelectedEvents([])
-  }
+    setName('');
+    setUrl('');
+    setSelectedEvents([]);
+  };
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      resetInputs()
+      resetInputs();
     }
 
-    onOpenChange(nextOpen)
-  }
+    onOpenChange(nextOpen);
+  };
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      tiqriToast.warning("Webhook name is required")
-      return
+      tiqriToast.warning('Webhook name is required');
+      return;
     }
 
     if (!url.trim()) {
-      tiqriToast.warning("Webhook URL is required")
-      return
+      tiqriToast.warning('Webhook URL is required');
+      return;
     }
 
-    if (!url.trim().startsWith("https://")) {
-      tiqriToast.warning("Webhook URL must start with https://")
-      return
+    if (!url.trim().startsWith('https://')) {
+      tiqriToast.warning('Webhook URL must start with https://');
+      return;
     }
 
     if (selectedEvents.length === 0) {
-      tiqriToast.warning("Select at least one event")
-      return
+      tiqriToast.warning('Select at least one event');
+      return;
     }
 
     startTransition(async () => {
-      const form = new FormData()
-      form.append("name", name.trim())
-      form.append("url", url.trim())
-      form.append("events", JSON.stringify(selectedEvents))
+      const form = new FormData();
+      form.append('name', name.trim());
+      form.append('url', url.trim());
+      form.append('events', JSON.stringify(selectedEvents));
 
-      const result = await createWebhookSubscription(form)
+      const result = await createWebhookSubscription(form);
 
       if (!result.success) {
-        tiqriToast.error(result.error)
-        return
+        tiqriToast.error(result.error);
+        return;
       }
 
-      tiqriToast.success("Webhook subscription created")
-      setSecret(result.secret)
-      setRevealOpen(true)
-      resetInputs()
-      onOpenChange(false)
-      onCreated?.()
-    })
-  }
+      tiqriToast.success('Webhook subscription created');
+      setSecret(result.secret);
+      setRevealOpen(true);
+      resetInputs();
+      onOpenChange(false);
+      onCreated?.();
+    });
+  };
 
   const handleRevealClose = () => {
-    setRevealOpen(false)
-    setSecret(null)
-  }
+    setRevealOpen(false);
+    setSecret(null);
+  };
 
   return (
     <>
@@ -120,7 +129,10 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
 
           <div className="grid gap-4 px-6 pb-6">
             <div className="grid gap-2">
-              <Label htmlFor="webhook-name" className="text-sm font-medium text-foreground">
+              <Label
+                htmlFor="webhook-name"
+                className="text-sm font-medium text-foreground"
+              >
                 Description <span className="text-rose-500">*</span>
               </Label>
               <Input
@@ -133,7 +145,10 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="webhook-url" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              <Label
+                htmlFor="webhook-url"
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+              >
                 Endpoint URL <span className="text-rose-500">*</span>
               </Label>
               <Input
@@ -147,7 +162,11 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
             </div>
 
             <div className="grid gap-3 pt-1">
-            <div className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>Events</div>
+              <div
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+              >
+                Events
+              </div>
               <WebhookEventSelector
                 selectedEvents={selectedEvents}
                 onSelectedEventsChange={setSelectedEvents}
@@ -169,7 +188,7 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
                 disabled={isPending}
                 className={`h-9 rounded-md bg-primary px-4 text-primary-foreground hover:bg-primary/90 ${TYPOGRAPHY_CLASSNAMES.textSmSemiBold}`}
               >
-                {isPending ? "Saving..." : "Save Webhook"}
+                {isPending ? 'Saving...' : 'Save Webhook'}
               </Button>
             </div>
           </div>
@@ -187,5 +206,5 @@ export function CreateWebhookDialog({ open, onOpenChange, onCreated }: CreateWeb
         copyLabel="Copy"
       />
     </>
-  )
+  );
 }

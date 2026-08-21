@@ -6,7 +6,9 @@ vi.mock('@/components/ui/select', () => ({
   Select: ({ value, onValueChange, children }: any) => (
     <div data-testid="select-mock" data-value={value}>
       {children}
-      <button onClick={() => onValueChange('Assets')}>Select Source Assets</button>
+      <button onClick={() => onValueChange('Assets')}>
+        Select Source Assets
+      </button>
     </div>
   ),
   SelectTrigger: ({ children }: any) => <div>{children}</div>,
@@ -19,7 +21,9 @@ vi.mock('./report-template-card', () => ({
   ReportTemplateCard: ({ template, onPreviewClick }: any) => (
     <div data-testid="template-card">
       {template.name}
-      <button onClick={() => onPreviewClick(template.id)}>Preview Template</button>
+      <button onClick={() => onPreviewClick(template.id)}>
+        Preview Template
+      </button>
     </div>
   ),
 }));
@@ -32,14 +36,21 @@ describe('StandardReportsConfigPanel', () => {
   });
 
   const mockFilterOptions: any = {
-    categories: [], locations: [], statuses: [], assignmentStates: [],
-    returnConditions: [], maintenanceStatuses: [], disposalStatuses: [],
-    licenseTypes: [], auditActionTypes: [], vendors: [], masterDataTypes: [], assetTypes: []
+    categories: [],
+    locations: [],
+    statuses: [],
+    assignmentStates: [],
+    returnConditions: [],
+    maintenanceStatuses: [],
+    disposalStatuses: [],
+    licenseTypes: [],
+    auditActionTypes: [],
+    vendors: [],
+    masterDataTypes: [],
+    assetTypes: [],
   };
 
-  const mockTemplates = [
-    { id: 1, name: 'Template 1', dataSource: 'Assets' }
-  ];
+  const mockTemplates = [{ id: 1, name: 'Template 1', dataSource: 'Assets' }];
 
   it('renders templates and configuration options', () => {
     const mockOnFilterChange = vi.fn();
@@ -47,7 +58,14 @@ describe('StandardReportsConfigPanel', () => {
 
     render(
       <StandardReportsConfigPanel
-        filterState={{ source: 'Assets', assetType: '', category: '', location: '', status: '', masterDataType: '' }}
+        filterState={{
+          source: 'Assets',
+          assetType: '',
+          category: '',
+          location: '',
+          status: '',
+          masterDataType: '',
+        }}
         filterOptions={mockFilterOptions}
         templates={mockTemplates as any}
         onFilterChange={mockOnFilterChange}

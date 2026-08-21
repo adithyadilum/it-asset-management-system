@@ -2,8 +2,6 @@
  * @vitest-environment node
  */
 
- 
-
 process.env.ENCRYPTION_SECRET = 'IUr+UelUGH0oEhuAoI63Uvbcd+7Ra5o7Uo8PU2PaUHE=';
 
 import { NextRequest } from 'next/server';
@@ -195,7 +193,7 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
       );
     });
 
-    it('implements exponential backoff and logs failure to Dead Letter logs after 5 unsuccessful attempts', async () => {
+    it('returns 500 after one failed attempt so QStash can retry', async () => {
       mockVerify.mockResolvedValueOnce(true);
 
       mockQueriesQueue = [
@@ -214,19 +212,9 @@ describe('External Dispatch Route Handlers (Email & Teams)', () => {
         'valid-sig'
       );
 
-      // Dispatch the handler inside a promise so we can advance time in the background
-      const dispatchPromise = emailHandler(req);
-
-      // Advance timers to trigger successive backoff intervals: 1s, 2s, 4s, 8s
-      for (let i = 0; i < 5; i++) {
-        await vi.advanceTimersByTimeAsync(16000);
-      }
-
-      const res = await dispatchPromise;
-      expect(res.status).toBe(200);
-
-      // 5 failed send attempts
-      expect(mockSend).toHaveBeenCalledTimes(5);
+      const res = await emailHandler(req);
+      expect(res.status).toBe(500);
+      expect(mockSend).toHaveBeenCalledTimes(1);
 
       // Assert that DB insert was called with the notificationLogs table
       expect(db.insert).toHaveBeenCalledWith(notificationLogs);

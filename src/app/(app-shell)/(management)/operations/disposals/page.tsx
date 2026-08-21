@@ -1,9 +1,19 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { cookies } from 'next/headers';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { db } from '@/db';
-import { assetDisposals, assets, users, models, categories, assetDocuments } from '@/db/schema';
+import {
+  assetDisposals,
+  assets,
+  users,
+  models,
+  categories,
+  assetDocuments,
+} from '@/db/schema';
 import { eq, desc, inArray, and, sql, or, ilike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { disposalDocumentJoin } from '@/lib/data/disposal-documents';
 import { DisposalsLayout } from '@/components/features/disposals/disposals-layout';
 
 export const metadata = {
@@ -14,13 +24,14 @@ interface DisposalsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function DisposalsPage({ searchParams }: DisposalsPageProps) {
+async function DisposalsPageContent({ searchParams }: DisposalsPageProps) {
   const user = await requirePageAuth(
-    (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor',
+    (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor'
   );
 
   const cookieStore = await cookies();
-  const preferredCurrency = cookieStore.get('preferred_currency')?.value || 'LKR';
+  const preferredCurrency =
+    cookieStore.get('preferred_currency')?.value || 'LKR';
 
   // Aliases for users table since we join it twice for requester and approver
   const requester = alias(users, 'requester');
@@ -28,15 +39,24 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
 
   // Parse search params for server-side pagination and search
   const resolvedSearchParams = await searchParams;
-  const searchQuery = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search : '';
-  const page = typeof resolvedSearchParams?.page === 'string' ? parseInt(resolvedSearchParams.page, 10) : 1;
-  const pageSize = typeof resolvedSearchParams?.pageSize === 'string' ? parseInt(resolvedSearchParams.pageSize, 10) : 10;
+  const searchQuery =
+    typeof resolvedSearchParams?.search === 'string'
+      ? resolvedSearchParams.search
+      : '';
+  const page =
+    typeof resolvedSearchParams?.page === 'string'
+      ? parseInt(resolvedSearchParams.page, 10)
+      : 1;
+  const pageSize =
+    typeof resolvedSearchParams?.pageSize === 'string'
+      ? parseInt(resolvedSearchParams.pageSize, 10)
+      : 10;
 
   const validPage = isNaN(page) || page < 1 ? 1 : page;
   const validPageSize = isNaN(pageSize) || pageSize < 1 ? 10 : pageSize;
 
   // 1. Fetch pending requests
-  const pendingData = await db
+  const pendingDataPromise = db
     .select({
       id: assetDisposals.id,
       assetId: assets.id,
@@ -55,12 +75,12 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
   // Base condition for disposal history
   const searchCondition = searchQuery
     ? or(
-      ilike(assets.assetTag, `%${searchQuery}%`),
-      ilike(categories.name, `%${searchQuery}%`),
-      ilike(assetDisposals.reason, `%${searchQuery}%`),
-      ilike(requester.name, `%${searchQuery}%`),
-      ilike(approver.name, `%${searchQuery}%`)
-    )
+        ilike(assets.assetTag, `%${searchQuery}%`),
+        ilike(categories.name, `%${searchQuery}%`),
+        ilike(assetDisposals.reason, `%${searchQuery}%`),
+        ilike(requester.name, `%${searchQuery}%`),
+        ilike(approver.name, `%${searchQuery}%`)
+      )
     : undefined;
 
   const historyBaseCondition = and(
@@ -68,23 +88,9 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
     searchCondition
   );
 
-  // 2. Fetch disposal history count for pagination
-  const [countResult] = await db
-    .select({ count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)` })
-    .from(assetDisposals)
-    .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
-    .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
-    .where(historyBaseCondition);
-
-  const totalRecords = countResult?.count || 0;
-  const pageCount = Math.max(Math.ceil(totalRecords / validPageSize), 1);
-
-  // 3. Fetch disposal history paginated data
-  const historyDataRaw = await db
+  const historyDataPromise = db
     .select({
+      totalCount: sql<number>`count(*) over()::int`,
       id: assetDisposals.id,
       assetId: assets.id,
       assetTag: assets.assetTag,
@@ -95,7 +101,9 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
       disposalDate: assetDisposals.resolvedAt,
       status: assetDisposals.status,
       // Group document URLs into an array to handle multiple uploads per disposal
-      documentUrls: sql<string[]>`COALESCE(array_agg(DISTINCT ${assetDocuments.fileUrl}) FILTER (WHERE ${assetDocuments.fileUrl} IS NOT NULL), '{}')`,
+      documentUrls: sql<
+        string[]
+      >`COALESCE(array_agg(DISTINCT ${assetDocuments.fileUrl}) FILTER (WHERE ${assetDocuments.fileUrl} IS NOT NULL), '{}')`,
     })
     .from(assetDisposals)
     .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
@@ -103,13 +111,7 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
     .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
-    .leftJoin(
-      assetDocuments,
-      and(
-        eq(assetDocuments.assetId, assets.id),
-        eq(assetDocuments.documentType, 'disposal-certificate')
-      )
-    )
+    .leftJoin(assetDocuments, disposalDocumentJoin)
     .where(historyBaseCondition)
     .groupBy(
       assetDisposals.id,
@@ -126,10 +128,40 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
     .limit(validPageSize)
     .offset((validPage - 1) * validPageSize);
 
+  const [pendingData, historyDataRaw] = await Promise.all([
+    pendingDataPromise,
+    historyDataPromise,
+  ]);
+
+  let totalRecords = historyDataRaw[0]?.totalCount ?? 0;
+  if (historyDataRaw.length === 0 && validPage > 1) {
+    const [countResult] = await db
+      .select({
+        count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)`,
+      })
+      .from(assetDisposals)
+      .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
+      .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
+      .where(historyBaseCondition);
+    totalRecords = countResult?.count ?? 0;
+  }
+  const pageCount = Math.max(Math.ceil(totalRecords / validPageSize), 1);
+
   // Format the history data to match the expected props
-  const historyData = historyDataRaw.map(row => ({
-    ...row,
+  const historyData = historyDataRaw.map((row) => ({
+    id: row.id,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    category: row.category,
+    reason: row.reason,
     flaggedBy: row.flaggedBy || 'Unknown',
+    disposedBy: row.disposedBy,
+    disposalDate: row.disposalDate,
+    status: row.status,
+    documentUrls: row.documentUrls,
   }));
 
   return (
@@ -143,5 +175,22 @@ export default async function DisposalsPage({ searchParams }: DisposalsPageProps
       userRole={user.role}
       preferredCurrency={preferredCurrency}
     />
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function DisposalsPage(props: DisposalsPageProps) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DisposalsPageContent {...props} />
+    </Suspense>
   );
 }

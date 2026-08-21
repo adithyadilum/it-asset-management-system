@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { AlertCircle } from 'lucide-react'; 
+import { AlertCircle } from 'lucide-react';
 
 import { rejectDisposalRequest } from '@/actions/disposals/reject';
 import { Button } from '@/components/ui/button';
@@ -48,9 +48,9 @@ export function RejectDisposalDialog({
   const singleAsset = selectedAssets[0];
 
   // 'In Repair' requires a maintenance description to be valid.
-  const isValid = 
-    selectedAssets.length > 0 && 
-    reason.trim().length >= 10 && 
+  const isValid =
+    selectedAssets.length > 0 &&
+    reason.trim().length >= 10 &&
     status.length > 0 &&
     (status !== 'In Repair' || maintenanceIssue.trim().length > 0);
 
@@ -66,21 +66,30 @@ export function RejectDisposalDialog({
     startTransition(async () => {
       try {
         const formData = new FormData();
-        formData.set('disposalIds', JSON.stringify(selectedAssets.map(a => a.id)));
-        formData.set('assetIds', JSON.stringify(selectedAssets.map(a => a.assetId)));
+        formData.set(
+          'disposalIds',
+          JSON.stringify(selectedAssets.map((a) => a.id))
+        );
+        formData.set(
+          'assetIds',
+          JSON.stringify(selectedAssets.map((a) => a.assetId))
+        );
         formData.set('rejectionReason', reason);
         formData.set('fallbackStatus', status);
-        
+
         if (status === 'In Repair' && maintenanceIssue.trim()) {
           formData.set('maintenanceIssue', maintenanceIssue.trim());
         }
 
-        const result = await rejectDisposalRequest({ success: false, message: '' }, formData);
+        const result = await rejectDisposalRequest(
+          { success: false, message: '' },
+          formData
+        );
 
         if (result.success) {
           tiqriToast.success(
-            isBulk 
-              ? `Successfully rejected ${selectedAssets.length} disposal requests.` 
+            isBulk
+              ? `Successfully rejected ${selectedAssets.length} disposal requests.`
               : 'Disposal request successfully rejected.'
           );
           handleReset();
@@ -90,7 +99,9 @@ export function RejectDisposalDialog({
           tiqriToast.error(result.message || 'Failed to reject request.');
         }
       } catch (error) {
-        tiqriToast.error(error instanceof Error ? error.message : 'Failed to reject request.');
+        tiqriToast.error(
+          error instanceof Error ? error.message : 'Failed to reject request.'
+        );
       }
     });
   };
@@ -117,19 +128,26 @@ export function RejectDisposalDialog({
             <DialogDescription className="mt-2 text-sm text-muted-foreground leading-relaxed">
               You are declining the disposal of{' '}
               {isBulk ? (
-                <strong className="text-foreground font-semibold">{selectedAssets.length} selected assets</strong>
+                <strong className="text-foreground font-semibold">
+                  {selectedAssets.length} selected assets
+                </strong>
               ) : (
-                <strong className="text-foreground font-semibold">{singleAsset?.assetName} ({singleAsset?.assetTag})</strong>
-              )}.
+                <strong className="text-foreground font-semibold">
+                  {singleAsset?.assetName} ({singleAsset?.assetTag})
+                </strong>
+              )}
+              .
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <ScrollArea className="max-h-[70vh] px-6">
           <div className="grid gap-6 py-4">
-            
             <div className="grid gap-2">
-              <Label htmlFor="reason" className="text-[13px] font-semibold text-foreground">
+              <Label
+                htmlFor="reason"
+                className="text-[13px] font-semibold text-foreground"
+              >
                 Rejection Reason <span className="text-destructive">*</span>
               </Label>
               <Textarea
@@ -141,16 +159,21 @@ export function RejectDisposalDialog({
                 className="min-h-25 resize-none bg-background border-input focus-visible:ring-ring"
               />
               {reason.length > 0 && reason.length < 10 && (
-                <p className="text-[11px] text-destructive font-medium">Minimum 10 characters required.</p>
+                <p className="text-[11px] text-destructive font-medium">
+                  Minimum 10 characters required.
+                </p>
               )}
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="status" className="text-[13px] font-semibold text-foreground">
+              <Label
+                htmlFor="status"
+                className="text-[13px] font-semibold text-foreground"
+              >
                 Update Status To <span className="text-destructive">*</span>
               </Label>
-              <Select 
-                value={status} 
+              <Select
+                value={status}
                 onValueChange={(val) => {
                   setStatus(val);
                   if (val !== 'In Repair') setMaintenanceIssue('');
@@ -166,15 +189,20 @@ export function RejectDisposalDialog({
               </Select>
               {isBulk && (
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  This status will be applied to all {selectedAssets.length} assets.
+                  This status will be applied to all {selectedAssets.length}{' '}
+                  assets.
                 </p>
               )}
             </div>
 
             {status === 'In Repair' && (
               <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                <Label htmlFor="maintenanceIssue" className="text-[13px] font-semibold text-foreground">
-                  Maintenance Issue Description <span className="text-destructive">*</span>
+                <Label
+                  htmlFor="maintenanceIssue"
+                  className="text-[13px] font-semibold text-foreground"
+                >
+                  Maintenance Issue Description{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id="maintenanceIssue"
@@ -183,10 +211,8 @@ export function RejectDisposalDialog({
                   placeholder="Describe the issue for the maintenance team to investigate..."
                   className="min-h-20 resize-none bg-background border-input focus-visible:ring-ring"
                 />
-                
               </div>
             )}
-
           </div>
         </ScrollArea>
 
@@ -207,7 +233,11 @@ export function RejectDisposalDialog({
             onClick={handleSubmit}
             className="h-10 px-6 shadow-md transition-all active:scale-95 border-primary bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {isPending ? 'Processing...' : (isBulk ? 'Confirm Bulk Rejection' : 'Confirm Rejection')}
+            {isPending
+              ? 'Processing...'
+              : isBulk
+                ? 'Confirm Bulk Rejection'
+                : 'Confirm Rejection'}
           </Button>
         </div>
       </DialogContent>

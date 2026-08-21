@@ -3,16 +3,7 @@ import { db } from '@/db';
 import { systemAuditLogs, users, assets } from '@/db/schema';
 import { DASHBOARD_RECENT_ACTIVITIES_LIMIT } from '@/lib/constants/dashboard';
 import type { RecentActivity } from '@/types/dashboard';
-
-function formatActionType(actionType: string): string {
-  const act = actionType.toLowerCase().replace(/_/g, ' ');
-
-  if (act.endsWith('ed') || act.endsWith('d')) return act;
-  if (act === 'login') return 'logged in';
-  if (act === 'logout') return 'logged out';
-  if (act.endsWith('e')) return `${act}d`;
-  return `${act}ed`;
-}
+import { describeAuditEvent } from '@/lib/audit-events';
 
 export async function getRecentActivitiesInternal(): Promise<RecentActivity[]> {
   const logs = await db
@@ -46,19 +37,17 @@ export async function getRecentActivitiesInternal(): Promise<RecentActivity[]> {
 
   return logs.map((log) => {
     const performer = log.performedByName || 'System';
+    // Only Asset rows have a resolved tag; for anything else a truncated UUID
+    // is noise, so leave the label off and let the sentence name the entity.
     const entityLabel =
-      assetMap.get(log.entityId) || log.entityId.slice(0, 8);
+      log.entityType === 'Asset' ? (assetMap.get(log.entityId) ?? null) : null;
 
-    const actionPhrase = formatActionType(log.actionType);
-    let text = `${performer} ${actionPhrase} ${log.entityType.toLowerCase()}`;
-
-    if (log.entityType === 'Asset') {
-      text = `${performer} ${actionPhrase} asset ${entityLabel}`;
-    } else if (log.entityType === 'MaintenanceTicket') {
-      text = `${performer} updated maintenance for ${entityLabel}`;
-    } else if (log.actionType === 'LOGIN') {
-      text = `${performer} logged into the system`;
-    }
+    const text = describeAuditEvent({
+      actionType: log.actionType,
+      entityType: log.entityType,
+      entityLabel,
+      actorName: performer,
+    });
 
     return {
       id: log.id,
@@ -69,4 +58,3 @@ export async function getRecentActivitiesInternal(): Promise<RecentActivity[]> {
     };
   });
 }
-

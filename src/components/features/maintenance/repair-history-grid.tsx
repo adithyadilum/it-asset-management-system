@@ -5,7 +5,7 @@ import { TableSkeleton } from '@/components/shared/table-skeleton';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { RepairHistoryTicket } from '@/types/maintenance';
 import { formatDate } from '@/lib/date';
-import { formatMoneyByCurrency } from '@/lib/currency'; 
+import { formatMoneyByCurrency } from '@/lib/currency';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 interface RepairHistoryGridProps {
@@ -22,19 +22,31 @@ export function RepairHistoryGrid({
       accessorKey: 'assetId',
       header: 'Asset ID',
       cell: ({ row }) => (
-        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>{row.original.assetId}</span>
+        <span
+          className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+        >
+          {row.original.assetId}
+        </span>
       ),
     },
     {
       accessorKey: 'vendorName',
       header: 'Vendor',
-      cell: ({ row }) => <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>{row.original.vendorName || 'Internal'}</span>,
+      cell: ({ row }) => (
+        <span
+          className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+        >
+          {row.original.vendorName || 'Internal'}
+        </span>
+      ),
     },
     {
       accessorKey: 'actualCompletionDate',
       header: 'Resolution Date',
       cell: ({ row }) => (
-        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+        <span
+          className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+        >
           {formatDate(row.original.actualCompletionDate)}
         </span>
       ),
@@ -43,7 +55,9 @@ export function RepairHistoryGrid({
       accessorKey: 'actualCost',
       header: 'Final Cost',
       cell: ({ row }) => (
-        <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+        <span
+          className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+        >
           {formatMoneyByCurrency(row.original.actualCost, 'USD')}
         </span>
       ),
@@ -52,7 +66,9 @@ export function RepairHistoryGrid({
       accessorKey: 'resolutionNotes',
       header: 'Notes',
       cell: ({ row }) => (
-        <span className={`truncate max-w-xs ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+        <span
+          className={`truncate max-w-xs ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+        >
           {row.original.resolutionNotes || 'N/A'}
         </span>
       ),
@@ -60,7 +76,12 @@ export function RepairHistoryGrid({
   ];
 
   if (isLoading) {
-    return <TableSkeleton rowCount={5} columnWidths={['w-[15%]', 'w-[20%]', 'w-[20%]', 'w-[15%]', 'w-[30%]']} />;
+    return (
+      <TableSkeleton
+        rowCount={5}
+        columnWidths={['w-[15%]', 'w-[20%]', 'w-[20%]', 'w-[15%]', 'w-[30%]']}
+      />
+    );
   }
 
   return (

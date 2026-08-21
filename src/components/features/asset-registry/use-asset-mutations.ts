@@ -48,7 +48,9 @@ export function useAssetMutations({
 
       onSuccess();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Bulk status update failed.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Bulk status update failed.'
+      );
     } finally {
       setIsMutating(false);
     }
@@ -82,7 +84,9 @@ export function useAssetMutations({
       onTransferSuccess();
       onSuccess();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Bulk transfer failed.');
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Bulk transfer failed.'
+      );
     } finally {
       setIsMutating(false);
     }

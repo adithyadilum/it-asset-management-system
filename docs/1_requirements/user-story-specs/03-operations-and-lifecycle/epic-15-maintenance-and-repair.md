@@ -56,11 +56,13 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the 3-tab `MaintenanceShell` layout component (`Pending Review`, `Active Repairs`, `Repair History`).
 - [x] Configure the `Pending Review` data grid to filter tickets.
 - [x] Build the "Issue Review" slide-out panel displaying: reported issue, Original Cost, Current Book Value, and Warranty Status badge.
 
 #### Backend
+
 - [x] Create the `getPendingMaintenanceTickets` endpoint.
 - [x] Create the `getTicketForIssueReview` Server Action utilizing `calculateStraightLineDepreciation` and dynamic SUM queries for historical repair costs.
 
@@ -86,9 +88,11 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build a quick confirmation dialog for the "Resolve Internally" action with a mandatory Zod-validated resolution note text area.
 
 #### Backend
+
 - [x] Create the `resolveIssueInternally` Server Action handling the atomic multi-table updates (assets, assignments, maintenanceTickets, systemAuditLogs).
 
 ---
@@ -117,14 +121,17 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Send Asset for Repair" modal with: Vendor dropdown (searchable), RMA/Ticket Number input, Estimated Cost, Expected Return Date.
 
 #### Backend
+
 - [x] Create the `initiateVendorRepair` Server Action.
 - [x] Ensure the transaction closes the internal triage ticket and creates the new Vendor-facing ticket atomically.
 - [x] Dispatch `maintenance.created` webhook.
 
 #### Database
+
 - [x] Create a `maintenance_tickets` table via Drizzle ORM tracking types (`VENDOR`, `INTERNAL`), costs, and dates.
 
 ---
@@ -153,10 +160,12 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Configure the `Active Repairs` grid to display data from `getActiveRepairTickets`.
 - [x] Build the "Log Completed Repair" modal (`LogCompleteRepairDialog`) collecting Actual Cost, Notes, and the `Update Status To` decision.
 
 #### Backend
+
 - [x] Create the `completeRepairTicket` Server Action handling the final cost logging, status transition, assignment cleanup, and webhook dispatching.
 
 ---
@@ -183,9 +192,11 @@ This epic governs the lifecycle of broken or defective hardware. Accessed via a 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Configure the `Repair History` data grid to fetch completed `MaintenanceTickets` records.
 - [x] Update the Epic 8 Asset Details panel to fetch and display data using `getAssetMaintenanceHistory`.
 
 #### Backend
+
 - [x] Create the `getRepairHistory` action for the global table.
 - [x] Create the `getAssetMaintenanceHistory` action scoped strictly to an individual asset UUID.

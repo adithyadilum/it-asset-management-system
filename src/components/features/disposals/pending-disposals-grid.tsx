@@ -6,7 +6,11 @@ import type { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
-import { FilterBar, type AppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
+import {
+  FilterBar,
+  type AppliedFilter,
+  type FilterFieldConfig,
+} from '@/components/shared/filter-bar';
 
 import { ExecuteDisposalDialog } from './execute-disposal-dialog';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
@@ -29,7 +33,7 @@ function toCellText(value: string | null | undefined) {
 function calculateDaysPending(requestedAt: Date): number {
   return Math.floor(
     Math.abs(new Date().getTime() - new Date(requestedAt).getTime()) /
-    (1000 * 60 * 60 * 24)
+      (1000 * 60 * 60 * 24)
   );
 }
 
@@ -113,7 +117,9 @@ export function PendingDisposalsGrid({
 
   /** Maps TanStack's rowSelection indices back to the actual data objects. */
   const selectedRows = useMemo(() => {
-    const selectedKeys = Object.keys(rowSelection).filter((key) => rowSelection[key]);
+    const selectedKeys = Object.keys(rowSelection).filter(
+      (key) => rowSelection[key]
+    );
     return selectedKeys
       .map((key) => filteredData[parseInt(key, 10)])
       .filter((row) => row !== undefined);
@@ -186,7 +192,6 @@ export function PendingDisposalsGrid({
         onClearAllFilters={clearAllFilters}
       />
 
-
       <div className="min-h-0 flex-1 flex flex-col overflow-hidden rounded-lg bg-background">
         <DataTable<PendingDisposalRow, unknown>
           columns={columns}
@@ -200,7 +205,6 @@ export function PendingDisposalsGrid({
           selectionLabel={(count) => `${count} Assets Selected`}
 
           selectionActions={[
-
             {
               id: 'cancel',
               label: 'Cancel',
@@ -236,7 +240,6 @@ export function PendingDisposalsGrid({
           }}
         />
       </div>
-
 
       <RejectDisposalDialog
         isOpen={isBulkRejectModalOpen}

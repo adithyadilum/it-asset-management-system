@@ -18,16 +18,20 @@ describe('DashboardExportButton', () => {
   it('renders and triggers print', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('print', vi.fn());
-    render(<CurrencyProvider initialCurrency="USD"><DashboardExportButton /></CurrencyProvider>);
-    
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <DashboardExportButton />
+      </CurrencyProvider>
+    );
+
     const btn = screen.getByRole('button', { name: /Export dashboard/i });
     expect(btn).toBeInTheDocument();
-    
+
     await user.click(btn);
-    
+
     const printItem = await screen.findByText('Print Dashboard');
     await user.click(printItem);
-    
+
     expect(window.print).toHaveBeenCalled();
   });
 });

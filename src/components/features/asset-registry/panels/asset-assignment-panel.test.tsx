@@ -7,7 +7,9 @@ vi.mock('@/components/features/asset-registry/tags/tag-pdf-document', () => ({
 }));
 
 vi.mock('@/actions/maintenance', () => ({
-  getAssetMaintenanceHistory: vi.fn().mockResolvedValue({ success: true, history: [] }),
+  getAssetMaintenanceHistory: vi
+    .fn()
+    .mockResolvedValue({ success: true, history: [] }),
 }));
 
 describe('AssetAssignmentPanel', () => {
@@ -18,8 +20,27 @@ describe('AssetAssignmentPanel', () => {
   });
 
   it('renders assignment panel', () => {
-    // @ts-ignore
-    render(<AssetAssignmentDetailsPanel assetId="1" assetTag="AST-1" category="Laptops" brand="Apple" model="MacBook Pro" serialNumber="SN123" owner="IT" assignedTo="Unassigned" group="Hardware" dateCreated="2023-01-01" assetName="MacBook Pro" />);
+    render(
+      <AssetAssignmentDetailsPanel
+        assetId="1"
+        assetTag="AST-1"
+        category="Laptops"
+        brand="Apple"
+        model="MacBook Pro"
+        serialNumber="SN123"
+        owner="IT"
+        assignedTo="Unassigned"
+        group="Hardware"
+        dateCreated="2023-01-01"
+        updatedAt="2023-01-01"
+        warranty="Active"
+        lastRepaired="-"
+        note=""
+        status="Available"
+        state="available"
+        assetName="MacBook Pro"
+      />
+    );
     expect(screen.getAllByText(/MacBook Pro/i).length).toBeGreaterThan(0);
   });
 });

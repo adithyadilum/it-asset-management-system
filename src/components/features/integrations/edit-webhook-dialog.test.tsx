@@ -7,7 +7,7 @@ vi.mock('./webhook-event-selector', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() })
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 
 describe('EditWebhookDialog', () => {
@@ -22,10 +22,21 @@ describe('EditWebhookDialog', () => {
       <EditWebhookDialog
         open={true}
         onOpenChange={vi.fn()}
-        subscription={{ id: '1', name: 'Test Hook', url: 'http://test', isActive: true, events: [], createdAt: '', updatedAt: '', createdByName: '' } as any}
+        subscription={
+          {
+            id: '1',
+            name: 'Test Hook',
+            url: 'http://test',
+            isActive: true,
+            events: [],
+            createdAt: '',
+            updatedAt: '',
+            createdByName: '',
+          } as any
+        }
       />
     );
-    
+
     expect(screen.getByText('Configure Webhook')).toBeInTheDocument();
   });
 });

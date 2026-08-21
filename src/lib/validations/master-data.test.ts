@@ -248,7 +248,10 @@ describe('vendorSchema', () => {
 
 describe('ownerSchema', () => {
   it('accepts a valid owner', () => {
-    const result = ownerSchema.safeParse({ companyName: 'TIQRI Corp', isActive: true });
+    const result = ownerSchema.safeParse({
+      companyName: 'TIQRI Corp',
+      isActive: true,
+    });
     expect(result.success).toBe(true);
   });
 
@@ -337,7 +340,10 @@ describe('departmentSchema', () => {
 // ---------------------------------------------------------------------------
 
 describe('deviceModelSchema', () => {
-  const validTechnicalDetails = JSON.stringify({ CPU: 'Intel i7', RAM: '16GB' });
+  const validTechnicalDetails = JSON.stringify({
+    CPU: 'Intel i7',
+    RAM: '16GB',
+  });
 
   it('accepts a valid device model', () => {
     const result = deviceModelSchema.safeParse({
@@ -499,7 +505,12 @@ describe('categorySchema', () => {
   });
 
   it('accepts all valid pillar values', () => {
-    for (const pillar of ['Hardware', 'Software', 'Office Furniture', 'Office Electronics']) {
+    for (const pillar of [
+      'Hardware',
+      'Software',
+      'Office Furniture',
+      'Office Electronics',
+    ]) {
       const result = categorySchema.safeParse({
         pillar,
         name: 'Test',

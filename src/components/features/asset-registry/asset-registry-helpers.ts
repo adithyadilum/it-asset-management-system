@@ -1,6 +1,13 @@
-import type { RegistryFilterField, RegistryViewConfig } from './registry-config';
+import type {
+  RegistryFilterField,
+  RegistryViewConfig,
+} from './registry-config';
 import type { DataTableSelectionAction } from '@/components/shared/data-table';
-import type { AssetRegistryRow, CategoryOption, AssetRegistryCategory } from './asset-registry.types';
+import type {
+  AssetRegistryRow,
+  CategoryOption,
+  AssetRegistryCategory,
+} from './asset-registry.types';
 import { DEFAULT_STATUS_OPTIONS } from './asset-registry-constants';
 
 // ---------------------------------------------------------------------------
@@ -36,7 +43,10 @@ export function collectFilterOptions(
 ): string[] {
   switch (field) {
     case 'Status': {
-      const statuses = new Set<string>([...DEFAULT_STATUS_OPTIONS, ...customStatuses]);
+      const statuses = new Set<string>([
+        ...DEFAULT_STATUS_OPTIONS,
+        ...customStatuses,
+      ]);
       for (const row of rows) statuses.add(row.status);
       return [...statuses];
     }
@@ -127,7 +137,10 @@ export function buildSelectionActions(
   isMutating: boolean,
   callbacks: {
     onPrintTags: (rows: AssetRegistryRow[]) => void;
-    onBulkStatusChange: (status: 'Available' | 'Assigned', ids: string[]) => void;
+    onBulkStatusChange: (
+      status: 'Available' | 'Assigned',
+      ids: string[]
+    ) => void;
     onBulkTransfer: (rows: AssetRegistryRow[]) => void;
     onDispose: (rows: AssetRegistryRow[]) => void;
   }
@@ -149,7 +162,9 @@ export function buildSelectionActions(
       onClick: (selectedRowsForAction: AssetRegistryRow[]) => {
         const allSelectedAssigned =
           selectedRowsForAction.length > 0 &&
-          selectedRowsForAction.every((selectedRow) => selectedRow.status === 'Assigned');
+          selectedRowsForAction.every(
+            (selectedRow) => selectedRow.status === 'Assigned'
+          );
 
         const nextStatus = allSelectedAssigned ? 'Available' : 'Assigned';
 
@@ -167,7 +182,8 @@ export function buildSelectionActions(
       label: 'Bulk Transfer',
       disabled: isMutating,
       hidden: (selectedRows) =>
-        config.view === 'unified' && selectedRows.some(row => row.pillar === 'Software'),
+        config.view === 'unified' &&
+        selectedRows.some((row) => row.pillar === 'Software'),
       onClick: callbacks.onBulkTransfer,
     } as DataTableSelectionAction<AssetRegistryRow>);
   }

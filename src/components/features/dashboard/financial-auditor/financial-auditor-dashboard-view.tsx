@@ -1,27 +1,27 @@
-"use client"
+'use client';
 
-import { useMemo } from "react"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { DataTable } from "@/components/shared/data-table"
-import { cn } from "@/lib/utils"
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography"
-import { KpiMetricsRow } from "../shared/kpi-metrics-row"
-import { DepartmentAllocationChart } from "../shared/department-allocation-chart"
-import { InventoryStatusChart } from "../shared/inventory-status-chart"
-import { RecentActivitiesList } from "../shared/recent-activities-list"
-import { DataTablesContainer } from "../shared/data-tables-container"
+import { useMemo } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { DataTable } from '@/components/shared/data-table';
+import { cn } from '@/lib/utils';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { KpiMetricsRow } from '../shared/kpi-metrics-row';
+import { DepartmentAllocationChart } from '../shared/department-allocation-chart';
+import { InventoryStatusChart } from '../shared/inventory-status-chart';
+import { RecentActivitiesList } from '../shared/recent-activities-list';
+import { DataTablesContainer } from '../shared/data-tables-container';
 import {
   useTopHighValueAssetsColumns,
   useWriteOffsColumns,
   useSoftwareOptimizationColumns,
-} from "../shared/dashboard-table-columns"
-import type { FinanceDashboardBatchData } from "@/actions/dashboard/financial-auditor"
-import { useCurrency } from "@/components/providers/currency-provider"
-import { convertCurrencyAmount } from "@/lib/currency"
+} from '../shared/dashboard-table-columns';
+import type { FinanceDashboardBatchData } from '@/actions/dashboard/financial-auditor';
+import { useCurrency } from '@/components/providers/currency-provider';
+import { convertCurrencyAmount } from '@/lib/currency';
 
 interface FinancialAuditorDashboardViewProps {
-  data: FinanceDashboardBatchData
-  apiRates?: Record<string, number>
+  data: FinanceDashboardBatchData;
+  apiRates?: Record<string, number>;
 }
 
 export function FinancialAuditorDashboardView({
@@ -31,20 +31,26 @@ export function FinancialAuditorDashboardView({
   const { currency: currencyCode } = useCurrency();
   const exchangeRate = useMemo(
     () => convertCurrencyAmount(1, 'LKR', currencyCode, apiRates),
-    [currencyCode, apiRates],
+    [currencyCode, apiRates]
   );
-  const topHighValueColumns = useTopHighValueAssetsColumns(currencyCode, exchangeRate)
-  const writeOffsColumns = useWriteOffsColumns(currencyCode, apiRates)
-  const softwareOptimizationColumns = useSoftwareOptimizationColumns(currencyCode, exchangeRate)
+  const topHighValueColumns = useTopHighValueAssetsColumns(
+    currencyCode,
+    exchangeRate
+  );
+  const writeOffsColumns = useWriteOffsColumns(currencyCode, apiRates);
+  const softwareOptimizationColumns = useSoftwareOptimizationColumns(
+    currencyCode,
+    exchangeRate
+  );
 
   const tableProps = {
     enableRowSelection: false,
     enableRowScroll: true,
     initialPageSize: 100,
     pageSizeOptions: [100],
-    className: "min-h-[318px] max-h-[318px] text-xs",
+    className: 'min-h-[318px] max-h-[318px] text-xs',
     hideFooter: true,
-  }
+  };
 
   const leftTables = (
     <Tabs defaultValue="topAssets" className="w-full">
@@ -69,8 +75,8 @@ export function FinancialAuditorDashboardView({
           columns={topHighValueColumns}
           data={data.topHighValueAssets}
           emptyState={{
-            title: "No active assets",
-            description: "There are no active assets with recorded costs.",
+            title: 'No active assets',
+            description: 'There are no active assets with recorded costs.',
           }}
         />
       </TabsContent>
@@ -80,18 +86,20 @@ export function FinancialAuditorDashboardView({
           columns={writeOffsColumns}
           data={data.writeOffsLedger}
           emptyState={{
-            title: "No asset write-offs",
-            description: "There are no completed asset write-offs/disposals.",
+            title: 'No asset write-offs',
+            description: 'There are no completed asset write-offs/disposals.',
           }}
         />
       </TabsContent>
     </Tabs>
-  )
+  );
 
   const rightTables = (
     <>
       <div className="h-10 mb-4 flex items-center">
-        <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, "text-foreground")}>
+        <h3
+          className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-foreground')}
+        >
           Software Seat Cost Optimization
         </h3>
       </div>
@@ -100,12 +108,12 @@ export function FinancialAuditorDashboardView({
         columns={softwareOptimizationColumns}
         data={data.softwareOptimization}
         emptyState={{
-          title: "No active software licenses",
-          description: "No licenses found for optimization.",
+          title: 'No active software licenses',
+          description: 'No licenses found for optimization.',
         }}
       />
     </>
-  )
+  );
 
   return (
     <div className="px-6 py-1 pb-5 flex flex-col gap-6">
@@ -128,7 +136,10 @@ export function FinancialAuditorDashboardView({
       </div>
 
       {/* Tables Container */}
-      <DataTablesContainer leftSection={leftTables} rightSection={rightTables} />
+      <DataTablesContainer
+        leftSection={leftTables}
+        rightSection={rightTables}
+      />
     </div>
-  )
+  );
 }

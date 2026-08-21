@@ -30,10 +30,10 @@ describe('CopyableField', () => {
   it('toggles visibility when eye icon is clicked', async () => {
     const user = userEvent.setup();
     render(<CopyableField value="1234567890" />);
-    
+
     const toggleButton = screen.getByTitle('Show');
     await user.click(toggleButton);
-    
+
     expect(screen.getByText('1234 5678 90')).toBeInTheDocument();
 
     const hideButton = screen.getByTitle('Hide');
@@ -44,30 +44,38 @@ describe('CopyableField', () => {
 
   it('copies the raw value to clipboard on copy click', async () => {
     const user = userEvent.setup();
-    const mockWriteText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    const mockWriteText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValue(undefined);
 
     render(<CopyableField value="1234567890" label="Test ID" />);
-    
+
     const copyButton = screen.getByTitle('Copy to clipboard');
     await user.click(copyButton);
 
     await waitFor(() => {
       expect(mockWriteText).toHaveBeenCalledWith('1234567890');
-      expect(tiqriToast.success).toHaveBeenCalledWith('Test ID copied to clipboard');
+      expect(tiqriToast.success).toHaveBeenCalledWith(
+        'Test ID copied to clipboard'
+      );
     });
   });
 
   it('handles clipboard error', async () => {
     const user = userEvent.setup();
-    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(new Error('Clipboard error'));
-    
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(
+      new Error('Clipboard error')
+    );
+
     render(<CopyableField value="1234" />);
-    
+
     const copyButton = screen.getByTitle('Copy to clipboard');
     await user.click(copyButton);
 
     await waitFor(() => {
-      expect(tiqriToast.error).toHaveBeenCalledWith('Failed to copy to clipboard');
+      expect(tiqriToast.error).toHaveBeenCalledWith(
+        'Failed to copy to clipboard'
+      );
     });
   });
 });

@@ -1,5 +1,5 @@
-"use client";
-import { LoadingSpinner } from "@/components/shared/loading-spinner";
+'use client';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import * as React from 'react';
 
@@ -20,7 +20,10 @@ import type {
   ModelRegistrationOption,
   RegistrationOption,
 } from './form-field-primitives';
-import { useRegistrationForm, formatDateForInput } from './use-registration-form';
+import {
+  useRegistrationForm,
+  formatDateForInput,
+} from './use-registration-form';
 
 export type { RegistrationOption, ModelRegistrationOption };
 
@@ -63,6 +66,17 @@ const WARRANTY_MONTH_OPTIONS: RegistrationOption[] = [
   { value: '6', label: '6 Months' },
   { value: '12', label: '12 Months' },
   { value: '24', label: '24 Months' },
+];
+
+/** Straight-line depreciation terms, in years. 5 is the default. */
+const EXPECTED_LIFESPAN_OPTIONS: RegistrationOption[] = [
+  { value: '1', label: '1 Year' },
+  { value: '2', label: '2 Years' },
+  { value: '3', label: '3 Years' },
+  { value: '4', label: '4 Years' },
+  { value: '5', label: '5 Years' },
+  { value: '7', label: '7 Years' },
+  { value: '10', label: '10 Years' },
 ];
 
 function RegistrationFormSkeleton() {
@@ -138,6 +152,8 @@ export function RegistrationForm({
     setCurrencyCode,
     warrantyMonths,
     setWarrantyMonths,
+    expectedLifespanYears,
+    setExpectedLifespanYears,
     purchaseDate,
     setPurchaseDate,
     basePrice,
@@ -204,27 +220,27 @@ export function RegistrationForm({
   const panelActions: SlidePanelAction[] = isLoading
     ? []
     : [
-      {
-        id: 'discard',
-        label: 'Discard',
-        variant: 'outline',
-        onClick: () => onClose(false),
-        disabled: isPending,
-      },
-      {
-        id: 'submit',
-        label: isPending ? (
-          <span className="inline-flex items-center gap-2">
-            <LoadingSpinner size="sm" />
-            <span>{config.submittingLabel}</span>
-          </span>
-        ) : (
-          config.submitLabel
-        ),
-        onClick: () => formRef.current?.requestSubmit(),
-        disabled: isPending,
-      },
-    ];
+        {
+          id: 'discard',
+          label: 'Discard',
+          variant: 'outline',
+          onClick: () => onClose(false),
+          disabled: isPending,
+        },
+        {
+          id: 'submit',
+          label: isPending ? (
+            <span className="inline-flex items-center gap-2">
+              <LoadingSpinner size="sm" />
+              <span>{config.submittingLabel}</span>
+            </span>
+          ) : (
+            config.submitLabel
+          ),
+          onClick: () => formRef.current?.requestSubmit(),
+          disabled: isPending,
+        },
+      ];
 
   const panelContent = isLoading ? (
     <RegistrationFormSkeleton />
@@ -334,6 +350,9 @@ export function RegistrationForm({
         warrantyMonths={warrantyMonths}
         setWarrantyMonths={setWarrantyMonths}
         WARRANTY_MONTH_OPTIONS={WARRANTY_MONTH_OPTIONS}
+        expectedLifespanYears={expectedLifespanYears}
+        setExpectedLifespanYears={setExpectedLifespanYears}
+        EXPECTED_LIFESPAN_OPTIONS={EXPECTED_LIFESPAN_OPTIONS}
         invoiceInputRef={invoiceInputRef}
         showInvoiceUploader={showInvoiceUploader}
         setShowInvoiceUploader={setShowInvoiceUploader}
@@ -343,7 +362,6 @@ export function RegistrationForm({
         handleInvoiceDrop={handleInvoiceDrop}
         invoiceFileName={invoiceFileName}
       />
-
     </form>
   );
 

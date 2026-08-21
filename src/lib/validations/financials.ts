@@ -44,7 +44,9 @@ export const depreciationLedgerParamsSchema = ledgerQueryParamsSchema.extend({
     .optional(),
 });
 
-export type DepreciationLedgerParams = z.infer<typeof depreciationLedgerParamsSchema>;
+export type DepreciationLedgerParams = z.infer<
+  typeof depreciationLedgerParamsSchema
+>;
 
 // ---------------------------------------------------------------------------
 // TCO Ledger Parameters

@@ -20,11 +20,15 @@ vi.mock('@/components/shared/slide-panel', () => ({
         </>
       )}
     </div>
-  )
+  ),
 }));
 
 // Mock ResizeObserver
-class ResizeObserver { observe() {} unobserve() {} disconnect() {} }
+class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 vi.stubGlobal('ResizeObserver', ResizeObserver);
 
 describe('MasterDataRecordPanel', () => {
@@ -44,7 +48,15 @@ describe('MasterDataRecordPanel', () => {
     entity: 'asset-categories',
     recordId: '1',
     initialMode: 'view' as any,
-    categories: [{ id: 1, name: 'Test Category', code: 'TC', description: 'Desc', customSchema: { modelSpecs: [], assetTracking: [] } } as any],
+    categories: [
+      {
+        id: 1,
+        name: 'Test Category',
+        code: 'TC',
+        description: 'Desc',
+        customSchema: { modelSpecs: [], assetTracking: [] },
+      } as any,
+    ],
     locations: [],
     brands: [],
     deviceModels: [],
@@ -56,12 +68,17 @@ describe('MasterDataRecordPanel', () => {
 
   it('renders correctly when open', () => {
     render(<MasterDataRecordPanel {...defaultProps} />);
-    expect(screen.getByTestId('slide-panel')).toHaveAttribute('data-open', 'true');
+    expect(screen.getByTestId('slide-panel')).toHaveAttribute(
+      'data-open',
+      'true'
+    );
     expect(screen.getByText(/Category: Test Category/i)).toBeInTheDocument();
   });
 
   it('shows not found state if record does not exist', () => {
     render(<MasterDataRecordPanel {...defaultProps} recordId="non-existent" />);
-    expect(screen.getByText('The selected record could not be found.')).toBeInTheDocument();
+    expect(
+      screen.getByText('The selected record could not be found.')
+    ).toBeInTheDocument();
   });
 });

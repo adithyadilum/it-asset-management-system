@@ -54,7 +54,7 @@ describe('EditUserRoleModal', () => {
 
     const roleSelect = screen.getByLabelText('Role');
     fireEvent.click(roleSelect);
-    
+
     const newRoleOption = await screen.findByText('IT Operator');
     fireEvent.click(newRoleOption);
 
@@ -62,7 +62,10 @@ describe('EditUserRoleModal', () => {
     fireEvent.click(updateButton);
 
     await waitFor(() => {
-      expect(roleActions.assignUserRole).toHaveBeenCalledWith('user-1', 'ITOperator');
+      expect(roleActions.assignUserRole).toHaveBeenCalledWith(
+        'user-1',
+        'ITOperator'
+      );
       expect(onOpenChange).toHaveBeenCalledWith(false);
       expect(onUpdated).toHaveBeenCalled();
     });
@@ -71,7 +74,9 @@ describe('EditUserRoleModal', () => {
   it('calls setUserActiveStatus when submitted with changed active status', async () => {
     const onOpenChange = vi.fn();
     const onUpdated = vi.fn();
-    vi.mocked(roleActions.setUserActiveStatus).mockResolvedValue({ success: true });
+    vi.mocked(roleActions.setUserActiveStatus).mockResolvedValue({
+      success: true,
+    });
 
     render(
       <EditUserRoleModal
@@ -88,7 +93,7 @@ describe('EditUserRoleModal', () => {
     // Let's change the status dropdown selection from Active to Disabled.
     const statusSelect = screen.getByLabelText('Status');
     fireEvent.click(statusSelect);
-    
+
     // Select the disabled option
     const disabledOption = await screen.findByText('Disabled');
     fireEvent.click(disabledOption);
@@ -97,7 +102,10 @@ describe('EditUserRoleModal', () => {
     fireEvent.click(updateButton);
 
     await waitFor(() => {
-      expect(roleActions.setUserActiveStatus).toHaveBeenCalledWith('user-1', false);
+      expect(roleActions.setUserActiveStatus).toHaveBeenCalledWith(
+        'user-1',
+        false
+      );
       expect(onOpenChange).toHaveBeenCalledWith(false);
       expect(onUpdated).toHaveBeenCalled();
     });
@@ -115,6 +123,8 @@ describe('EditUserRoleModal', () => {
 
     const updateButton = screen.getByText('Update');
     expect(updateButton).toBeDisabled();
-    expect(screen.getByText('You cannot modify your own role or status.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You cannot modify your own role or status.')
+    ).toBeInTheDocument();
   });
 });

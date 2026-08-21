@@ -11,8 +11,15 @@ describe('DataTablesContainer', () => {
   });
 
   it('renders data tables container with sections', () => {
-    render(<CurrencyProvider initialCurrency="USD"><DataTablesContainer leftSection={<div data-testid="left" />} rightSection={<div data-testid="right" />} /></CurrencyProvider>);
-    
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <DataTablesContainer
+          leftSection={<div data-testid="left" />}
+          rightSection={<div data-testid="right" />}
+        />
+      </CurrencyProvider>
+    );
+
     expect(screen.getByTestId('left')).toBeInTheDocument();
     expect(screen.getByTestId('right')).toBeInTheDocument();
   });

@@ -54,8 +54,8 @@ export function RequestReturnDialog({
         <DialogHeader>
           <DialogTitle>Request Return</DialogTitle>
           <DialogDescription>
-            Are you sure you want to request the return of {assetLabel}? This will
-            notify the assigned user.
+            Are you sure you want to request the return of {assetLabel}? This
+            will notify the assigned user.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

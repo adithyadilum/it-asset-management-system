@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { getRegistrationOptionsAction } from "@/actions/asset-registry-panels";
-import { RegistrationForm } from "@/components/features/asset-registry/panels/registration-form";
-import { RegistrationSuccessDialog } from "@/components/features/asset-registry/panels/registration-success-dialog";
-import { tiqriToast } from "@/components/shared/sonner";
-import { type RegistrationPillarInput } from "@/lib/validations/asset-registration";
+import { useState, useEffect, useCallback } from 'react';
+import { getRegistrationOptionsAction } from '@/actions/asset-registry-panels';
+import { RegistrationForm } from '@/components/features/asset-registry/panels/registration-form';
+import { RegistrationSuccessDialog } from '@/components/features/asset-registry/panels/registration-success-dialog';
+import { tiqriToast } from '@/components/shared/sonner';
+import { type RegistrationPillarInput } from '@/lib/validations/asset-registration';
 
 export interface RegistrationPanelWrapperProps {
   isOpen: boolean;
@@ -14,22 +14,48 @@ export interface RegistrationPanelWrapperProps {
 }
 
 interface RegistrationOptions {
-  categories: { value: string; label: string; pillar: string; customSchema: { modelSpecs: { fieldName: string; inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean'; required: boolean }[]; assetTracking: { fieldName: string; inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean'; required: boolean }[] } }[];
+  categories: {
+    value: string;
+    label: string;
+    pillar: string;
+    customSchema: {
+      modelSpecs: {
+        fieldName: string;
+        inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean';
+        required: boolean;
+      }[];
+      assetTracking: {
+        fieldName: string;
+        inputType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Boolean';
+        required: boolean;
+      }[];
+    };
+  }[];
   brands: { value: string; label: string }[];
-  models: { value: string; label: string; brandId: string; categoryId: string; imageUrl: string | null }[];
+  models: {
+    value: string;
+    label: string;
+    brandId: string;
+    categoryId: string;
+    imageUrl: string | null;
+  }[];
   vendors: { value: string; label: string }[];
   owners: { value: string; label: string }[];
   locations?: { value: string; label: string }[];
 }
 
-export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: RegistrationPanelWrapperProps) {
+export function RegistrationPanelWrapper({
+  isOpen,
+  onClose,
+  pillar,
+}: RegistrationPanelWrapperProps) {
   const [data, setData] = useState<RegistrationOptions | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [prevPillar, setPrevPillar] = useState<string | null>(null);
 
   // Success dialog state lives here so it persists after the form unmounts
   const [successAssetId, setSuccessAssetId] = useState<string | null>(null);
-  const [successModelName, setSuccessModelName] = useState("");
+  const [successModelName, setSuccessModelName] = useState('');
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
 
   if (isOpen && pillar !== prevPillar) {
@@ -48,7 +74,7 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
             if (res.success && res.data) {
               setData(res.data as RegistrationOptions);
             } else {
-              tiqriToast.error("Failed to load registration options");
+              tiqriToast.error('Failed to load registration options');
             }
           }
         })
@@ -65,16 +91,19 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
   }, [isOpen, pillar]);
 
   // Called by RegistrationForm when an asset is successfully created
-  const handleRegistrationSuccess = useCallback((assetId: string, modelName: string) => {
-    setSuccessAssetId(assetId);
-    setSuccessModelName(modelName);
-    setIsSuccessDialogOpen(true);
-  }, []);
+  const handleRegistrationSuccess = useCallback(
+    (assetId: string, modelName: string) => {
+      setSuccessAssetId(assetId);
+      setSuccessModelName(modelName);
+      setIsSuccessDialogOpen(true);
+    },
+    []
+  );
 
   const handleSuccessDialogClose = useCallback((open: boolean) => {
     if (!open) {
       setSuccessAssetId(null);
-      setSuccessModelName("");
+      setSuccessModelName('');
       setIsSuccessDialogOpen(false);
     }
   }, []);
@@ -84,7 +113,9 @@ export function RegistrationPanelWrapper({ isOpen, onClose, pillar }: Registrati
       {isOpen && (
         <RegistrationForm
           isOpen={isOpen}
-          onClose={(open: boolean, didSucceed?: boolean) => { if (!open) onClose(didSucceed); }}
+          onClose={(open: boolean, didSucceed?: boolean) => {
+            if (!open) onClose(didSucceed);
+          }}
           onRegistrationSuccess={handleRegistrationSuccess}
           isLoading={isLoading || !data}
           initialPillar={pillar as RegistrationPillarInput}

@@ -1,7 +1,9 @@
 import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DepreciationLedger } from './depreciation-ledger';
+import { getDepreciationLedger } from '@/actions/financials';
 
 vi.mock('@/actions/financials', () => ({
   getDepreciationLedger: vi.fn(),
@@ -28,8 +30,15 @@ describe('DepreciationLedger', () => {
   ];
 
   it('renders correctly with initial data', () => {
-    render(<CurrencyProvider initialCurrency="USD"><DepreciationLedger initialData={mockData} /></CurrencyProvider>);
+    render(
+      <StrictMode>
+        <CurrencyProvider initialCurrency="USD">
+          <DepreciationLedger initialData={mockData} />
+        </CurrencyProvider>
+      </StrictMode>
+    );
     expect(screen.getByText('AST-001')).toBeInTheDocument();
     expect(screen.getByText('Laptops')).toBeInTheDocument();
+    expect(getDepreciationLedger).not.toHaveBeenCalled();
   });
 });

@@ -10,7 +10,6 @@ import {
 } from '@/db/schema';
 import { unstable_cache } from 'next/cache';
 import {
-  
   DEFAULT_SOFTWARE_SEAT_COST,
   DASHBOARD_KPI_CACHE_TTL,
   HIGH_MAINTENANCE_TICKET_THRESHOLD,
@@ -52,27 +51,40 @@ export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
     {
       applicable: totalActiveAssets > 0,
       weight: FLEET_HEALTH_WEIGHTS.utilization,
-      value: totalActiveAssets > 0 ? Math.min(1, assignedCountHealth / totalActiveAssets) : 0,
+      value:
+        totalActiveAssets > 0
+          ? Math.min(1, assignedCountHealth / totalActiveAssets)
+          : 0,
     },
     {
       applicable: assignedCountHealth > 0,
       weight: FLEET_HEALTH_WEIGHTS.overdue,
-      value: assignedCountHealth > 0 ? Math.max(0, 1 - overdueCountHealth / assignedCountHealth) : 1,
+      value:
+        assignedCountHealth > 0
+          ? Math.max(0, 1 - overdueCountHealth / assignedCountHealth)
+          : 1,
     },
     {
       applicable: totalActiveAssets > 0,
       weight: FLEET_HEALTH_WEIGHTS.repairs,
-      value: totalActiveAssets > 0 ? Math.max(0, 1 - highRepairCount / totalActiveAssets) : 1,
+      value:
+        totalActiveAssets > 0
+          ? Math.max(0, 1 - highRepairCount / totalActiveAssets)
+          : 1,
     },
     {
       applicable: totalActiveAssets > 0,
       weight: FLEET_HEALTH_WEIGHTS.warranty,
-      value: totalActiveAssets > 0 ? Math.min(1, warrantyCovered / totalActiveAssets) : 0,
+      value:
+        totalActiveAssets > 0
+          ? Math.min(1, warrantyCovered / totalActiveAssets)
+          : 0,
     },
     {
       applicable: totalSWSeats > 0,
       weight: FLEET_HEALTH_WEIGHTS.software,
-      value: totalSWSeats > 0 ? Math.min(1, allocatedSWSeats / totalSWSeats) : 1,
+      value:
+        totalSWSeats > 0 ? Math.min(1, allocatedSWSeats / totalSWSeats) : 1,
     },
   ];
 
@@ -81,8 +93,14 @@ export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
     return 100; // Default when no components are applicable (clean slate)
   }
 
-  const totalWeight = applicableComponents.reduce((sum, c) => sum + c.weight, 0);
-  const weightedSum = applicableComponents.reduce((sum, c) => sum + c.value * c.weight, 0);
+  const totalWeight = applicableComponents.reduce(
+    (sum, c) => sum + c.weight,
+    0
+  );
+  const weightedSum = applicableComponents.reduce(
+    (sum, c) => sum + c.value * c.weight,
+    0
+  );
 
   return Math.round((weightedSum / totalWeight) * 100);
 }
@@ -137,19 +155,21 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
                 CASE WHEN ${assetPurchases.purchaseDate} IS NULL THEN
                   COALESCE(${assetPurchases.totalCost}::numeric * COALESCE(${assetPurchases.exchangeRate}::numeric, 1), 0)
                 ELSE
-                  ${sql.raw(straightLineNbvSqlFragment(
-                    'asset_purchases.total_cost',
-                    'asset_purchases.exchange_rate',
-                    'assets.salvage_value',
-                    'assets.useful_life_months',
-                    'asset_purchases.purchase_date'
-                  ))}
+                  ${sql.raw(
+                    straightLineNbvSqlFragment(
+                      'asset_purchases.total_cost',
+                      'asset_purchases.exchange_rate',
+                      'assets.salvage_value',
+                      'assets.useful_life_months',
+                      'asset_purchases.purchase_date'
+                    )
+                  )}
                 END
               ELSE 0 END
             )
           `,
           warrantyExpiries30Days: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' AND ${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE AND ${assetPurchases.warrantyExpiry}::date <= CURRENT_DATE + INTERVAL '30 days' THEN 1 ELSE 0 END)`,
-          warrantyCovered: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' AND ${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE THEN 1 ELSE 0 END)`
+          warrantyCovered: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' AND ${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE THEN 1 ELSE 0 END)`,
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
@@ -201,16 +221,14 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
           )
         ),
 
-      db
-        .select({ count: count() })
-        .from(
-          db
-            .select({ assetId: maintenanceTickets.assetId })
-            .from(maintenanceTickets)
-            .groupBy(maintenanceTickets.assetId)
-            .having(sql`COUNT(*) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`)
-            .as('high_repair_assets')
-        ),
+      db.select({ count: count() }).from(
+        db
+          .select({ assetId: maintenanceTickets.assetId })
+          .from(maintenanceTickets)
+          .groupBy(maintenanceTickets.assetId)
+          .having(sql`COUNT(*) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`)
+          .as('high_repair_assets')
+      ),
 
       // 10th parallel query: software purchase costs (previously a sequential post-query)
       softwareAssetIds.length > 0
@@ -225,35 +243,73 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     ]);
 
     const totalActiveAssets = Number(assetMetricsRes[0]?.totalActive || 0);
-    const totalActiveAssetsChange = Number(assetMetricsRes[0]?.createdThisMonth || 0);
+    const totalActiveAssetsChange = Number(
+      assetMetricsRes[0]?.createdThisMonth || 0
+    );
     const assignedCountHealth = Number(assetMetricsRes[0]?.assignedCount || 0);
 
-    const totalAssetValue = parseFloat(financialMetricsRes[0]?.totalAssetValue?.toString() || '0');
-    const totalAssetValuePrev = parseFloat(financialMetricsRes[0]?.totalAssetValuePrev?.toString() || '0');
+    const totalAssetValue = parseFloat(
+      financialMetricsRes[0]?.totalAssetValue?.toString() || '0'
+    );
+    const totalAssetValuePrev = parseFloat(
+      financialMetricsRes[0]?.totalAssetValuePrev?.toString() || '0'
+    );
     const totalAssetValueTrend =
       totalAssetValuePrev > 0
-        ? Math.round(((totalAssetValue - totalAssetValuePrev) / totalAssetValuePrev) * 1000) / 10
+        ? Math.round(
+            ((totalAssetValue - totalAssetValuePrev) / totalAssetValuePrev) *
+              1000
+          ) / 10
         : 0;
 
-    const netBookValue = parseFloat(financialMetricsRes[0]?.nbv?.toString() || '0');
-    const warrantyExpiries30Days = Number(financialMetricsRes[0]?.warrantyExpiries30Days || 0);
-    const warrantyCovered = Number(financialMetricsRes[0]?.warrantyCovered || 0);
+    const netBookValue = parseFloat(
+      financialMetricsRes[0]?.nbv?.toString() || '0'
+    );
+    const warrantyExpiries30Days = Number(
+      financialMetricsRes[0]?.warrantyExpiries30Days || 0
+    );
+    const warrantyCovered = Number(
+      financialMetricsRes[0]?.warrantyCovered || 0
+    );
 
     // Maintenance actualCost has no currency column — UI convention is USD (see repair history page).
     // Normalize to LKR using the same static rates as the rest of the app.
-    const rawRepairAll = parseFloat(maintenanceMetricsRes[0]?.allTimeRepair?.toString() || '0');
-    const rawRepairThisMonth = parseFloat(maintenanceMetricsRes[0]?.repairThisMonth?.toString() || '0');
-    const rawRepairLastMonth = parseFloat(maintenanceMetricsRes[0]?.repairLastMonth?.toString() || '0');
-    const cumulativeRepairSpend = convertCurrencyAmount(rawRepairAll, 'USD', 'LKR');
-    const repairThisMonth = convertCurrencyAmount(rawRepairThisMonth, 'USD', 'LKR');
-    const repairLastMonth = convertCurrencyAmount(rawRepairLastMonth, 'USD', 'LKR');
+    const rawRepairAll = parseFloat(
+      maintenanceMetricsRes[0]?.allTimeRepair?.toString() || '0'
+    );
+    const rawRepairThisMonth = parseFloat(
+      maintenanceMetricsRes[0]?.repairThisMonth?.toString() || '0'
+    );
+    const rawRepairLastMonth = parseFloat(
+      maintenanceMetricsRes[0]?.repairLastMonth?.toString() || '0'
+    );
+    const cumulativeRepairSpend = convertCurrencyAmount(
+      rawRepairAll,
+      'USD',
+      'LKR'
+    );
+    const repairThisMonth = convertCurrencyAmount(
+      rawRepairThisMonth,
+      'USD',
+      'LKR'
+    );
+    const repairLastMonth = convertCurrencyAmount(
+      rawRepairLastMonth,
+      'USD',
+      'LKR'
+    );
     const repairSpendTrend =
       repairLastMonth > 0
-        ? Math.round(((repairThisMonth - repairLastMonth) / repairLastMonth) * 1000) / 10
+        ? Math.round(
+            ((repairThisMonth - repairLastMonth) / repairLastMonth) * 1000
+          ) / 10
         : 0;
 
     const totalSWSeats = Number(softwareMetricsRes[0]?.totalSeats || 0);
-    const allocatedSWSeats = allocationsCountRes.reduce((acc, a) => acc + Number(a.count), 0);
+    const allocatedSWSeats = allocationsCountRes.reduce(
+      (acc, a) => acc + Number(a.count),
+      0
+    );
 
     const allocMap = new Map(
       allocationsCountRes.map((a) => [a.licenseId, a.count])
@@ -280,8 +336,7 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       const licenseCost = lic.assetId
         ? softwarePurchasesMap.get(lic.assetId) || 0
         : 0;
-      const costPerSeat =
-        lic.totalSeats > 0 ? licenseCost / lic.totalSeats : 0;
+      const costPerSeat = lic.totalSeats > 0 ? licenseCost / lic.totalSeats : 0;
       const activeCostPerSeat =
         costPerSeat > 0 ? costPerSeat : DEFAULT_SOFTWARE_SEAT_COST;
       inactiveSoftwareCostLeak += inactive * activeCostPerSeat;
@@ -339,4 +394,4 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     revalidate: DASHBOARD_KPI_CACHE_TTL,
     tags: ['dashboard-kpis'],
   }
-);
+);

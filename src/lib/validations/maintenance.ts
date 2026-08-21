@@ -22,7 +22,10 @@ export type ResolveIssueInput = z.infer<typeof resolveIssueSchema>;
 export const initiateVendorRepairSchema = z.object({
   ticketId: z.number().int().positive('Invalid ticket ID.'),
   assetId: z.string().uuid('Invalid asset ID format.'),
-  vendorId: z.coerce.number().int().positive('A valid vendor must be selected.'),
+  vendorId: z.coerce
+    .number()
+    .int()
+    .positive('A valid vendor must be selected.'),
   rmaNumber: z
     .string()
     .trim()
@@ -34,11 +37,16 @@ export const initiateVendorRepairSchema = z.object({
     .optional(),
   expectedReturnDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected return date must be in YYYY-MM-DD format.')
+    .regex(
+      /^\d{4}-\d{2}-\d{2}$/,
+      'Expected return date must be in YYYY-MM-DD format.'
+    )
     .optional(),
 });
 
-export type InitiateVendorRepairInput = z.infer<typeof initiateVendorRepairSchema>;
+export type InitiateVendorRepairInput = z.infer<
+  typeof initiateVendorRepairSchema
+>;
 
 // ---------------------------------------------------------------------------
 // completeRepairTicket
@@ -68,7 +76,10 @@ export type CompleteRepairInput = z.infer<typeof completeRepairSchema>;
 
 export const panelRepairSchema = z.object({
   assetId: z.string().uuid('Invalid asset ID format.'),
-  vendorId: z.coerce.number().int().positive('A valid vendor must be selected.'),
+  vendorId: z.coerce
+    .number()
+    .int()
+    .positive('A valid vendor must be selected.'),
   rmaNumber: z
     .string()
     .trim()
@@ -80,7 +91,10 @@ export const panelRepairSchema = z.object({
     .optional(),
   expectedReturnDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected return date must be in YYYY-MM-DD format.')
+    .regex(
+      /^\d{4}-\d{2}-\d{2}$/,
+      'Expected return date must be in YYYY-MM-DD format.'
+    )
     .optional(),
 });
 
@@ -105,7 +119,9 @@ export const getRepairHistoryParamsSchema = z.object({
     .default(''),
 });
 
-export type GetRepairHistoryParams = z.infer<typeof getRepairHistoryParamsSchema>;
+export type GetRepairHistoryParams = z.infer<
+  typeof getRepairHistoryParamsSchema
+>;
 
 // ---------------------------------------------------------------------------
 // getAssetMaintenanceHistory (limit parameter bounds)

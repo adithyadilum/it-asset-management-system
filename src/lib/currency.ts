@@ -1,8 +1,4 @@
-export const SUPPORTED_CURRENCIES = [
-  'LKR',
-  'USD',
-  'NOK',
-] as const;
+export const SUPPORTED_CURRENCIES = ['LKR', 'USD', 'NOK'] as const;
 
 const USD_EXCHANGE_RATE_BY_CURRENCY: Record<SupportedCurrency, number> = {
   USD: 1,
@@ -82,13 +78,13 @@ export function convertCurrencyAmount(
   }
 
   if (apiRates) {
-     const fromRate = apiRates[resolvedFromCurrency];
-     const toRate = apiRates[resolvedToCurrency];
-     if (fromRate && toRate) {
-       // API provides rates as 1 USD = X Currency
-       const amountInUsd = amount / fromRate;
-       return amountInUsd * toRate;
-     }
+    const fromRate = apiRates[resolvedFromCurrency];
+    const toRate = apiRates[resolvedToCurrency];
+    if (fromRate && toRate) {
+      // API provides rates as 1 USD = X Currency
+      const amountInUsd = amount / fromRate;
+      return amountInUsd * toRate;
+    }
   }
 
   const fromRate = USD_EXCHANGE_RATE_BY_CURRENCY[resolvedFromCurrency];

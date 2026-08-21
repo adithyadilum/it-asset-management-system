@@ -21,8 +21,10 @@ describe('DataTable', () => {
   ];
 
   it('renders table headers and rows', () => {
-    render(<DataTable columns={columns} data={data} enableRowSelection={false} />);
-    
+    render(
+      <DataTable columns={columns} data={data} enableRowSelection={false} />
+    );
+
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Item 1')).toBeInTheDocument();
@@ -31,14 +33,14 @@ describe('DataTable', () => {
 
   it('renders empty state when data is empty', () => {
     render(
-      <DataTable 
-        columns={columns} 
-        data={[]} 
-        enableRowSelection={false} 
-        emptyState={{ title: 'No Data', description: 'Empty table' }} 
+      <DataTable
+        columns={columns}
+        data={[]}
+        enableRowSelection={false}
+        emptyState={{ title: 'No Data', description: 'Empty table' }}
       />
     );
-    
+
     expect(screen.getByText('No Data')).toBeInTheDocument();
     expect(screen.getByText('Empty table')).toBeInTheDocument();
   });
@@ -46,32 +48,34 @@ describe('DataTable', () => {
   it('calls onRowClick when a row is clicked', async () => {
     const user = userEvent.setup();
     const onRowClickMock = vi.fn();
-    
+
     render(
-      <DataTable 
-        columns={columns} 
-        data={data} 
-        enableRowSelection={false} 
-        onRowClick={onRowClickMock} 
+      <DataTable
+        columns={columns}
+        data={data}
+        enableRowSelection={false}
+        onRowClick={onRowClickMock}
       />
     );
-    
+
     await user.click(screen.getByText('Item 1'));
     expect(onRowClickMock).toHaveBeenCalledWith(data[0], 0);
   });
 
   it('handles row selection via checkboxes', async () => {
     const user = userEvent.setup();
-    
-    render(<DataTable columns={columns} data={data} enableRowSelection={true} />);
-    
+
+    render(
+      <DataTable columns={columns} data={data} enableRowSelection={true} />
+    );
+
     const checkboxes = screen.getAllByRole('checkbox');
     // Index 0: Select All Header, Index 1: Row 1, Index 2: Row 2
     expect(checkboxes).toHaveLength(3);
 
     // Select row 1
     await user.click(checkboxes[1]);
-    
+
     // Header should change to indicate selection
     expect(screen.getByText('1 row(s) selected')).toBeInTheDocument();
   });

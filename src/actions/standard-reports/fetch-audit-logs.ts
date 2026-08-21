@@ -2,10 +2,16 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { systemAuditLogs, users } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import { resolveTargetEntityLabels, resolveAuditValueLabels } from '@/actions/audit-log';
+import {
+  resolveTargetEntityLabels,
+  resolveAuditValueLabels,
+} from '@/actions/audit-log';
 import { extractLabelFromValues } from '@/lib/audit';
 import { buildEventDetailsSentence } from './utils';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchAuditLogs(
   filters: ReportPreviewFilters,
@@ -33,8 +39,7 @@ export async function fetchAuditLogs(
     );
   }
 
-  const whereCondition =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
   const baseQuery = db
     .select({

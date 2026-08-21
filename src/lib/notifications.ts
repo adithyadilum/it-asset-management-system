@@ -2,9 +2,11 @@
  * Notification Service Infrastructure
  *
  * This module provides a standardized way to trigger notifications for asset-related actions.
- * Currently implemented as a mock service that logs to the console, it is designed to be 
+ * Currently implemented as a mock service that logs to the console, it is designed to be
  * easily extended to use external providers (e.g., SendGrid, AWS SES, or an internal notification API).
  */
+
+import { logInfo } from '@/lib/latency';
 
 export type AssetNotificationType = 'assignment_reminder' | 'return_request';
 
@@ -19,7 +21,9 @@ export interface AssetNotificationParams {
  * Sends a notification to a user regarding an asset.
  * In a real implementation, this would send an email, Slack message, or push notification.
  */
-export async function sendAssetNotification(params: AssetNotificationParams): Promise<void> {
+export async function sendAssetNotification(
+  params: AssetNotificationParams
+): Promise<void> {
   const { type, recipientEmail, assetTag, assetName } = params;
 
   // Simulate network latency
@@ -43,12 +47,12 @@ export async function sendAssetNotification(params: AssetNotificationParams): Pr
   }
 
   // LOGGING (Mocking the actual send)
-  console.info('==================================================');
-  console.info(`[NOTIFICATION SENT]`);
-  console.info(`To: ${recipientEmail}`);
-  console.info(`Subject: ${subject}`);
-  console.info(`Message: ${message}`);
-  console.info('==================================================');
+  logInfo('==================================================');
+  logInfo(`[NOTIFICATION SENT]`);
+  logInfo(`To: ${recipientEmail}`);
+  logInfo(`Subject: ${subject}`);
+  logInfo(`Message: ${message}`);
+  logInfo('==================================================');
 
   return;
 }

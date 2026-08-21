@@ -1,13 +1,16 @@
 import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DashboardRefreshProvider, useDashboardRefresh } from './dashboard-refresh-provider';
+import {
+  DashboardRefreshProvider,
+  useDashboardRefresh,
+} from './dashboard-refresh-provider';
 
 // Mock Next.js router
 const mockRouter = { refresh: vi.fn() }; // Create the object ONCE
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => mockRouter // Return the exact same object every time
+  useRouter: () => mockRouter, // Return the exact same object every time
 }));
 
 const TestComponent = () => {
@@ -33,11 +36,13 @@ describe('DashboardRefreshProvider', () => {
   });
 
   it('provides refresh state to children', () => {
-    render(<CurrencyProvider initialCurrency="USD">
-      <DashboardRefreshProvider>
-        <TestComponent />
-      </DashboardRefreshProvider>
-    </CurrencyProvider>);
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <DashboardRefreshProvider>
+          <TestComponent />
+        </DashboardRefreshProvider>
+      </CurrencyProvider>
+    );
     expect(screen.getByText('Idle')).toBeInTheDocument();
   });
 });

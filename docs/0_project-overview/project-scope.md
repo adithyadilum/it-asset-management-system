@@ -12,13 +12,13 @@ EITAMS is a centralised, web-based enterprise platform built for TIQRI Corporati
 
 The platform is organised across **five architectural Modules comprising 23 Epics**:
 
-| Module | Name                                   | Epics       | Summary                                                                                                                           |
-| :----- | :------------------------------------- | :---------- | :-------------------------------------------------------------------------------------------------------------------------------- |
-| 1      | Core Platform & API Gateway            | 1 → 6       | SSO/RBAC authentication, dynamic category schemas, master data CRUD, immutable audit logs, and external API gateway integrations.   |
-| 2      | Asset Registry & Onboarding            | 7 → 12      | Multi-step registration wizard, high-density grids, QR tag engine, PWA mobile scanning, and Employee Self-Service portal.          |
-| 3      | Operations & Lifecycle Management      | 13 → 16     | Employee custody confirmation, digital acceptance, assignments/returns, and the Maintenance & Repair ledger.                      |
-| 4      | Secure Disposal & Compliance           | 17 → 19     | Pending approval queues, hard-stop compliance verification modals, bulk batch disposal execution, and soft-delete historical archival. |
-| 5      | Financial Analytics & Automation       | 20 → 23     | Global KPI dashboard, standard report templates, depreciation/TCO ledgers, and automated CRON alert notifications.                |
+| Module | Name                              | Epics   | Summary                                                                                                                                |
+| :----- | :-------------------------------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | Core Platform & API Gateway       | 1 → 6   | SSO/RBAC authentication, dynamic category schemas, master data CRUD, immutable audit logs, and external API gateway integrations.      |
+| 2      | Asset Registry & Onboarding       | 7 → 12  | Multi-step registration wizard, high-density grids, QR tag engine, PWA mobile scanning, and Employee Self-Service portal.              |
+| 3      | Operations & Lifecycle Management | 13 → 16 | Employee custody confirmation, digital acceptance, assignments/returns, and the Maintenance & Repair ledger.                           |
+| 4      | Secure Disposal & Compliance      | 17 → 19 | Pending approval queues, hard-stop compliance verification modals, bulk batch disposal execution, and soft-delete historical archival. |
+| 5      | Financial Analytics & Automation  | 20 → 23 | Global KPI dashboard, standard report templates, depreciation/TCO ledgers, and automated CRON alert notifications.                     |
 
 ---
 
@@ -39,9 +39,9 @@ The platform is organised across **five architectural Modules comprising 23 Epic
 ### 2.2 Technical Features
 
 - **Web Interface:** A responsive Next.js 16 (App Router) web application with React 19, Tailwind CSS 4, and desktop-optimised data grids (TanStack Table).
-- **Authentication & Authorisation (Epics 1, 2):** 
-  - *Current Status:* Stateless Edge Proxy (`src/proxy.ts`) using JSON Web Tokens (JWT) signed via the `jose` library, mapping database-driven roles (`GlobalAdmin`, `ITOperator`, `FinancialAuditor`, and `Employee`) in the `Users` table.
-  - *In Scope / Yet to be Built:* Production integration with **Azure Active Directory (Entra ID)** via OAuth 2.0 / OIDC for SSO, mapping automated baseline permissions from Azure AD Group attributes to EITAMS application roles.
+- **Authentication & Authorisation (Epics 1, 2):**
+  - _Current Status:_ Stateless Edge Proxy (`src/proxy.ts`) using JSON Web Tokens (JWT) signed via the `jose` library, mapping database-driven roles (`GlobalAdmin`, `ITOperator`, `FinancialAuditor`, and `Employee`) in the `Users` table.
+  - _In Scope / Yet to be Built:_ Production integration with **Azure Active Directory (Entra ID)** via OAuth 2.0 / OIDC for SSO, mapping automated baseline permissions from Azure AD Group attributes to EITAMS application roles.
 - **Dynamic Category Schemas (Epic 3):** Admin-configurable dynamic category schemas with specific custom attributes for `modelSpecs` (specifications common to a model) and `assetTracking` (attributes unique to an asset instance), rendering custom fields on-the-fly during creation.
 - **Bulk Import (Epic 10):** CSV importer with partial-success logic — valid rows committed, invalid rows skipped with a downloadable CSV error report detailing row-by-row validation issues.
 - **QR Code Engine (Epic 9):** Auto-generated QR codes per asset encoding the asset path `${originUrl}/assets/${assetId}` where `assetId` is the unique UUID or asset tag, with support for printing tags in standard A4 and single thermal printer PDF formats.

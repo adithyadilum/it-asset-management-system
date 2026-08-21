@@ -31,13 +31,18 @@ vi.mock('@/db', () => ({
 describe('generateTemplateWorkbook', () => {
   it('throws an error if category is not found', async () => {
     vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce(undefined);
-    await expect(generateTemplateWorkbook(1)).rejects.toThrow('Category not found or is inactive');
+    await expect(generateTemplateWorkbook(1)).rejects.toThrow(
+      'Category not found or is inactive'
+    );
   });
 
   it('throws an error if category is inactive', async () => {
-     
-    vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce({ isActive: false } as any);
-    await expect(generateTemplateWorkbook(1)).rejects.toThrow('Category not found or is inactive');
+    vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce({
+      isActive: false,
+    } as any);
+    await expect(generateTemplateWorkbook(1)).rejects.toThrow(
+      'Category not found or is inactive'
+    );
   });
 
   it('generates a workbook for a category with no custom fields', async () => {
@@ -46,22 +51,21 @@ describe('generateTemplateWorkbook', () => {
       name: 'Standard Category',
       isActive: true,
       customSchema: {},
-     
     } as any);
 
     const { buffer, fileName } = await generateTemplateWorkbook(1);
     expect(fileName).toBe('standard-category-import-template.xlsx');
-    
+
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
-    
+
     expect(workbook.worksheets.length).toBe(2);
     const dataSheet = workbook.getWorksheet('Import Data');
     const refSheet = workbook.getWorksheet('Reference Data');
-    
+
     expect(dataSheet).toBeDefined();
     expect(refSheet).toBeDefined();
-    
+
     // Header should contain Vendor Name and Notes, but no custom fields
     const row = dataSheet?.getRow(1);
     const values = row?.values as string[];
@@ -82,17 +86,16 @@ describe('generateTemplateWorkbook', () => {
           { fieldName: 'Touch Screen', inputType: 'Boolean' },
         ],
       },
-     
     } as any);
 
     const { buffer } = await generateTemplateWorkbook(2);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
-    
+
     const dataSheet = workbook.getWorksheet('Import Data');
     const row = dataSheet?.getRow(1);
     const values = row?.values as string[];
-    
+
     expect(values).toContain('RAM Size');
     expect(values).toContain('Touch Screen');
     expect(values).toContain('Notes');

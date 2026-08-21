@@ -10,8 +10,7 @@ describe('RegistrationForm', () => {
   });
 
   it('renders registration form', () => {
-    // @ts-ignore
-    render(<RegistrationForm isOpen={true} onClose={vi.fn()} categories={[]} locations={[]} users={[]} departments={[]} />);
+    render(<RegistrationForm isOpen={true} onClose={vi.fn()} />);
     expect(screen.getByText(/Asset Registry/i)).toBeInTheDocument();
   });
 });

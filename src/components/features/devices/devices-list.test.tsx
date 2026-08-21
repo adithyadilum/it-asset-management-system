@@ -38,7 +38,7 @@ describe('DevicesList', () => {
       deviceOs: 'Android',
       lastActiveAt: null,
       linkedAt: new Date().toISOString(),
-    }
+    },
   ] as any;
 
   beforeEach(() => {
@@ -60,39 +60,46 @@ describe('DevicesList', () => {
 
   it('unlinks a device successfully', async () => {
     (global.fetch as any).mockResolvedValue({ ok: true });
-    
+
     render(<DevicesList devices={mockDevices} />);
-    
+
     // Click unlink on first device
-    const unlinkBtns = screen.getAllByRole('button', { name: /Unlink Device/i });
+    const unlinkBtns = screen.getAllByRole('button', {
+      name: /Unlink Device/i,
+    });
     fireEvent.click(unlinkBtns[0]);
-    
+
     // Confirm dialog
     const confirmBtn = screen.getByRole('button', { name: /^Unlink Device$/ }); // exact match for dialog btn
     fireEvent.click(confirmBtn);
-    
+
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/auth/unlink-device', expect.any(Object));
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/auth/unlink-device',
+        expect.any(Object)
+      );
       expect(mockRouter.refresh).toHaveBeenCalled();
     });
   });
 
   it('handles unlink failure', async () => {
-    (global.fetch as any).mockResolvedValue({ 
-      ok: false, 
-      json: () => Promise.resolve({ error: 'Failed to unlink' }) 
+    (global.fetch as any).mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ error: 'Failed to unlink' }),
     });
-    
+
     render(<DevicesList devices={mockDevices} />);
-    
+
     // Click unlink on first device
-    const unlinkBtns = screen.getAllByRole('button', { name: /Unlink Device/i });
+    const unlinkBtns = screen.getAllByRole('button', {
+      name: /Unlink Device/i,
+    });
     fireEvent.click(unlinkBtns[0]);
-    
+
     // Confirm dialog
     const confirmBtn = screen.getByRole('button', { name: /^Unlink Device$/ });
     fireEvent.click(confirmBtn);
-    
+
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled();
     });

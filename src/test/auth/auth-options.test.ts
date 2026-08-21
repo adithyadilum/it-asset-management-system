@@ -1,4 +1,3 @@
- 
 /**
  * @vitest-environment node
  */
@@ -7,6 +6,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { authOptions } from '@/lib/auth/auth-options';
+
+const mockLogAuditAction = vi.fn();
+vi.mock('@/lib/audit', () => ({
+  logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
+}));
 
 vi.mock('@/db', () => ({
   db: {
@@ -20,7 +24,9 @@ vi.mock('@/db', () => ({
 }));
 
 describe('authOptions callbacks', () => {
-  const findFirstMock = db.query.users.findFirst as unknown as ReturnType<typeof vi.fn>;
+  const findFirstMock = db.query.users.findFirst as unknown as ReturnType<
+    typeof vi.fn
+  >;
   const insertMock = db.insert as unknown as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -42,6 +48,33 @@ describe('authOptions callbacks', () => {
       } as any);
 
       expect(result).toBe(false);
+    });
+
+    it('rejects login without exposing database error details', async () => {
+      findFirstMock.mockRejectedValue(
+        new Error('Failed query with params: private-user@tiqri.com')
+      );
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        const result = await signIn({
+          user: { email: 'private-user@tiqri.com' },
+          account: null,
+          profile: { email: 'private-user@tiqri.com' },
+        } as any);
+
+        expect(result).toBe(false);
+        expect(consoleError).toHaveBeenCalledWith(
+          '[AUTH] Login database lookup failed (code: UNKNOWN)'
+        );
+        expect(JSON.stringify(consoleError.mock.calls)).not.toContain(
+          'private-user@tiqri.com'
+        );
+      } finally {
+        consoleError.mockRestore();
+      }
     });
 
     it('JIT provisions a new user with Employee role if the user does not exist', async () => {
@@ -155,6 +188,74 @@ describe('authOptions callbacks', () => {
       } as any);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('signIn event', () => {
+    const signInEvent = authOptions.events?.signIn;
+
+    if (!signInEvent) {
+      throw new Error('signIn event is not defined in authOptions');
+    }
+
+    it('records a LOGIN audit row for a known user', async () => {
+      // Nothing wrote LOGIN before this existed, even though every audit
+      // surface was already wired to render it.
+      findFirstMock.mockResolvedValue({ id: 'user-1', role: 'GlobalAdmin' });
+
+      await signInEvent({ user: { email: 'Person@Tiqri.com' } } as any);
+
+      expect(mockLogAuditAction).toHaveBeenCalledWith({
+        entityType: 'sessions',
+        entityId: 'user-1',
+        actionType: 'LOGIN',
+        performedById: 'user-1',
+        newData: { email: 'person@tiqri.com', role: 'GlobalAdmin' },
+      });
+    });
+
+    it('marks a first sign-in as provisioned', async () => {
+      findFirstMock.mockResolvedValue({ id: 'user-2', role: 'Employee' });
+
+      await signInEvent({
+        user: { email: 'new@tiqri.com' },
+        isNewUser: true,
+      } as any);
+
+      expect(mockLogAuditAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          newData: expect.objectContaining({ provisioned: true }),
+        })
+      );
+    });
+
+    it('records nothing when there is no email', async () => {
+      await signInEvent({ user: {} } as any);
+
+      expect(mockLogAuditAction).not.toHaveBeenCalled();
+    });
+
+    it('records nothing when the user is not in the local database', async () => {
+      findFirstMock.mockResolvedValue(undefined);
+
+      await signInEvent({ user: { email: 'ghost@tiqri.com' } } as any);
+
+      expect(mockLogAuditAction).not.toHaveBeenCalled();
+    });
+
+    it('never lets an audit failure break the sign-in', async () => {
+      findFirstMock.mockRejectedValue(new Error('database is down'));
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        await expect(
+          signInEvent({ user: { email: 'person@tiqri.com' } } as any)
+        ).resolves.toBeUndefined();
+      } finally {
+        consoleError.mockRestore();
+      }
     });
   });
 });

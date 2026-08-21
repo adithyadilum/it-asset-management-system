@@ -24,11 +24,14 @@ describe('InventoryStatusChart', () => {
 
   it('renders chart component', () => {
     const mockData = [
-      { status: 'Available', count: 100, fill: '#123456' }
+      { name: 'New / Available', value: 100, color: '#123456' },
     ];
-    
-    // @ts-ignore
-    render(<CurrencyProvider initialCurrency="USD"><InventoryStatusChart inventoryData={mockData as any} totalAssets={100} /></CurrencyProvider>);
+
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <InventoryStatusChart inventoryData={mockData} utilizationRate={0} />
+      </CurrencyProvider>
+    );
     expect(screen.getByText(/Inventory Status/i)).toBeInTheDocument();
   });
 });

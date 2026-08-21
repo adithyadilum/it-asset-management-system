@@ -21,7 +21,12 @@ export function TechnicalDetailsTab({
   );
 
   return (
-    <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
+    <div
+      className={cn(
+        'flex w-full flex-col gap-8 text-sm text-foreground',
+        className
+      )}
+    >
       {/* Specifications Grid */}
       <div className="mt-2 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
         {specEntries.map(([key, value], index) => {
@@ -34,10 +39,20 @@ export function TechnicalDetailsTab({
                 isLongValue && 'col-span-full'
               )}
             >
-              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground capitalize')}>
+              <div
+                className={cn(
+                  TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                  'shrink-0 pr-4 text-muted-foreground capitalize'
+                )}
+              >
                 {key.replace(/_/g, ' ')}
               </div>
-              <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground')}>
+              <div
+                className={cn(
+                  TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                  'text-right text-foreground'
+                )}
+              >
                 {value}
               </div>
             </div>
@@ -47,7 +62,12 @@ export function TechnicalDetailsTab({
         {/* Note Section */}
         {note && (
           <div className="col-span-full mt-4 space-y-2">
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'text-muted-foreground'
+              )}
+            >
               Note
             </div>
             <Textarea

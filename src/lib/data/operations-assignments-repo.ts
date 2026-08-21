@@ -1,3 +1,4 @@
+import { logInfo } from '@/lib/latency';
 import {
   and,
   desc,
@@ -25,11 +26,31 @@ import {
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
+import { EMPLOYEE_ASSIGNMENTS_URL } from '@/lib/notifications/target-urls';
 import { sendAssetNotification } from '../notifications';
 
 type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
 
 export type AssignmentsDashboardTab = 'available' | 'assigned' | 'returned';
+
+const OVERDUE_REFRESH_INTERVAL_MS = 60_000;
+let lastOverdueRefreshAt = 0;
+let inFlightOverdueRefresh: Promise<void> | null = null;
+
+async function refreshOverdueAssignmentsForDashboard() {
+  if (Date.now() - lastOverdueRefreshAt < OVERDUE_REFRESH_INTERVAL_MS) return;
+  if (inFlightOverdueRefresh) return inFlightOverdueRefresh;
+
+  inFlightOverdueRefresh = refreshOverdueAssignments()
+    .then(() => {
+      lastOverdueRefreshAt = Date.now();
+    })
+    .finally(() => {
+      inFlightOverdueRefresh = null;
+    });
+
+  return inFlightOverdueRefresh;
+}
 
 export interface AssignmentsDashboardRow {
   id: string;
@@ -207,6 +228,21 @@ async function ensureActiveTargetExists(
   };
 }
 
+/**
+ * The state a brand-new assignment starts in.
+ *
+ * Only a person can accept an assignment — `acceptAssignment` matches on
+ * `assignedToUserId === currentUser.id`. A location has no one to do that, so a
+ * location assignment that started as 'pending approval' could never leave it;
+ * it sat in the pending queue forever and inflated every pending count. Those
+ * assignments are effective the moment they are made.
+ */
+function initialAssignmentState(target: {
+  assignedToUserId: string | null;
+}): AssignmentState {
+  return target.assignedToUserId ? 'pending approval' : 'assigned';
+}
+
 function dedupeAssetIds(assetIds: string[]) {
   return [
     ...new Set(assetIds.map((id) => id.trim()).filter((id) => id.length > 0)),
@@ -280,9 +316,11 @@ async function enqueuePendingAcceptanceNotification(
     eventType: 'ASSIGNMENT_PENDING',
     userId: recipientId,
     title: 'Action Required: Assignment Pending',
+    // Employees have no dashboard — /dashboard only bounced them to /my-assets,
+    // which is where the accept and decline controls actually live.
     message:
-      'You have a new asset awaiting your acknowledgment. Please review and accept it from your dashboard.',
-    targetUrl: '/dashboard',
+      'You have a new asset awaiting your acknowledgment. Please review and accept it from My Assets.',
+    targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
   });
 }
 
@@ -487,7 +525,7 @@ export async function getAssignmentsDashboardData(
   tab?: AssignmentsDashboardTab
 ): Promise<AssignmentsDashboardData> {
   // Automatic refresh of overdue states on data load
-  await refreshOverdueAssignments();
+  await refreshOverdueAssignmentsForDashboard();
 
   if (tab === 'assigned') {
     const assigned = await loadAssetsByStatus('Assigned');
@@ -567,7 +605,7 @@ export async function assignSingleAsset(
         assignedToLocationId: target.assignedToLocationId,
         expectedReturnDate,
         notes,
-        state: 'pending approval',
+        state: initialAssignmentState(target),
       })
       .returning({
         id: assetAssignments.id,
@@ -597,7 +635,7 @@ export async function assignSingleAsset(
         assignedToUserId: target.assignedToUserId,
         assignedToLocationId: target.assignedToLocationId,
         expectedReturnDate,
-        state: 'pending approval',
+        state: initialAssignmentState(target),
       },
     });
 
@@ -685,7 +723,7 @@ export async function assignMultipleAssets(
           assignedToLocationId: target.assignedToLocationId,
           expectedReturnDate,
           notes,
-          state: 'pending approval' as AssignmentState,
+          state: initialAssignmentState(target),
         }))
       )
       .returning({
@@ -718,7 +756,7 @@ export async function assignMultipleAssets(
             assignedToUserId: target.assignedToUserId,
             assignedToLocationId: target.assignedToLocationId,
             expectedReturnDate,
-            state: 'pending approval',
+            state: initialAssignmentState(target),
           },
         })
       )
@@ -788,11 +826,7 @@ export async function getActiveAssignmentsByAssetIds(assetIds: string[]) {
 export async function updateAssignmentsState(
   assignmentIds: number[],
   newState:
-    | 'pending approval'
-    | 'assigned'
-    | 'overdue'
-    | 'requested'
-    | 'returned'
+    'pending approval' | 'assigned' | 'overdue' | 'requested' | 'returned'
 ): Promise<void> {
   if (assignmentIds.length === 0) return;
 
@@ -849,10 +883,13 @@ export async function triggerAssignmentReminders(
             userId: a.assignedToUserId,
             title: 'Return Reminder',
             message: `Reminder: IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
-            targetUrl: '/dashboard',
+            targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
           });
         } catch (error) {
-          console.error('Failed to dispatch in-app return reminder alert:', error);
+          console.error(
+            'Failed to dispatch in-app return reminder alert:',
+            error
+          );
         }
       }
 
@@ -951,7 +988,7 @@ export async function triggerReturnRequests(
             userId: a.assignedToUserId,
             title: 'Return Requested',
             message: `IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
-            targetUrl: '/dashboard',
+            targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
           });
         } catch (error) {
           console.error(
@@ -1072,7 +1109,7 @@ export async function refreshOverdueAssignments(): Promise<void> {
     .returning({ id: assetAssignments.id });
 
   if (updated.length > 0) {
-    console.log(`Refreshed ${updated.length} overdue assignments.`);
+    logInfo(`Refreshed ${updated.length} overdue assignments.`);
   }
 
   // Optional: We can log how many were overdue, but for now we just satisfy the returning rule.
@@ -1102,6 +1139,131 @@ export async function acceptAssignment(assignmentId: number): Promise<void> {
       'ASSIGNMENT_NOT_FOUND'
     );
   }
+}
+
+/**
+ * Withdraws an assignment that has not been acknowledged yet.
+ *
+ * The counterpart to the employee's decline: same end state, but initiated by
+ * the person who created the assignment rather than the person receiving it.
+ * Without it, a mistaken assignment could only be resolved by asking the
+ * assignee to reject something they never wanted.
+ *
+ * Restricted to 'pending approval' on purpose — once the assignee has accepted,
+ * the asset is genuinely in their hands and giving it back is a return, not a
+ * cancellation.
+ */
+export async function cancelPendingAssignment(
+  assignmentId: number,
+  cancelledById: string,
+  options: { allowAnyInitiator: boolean }
+): Promise<{ assetId: string }> {
+  const [assignment] = await db
+    .select({
+      id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
+      state: assetAssignments.state,
+      assignedById: assetAssignments.assignedById,
+      assignedToUserId: assetAssignments.assignedToUserId,
+    })
+    .from(assetAssignments)
+    .where(eq(assetAssignments.id, assignmentId))
+    .limit(1);
+
+  if (!assignment) {
+    throw new AssignmentServiceError(
+      'Assignment not found.',
+      404,
+      'ASSIGNMENT_NOT_FOUND'
+    );
+  }
+
+  if (
+    !options.allowAnyInitiator &&
+    String(assignment.assignedById) !== String(cancelledById)
+  ) {
+    throw new AssignmentServiceError(
+      'Only the person who created this assignment can cancel it.',
+      403,
+      'NOT_ASSIGNMENT_INITIATOR'
+    );
+  }
+
+  if (assignment.state !== 'pending approval') {
+    throw new AssignmentServiceError(
+      'Only an assignment still awaiting acknowledgment can be cancelled.',
+      409,
+      'ASSIGNMENT_NOT_PENDING'
+    );
+  }
+
+  await db.transaction(async (tx) => {
+    // Re-check the state inside the transaction: the assignee may be accepting
+    // at this very moment, and cancelling underneath them would leave the asset
+    // marked Available while they believe they hold it.
+    const [updated] = await tx
+      .update(assetAssignments)
+      .set({
+        state: 'returned',
+        acceptanceStatus: 'cancelled',
+        returnedDate: new Date(),
+      })
+      .where(
+        and(
+          eq(assetAssignments.id, assignmentId),
+          eq(assetAssignments.state, 'pending approval')
+        )
+      )
+      .returning({ id: assetAssignments.id });
+
+    if (!updated) {
+      throw new AssignmentServiceError(
+        'Assignment is no longer pending acknowledgment.',
+        409,
+        'ASSIGNMENT_NOT_PENDING'
+      );
+    }
+
+    await tx
+      .update(notificationQueue)
+      .set({ isProcessed: true })
+      .where(eq(notificationQueue.assignmentId, assignmentId));
+
+    await tx
+      .update(assets)
+      .set({ status: 'Available' })
+      .where(eq(assets.id, assignment.assetId));
+
+    await logAuditActionTx(tx, {
+      entityType: 'asset_assignment',
+      entityId: String(assignmentId),
+      actionType: 'RETURN',
+      performedById: cancelledById,
+      oldData: { state: 'pending approval' },
+      newData: {
+        state: 'returned',
+        acceptanceStatus: 'cancelled',
+      },
+    });
+  });
+
+  // Tell the assignee it is gone, so a pending item does not linger in their
+  // notification list pointing at an assignment they can no longer act on.
+  if (assignment.assignedToUserId) {
+    try {
+      await dispatchAlert({
+        eventType: 'ASSIGNMENT_DECLINED',
+        userId: assignment.assignedToUserId,
+        title: 'Assignment Cancelled',
+        message: `Assignment #${assignmentId} was cancelled before you acknowledged it. No action is needed.`,
+        targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
+      });
+    } catch (error) {
+      console.error('Failed to dispatch assignment cancelled alert:', error);
+    }
+  }
+
+  return { assetId: assignment.assetId };
 }
 
 /**
@@ -1146,10 +1308,10 @@ export async function processAssetReturn(
     // 1. Update asset status and physical condition
     const updated = await tx
       .update(assets)
-      .set({ 
-        status: newStatus, 
+      .set({
+        status: newStatus,
         condition: input.physicalCondition,
-        updatedAt: new Date() 
+        updatedAt: new Date(),
       })
       .where(and(eq(assets.id, input.assetId), eq(assets.status, 'Returned')))
       .returning({ id: assets.id });

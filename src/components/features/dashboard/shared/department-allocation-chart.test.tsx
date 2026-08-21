@@ -24,10 +24,16 @@ describe('DepartmentAllocationChart', () => {
 
   it('renders chart component', () => {
     const mockData = [
-      { department: 'IT', allocated: 50, available: 10, inRepair: 5 }
+      { department: 'IT', allocated: 50, available: 10, inRepair: 5 },
     ];
-    
-    render(<CurrencyProvider initialCurrency="USD"><DepartmentAllocationChart allocationData={mockData as any} /></CurrencyProvider>);
-    expect(screen.getByText(/Asset Allocation by Department/i)).toBeInTheDocument();
+
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <DepartmentAllocationChart allocationData={mockData as any} />
+      </CurrencyProvider>
+    );
+    expect(
+      screen.getByText(/Asset Allocation by Department/i)
+    ).toBeInTheDocument();
   });
 });

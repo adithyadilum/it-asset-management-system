@@ -8,13 +8,17 @@ vi.mock('./notification-item', () => ({
     <div data-testid={`notif-item-${notification.id}`}>
       {notification.title}
     </div>
-  )
+  ),
 }));
 
 // Mock Dropdown Menu components to avoid portal issues in tests if any
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children, open, onOpenChange }: any) => (
-    <div data-testid="dropdown-menu" data-state={open ? 'open' : 'closed'} onClick={() => onOpenChange?.(!open)}>
+    <div
+      data-testid="dropdown-menu"
+      data-state={open ? 'open' : 'closed'}
+      onClick={() => onOpenChange?.(!open)}
+    >
       {/* We intercept the trigger click to toggle open state manually */}
       {typeof children === 'function' ? children() : children}
     </div>
@@ -31,9 +35,9 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 
 // For JSDOM, Radix UI Dialogs/Dropdowns require ResizeObserver to be mocked
 class ResizeObserver {
-  observe() { }
-  unobserve() { }
-  disconnect() { }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 }
 vi.stubGlobal('ResizeObserver', ResizeObserver);
 
@@ -108,11 +112,29 @@ describe('NotificationDropdown', () => {
 
   it('renders list of notifications', () => {
     const notifications = [
-      { id: '1', title: 'Test 1', message: 'Msg 1', createdAt: new Date().toISOString(), isRead: false },
-      { id: '2', title: 'Test 2', message: 'Msg 2', createdAt: new Date().toISOString(), isRead: true },
+      {
+        id: '1',
+        title: 'Test 1',
+        message: 'Msg 1',
+        createdAt: new Date().toISOString(),
+        isRead: false,
+      },
+      {
+        id: '2',
+        title: 'Test 2',
+        message: 'Msg 2',
+        createdAt: new Date().toISOString(),
+        isRead: true,
+      },
     ] as any;
 
-    render(<NotificationDropdown {...defaultProps} notifications={notifications} unreadCount={1} />);
+    render(
+      <NotificationDropdown
+        {...defaultProps}
+        notifications={notifications}
+        unreadCount={1}
+      />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /Notifications/i }));
 
@@ -124,11 +146,19 @@ describe('NotificationDropdown', () => {
   it('calls onMarkAllAsRead when Mark all as read button is clicked', () => {
     const notifications = [{ id: '1', title: 'Test 1', isRead: false }] as any;
 
-    render(<NotificationDropdown {...defaultProps} notifications={notifications} unreadCount={1} />);
+    render(
+      <NotificationDropdown
+        {...defaultProps}
+        notifications={notifications}
+        unreadCount={1}
+      />
+    );
 
     fireEvent.click(screen.getByRole('button', { name: /Notifications/i }));
 
-    const markAllBtn = screen.getByRole('button', { name: /Mark all as read/i });
+    const markAllBtn = screen.getByRole('button', {
+      name: /Mark all as read/i,
+    });
     fireEvent.click(markAllBtn);
 
     expect(mockOnMarkAllAsRead).toHaveBeenCalled();

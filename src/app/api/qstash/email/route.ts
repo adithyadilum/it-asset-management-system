@@ -1,5 +1,6 @@
 // src/app/api/qstash/email/route.ts
 import { serverEnv } from '@/lib/env';
+import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
 import { clientEnv } from '@/lib/env.client';
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
@@ -197,7 +198,7 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(decryptedKey);
 
     const fromEmail = serverEnv.RESEND_FROM || 'onboarding@resend.dev';
-    // 7. Dispatch the Email with custom backoff retry loop
+    // QStash owns retry/backoff; each worker invocation performs one attempt.
     await sendEmailWithRetry({
       resend,
       emailOptions: {
@@ -216,10 +217,9 @@ export async function POST(req: NextRequest) {
       message: 'Email sent successfully',
     });
   } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('Email dispatch worker failed:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error', details: errMsg },
+      { error: 'Email delivery failed' },
       { status: 500 }
     );
   }
@@ -331,7 +331,7 @@ function generateEmailHtml({
 
       <!-- FOOTER HELP -->
       <div style="font-size: 12px; line-height: 16px; color: #64748b; margin-top: 20px;">
-        Need help? Contact TIQRI IT Support
+        Need help? <a href="${SUPPORT_MAILTO}" style="color: #64748b;">Contact ${SUPPORT_LABEL}</a>
       </div>
     </div>
   </div>
@@ -354,8 +354,8 @@ interface RetryParams {
 }
 
 /**
- * Execute email delivery with custom exponential backoff retry logic.
- * Log final failure into notificationLogs upon complete exhaustion.
+ * Execute exactly one delivery attempt. A non-2xx worker response delegates
+ * retry timing and attempt limits to QStash.
  */
 async function sendEmailWithRetry({
   resend,
@@ -364,44 +364,21 @@ async function sendEmailWithRetry({
   userId,
   targetUrl,
 }: RetryParams) {
-  const delays = [1000, 2000, 4000, 8000]; // 1s, 2s, 4s, 8s backoff
-  let attempt = 0;
-
-  while (attempt < 5) {
-    try {
-      attempt++;
-      const result = await resend.emails.send(emailOptions);
-      if (result.error) {
-        throw new Error(result.error.message || 'Resend error');
-      }
-      console.log(`Email successfully dispatched on attempt ${attempt}`);
-      return result;
-    } catch (err) {
-      console.warn(`Resend email delivery attempt ${attempt} failed:`, err);
-
-      if (attempt >= 5) {
-        // Log to Dead Letter Queue (failed notificationLogs entry)
-        const errMsg = err instanceof Error ? err.message : String(err);
-        try {
-          await db.insert(notificationLogs).values({
-            eventType,
-            channel: 'email',
-            status: 'failed',
-            errorMessage: `Exhausted 5 attempts. Last error: ${errMsg}`,
-            sentAt: new Date(),
-            userId,
-            targetUrl,
-          });
-        } catch (dbErr) {
-          console.error('Failed to log Dead Letter Queue entry to DB:', dbErr);
-        }
-
-        // Return gracefully so QStash does not retry
-        return null;
-      }
-
-      const backoffDelay = delays[attempt - 1] || 8000;
-      await new Promise((resolve) => setTimeout(resolve, backoffDelay));
-    }
+  try {
+    const result = await resend.emails.send(emailOptions);
+    if (result.error) throw new Error(result.error.message || 'Resend error');
+    return result;
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    await db.insert(notificationLogs).values({
+      eventType,
+      channel: 'email',
+      status: 'failed',
+      errorMessage: errMsg.slice(0, 1000),
+      sentAt: new Date(),
+      userId,
+      targetUrl,
+    });
+    throw err;
   }
 }

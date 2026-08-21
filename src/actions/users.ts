@@ -8,8 +8,6 @@ import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 
-
-
 export interface UserSearchResult {
   id: string;
   name: string;

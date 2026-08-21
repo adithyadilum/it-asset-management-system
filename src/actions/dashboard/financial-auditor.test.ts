@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getFinanceDashboardData } from './financial-auditor';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
@@ -8,7 +12,8 @@ vi.mock('@/actions/auth', () => ({
   enforceActionAccess: async (predicate?: (role: string) => boolean) => {
     const user = await mockGetAuthenticatedUser();
     if (!user) throw new Error('UNAUTHENTICATED');
-    if (predicate && !predicate(user.role)) throw new Error('FORBIDDEN: Forbidden');
+    if (predicate && !predicate(user.role))
+      throw new Error('FORBIDDEN: Forbidden');
     return user;
   },
 }));
@@ -44,8 +49,10 @@ vi.mock('./queries/activities', () => ({
 }));
 
 vi.mock('./queries/financials', () => ({
-  getDashboardTopHighValueAssetsInternal: () => mockGetDashboardTopHighValueAssetsInternal(),
-  getDashboardSoftwareOptimizationInternal: () => mockGetDashboardSoftwareOptimizationInternal(),
+  getDashboardTopHighValueAssetsInternal: () =>
+    mockGetDashboardTopHighValueAssetsInternal(),
+  getDashboardSoftwareOptimizationInternal: () =>
+    mockGetDashboardSoftwareOptimizationInternal(),
 }));
 
 describe('getFinanceDashboardData', () => {
@@ -73,9 +80,13 @@ describe('getFinanceDashboardData', () => {
       id: 'finance1',
       role: 'FinancialAuditor',
     });
-    mockGetCachedDashboardKpiMetrics.mockResolvedValue({ totalActiveAssets: 100 });
+    mockGetCachedDashboardKpiMetrics.mockResolvedValue({
+      totalActiveAssets: 100,
+    });
     mockGetCachedInventoryStatus.mockResolvedValue({ inventoryData: [] });
-    mockGetCachedDepartmentAllocation.mockResolvedValue([{ dept: 'Finance', count: 5 }]);
+    mockGetCachedDepartmentAllocation.mockResolvedValue([
+      { name: 'Finance', value: 5 },
+    ]);
     mockGetDashboardTopHighValueAssetsInternal.mockResolvedValue([{ id: 1 }]);
     mockGetWriteOffsLedger.mockResolvedValue({ data: [{ id: 2 }] });
     mockGetDashboardSoftwareOptimizationInternal.mockResolvedValue([{ id: 3 }]);
@@ -91,7 +102,7 @@ describe('getFinanceDashboardData', () => {
   it('throws error if kpi metrics reject', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockGetCachedDashboardKpiMetrics.mockRejectedValue(new Error('KPI Error'));
-    
+
     // Others resolve fine
     mockGetCachedInventoryStatus.mockResolvedValue({ inventoryData: [] });
     mockGetCachedDepartmentAllocation.mockResolvedValue([]);
@@ -105,14 +116,22 @@ describe('getFinanceDashboardData', () => {
 
   it('returns default fallbacks when non-critical queries reject', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockGetCachedDashboardKpiMetrics.mockResolvedValue({ totalActiveAssets: 100 });
-    
+    mockGetCachedDashboardKpiMetrics.mockResolvedValue({
+      totalActiveAssets: 100,
+    });
+
     // Everything else rejects
     mockGetCachedInventoryStatus.mockRejectedValue(new Error('Inv Error'));
-    mockGetCachedDepartmentAllocation.mockRejectedValue(new Error('Dept Error'));
-    mockGetDashboardTopHighValueAssetsInternal.mockRejectedValue(new Error('Top Error'));
+    mockGetCachedDepartmentAllocation.mockRejectedValue(
+      new Error('Dept Error')
+    );
+    mockGetDashboardTopHighValueAssetsInternal.mockRejectedValue(
+      new Error('Top Error')
+    );
     mockGetWriteOffsLedger.mockRejectedValue(new Error('Write Error'));
-    mockGetDashboardSoftwareOptimizationInternal.mockRejectedValue(new Error('Soft Error'));
+    mockGetDashboardSoftwareOptimizationInternal.mockRejectedValue(
+      new Error('Soft Error')
+    );
     mockGetRecentActivitiesInternal.mockRejectedValue(new Error('Act Error'));
 
     const result = await getFinanceDashboardData();

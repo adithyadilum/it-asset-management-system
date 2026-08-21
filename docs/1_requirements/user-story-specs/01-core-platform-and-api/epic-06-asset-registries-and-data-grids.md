@@ -83,6 +83,7 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Command Palette UI component (Omni-Search Trigger/Modal).
 - [x] Register the global `Cmd+K` / `Ctrl+K` keyboard shortcut listener.
 - [x] Implement a static frontend index of all system routes (Pages) and global functions.
@@ -90,6 +91,7 @@ This epic builds the central command center for all asset tracking. It implement
 - [x] Implement empty state visual feedback within the command palette.
 
 #### Backend
+
 - [x] Create an optimized multi-table search endpoint (`GET /api/v1/search`) that concurrently queries Assets and Users.
 
 ---
@@ -123,11 +125,13 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build a reusable Registry Header React component that renders the dynamic heading, subcategory dropdown, search bar, Filters button, and "+ Add Asset" CTA.
 - [x] Wire the subcategory dropdown to the server utilizing `getCategoriesByPillar`.
 - [x] Persist local search text into the browser URL (`?query=...`) for shareability.
 
 #### Backend
+
 - [x] Create the `getCategoriesByPillar` server action to cleanly return active subcategories for the requested context.
 
 ---
@@ -152,10 +156,12 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Hardware Grid page using `getAssetsByPillar({ pillar: 'Hardware' })`.
 - [x] Build a reusable `StatusBadge` component rendering color-coded outline pill badges with leading icons.
 
 #### Backend
+
 - [x] Create the `getAssetsByPillar` Server Action utilizing Drizzle ORM to cleanly fetch formatted Hardware rows.
 
 ---
@@ -175,6 +181,7 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Software Grid page utilizing the shared registry layout pattern but querying `Software`.
 
 ---
@@ -194,6 +201,7 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Furniture Grid component focused on physical location attributes.
 
 ---
@@ -213,6 +221,7 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Office Electronics Grid page structure.
 
 ---
@@ -245,10 +254,12 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the custom table pagination component supporting standard arrow controls.
 - [x] Wire sort/filter/pagination state to Next.js URL query parameters or direct Server Action payloads.
 
 #### Backend
+
 - [x] Extend the `AssetsGridQueryInput` to accept parameters for: `page`, `pageSize`, `query`, `status`, `categoryId`.
 - [x] Implement robust input normalization (`normalizePage`, `normalizePageSize`) to fallback safely if invalid data is passed.
 
@@ -281,12 +292,14 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Implement row-selection state management within the data table components.
 - [x] Build the dynamic Bulk Action Toolbar.
 - [x] Write state-conflict calculation logic to disable incompatible bulk actions.
 - [x] Integrate the UI to call the `bulkUpdateAssets` Server Action.
 
 #### Backend
+
 - [x] Create the `bulkUpdateAssets` server action.
 - [x] Ensure atomic transaction processing within `bulkUpdateAssetsRepo` for updating locations, condition, or status.
 - [x] Trigger cache revalidation upon success.
@@ -310,7 +323,9 @@ This epic builds the central command center for all asset tracking. It implement
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Unified "All Assets" Page at `/assets/page.tsx` pulling from `getAllAssetsUnified`.
 
 #### Backend
+
 - [x] Create the `getAllAssetsUnified` Server Action and corresponding Repo function returning a normalized cross-pillar structure.

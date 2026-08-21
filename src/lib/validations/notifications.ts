@@ -20,5 +20,7 @@ export const markAsReadParamsSchema = z.object({
   id: z.string().uuid('Invalid notification ID format.'),
 });
 
-export type GetNotificationsParams = z.infer<typeof getNotificationsParamsSchema>;
+export type GetNotificationsParams = z.infer<
+  typeof getNotificationsParamsSchema
+>;
 export type MarkAsReadParams = z.infer<typeof markAsReadParamsSchema>;

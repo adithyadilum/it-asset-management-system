@@ -10,18 +10,34 @@ describe('AllocationsTab', () => {
   });
 
   it('renders correctly', () => {
-    const mockUsers = [{
-      id: 'u1', name: 'John Doe', email: 'john@example.com', assignedDate: '2023-01-01'
-    }];
-    render(<AllocationsTab totalSeats={5} allocatedCount={1} allocations={mockUsers} />);
+    const mockUsers = [
+      {
+        id: 'u1',
+        name: 'John Doe',
+        email: 'john@example.com',
+        assignedDate: '2023-01-01',
+      },
+    ];
+    render(
+      <AllocationsTab
+        totalSeats={5}
+        allocatedCount={1}
+        allocations={mockUsers}
+      />
+    );
     expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
 
   it('calls onRevoke when the remove allocation button is clicked', () => {
     const onRevoke = vi.fn();
-    const mockUsers = [{
-      id: 'u1', name: 'John Doe', email: 'john@example.com', assignedDate: '2023-01-01'
-    }];
+    const mockUsers = [
+      {
+        id: 'u1',
+        name: 'John Doe',
+        email: 'john@example.com',
+        assignedDate: '2023-01-01',
+      },
+    ];
 
     render(
       <AllocationsTab

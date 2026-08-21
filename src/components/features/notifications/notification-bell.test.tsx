@@ -14,7 +14,7 @@ vi.mock('./notification-dropdown', () => ({
       Loading: {props.isLoading ? 'Yes' : 'No'}
       Count: {props.notifications.length}
     </div>
-  )
+  ),
 }));
 
 describe('NotificationBell', () => {

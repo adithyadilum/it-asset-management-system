@@ -84,7 +84,10 @@ export function RolesManagementTable({
         if (!result.success) {
           // Revert optimistic toggle on server failure.
           setOptimisticStatus((prev) => ({ ...prev, [user.id]: !newValue }));
-          console.error('[Roles] Failed to toggle user active status:', result.error);
+          console.error(
+            '[Roles] Failed to toggle user active status:',
+            result.error
+          );
         } else {
           router.refresh();
         }
@@ -93,147 +96,166 @@ export function RolesManagementTable({
     [router]
   );
 
-  const columns = useMemo<ColumnDef<RoleUser>[]>(
-    () => {
-      const baseCols: ColumnDef<RoleUser>[] = [
-        {
-          accessorKey: 'name',
-          header: 'User',
-          cell: ({ row }) => {
-            const user = row.original;
-            return (
-              <div className="flex items-center gap-4 py-1">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarFallback
-                    className={cn(
-                      'rounded-lg bg-muted text-foreground',
-                      TYPOGRAPHY_CLASSNAMES.textXsMedium
-                    )}
-                  >
-                    {getInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
+  const columns = useMemo<ColumnDef<RoleUser>[]>(() => {
+    const baseCols: ColumnDef<RoleUser>[] = [
+      {
+        accessorKey: 'name',
+        header: 'User',
+        cell: ({ row }) => {
+          const user = row.original;
+          return (
+            <div className="flex items-center gap-4 py-1">
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarFallback
+                  className={cn(
+                    'rounded-lg bg-muted text-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textXsMedium
+                  )}
+                >
+                  {getInitials(user.name)}
+                </AvatarFallback>
+              </Avatar>
 
-                <div className="min-w-0">
-                  <p className={cn('truncate text-foreground', TYPOGRAPHY_CLASSNAMES.textSmSemiBold)}>
-                    {user.name}
-                  </p>
-                  <p className={cn('truncate text-muted-foreground', TYPOGRAPHY_CLASSNAMES.textXsRegular)}>
-                    {user.email}
-                  </p>
-                </div>
+              <div className="min-w-0">
+                <p
+                  className={cn(
+                    'truncate text-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textSmSemiBold
+                  )}
+                >
+                  {user.name}
+                </p>
+                <p
+                  className={cn(
+                    'truncate text-muted-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textXsRegular
+                  )}
+                >
+                  {user.email}
+                </p>
               </div>
-            );
-          },
+            </div>
+          );
         },
-        {
-          accessorKey: 'department',
-          header: 'Department',
-          cell: ({ row }) => (
-            <span className={cn('text-foreground', TYPOGRAPHY_CLASSNAMES.textSmRegular)}>
-              {row.original.department}
-            </span>
-          ),
-        },
-        {
-          id: 'status',
-          header: 'Active',
-          cell: ({ row }) => {
-            const user = row.original;
-            const isSelf = user.id === currentUserId;
-            // Prefer optimistic override; fall back to server data.
-            const isActiveDisplay =
-              user.id in optimisticStatus
-                ? optimisticStatus[user.id]
-                : user.isActive;
-
-            return (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center">
-                    <Switch
-                      checked={isActiveDisplay}
-                      onCheckedChange={(checked) =>
-                        handleToggleActive(user, checked)
-                      }
-                      disabled={isSelf || isPending}
-                      aria-label={`${isActiveDisplay ? 'Deactivate' : 'Activate'} ${user.name}`}
-                      size="sm"
-                    />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSelf
-                    ? 'You cannot disable your own account'
-                    : isActiveDisplay
-                    ? `Deactivate ${user.name}`
-                    : `Activate ${user.name}`}
-                </TooltipContent>
-              </Tooltip>
-            );
-          },
-          size: 80,
-        },
-      ];
-
-      baseCols.push({
-        id: 'actions',
-        header: 'Actions',
+      },
+      {
+        accessorKey: 'department',
+        header: 'Department',
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              'text-foreground',
+              TYPOGRAPHY_CLASSNAMES.textSmRegular
+            )}
+          >
+            {row.original.department}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Active',
         cell: ({ row }) => {
           const user = row.original;
           const isSelf = user.id === currentUserId;
+          // Prefer optimistic override; fall back to server data.
+          const isActiveDisplay =
+            user.id in optimisticStatus
+              ? optimisticStatus[user.id]
+              : user.isActive;
 
           return (
-            <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center">
+                  <Switch
+                    checked={isActiveDisplay}
+                    onCheckedChange={(checked) =>
+                      handleToggleActive(user, checked)
+                    }
+                    disabled={isSelf || isPending}
+                    aria-label={`${isActiveDisplay ? 'Deactivate' : 'Activate'} ${user.name}`}
+                    size="sm"
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isSelf
+                  ? 'You cannot disable your own account'
+                  : isActiveDisplay
+                    ? `Deactivate ${user.name}`
+                    : `Activate ${user.name}`}
+              </TooltipContent>
+            </Tooltip>
+          );
+        },
+        size: 80,
+      },
+    ];
+
+    baseCols.push({
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const user = row.original;
+        const isSelf = user.id === currentUserId;
+
+        return (
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => openEditModal(user)}
+                  aria-label={`Edit role and status for ${user.name}`}
+                  disabled={isSelf}
+                >
+                  <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isSelf
+                  ? 'You cannot modify your own role or status'
+                  : 'Edit role and status'}
+              </TooltipContent>
+            </Tooltip>
+
+            {selectedRole !== 'Employee' && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => openEditModal(user)}
-                    aria-label={`Edit role and status for ${user.name}`}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => openRemoveModal(user)}
+                    aria-label={`Remove ${user.name} from ${roleLabel}`}
                     disabled={isSelf}
                   >
-                    <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    <Trash2 className="h-4 w-4 text-red-500" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {isSelf
-                    ? 'You cannot modify your own role or status'
-                    : 'Edit role and status'}
+                    ? 'You cannot remove your own role'
+                    : `Remove ${user.name} from ${roleLabel}`}
                 </TooltipContent>
               </Tooltip>
+            )}
+          </div>
+        );
+      },
+      size: 100,
+    });
 
-              {selectedRole !== 'Employee' && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => openRemoveModal(user)}
-                      aria-label={`Remove ${user.name} from ${roleLabel}`}
-                      disabled={isSelf}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isSelf
-                      ? 'You cannot remove your own role'
-                      : `Remove ${user.name} from ${roleLabel}`}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          );
-        },
-        size: 100,
-      });
-
-      return baseCols;
-    },
-    [currentUserId, roleLabel, selectedRole, optimisticStatus, handleToggleActive, isPending]
-  );
+    return baseCols;
+  }, [
+    currentUserId,
+    roleLabel,
+    selectedRole,
+    optimisticStatus,
+    handleToggleActive,
+    isPending,
+  ]);
 
   return (
     <TooltipProvider>
@@ -246,7 +268,12 @@ export function RolesManagementTable({
             onClick={() => setIsAddModalOpen(true)}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className={cn("flex flex-1 items-center justify-center", TYPOGRAPHY_CLASSNAMES.textSmMedium)}>
+            <span
+              className={cn(
+                'flex flex-1 items-center justify-center',
+                TYPOGRAPHY_CLASSNAMES.textSmMedium
+              )}
+            >
               Add User
             </span>
           </Button>

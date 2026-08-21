@@ -5,19 +5,31 @@ import { users, departments } from '@/db/schema';
 import { withApiKey } from '@/lib/api/with-api-key';
 import { apiError, parseBoundedInt } from '@/lib/api/utils';
 
-
 export const GET = withApiKey('read:users', async (request: NextRequest) => {
   try {
     const searchParams = request.nextUrl.searchParams;
 
     const limitResult = parseBoundedInt(searchParams.get('limit'), 50, 1, 200);
     if (!limitResult.ok) {
-      return apiError(400, 'INVALID_PARAM', 'limit must be an integer between 1 and 200');
+      return apiError(
+        400,
+        'INVALID_PARAM',
+        'limit must be an integer between 1 and 200'
+      );
     }
 
-    const offsetResult = parseBoundedInt(searchParams.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER);
+    const offsetResult = parseBoundedInt(
+      searchParams.get('offset'),
+      0,
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
     if (!offsetResult.ok) {
-      return apiError(400, 'INVALID_PARAM', 'offset must be a non-negative integer');
+      return apiError(
+        400,
+        'INVALID_PARAM',
+        'offset must be a non-negative integer'
+      );
     }
 
     const query = searchParams.get('q')?.trim() || '';
@@ -26,10 +38,7 @@ export const GET = withApiKey('read:users', async (request: NextRequest) => {
     const conditions = [];
     if (query) {
       conditions.push(
-        or(
-          ilike(users.name, `%${query}%`),
-          ilike(users.email, `%${query}%`)
-        )
+        or(ilike(users.name, `%${query}%`), ilike(users.email, `%${query}%`))
       );
     }
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

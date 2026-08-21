@@ -1,10 +1,14 @@
 'use server';
 
-import { desc, eq, and, count } from 'drizzle-orm';
+import { desc, eq, and, count, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { appNotifications, integrationSettings } from '@/db/schema';
-import { getAuthenticatedUser , enforceActionAccess } from '@/actions/auth';
+import {
+  appNotifications,
+  integrationSettings,
+  notificationRules,
+} from '@/db/schema';
+import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
@@ -104,7 +108,10 @@ export async function getNotifications(limit = 10, offset = 0) {
     const user = await getAuthenticatedUser();
     if (!user) return [];
 
-    const validation = getNotificationsParamsSchema.safeParse({ limit, offset });
+    const validation = getNotificationsParamsSchema.safeParse({
+      limit,
+      offset,
+    });
     if (!validation.success) {
       throw new Error('Invalid query parameters.');
     }
@@ -123,6 +130,72 @@ export async function getNotifications(limit = 10, offset = 0) {
     logLatency({
       scope: 'ACTION',
       label: 'notifications.getNotifications',
+      startTime: timer,
+    });
+  }
+}
+
+/** Load the bell badge and first notification page with one auth/DB round trip. */
+export async function getNotificationSummary(limit = 10, offset = 0) {
+  const timer = startLatencyTimer();
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) return { notifications: [], unreadCount: 0 };
+
+    const validation = getNotificationsParamsSchema.safeParse({
+      limit,
+      offset,
+    });
+    if (!validation.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { limit: safeLimit, offset: safeOffset } = validation.data;
+
+    // Two queries rather than one with `count(*) ... OVER ()`.
+    //
+    // The window aggregate had to see every notification the user had ever
+    // received before LIMIT could apply, so the cost grew with their whole
+    // history: measured on 20k rows it read 456 buffers and sorted the lot to
+    // return ten. Split, the page is an index scan that touches 3 buffers and
+    // the count is served from the is_read index. Issued together so this is
+    // still a single round trip's worth of latency, which matters when the
+    // database is a region away.
+    const [rows, [unread]] = await Promise.all([
+      db
+        .select({
+          id: appNotifications.id,
+          userId: appNotifications.userId,
+          title: appNotifications.title,
+          message: appNotifications.message,
+          targetUrl: appNotifications.targetUrl,
+          isRead: appNotifications.isRead,
+          eventType: appNotifications.eventType,
+          createdAt: appNotifications.createdAt,
+        })
+        .from(appNotifications)
+        .where(eq(appNotifications.userId, user.id))
+        .orderBy(desc(appNotifications.createdAt))
+        .limit(safeLimit)
+        .offset(safeOffset),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(appNotifications)
+        .where(
+          and(
+            eq(appNotifications.userId, user.id),
+            eq(appNotifications.isRead, false)
+          )
+        ),
+    ]);
+
+    return {
+      notifications: rows,
+      unreadCount: unread?.count ?? 0,
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'notifications.getNotificationSummary',
       startTime: timer,
     });
   }
@@ -215,6 +288,45 @@ export async function getIntegrationStatus() {
     logLatency({
       scope: 'ACTION',
       label: 'notifications.getIntegrationStatus',
+      startTime: timer,
+    });
+  }
+}
+
+/** Server-rendered bootstrap for the alerts settings page. */
+export async function getAlertsSettingsBootstrap() {
+  const timer = startLatencyTimer();
+  try {
+    const user = await enforceActionAccess();
+    if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') {
+      throw new Error('Forbidden: Unauthorized role');
+    }
+
+    const [settingsRows, rules] = await Promise.all([
+      db
+        .select({
+          resendApiKey: integrationSettings.resendApiKey,
+          teamsWebhookUrl: integrationSettings.teamsWebhookUrl,
+        })
+        .from(integrationSettings)
+        .where(eq(integrationSettings.id, 1))
+        .limit(1),
+      db.select().from(notificationRules).orderBy(notificationRules.id),
+    ]);
+    const settings = settingsRows[0];
+
+    return {
+      rules,
+      integrations: {
+        resendConfigured: Boolean(settings?.resendApiKey),
+        teamsConfigured: Boolean(settings?.teamsWebhookUrl),
+      },
+      isAdmin: user.role === 'GlobalAdmin',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'notifications.getAlertsSettingsBootstrap',
       startTime: timer,
     });
   }

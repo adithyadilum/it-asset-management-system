@@ -2,8 +2,9 @@
 
 import { and, desc, eq, inArray, or, ilike, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { disposalDocumentJoin } from '@/lib/data/disposal-documents';
 
-import {  enforceActionAccess } from '@/actions/auth';
+import { enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import {
   assetDisposals,
@@ -14,7 +15,7 @@ import {
   assetDocuments,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import {  canViewDisposalHistory } from '@/lib/auth/roles';
+import { canViewDisposalHistory } from '@/lib/auth/roles';
 
 export async function getDisposalHistory(params: {
   search?: string;
@@ -26,7 +27,8 @@ export async function getDisposalHistory(params: {
 
   const searchQuery = params.search || '';
   const page = params.page && params.page > 0 ? params.page : 1;
-  const pageSize = params.pageSize && params.pageSize > 0 ? params.pageSize : 10;
+  const pageSize =
+    params.pageSize && params.pageSize > 0 ? params.pageSize : 10;
 
   try {
     const dbTimer = startLatencyTimer();
@@ -52,7 +54,9 @@ export async function getDisposalHistory(params: {
 
     // 1. Fetch disposal history count for pagination
     const [countResult] = await db
-      .select({ count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)` })
+      .select({
+        count: sql<number>`cast(count(DISTINCT ${assetDisposals.id}) as int)`,
+      })
       .from(assetDisposals)
       .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
@@ -77,7 +81,9 @@ export async function getDisposalHistory(params: {
         disposedBy: approver.name,
         disposalDate: assetDisposals.resolvedAt,
         status: assetDisposals.status,
-        documentUrls: sql<string[]>`COALESCE(array_agg(DISTINCT ${assetDocuments.fileUrl}) FILTER (WHERE ${assetDocuments.fileUrl} IS NOT NULL), '{}')`,
+        documentUrls: sql<
+          string[]
+        >`COALESCE(array_agg(DISTINCT ${assetDocuments.fileUrl}) FILTER (WHERE ${assetDocuments.fileUrl} IS NOT NULL), '{}')`,
       })
       .from(assetDisposals)
       .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
@@ -85,13 +91,7 @@ export async function getDisposalHistory(params: {
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
       .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
-      .leftJoin(
-        assetDocuments,
-        and(
-          eq(assetDocuments.assetId, assets.id),
-          eq(assetDocuments.documentType, 'disposal-certificate')
-        )
-      )
+      .leftJoin(assetDocuments, disposalDocumentJoin)
       .where(historyBaseCondition)
       .groupBy(
         assetDisposals.id,
@@ -114,7 +114,7 @@ export async function getDisposalHistory(params: {
       startTime: dbTimer,
     });
 
-    const data = historyDataRaw.map(row => ({
+    const data = historyDataRaw.map((row) => ({
       ...row,
       flaggedBy: row.flaggedBy || 'Unknown',
     }));
@@ -135,4 +135,4 @@ export async function getDisposalHistory(params: {
       startTime: actionTimer,
     });
   }
-}
+}

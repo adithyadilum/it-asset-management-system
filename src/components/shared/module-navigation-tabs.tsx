@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TYPOGRAPHY_CLASSNAMES } from "@/components/shared/typography";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -49,9 +49,9 @@ export const ModuleNavigationTabs = React.forwardRef<
       defaultTab,
       onTabChange,
       header,
-      containerClassName = "",
-      listClassName = "",
-      triggerClassName = "",
+      containerClassName = '',
+      listClassName = '',
+      triggerClassName = '',
       children,
     },
     ref
@@ -68,7 +68,7 @@ export const ModuleNavigationTabs = React.forwardRef<
         ref={ref}
         defaultValue={activeTabId}
         onValueChange={handleTabChange}
-        className={cn("w-full", containerClassName)} // Keeps the overall container full width
+        className={cn('w-full', containerClassName)} // Keeps the overall container full width
       >
         {/* Optional header above the tabs */}
         {header ? <div className="mb-3">{header}</div> : null}
@@ -77,9 +77,9 @@ export const ModuleNavigationTabs = React.forwardRef<
         <TabsList
           className={cn(
             // Container styles
-            "h-9 w-fit gap-2 rounded-lg bg-muted p-1", // CHANGED: w-full to w-fit
+            'h-9 w-fit gap-2 rounded-lg bg-muted p-1', // CHANGED: w-full to w-fit
             // Flexbox layout
-            "inline-flex items-center justify-start",
+            'inline-flex items-center justify-start',
             // Custom className for the list background
             listClassName
           )}
@@ -90,21 +90,21 @@ export const ModuleNavigationTabs = React.forwardRef<
               value={tab.id}
               className={cn(
                 // Default state (inactive)
-                "relative h-7 rounded-md border border-transparent px-2 py-1",
+                'relative h-7 rounded-md border border-transparent px-2 py-1',
                 `${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-muted-foreground`,
-                "bg-transparent hover:text-muted-foreground transition-colors",
-                "cursor-pointer",
+                'bg-transparent hover:text-muted-foreground transition-colors',
+                'cursor-pointer',
 
                 // Active state
-                "data-[state=active]:bg-background",
-                "data-[state=active]:text-foreground",
-                "data-[state=active]:border-border",
-                "data-[state=active]:shadow-sm",
+                'data-[state=active]:bg-background',
+                'data-[state=active]:text-foreground',
+                'data-[state=active]:border-border',
+                'data-[state=active]:shadow-sm',
 
                 // Accessibility
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-                "disabled:cursor-not-allowed disabled:opacity-50",
-                
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
+                'disabled:cursor-not-allowed disabled:opacity-50',
+
                 // Custom className for individual triggers
                 triggerClassName
               )}
@@ -136,4 +136,4 @@ export const ModuleNavigationTabs = React.forwardRef<
   }
 );
 
-ModuleNavigationTabs.displayName = "ModuleNavigationTabs";
+ModuleNavigationTabs.displayName = 'ModuleNavigationTabs';

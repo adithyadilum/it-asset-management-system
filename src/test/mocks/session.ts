@@ -20,7 +20,9 @@ import {
 export function mockSessionAs(user: AuthenticatedUser | null) {
   const authModule = vi.mocked(
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('@/actions/auth') as { getAuthenticatedUser: () => Promise<AuthenticatedUser | null> }
+    require('@/actions/auth') as {
+      getAuthenticatedUser: () => Promise<AuthenticatedUser | null>;
+    }
   );
   authModule.getAuthenticatedUser = vi.fn().mockResolvedValue(user);
 }

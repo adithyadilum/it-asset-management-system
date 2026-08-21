@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AdminMobileScannerButton } from './admin-mobile-scanner-button';
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() })
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 describe('AdminMobileScannerButton', () => {

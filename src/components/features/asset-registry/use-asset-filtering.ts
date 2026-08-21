@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
-import type { AssetRegistryRow, AppliedFilter, CategoryOption } from './asset-registry.types';
+import type {
+  AssetRegistryRow,
+  AppliedFilter,
+  CategoryOption,
+} from './asset-registry.types';
 
 function normalizeCategoryLabel(value: string) {
   return value
@@ -16,15 +20,30 @@ export function useAssetFiltering(
   selectedCategoryOption: CategoryOption
 ): AssetRegistryRow[] {
   return useMemo(() => {
-    const statusFilter = appliedFilters.find((filter) => filter.field === 'Status');
-    const conditionFilter = appliedFilters.find((filter) => filter.field === 'Condition');
-    const locationFilter = appliedFilters.find((filter) => filter.field === 'Location');
-    const modelFilter = appliedFilters.find((filter) => filter.field === 'Model');
-    const assignedToFilter = appliedFilters.find((filter) => filter.field === 'Assigned To');
-    const pillarFilter = appliedFilters.find((filter) => filter.field === 'Pillar');
-    const categoryFilter = appliedFilters.find((filter) => filter.field === 'Category');
+    const statusFilter = appliedFilters.find(
+      (filter) => filter.field === 'Status'
+    );
+    const conditionFilter = appliedFilters.find(
+      (filter) => filter.field === 'Condition'
+    );
+    const locationFilter = appliedFilters.find(
+      (filter) => filter.field === 'Location'
+    );
+    const modelFilter = appliedFilters.find(
+      (filter) => filter.field === 'Model'
+    );
+    const assignedToFilter = appliedFilters.find(
+      (filter) => filter.field === 'Assigned To'
+    );
+    const pillarFilter = appliedFilters.find(
+      (filter) => filter.field === 'Pillar'
+    );
+    const categoryFilter = appliedFilters.find(
+      (filter) => filter.field === 'Category'
+    );
 
-    const backendStatusFilter = statusFilter?.operator === 'is' ? statusFilter.value : undefined;
+    const backendStatusFilter =
+      statusFilter?.operator === 'is' ? statusFilter.value : undefined;
     const shouldHideDisposedByDefault = backendStatusFilter !== 'Disposed';
 
     let nextRows = rows;
@@ -35,7 +54,9 @@ export function useAssetFiltering(
     }
 
     if (!selectedCategoryOption.isAll && !selectedCategoryOption.id) {
-      const selectedCategoryToken = normalizeCategoryLabel(selectedCategoryOption.name);
+      const selectedCategoryToken = normalizeCategoryLabel(
+        selectedCategoryOption.name
+      );
 
       nextRows = nextRows.filter((row) => {
         const rowCategoryToken = normalizeCategoryLabel(row.category);

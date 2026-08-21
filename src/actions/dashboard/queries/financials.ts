@@ -1,4 +1,13 @@
-import { and, count, eq, isNotNull, isNull, sql, inArray, desc } from 'drizzle-orm';
+import {
+  and,
+  count,
+  eq,
+  isNotNull,
+  isNull,
+  sql,
+  inArray,
+  desc,
+} from 'drizzle-orm';
 import { db } from '@/db';
 import {
   assets,
@@ -14,15 +23,19 @@ import type {
 } from '@/types/dashboard';
 import { straightLineNbvSqlFragment } from '@/lib/depreciation';
 
-export async function getDashboardTopHighValueAssetsInternal(): Promise<TopHighValueAssetRow[]> {
+export async function getDashboardTopHighValueAssetsInternal(): Promise<
+  TopHighValueAssetRow[]
+> {
   const bookValueSql = sql<number>`
-    ${sql.raw(straightLineNbvSqlFragment(
-      'asset_purchases.total_cost',
-      '1', // no exchange rate needed for the row output (it gets handled per row)
-      'assets.salvage_value',
-      'assets.useful_life_months',
-      'asset_purchases.purchase_date'
-    ))}
+    ${sql.raw(
+      straightLineNbvSqlFragment(
+        'asset_purchases.total_cost',
+        '1', // no exchange rate needed for the row output (it gets handled per row)
+        'assets.salvage_value',
+        'assets.useful_life_months',
+        'asset_purchases.purchase_date'
+      )
+    )}
   `;
 
   const rows = await db
@@ -40,10 +53,7 @@ export async function getDashboardTopHighValueAssetsInternal(): Promise<TopHighV
     .leftJoin(locations, eq(assets.locationId, locations.id))
     .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
     .where(
-      and(
-        eq(assets.isArchived, false),
-        isNotNull(assetPurchases.totalCost)
-      )
+      and(eq(assets.isArchived, false), isNotNull(assetPurchases.totalCost))
     )
     .orderBy(desc(bookValueSql))
     .limit(10);
@@ -64,7 +74,9 @@ export async function getDashboardTopHighValueAssetsInternal(): Promise<TopHighV
   });
 }
 
-export async function getDashboardSoftwareOptimizationInternal(): Promise<SoftwareOptimizationRow[]> {
+export async function getDashboardSoftwareOptimizationInternal(): Promise<
+  SoftwareOptimizationRow[]
+> {
   const licenses = await db
     .select({
       id: softwareLicenses.id,
@@ -117,8 +129,7 @@ export async function getDashboardSoftwareOptimizationInternal(): Promise<Softwa
       : 0;
     const computedCostPerSeat =
       lic.totalSeats > 0 ? licenseCost / lic.totalSeats : 0;
-    const costPerSeat =
-      computedCostPerSeat > 0 ? computedCostPerSeat : 10;
+    const costPerSeat = computedCostPerSeat > 0 ? computedCostPerSeat : 10;
     const monthlyLeak = idle * costPerSeat;
 
     return {
@@ -133,4 +144,3 @@ export async function getDashboardSoftwareOptimizationInternal(): Promise<Softwa
     };
   });
 }
-

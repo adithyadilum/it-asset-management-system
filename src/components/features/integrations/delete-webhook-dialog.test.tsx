@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { DeleteWebhookDialog } from './delete-webhook-dialog';
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() })
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 
 describe('DeleteWebhookDialog', () => {
@@ -24,7 +24,7 @@ describe('DeleteWebhookDialog', () => {
         url={mockWebhook.url}
       />
     );
-    
+
     expect(screen.getAllByText('Delete Webhook')[0]).toBeInTheDocument();
     expect(screen.getAllByText(/Test Hook/i)[0]).toBeInTheDocument();
   });

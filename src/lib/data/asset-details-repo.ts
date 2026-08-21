@@ -236,6 +236,12 @@ export async function getAssetDetailsById(
     return null;
   }
 
+  return getAssetDetailsByResolvedId(resolvedAssetId);
+}
+
+export async function getAssetDetailsByResolvedId(
+  resolvedAssetId: string
+): Promise<AssetDetailsData | null> {
   const assetRecord = await db.query.assets.findFirst({
     where: eq(assets.id, resolvedAssetId),
     with: {
@@ -441,7 +447,10 @@ export async function getAssetDetailsById(
       ? expiry < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       : false;
     const isFull = totalSeats > 0 && availableSeats <= 0;
-    const isNearFull = isSoftwareLicenseNearCapacity(totalSeats, availableSeats);
+    const isNearFull = isSoftwareLicenseNearCapacity(
+      totalSeats,
+      availableSeats
+    );
 
     if (isExpired) {
       result.asset.status = 'expired';
@@ -463,6 +472,12 @@ export async function getAssetHistoryById(id: string): Promise<HistoryEvent[]> {
     return [];
   }
 
+  return getAssetHistoryByResolvedId(resolvedAssetId);
+}
+
+export async function getAssetHistoryByResolvedId(
+  resolvedAssetId: string
+): Promise<HistoryEvent[]> {
   const auditRecords = await db.query.systemAuditLogs.findMany({
     where: and(
       eq(systemAuditLogs.entityType, 'Asset'),
@@ -495,6 +510,12 @@ export async function getAssetMaintenanceById(
     return [];
   }
 
+  return getAssetMaintenanceByResolvedId(resolvedAssetId);
+}
+
+export async function getAssetMaintenanceByResolvedId(
+  resolvedAssetId: string
+): Promise<MaintenanceEvent[]> {
   const maintenanceList = await db.query.maintenanceTickets.findMany({
     where: eq(maintenanceTickets.assetId, resolvedAssetId),
     orderBy: (records, { desc }) => [desc(records.createdAt)],
@@ -524,6 +545,12 @@ export async function getAssetAllocationsById(
     return [];
   }
 
+  return getAssetAllocationsByResolvedId(resolvedAssetId);
+}
+
+export async function getAssetAllocationsByResolvedId(
+  resolvedAssetId: string
+): Promise<AllocationData[]> {
   const assetRecord = await db.query.assets.findFirst({
     where: eq(assets.id, resolvedAssetId),
     with: {
@@ -608,10 +635,11 @@ export async function getAssetDisposalById(
     return null;
   }
 
-  // Fetch documents related to this asset and disposal
+  // Scoped to this disposal record, not just the asset: an asset disposed more
+  // than once would otherwise show every receipt it had ever accumulated.
   const documents = await db.query.assetDocuments.findMany({
     where: and(
-      eq(assetDocuments.assetId, resolvedAssetId),
+      eq(assetDocuments.disposalId, disposalRecord.id),
       eq(assetDocuments.documentType, 'disposal-certificate')
     ),
   });

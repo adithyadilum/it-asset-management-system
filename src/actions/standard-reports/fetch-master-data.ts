@@ -1,8 +1,18 @@
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { categories, locations, brands, models, vendors, owners } from '@/db/schema';
+import {
+  categories,
+  locations,
+  brands,
+  models,
+  vendors,
+  owners,
+} from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchMasterData(
   filters: ReportPreviewFilters,
@@ -57,8 +67,7 @@ export async function fetchMasterData(
     }
     case 'locations': {
       let q = db.select().from(locations).$dynamic();
-      if (statusEq !== undefined)
-        q = q.where(eq(locations.isActive, statusEq));
+      if (statusEq !== undefined) q = q.where(eq(locations.isActive, statusEq));
 
       totalRows = await getCount(q);
       const rows = await q.limit(pageSize).offset(offset);
@@ -76,8 +85,7 @@ export async function fetchMasterData(
     }
     case 'brands': {
       let q = db.select().from(brands).$dynamic();
-      if (statusEq !== undefined)
-        q = q.where(eq(brands.isActive, statusEq));
+      if (statusEq !== undefined) q = q.where(eq(brands.isActive, statusEq));
 
       totalRows = await getCount(q);
       const rows = await q.limit(pageSize).offset(offset);
@@ -105,8 +113,7 @@ export async function fetchMasterData(
         .from(models)
         .leftJoin(categories, eq(models.categoryId, categories.id))
         .$dynamic();
-      if (statusEq !== undefined)
-        q = q.where(eq(models.isActive, statusEq));
+      if (statusEq !== undefined) q = q.where(eq(models.isActive, statusEq));
       if (dbPillar) q = q.where(eq(categories.pillar, dbPillar as never));
 
       totalRows = await getCount(q);
@@ -125,8 +132,7 @@ export async function fetchMasterData(
     }
     case 'vendors': {
       let q = db.select().from(vendors).$dynamic();
-      if (statusEq !== undefined)
-        q = q.where(eq(vendors.isActive, statusEq));
+      if (statusEq !== undefined) q = q.where(eq(vendors.isActive, statusEq));
 
       totalRows = await getCount(q);
       const rows = await q.limit(pageSize).offset(offset);
@@ -144,8 +150,7 @@ export async function fetchMasterData(
     }
     case 'owners': {
       let q = db.select().from(owners).$dynamic();
-      if (statusEq !== undefined)
-        q = q.where(eq(owners.isActive, statusEq));
+      if (statusEq !== undefined) q = q.where(eq(owners.isActive, statusEq));
 
       totalRows = await getCount(q);
       const rows = await q.limit(pageSize).offset(offset);

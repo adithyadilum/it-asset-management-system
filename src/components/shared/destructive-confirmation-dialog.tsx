@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { Trash2, AlertCircle, X } from "lucide-react";
+import * as React from 'react';
+import { Trash2, AlertCircle, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,8 +11,8 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -28,7 +28,7 @@ export interface DeleteItem {
 export interface DestructiveConfirmationDialogProps {
   // Trigger
   triggerLabel?: string;
-  triggerVariant?: React.ComponentProps<typeof Button>["variant"];
+  triggerVariant?: React.ComponentProps<typeof Button>['variant'];
   triggerClassName?: string;
   triggerIcon?: React.ReactNode;
 
@@ -77,9 +77,9 @@ export const DestructiveConfirmationDialog = React.forwardRef<
   (
     {
       // Trigger
-      triggerLabel = "Delete",
-      triggerVariant = "destructive",
-      triggerClassName = "",
+      triggerLabel = 'Delete',
+      triggerVariant = 'destructive',
+      triggerClassName = '',
       triggerIcon = null,
 
       // Dialog
@@ -98,8 +98,8 @@ export const DestructiveConfirmationDialog = React.forwardRef<
       onCancel,
 
       // Labels
-      deleteButtonLabel = "Delete",
-      cancelButtonLabel = "Cancel",
+      deleteButtonLabel = 'Delete',
+      cancelButtonLabel = 'Cancel',
       showDeleteIcon = true,
 
       // Loading
@@ -124,7 +124,7 @@ export const DestructiveConfirmationDialog = React.forwardRef<
         await onConfirm();
         setOpen(false);
       } catch (error) {
-        console.error("Delete operation failed:", error);
+        console.error('Delete operation failed:', error);
       } finally {
         setLoading(false);
       }
@@ -149,7 +149,8 @@ export const DestructiveConfirmationDialog = React.forwardRef<
               className={triggerClassName}
               disabled={isLoading}
             >
-              {triggerIcon || (showDeleteIcon && <Trash2 className="mr-2 h-4 w-4" />)}
+              {triggerIcon ||
+                (showDeleteIcon && <Trash2 className="mr-2 h-4 w-4" />)}
               {triggerLabel}
             </Button>
           </AlertDialogTrigger>
@@ -189,19 +190,20 @@ export const DestructiveConfirmationDialog = React.forwardRef<
               return (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between rounded-md p-4 transition-colors ${itemHasError
-                    ? "border-2 border-red-500 bg-red-50"
-                    : "bg-muted"
-                    }`}
+                  className={`flex items-center justify-between rounded-md p-4 transition-colors ${
+                    itemHasError
+                      ? 'border-2 border-red-500 bg-red-50'
+                      : 'bg-muted'
+                  }`}
                 >
                   <div className="flex flex-1 gap-6">
                     {/* Display all columns */}
                     {columns.map((col) => (
                       <div
                         key={col.key}
-                        className={`${col.width || "flex-1"} text-sm font-medium text-foreground`}
+                        className={`${col.width || 'flex-1'} text-sm font-medium text-foreground`}
                       >
-                        {String(item[col.key] ?? "-")}
+                        {String(item[col.key] ?? '-')}
                       </div>
                     ))}
                   </div>
@@ -229,7 +231,7 @@ export const DestructiveConfirmationDialog = React.forwardRef<
               disabled={!canDelete || loading}
               variant="destructive"
             >
-              {loading ? "Deleting..." : deleteButtonLabel}
+              {loading ? 'Deleting...' : deleteButtonLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -238,5 +240,4 @@ export const DestructiveConfirmationDialog = React.forwardRef<
   }
 );
 
-DestructiveConfirmationDialog.displayName =
-  "DestructiveConfirmationDialog";
+DestructiveConfirmationDialog.displayName = 'DestructiveConfirmationDialog';

@@ -1,7 +1,6 @@
+import { withRateLimit } from '@/lib/api/with-rate-limit';
 import { and, asc, eq, ilike, inArray, or, sql, ne } from 'drizzle-orm';
-import { getToken } from 'next-auth/jwt';
 import { unstable_rethrow } from 'next/navigation';
-import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/db';
@@ -22,21 +21,9 @@ import type {
   OmniSearchResponse,
   OmniSearchUserResult,
 } from '@/types/omni-search';
+import { allowAnyRole, withAuth } from '@/lib/api/with-auth';
 
 const MAX_RESULTS_PER_GROUP = 8;
-
-function normalizeTokenRole(role: unknown): UserRole | null {
-  if (
-    role === 'GlobalAdmin' ||
-    role === 'ITOperator' ||
-    role === 'FinancialAuditor' ||
-    role === 'Employee'
-  ) {
-    return role;
-  }
-
-  return null;
-}
 
 function canSearchAssets(role: UserRole) {
   return role !== 'Employee';
@@ -48,40 +35,6 @@ function canSearchUsers(role: UserRole) {
 
 function canSearchReports(role: UserRole) {
   return role !== 'Employee';
-}
-
-async function getAuthenticatedSearchUser(
-  request: NextRequest
-): Promise<{ id: string; role: UserRole } | null> {
-  const authTimer = startLatencyTimer();
-
-  try {
-    const token = await getToken({ req: request });
-
-    if (!token) {
-      return null;
-    }
-
-    const userId = token.id as string | undefined;
-    const role = normalizeTokenRole(token.role);
-
-    if (!userId || !role) {
-      return null;
-    }
-
-    return {
-      id: userId,
-      role,
-    };
-  } catch {
-    return null;
-  } finally {
-    logLatency({
-      scope: 'ACTION AUTH',
-      label: 'search.getAuthenticatedSearchUser',
-      startTime: authTimer,
-    });
-  }
 }
 
 async function searchAssetsByQuery(
@@ -270,16 +223,18 @@ async function searchReportsByQuery(
 
     const results = await Promise.all(queries);
 
-    return matchedReports.map((report) => {
-      const mapping = reportQueryMapping.find((m) => m.id === report.id);
-      const count = mapping ? (results[mapping.index]?.[0]?.count ?? 0) : 0;
-      return {
-        id: report.id,
-        label: report.label,
-        description: `${count} ${report.description}`,
-        href: report.href,
-      };
-    }).slice(0, MAX_RESULTS_PER_GROUP);
+    return matchedReports
+      .map((report) => {
+        const mapping = reportQueryMapping.find((m) => m.id === report.id);
+        const count = mapping ? (results[mapping.index]?.[0]?.count ?? 0) : 0;
+        return {
+          id: report.id,
+          label: report.label,
+          description: `${count} ${report.description}`,
+          href: report.href,
+        };
+      })
+      .slice(0, MAX_RESULTS_PER_GROUP);
   } finally {
     logLatency({
       scope: 'DB ACTION',
@@ -292,81 +247,81 @@ async function searchReportsByQuery(
   }
 }
 
-export async function GET(request: NextRequest) {
-  const requestTimer = startLatencyTimer();
-  let queryLength = 0;
+// Result groups are filtered per role inside the handler, so every
+// authenticated principal may search; an Employee simply gets empty groups.
+export const GET = withRateLimit(
+  'search',
+  withAuth(allowAnyRole, async (request, { user }) => {
+    const requestTimer = startLatencyTimer();
+    let queryLength = 0;
 
-  try {
-    const q = request.nextUrl.searchParams.get('q') ?? '';
-    queryLength = q.length;
-    const parsedInput = omniSearchQuerySchema.safeParse({
-      q,
-    });
+    try {
+      const q = request.nextUrl.searchParams.get('q') ?? '';
+      queryLength = q.length;
+      const parsedInput = omniSearchQuerySchema.safeParse({
+        q,
+      });
 
-    if (!parsedInput.success) {
-      return NextResponse.json(
-        { error: 'Invalid search query.' },
-        { status: 400 }
-      );
-    }
+      if (!parsedInput.success) {
+        return NextResponse.json(
+          { error: 'Invalid search query.' },
+          { status: 400 }
+        );
+      }
 
-    const query = parsedInput.data.q;
-    if (!query) {
-      const emptyResponse: OmniSearchResponse = {
-        query: '',
-        assets: [],
-        users: [],
-        reports: [],
+      const query = parsedInput.data.q;
+      if (!query) {
+        const emptyResponse: OmniSearchResponse = {
+          query: '',
+          assets: [],
+          users: [],
+          reports: [],
+        };
+
+        return NextResponse.json(emptyResponse, { status: 200 });
+      }
+
+      const [assetResults, userResults, reportResults] = await Promise.all([
+        canSearchAssets(user.role)
+          ? searchAssetsByQuery(query)
+          : Promise.resolve<OmniSearchAssetResult[]>([]),
+        canSearchUsers(user.role)
+          ? searchUsersByQuery(query)
+          : Promise.resolve<OmniSearchUserResult[]>([]),
+        canSearchReports(user.role)
+          ? searchReportsByQuery(query)
+          : Promise.resolve<OmniSearchReportResult[]>([]),
+      ]);
+
+      const responseBody: OmniSearchResponse = {
+        query,
+        assets: assetResults,
+        users: userResults,
+        reports: reportResults,
       };
 
-      return NextResponse.json(emptyResponse, { status: 200 });
+      return NextResponse.json(responseBody, { status: 200 });
+    } catch (error) {
+      unstable_rethrow(error);
+      logError({
+        scope: 'API',
+        label: 'search.GET',
+        error,
+      });
+
+      return NextResponse.json(
+        { error: 'Failed to complete search request.' },
+        { status: 500 }
+      );
+    } finally {
+      logLatency({
+        scope: 'API',
+        label: '/api/v1/search',
+        startTime: requestTimer,
+        metadata: {
+          queryLength,
+        },
+      });
     }
-
-    const currentUser = await getAuthenticatedSearchUser(request);
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const [assetResults, userResults, reportResults] = await Promise.all([
-      canSearchAssets(currentUser.role)
-        ? searchAssetsByQuery(query)
-        : Promise.resolve<OmniSearchAssetResult[]>([]),
-      canSearchUsers(currentUser.role)
-        ? searchUsersByQuery(query)
-        : Promise.resolve<OmniSearchUserResult[]>([]),
-      canSearchReports(currentUser.role)
-        ? searchReportsByQuery(query)
-        : Promise.resolve<OmniSearchReportResult[]>([]),
-    ]);
-
-    const responseBody: OmniSearchResponse = {
-      query,
-      assets: assetResults,
-      users: userResults,
-      reports: reportResults,
-    };
-
-    return NextResponse.json(responseBody, { status: 200 });
-  } catch (error) {
-    unstable_rethrow(error);
-    logError({
-      scope: 'API',
-      label: 'search.GET',
-      error,
-    });
-
-    return NextResponse.json(
-      { error: 'Failed to complete search request.' },
-      { status: 500 }
-    );
-  } finally {
-    logLatency({
-      scope: 'API',
-      label: '/api/v1/search',
-      startTime: requestTimer,
-      metadata: {
-        queryLength,
-      },
-    });
-  }
-}
+  })
+);

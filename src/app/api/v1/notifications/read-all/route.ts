@@ -1,18 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
+import { NextResponse } from 'next/server';
+import { allowAnyRole, withAuth } from '@/lib/api/with-auth';
 import { markAllNotificationsAsRead } from '@/lib/notifications/services';
 
-export async function PATCH(request?: NextRequest) {
+// Scoped to the caller's own id.
+export const PATCH = withAuth(allowAnyRole, async (_request, { user }) => {
   try {
-    const user = await getAuthenticatedUserFromRequest(request);
-
-    if (!user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     await markAllNotificationsAsRead(user.id);
 
     return NextResponse.json(
@@ -29,4 +21,4 @@ export async function PATCH(request?: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -69,6 +69,7 @@ This epic acts as the bridge between the digital database and the physical world
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Integrate a QR code generation library (`qrcode.react`) to render SVG/Canvas QR codes safely on the client without third-party requests.
 - [x] Build the `PhysicalTag` component displaying the fixed-layout sticker design: company logo, Asset ID in monospace, and QR code.
 - [x] Build the `AssetTagDialog` preview modal.
@@ -106,6 +107,7 @@ This epic acts as the bridge between the digital database and the physical world
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the `PrintConfigurationModal` triggered from the Bulk Action Toolbar, passing down the layout selection format.
 - [x] Integrate the `@react-pdf/renderer` library to assemble PDF vector graphics entirely on the frontend.
 - [x] Implement the `generateAndPrintTagPdf` utility that locally pre-generates QR data URLs using the `qrcode` library before passing them to the PDF renderer.
@@ -132,6 +134,7 @@ This epic acts as the bridge between the digital database and the physical world
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Add a "Layout Format" toggle to the `PrintConfigurationModal` with options for "A4 Sheet" (default) and "Thermal Roll".
 - [x] Build conditional page size logic within `TagPdfDocument` so that the thermal selection renders single items per dynamic page bounds.
 - [x] Enforce the same internal `<View>` layout constraints (logo, QR, Asset ID) used in US-9.2 to guarantee visual parity across both output formats.

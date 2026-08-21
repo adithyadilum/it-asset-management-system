@@ -64,18 +64,21 @@ This epic connects the IT Asset Management platform to the broader corporate sof
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the API Key management data grid page within the Settings/Integrations module.
 - [x] Build the "Generate New API Key" modal with scope selection, expiration dates, and a "show-once" key reveal UI.
 - [x] Build the "Revoke Key" and "Delete Key" confirmation modals with destructive-action styling.
 - [x] Implement the key masking display logic on the grid (e.g., `idams_live_...e8f2`).
 
 #### Backend
+
 - [x] Implement cryptographically secure API key generation (`randomBytes(32)`).
 - [x] Implement secure hashing logic (`createHash('sha256')`) inside the `createApiKey` server action.
 - [x] Implement `revokeApiKey` and `deleteApiKey` server actions with strict `GlobalAdmin` RBAC and Audit Logging.
 - [x] Write middleware to authenticate incoming external API requests by hashing the incoming `Authorization: Bearer {key}` and comparing it against the `api_keys` table.
 
 #### Database
+
 - [x] Create an `api_keys` table via Drizzle ORM with columns: `id`, `name`, `keyHash`, `keyPrefix`, `keySuffix`, `scopes` (JSONB), `createdById`, `expiresAt`, `isRevoked`, and an index on `keyHash`.
 
 ---
@@ -103,6 +106,7 @@ This epic connects the IT Asset Management platform to the broader corporate sof
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Implement Token Authentication logic for the `/api/v1/external/*` route group.
 - [x] Create read-only external endpoints for Assets, Users, Disposals, Maintenance, and Financials.
 - [x] Generate an `openapi.json` route exposing the programmatic schema of the external REST APIs.
@@ -141,15 +145,18 @@ This epic connects the IT Asset Management platform to the broader corporate sof
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Webhooks management data grid displaying Endpoint URL, Subscribed Events, and active status toggles.
 - [x] Build the "Add/Edit Webhook" modal including the structured `WebhookEventSelector` component.
 - [x] Implement the "Send Test Event" trigger button to fire mock payloads.
 
 #### Backend
+
 - [x] Create RESTful Server Actions (`createWebhookSubscription`, `updateWebhookSubscription`, `deleteWebhookSubscription`).
 - [x] Implement AES encryption and decryption utilities to protect the webhook signing secrets at rest.
 - [x] Integrate the `@upstash/qstash` client to act as the asynchronous background dispatcher.
 - [x] Implement the `sendTestWebhook` action that generates the standard `X-EITAMS-Signature` and dispatches the payload to the queue.
 
 #### Database
+
 - [x] Create a `webhook_subscriptions` table via Drizzle ORM with columns: `id`, `name`, `url`, `events` (JSONB array), `secret` (encrypted text), `isActive`, and `createdById`.

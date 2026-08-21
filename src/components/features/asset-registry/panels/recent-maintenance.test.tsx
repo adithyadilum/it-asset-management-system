@@ -4,8 +4,14 @@ import { RecentMaintenance } from './recent-maintenance';
 
 vi.mock('@/actions/maintenance', () => ({
   getAssetMaintenanceHistory: vi.fn().mockResolvedValue([
-    { id: 1, createdAt: '2023-01-01', ticketType: 'INTERNAL', reportedIssue: 'Screen replacement', status: 'COMPLETED' }
-  ])
+    {
+      id: 1,
+      createdAt: '2023-01-01',
+      ticketType: 'INTERNAL',
+      reportedIssue: 'Screen replacement',
+      status: 'COMPLETED',
+    },
+  ]),
 }));
 
 describe('RecentMaintenance', () => {

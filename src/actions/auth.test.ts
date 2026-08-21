@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---------------------------------------------------------------------------
 
 const mockGetServerSession = vi.fn();
+const mockFindUser = vi.fn();
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => mockGetServerSession(...args),
 }));
@@ -12,6 +13,16 @@ vi.mock('next-auth', () => ({
 vi.mock('@/lib/auth/auth-options', () => ({
   authOptions: {},
 }));
+
+vi.mock('@/db', () => ({
+  db: {
+    query: {
+      users: { findFirst: (...args: unknown[]) => mockFindUser(...args) },
+    },
+  },
+}));
+vi.mock('@/db/schema', () => ({ users: { id: 'users.id' } }));
+vi.mock('drizzle-orm', () => ({ eq: vi.fn() }));
 
 const mockLogAuditAction = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/audit', () => ({
@@ -42,6 +53,12 @@ import { getAuthenticatedUser, getFederatedLogoutUrl } from '@/actions/auth';
 describe('getAuthenticatedUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFindUser.mockImplementation(async () => {
+      const session = await mockGetServerSession();
+      return session?.user
+        ? { ...session.user, isActive: session.user.isActive ?? true }
+        : null;
+    });
   });
 
   it('returns null when no session exists', async () => {
@@ -78,7 +95,12 @@ describe('getAuthenticatedUser', () => {
 
   it('returns null when session.user.name is undefined', async () => {
     mockGetServerSession.mockResolvedValue({
-      user: { id: 'u1', email: 'a@b.com', name: undefined, role: 'GlobalAdmin' },
+      user: {
+        id: 'u1',
+        email: 'a@b.com',
+        name: undefined,
+        role: 'GlobalAdmin',
+      },
     });
     expect(await getAuthenticatedUser()).toBeNull();
   });
@@ -132,17 +154,19 @@ describe('getAuthenticatedUser', () => {
     expect(user?.role).toBe('Employee');
   });
 
-  it.each(['GlobalAdmin', 'ITOperator', 'FinancialAuditor', 'Employee'] as const)(
-    'preserves %s role exactly',
-    async (role) => {
-      mockGetServerSession.mockResolvedValue({
-        user: { id: 'u1', email: 'a@b.com', name: 'A', role },
-      });
+  it.each([
+    'GlobalAdmin',
+    'ITOperator',
+    'FinancialAuditor',
+    'Employee',
+  ] as const)('preserves %s role exactly', async (role) => {
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com', name: 'A', role },
+    });
 
-      const user = await getAuthenticatedUser();
-      expect(user?.role).toBe(role);
-    }
-  );
+    const user = await getAuthenticatedUser();
+    expect(user?.role).toBe(role);
+  });
 });
 
 describe('getFederatedLogoutUrl', () => {
