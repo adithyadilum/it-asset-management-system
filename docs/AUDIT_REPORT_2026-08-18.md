@@ -1865,3 +1865,124 @@ expire. That is one round trip — ~130ms — on the front of every page, and it
 already `cache()`-scoped so several loaders in one request share a single read.
 Removing it would mean trusting the token, which is a security decision rather
 than a performance one, so it has been left alone and flagged here instead.
+
+## Second round of reported bugs — 2026-08-22
+
+### The financials routes needed the layout, not the page
+
+Every page under `/financials` still reported "uncached data during
+prerendering" after the previous round. The pages were not the problem:
+`financials/layout.tsx` is an **async layout** that awaits the session before
+rendering any child, so no amount of wrapping the pages beneath it helps. It is
+a guard rather than a view — it either renders children or redirects — so it
+takes `export const instant = false`. It was the only async layout without one.
+
+### Assignment could not transfer
+
+`assignSingleAsset` and `assignMultipleAssets` both required
+`status = 'Available'`, so the first assignment succeeded and every one after
+it failed with `ASSET_NOT_AVAILABLE`. Moving a desk from one room to another
+was impossible without returning it first.
+
+`ASSIGNABLE_STATUSES` now covers `Available` and `Assigned`, and
+`closeOpenAssignments` closes the previous assignment inside the same
+transaction — marking it `returned` / `transferred`, clearing any queued
+acceptance, and writing an audit row — so a transfer leaves exactly one open
+assignment. In Repair, Defective, Lost and Disposed still block.
+
+Verified against a real database: assign to Room A, transfer to Room B, and the
+first assignment ends `returned`/`transferred` and closed while the second is
+open, with the asset still `Assigned`.
+
+### The maintenance panel read an image off the wrong table
+
+`ticket.asset.imageUrl` is always `undefined` — **`assets` has no `imageUrl`
+column**. The image belongs to `models`, which the query already selects. The
+`Asset` type in `types/maintenance.ts` declared a field the table does not
+have, which is what made the mistake invisible; it has been moved to `Model`.
+
+### Registering with a location now means assigned
+
+Furniture and electronics are assigned to a place, so giving one a location at
+registration _is_ the assignment. It was recorded as `Available`, leaving
+occupied desks showing as free and requiring somebody to assign the asset to
+the room it was already in. Registration now writes `Assigned` **and** creates
+the matching location assignment, so the detail panel has something to show and
+the asset can be transferred.
+
+Registering without a location still starts `Available`, and hardware is
+unaffected — it is assigned to people, and its location field is just where it
+sits.
+
+### The detail panel had no location to show
+
+The assignment query joined `assignedToUser` only. A location assignment has no
+user, so the panel rendered "Assigned to: -" and looked unassigned. Added the
+`assignedToLocation` relation, exposed it through the repo, and the panel now
+labels the row "Location" for the location-assigned pillars and "Assigned to"
+otherwise.
+
+`isLocationAssignedPillar` in `src/lib/assignments/pillars.ts` is the one
+definition of that distinction; the assignment modal, the detail panel and
+registration all read from it rather than each repeating the pillar names.
+
+### Badges
+
+Three different looks had grown up: the registry pillar badge, a smaller
+`h-5 rounded-full px-2 text-[11px]` pill in the assignments grid, and
+hand-rolled `<span>`s with their own ring and padding in the registry columns.
+`BADGE_LAYOUT` is now shared between `PillarBadge` and `StatusBadge`, and the
+ad-hoc badges — assignment status, category, electronics condition, and both
+seat counters — render through `StatusBadge`. The dictionary gained the four
+derived Office Electronics statuses and `requested`, which the hand-rolled
+versions had been colouring themselves.
+
+### Skeletons
+
+The dashboard already had a faithful `loading.tsx` — KPI cards, charts, tables
+— but the Suspense boundary added in the previous round fell back to the
+generic `PageSkeleton`, so a table skeleton stood in for a grid of cards. The
+dashboard skeleton is now a component used by both its `loading.tsx` and its
+Suspense boundary.
+
+### Logout
+
+`getFederatedLogoutUrl` sent only `id_token_hint`. RP-initiated logout lets the
+provider validate `post_logout_redirect_uri` against either that hint **or**
+`client_id`, and the ID tokens here live **300 seconds** — decoded from the
+failing URL, alongside an `auth_time` showing the session was already 112
+minutes old. Any session open longer than five minutes therefore could not log
+out, which "remember me" makes routine. It also sent an empty
+`id_token_hint=` when no token was present, which a provider reads as a
+malformed hint rather than an absent one.
+
+`client_id` is now always sent and `id_token_hint` only when there is one.
+
+### Being logged out after a while — not fixed, and here is why
+
+The other half of that report is two separate things. Signing back in without
+seeing the Keycloak form is **correct** SSO behaviour: the provider still holds
+a valid browser session and re-issues tokens without prompting.
+
+The unexpected logout traces to a failed refresh
+(`invalid_grant: Token is not active`), which sets `RefreshAccessTokenError` and
+makes the session null. With a 300-second access token the app must refresh
+every five minutes, so any hiccup logs the user out. The causes live in the
+Keycloak realm — token lifespan, SSO session idle, and refresh token rotation —
+not in this codebase. The one thing that was fixable here is already done: the
+refresh call is bounded by an 8-second timeout so a slow provider cannot hold
+the per-user advisory lock indefinitely.
+
+Worth raising the access token lifespan and checking **Refresh Token Max
+Reuse** in the realm before treating this as an application bug.
+
+### CodeQL: `js/insufficient-password-hash`
+
+A false positive, suppressed with the reasoning inline rather than worked
+around. The query cannot see where its input came from; `createApiKey` builds
+every key from `randomBytes(32)`, so the search space is 2^256 and no amount of
+key stretching changes an attacker's position against that. Both alternatives
+cost something real: PBKDF2 was 50–100 ms of blocking CPU per request (which is
+why it was removed), and peppering with HMAC would tie every issued key to
+`ENCRYPTION_SECRET`, so rotating that secret would silently invalidate every
+integration.

@@ -895,6 +895,12 @@ export const assetAssignmentsRelations = relations(
       fields: [assetAssignments.assignedToUserId],
       references: [users.id],
     }),
+    // Furniture and electronics are assigned to a place rather than a person,
+    // so the detail panel needs this to show what an asset is assigned to.
+    assignedToLocation: one(locations, {
+      fields: [assetAssignments.assignedToLocationId],
+      references: [locations.id],
+    }),
     assignedBy: one(users, {
       fields: [assetAssignments.assignedById],
       references: [users.id],

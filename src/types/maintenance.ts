@@ -32,7 +32,6 @@ export interface Asset {
   id: string;
   assetTag: string;
   name: string | null;
-  imageUrl?: string | null;
   status: AssetStatus;
   condition: string | null;
   modelId: number;
@@ -47,6 +46,10 @@ export interface Model {
   name: string;
   brandId: number;
   categoryId: number;
+  // The asset image lives here. `Asset` used to declare an `imageUrl` the
+  // `assets` table does not have, so the issue review panel read `undefined`
+  // and always showed "No image available".
+  imageUrl?: string | null;
 }
 
 export interface Brand {

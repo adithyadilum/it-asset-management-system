@@ -243,6 +243,81 @@ function initialAssignmentState(target: {
   return target.assignedToUserId ? 'pending approval' : 'assigned';
 }
 
+/**
+ * Statuses an asset can be assigned from.
+ *
+ * 'Assigned' is included because reassigning is a transfer, not an error. A
+ * furniture or electronics item moving from one room to another was previously
+ * rejected with ASSET_NOT_AVAILABLE -- the first assignment worked and every
+ * one after it failed, with no way to move the asset short of returning it
+ * first. Anything else (In Repair, Defective, Lost, Disposed) still blocks.
+ */
+const ASSIGNABLE_STATUSES: AssetStatus[] = ['Available', 'Assigned'];
+
+/**
+ * Closes any assignment still open against an asset.
+ *
+ * Called before a new one is created so a transfer leaves exactly one active
+ * assignment behind it. Returning the closed rows lets the caller record what
+ * the transfer displaced.
+ */
+async function closeOpenAssignments(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  assetIds: string[],
+  closedById: string
+) {
+  const closed = await tx
+    .update(assetAssignments)
+    .set({
+      state: 'returned',
+      acceptanceStatus: 'transferred',
+      returnedDate: new Date(),
+    })
+    .where(
+      and(
+        inArray(assetAssignments.assetId, assetIds),
+        isNull(assetAssignments.returnedDate)
+      )
+    )
+    .returning({
+      id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
+    });
+
+  if (closed.length === 0) {
+    return closed;
+  }
+
+  // Any acceptance still queued against the old assignment is moot.
+  await tx
+    .update(notificationQueue)
+    .set({ isProcessed: true })
+    .where(
+      inArray(
+        notificationQueue.assignmentId,
+        closed.map((row) => row.id)
+      )
+    );
+
+  await Promise.all(
+    closed.map((row) =>
+      logAuditActionTx(tx, {
+        entityType: 'asset_assignment',
+        entityId: String(row.id),
+        actionType: 'RETURN',
+        performedById: closedById,
+        oldData: null,
+        newData: {
+          state: 'returned',
+          acceptanceStatus: 'transferred',
+        },
+      })
+    )
+  );
+
+  return closed;
+}
+
 function dedupeAssetIds(assetIds: string[]) {
   return [
     ...new Set(assetIds.map((id) => id.trim()).filter((id) => id.length > 0)),
@@ -274,7 +349,7 @@ async function validateAssetsForAssignment(assetIds: string[]) {
   }
 
   const unavailableAssets = assetsInDb.filter(
-    (asset) => asset.status !== 'Available'
+    (asset) => !ASSIGNABLE_STATUSES.includes(asset.status as AssetStatus)
   );
   if (unavailableAssets.length > 0) {
     throw new AssignmentServiceError(
@@ -579,7 +654,10 @@ export async function assignSingleAsset(
         updatedAt: new Date(),
       })
       .where(
-        and(eq(assets.id, normalizedAssetId), eq(assets.status, 'Available'))
+        and(
+          eq(assets.id, normalizedAssetId),
+          inArray(assets.status, ASSIGNABLE_STATUSES)
+        )
       )
       .returning({
         id: assets.id,
@@ -594,6 +672,10 @@ export async function assignSingleAsset(
         'ASSET_NOT_AVAILABLE'
       );
     }
+
+    // Transfer: close whatever this asset was assigned to before, so it ends up
+    // with exactly one open assignment rather than two.
+    await closeOpenAssignments(tx, [normalizedAssetId], assignedById);
 
     // Step 2: Create assignment record
     const [assignment] = await tx
@@ -699,7 +781,7 @@ export async function assignMultipleAssets(
       .where(
         and(
           inArray(assets.id, normalizedAssetIds),
-          eq(assets.status, 'Available')
+          inArray(assets.status, ASSIGNABLE_STATUSES)
         )
       )
       .returning({ id: assets.id });
@@ -711,6 +793,10 @@ export async function assignMultipleAssets(
         'ASSET_NOT_AVAILABLE'
       );
     }
+
+    // Transfer: close whatever these assets were assigned to before, so each
+    // ends up with exactly one open assignment rather than two.
+    await closeOpenAssignments(tx, normalizedAssetIds, assignedById);
 
     // Step 2: Create assignment records
     const insertedAssignments = await tx

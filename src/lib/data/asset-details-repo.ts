@@ -81,6 +81,10 @@ export interface AssetDetailsData {
       name: string;
       email: string;
     } | null;
+    assignedToLocation: {
+      id: number;
+      name: string;
+    } | null;
     assignedDate: string;
     expectedReturnDate: string | null;
     notes: string | null;
@@ -311,6 +315,7 @@ export async function getAssetDetailsByResolvedId(
         orderBy: (assignments, { desc }) => [desc(assignments.assignedDate)],
         with: {
           assignedToUser: { columns: { id: true, name: true, email: true } },
+          assignedToLocation: { columns: { id: true, name: true } },
         },
       },
     },
@@ -406,6 +411,7 @@ export async function getAssetDetailsByResolvedId(
       ? {
           id: assignmentRecord.id,
           assignedToUser: assignmentRecord.assignedToUser,
+          assignedToLocation: assignmentRecord.assignedToLocation,
           assignedDate: formatSafeISO(assignmentRecord.assignedDate),
           expectedReturnDate: assignmentRecord.expectedReturnDate
             ? formatSafeISO(assignmentRecord.expectedReturnDate)

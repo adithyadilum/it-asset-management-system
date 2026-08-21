@@ -153,10 +153,10 @@ export function IssueReviewPanel({
     <div className="flex w-full flex-col items-start gap-6">
       {/* Image Container */}
       <div className="mt-2 flex w-full flex-col items-center gap-2.5">
-        {ticket.asset.imageUrl ? (
+        {ticket.model?.imageUrl ? (
           <div className="relative w-38.25 h-30.25 rounded bg-background overflow-hidden border border-border">
             <Image
-              src={ticket.asset.imageUrl}
+              src={ticket.model.imageUrl}
               alt="Asset Image"
               fill
               className="object-contain p-2"

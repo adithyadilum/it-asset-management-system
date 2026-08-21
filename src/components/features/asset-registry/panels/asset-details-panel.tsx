@@ -26,6 +26,7 @@ import { getAllAssetAuditHistory } from '@/actions/audit-log';
 import { format } from 'date-fns';
 import { CopyableField } from '@/components/shared/copyable-field';
 import { RecentMaintenance } from './recent-maintenance';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
@@ -49,6 +50,8 @@ export interface AssetDetailsPanelProps {
   assignedTo?: string;
   group?: string;
   location?: string;
+  /** Drives whether the assignment row reads "Location" or "Assigned to". */
+  pillar?: string;
   condition?: string;
   warranty?: string;
   lastRepaired?: string;
@@ -167,6 +170,12 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
           '-';
     const resolvedTotalSeats = parseInt(softwareTotalSeats, 10) || 0;
 
+    // Furniture and electronics are assigned to a room, not a person, so
+    // "Assigned to: Room B" reads wrong. Label the row for what it holds.
+    const assignmentLabel = isLocationAssignedPillar(props.pillar)
+      ? 'Location'
+      : 'Assigned to';
+
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
 
@@ -199,7 +208,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Total Seats', value: softwareTotalSeats },
         { label: 'Expiration Date', value: softwareExpirationDate },
         { label: 'Publisher', value: props.brand },
-        { label: 'Assigned to', value: props.assignedTo || '-' },
+        { label: assignmentLabel, value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     } else {
@@ -209,7 +218,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Brand', value: props.brand },
         { label: 'Serial Number', value: props.serialNumber || '-' },
         { label: 'Owner', value: props.owner || '-' },
-        { label: 'Assigned to', value: props.assignedTo || '-' },
+        { label: assignmentLabel, value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     }

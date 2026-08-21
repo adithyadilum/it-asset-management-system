@@ -360,7 +360,15 @@ export function AssetDetailsPanelWrapper({
           brand={data?.model.brand.name ?? ''}
           serialNumber={data?.asset.serialNumber ?? ''}
           owner={data?.owner?.companyName ?? ''}
-          assignedTo={data?.assignment?.assignedToUser?.name ?? ''}
+          // A location assignment has no user, so fall back to the place it is
+          // assigned to. Previously this rendered '-' and the panel looked as
+          // though the asset were unassigned.
+          assignedTo={
+            data?.assignment?.assignedToUser?.name ??
+            data?.assignment?.assignedToLocation?.name ??
+            ''
+          }
+          pillar={data?.model.category.pillar ?? ''}
           group={''}
           location={data?.location?.name ?? ''}
           condition={data?.asset.condition ?? ''}

@@ -99,14 +99,31 @@ export async function getFederatedLogoutUrl() {
     });
   }
 
-  const idToken = session?.idToken || '';
   const endSessionUrl = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/logout`;
 
   // Use NEXT_PUBLIC_SITE_URL or NEXTAUTH_URL to dynamically determine the callback origin
   const baseUrl = serverEnv.NEXTAUTH_URL || 'http://localhost:3000';
-  const redirectUri = encodeURIComponent(`${baseUrl}/login`);
 
-  return `${endSessionUrl}?id_token_hint=${idToken}&post_logout_redirect_uri=${redirectUri}`;
+  // `client_id` is sent alongside the hint, not instead of it.
+  //
+  // RP-initiated logout lets the provider validate `post_logout_redirect_uri`
+  // against either the `id_token_hint` or the `client_id`. Sending only the
+  // hint meant logout failed with "Invalid logout URL" whenever that token was
+  // no longer valid -- ID tokens here live 5 minutes, so any session left open
+  // longer than that (which "remember me" makes routine) could not log out.
+  // An empty `id_token_hint=` was sent in that case, which is worse than
+  // omitting it: the provider treats it as a malformed hint rather than none.
+  const params = new URLSearchParams({
+    client_id: serverEnv.KEYCLOAK_CLIENT_ID,
+    post_logout_redirect_uri: `${baseUrl}/login`,
+  });
+
+  const idToken = session?.idToken;
+  if (typeof idToken === 'string' && idToken.length > 0) {
+    params.set('id_token_hint', idToken);
+  }
+
+  return `${endSessionUrl}?${params.toString()}`;
 }
 
 /**
