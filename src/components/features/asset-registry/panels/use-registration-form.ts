@@ -195,12 +195,26 @@ export function useRegistrationForm({
     }
   }, []);
 
+  const MAX_INVOICE_FILE_SIZE = Math.floor(4.5 * 1024 * 1024); // 4.5 MB — matches server limit in storage.ts
+
   const handleInvoiceSelection = useCallback((files: FileList | null) => {
     const selectedFile = files?.[0] ?? null;
 
     if (selectedFile && !isInvoiceAttachmentFile(selectedFile)) {
       tiqriToast.error(
         'Upload a supported document or image file for invoice attachment.'
+      );
+      if (invoiceInputRef.current) {
+        invoiceInputRef.current.value = '';
+      }
+      setInvoiceFileName('');
+      setIsInvoiceDragOver(false);
+      return;
+    }
+
+    if (selectedFile && selectedFile.size > MAX_INVOICE_FILE_SIZE) {
+      tiqriToast.error(
+        `File "${selectedFile.name}" is too large. Invoice attachments must be under 4.5 MB.`
       );
       if (invoiceInputRef.current) {
         invoiceInputRef.current.value = '';
