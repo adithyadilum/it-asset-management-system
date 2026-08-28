@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useReducer } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { MaintenanceTabs } from '@/components/features/maintenance/maintenance-tabs';
 import { IssueReviewPanelWrapper } from '@/components/features/maintenance/issue-review-panel-wrapper';
 import { LogCompleteRepairDialog } from '@/components/features/maintenance/log-complete-repair-dialog';
@@ -105,6 +106,25 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
   const { setOpen } = useSidebar();
 
   const [uiState, dispatch] = useReducer(uiReducer, initialUIState);
+
+  // Opened from elsewhere -- the dashboard's pending-maintenance table links
+  // straight at a ticket. Runs once per id so closing the panel does not fight
+  // a URL that still names it.
+  const searchParams = useSearchParams();
+  const requestedTicketId = searchParams.get('id');
+  const [openedFromUrl, setOpenedFromUrl] = useState<string | null>(null);
+
+  if (
+    searchParams.get('panel') === 'review' &&
+    requestedTicketId &&
+    requestedTicketId !== openedFromUrl
+  ) {
+    setOpenedFromUrl(requestedTicketId);
+    const ticketId = Number(requestedTicketId);
+    if (Number.isFinite(ticketId)) {
+      dispatch({ type: 'OPEN_PANEL', payload: ticketId });
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => {

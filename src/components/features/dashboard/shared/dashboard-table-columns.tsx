@@ -13,6 +13,7 @@ import type {
   OverdueReturnRow,
   HighMaintenanceRow,
   PendingDisposalRow,
+  PendingMaintenanceRow,
   TopHighValueAssetRow,
   SoftwareOptimizationRow,
   DepreciationLedgerRow,
@@ -292,6 +293,90 @@ export function useHighMaintenanceColumns(
       },
     ],
     [onFlag]
+  );
+}
+
+/**
+ * Reported issues waiting on IT, sat beside high-maintenance assets: one says
+ * what needs doing now, the other what keeps needing doing.
+ */
+export function usePendingMaintenanceColumns(): ColumnDef<PendingMaintenanceRow>[] {
+  const router = useRouter();
+
+  return useMemo(
+    () => [
+      {
+        id: 'asset',
+        header: 'Asset',
+        size: 170,
+        minSize: 140,
+        cell: ({ row }) => (
+          <span className="text-xs">
+            {row.original.assetName} ({row.original.assetTag})
+          </span>
+        ),
+      },
+      {
+        id: 'issue',
+        header: 'Reported Issue',
+        size: 200,
+        minSize: 160,
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {row.original.reportedIssue}
+          </span>
+        ),
+      },
+      {
+        id: 'reportedBy',
+        header: 'Reported By',
+        size: 170,
+        minSize: 150,
+        meta: { noTruncate: true },
+        cell: ({ row }) => (
+          <EmployeeCell
+            name={row.original.reportedBy}
+            email={row.original.reportedByEmail}
+          />
+        ),
+      },
+      {
+        id: 'daysPending',
+        header: 'Days Pending',
+        size: 120,
+        minSize: 110,
+        meta: { noTruncate: true },
+        cell: ({ row }) => (
+          <StatusBadge
+            value={getDaysPendingStatus(row.original.daysPending)}
+            label={`${row.original.daysPending} ${row.original.daysPending === 1 ? 'Day' : 'Days'}`}
+          />
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        size: 140,
+        minSize: 120,
+        meta: { noTruncate: true },
+        cell: ({ row }) => (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="group h-7 text-xs px-3 transition-all hover:bg-primary hover:text-primary-foreground hover:shadow-sm active:scale-95 inline-flex items-center gap-1"
+            onClick={() =>
+              router.push(
+                `/operations/maintenance?panel=review&id=${row.original.ticketId}`
+              )
+            }
+          >
+            Review
+            <ArrowUpRight className="w-3.5 h-3.5 opacity-0 -translate-y-0.5 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:translate-y-0 transition-all duration-200" />
+          </Button>
+        ),
+      },
+    ],
+    [router]
   );
 }
 
