@@ -231,6 +231,7 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
         onClose={() => dispatch({ type: 'CLOSE_COMPLETE_DIALOG' })}
         onConfirm={handleCompleteRepair}
         isLoading={uiState.isCompletingRepair}
+        ticket={uiState.activeRepairDetails}
       />
     </div>
   );

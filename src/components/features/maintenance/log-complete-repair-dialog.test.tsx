@@ -114,4 +114,49 @@ describe('LogCompleteRepairDialog', () => {
       });
     });
   });
+
+  it('keeps submit disabled until the notes meet the ten-character minimum', () => {
+    renderDialog();
+
+    fireEvent.change(screen.getByPlaceholderText('10.00'), {
+      target: { value: '250.00' },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/e.g., "Replaced display cable"/i),
+      { target: { value: 'too short' } }
+    );
+
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    expect(screen.getByText('9/500')).toBeInTheDocument();
+  });
+
+  it('shows the ticket context and the variance against the estimate', () => {
+    renderDialog({
+      ticket: {
+        id: 1,
+        assetId: 'asset-uuid',
+        asset: { assetTag: 'AST-014' },
+        ticketType: 'VENDOR',
+        vendorName: 'Acme Repairs',
+        rmaNumber: 'RMA-77',
+        reportedIssue: 'Screen flickers',
+        estimatedCost: '200.00',
+        currencyCode: 'LKR',
+        estimatedReturnDate: '2026-09-01',
+        status: 'ACTIVE',
+        createdAt: '2026-08-01',
+        updatedAt: '2026-08-01',
+      },
+    });
+
+    expect(screen.getByText('AST-014')).toBeInTheDocument();
+    expect(screen.getByText('Acme Repairs')).toBeInTheDocument();
+    expect(screen.getByText(/Estimated/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('10.00'), {
+      target: { value: '250' },
+    });
+
+    expect(screen.getByText(/over estimate/)).toBeInTheDocument();
+  });
 });

@@ -120,6 +120,8 @@ export interface ActiveRepairTicket {
   rmaNumber: string | null;
   reportedIssue: string;
   estimatedCost: string | null;
+  /** Currency the estimate is denominated in; the completion form defaults to it. */
+  currencyCode: string | null;
   estimatedReturnDate: string | null;
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   createdAt: Date;
