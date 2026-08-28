@@ -28,6 +28,20 @@ export const ledgerQueryParamsSchema = z.object({
     .trim()
     .max(100, 'Category name must be 100 characters or fewer.')
     .optional(),
+
+  // Pillar and location page server-side like the rest of the query. Filtering
+  // them in the browser would only ever filter the sixteen rows on screen.
+  pillar: z
+    .enum(
+      ['All', 'Hardware', 'Software', 'Office Furniture', 'Office Electronics'],
+      { message: 'Invalid pillar.' }
+    )
+    .optional(),
+  location: z
+    .string()
+    .trim()
+    .max(255, 'Location name must be 255 characters or fewer.')
+    .optional(),
 });
 
 export type LedgerQueryParams = z.infer<typeof ledgerQueryParamsSchema>;

@@ -24,18 +24,24 @@ import {
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
-import { getDepreciationLedger } from '@/actions/financials';
+import {
+  getDepreciationLedger,
+  type FinancialsFilterOptions,
+} from '@/actions/financials';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface DepreciationLedgerProps {
   initialData: DepreciationLedgerRecord[];
   initialPageCount?: number;
+  /** Full option lists, read from the tables rather than the current page. */
+  filterOptions?: FinancialsFilterOptions;
 }
 
 export function DepreciationLedger({
   initialData,
   initialPageCount = 1,
+  filterOptions,
 }: DepreciationLedgerProps) {
   // Data & Pagination State - Initialize from initialData to avoid empty flash
   const [data, setData] = useState<DepreciationLedgerRecord[]>(initialData);
@@ -60,9 +66,12 @@ export function DepreciationLedger({
     'w-[16%]',
   ];
 
+  // Derived from the loaded rows only when the server list is unavailable --
+  // one page of rows can never offer the categories it does not contain.
   const uniqueCategories = useMemo(() => {
+    if (filterOptions?.categories.length) return filterOptions.categories;
     return Array.from(new Set(initialData.map((item) => item.category))).sort();
-  }, [initialData]);
+  }, [filterOptions, initialData]);
 
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(
     () => [
@@ -76,8 +85,18 @@ export function DepreciationLedger({
         label: 'Purchase Age',
         options: ['This Year', 'Last Year', 'Older than 3 Years'],
       },
+      {
+        value: 'Asset Pillar',
+        label: 'Asset Pillar',
+        options: filterOptions?.pillars ?? [],
+      },
+      {
+        value: 'Location',
+        label: 'Location',
+        options: filterOptions?.locations ?? [],
+      },
     ],
-    [uniqueCategories]
+    [uniqueCategories, filterOptions]
   );
 
   // Debounce search input
@@ -104,6 +123,12 @@ export function DepreciationLedger({
       const ageFilter = appliedFilters.find(
         (f) => f.field === 'Purchase Age' && f.operator === 'is'
       )?.value;
+      const pillarFilter = appliedFilters.find(
+        (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+      )?.value;
+      const locationFilter = appliedFilters.find(
+        (f) => f.field === 'Location' && f.operator === 'is'
+      )?.value;
 
       const response = await getDepreciationLedger({
         page: pagination.pageIndex + 1,
@@ -111,6 +136,8 @@ export function DepreciationLedger({
         search: debouncedSearch,
         category: categoryFilter,
         ageFilter: ageFilter,
+        pillar: pillarFilter,
+        location: locationFilter,
       });
 
       setData(response.data as unknown as DepreciationLedgerRecord[]);
@@ -152,6 +179,12 @@ export function DepreciationLedger({
     const ageFilter = appliedFilters.find(
       (f) => f.field === 'Purchase Age' && f.operator === 'is'
     )?.value;
+    const pillarFilter = appliedFilters.find(
+      (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+    )?.value;
+    const locationFilter = appliedFilters.find(
+      (f) => f.field === 'Location' && f.operator === 'is'
+    )?.value;
 
     const response = await getDepreciationLedger({
       page: 1,
@@ -159,6 +192,8 @@ export function DepreciationLedger({
       search: debouncedSearch,
       category: categoryFilter,
       ageFilter: ageFilter,
+      pillar: pillarFilter,
+      location: locationFilter,
     });
 
     const headers = [

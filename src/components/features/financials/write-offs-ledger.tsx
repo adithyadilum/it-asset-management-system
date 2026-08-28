@@ -24,18 +24,24 @@ import {
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
-import { getWriteOffsLedger } from '@/actions/financials';
+import {
+  getWriteOffsLedger,
+  type FinancialsFilterOptions,
+} from '@/actions/financials';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface WriteOffsLedgerProps {
   initialData: WriteOffsLedgerRecord[];
   initialPageCount?: number;
+  /** Full option lists, read from the tables rather than the current page. */
+  filterOptions?: FinancialsFilterOptions;
 }
 
 export function WriteOffsLedger({
   initialData,
   initialPageCount = 1,
+  filterOptions,
 }: WriteOffsLedgerProps) {
   const [data, setData] = useState<WriteOffsLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
@@ -60,9 +66,12 @@ export function WriteOffsLedger({
     'w-[14%]',
   ];
 
+  // Derived from the loaded rows only when the server list is unavailable --
+  // one page of rows can never offer the categories it does not contain.
   const uniqueCategories = useMemo(() => {
+    if (filterOptions?.categories.length) return filterOptions.categories;
     return Array.from(new Set(initialData.map((item) => item.category))).sort();
-  }, [initialData]);
+  }, [filterOptions, initialData]);
 
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(
     () => [
@@ -80,8 +89,18 @@ export function WriteOffsLedger({
           'High Salvage (>$100)',
         ],
       },
+      {
+        value: 'Asset Pillar',
+        label: 'Asset Pillar',
+        options: filterOptions?.pillars ?? [],
+      },
+      {
+        value: 'Location',
+        label: 'Location',
+        options: filterOptions?.locations ?? [],
+      },
     ],
-    [uniqueCategories]
+    [uniqueCategories, filterOptions]
   );
 
   useEffect(() => {
@@ -106,6 +125,12 @@ export function WriteOffsLedger({
       const salvageFilter = appliedFilters.find(
         (f) => f.field === 'Recouped Salvage Value' && f.operator === 'is'
       )?.value;
+      const pillarFilter = appliedFilters.find(
+        (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+      )?.value;
+      const locationFilter = appliedFilters.find(
+        (f) => f.field === 'Location' && f.operator === 'is'
+      )?.value;
 
       const response = await getWriteOffsLedger({
         page: pagination.pageIndex + 1,
@@ -113,6 +138,8 @@ export function WriteOffsLedger({
         search: debouncedSearch,
         category: categoryFilter,
         salvageFilter: salvageFilter,
+        pillar: pillarFilter,
+        location: locationFilter,
       });
 
       setData(response.data as unknown as WriteOffsLedgerRecord[]);
@@ -154,6 +181,12 @@ export function WriteOffsLedger({
     const salvageFilter = appliedFilters.find(
       (f) => f.field === 'Recouped Salvage Value'
     )?.value;
+    const pillarFilter = appliedFilters.find(
+      (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+    )?.value;
+    const locationFilter = appliedFilters.find(
+      (f) => f.field === 'Location' && f.operator === 'is'
+    )?.value;
 
     const response = await getWriteOffsLedger({
       page: 1,
@@ -161,6 +194,8 @@ export function WriteOffsLedger({
       search: debouncedSearch,
       category: categoryFilter,
       salvageFilter: salvageFilter,
+      pillar: pillarFilter,
+      location: locationFilter,
     });
 
     const headers = [

@@ -24,18 +24,24 @@ import {
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
-import { getTCOLedger } from '@/actions/financials';
+import {
+  getTCOLedger,
+  type FinancialsFilterOptions,
+} from '@/actions/financials';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface TCOLedgerProps {
   initialData: TCOLedgerRecord[];
   initialPageCount?: number;
+  /** Full option lists, read from the tables rather than the current page. */
+  filterOptions?: FinancialsFilterOptions;
 }
 
 export function TCOLedger({
   initialData,
   initialPageCount = 1,
+  filterOptions,
 }: TCOLedgerProps) {
   const [data, setData] = useState<TCOLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
@@ -59,9 +65,12 @@ export function TCOLedger({
     'w-[16%]',
   ];
 
+  // Derived from the loaded rows only when the server list is unavailable --
+  // one page of rows can never offer the categories it does not contain.
   const uniqueCategories = useMemo(() => {
+    if (filterOptions?.categories.length) return filterOptions.categories;
     return Array.from(new Set(initialData.map((item) => item.category))).sort();
-  }, [initialData]);
+  }, [filterOptions, initialData]);
 
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(
     () => [
@@ -79,8 +88,18 @@ export function TCOLedger({
           'Low Value (<$500)',
         ],
       },
+      {
+        value: 'Asset Pillar',
+        label: 'Asset Pillar',
+        options: filterOptions?.pillars ?? [],
+      },
+      {
+        value: 'Location',
+        label: 'Location',
+        options: filterOptions?.locations ?? [],
+      },
     ],
-    [uniqueCategories]
+    [uniqueCategories, filterOptions]
   );
 
   useEffect(() => {
@@ -105,6 +124,12 @@ export function TCOLedger({
       const costFilter = appliedFilters.find(
         (f) => f.field === 'Total Cost (TCO)' && f.operator === 'is'
       )?.value;
+      const pillarFilter = appliedFilters.find(
+        (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+      )?.value;
+      const locationFilter = appliedFilters.find(
+        (f) => f.field === 'Location' && f.operator === 'is'
+      )?.value;
 
       const response = await getTCOLedger({
         page: pagination.pageIndex + 1,
@@ -112,6 +137,8 @@ export function TCOLedger({
         search: debouncedSearch,
         category: categoryFilter,
         costFilter: costFilter,
+        pillar: pillarFilter,
+        location: locationFilter,
       });
 
       setData(response.data as unknown as TCOLedgerRecord[]);
@@ -153,6 +180,12 @@ export function TCOLedger({
     const costFilter = appliedFilters.find(
       (f) => f.field === 'Total Cost (TCO)'
     )?.value;
+    const pillarFilter = appliedFilters.find(
+      (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+    )?.value;
+    const locationFilter = appliedFilters.find(
+      (f) => f.field === 'Location' && f.operator === 'is'
+    )?.value;
 
     const response = await getTCOLedger({
       page: 1,
@@ -160,6 +193,8 @@ export function TCOLedger({
       search: debouncedSearch,
       category: categoryFilter,
       costFilter: costFilter,
+      pillar: pillarFilter,
+      location: locationFilter,
     });
 
     const headers = [

@@ -1,6 +1,9 @@
 import { Suspense } from 'react';
 import { PageSkeleton } from '@/components/shared/page-skeleton';
-import { getDepreciationLedger } from '@/actions/financials';
+import {
+  getDepreciationLedger,
+  getFinancialsFilterOptions,
+} from '@/actions/financials';
 import { DepreciationLedger } from '@/components/features/financials/depreciation-ledger';
 import { LedgerSummary } from '@/components/features/financials/ledger-summary';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -11,7 +14,12 @@ export const metadata = {
 
 async function DepreciationLedgerPageContent() {
   // 1. Pass the initial pagination parameters
-  const response = await getDepreciationLedger({ page: 1, pageSize: 16 });
+  // Fetched alongside the ledger so the filter dropdowns offer every category
+  // and location, not only those on the first page of rows.
+  const [response, filterOptions] = await Promise.all([
+    getDepreciationLedger({ page: 1, pageSize: 16 }),
+    getFinancialsFilterOptions(),
+  ]);
 
   return (
     <div className="flex h-full flex-col gap-6 p-6 overflow-y-auto">
@@ -51,6 +59,7 @@ async function DepreciationLedgerPageContent() {
       <DepreciationLedger
         initialData={response.data}
         initialPageCount={response.meta.totalPages}
+        filterOptions={filterOptions}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 ﻿import { Suspense } from 'react';
 import { PageSkeleton } from '@/components/shared/page-skeleton';
-import { getTCOLedger } from '@/actions/financials';
+import { getTCOLedger, getFinancialsFilterOptions } from '@/actions/financials';
 import { TCOLedger } from '@/components/features/financials/tco-ledger';
 import { LedgerSummary } from '@/components/features/financials/ledger-summary';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -11,7 +11,12 @@ export const metadata = {
 
 async function TCOLedgerPageContent() {
   // 1. Pass the initial pagination parameters
-  const response = await getTCOLedger({ page: 1, pageSize: 16 });
+  // Fetched alongside the ledger so the filter dropdowns offer every category
+  // and location, not only those on the first page of rows.
+  const [response, filterOptions] = await Promise.all([
+    getTCOLedger({ page: 1, pageSize: 16 }),
+    getFinancialsFilterOptions(),
+  ]);
 
   return (
     <div className="flex h-full flex-col gap-6 p-6 overflow-y-auto">
@@ -50,6 +55,7 @@ async function TCOLedgerPageContent() {
       <TCOLedger
         initialData={response.data}
         initialPageCount={response.meta.totalPages}
+        filterOptions={filterOptions}
       />
     </div>
   );

@@ -9,6 +9,7 @@ import {
   categories,
   maintenanceTickets,
   assetDisposals,
+  locations,
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
@@ -38,6 +39,8 @@ export interface LedgerPaginationParams {
   pageSize?: number;
   search?: string;
   category?: string;
+  pillar?: string;
+  location?: string;
 }
 
 /**
@@ -59,6 +62,8 @@ export async function getDepreciationLedger(
       pageSize: validPageSize,
       search,
       category,
+      pillar,
+      location,
       ageFilter,
     } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
@@ -77,6 +82,18 @@ export async function getDepreciationLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (ageFilter && ageFilter !== 'All') {
@@ -247,6 +264,8 @@ export async function getTCOLedger(
       pageSize: validPageSize,
       search,
       category,
+      pillar,
+      location,
       costFilter,
     } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
@@ -279,6 +298,18 @@ export async function getTCOLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (costFilter && costFilter !== 'All') {
@@ -430,6 +461,8 @@ export async function getWriteOffsLedger(
       pageSize: validPageSize,
       search,
       category,
+      pillar,
+      location,
       salvageFilter,
     } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
@@ -448,6 +481,18 @@ export async function getWriteOffsLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (salvageFilter && salvageFilter !== 'All') {
@@ -589,4 +634,41 @@ export async function getWriteOffsLedger(
     }
     throw new Error('Failed to load write-offs ledger.');
   }
+}
+
+/**
+ * The values the ledger filters offer.
+ *
+ * The three ledgers each derived their category list from the rows they had
+ * been handed, which is one page -- sixteen assets. Any category absent from
+ * that page could not be filtered for, so the filter could not reach the rows
+ * it existed to find. Read the distinct values from the tables instead.
+ */
+export async function getFinancialsFilterOptions() {
+  await enforceFinanceAccess();
+
+  const [categoryRows, locationRows] = await Promise.all([
+    db
+      .selectDistinct({ name: categories.name, pillar: categories.pillar })
+      .from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(categories.name),
+    db
+      .selectDistinct({ name: locations.name })
+      .from(locations)
+      .where(eq(locations.isActive, true))
+      .orderBy(locations.name),
+  ]);
+
+  return {
+    categories: categoryRows.map((row) => row.name),
+    pillars: Array.from(new Set(categoryRows.map((row) => row.pillar))).sort(),
+    locations: locationRows.map((row) => row.name),
+  };
+}
+
+export interface FinancialsFilterOptions {
+  categories: string[];
+  pillars: string[];
+  locations: string[];
 }
