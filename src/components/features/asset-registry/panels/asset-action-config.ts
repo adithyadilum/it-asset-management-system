@@ -19,7 +19,8 @@ export type AssetActionId =
   | 'request-disposal'
   | 'add-user'
   | 'process-return'
-  | 'renew-license';
+  | 'renew-license'
+  | 'cancel-assignment';
 
 export interface AssetActionConfig {
   id: AssetActionId;
@@ -89,6 +90,31 @@ const PROCESS_RETURN_ACTION: AssetActionConfig = {
   id: 'process-return',
   label: 'Process Return',
   variant: 'default',
+};
+
+// The operations panel used to own these three. They are assignment-lifecycle
+// actions, not registry ones, but both panels render the same asset, so they
+// belong in the one place that decides what an asset can do.
+const SEND_REMINDER_ACTION: AssetActionConfig = {
+  id: 'remind-return',
+  label: 'Send Reminder',
+  variant: 'default',
+};
+
+const MARK_RECEIVED_ACTION: AssetActionConfig = {
+  id: 'mark-returned',
+  label: 'Received',
+  variant: 'outline',
+};
+
+/**
+ * Withdrawing an assignment the assignee has not acknowledged. Once they have,
+ * giving the asset back is a return, not a cancellation.
+ */
+const CANCEL_ASSIGNMENT_ACTION: AssetActionConfig = {
+  id: 'cancel-assignment',
+  label: 'Cancel Assignment',
+  variant: 'outline',
 };
 
 const RENEW_LICENSE_ACTION: AssetActionConfig = {
@@ -175,6 +201,26 @@ export interface GetActionsOptions {
 }
 
 /**
+ * Actions that depend on where the assignment sits in its lifecycle rather than
+ * on the asset's status. Returns null when the state carries no special case
+ * and the caller's pillar default should stand.
+ */
+function getAssignmentLifecycleActions(
+  assignmentState: string | undefined
+): AssetActionConfig[] | null {
+  switch (assignmentState) {
+    case 'pending approval':
+      return [EDIT_ACTION, CANCEL_ASSIGNMENT_ACTION, SEND_REMINDER_ACTION];
+    case 'overdue':
+      return [EDIT_ACTION, MARK_RECEIVED_ACTION, SEND_REMINDER_ACTION];
+    case 'requested':
+      return [EDIT_ACTION, REMIND_RETURN_ACTION, MARK_RETURNED_ACTION];
+    default:
+      return null;
+  }
+}
+
+/**
  * Returns the list of action button configs that should be rendered in the
  * asset detail panel footer for the given asset state.
  */
@@ -223,10 +269,12 @@ export function getActionsForStatus(
 
   if (isFurnitureOrElectronics) {
     if (status === 'Assigned') {
-      if (assignmentState === 'requested') {
-        return [EDIT_ACTION, REMIND_RETURN_ACTION, MARK_RETURNED_ACTION];
-      }
-      return [EDIT_ACTION, TRANSFER_ACTION];
+      return (
+        getAssignmentLifecycleActions(assignmentState) ?? [
+          EDIT_ACTION,
+          TRANSFER_ACTION,
+        ]
+      );
     }
 
     const builtInActions = FURNITURE_ELECTRONICS_STATUS_ACTIONS[status];
@@ -244,10 +292,12 @@ export function getActionsForStatus(
 
   // ── Hardware (default) ──
   if (status === 'Assigned') {
-    if (assignmentState === 'requested') {
-      return [EDIT_ACTION, REMIND_RETURN_ACTION, MARK_RETURNED_ACTION];
-    }
-    return [EDIT_ACTION, REQUEST_RETURN_ACTION];
+    return (
+      getAssignmentLifecycleActions(assignmentState) ?? [
+        EDIT_ACTION,
+        REQUEST_RETURN_ACTION,
+      ]
+    );
   }
 
   const builtInActions = HARDWARE_STATUS_ACTIONS[status];
@@ -279,6 +329,7 @@ const ACTION_ID_TO_CONFIG: Record<
   'add-user': () => ADD_USER_ACTION,
   'process-return': () => PROCESS_RETURN_ACTION,
   'renew-license': () => RENEW_LICENSE_ACTION,
+  'cancel-assignment': () => CANCEL_ASSIGNMENT_ACTION,
 };
 
 function resolveCustomActions(
