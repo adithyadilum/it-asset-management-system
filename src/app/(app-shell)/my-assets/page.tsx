@@ -16,6 +16,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { AppWindow } from 'lucide-react';
+import { formatAssetName } from '@/components/features/my-assets/employee-asset-grid';
 import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
 
 async function MyAssetsPageContent() {
@@ -61,9 +62,12 @@ async function MyAssetsPageContent() {
                   <AssetCard
                     key={asset.allocationId}
                     assetType={`${asset.licenseType} Seat`}
-                    name={asset.modelName}
+                    name={formatAssetName(asset.brandName, asset.modelName)}
                     status={asset.status}
                     icon={<AppWindow className="h-8 w-8" />}
+                    // Software has a publisher logo on its model like anything
+                    // else; only these cards were never given it.
+                    imageUrl={asset.imageUrl}
                     assetId={asset.assetTag}
                     assignedDate={new Intl.DateTimeFormat('en-US', {
                       month: 'short',

@@ -16,6 +16,7 @@ import {
   notificationQueue,
   softwareAllocations,
   softwareLicenses,
+  brands,
   users,
 } from '@/db/schema';
 import { getPortalAlerts, type PortalAlerts } from '@/lib/data/portal-repo';
@@ -32,6 +33,10 @@ export type EmployeeAssignedAsset = {
   assetTag: string;
   serialNumber: string | null;
   modelName: string;
+  /** Brand, so the card can title the asset the way a person names it. */
+  brandName: string | null;
+  /** The specific kind of thing -- "Laptops", "Monitors" -- not the pillar. */
+  categoryName: string;
   status: string;
   assignedDate: string;
   pillar: string;
@@ -52,6 +57,10 @@ export type EmployeeSoftwareAsset = {
   assetTag: string;
   licenseKey: string | null;
   modelName: string;
+  brandName: string | null;
+  categoryName: string;
+  /** Publisher logo, so software cards are not the only ones without an image. */
+  imageUrl: string | null;
   status: string;
   allocatedDate: string;
   licenseType: string;
@@ -79,6 +88,8 @@ export async function getCurrentEmployeeAssets(): Promise<
         assetTag: assets.assetTag,
         serialNumber: assets.serialNumber,
         modelName: models.name,
+        brandName: brands.name,
+        categoryName: categories.name,
         status: assets.status,
         assignedDate: assetAssignments.assignedDate,
         pillar: categories.pillar,
@@ -90,6 +101,7 @@ export async function getCurrentEmployeeAssets(): Promise<
       .from(assetAssignments)
       .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
       .leftJoin(users, eq(assetAssignments.assignedById, users.id))
       .where(
@@ -155,6 +167,9 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
         assetTag: assets.assetTag,
         licenseKey: softwareLicenses.licenseKey,
         modelName: models.name,
+        brandName: brands.name,
+        categoryName: categories.name,
+        imageUrl: models.imageUrl,
         allocatedDate: softwareAllocations.allocatedAt,
         licenseType: softwareLicenses.licenseType,
       })
@@ -165,6 +180,8 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
       )
       .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
       .innerJoin(models, eq(softwareLicenses.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
       .where(
         and(
           eq(softwareAllocations.assignedToUserId, currentUser.id),
@@ -186,6 +203,9 @@ export async function getCurrentEmployeeSoftwareAssets(): Promise<
       assetTag: row.assetTag,
       licenseKey: row.licenseKey,
       modelName: row.modelName,
+      brandName: row.brandName,
+      categoryName: row.categoryName,
+      imageUrl: row.imageUrl,
       status: 'active',
       allocatedDate: row.allocatedDate.toISOString(),
       licenseType: row.licenseType,

@@ -63,6 +63,17 @@ function getAssetPresentation(pillar: string | undefined, modelName: string) {
   return { label: 'Asset', icon: <HardDrive className="h-8 w-8" /> };
 }
 
+/**
+ * How a person refers to the thing: "Dell Latitude 5540", not "Latitude 5540".
+ * The brand is dropped when the model name already leads with it.
+ */
+export function formatAssetName(brandName: string | null, modelName: string) {
+  if (!brandName) return modelName;
+  return modelName.toLowerCase().startsWith(brandName.toLowerCase())
+    ? modelName
+    : `${brandName} ${modelName}`;
+}
+
 function formatDay(value: string) {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -77,8 +88,8 @@ function toPendingItem(asset: EmployeeAssignedAsset): PendingAcceptanceItem {
     assignmentId: asset.assignmentId,
     assetId: asset.assetId,
     assetTag: asset.assetTag,
-    modelName: asset.modelName,
-    category: asset.pillar,
+    modelName: formatAssetName(asset.brandName, asset.modelName),
+    category: asset.categoryName,
     assignedDate: asset.assignedDate,
     assignedByName: asset.assignedByName,
   };
@@ -135,8 +146,10 @@ export function EmployeeAssetGrid({
           return (
             <AssetCard
               key={asset.assignmentId}
-              assetType={presentation.label}
-              name={asset.modelName}
+              // The category, not the pillar: "Laptop" tells the holder what
+              // they have, "Device" does not.
+              assetType={asset.categoryName || presentation.label}
+              name={formatAssetName(asset.brandName, asset.modelName)}
               status={asset.status}
               icon={presentation.icon}
               imageUrl={asset.imageUrl}
@@ -148,7 +161,10 @@ export function EmployeeAssetGrid({
               actions={
                 awaitingAcknowledgement ? (
                   <AcceptAssignmentDialog
-                    assetName={asset.modelName}
+                    assetName={formatAssetName(
+                      asset.brandName,
+                      asset.modelName
+                    )}
                     assetTag={asset.assetTag}
                     condition="Unknown"
                     assignedBy={asset.assignedByName ?? 'IT'}

@@ -46,6 +46,15 @@ describe('AssetCard', () => {
     expect(container.firstChild).toHaveClass('custom-class');
   });
 
+  it('does not repeat the status as an assignment badge', () => {
+    render(
+      <AssetCard name="Dell XPS" status="assigned" assignmentState="assigned" />
+    );
+
+    // Both rendered "Assigned", side by side, saying nothing twice.
+    expect(screen.getAllByText('Assigned')).toHaveLength(1);
+  });
+
   it('shows the assignment state alongside the asset status', () => {
     render(
       <AssetCard

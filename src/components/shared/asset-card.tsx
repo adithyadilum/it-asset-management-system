@@ -2,6 +2,7 @@ import Image from 'next/image';
 import type { ReactNode } from 'react';
 
 import { StatusBadge } from '@/components/shared/status-badge';
+import { formatAssignmentState } from '@/lib/assignments/labels';
 import { cn } from '@/lib/utils';
 
 interface AssetCardProps {
@@ -52,6 +53,11 @@ export function AssetCard({
   actions,
   className,
 }: AssetCardProps) {
+  const showAssignmentBadge =
+    Boolean(assignmentState) &&
+    formatAssignmentState(assignmentState!).toLowerCase() !==
+      status.toLowerCase();
+
   return (
     <article
       className={cn('rounded-lg border border-border bg-card p-4', className)}
@@ -59,9 +65,10 @@ export function AssetCard({
       <header className="flex items-start justify-between gap-3">
         <p className="text-sm text-muted-foreground">{assetType ?? 'Asset'}</p>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {/* The holder could not tell an acknowledged asset from one still
-              waiting on them; the asset status alone never said. */}
-          {assignmentState ? (
+          {/* Only when it says something the status does not. An assignment in
+              its plain 'assigned' state on an asset whose status is already
+              'Assigned' put the same word on the card twice. */}
+          {showAssignmentBadge ? (
             <StatusBadge
               value={assignmentState}
               showIcon={false}
