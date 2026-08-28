@@ -417,6 +417,9 @@ export async function getTCOLedger(
     // kept apart because the question this page answers is how much an asset
     // has cost *since* it was bought.
     const summaryRows = await db
+      // The CTE has to be declared on this query too; without it the join
+      // references a table the statement never defines.
+      .with(repairCostsSq)
       .select({
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,

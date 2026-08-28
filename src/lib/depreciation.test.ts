@@ -90,4 +90,33 @@ describe('projectBookValueSeries', () => {
       expect(point.bookValue).toBe(250);
     }
   });
+
+  it('never rises from one month to the next', () => {
+    // An asset bought partway through this month used to be dropped from the
+    // current point and reappear at full cost the month after, so the line
+    // dipped at today and jumped back up.
+    const midThisMonth = new Date();
+    midThisMonth.setDate(15);
+
+    const series = projectBookValueSeries(
+      [
+        {
+          cost: 2400,
+          salvageValue: 0,
+          usefulLifeMonths: 24,
+          purchaseDate: midThisMonth,
+        },
+      ],
+      { monthsBack: 2, monthsForward: 3 }
+    );
+
+    // Index 2 is the current month: owned since the 15th, no whole month
+    // elapsed, so still at cost -- not the 0 the exact-date comparison gave.
+    expect(series[2].bookValue).toBe(2400);
+
+    // And from acquisition onward it only falls.
+    for (let i = 3; i < series.length; i += 1) {
+      expect(series[i].bookValue).toBeLessThanOrEqual(series[i - 1].bookValue);
+    }
+  });
 });

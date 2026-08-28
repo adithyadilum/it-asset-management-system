@@ -137,22 +137,34 @@ describe('Financials Actions', () => {
         role: 'FinancialAuditor',
       });
 
-      // We mocked `db.with()` properly
+      // Two `db.with(...).select(...)` calls now: the page of rows, then the
+      // summary totals, which needs the same CTE declared on its own statement.
       mockDb.with.mockReturnValue({
-        select: vi.fn().mockReturnValueOnce(
-          chain([
-            {
-              totalCount: 1,
-              id: 1,
-              assetTag: 'TAG-2',
-              categoryName: 'Hardware',
-              purchaseDate: new Date().toISOString(),
-              originalPrice: '1000',
-              currencyCode: 'USD',
-              totalRepairCosts: '250',
-            },
-          ])
-        ),
+        select: vi
+          .fn()
+          .mockReturnValueOnce(
+            chain([
+              {
+                totalCount: 1,
+                id: 1,
+                assetTag: 'TAG-2',
+                categoryName: 'Hardware',
+                purchaseDate: new Date().toISOString(),
+                originalPrice: '1000',
+                currencyCode: 'USD',
+                totalRepairCosts: '250',
+              },
+            ])
+          )
+          .mockReturnValueOnce(
+            chain([
+              {
+                originalPrice: '1000',
+                currencyCode: 'USD',
+                totalRepairCosts: '250',
+              },
+            ])
+          ),
       });
 
       const result = await getTCOLedger();
@@ -161,6 +173,11 @@ describe('Financials Actions', () => {
       expect(result.data[0].originalPrice).toBe(1000);
       expect(result.data[0].totalRepairCosts).toBe(250);
       expect(result.data[0].totalTCO).toBe(1250);
+
+      // The summary covers everything the filters match, so it is computed by
+      // its own query rather than added up from the page.
+      expect(result.summary.assetCount).toBe(1);
+      expect(result.summary.totalTCO).toBeGreaterThan(0);
     });
   });
 

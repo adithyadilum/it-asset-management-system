@@ -185,9 +185,20 @@ export function projectBookValueSeries(
     for (const asset of assets) {
       // An asset the company did not own yet contributes nothing. Without this
       // the earliest months would carry every future purchase at full cost.
+      //
+      // Compared by month, not by instant: `asOf` is the first of the month, so
+      // an exact-date comparison dropped anything bought later in the current
+      // month and then let it back in at full cost the month after -- the
+      // series dipped at today and jumped straight back up.
       if (asset.purchaseDate) {
         const purchased = new Date(asset.purchaseDate);
-        if (!isNaN(purchased.getTime()) && purchased > asOf) continue;
+        if (
+          !isNaN(purchased.getTime()) &&
+          purchased.getFullYear() * 12 + purchased.getMonth() >
+            asOf.getFullYear() * 12 + asOf.getMonth()
+        ) {
+          continue;
+        }
       }
       total += calculateStraightLineNBV(asset, asOf);
     }
