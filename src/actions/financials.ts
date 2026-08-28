@@ -152,8 +152,57 @@ export async function getDepreciationLedger(
       };
     });
 
+    // Totals across everything the filters match, not just the page. Computed
+    // from the same inputs the rows use so the header cannot disagree with the
+    // table under it.
+    const summaryRows = await db
+      .select({
+        originalPrice: assetPurchases.totalCost,
+        salvageValue: assets.salvageValue,
+        usefulLifeMonths: assets.usefulLifeMonths,
+        purchaseDate: assetPurchases.purchaseDate,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .where(whereClause);
+
+    let totalCost = 0;
+    let totalBookValue = 0;
+    let fullyDepreciated = 0;
+
+    for (const row of summaryRows) {
+      const price = parseFloat(row.originalPrice?.toString() || '0');
+      const salvage = parseFloat(row.salvageValue?.toString() || '0');
+      const bookValue = calculateCurrentBookValue({
+        cost: price,
+        salvageValue: salvage,
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      });
+
+      totalCost += price;
+      totalBookValue += bookValue;
+      // "Fully depreciated" means written down to salvage, which is the floor
+      // calculateStraightLineNBV clamps to.
+      if (bookValue <= salvage + 0.005) fullyDepreciated += 1;
+    }
+
     return {
       data: ledgers,
+      summary: {
+        totalCost: Math.round(totalCost * 100) / 100,
+        totalBookValue: Math.round(totalBookValue * 100) / 100,
+        accumulatedDepreciation:
+          Math.round((totalCost - totalBookValue) * 100) / 100,
+        fullyDepreciated,
+        assetCount: summaryRows.length,
+        // Depreciation steps in whole calendar months, so a figure that does
+        // not move between visits is correct rather than stale. Saying when it
+        // was computed makes that legible.
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -296,8 +345,47 @@ export async function getTCOLedger(
       };
     });
 
+    // Totals across everything the filters match. Purchase and maintenance are
+    // kept apart because the question this page answers is how much an asset
+    // has cost *since* it was bought.
+    const summaryRows = await db
+      .select({
+        originalPrice: assetPurchases.totalCost,
+        totalRepairCosts: repairCostsSq.totalRepair,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+      .where(whereClause);
+
+    let totalPurchase = 0;
+    let totalMaintenance = 0;
+    let maintainedCount = 0;
+
+    for (const row of summaryRows) {
+      const price = parseFloat(row.originalPrice?.toString() || '0');
+      const repairs = parseFloat(row.totalRepairCosts?.toString() || '0');
+      totalPurchase += price;
+      totalMaintenance += repairs;
+      if (repairs > 0) maintainedCount += 1;
+    }
+
     return {
       data: ledgers,
+      summary: {
+        totalPurchase: Math.round(totalPurchase * 100) / 100,
+        totalMaintenance: Math.round(totalMaintenance * 100) / 100,
+        totalTCO: Math.round((totalPurchase + totalMaintenance) * 100) / 100,
+        maintenanceShare:
+          totalPurchase > 0
+            ? Math.round((totalMaintenance / totalPurchase) * 1000) / 10
+            : 0,
+        maintainedCount,
+        assetCount: summaryRows.length,
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -433,8 +521,51 @@ export async function getWriteOffsLedger(
       actualSalvageValue: parseFloat(row.actualSalvageValue?.toString() || '0'),
     }));
 
+    // Realised against expected is the question this page exists to answer:
+    // whether disposals recovered what they were forecast to.
+    const summaryRows = await db
+      .select({
+        bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
+        estimatedSalvageValue: assets.salvageValue,
+        actualSalvageValue: assetDisposals.actualSalvageValue,
+        status: assetDisposals.status,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
+      .where(whereClause);
+
+    let totalWrittenOff = 0;
+    let totalExpectedSalvage = 0;
+    let totalRealisedSalvage = 0;
+    const byStatus = new Map<string, number>();
+
+    for (const row of summaryRows) {
+      totalWrittenOff += parseFloat(row.bookValueAtDisposal?.toString() || '0');
+      totalExpectedSalvage += parseFloat(
+        row.estimatedSalvageValue?.toString() || '0'
+      );
+      totalRealisedSalvage += parseFloat(
+        row.actualSalvageValue?.toString() || '0'
+      );
+      const status = row.status ?? 'Unknown';
+      byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
+    }
+
     return {
       data: ledgers,
+      summary: {
+        disposalCount: summaryRows.length,
+        totalWrittenOff: Math.round(totalWrittenOff * 100) / 100,
+        totalExpectedSalvage: Math.round(totalExpectedSalvage * 100) / 100,
+        totalRealisedSalvage: Math.round(totalRealisedSalvage * 100) / 100,
+        salvageVariance:
+          Math.round((totalRealisedSalvage - totalExpectedSalvage) * 100) / 100,
+        byStatus: Object.fromEntries(byStatus),
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,

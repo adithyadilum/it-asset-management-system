@@ -2,6 +2,7 @@
 import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { getTCOLedger } from '@/actions/financials';
 import { TCOLedger } from '@/components/features/financials/tco-ledger';
+import { LedgerSummary } from '@/components/features/financials/ledger-summary';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 export const metadata = {
@@ -19,6 +20,33 @@ async function TCOLedgerPageContent() {
       >
         Total Cost of Ownership (TCO)
       </h1>
+      <LedgerSummary
+        asOf={response.summary.asOf}
+        stats={[
+          {
+            label: 'Total cost of ownership',
+            value: response.summary.totalTCO,
+            currencyCode: 'LKR',
+          },
+          {
+            label: 'Purchase cost',
+            value: response.summary.totalPurchase,
+            currencyCode: 'LKR',
+          },
+          {
+            label: 'Maintenance spend',
+            value: response.summary.totalMaintenance,
+            currencyCode: 'LKR',
+            tone: 'warning',
+            hint: `${response.summary.maintenanceShare}% of purchase cost`,
+          },
+          {
+            label: 'Assets repaired',
+            value: `${response.summary.maintainedCount.toLocaleString()} of ${response.summary.assetCount.toLocaleString()}`,
+          },
+        ]}
+      />
+
       <TCOLedger
         initialData={response.data}
         initialPageCount={response.meta.totalPages}
