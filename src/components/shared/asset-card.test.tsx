@@ -45,4 +45,37 @@ describe('AssetCard', () => {
     );
     expect(container.firstChild).toHaveClass('custom-class');
   });
+
+  it('shows the assignment state alongside the asset status', () => {
+    render(
+      <AssetCard
+        name="Dell XPS"
+        status="assigned"
+        assignmentState="pending approval"
+      />
+    );
+
+    // The stored enum reads as though somebody must sign it off; the badge
+    // says what it means for the holder.
+    expect(screen.getByText('Pending assignment')).toBeInTheDocument();
+    expect(screen.getByText('Assigned')).toBeInTheDocument();
+  });
+
+  it('marks a return date that has passed as overdue', () => {
+    const { rerender } = render(
+      <AssetCard name="Dell XPS" expectedReturnDate="2024-01-15" />
+    );
+    expect(screen.getByText(/Due back/)).toBeInTheDocument();
+
+    rerender(
+      <AssetCard name="Dell XPS" expectedReturnDate="2024-01-15" isOverdue />
+    );
+    expect(screen.getByText(/Overdue since/)).toBeInTheDocument();
+  });
+
+  it('renders actions when given them', () => {
+    render(<AssetCard name="Dell XPS" actions={<button>Accept</button>} />);
+
+    expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+  });
 });

@@ -63,6 +63,7 @@ vi.mock('@/db/schema', () => ({
   categories: { id: 'categories.id' },
   models: { id: 'models.id' },
   notificationQueue: { id: 'notificationQueue.id' },
+  users: { id: 'users.id', name: 'users.name' },
   softwareAllocations: {
     id: 'softwareAllocations.id',
     assignedToUserId: 'softwareAllocations.assignedToUserId',

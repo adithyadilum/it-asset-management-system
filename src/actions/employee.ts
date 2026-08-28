@@ -16,6 +16,7 @@ import {
   notificationQueue,
   softwareAllocations,
   softwareLicenses,
+  users,
 } from '@/db/schema';
 import { getPortalAlerts, type PortalAlerts } from '@/lib/data/portal-repo';
 import {
@@ -34,6 +35,15 @@ export type EmployeeAssignedAsset = {
   status: string;
   assignedDate: string;
   pillar: string;
+  /** Where the assignment sits in its lifecycle, for the card badge. */
+  assignmentState: string;
+  /** The one date the holder cares about; null when open-ended. */
+  expectedReturnDate: string | null;
+  /** Whether that date has passed, decided here so the card stays pure. */
+  isOverdue: boolean;
+  /** Model photo. Falls back to the pillar icon on the card. */
+  imageUrl: string | null;
+  assignedByName: string | null;
 };
 
 export type EmployeeSoftwareAsset = {
@@ -72,16 +82,28 @@ export async function getCurrentEmployeeAssets(): Promise<
         status: assets.status,
         assignedDate: assetAssignments.assignedDate,
         pillar: categories.pillar,
+        assignmentState: assetAssignments.state,
+        expectedReturnDate: assetAssignments.expectedReturnDate,
+        imageUrl: models.imageUrl,
+        assignedByName: users.name,
       })
       .from(assetAssignments)
       .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(users, eq(assetAssignments.assignedById, users.id))
       .where(
         and(
           eq(assetAssignments.assignedToUserId, currentUser.id),
           isNull(assetAssignments.returnedDate),
-          inArray(assetAssignments.state, ['assigned', 'overdue', 'requested'])
+          // 'pending approval' now belongs here: the Accept/Decline prompt sits
+          // on the asset's own card, so the asset has to be on the page.
+          inArray(assetAssignments.state, [
+            'pending approval',
+            'assigned',
+            'overdue',
+            'requested',
+          ])
         )
       )
       .orderBy(desc(assetAssignments.assignedDate));
@@ -90,9 +112,17 @@ export async function getCurrentEmployeeAssets(): Promise<
       durationMs: Date.now() - startTime,
       rowCount: rows.length,
     });
+    // Day granularity: an asset due back today is not late yet, so compare
+    // against the start of today rather than the current instant.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     return rows.map((row) => ({
       ...row,
       assignedDate: row.assignedDate.toISOString(),
+      isOverdue: row.expectedReturnDate
+        ? new Date(row.expectedReturnDate) < startOfToday
+        : false,
     }));
   } catch (error) {
     console.error('getCurrentEmployeeAssets failed', {
