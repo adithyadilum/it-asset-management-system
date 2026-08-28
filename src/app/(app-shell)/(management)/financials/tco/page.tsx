@@ -18,7 +18,7 @@ async function TCOLedgerPageContent() {
   ]);
 
   return (
-    <div className="flex h-full flex-col gap-6 p-6 overflow-y-auto">
+    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
       <h1
         className={`${TYPOGRAPHY_CLASSNAMES.text2xlSemiBold} text-foreground`}
       >

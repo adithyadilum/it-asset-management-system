@@ -355,7 +355,10 @@ export function TCOLedger({
     convertCurrencyAmount(value, SUMMARY_CURRENCY, currency);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden gap-4">
+    // Natural height, not `h-full overflow-hidden`: the summary and the chart
+    // above the table are meant to scroll away, and a fixed-height column would
+    // instead squeeze the table into whatever was left over.
+    <div className="flex flex-col gap-4">
       <LedgerSummary
         asOf={summary.asOf}
         stats={[
@@ -456,7 +459,9 @@ export function TCOLedger({
         </Button>
       </FilterBar>
 
-      <div className="min-h-0 flex-1 flex flex-col">
+      {/* Tall enough that once the filter row has scrolled to the top of the
+          viewport, the whole table is on screen. */}
+      <div className="flex min-h-[calc(100vh-11rem)] flex-col">
         {isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
             <TableSkeleton
