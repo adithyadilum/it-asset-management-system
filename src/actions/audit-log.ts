@@ -20,6 +20,7 @@ import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { extractLabelFromValues } from '@/lib/audit';
+import { AUDIT_EXPORT_LIMIT } from '@/lib/audit-events';
 import { auditLogQuerySchema } from '@/lib/validations/audit-log';
 
 export interface AuditLogFilter {
@@ -1121,9 +1122,6 @@ export async function getAllAssetAuditHistory(
     throw new Error('Failed to fetch all asset history.');
   }
 }
-
-/** Hard ceiling on an export, so one click cannot pull the whole ledger. */
-export const AUDIT_EXPORT_LIMIT = 10_000;
 
 export interface ExportAuditLogsParams {
   search?: string;

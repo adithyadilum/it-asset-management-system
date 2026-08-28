@@ -297,3 +297,12 @@ export function buildEventDetailsSentence(
 
   return 'Updated record';
 }
+
+/**
+ * Hard ceiling on an audit export, so one click cannot pull the whole ledger.
+ *
+ * Lives here rather than beside the export action: a `'use server'` module may
+ * only export async functions, and a stray constant silently strips every
+ * export from it at build time.
+ */
+export const AUDIT_EXPORT_LIMIT = 10_000;

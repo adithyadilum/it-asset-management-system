@@ -12,12 +12,12 @@ import { format } from 'date-fns';
 import { Download } from 'lucide-react';
 
 import {
-  AUDIT_EXPORT_LIMIT,
   exportAuditLogs,
   getAuditLogs,
   type AuditLogRow,
   type PaginatedAuditLogsResult,
 } from '@/actions/audit-log';
+import { AUDIT_EXPORT_LIMIT } from '@/lib/audit-events';
 import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

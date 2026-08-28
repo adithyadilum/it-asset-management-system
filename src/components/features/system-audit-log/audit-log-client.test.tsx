@@ -18,7 +18,6 @@ vi.mock('@/actions/audit-log', () => ({
   // Export now goes through a server action so it can honour the active
   // filters rather than exporting whatever happens to be on screen.
   exportAuditLogs: vi.fn().mockResolvedValue({ rows: [], truncated: false }),
-  AUDIT_EXPORT_LIMIT: 10_000,
 }));
 
 describe('AuditLogClient', () => {
