@@ -57,6 +57,9 @@ export function StandardReportsConfigPanel({
   isLoading,
   resetKey,
 }: StandardReportsConfigPanelProps) {
+  // A report needs a source to query; every other filter is optional.
+  const canPreview = Boolean(filterState.source);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<
     ReportTemplateData | undefined
@@ -342,7 +345,18 @@ export function StandardReportsConfigPanel({
               <Button variant="secondary" size="sm" onClick={onClearFilters}>
                 Clear filters
               </Button>
-              <Button size="sm" onClick={onManualPreview} disabled={isLoading}>
+              {/* Previewing with no source threw, because there was nothing to
+                  query. Disabled with a reason beats an error dialog. */}
+              <Button
+                size="sm"
+                onClick={onManualPreview}
+                disabled={isLoading || !canPreview}
+                title={
+                  canPreview
+                    ? undefined
+                    : 'Choose a report source before previewing'
+                }
+              >
                 Preview report
                 <ChevronRight className="size-4" />
               </Button>

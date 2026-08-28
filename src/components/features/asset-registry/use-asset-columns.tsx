@@ -250,6 +250,23 @@ export function useAssetColumns(
 
             if (row.original.pillar !== 'Software') return null;
 
+            // Seats are irrelevant once the licence has lapsed: an expired
+            // licence with eight free seats is not eight seats you can use.
+            const expiryDate = row.original.expiryDate
+              ? new Date(row.original.expiryDate)
+              : null;
+            const isExpired = expiryDate ? expiryDate < new Date() : false;
+
+            if (isExpired) {
+              return (
+                <StatusBadge
+                  variant="metadata"
+                  label="Unavailable"
+                  className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                />
+              );
+            }
+
             // Seat availability is a judgement, not a status name, so the
             // colour is chosen here — but the shape comes from StatusBadge like
             // every other badge.

@@ -13,6 +13,7 @@ import {
   SlidePanel,
   type SlidePanelAction,
 } from '@/components/shared/slide-panel';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 
 export interface AssetAssignmentPanelProps {
   isOpen?: boolean;
@@ -111,6 +112,7 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
       />
     </div>
   );
+  const isLocationAssigned = isLocationAssignedPillar(props.category);
   const showReminder = ['pending approval', 'overdue'].includes(props.state);
   // Only an unacknowledged assignment can be withdrawn. Once accepted, giving
   // the asset back is a return, not a cancellation.
@@ -203,6 +205,19 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
         },
       ];
 
+  // A location-pillar asset that is already assigned can be moved straight to
+  // another location -- the repo closes the previous assignment. Offering it
+  // here matches what the registry grid already allows.
+  if (isAssigned && isLocationAssigned && props.onAssign) {
+    actions.push({
+      id: 'transfer',
+      label: 'Transfer',
+      className:
+        'h-9 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90',
+      onClick: props.onAssign,
+    });
+  }
+
   const content = props.isLoading ? (
     <AssetLoadingSkeleton />
   ) : (
@@ -215,10 +230,11 @@ export function AssetAssignmentDetailsPanel(props: AssetAssignmentPanelProps) {
           ...detailsFields,
           ...(isAssigned
             ? [
-                { label: 'Assigned to', value: props.assignedTo || '-' },
+                // Furniture and electronics are assigned to a room, so
+                // "Assigned to: Room B" reads wrong.
                 {
-                  label: 'Department',
-                  value: props.department || props.group || '-',
+                  label: isLocationAssigned ? 'Location' : 'Assigned to',
+                  value: props.assignedTo || '-',
                 },
                 { label: 'Assigned Date', value: props.assignedDate || '-' },
                 { label: 'Due Date', value: props.expectedReturnDate || '-' },

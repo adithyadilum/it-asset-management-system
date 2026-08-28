@@ -10,6 +10,8 @@ import {
   lt,
 } from 'drizzle-orm';
 
+import { alias } from 'drizzle-orm/pg-core';
+
 import { db } from '@/db';
 import {
   assignmentStateEnum,
@@ -27,6 +29,7 @@ import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
 import { EMPLOYEE_ASSIGNMENTS_URL } from '@/lib/notifications/target-urls';
+import { resolveReturnStatus } from '@/lib/assignments/return-outcome';
 import { sendAssetNotification } from '../notifications';
 
 type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
@@ -77,6 +80,8 @@ export interface AssignmentsDashboardData {
   assigned: AssignmentsDashboardRow[];
   returned: AssignmentsDashboardRow[];
 }
+
+const assignedLocation = alias(locations, 'assigned_location');
 
 const DASHBOARD_PILLARS: Array<
   'Hardware' | 'Office Furniture' | 'Office Electronics'
@@ -417,6 +422,7 @@ async function loadAssetsByStatusDirect(
       createdAt: assets.createdAt,
       updatedAt: assets.updatedAt,
       assignedToLocationId: assetAssignments.assignedToLocationId,
+      assignedToLocationName: assignedLocation.name,
       state: assetAssignments.state,
     })
     .from(assets)
@@ -431,6 +437,10 @@ async function loadAssetsByStatusDirect(
       )
     )
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .leftJoin(
+      assignedLocation,
+      eq(assetAssignments.assignedToLocationId, assignedLocation.id)
+    )
     .where(
       and(
         eq(assets.status, status),
@@ -448,7 +458,9 @@ async function loadAssetsByStatusDirect(
     pillar: row.pillar,
     status: status,
     location: row.assetLocation,
-    assignedTo: row.assignedToUser || null,
+    // Falls back to the assigned location: furniture and electronics are
+    // assigned to a place, so there is no user to name.
+    assignedTo: row.assignedToUser || row.assignedToLocationName || null,
     assignedToEmail: row.assignedToEmail || null,
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
@@ -484,6 +496,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
       expectedReturnDate: assetAssignments.expectedReturnDate,
       createdAt: assets.createdAt,
       updatedAt: assets.updatedAt,
+      assignedToLocationName: assignedLocation.name,
       state: assetAssignments.state,
     })
     .from(assets)
@@ -499,6 +512,10 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
       eq(assetAssignments.id, latestActiveAssignments.latestAssignmentId)
     )
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .leftJoin(
+      assignedLocation,
+      eq(assetAssignments.assignedToLocationId, assignedLocation.id)
+    )
     .where(
       and(
         eq(assets.status, 'Assigned'),
@@ -517,7 +534,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
     status: 'Assigned',
     location: row.assetLocation,
     assignmentId: row.assignmentId,
-    assignedTo: row.assignedToUser || null,
+    assignedTo: row.assignedToUser || row.assignedToLocationName || null,
     assignedToEmail: row.assignedToEmail || null,
     assignedDate: row.assignedDate,
     expectedReturnDate: row.expectedReturnDate
@@ -946,6 +963,7 @@ export async function triggerAssignmentReminders(
       assetName: assets.name,
       userEmail: users.email,
       assignedToUserId: assetAssignments.assignedToUserId,
+      state: assetAssignments.state,
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -954,28 +972,45 @@ export async function triggerAssignmentReminders(
 
   await Promise.all(
     assignments.map(async (a) => {
-      // Send notification
+      // Two different nudges share this button, and they are not
+      // interchangeable: an assignment still awaiting acknowledgement needs
+      // "please accept this", while one already held past its return date
+      // needs "please bring it back". Both were previously sent as
+      // RETURN_REQUESTED with return wording, so somebody who had not yet
+      // accepted an asset was told to return it.
+      const awaitingAcknowledgement = a.state === 'pending approval';
+      const assetLabel = a.assetName || a.assetTag;
+
       await sendAssetNotification({
-        type: 'assignment_reminder',
+        type: awaitingAcknowledgement
+          ? 'assignment_reminder'
+          : 'return_request',
         recipientEmail: a.userEmail,
         assetTag: a.assetTag,
-        assetName: a.assetName || a.assetTag,
+        assetName: assetLabel,
       });
 
       if (a.assignedToUserId) {
         try {
-          await dispatchAlert({
-            eventType: 'RETURN_REQUESTED',
-            userId: a.assignedToUserId,
-            title: 'Return Reminder',
-            message: `Reminder: IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
-            targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
-          });
-        } catch (error) {
-          console.error(
-            'Failed to dispatch in-app return reminder alert:',
-            error
+          await dispatchAlert(
+            awaitingAcknowledgement
+              ? {
+                  eventType: 'ASSIGNMENT_PENDING',
+                  userId: a.assignedToUserId,
+                  title: 'Reminder: Assignment Awaiting Acknowledgement',
+                  message: `${assetLabel} is still waiting for you to accept it.`,
+                  targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
+                }
+              : {
+                  eventType: 'RETURN_REQUESTED',
+                  userId: a.assignedToUserId,
+                  title: 'Return Reminder',
+                  message: `Reminder: IT has requested the return of ${assetLabel}.`,
+                  targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
+                }
           );
+        } catch (error) {
+          console.error('Failed to dispatch in-app reminder alert:', error);
         }
       }
 
@@ -985,7 +1020,11 @@ export async function triggerAssignmentReminders(
         entityId: a.assetId,
         actionType: 'UPDATE',
         performedById,
-        newData: { notificationSent: 'assignment_reminder' },
+        newData: {
+          notificationSent: awaitingAcknowledgement
+            ? 'acknowledgement_reminder'
+            : 'return_reminder',
+        },
       });
     })
   );
@@ -1374,21 +1413,8 @@ export async function processAssetReturn(
     throw new AssignmentServiceError('Asset not found', 404, 'ASSET_NOT_FOUND');
   }
 
-  let newStatus: string;
-  switch (input.condition) {
-    case 'Good Working Condition':
-      newStatus = 'Available';
-      break;
-    case 'Minor Issues':
-    case 'Needs Repair':
-      newStatus = 'In Repair';
-      break;
-    case 'Beyond Repair':
-      newStatus = 'Pending Disposal';
-      break;
-    default:
-      newStatus = 'Available';
-  }
+  // Shared with the return form, which previews this before submitting.
+  const newStatus = resolveReturnStatus(input.condition) ?? 'Available';
 
   await db.transaction(async (tx) => {
     // 1. Update asset status and physical condition
