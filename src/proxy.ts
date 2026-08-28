@@ -165,7 +165,9 @@ function buildNoncePolicy(nonce: string) {
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    // Matches the enforced policy: without it this report-only policy would
+    // flag every PDF render as a violation that the enforced policy allows.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
     // Tailwind emits inline style attributes; these are not a script vector.
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
