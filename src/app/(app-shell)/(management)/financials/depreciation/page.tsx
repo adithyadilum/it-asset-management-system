@@ -5,7 +5,6 @@ import {
   getFinancialsFilterOptions,
 } from '@/actions/financials';
 import { DepreciationLedger } from '@/components/features/financials/depreciation-ledger';
-import { LedgerSummary } from '@/components/features/financials/ledger-summary';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 export const metadata = {
@@ -28,38 +27,11 @@ async function DepreciationLedgerPageContent() {
       >
         Depreciation Ledger
       </h1>
-      <LedgerSummary
-        asOf={response.summary.asOf}
-        stats={[
-          {
-            label: 'Assets tracked',
-            value: response.summary.assetCount.toLocaleString(),
-            hint: `${response.summary.fullyDepreciated.toLocaleString()} fully depreciated`,
-          },
-          {
-            label: 'Original cost',
-            value: response.summary.totalCost,
-            currencyCode: 'LKR',
-          },
-          {
-            label: 'Current book value',
-            value: response.summary.totalBookValue,
-            currencyCode: 'LKR',
-            tone: 'positive',
-          },
-          {
-            label: 'Accumulated depreciation',
-            value: response.summary.accumulatedDepreciation,
-            currencyCode: 'LKR',
-            tone: 'warning',
-          },
-        ]}
-      />
-
       <DepreciationLedger
         initialData={response.data}
         initialPageCount={response.meta.totalPages}
         filterOptions={filterOptions}
+        initialSummary={response.summary}
       />
     </div>
   );

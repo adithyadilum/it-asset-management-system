@@ -16,6 +16,16 @@ describe('WriteOffsLedger', () => {
     vi.clearAllMocks();
   });
 
+  const mockSummary = {
+    disposalCount: 1,
+    totalWrittenOff: 500,
+    totalExpectedSalvage: 200,
+    totalRealisedSalvage: 150,
+    salvageVariance: -50,
+    byStatus: [{ status: 'Completed', count: 1, expected: 200, realised: 150 }],
+    asOf: '2026-08-28T00:00:00.000Z',
+  };
+
   const mockData = [
     {
       id: '1',
@@ -34,7 +44,10 @@ describe('WriteOffsLedger', () => {
     render(
       <StrictMode>
         <CurrencyProvider initialCurrency="USD">
-          <WriteOffsLedger initialData={mockData} />
+          <WriteOffsLedger
+            initialData={mockData}
+            initialSummary={mockSummary}
+          />
         </CurrencyProvider>
       </StrictMode>
     );

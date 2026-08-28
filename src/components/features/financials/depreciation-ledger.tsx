@@ -21,6 +21,7 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   convertCurrencyAmount,
   formatMoneyByCurrency,
+  SUMMARY_CURRENCY,
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
@@ -28,6 +29,9 @@ import {
   getDepreciationLedger,
   type FinancialsFilterOptions,
 } from '@/actions/financials';
+import { BookValueChart } from '@/components/features/financials/book-value-chart';
+import { LedgerSummary } from '@/components/features/financials/ledger-summary';
+import { Progress } from '@/components/ui/progress';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -36,17 +40,27 @@ interface DepreciationLedgerProps {
   initialPageCount?: number;
   /** Full option lists, read from the tables rather than the current page. */
   filterOptions?: FinancialsFilterOptions;
+  initialSummary: DepreciationLedgerSummary;
 }
+
+export type DepreciationLedgerSummary = Awaited<
+  ReturnType<typeof getDepreciationLedger>
+>['summary'];
 
 export function DepreciationLedger({
   initialData,
   initialPageCount = 1,
   filterOptions,
+  initialSummary,
 }: DepreciationLedgerProps) {
   // Data & Pagination State - Initialize from initialData to avoid empty flash
   const [data, setData] = useState<DepreciationLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  // The summary and chart live here rather than on the page so that narrowing
+  // the filters narrows them too -- a header that ignored the filters under it
+  // would be worse than no header.
+  const [summary, setSummary] = useState(initialSummary);
   const [isPending, startTransition] = useTransition();
   const canReuseInitialDataRef = useRef(true);
 
@@ -142,6 +156,7 @@ export function DepreciationLedger({
 
       setData(response.data as unknown as DepreciationLedgerRecord[]);
       setPageCount(response.meta.totalPages);
+      setSummary(response.summary);
     });
   }, [
     pagination.pageIndex,
@@ -298,14 +313,31 @@ export function DepreciationLedger({
     },
     {
       accessorKey: 'expectedLifespan',
-      header: 'Expected Lifespan',
-      cell: ({ row }) => (
-        <span
-          className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
-        >
-          {row.original.expectedLifespan}
-        </span>
-      ),
+      header: 'Life Remaining',
+      cell: ({ row }) => {
+        // The column used to print the life and leave the reader to work out
+        // how much of it was left against the purchase date two columns over.
+        const { lifeMonths, monthsElapsed, expectedLifespan } = row.original;
+        const used = lifeMonths > 0 ? (monthsElapsed / lifeMonths) * 100 : 0;
+        const remaining = Math.max(0, lifeMonths - monthsElapsed);
+
+        return (
+          <div className="flex min-w-[120px] flex-col gap-1">
+            <Progress
+              value={Math.min(100, used)}
+              className="h-1.5"
+              aria-label={`${Math.round(used)}% of useful life elapsed`}
+            />
+            <span
+              className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}
+            >
+              {remaining === 0
+                ? `Fully depreciated · ${expectedLifespan}`
+                : `${remaining} of ${lifeMonths} months left`}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'currentBookValue',
@@ -327,8 +359,47 @@ export function DepreciationLedger({
     },
   ];
 
+  const inDisplayCurrency = (value: number) =>
+    convertCurrencyAmount(value, SUMMARY_CURRENCY, currency);
+
   return (
     <div className="flex flex-col h-full overflow-hidden gap-4">
+      <LedgerSummary
+        asOf={summary.asOf}
+        stats={[
+          {
+            label: 'Assets tracked',
+            value: summary.assetCount.toLocaleString(),
+            hint: `${summary.fullyDepreciated.toLocaleString()} fully depreciated`,
+          },
+          {
+            label: 'Original cost',
+            value: inDisplayCurrency(summary.totalCost),
+            currencyCode: currency,
+          },
+          {
+            label: 'Current book value',
+            value: inDisplayCurrency(summary.totalBookValue),
+            currencyCode: currency,
+            tone: 'positive',
+          },
+          {
+            label: 'Accumulated depreciation',
+            value: inDisplayCurrency(summary.accumulatedDepreciation),
+            currencyCode: currency,
+            tone: 'warning',
+          },
+        ]}
+      />
+
+      <BookValueChart
+        series={summary.bookValueSeries.map((point) => ({
+          month: point.month,
+          bookValue: inDisplayCurrency(point.bookValue),
+        }))}
+        currencyCode={currency}
+      />
+
       <FilterBar
         searchQuery={searchTerm}
         onSearchChange={(value) => {

@@ -21,6 +21,7 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   convertCurrencyAmount,
   formatMoneyByCurrency,
+  SUMMARY_CURRENCY,
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
@@ -28,6 +29,8 @@ import {
   getTCOLedger,
   type FinancialsFilterOptions,
 } from '@/actions/financials';
+import { LedgerSummary } from '@/components/features/financials/ledger-summary';
+import { TCOCompositionChart } from '@/components/features/financials/tco-composition-chart';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -36,16 +39,24 @@ interface TCOLedgerProps {
   initialPageCount?: number;
   /** Full option lists, read from the tables rather than the current page. */
   filterOptions?: FinancialsFilterOptions;
+  initialSummary: TCOLedgerSummary;
 }
+
+export type TCOLedgerSummary = Awaited<
+  ReturnType<typeof getTCOLedger>
+>['summary'];
 
 export function TCOLedger({
   initialData,
   initialPageCount = 1,
   filterOptions,
+  initialSummary,
 }: TCOLedgerProps) {
   const [data, setData] = useState<TCOLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  // Held here, not on the page, so filtering the table filters the totals too.
+  const [summary, setSummary] = useState(initialSummary);
   const [isPending, startTransition] = useTransition();
   const canReuseInitialDataRef = useRef(true);
 
@@ -143,6 +154,7 @@ export function TCOLedger({
 
       setData(response.data as unknown as TCOLedgerRecord[]);
       setPageCount(response.meta.totalPages);
+      setSummary(response.summary);
     });
   }, [
     pagination.pageIndex,
@@ -339,8 +351,55 @@ export function TCOLedger({
     },
   ];
 
+  const inDisplayCurrency = (value: number) =>
+    convertCurrencyAmount(value, SUMMARY_CURRENCY, currency);
+
   return (
     <div className="flex flex-col h-full overflow-hidden gap-4">
+      <LedgerSummary
+        asOf={summary.asOf}
+        stats={[
+          {
+            label: 'Total cost of ownership',
+            value: inDisplayCurrency(summary.totalTCO),
+            currencyCode: currency,
+          },
+          {
+            label: 'Purchase cost',
+            value: inDisplayCurrency(summary.totalPurchase),
+            currencyCode: currency,
+          },
+          {
+            label: 'Maintenance spend',
+            value: inDisplayCurrency(summary.totalMaintenance),
+            currencyCode: currency,
+            tone: 'warning',
+            hint: `${summary.maintenanceShare}% of purchase cost`,
+          },
+          {
+            label: 'Assets repaired',
+            value: `${summary.maintainedCount.toLocaleString()} of ${summary.assetCount.toLocaleString()}`,
+          },
+        ]}
+      />
+
+      <TCOCompositionChart
+        points={data.map((row) => ({
+          assetId: row.assetId,
+          purchase: convertCurrencyAmount(
+            row.originalPrice,
+            row.currencyCode || 'LKR',
+            currency
+          ),
+          maintenance: convertCurrencyAmount(
+            row.totalRepairCosts,
+            row.currencyCode || 'LKR',
+            currency
+          ),
+        }))}
+        currencyCode={currency}
+      />
+
       <FilterBar
         searchQuery={searchTerm}
         onSearchChange={(value) => {

@@ -5,7 +5,6 @@ import {
   getFinancialsFilterOptions,
 } from '@/actions/financials';
 import { WriteOffsLedger } from '@/components/features/financials/write-offs-ledger';
-import { LedgerSummary } from '@/components/features/financials/ledger-summary';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 
 export const metadata = {
@@ -28,42 +27,11 @@ async function SalvageLedgerPageContent() {
       >
         Write-Offs & Salvage
       </h1>
-      <LedgerSummary
-        asOf={response.summary.asOf}
-        stats={[
-          {
-            label: 'Disposals',
-            value: response.summary.disposalCount.toLocaleString(),
-            hint: Object.entries(response.summary.byStatus)
-              .map(([status, count]) => `${count} ${status.toLowerCase()}`)
-              .join(' · '),
-          },
-          {
-            label: 'Written off',
-            value: response.summary.totalWrittenOff,
-            currencyCode: 'LKR',
-            hint: 'Book value at disposal',
-          },
-          {
-            label: 'Salvage realised',
-            value: response.summary.totalRealisedSalvage,
-            currencyCode: 'LKR',
-            tone: 'positive',
-          },
-          {
-            label: 'Against expected',
-            value: response.summary.salvageVariance,
-            currencyCode: 'LKR',
-            tone: response.summary.salvageVariance < 0 ? 'warning' : 'positive',
-            hint: `Expected ${response.summary.totalExpectedSalvage.toLocaleString()}`,
-          },
-        ]}
-      />
-
       <WriteOffsLedger
         initialData={response.data}
         initialPageCount={response.meta.totalPages}
         filterOptions={filterOptions}
+        initialSummary={response.summary}
       />
     </div>
   );

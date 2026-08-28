@@ -41,13 +41,15 @@ export const DEPRECIATION_METHOD = 'straight-line' as const;
  * and today.  Returns 0 for missing / invalid dates.
  */
 export function calculateMonthsElapsed(
-  purchaseDate: Date | string | null | undefined
+  purchaseDate: Date | string | null | undefined,
+  /** The date to measure to. Defaults to now; pass one to project forward. */
+  asOf?: Date
 ): number {
   if (!purchaseDate) return 0;
   const pDate = new Date(purchaseDate);
   if (isNaN(pDate.getTime())) return 0;
 
-  const now = new Date();
+  const now = asOf ?? new Date();
   return (
     (now.getFullYear() - pDate.getFullYear()) * 12 +
     (now.getMonth() - pDate.getMonth())
@@ -83,7 +85,11 @@ export interface StraightLineParams {
  *
  * @returns Net book value in the same currency as `cost`.
  */
-export function calculateStraightLineNBV(params: StraightLineParams): number {
+export function calculateStraightLineNBV(
+  params: StraightLineParams,
+  /** Value the asset as at this date rather than today. */
+  asOf?: Date
+): number {
   const { cost, purchaseDate } = params;
 
   if (cost <= 0) return 0;
@@ -92,7 +98,7 @@ export function calculateStraightLineNBV(params: StraightLineParams): number {
   const pDate = new Date(purchaseDate);
   if (isNaN(pDate.getTime())) return cost;
 
-  const monthsElapsed = calculateMonthsElapsed(purchaseDate);
+  const monthsElapsed = calculateMonthsElapsed(purchaseDate, asOf);
   if (monthsElapsed <= 0) return cost; // Purchased this month or in the future
 
   const salvage = Math.max(0, params.salvageValue ?? 0);
@@ -146,8 +152,53 @@ export function calculateMonthlyDepreciation(
  * All callers in the codebase should use this function. To change the
  * depreciation method for the entire application, update only this function.
  */
-export function calculateCurrentBookValue(params: StraightLineParams): number {
-  return calculateStraightLineNBV(params);
+export function calculateCurrentBookValue(
+  params: StraightLineParams,
+  asOf?: Date
+): number {
+  return calculateStraightLineNBV(params, asOf);
+}
+
+/**
+ * Aggregate book value of a set of assets, month by month.
+ *
+ * Straight-line depreciation is entirely determined by the purchase date, so
+ * past and future book values are computable from the same inputs the ledger
+ * already reads -- no history table needed. Used for the depreciation chart,
+ * where the shape of the write-down is the point.
+ */
+export function projectBookValueSeries(
+  assets: StraightLineParams[],
+  { monthsBack = 12, monthsForward = 12 } = {}
+): { month: string; bookValue: number }[] {
+  const start = new Date();
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+
+  const series: { month: string; bookValue: number }[] = [];
+
+  for (let offset = -monthsBack; offset <= monthsForward; offset += 1) {
+    const asOf = new Date(start);
+    asOf.setMonth(asOf.getMonth() + offset);
+
+    let total = 0;
+    for (const asset of assets) {
+      // An asset the company did not own yet contributes nothing. Without this
+      // the earliest months would carry every future purchase at full cost.
+      if (asset.purchaseDate) {
+        const purchased = new Date(asset.purchaseDate);
+        if (!isNaN(purchased.getTime()) && purchased > asOf) continue;
+      }
+      total += calculateStraightLineNBV(asset, asOf);
+    }
+
+    series.push({
+      month: `${asOf.getFullYear()}-${String(asOf.getMonth() + 1).padStart(2, '0')}`,
+      bookValue: Math.round(total * 100) / 100,
+    });
+  }
+
+  return series;
 }
 
 // ---------------------------------------------------------------------------

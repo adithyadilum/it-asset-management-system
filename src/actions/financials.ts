@@ -14,7 +14,13 @@ import {
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
 import { enforceActionAccess } from '@/actions/auth';
-import { calculateCurrentBookValue } from '@/lib/depreciation';
+import { convertCurrencyAmount, SUMMARY_CURRENCY } from '@/lib/currency';
+import {
+  DEFAULT_USEFUL_LIFE_MONTHS,
+  calculateCurrentBookValue,
+  calculateMonthsElapsed,
+  projectBookValueSeries,
+} from '@/lib/depreciation';
 import {
   depreciationLedgerParamsSchema,
   tcoLedgerParamsSchema,
@@ -157,6 +163,12 @@ export async function getDepreciationLedger(
         purchaseDate: row.purchaseDate,
       });
 
+      const lifeMonths = row.usefulLifeMonths || DEFAULT_USEFUL_LIFE_MONTHS;
+      const monthsElapsed = Math.min(
+        lifeMonths,
+        Math.max(0, calculateMonthsElapsed(row.purchaseDate))
+      );
+
       return {
         id: row.id,
         assetId: row.assetTag,
@@ -164,7 +176,11 @@ export async function getDepreciationLedger(
         purchaseDate: row.purchaseDate,
         originalPrice: price,
         currencyCode: row.currencyCode || 'LKR',
-        expectedLifespan: `${(row.usefulLifeMonths || 60) / 12} years`,
+        expectedLifespan: `${lifeMonths / 12} years`,
+        // The column showed a life but never how much of it was left, which is
+        // the number a reviewer is actually after.
+        lifeMonths,
+        monthsElapsed,
         currentBookValue: Math.round(bookValue * 100) / 100,
       };
     });
@@ -175,6 +191,7 @@ export async function getDepreciationLedger(
     const summaryRows = await db
       .select({
         originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
         salvageValue: assets.salvageValue,
         usefulLifeMonths: assets.usefulLifeMonths,
         purchaseDate: assetPurchases.purchaseDate,
@@ -185,13 +202,32 @@ export async function getDepreciationLedger(
       .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
       .where(whereClause);
 
+    // Every total below is normalised to LKR before being added up. Assets are
+    // purchased in three currencies and the rows carry their native one, so
+    // summing them raw would produce a number in no currency at all.
+    const toLkr = (value: unknown, from: string | null) =>
+      convertCurrencyAmount(
+        parseFloat(value?.toString() || '0'),
+        from || 'LKR',
+        SUMMARY_CURRENCY
+      );
+
+    const bookValueSeries = projectBookValueSeries(
+      summaryRows.map((row) => ({
+        cost: toLkr(row.originalPrice, row.currencyCode),
+        salvageValue: toLkr(row.salvageValue, row.currencyCode),
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      }))
+    );
+
     let totalCost = 0;
     let totalBookValue = 0;
     let fullyDepreciated = 0;
 
     for (const row of summaryRows) {
-      const price = parseFloat(row.originalPrice?.toString() || '0');
-      const salvage = parseFloat(row.salvageValue?.toString() || '0');
+      const price = toLkr(row.originalPrice, row.currencyCode);
+      const salvage = toLkr(row.salvageValue, row.currencyCode);
       const bookValue = calculateCurrentBookValue({
         cost: price,
         salvageValue: salvage,
@@ -209,6 +245,7 @@ export async function getDepreciationLedger(
     return {
       data: ledgers,
       summary: {
+        bookValueSeries,
         totalCost: Math.round(totalCost * 100) / 100,
         totalBookValue: Math.round(totalBookValue * 100) / 100,
         accumulatedDepreciation:
@@ -382,6 +419,7 @@ export async function getTCOLedger(
     const summaryRows = await db
       .select({
         originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
         totalRepairCosts: repairCostsSq.totalRepair,
       })
       .from(assets)
@@ -396,8 +434,16 @@ export async function getTCOLedger(
     let maintainedCount = 0;
 
     for (const row of summaryRows) {
-      const price = parseFloat(row.originalPrice?.toString() || '0');
-      const repairs = parseFloat(row.totalRepairCosts?.toString() || '0');
+      const price = convertCurrencyAmount(
+        parseFloat(row.originalPrice?.toString() || '0'),
+        row.currencyCode || 'LKR',
+        SUMMARY_CURRENCY
+      );
+      const repairs = convertCurrencyAmount(
+        parseFloat(row.totalRepairCosts?.toString() || '0'),
+        row.currencyCode || 'LKR',
+        SUMMARY_CURRENCY
+      );
       totalPurchase += price;
       totalMaintenance += repairs;
       if (repairs > 0) maintainedCount += 1;
@@ -571,6 +617,7 @@ export async function getWriteOffsLedger(
     const summaryRows = await db
       .select({
         bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
+        currencyCode: assetPurchases.currencyCode,
         estimatedSalvageValue: assets.salvageValue,
         actualSalvageValue: assetDisposals.actualSalvageValue,
         status: assetDisposals.status,
@@ -585,18 +632,36 @@ export async function getWriteOffsLedger(
     let totalWrittenOff = 0;
     let totalExpectedSalvage = 0;
     let totalRealisedSalvage = 0;
-    const byStatus = new Map<string, number>();
+    // Grouped by outcome because "did disposals recover what we expected?" is
+    // a different question for a sale than for a write-off.
+    const byStatus = new Map<
+      string,
+      { count: number; expected: number; realised: number }
+    >();
 
     for (const row of summaryRows) {
-      totalWrittenOff += parseFloat(row.bookValueAtDisposal?.toString() || '0');
-      totalExpectedSalvage += parseFloat(
-        row.estimatedSalvageValue?.toString() || '0'
-      );
-      totalRealisedSalvage += parseFloat(
-        row.actualSalvageValue?.toString() || '0'
-      );
+      // Normalised to one currency before being added up -- assets are bought
+      // in three, and the rows carry their native one.
+      const toLkr = (value: unknown) =>
+        convertCurrencyAmount(
+          parseFloat(value?.toString() || '0'),
+          row.currencyCode || 'LKR',
+          SUMMARY_CURRENCY
+        );
+
+      totalWrittenOff += toLkr(row.bookValueAtDisposal);
+      totalExpectedSalvage += toLkr(row.estimatedSalvageValue);
+      totalRealisedSalvage += toLkr(row.actualSalvageValue);
       const status = row.status ?? 'Unknown';
-      byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
+      const group = byStatus.get(status) ?? {
+        count: 0,
+        expected: 0,
+        realised: 0,
+      };
+      group.count += 1;
+      group.expected += toLkr(row.estimatedSalvageValue);
+      group.realised += toLkr(row.actualSalvageValue);
+      byStatus.set(status, group);
     }
 
     return {
@@ -608,7 +673,12 @@ export async function getWriteOffsLedger(
         totalRealisedSalvage: Math.round(totalRealisedSalvage * 100) / 100,
         salvageVariance:
           Math.round((totalRealisedSalvage - totalExpectedSalvage) * 100) / 100,
-        byStatus: Object.fromEntries(byStatus),
+        byStatus: Array.from(byStatus.entries()).map(([status, group]) => ({
+          status,
+          count: group.count,
+          expected: Math.round(group.expected * 100) / 100,
+          realised: Math.round(group.realised * 100) / 100,
+        })),
         asOf: new Date().toISOString(),
       },
       meta: {

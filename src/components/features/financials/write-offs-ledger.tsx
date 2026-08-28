@@ -21,6 +21,7 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   convertCurrencyAmount,
   formatMoneyByCurrency,
+  SUMMARY_CURRENCY,
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
@@ -28,6 +29,8 @@ import {
   getWriteOffsLedger,
   type FinancialsFilterOptions,
 } from '@/actions/financials';
+import { LedgerSummary } from '@/components/features/financials/ledger-summary';
+import { SalvageOutcomeChart } from '@/components/features/financials/salvage-outcome-chart';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
@@ -36,16 +39,24 @@ interface WriteOffsLedgerProps {
   initialPageCount?: number;
   /** Full option lists, read from the tables rather than the current page. */
   filterOptions?: FinancialsFilterOptions;
+  initialSummary: WriteOffsLedgerSummary;
 }
+
+export type WriteOffsLedgerSummary = Awaited<
+  ReturnType<typeof getWriteOffsLedger>
+>['summary'];
 
 export function WriteOffsLedger({
   initialData,
   initialPageCount = 1,
   filterOptions,
+  initialSummary,
 }: WriteOffsLedgerProps) {
   const [data, setData] = useState<WriteOffsLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  // Held here, not on the page, so filtering the table filters the totals too.
+  const [summary, setSummary] = useState(initialSummary);
   const [isPending, startTransition] = useTransition();
   const canReuseInitialDataRef = useRef(true);
 
@@ -144,6 +155,7 @@ export function WriteOffsLedger({
 
       setData(response.data as unknown as WriteOffsLedgerRecord[]);
       setPageCount(response.meta.totalPages);
+      setSummary(response.summary);
     });
   }, [
     pagination.pageIndex,
@@ -364,8 +376,56 @@ export function WriteOffsLedger({
     },
   ];
 
+  const inDisplayCurrency = (value: number) =>
+    convertCurrencyAmount(value, SUMMARY_CURRENCY, currency);
+
   return (
     <div className="flex flex-col h-full overflow-hidden gap-4">
+      <LedgerSummary
+        asOf={summary.asOf}
+        stats={[
+          {
+            label: 'Disposals',
+            value: summary.disposalCount.toLocaleString(),
+            hint: summary.byStatus
+              .map((group) => `${group.count} ${group.status.toLowerCase()}`)
+              .join(' · '),
+          },
+          {
+            label: 'Written off',
+            value: inDisplayCurrency(summary.totalWrittenOff),
+            currencyCode: currency,
+            hint: 'Book value at disposal',
+          },
+          {
+            label: 'Salvage realised',
+            value: inDisplayCurrency(summary.totalRealisedSalvage),
+            currencyCode: currency,
+            tone: 'positive',
+          },
+          {
+            label: 'Against expected',
+            value: inDisplayCurrency(summary.salvageVariance),
+            currencyCode: currency,
+            tone: summary.salvageVariance < 0 ? 'warning' : 'positive',
+            hint: `Expected ${formatMoneyByCurrency(
+              inDisplayCurrency(summary.totalExpectedSalvage),
+              currency
+            )}`,
+          },
+        ]}
+      />
+
+      <SalvageOutcomeChart
+        points={summary.byStatus.map((group) => ({
+          status: group.status,
+          count: group.count,
+          expected: inDisplayCurrency(group.expected),
+          realised: inDisplayCurrency(group.realised),
+        }))}
+        currencyCode={currency}
+      />
+
       <FilterBar
         searchQuery={searchTerm}
         onSearchChange={(value) => {
