@@ -1,13 +1,17 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { softwareLicenses, softwareAllocations } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { logAuditActionTx } from '@/lib/audit';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
+import {
+  renewSoftwareLicenseSchema,
+  type RenewSoftwareLicenseInput,
+} from '@/lib/validations/software-license';
 
 export type AllocateSoftwareResult =
   { success: true; allocatedCount: number } | { success: false; error: string };
@@ -209,6 +213,138 @@ export async function revokeSoftwareLicenseAllocationAction(
     logLatency({
       scope: 'ACTION',
       label: 'software.revokeSoftwareLicenseAllocationAction',
+      startTime: actionTimer,
+    });
+  }
+}
+
+export type RenewSoftwareLicenseResult =
+  | { success: true; expiryDate: string | null; totalSeats: number }
+  | { success: false; error: string };
+
+/**
+ * Extends a licence's term, and optionally its seat count.
+ *
+ * Until now nothing could change `expiryDate` after registration, so an expired
+ * licence stayed expired and its seats stayed unusable — the only way out was
+ * to register a replacement asset.
+ *
+ * Seats are extended in the same call because renewal is when they are bought.
+ * Reducing seats below what is already allocated is refused rather than
+ * silently leaving people holding allocations the licence no longer covers.
+ */
+export async function renewSoftwareLicenseAction(
+  input: RenewSoftwareLicenseInput
+): Promise<RenewSoftwareLicenseResult> {
+  const actionTimer = startLatencyTimer();
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    return { success: false, error: 'Unauthorized: Please sign in.' };
+  }
+
+  if (!canManageAssets(currentUser.role)) {
+    return {
+      success: false,
+      error: 'Forbidden: You do not have permission to renew licences.',
+    };
+  }
+
+  const parsed = renewSoftwareLicenseSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Invalid renewal details.',
+    };
+  }
+
+  const { assetId, expiryDate, totalSeats } = parsed.data;
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      const license = await tx.query.softwareLicenses.findFirst({
+        where: eq(softwareLicenses.assetId, assetId),
+      });
+
+      if (!license) {
+        throw new Error('Software license not found for this asset.');
+      }
+
+      if (totalSeats !== undefined) {
+        const [allocated] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(softwareAllocations)
+          .where(
+            and(
+              eq(softwareAllocations.licenseId, license.id),
+              isNull(softwareAllocations.revokedAt)
+            )
+          );
+
+        if ((allocated?.count ?? 0) > totalSeats) {
+          throw new Error(
+            `Cannot reduce to ${totalSeats} seats: ${allocated?.count} are currently allocated.`
+          );
+        }
+      }
+
+      const [updated] = await tx
+        .update(softwareLicenses)
+        .set({
+          ...(expiryDate !== undefined ? { expiryDate } : {}),
+          ...(totalSeats !== undefined ? { totalSeats } : {}),
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(softwareLicenses.id, license.id))
+        .returning({
+          expiryDate: softwareLicenses.expiryDate,
+          totalSeats: softwareLicenses.totalSeats,
+        });
+
+      await logAuditActionTx(tx, {
+        entityType: 'Asset',
+        entityId: assetId,
+        actionType: 'UPDATE',
+        performedById: currentUser.id,
+        oldData: {
+          expiryDate: license.expiryDate,
+          totalSeats: license.totalSeats,
+        },
+        newData: {
+          expiryDate: updated.expiryDate,
+          totalSeats: updated.totalSeats,
+          actionContext: 'SOFTWARE_LICENSE_RENEWED',
+        },
+      });
+
+      return updated;
+    });
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/software');
+
+    return {
+      success: true,
+      expiryDate: result.expiryDate,
+      totalSeats: result.totalSeats,
+    };
+  } catch (error) {
+    logError({
+      scope: 'ACTION',
+      label: 'software.renewSoftwareLicenseAction',
+      error,
+      metadata: { assetId },
+    });
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to renew the licence.',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'software.renewSoftwareLicenseAction',
       startTime: actionTimer,
     });
   }

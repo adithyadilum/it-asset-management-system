@@ -169,7 +169,8 @@ export function MaintenanceShell({ userRole }: { userRole?: string }) {
         uiState.activeRepairDetails.id,
         formData.actualCost,
         formData.resolutionNotes,
-        formData.updateStatusTo
+        formData.updateStatusTo,
+        formData.currencyCode
       );
 
       toast.success('Repair logged successfully!');

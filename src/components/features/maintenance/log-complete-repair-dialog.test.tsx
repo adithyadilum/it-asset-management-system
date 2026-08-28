@@ -69,6 +69,9 @@ describe('LogCompleteRepairDialog', () => {
     await waitFor(() => {
       expect(mockOnConfirm).toHaveBeenCalledWith({
         actualCost: '250.00',
+        // The currency picker used to be uncontrolled, so the chosen currency
+        // never reached the payload at all.
+        currencyCode: 'LKR',
         resolutionNotes: 'Replaced motherboard',
         updateStatusTo: 'Available',
       });
@@ -105,6 +108,7 @@ describe('LogCompleteRepairDialog', () => {
     await waitFor(() => {
       expect(mockOnConfirm).toHaveBeenCalledWith({
         actualCost: '250.00',
+        currencyCode: 'LKR',
         resolutionNotes: 'Replaced motherboard',
         updateStatusTo: 'Disposed',
       });

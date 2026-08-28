@@ -111,6 +111,7 @@ export interface AssetDetailsPanelProps {
   onRemindReturn?: () => void;
   onMarkReturned?: () => void;
   onProcessReturn?: () => void;
+  onRenewLicense?: () => void;
   onActionButtonClick?: () => void;
   onViewAllHistory?: () => void;
   onViewAllMaintenance?: () => void;
@@ -479,6 +480,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       'request-disposal': props.onRequestDisposal,
       'add-user': props.onActionButtonClick,
       'process-return': props.onProcessReturn,
+      'renew-license': props.onRenewLicense,
     }),
     [
       props.onEdit,
@@ -490,6 +492,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       props.onRequestDisposal,
       props.onActionButtonClick,
       props.onProcessReturn,
+      props.onRenewLicense,
     ]
   );
 

@@ -162,17 +162,22 @@ describe('getActionsForStatus', () => {
       expect(addUser?.disabled).toBe(true);
     });
 
-    it('Expired → edit, add-user (disabled, label=License Expired)', () => {
+    it('Expired → edit, renew-license, add-user (disabled)', () => {
       const result = getActionsForStatus({
         status: 'expired',
         pillar,
         seatsAvailable: true,
         isExpired: true,
       });
-      expect(ids(result)).toEqual(['edit', 'add-user']);
+      // Renew is the way out: without it an expired licence was a dead end,
+      // since nothing could change its expiry date after registration.
+      expect(ids(result)).toEqual(['edit', 'renew-license', 'add-user']);
       const addUser = result.find((a) => a.id === 'add-user');
       expect(addUser?.label).toBe('License Expired');
       expect(addUser?.disabled).toBe(true);
+      expect(
+        result.find((a) => a.id === 'renew-license')?.disabled
+      ).toBeFalsy();
     });
 
     it('Disposed → empty', () => {

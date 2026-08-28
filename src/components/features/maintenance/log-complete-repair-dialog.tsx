@@ -38,6 +38,9 @@ export function LogCompleteRepairDialog({
 }: LogCompleteRepairDialogProps) {
   const [formData, setFormData] = useState<CompleteRepairFormData>({
     actualCost: '',
+    // Was a `defaultValue` on an uncontrolled Select that nothing ever read, so
+    // whichever currency you picked, the amount was stored bare.
+    currencyCode: 'LKR',
     resolutionNotes: '',
     updateStatusTo: 'Available',
   });
@@ -47,6 +50,7 @@ export function LogCompleteRepairDialog({
       await onConfirm(formData);
       setFormData({
         actualCost: '',
+        currencyCode: 'LKR',
         resolutionNotes: '',
         updateStatusTo: 'Available',
       });
@@ -59,6 +63,7 @@ export function LogCompleteRepairDialog({
     if (!isLoading) {
       setFormData({
         actualCost: '',
+        currencyCode: 'LKR',
         resolutionNotes: '',
         updateStatusTo: 'Available',
       });
@@ -102,7 +107,13 @@ export function LogCompleteRepairDialog({
               Actual Final Cost: <span className="text-destructive">*</span>
             </Label>
             <div className="flex">
-              <Select defaultValue="LKR" disabled={isLoading}>
+              <Select
+                value={formData.currencyCode}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, currencyCode: value })
+                }
+                disabled={isLoading}
+              >
                 <SelectTrigger className="w-[80px] rounded-r-none border-r-0 focus:ring-0 focus:border-border bg-background">
                   <SelectValue />
                 </SelectTrigger>

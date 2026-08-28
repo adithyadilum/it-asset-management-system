@@ -128,6 +128,8 @@ export interface ActiveRepairTicket {
 
 export interface CompleteRepairFormData {
   actualCost: string;
+  /** ISO code the cost is denominated in. */
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }
@@ -135,6 +137,7 @@ export interface CompleteRepairFormData {
 export interface LogCompleteRepairData {
   ticketId: number;
   actualCost: string;
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }

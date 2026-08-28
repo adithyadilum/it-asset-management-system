@@ -18,7 +18,8 @@ export type AssetActionId =
   | 'send-for-repair'
   | 'request-disposal'
   | 'add-user'
-  | 'process-return';
+  | 'process-return'
+  | 'renew-license';
 
 export interface AssetActionConfig {
   id: AssetActionId;
@@ -87,6 +88,12 @@ const ADD_USER_ACTION: AssetActionConfig = {
 const PROCESS_RETURN_ACTION: AssetActionConfig = {
   id: 'process-return',
   label: 'Process Return',
+  variant: 'default',
+};
+
+const RENEW_LICENSE_ACTION: AssetActionConfig = {
+  id: 'renew-license',
+  label: 'Renew License',
   variant: 'default',
 };
 
@@ -190,8 +197,12 @@ export function getActionsForStatus(
     }
 
     if (isExpired) {
+      // An expired licence had no route back: nothing could change its expiry
+      // date, so its seats stayed unusable and the only option was to register
+      // a replacement asset.
       return [
         EDIT_ACTION,
+        RENEW_LICENSE_ACTION,
         { ...ADD_USER_ACTION, label: 'License Expired', disabled: true },
       ];
     }
@@ -267,6 +278,7 @@ const ACTION_ID_TO_CONFIG: Record<
   'request-disposal': () => REQUEST_DISPOSAL_ACTION,
   'add-user': () => ADD_USER_ACTION,
   'process-return': () => PROCESS_RETURN_ACTION,
+  'renew-license': () => RENEW_LICENSE_ACTION,
 };
 
 function resolveCustomActions(

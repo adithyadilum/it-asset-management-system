@@ -123,18 +123,26 @@ export function IssueReviewPanel({
     { label: 'Original Cost', value: formatCurrency(originalCost) },
     { label: 'Current Book Value', value: formatCurrency(bookValue) },
     {
-      label: 'Warranty Status',
+      // "Active" alone does not answer the reviewer's question, which is how
+      // long is left before this repair stops being covered.
+      label: 'Warranty',
       value: (
-        <Badge
-          variant="outline"
-          className={
-            warrantyStatus === 'Active'
-              ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm'
-              : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'
-          }
-        >
-          {warrantyStatus}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <StatusBadge
+            value={warrantyStatus === 'Active' ? 'active' : 'expired'}
+            label={warrantyStatus}
+          />
+          {ticket.purchase?.warrantyExpiry ? (
+            <span className="text-xs text-muted-foreground">
+              {warrantyStatus === 'Active' ? 'expires' : 'expired'}{' '}
+              {formatDate(ticket.purchase.warrantyExpiry)}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              no warranty recorded
+            </span>
+          )}
+        </div>
       ),
     },
   ];
