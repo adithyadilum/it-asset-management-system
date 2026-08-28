@@ -679,6 +679,90 @@ export async function resolveTargetEntityLabels(
   return labels;
 }
 
+/**
+ * Builds the audit-log WHERE clause from search text and filter chips.
+ *
+ * Shared by the paginated read and the export so a filtered view and its export
+ * cannot disagree about what "matching" means.
+ */
+function buildAuditLogWhere(params: {
+  search?: string;
+  filters?: AuditLogFilter[];
+  dateFrom?: string;
+  dateTo?: string;
+}) {
+  const baseWhere = [];
+
+  if (params.search && params.search.trim().length > 0) {
+    const q = `%${params.search.trim()}%`;
+    baseWhere.push(
+      or(
+        ilike(systemAuditLogs.actionType, q),
+        ilike(systemAuditLogs.entityType, q),
+        ilike(systemAuditLogs.entityId, q),
+        ilike(systemAuditLogs.ipAddress, q),
+        buildTargetEntitySearchCondition(q),
+        sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
+        sql`${systemAuditLogs.newValue}::text ILIKE ${q}`,
+        ilike(users.name, q),
+        ilike(users.email, q)
+      )
+    );
+  }
+
+  if (params.filters && params.filters.length > 0) {
+    for (const filter of params.filters) {
+      const { field, operator, value } = filter;
+      const q = `%${value}%`;
+      const isNot = operator === 'is not';
+
+      if (field === 'Action Taken') {
+        baseWhere.push(
+          isNot
+            ? ne(systemAuditLogs.actionType, value)
+            : eq(systemAuditLogs.actionType, value)
+        );
+      } else if (field === 'User') {
+        const userCondition = or(ilike(users.name, q), ilike(users.email, q));
+        if (userCondition)
+          baseWhere.push(isNot ? not(userCondition) : userCondition);
+      } else if (field === 'Target Entity') {
+        const entityCondition = or(
+          ilike(systemAuditLogs.entityType, q),
+          ilike(systemAuditLogs.entityId, q),
+          buildTargetEntitySearchCondition(q)
+        );
+        if (entityCondition)
+          baseWhere.push(isNot ? not(entityCondition) : entityCondition);
+      } else if (field === 'IP Address') {
+        const ipCondition = ilike(systemAuditLogs.ipAddress, q);
+        if (ipCondition) baseWhere.push(isNot ? not(ipCondition) : ipCondition);
+      } else if (field === 'Event Details') {
+        const detailCondition = or(
+          sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
+          sql`${systemAuditLogs.newValue}::text ILIKE ${q}`
+        );
+        if (detailCondition)
+          baseWhere.push(isNot ? not(detailCondition) : detailCondition);
+      }
+    }
+  }
+
+  if (params.dateFrom) {
+    baseWhere.push(
+      sql`${systemAuditLogs.performedAt} >= ${params.dateFrom}::timestamp`
+    );
+  }
+  if (params.dateTo) {
+    // Inclusive of the whole end day, which is what a date picker implies.
+    baseWhere.push(
+      sql`${systemAuditLogs.performedAt} < (${params.dateTo}::date + interval '1 day')`
+    );
+  }
+
+  return baseWhere.length > 0 ? and(...baseWhere) : undefined;
+}
+
 export async function getAuditLogs(
   params: GetAuditLogsParams
 ): Promise<PaginatedAuditLogsResult> {
@@ -705,65 +789,7 @@ export async function getAuditLogs(
     const pageSize = parsedParams.data.pageSize;
     const offset = (page - 1) * pageSize;
 
-    const baseWhere = [];
-
-    if (params.search && params.search.trim().length > 0) {
-      const q = `%${params.search.trim()}%`;
-      baseWhere.push(
-        or(
-          ilike(systemAuditLogs.actionType, q),
-          ilike(systemAuditLogs.entityType, q),
-          ilike(systemAuditLogs.entityId, q),
-          ilike(systemAuditLogs.ipAddress, q),
-          buildTargetEntitySearchCondition(q),
-          sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
-          sql`${systemAuditLogs.newValue}::text ILIKE ${q}`,
-          ilike(users.name, q),
-          ilike(users.email, q)
-        )
-      );
-    }
-
-    if (params.filters && params.filters.length > 0) {
-      for (const filter of params.filters) {
-        const { field, operator, value } = filter;
-        const q = `%${value}%`;
-        const isNot = operator === 'is not';
-
-        if (field === 'Action Taken') {
-          baseWhere.push(
-            isNot
-              ? ne(systemAuditLogs.actionType, value)
-              : eq(systemAuditLogs.actionType, value)
-          );
-        } else if (field === 'User') {
-          const userCondition = or(ilike(users.name, q), ilike(users.email, q));
-          if (userCondition)
-            baseWhere.push(isNot ? not(userCondition) : userCondition);
-        } else if (field === 'Target Entity') {
-          const entityCondition = or(
-            ilike(systemAuditLogs.entityType, q),
-            ilike(systemAuditLogs.entityId, q),
-            buildTargetEntitySearchCondition(q)
-          );
-          if (entityCondition)
-            baseWhere.push(isNot ? not(entityCondition) : entityCondition);
-        } else if (field === 'IP Address') {
-          const ipCondition = ilike(systemAuditLogs.ipAddress, q);
-          if (ipCondition)
-            baseWhere.push(isNot ? not(ipCondition) : ipCondition);
-        } else if (field === 'Event Details') {
-          const detailCondition = or(
-            sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
-            sql`${systemAuditLogs.newValue}::text ILIKE ${q}`
-          );
-          if (detailCondition)
-            baseWhere.push(isNot ? not(detailCondition) : detailCondition);
-        }
-      }
-    }
-
-    const whereCondition = baseWhere.length > 0 ? and(...baseWhere) : undefined;
+    const whereCondition = buildAuditLogWhere(params);
 
     const records = await db
       .select({
@@ -1093,5 +1119,106 @@ export async function getAllAssetAuditHistory(
       error,
     });
     throw new Error('Failed to fetch all asset history.');
+  }
+}
+
+/** Hard ceiling on an export, so one click cannot pull the whole ledger. */
+export const AUDIT_EXPORT_LIMIT = 10_000;
+
+export interface ExportAuditLogsParams {
+  search?: string;
+  filters?: AuditLogFilter[];
+  /** Inclusive ISO date bounds, when the user picks a custom range. */
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+/**
+ * Rows for a CSV export, honouring the filters currently on screen.
+ *
+ * Export previously took whatever was on the current page, so a filtered search
+ * across thousands of rows exported sixteen of them. Capped at
+ * AUDIT_EXPORT_LIMIT and ordered newest-first, so the default "last 10,000"
+ * is the most recent activity rather than an arbitrary slice.
+ */
+export async function exportAuditLogs(
+  params: ExportAuditLogsParams
+): Promise<{ rows: AuditLogRow[]; truncated: boolean }> {
+  const timer = startLatencyTimer();
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+
+    if (
+      !currentUser ||
+      (currentUser.role !== 'GlobalAdmin' &&
+        currentUser.role !== 'FinancialAuditor')
+    ) {
+      throw new Error('Unauthorized access to audit logs.');
+    }
+
+    const whereCondition = buildAuditLogWhere(params);
+
+    // One extra row is fetched purely to detect truncation.
+    const records = await db
+      .select({
+        id: systemAuditLogs.id,
+        performedAt: systemAuditLogs.performedAt,
+        entityType: systemAuditLogs.entityType,
+        entityId: systemAuditLogs.entityId,
+        actionType: systemAuditLogs.actionType,
+        oldValue: systemAuditLogs.oldValue,
+        newValue: systemAuditLogs.newValue,
+        ipAddress: systemAuditLogs.ipAddress,
+        performedById: users.id,
+        performedByName: users.name,
+        performedByEmail: users.email,
+        performedByRole: users.role,
+      })
+      .from(systemAuditLogs)
+      .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+      .where(whereCondition)
+      .orderBy(desc(systemAuditLogs.performedAt), desc(systemAuditLogs.id))
+      .limit(AUDIT_EXPORT_LIMIT + 1);
+
+    const truncated = records.length > AUDIT_EXPORT_LIMIT;
+    const pageRecords = truncated
+      ? records.slice(0, AUDIT_EXPORT_LIMIT)
+      : records;
+
+    const targetEntityLabels = await resolveTargetEntityLabels(pageRecords);
+
+    const rows: AuditLogRow[] = pageRecords.map((record) => ({
+      id: record.id,
+      performedAt: record.performedAt,
+      entityType: record.entityType,
+      entityId: record.entityId,
+      entityLabel:
+        targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+        null,
+      actionType: record.actionType,
+      performedBy: record.performedById
+        ? {
+            id: record.performedById,
+            name: record.performedByName ?? 'Unknown',
+            email: record.performedByEmail ?? '',
+            role: record.performedByRole ?? 'Employee',
+          }
+        : null,
+      oldValue: record.oldValue as Record<string, unknown> | null,
+      newValue: record.newValue as Record<string, unknown> | null,
+      ipAddress: record.ipAddress,
+    }));
+
+    return { rows, truncated };
+  } catch (error) {
+    logError({ scope: 'ACTION', label: 'auditLog.exportAuditLogs', error });
+    throw new Error('Failed to export audit logs.');
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'auditLog.exportAuditLogs',
+      startTime: timer,
+    });
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { renewSoftwareLicenseAction } from '@/actions/software';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -53,17 +53,39 @@ export function RenewLicenseDialog({
   onOpenChange,
   onRenewed,
 }: RenewLicenseDialogProps) {
-  const [term, setTerm] = useState('1y');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [seats, setSeats] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      {/* Remounted per open, so the form's defaults come from useState
+          initialisers rather than an effect that writes state on mount. */}
+      {isOpen ? (
+        <RenewLicenseForm
+          key={assetId}
+          assetId={assetId}
+          currentExpiry={currentExpiry}
+          currentSeats={currentSeats}
+          onOpenChange={onOpenChange}
+          onRenewed={onRenewed}
+        />
+      ) : null}
+    </Dialog>
+  );
+}
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setTerm('1y');
-    setExpiryDate(calculateExpectedReturnDate('1y'));
-    setSeats(currentSeats ? String(currentSeats) : '');
-  }, [isOpen, currentSeats]);
+function RenewLicenseForm({
+  assetId,
+  currentExpiry,
+  currentSeats,
+  onOpenChange,
+  onRenewed,
+}: Omit<RenewLicenseDialogProps, 'isOpen'>) {
+  const [term, setTerm] = useState('1y');
+  const [expiryDate, setExpiryDate] = useState(() =>
+    calculateExpectedReturnDate('1y')
+  );
+  const [seats, setSeats] = useState(() =>
+    currentSeats ? String(currentSeats) : ''
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleTermChange = (value: string) => {
     setTerm(value);
@@ -95,83 +117,81 @@ export function RenewLicenseDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[440px]">
-        <DialogHeader>
-          <DialogTitle>Renew licence</DialogTitle>
-          <DialogDescription>
-            {currentExpiry
-              ? `Currently expires ${currentExpiry}.`
-              : 'This licence has no expiry date recorded.'}
-          </DialogDescription>
-        </DialogHeader>
+    <DialogContent className="max-w-[440px]">
+      <DialogHeader>
+        <DialogTitle>Renew licence</DialogTitle>
+        <DialogDescription>
+          {currentExpiry
+            ? `Currently expires ${currentExpiry}.`
+            : 'This licence has no expiry date recorded.'}
+        </DialogDescription>
+      </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>Renewal term</Label>
-            <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
-              <Select value={term} onValueChange={handleTermChange}>
-                <SelectTrigger className="h-9">
-                  <SelectValue>
-                    {findDurationPreset(term)?.label ?? 'Custom'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.filter((option) => option.months).map(
-                    (option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    )
-                  )}
-                  <SelectItem value={CUSTOM_DURATION_VALUE}>Custom</SelectItem>
-                </SelectContent>
-              </Select>
+      <div className="space-y-4 py-2">
+        <div className="space-y-1.5">
+          <Label>Renewal term</Label>
+          <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
+            <Select value={term} onValueChange={handleTermChange}>
+              <SelectTrigger className="h-9">
+                <SelectValue>
+                  {findDurationPreset(term)?.label ?? 'Custom'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {DURATION_OPTIONS.filter((option) => option.months).map(
+                  (option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  )
+                )}
+                <SelectItem value={CUSTOM_DURATION_VALUE}>Custom</SelectItem>
+              </SelectContent>
+            </Select>
 
-              <Input
-                type="date"
-                className="h-9"
-                value={expiryDate}
-                onChange={(event) => {
-                  setExpiryDate(event.target.value);
-                  setTerm(CUSTOM_DURATION_VALUE);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="renew-seats">Total seats</Label>
             <Input
-              id="renew-seats"
-              type="number"
-              min={1}
+              type="date"
               className="h-9"
-              value={seats}
-              onChange={(event) => setSeats(event.target.value)}
+              value={expiryDate}
+              onChange={(event) => {
+                setExpiryDate(event.target.value);
+                setTerm(CUSTOM_DURATION_VALUE);
+              }}
             />
-            <p className="text-xs text-muted-foreground">
-              Reducing below the number currently allocated is refused.
-            </p>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || (!expiryDate && !seats)}
-          >
-            {isSubmitting ? 'Renewing…' : 'Renew licence'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-1.5">
+          <Label htmlFor="renew-seats">Total seats</Label>
+          <Input
+            id="renew-seats"
+            type="number"
+            min={1}
+            className="h-9"
+            value={seats}
+            onChange={(event) => setSeats(event.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Reducing below the number currently allocated is refused.
+          </p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting || (!expiryDate && !seats)}
+        >
+          {isSubmitting ? 'Renewing…' : 'Renew licence'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }

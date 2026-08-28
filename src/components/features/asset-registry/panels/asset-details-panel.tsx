@@ -586,6 +586,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
           onStatusChanged={props.onStatusChanged}
         />
       )}
+      {/* An asset reads 'Assigned' the moment an assignment exists, so this is
+          the only thing distinguishing acknowledged from still-waiting. */}
+      {props.assignmentState === 'pending approval' && (
+        <StatusBadge value="pending approval" showIcon />
+      )}
     </div>
   );
 

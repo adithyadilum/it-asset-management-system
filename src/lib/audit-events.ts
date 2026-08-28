@@ -34,6 +34,7 @@ const ACTION_PHRASES: Record<string, string> = {
   LOGOUT: 'signed out',
   ACCESS_DENIED: 'was denied access to',
   IMPORT: 'imported',
+  REPORT_EXPORTED: 'exported a report from',
   API_KEY_CREATED: 'created an API key',
   API_KEY_REVOKED: 'revoked an API key',
   WEBHOOK_CREATED: 'created a webhook',

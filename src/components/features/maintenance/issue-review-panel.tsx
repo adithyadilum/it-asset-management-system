@@ -6,7 +6,6 @@ import {
   DateFormatted,
 } from '@/components/shared/formatters';
 import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {

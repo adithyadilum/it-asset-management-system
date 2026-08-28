@@ -24,7 +24,6 @@ import { isGlobalAdmin } from '@/lib/auth/roles';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
