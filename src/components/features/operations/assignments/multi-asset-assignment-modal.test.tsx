@@ -181,15 +181,20 @@ describe('MultiAssetAssignmentModal', () => {
     ).toBeEnabled();
   });
 
-  it('allows selection mixing Office assets and other assets without blocking', async () => {
+  it('disables user assignment and defaults to location assignment when Office assets are selected', () => {
     renderModal({
       assets: [
-        ...mockAssets,
         {
           assetId: '3',
           assetTag: 'TAG-3',
           assetName: 'Chair',
           assetGroup: 'Office Furniture',
+        },
+        {
+          assetId: '4',
+          assetTag: 'TAG-4',
+          assetName: 'Monitor',
+          assetGroup: 'Office Electronics',
         },
       ],
     });
@@ -201,14 +206,11 @@ describe('MultiAssetAssignmentModal', () => {
       'Assign to Location'
     ) as HTMLInputElement;
 
-    expect(userRadio.disabled).toBe(false);
+    expect(userRadio.disabled).toBe(true);
     expect(locationRadio.disabled).toBe(false);
-
+    expect(locationRadio.checked).toBe(true);
     expect(
-      screen.queryByText(/cannot be assigned in one go/i)
-    ).not.toBeInTheDocument();
-
-    const submit = screen.getByRole('button', { name: /Assign 3 Assets/ });
-    expect(submit).toBeEnabled();
+      screen.getByRole('button', { name: /Assign 2 Assets/ })
+    ).toBeEnabled();
   });
 });
