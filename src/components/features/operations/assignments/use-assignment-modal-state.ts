@@ -7,6 +7,7 @@ import { tiqriToast } from '@/components/shared/sonner';
 import {
   calculateExpectedReturnDate,
   calculateDurationFromDate,
+  CUSTOM_DURATION_VALUE,
 } from '@/lib/assignment-date-utils';
 
 export type AssigneeOption = {
@@ -100,22 +101,20 @@ export function useAssignmentModalState({
   );
 
   const handleDurationChange = useCallback((value: string) => {
-    setDuration(`${value}`);
+    setDuration(value);
 
-    const durationDays = Number(value);
-    if (Number.isFinite(durationDays) && durationDays > 0) {
-      setExpectedReturn(calculateExpectedReturnDate(durationDays));
+    // 'custom' means the user wants to type a date, so leave whatever is
+    // already in the date field alone rather than clearing their work.
+    if (value === CUSTOM_DURATION_VALUE) {
       return;
     }
 
-    setExpectedReturn('');
+    setExpectedReturn(calculateExpectedReturnDate(value));
   }, []);
 
   const handleExpectedReturnChange = useCallback((value: string) => {
     setExpectedReturn(value);
-
-    const calculatedDuration = calculateDurationFromDate(value);
-    setDuration(`${calculatedDuration}`);
+    setDuration(calculateDurationFromDate(value));
   }, []);
 
   const validateAssignment = () => {

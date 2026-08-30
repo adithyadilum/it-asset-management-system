@@ -74,7 +74,7 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
     it('returns 401 Unauthorized if user session is invalid', async () => {
       vi.mocked(getAuthenticatedUser).mockResolvedValue(null);
 
-      const response = await getHandler();
+      const response = await getHandler(undefined as never, {});
 
       expect(response.status).toBe(401);
       const json = await response.json();
@@ -98,7 +98,7 @@ describe('Settings Alert Notification Rules API Endpoints', () => {
       mockOrderBy.mockResolvedValue(mockRules);
       mockReturning.mockResolvedValue([]);
 
-      const response = await getHandler();
+      const response = await getHandler(undefined as never, {});
 
       expect(response.status).toBe(200);
       const json = await response.json();

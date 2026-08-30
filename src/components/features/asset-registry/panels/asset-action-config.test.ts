@@ -162,17 +162,22 @@ describe('getActionsForStatus', () => {
       expect(addUser?.disabled).toBe(true);
     });
 
-    it('Expired → edit, add-user (disabled, label=License Expired)', () => {
+    it('Expired → edit, renew-license, add-user (disabled)', () => {
       const result = getActionsForStatus({
         status: 'expired',
         pillar,
         seatsAvailable: true,
         isExpired: true,
       });
-      expect(ids(result)).toEqual(['edit', 'add-user']);
+      // Renew is the way out: without it an expired licence was a dead end,
+      // since nothing could change its expiry date after registration.
+      expect(ids(result)).toEqual(['edit', 'renew-license', 'add-user']);
       const addUser = result.find((a) => a.id === 'add-user');
       expect(addUser?.label).toBe('License Expired');
       expect(addUser?.disabled).toBe(true);
+      expect(
+        result.find((a) => a.id === 'renew-license')?.disabled
+      ).toBeFalsy();
     });
 
     it('Disposed → empty', () => {
@@ -189,6 +194,61 @@ describe('getActionsForStatus', () => {
         pillar,
       });
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('assignment lifecycle', () => {
+    // These three used to live in the operations panel, a separate component
+    // that rendered the same asset with its own copy of the rules.
+    it('offers cancel and a reminder while acknowledgement is outstanding', () => {
+      const result = getActionsForStatus({
+        status: 'Assigned',
+        pillar: 'Hardware',
+        assignmentState: 'pending approval',
+      });
+
+      expect(ids(result)).toEqual([
+        'edit',
+        'cancel-assignment',
+        'remind-return',
+      ]);
+      expect(result.find((a) => a.id === 'remind-return')?.label).toBe(
+        'Send Reminder'
+      );
+    });
+
+    it('offers receive and a reminder once overdue', () => {
+      const result = getActionsForStatus({
+        status: 'Assigned',
+        pillar: 'Hardware',
+        assignmentState: 'overdue',
+      });
+
+      expect(ids(result)).toEqual(['edit', 'mark-returned', 'remind-return']);
+      expect(result.find((a) => a.id === 'mark-returned')?.label).toBe(
+        'Received'
+      );
+    });
+
+    it('does not offer cancellation once the assignment is acknowledged', () => {
+      const result = getActionsForStatus({
+        status: 'Assigned',
+        pillar: 'Hardware',
+        assignmentState: 'assigned',
+      });
+
+      // Handing an acknowledged asset back is a return, not a cancellation.
+      expect(ids(result)).toEqual(['edit', 'request-return']);
+    });
+
+    it('applies the same lifecycle to location-assigned pillars', () => {
+      const result = getActionsForStatus({
+        status: 'Assigned',
+        pillar: 'Office Furniture',
+        assignmentState: 'pending approval',
+      });
+
+      expect(ids(result)).toContain('cancel-assignment');
     });
   });
 });

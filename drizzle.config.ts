@@ -1,4 +1,8 @@
 import { defineConfig } from 'drizzle-kit';
+
+// Side-effect import: drizzle-kit runs outside Next.js, so the .env files must
+// be loaded before `serverEnv` is evaluated.
+import './src/lib/load-env';
 import { serverEnv } from './src/lib/env';
 
 export default defineConfig({

@@ -1,5 +1,5 @@
+import '../lib/load-env';
 import { serverEnv } from '@/lib/env';
-import * as dotenv from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
@@ -24,8 +24,6 @@ import {
   users,
   vendors,
 } from './schema';
-
-dotenv.config({ path: '.env.local' });
 
 async function first<T>(query: Promise<T[]>): Promise<T | null> {
   const rows = await query;

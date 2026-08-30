@@ -3,69 +3,12 @@ import { db } from '@/db';
 import { systemAuditLogs, users } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { extractLabelFromValues } from '@/lib/audit';
-import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authenticated-user';
-
-/** Humanise camelCase / snake_case entity type strings into readable words. */
-function humanizeEntityType(entityType: string): string {
-  return entityType
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Builds a short human-readable event description from an audit row —
- * mirrors the `buildEventDetails` logic used in the Next.js audit-log table.
- */
-function buildEventDetails(
-  actionType: string,
-  entityType: string,
-  oldValue: Record<string, unknown> | null,
-  newValue: Record<string, unknown> | null
-): string {
-  const action = actionType.trim().toUpperCase();
-
-  if (action === 'LOGIN') return 'User logged in';
-  if (action === 'LOGOUT') return 'User logged out';
-  if (action === 'DEVICE_LINKED') return 'Mobile device linked';
-  if (action === 'DEVICE_UNLINKED') return 'Mobile device unlinked';
-  if (action === 'ACCESS_DENIED') {
-    const role = newValue?.role ? String(newValue.role) : 'Unknown';
-    return `Access denied for role [${role}]`;
-  }
-
-  if (!oldValue && !newValue) {
-    if (action === 'CREATE')
-      return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
-    if (action === 'DELETE')
-      return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
-    return 'Updated record';
-  }
-
-  if (oldValue && newValue) {
-    const keys = new Set([...Object.keys(oldValue), ...Object.keys(newValue)]);
-    for (const key of keys) {
-      if (!Object.is(oldValue[key], newValue[key])) {
-        const label = key
-          .replace(/([a-z])([A-Z])/g, '$1 $2')
-          .replace(/_/g, ' ')
-          .trim();
-        const oldStr = String(oldValue[key] ?? '-');
-        const newStr = String(newValue[key] ?? '-');
-        if (action === 'CREATE') return `Created ${label} as [${newStr}]`;
-        if (action === 'DELETE') return `Deleted ${label} [${oldStr}]`;
-        return `Changed ${label} from [${oldStr}] → [${newStr}]`;
-      }
-    }
-  }
-
-  if (action === 'CREATE')
-    return `Created ${humanizeEntityType(entityType).toLowerCase()}`;
-  if (action === 'DELETE')
-    return `Deleted ${humanizeEntityType(entityType).toLowerCase()}`;
-  return 'Updated record';
-}
+import { withMobileAuth } from '@/lib/api/with-auth';
+import { canViewAuditLog } from '@/lib/auth/roles';
+import {
+  buildEventDetailsSentence,
+  describeEntityType,
+} from '@/lib/audit-events';
 
 /**
  * GET /api/v1/activity/recent
@@ -86,14 +29,8 @@ function buildEventDetails(
  *   }>
  * }
  */
-export async function GET(req: Request) {
-  // --- 1. Authenticate via mobile JWT ---
-  const user = await getAuthenticatedMobileUserFromRequest(req);
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // --- 2. Fetch the 5 most recent audit log entries ---
+export const GET = withMobileAuth(canViewAuditLog, async () => {
+  // Fetch the 5 most recent audit log entries.
   try {
     const records = await db
       .select({
@@ -122,12 +59,12 @@ export async function GET(req: Request) {
         extractLabelFromValues(oldValue, newValue) ??
         (record.entityType === 'URL'
           ? record.entityId
-          : humanizeEntityType(record.entityType));
+          : describeEntityType(record.entityType));
 
       return {
         id: record.id,
         action: record.actionType,
-        event: buildEventDetails(
+        event: buildEventDetailsSentence(
           record.actionType,
           record.entityType,
           oldValue,
@@ -153,4 +90,4 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});

@@ -68,6 +68,17 @@ const WARRANTY_MONTH_OPTIONS: RegistrationOption[] = [
   { value: '24', label: '24 Months' },
 ];
 
+/** Straight-line depreciation terms, in years. 5 is the default. */
+const EXPECTED_LIFESPAN_OPTIONS: RegistrationOption[] = [
+  { value: '1', label: '1 Year' },
+  { value: '2', label: '2 Years' },
+  { value: '3', label: '3 Years' },
+  { value: '4', label: '4 Years' },
+  { value: '5', label: '5 Years' },
+  { value: '7', label: '7 Years' },
+  { value: '10', label: '10 Years' },
+];
+
 function RegistrationFormSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
@@ -141,6 +152,8 @@ export function RegistrationForm({
     setCurrencyCode,
     warrantyMonths,
     setWarrantyMonths,
+    expectedLifespanYears,
+    setExpectedLifespanYears,
     purchaseDate,
     setPurchaseDate,
     basePrice,
@@ -337,6 +350,9 @@ export function RegistrationForm({
         warrantyMonths={warrantyMonths}
         setWarrantyMonths={setWarrantyMonths}
         WARRANTY_MONTH_OPTIONS={WARRANTY_MONTH_OPTIONS}
+        expectedLifespanYears={expectedLifespanYears}
+        setExpectedLifespanYears={setExpectedLifespanYears}
+        EXPECTED_LIFESPAN_OPTIONS={EXPECTED_LIFESPAN_OPTIONS}
         invoiceInputRef={invoiceInputRef}
         showInvoiceUploader={showInvoiceUploader}
         setShowInvoiceUploader={setShowInvoiceUploader}

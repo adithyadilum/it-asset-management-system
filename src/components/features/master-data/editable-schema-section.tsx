@@ -131,14 +131,19 @@ export function EditableSchemaSection({
                 />
               </div>
               <div className="col-span-1 flex justify-end">
+                {/* Outline rather than ghost, and in the destructive token
+                    rather than a grey icon that only turns red on hover: a
+                    borderless muted glyph reads as decoration, not as the
+                    control that deletes a field. */}
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon"
+                  variant="outline"
+                  size="icon-sm"
                   onClick={() => onRemove(attribute.id)}
-                  className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   disabled={attributes.length === 1}
-                  aria-label="Remove field"
+                  aria-label={`Remove field ${attribute.fieldName || ''}`.trim()}
+                  title="Remove field"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

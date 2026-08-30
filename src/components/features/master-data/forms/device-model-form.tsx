@@ -263,8 +263,14 @@ export const DeviceModelForm = forwardRef<
         }
 
         setModelImageFile(selectedFile);
-        setRemoveExistingImage(true);
-        if (selectedFile) setShowModelImageUploader(false);
+        // Only a real selection replaces the existing image. Setting this
+        // unconditionally meant opening the file picker and cancelling left the
+        // form permanently dirty, so Save stayed enabled and a no-op save still
+        // triggered a full route refresh.
+        if (selectedFile) {
+          setRemoveExistingImage(true);
+          setShowModelImageUploader(false);
+        }
         setIsModelImageDragOver(false);
       },
       [modelImageInputRef]
@@ -282,9 +288,11 @@ export const DeviceModelForm = forwardRef<
     const clearSelectedModelImage = useCallback(() => {
       setModelImageFile(null);
       setShowModelImageUploader(true);
-      setRemoveExistingImage(true);
+      // Removing a newly-picked file that never replaced anything returns the
+      // form to its original state; only clearing a stored image is a change.
+      setRemoveExistingImage(selectedModelImageUrl.trim().length > 0);
       if (modelImageInputRef.current) modelImageInputRef.current.value = '';
-    }, []);
+    }, [selectedModelImageUrl]);
 
     return (
       <>
@@ -553,7 +561,7 @@ export const DeviceModelForm = forwardRef<
               </div>
             )}
             {hasSelectedModelImage && (
-              <div className="relative overflow-hidden rounded-lg border bg-muted/30 w-full aspect-video md:aspect-[21/9]">
+              <div className="relative overflow-hidden rounded-lg border bg-muted/30 w-full aspect-video md:aspect-21/9">
                 <Image
                   src={displayModelImageUrl}
                   alt="Model Preview"

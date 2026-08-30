@@ -1,17 +1,13 @@
-import { serverEnv } from '@/lib/env';
-import { clientEnv } from '@/lib/env.client';
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { linkedDevices } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logAuditAction } from '@/lib/audit';
-import Pusher from 'pusher';
-import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authenticated-user';
+import { getPusherServerClient } from '@/lib/pusher-server';
+import { withMobileAuth } from '@/lib/api/with-auth';
+import { canAccessMobile } from '@/lib/auth/roles';
 
-export async function POST(req: Request) {
-  const user = await getAuthenticatedMobileUserFromRequest(req);
-  if (!user)
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = withMobileAuth(canAccessMobile, async (_req, { user }) => {
   const userId = user.id;
   const jti = user.jwtId;
 
@@ -38,19 +34,15 @@ export async function POST(req: Request) {
 
   // 4. Trigger a Pusher event to update the Web UI
   try {
-    const pusher = new Pusher({
-      appId: serverEnv.PUSHER_APP_ID!,
-      key: clientEnv.NEXT_PUBLIC_PUSHER_KEY!,
-      secret: serverEnv.PUSHER_SECRET!,
-      cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER,
-      useTLS: true,
-    });
-
     // Notify the user's web session that devices were updated
-    await pusher.trigger(`user-${userId}`, 'devices_updated', {
-      deviceId: device.id,
-      action: 'removed',
-    });
+    await getPusherServerClient()?.trigger(
+      `user-${userId}`,
+      'devices_updated',
+      {
+        deviceId: device.id,
+        action: 'removed',
+      }
+    );
   } catch (error) {
     console.error('Failed to trigger Pusher devices_updated event:', error);
   }
@@ -73,4 +65,4 @@ export async function POST(req: Request) {
     success: true,
     message: 'Device successfully unlinked',
   });
-}
+});

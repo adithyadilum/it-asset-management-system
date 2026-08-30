@@ -12,6 +12,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
+  Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -37,6 +38,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 export interface NotificationRule {
   id: number;
@@ -418,6 +429,125 @@ export function AlertsSettingsClient({
       <ScrollArea className="flex-1 min-h-0">
         <div className="flex w-full flex-col gap-6 p-4 md:p-6 pt-4 md:pt-6">
           {/* Categories rendering */}
+          {isAdmin && integrations && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Send className="h-4.5 w-4.5" />
+                </div>
+                <div className="space-y-0.5">
+                  <h2
+                    className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+                  >
+                    Delivery channels
+                  </h2>
+                  <p
+                    className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}
+                  >
+                    Where alerts are sent. Every rule below can use these
+                    channels; a rule with a channel switched on here still needs
+                    that channel ticked on the rule itself.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Card size="sm">
+                  <CardHeader className="gap-1.5 pb-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-primary" />
+                      Email
+                    </CardTitle>
+                    <CardDescription>
+                      Sends alerts to each recipient&apos;s work email address,
+                      through Resend.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="resend-key-input">Resend API key</Label>
+                      <Input
+                        id="resend-key-input"
+                        type="password"
+                        placeholder={
+                          integrations.resendConfigured ? '••••••••' : 're_...'
+                        }
+                        value={
+                          resendKey === '••••••••' ? '••••••••' : resendKey
+                        }
+                        onChange={(e) => setResendKey(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={testingEmail || savingIntegrations}
+                      onClick={handleTestEmail}
+                    >
+                      {testingEmail ? <LoadingSpinner size="sm" /> : null}
+                      Send a test email
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card size="sm">
+                  <CardHeader className="gap-1.5 pb-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                      Microsoft Teams
+                    </CardTitle>
+                    <CardDescription>
+                      Posts alerts into a Teams channel using an incoming
+                      webhook.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="teams-url-input">
+                        Incoming webhook URL
+                      </Label>
+                      <Input
+                        id="teams-url-input"
+                        type="password"
+                        placeholder={
+                          integrations.teamsConfigured
+                            ? '••••••••'
+                            : 'https://outlook.office.com/webhook/...'
+                        }
+                        value={teamsUrl === '••••••••' ? '••••••••' : teamsUrl}
+                        onChange={(e) => setTeamsUrl(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={testingTeams || savingIntegrations}
+                      onClick={handleTestTeams}
+                    >
+                      {testingTeams ? <LoadingSpinner size="sm" /> : null}
+                      Post a test message
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  disabled={savingIntegrations}
+                  onClick={handleSaveIntegrations}
+                >
+                  {savingIntegrations ? <LoadingSpinner size="sm" /> : null}
+                  Save delivery channels
+                </Button>
+              </div>
+            </section>
+          )}
+
+          {/* Alert rules. Delivery channels sit above because they govern
+              how every one of these is sent. */}
           {UI_CATEGORIES.map((category) => {
             const categoryRules = rules.filter((rule) =>
               category.ruleKeys.includes(rule.ruleKey)
@@ -691,131 +821,6 @@ export function AlertsSettingsClient({
           })}
 
           {/* Integrations Configuration Section */}
-          {isAdmin && integrations && (
-            <section className="space-y-6 mt-8 border-t border-border pt-8">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Info className="h-4.5 w-4.5" />
-                </div>
-                <h2
-                  className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
-                >
-                  External Service Integrations
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Resend Card */}
-                <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-5 w-5 text-primary" />
-                    <h3
-                      className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}
-                    >
-                      Resend Email Integration
-                    </h3>
-                  </div>
-                  <p
-                    className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}
-                  >
-                    Configure your Resend API Key to send automated alerts
-                    directly to users&apos; registered corporate email boxes.
-                  </p>
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="resend-key-input"
-                      className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}
-                    >
-                      Resend API Key
-                    </label>
-                    <input
-                      id="resend-key-input"
-                      type="password"
-                      placeholder={
-                        integrations.resendConfigured ? '••••••••' : 're_...'
-                      }
-                      value={resendKey === '••••••••' ? '••••••••' : resendKey}
-                      onChange={(e) => setResendKey(e.target.value)}
-                      className="w-full h-9 px-3 rounded-lg border border-border bg-transparent text-sm focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 pt-2">
-                    <button
-                      type="button"
-                      disabled={testingEmail || savingIntegrations}
-                      onClick={handleTestEmail}
-                      className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-border hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
-                    >
-                      {testingEmail ? <LoadingSpinner size="sm" /> : null}
-                      Test Connection
-                    </button>
-                  </div>
-                </div>
-
-                {/* Teams Card */}
-                <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    <h3
-                      className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}
-                    >
-                      MS Teams Webhook
-                    </h3>
-                  </div>
-                  <p
-                    className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground leading-normal`}
-                  >
-                    Configure the Incoming Webhook URL to deliver high-priority
-                    alerts directly to designated MS Teams channels.
-                  </p>
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="teams-url-input"
-                      className={`${TYPOGRAPHY_CLASSNAMES.textXsMedium} text-muted-foreground uppercase tracking-wider`}
-                    >
-                      Webhook URL
-                    </label>
-                    <input
-                      id="teams-url-input"
-                      type="password"
-                      placeholder={
-                        integrations.teamsConfigured
-                          ? '••••••••'
-                          : 'https://outlook.office.com/webhook/...'
-                      }
-                      value={teamsUrl === '••••••••' ? '••••••••' : teamsUrl}
-                      onChange={(e) => setTeamsUrl(e.target.value)}
-                      className="w-full h-9 px-3 rounded-lg border border-border bg-transparent text-sm focus:outline-hidden focus:ring-1 focus:ring-primary focus:border-primary"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 pt-2">
-                    <button
-                      type="button"
-                      disabled={testingTeams || savingIntegrations}
-                      onClick={handleTestTeams}
-                      className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg border border-border hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
-                    >
-                      {testingTeams ? <LoadingSpinner size="sm" /> : null}
-                      Test Webhook
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Master Action: Save Integrations Settings */}
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  disabled={savingIntegrations}
-                  onClick={handleSaveIntegrations}
-                  className="flex items-center justify-center gap-2 h-10 px-6 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
-                >
-                  {savingIntegrations ? <LoadingSpinner size="sm" /> : null}
-                  Save Integration Settings
-                </button>
-              </div>
-            </section>
-          )}
         </div>
       </ScrollArea>
     </div>

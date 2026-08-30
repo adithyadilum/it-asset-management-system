@@ -6,6 +6,28 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    // Informational logging goes through `logInfo` in src/lib/latency.ts so it
+    // can be silenced in production; warn/error stay available everywhere.
+    rules: {
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+    },
+  },
+  {
+    // The logger itself, plus scripts and seeds that are meant to print.
+    files: [
+      'src/lib/latency.ts',
+      'src/db/seed*.ts',
+      'src/db/migrate-*.ts',
+      'scripts/**/*',
+      'e2e/**/*',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+    ],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     files: ['e2e/**/*'],
     rules: {
       'react-hooks/rules-of-hooks': 'off',
@@ -31,6 +53,8 @@ const eslintConfig = defineConfig([
     'playwright-report/**',
     'test-results/**',
     'coverage/**',
+    // Swagger UI bundles copied from node_modules by scripts/copy-swagger-ui.mjs.
+    'public/api-docs/vendor/**',
   ]),
 ]);
 

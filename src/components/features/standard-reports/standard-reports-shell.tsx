@@ -171,7 +171,6 @@ export function StandardReportsShell({
           typeof updaterOrValue === 'function'
             ? updaterOrValue(old)
             : updaterOrValue;
-        console.debug('pagination change', { old, next });
         return next;
       });
     },

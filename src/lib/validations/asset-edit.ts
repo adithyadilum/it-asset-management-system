@@ -72,6 +72,24 @@ export const editAssetSchema = z
         .optional()
     ),
 
+    // Expected lifespan in years, stored as `assets.useful_life_months`.
+    // Editable after registration because a first estimate is often revised
+    // once an asset is in service, and it drives the depreciation schedule.
+    expectedLifespanYears: z.preprocess(
+      (value) => {
+        if (value === undefined) return undefined;
+        if (value === '' || value === null) return null;
+        return value;
+      },
+      z.coerce
+        .number({ message: 'Expected lifespan must be a valid number.' })
+        .int({ message: 'Expected lifespan must be a whole number of years.' })
+        .min(1, { message: 'Expected lifespan must be at least 1 year.' })
+        .max(30, { message: 'Expected lifespan must be 30 years or less.' })
+        .nullable()
+        .optional()
+    ),
+
     // Instance Attributes (dynamic JSONB specs — values only, keys are fixed)
     instanceAttributes: z.record(z.string(), z.unknown()).nullable().optional(),
   })

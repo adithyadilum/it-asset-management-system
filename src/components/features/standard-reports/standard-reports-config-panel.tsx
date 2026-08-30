@@ -27,6 +27,7 @@ import {
   type FilterOptions,
   REPORT_FILTERS_BY_SOURCE,
 } from '@/types/standard-reports';
+import { formatAssignmentState } from '@/lib/assignments/labels';
 import { CreateTemplateDialog } from './create-template-dialog';
 
 interface StandardReportsConfigPanelProps {
@@ -56,6 +57,9 @@ export function StandardReportsConfigPanel({
   isLoading,
   resetKey,
 }: StandardReportsConfigPanelProps) {
+  // A report needs a source to query; every other filter is optional.
+  const canPreview = Boolean(filterState.source);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<
     ReportTemplateData | undefined
@@ -97,9 +101,11 @@ export function StandardReportsConfigPanel({
 
   const assignmentStateOptions = [
     { value: '', label: 'All States' },
+    // Value stays the stored enum so the query is unaffected; only the option
+    // text is humanised.
     ...filterOptions.assignmentStates
       .filter((x) => x !== 'All States')
-      .map((opt) => ({ value: opt, label: opt })),
+      .map((opt) => ({ value: opt, label: formatAssignmentState(opt) })),
   ];
 
   const returnConditionOptions = [
@@ -188,23 +194,25 @@ export function StandardReportsConfigPanel({
               />
             ))}
 
-            <Card
-              size="sm"
-              className="h-full cursor-pointer items-center justify-center border-dashed border-border bg-background text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
+            {/* A real button, not a Card with an onClick: this had no role, no
+                tabIndex, no keyboard handler and no focus ring, so it was
+                unreachable without a mouse. `min-h-32` instead of `h-full`
+                stops it stretching to match the tallest template card in the
+                row, which left a size-6 icon and one line of text adrift in a
+                large empty box. */}
+            <button
+              type="button"
               onClick={() => {
                 setEditingTemplate(undefined);
                 setDialogOpen(true);
               }}
+              className="flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-4 text-center transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <CardContent className="flex flex-col items-center justify-center gap-4 p-4 text-center">
-                <Plus className="size-6 text-foreground" />
-                <div className="space-y-1.5">
-                  <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
-                    Add new report template
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+              <Plus className="size-5 text-muted-foreground" />
+              <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                Add new template
+              </span>
+            </button>
           </div>
         </ScrollArea>
       </div>
@@ -337,7 +345,18 @@ export function StandardReportsConfigPanel({
               <Button variant="secondary" size="sm" onClick={onClearFilters}>
                 Clear filters
               </Button>
-              <Button size="sm" onClick={onManualPreview} disabled={isLoading}>
+              {/* Previewing with no source threw, because there was nothing to
+                  query. Disabled with a reason beats an error dialog. */}
+              <Button
+                size="sm"
+                onClick={onManualPreview}
+                disabled={isLoading || !canPreview}
+                title={
+                  canPreview
+                    ? undefined
+                    : 'Choose a report source before previewing'
+                }
+              >
                 Preview report
                 <ChevronRight className="size-4" />
               </Button>

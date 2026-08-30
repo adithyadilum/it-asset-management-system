@@ -25,6 +25,8 @@ import {
   type SlidePanelAction,
 } from '@/components/shared/slide-panel';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
+import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
 import { tiqriToast } from '@/components/shared/sonner';
 
 import type {
@@ -448,24 +450,29 @@ export function MasterDataRecordPanel({
                     ? `This record cannot be deleted because it is currently linked to ${linkedAssetsCount} asset(s).`
                     : 'Permanently delete this record and remove it from the system.'}
                 </p>
-                <button
+                {/* A real Button, not bare red text. This was a raw <button>
+                    with no background, border, padding, height, radius or focus
+                    ring, sitting directly under muted body copy -- it read as a
+                    sentence, not a control. */}
+                <Button
                   type="button"
+                  variant="destructive"
+                  size="sm"
                   onClick={handleDeleteClick}
                   disabled={
                     linkedAssetsCount > 0 || isPending || isDeleteInProgress
                   }
-                  className={`text-sm font-medium transition-colors
-                                    ${
-                                      linkedAssetsCount > 0
-                                        ? 'text-muted-foreground cursor-not-allowed opacity-50'
-                                        : 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
-                                    }`}
+                  // Solid rather than the variant's soft tint, matching the
+                  // bulk "Delete Selected" in data-table: a tinted button
+                  // disappears inside this already-red Danger Zone panel.
+                  className="border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-destructive dark:text-destructive-foreground dark:hover:bg-destructive/80"
                 >
+                  <Trash2 className="size-4" aria-hidden="true" />
                   Delete{' '}
                   {normalizedEntity
                     ? ENTITY_LABELS[normalizedEntity]
                     : 'Record'}
-                </button>
+                </Button>
               </div>
             )}
           </form>

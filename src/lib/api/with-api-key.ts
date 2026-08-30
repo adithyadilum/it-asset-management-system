@@ -10,7 +10,16 @@ import {
   injectRateLimitHeaders,
 } from '@/lib/api/rate-limiter';
 import type { ApiKeyScope } from '@/types/integrations';
-import { hashApiKey } from '@/lib/api/api-key-hash';
+import { hashApiKey, hashApiKeyLegacy } from '@/lib/api/api-key-hash';
+import { TtlCache } from '@/lib/ttl-cache';
+import { serverEnv } from '@/lib/env';
+
+/**
+ * `lastUsedAt` is displayed to the second-of-last-use at best, so updating it on
+ * every request only amplifies writes on a hot per-integration row.
+ */
+const LAST_USED_TTL_MS = 60_000;
+const lastUsedThrottle = new TtlCache<true>(LAST_USED_TTL_MS);
 
 export type ApiKeyRecord = {
   id: string;
@@ -80,11 +89,28 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         return response;
       }
 
-      const hash = await hashApiKey(token);
+      const hash = hashApiKey(token);
 
-      const found = (await db.query.apiKeys.findFirst({
+      let found = (await db.query.apiKeys.findFirst({
         where: eq(apiKeys.keyHash, hash),
       })) as ApiKeyRecord | undefined;
+
+      // Keys issued under the superseded PBKDF2 scheme are verified once with
+      // the old hash and rewritten, so each key pays that cost at most once.
+      if (!found && serverEnv.API_KEY_LEGACY_HASH_FALLBACK === 'true') {
+        const legacyHash = await hashApiKeyLegacy(token);
+        found = (await db.query.apiKeys.findFirst({
+          where: eq(apiKeys.keyHash, legacyHash),
+        })) as ApiKeyRecord | undefined;
+
+        if (found) {
+          await db
+            .update(apiKeys)
+            .set({ keyHash: hash })
+            .where(eq(apiKeys.id, found.id));
+        }
+      }
+
       if (!found) return apiError(401, 'INVALID_API_KEY', 'Invalid API key');
       if (found.isRevoked)
         return apiError(401, 'REVOKED_API_KEY', 'API key has been revoked');
@@ -110,25 +136,37 @@ export function withApiKey<TContext extends Record<string, unknown>>(
         return resp;
       }
 
-      await Promise.all([
-        db
-          .update(apiKeys)
-          .set({ lastUsedAt: new Date() })
-          .where(eq(apiKeys.id, found.id)),
-        logAuditAction({
-          entityType: 'ExternalApi',
-          entityId: req.nextUrl.pathname,
-          actionType: 'EXTERNAL_API_ACCESS',
-          performedById: found.createdById,
-          newData: {
-            apiKeyName: found.name,
-            scope: requiredScope,
-            method: req.method,
-          },
-        }),
-      ]);
+      if (!lastUsedThrottle.has(found.id)) {
+        lastUsedThrottle.set(found.id, true);
+        void Promise.resolve(
+          db
+            .update(apiKeys)
+            .set({ lastUsedAt: new Date() })
+            .where(eq(apiKeys.id, found.id))
+        ).catch((error) => {
+          console.error('[api] lastUsedAt update failed:', error);
+        });
+      }
 
-      const response = await handler(req, { ...ctx, apiKey: found });
+      // The audit write stays awaited before the response — external API access
+      // logging is deliberately fail-closed — but it no longer serializes ahead
+      // of the handler.
+      const auditWrite = logAuditAction({
+        entityType: 'ExternalApi',
+        entityId: req.nextUrl.pathname,
+        actionType: 'EXTERNAL_API_ACCESS',
+        performedById: found.createdById,
+        newData: {
+          apiKeyName: found.name,
+          scope: requiredScope,
+          method: req.method,
+        },
+      });
+
+      const [response] = await Promise.all([
+        handler(req, { ...ctx, apiKey: found }),
+        auditWrite,
+      ]);
       injectRateLimitHeaders(response, rl);
       return response;
     } catch (err) {

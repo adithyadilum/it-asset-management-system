@@ -1,22 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { unstable_rethrow } from 'next/navigation';
-import { getAuthenticatedUserFromRequest } from '@/lib/auth/get-authenticated-user';
+import { allowAnyRole, withAuth } from '@/lib/api/with-auth';
 import {
   getUserNotifications,
   getUserNotificationsCount,
 } from '@/lib/notifications/services';
 
-export async function GET(request?: NextRequest) {
+// Every notification read is scoped to the caller's own id, so all
+// authenticated roles may call this.
+export const GET = withAuth(allowAnyRole, async (request, { user }) => {
   try {
-    const user = await getAuthenticatedUserFromRequest(request);
-
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const searchParams = request
-      ? request.nextUrl.searchParams
-      : new URL('http://localhost/').searchParams;
+    const searchParams = request.nextUrl.searchParams;
     const rawLimit = parseInt(searchParams.get('limit') || '10', 10);
     const rawOffset = parseInt(searchParams.get('offset') || '0', 10);
 
@@ -55,4 +49,4 @@ export async function GET(request?: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

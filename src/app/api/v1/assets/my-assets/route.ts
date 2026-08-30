@@ -9,7 +9,8 @@ import {
   users,
 } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
-import { getAuthenticatedMobileUserFromRequest } from '@/lib/auth/get-authenticated-user';
+import { withMobileAuth } from '@/lib/api/with-auth';
+import { canAccessMobile } from '@/lib/auth/roles';
 
 /**
  * Maps a backend asset status string to the mobile enum value.
@@ -62,12 +63,7 @@ function mapStatus(
  * Authentication: Bearer JWT (mobile token issued during QR pairing).
  * Uses the exact same auth pattern as /api/v1/activity/recent.
  */
-export async function GET(req: Request) {
-  // --- 1. Authenticate via mobile JWT ---
-  const user = await getAuthenticatedMobileUserFromRequest(req);
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export const GET = withMobileAuth(canAccessMobile, async (_req, { user }) => {
   const userId = user.id;
 
   // --- 2. Fetch all non-returned assignments for this user ---
@@ -130,4 +126,4 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-}
+});
