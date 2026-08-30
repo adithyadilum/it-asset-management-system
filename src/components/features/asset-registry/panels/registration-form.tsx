@@ -164,6 +164,8 @@ export function RegistrationForm({
     setShippingCost,
     tax,
     setTax,
+    estimatedSalvageValue,
+    setEstimatedSalvageValue,
     invoiceFileName,
     showInvoiceUploader,
     setShowInvoiceUploader,
@@ -344,6 +346,8 @@ export function RegistrationForm({
         setTax={setTax}
         totalCost={totalCost}
 
+        estimatedSalvageValue={estimatedSalvageValue}
+        setEstimatedSalvageValue={setEstimatedSalvageValue}
         costPerSeat={costPerSeat}
         setCostPerSeat={setCostPerSeat}
         isFreeSoftwareLicense={isFreeSoftwareLicense}

@@ -144,6 +144,8 @@ export async function registerAsset(
       shippingCost: formData.get('shippingCost') || undefined,
       currencyCode: formData.get('currencyCode') || undefined,
       warrantyMonths: formData.get('warrantyMonths') || undefined,
+      estimatedSalvageValue:
+        formData.get('estimatedSalvageValue') || undefined,
       notes: formData.get('notes') || undefined,
       instanceAttributes: (() => {
         try {
@@ -299,6 +301,10 @@ export async function registerAsset(
         tax: tax.toFixed(2),
         shippingCost: shippingCost.toFixed(2),
         totalCost: totalCost.toFixed(2),
+        estimatedSalvageValue:
+          input.estimatedSalvageValue != null
+            ? input.estimatedSalvageValue.toFixed(2)
+            : null,
         currencyCode: input.currencyCode,
         exchangeRate: conversionRate,
         warrantyExpiry: warrantyExpiry ? toDateString(warrantyExpiry) : null,

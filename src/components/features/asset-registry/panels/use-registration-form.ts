@@ -104,6 +104,7 @@ export function useRegistrationForm({
   const [costPerSeat, setCostPerSeat] = useState('');
   const [shippingCost, setShippingCost] = useState('');
   const [tax, setTax] = useState('');
+  const [estimatedSalvageValue, setEstimatedSalvageValue] = useState('');
   const [invoiceFileName, setInvoiceFileName] = useState('');
   const [showInvoiceUploader, setShowInvoiceUploader] = useState(false);
   const [isInvoiceDragOver, setIsInvoiceDragOver] = useState(false);
@@ -458,6 +459,8 @@ export function useRegistrationForm({
     setShippingCost,
     tax,
     setTax,
+    estimatedSalvageValue,
+    setEstimatedSalvageValue,
     invoiceFileName,
     showInvoiceUploader,
     setShowInvoiceUploader,
