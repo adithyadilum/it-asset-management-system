@@ -63,7 +63,11 @@ vi.mock('@/db', () => ({ db: mockDb }));
 
 vi.mock('@/db/schema', () => ({
   assets: { id: 'assets.id', status: 'assets.status' },
-  categories: { id: 'categories.id', name: 'categories.name' },
+  categories: {
+    id: 'categories.id',
+    name: 'categories.name',
+    pillar: 'categories.pillar',
+  },
   models: { id: 'models.id', categoryId: 'models.categoryId' },
   assetPurchases: {
     assetId: 'assetPurchases.assetId',
