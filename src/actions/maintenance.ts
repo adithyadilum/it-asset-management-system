@@ -313,6 +313,7 @@ export async function getRepairHistory(
         vendorName: maintenanceTickets.vendorName,
         actualCompletionDate: maintenanceTickets.actualCompletionDate,
         actualCost: maintenanceTickets.actualCost,
+        currencyCode: maintenanceTickets.currencyCode,
         resolutionNotes: maintenanceTickets.resolutionNotes,
         status: maintenanceTickets.status,
         createdAt: maintenanceTickets.createdAt,
@@ -518,7 +519,8 @@ export async function initiateVendorRepair(
   vendorId: string,
   rmaNumber: string,
   estimatedCost?: string,
-  expectedReturnDate?: string
+  expectedReturnDate?: string,
+  currencyCode?: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
   const user = await getAuthenticatedUser();
@@ -534,6 +536,7 @@ export async function initiateVendorRepair(
     rmaNumber: rmaNumber || undefined,
     estimatedCost: estimatedCost || undefined,
     expectedReturnDate: expectedReturnDate || undefined,
+    currencyCode: currencyCode || undefined,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
@@ -593,6 +596,7 @@ export async function initiateVendorRepair(
           parsed.data.estimatedCost != null
             ? parsed.data.estimatedCost.toString()
             : null,
+        currencyCode: parsed.data.currencyCode ?? 'LKR',
         estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
         status: 'ACTIVE' as const,
         dispatchedById: user.id,
@@ -822,7 +826,8 @@ export async function reportDefectiveFromPanel(
   vendorId: string,
   rmaNumber: string,
   estimatedCost?: string,
-  expectedReturnDate?: string
+  expectedReturnDate?: string,
+  currencyCode?: string
 ): Promise<{ success: boolean; message: string; ticketId?: number }> {
   // 1. Auth & Role Validation
   const user = await getAuthenticatedUser();
@@ -837,6 +842,7 @@ export async function reportDefectiveFromPanel(
     rmaNumber: rmaNumber || undefined,
     estimatedCost: estimatedCost || undefined,
     expectedReturnDate: expectedReturnDate || undefined,
+    currencyCode: currencyCode || undefined,
   });
   if (!parsed.success) {
     return {
@@ -900,6 +906,7 @@ export async function reportDefectiveFromPanel(
           parsed.data.estimatedCost != null
             ? parsed.data.estimatedCost.toString()
             : null,
+        currencyCode: parsed.data.currencyCode ?? 'LKR',
         estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
         status: 'ACTIVE' as const,
         dispatchedById: user.id,
