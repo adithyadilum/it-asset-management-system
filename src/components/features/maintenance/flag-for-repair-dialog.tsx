@@ -78,7 +78,10 @@ export function FlagForRepairDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent showCloseButton={false} className="sm:max-w-[520px] w-full p-6 bg-background rounded-xl shadow-lg border border-border flex flex-col gap-6">
+      <DialogContent
+        showCloseButton={false}
+        className="sm:max-w-[520px] w-full p-6 bg-background rounded-xl shadow-lg border border-border flex flex-col gap-6"
+      >
         {/* Header */}
         <div className="flex items-center justify-between">
           <DialogTitle
