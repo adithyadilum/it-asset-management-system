@@ -29,6 +29,7 @@ async function TCOLedgerPageContent() {
         initialPageCount={response.meta.totalPages}
         filterOptions={filterOptions}
         initialSummary={response.summary}
+        initialTrend={response.trend}
       />
     </div>
   );

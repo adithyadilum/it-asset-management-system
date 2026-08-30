@@ -7,8 +7,12 @@ import {
 
 function monthsAgo(months: number) {
   const date = new Date();
-  date.setMonth(date.getMonth() - months);
+  // Day first, month second. The other order overflows whenever today is the
+  // 29th-31st and the target month is shorter: run on 30 August and
+  // `setMonth(February)` rolls into March, so `monthsAgo(6)` was really seven
+  // months back and the asset measured 500 rather than 600.
   date.setDate(1);
+  date.setMonth(date.getMonth() - months);
   return date;
 }
 

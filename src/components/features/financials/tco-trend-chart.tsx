@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,26 +16,42 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { formatMoneyByCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
-export interface TCOCompositionPoint {
-  assetId: string;
+export interface TCOTrendPoint {
+  /** `YYYY-MM`. */
+  month: string;
   purchase: number;
   maintenance: number;
+  total: number;
+}
+
+/** `2026-08` -> `Aug 2026`, without dragging in a date library. */
+function formatMonth(month: string) {
+  const [year, monthPart] = month.split('-');
+  const monthIndex = Number(monthPart) - 1;
+  if (!year || Number.isNaN(monthIndex)) return month;
+  const label = new Date(Date.UTC(Number(year), monthIndex, 1));
+  return label.toLocaleDateString(undefined, {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 /**
- * Purchase against maintenance, one stacked bar per asset.
+ * Total cost of ownership accumulated over time.
  *
- * The table gives three numbers per row and leaves the reader to divide them.
- * The comparison this page exists to support -- which assets have cost more to
- * keep than to buy -- is a shape, so draw it. Only the rows on screen are
- * charted; the totals above cover the whole filtered set.
+ * Purchase cost lands in one month and never moves; maintenance keeps
+ * accruing. Running totals are what make that readable -- the gap between the
+ * total line and the purchase line is the money spent since buying, widening
+ * whenever repairs land. Per-period bars would show the same spend as isolated
+ * spikes and answer a different question.
  */
-export function TCOCompositionChart({
+export function TCOTrendChart({
   points,
   currencyCode = 'LKR',
   className,
 }: {
-  points: TCOCompositionPoint[];
+  points: TCOTrendPoint[];
   currencyCode?: string;
   className?: string;
 }) {
@@ -47,7 +63,7 @@ export function TCOCompositionChart({
         <CardTitle
           className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-foreground')}
         >
-          Purchase against maintenance
+          Cost of ownership over time
         </CardTitle>
         <p
           className={cn(
@@ -55,16 +71,16 @@ export function TCOCompositionChart({
             'text-muted-foreground'
           )}
         >
-          The {points.length} assets on this page. A tall orange band is an
-          asset costing more to keep than it did to buy.
+          Running totals across every asset the filters match. The gap between
+          total and purchase is what has been spent keeping them running.
         </p>
       </CardHeader>
       <CardContent className="h-56 p-4 pt-2">
         <ResponsiveContainer width="100%" height="100%" minHeight={1}>
-          <BarChart
+          <LineChart
             data={points}
             margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-            aria-label="Purchase and maintenance cost per asset"
+            aria-label="Total, purchase and maintenance cost over time"
           >
             <CartesianGrid
               vertical={false}
@@ -72,11 +88,12 @@ export function TCOCompositionChart({
               strokeDasharray="3 3"
             />
             <XAxis
-              dataKey="assetId"
+              dataKey="month"
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
-              minTickGap={12}
+              minTickGap={24}
+              tickFormatter={formatMonth}
               tick={{ fontSize: 9, fill: 'var(--color-muted-foreground)' }}
             />
             <YAxis
@@ -92,7 +109,7 @@ export function TCOCompositionChart({
               }
             />
             <Tooltip
-              cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }}
+              cursor={{ stroke: 'var(--color-border)' }}
               contentStyle={{
                 borderRadius: '6px',
                 fontSize: '11px',
@@ -101,6 +118,9 @@ export function TCOCompositionChart({
                 backgroundColor: 'var(--color-popover)',
                 color: 'var(--color-popover-foreground)',
               }}
+              labelFormatter={(label) =>
+                typeof label === 'string' ? formatMonth(label) : label
+              }
               formatter={(value, name) => [
                 formatMoneyByCurrency(Number(value), currencyCode),
                 name,
@@ -112,20 +132,38 @@ export function TCOCompositionChart({
                 color: 'var(--color-muted-foreground)',
               }}
             />
-            <Bar
-              name="Purchase"
+            {/* Drawn last so it stays visible: maintenance is usually a few
+                percent of purchase, which puts the total line right on top of
+                the purchase line, and whichever is painted second wins. */}
+            <Line
+              name="Purchase cost"
               dataKey="purchase"
-              stackId="tco"
-              fill="var(--color-primary)"
+              type="monotone"
+              stroke="var(--color-primary)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 3 }}
             />
-            <Bar
-              name="Maintenance"
+            <Line
+              name="Maintenance cost"
               dataKey="maintenance"
-              stackId="tco"
-              fill="var(--color-chart-4)"
-              radius={[4, 4, 0, 0]}
+              type="monotone"
+              stroke="var(--color-chart-4)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 3 }}
             />
-          </BarChart>
+            <Line
+              name="Total cost"
+              dataKey="total"
+              type="monotone"
+              stroke="var(--color-chart-1)"
+              strokeWidth={2}
+              strokeDasharray="5 3"
+              dot={false}
+              activeDot={{ r: 3 }}
+            />
+          </LineChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
