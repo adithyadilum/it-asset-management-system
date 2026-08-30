@@ -820,7 +820,13 @@ export async function getWriteOffsLedger(
  * that page could not be filtered for, so the filter could not reach the rows
  * it existed to find. Read the distinct values from the tables instead.
  */
-export async function getFinancialsFilterOptions() {
+export async function getFinancialsFilterOptions(
+  // Depreciation and write-offs exclude software, so offering the pillar there
+  // would only ever return zero rows. TCO does include software -- purchase
+  // cost plus maintenance applies to a licence like anything else -- so it opts
+  // back in rather than showing rows it cannot filter by.
+  options: { includeSoftwarePillar?: boolean } = {}
+) {
   await enforceFinanceAccess();
 
   const [categoryRows, locationRows] = await Promise.all([
@@ -844,7 +850,9 @@ export async function getFinancialsFilterOptions() {
     pillars: Array.from(
       new Set(
         categoryRows
-          .filter((row) => row.pillar !== 'Software')
+          .filter(
+            (row) => options.includeSoftwarePillar || row.pillar !== 'Software'
+          )
           .map((row) => row.pillar)
       )
     ).sort(),
