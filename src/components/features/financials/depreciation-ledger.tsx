@@ -366,7 +366,7 @@ export function DepreciationLedger({
     // Natural height, not `h-full overflow-hidden`: the summary and the chart
     // above the table are meant to scroll away, and a fixed-height column would
     // instead squeeze the table into whatever was left over.
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <LedgerSummary
         asOf={summary.asOf}
         stats={[
@@ -460,9 +460,12 @@ export function DepreciationLedger({
         </Button>
       </FilterBar>
 
-      {/* Tall enough that once the filter row has scrolled to the top of the
-          viewport, the whole table is on screen. */}
-      <div className="flex min-h-[calc(100vh-11rem)] flex-col">
+      {/* A fixed height, not a minimum: the DataTable inside is `flex-1
+          min-h-0` around a scroll viewport, so capping the container here is
+          what makes extra rows scroll within the table instead of stretching
+          it. With `min-h-` the container grew with the row count, the page
+          grew with it, and the rows never scrolled internally. */}
+      <div className="flex h-[calc(100vh-11rem)] flex-col pb-6">
         {isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
             <TableSkeleton
