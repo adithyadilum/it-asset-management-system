@@ -16,6 +16,7 @@ import {
 
 import { executeAssetDisposal } from '@/actions/disposals/execute';
 import { uploadDisposalReceipt } from '@/actions/disposals/upload-receipt';
+import { formatCurrencySymbol, SUMMARY_CURRENCY } from '@/lib/currency';
 import { FileUploadZone } from '@/components/shared/file-upload-zone';
 import { tiqriToast } from '@/components/shared/sonner';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ interface ExecuteDisposalDialogProps {
   selectedAssets: PendingDisposalRow[];
   onSuccess: () => void;
   singleCategory?: string;
+  currencyCode?: string;
 }
 
 /** Maps an asset category string to its corresponding Lucide icon. */
@@ -64,17 +66,91 @@ function getDeviceIcon(category: string, className?: string) {
   return <Package className={className} />;
 }
 
+type AssetCategoryType = 'electronics' | 'furniture' | 'general';
+
+function getAssetCategoryType(category: string): AssetCategoryType {
+  const lowerCat = category.toLowerCase().trim();
+  if (
+    /\b(laptop|macbook|phone|mobile|tablet|server|network|keyboard|mouse|peripheral|monitor|display|desktop|computer|printer|scanner|projector|electronic|device|equipment|hardware|camera|audio|speaker|headset|router|switch|ups|battery)\b/.test(
+      lowerCat
+    )
+  )
+    return 'electronics';
+  if (
+    /\b(furniture|chair|desk|table|cabinet|shelf|shelving|sofa|couch|bed|drawer|wardrobe|cupboard|locker|rack|stand|filing|bookcase|partition|whiteboard|board)\b/.test(
+      lowerCat
+    )
+  )
+    return 'furniture';
+  return 'general';
+}
+
+const REASON_OPTIONS: Record<
+  AssetCategoryType,
+  Array<{ value: string; label: string }>
+> = {
+  electronics: [
+    { value: 'Defective', label: 'Defective / Broken' },
+    { value: 'Obsolete', label: 'Obsolete / End of Life' },
+    { value: 'Lost', label: 'Lost' },
+    { value: 'Stolen', label: 'Stolen' },
+    { value: 'Damaged', label: 'Damaged Beyond Repair' },
+    { value: 'Surplus', label: 'Surplus / No Longer Needed' },
+  ],
+  furniture: [
+    { value: 'Damaged', label: 'Damaged / Worn Out' },
+    { value: 'Obsolete', label: 'Obsolete / Outdated' },
+    { value: 'Surplus', label: 'Surplus / No Longer Needed' },
+    { value: 'Lost', label: 'Lost' },
+    { value: 'Defective', label: 'Structurally Unsafe' },
+  ],
+  general: [
+    { value: 'Defective', label: 'Defective / Broken' },
+    { value: 'Obsolete', label: 'Obsolete / End of Life' },
+    { value: 'Damaged', label: 'Damaged Beyond Repair' },
+    { value: 'Lost', label: 'Lost' },
+    { value: 'Stolen', label: 'Stolen' },
+    { value: 'Surplus', label: 'Surplus / No Longer Needed' },
+  ],
+};
+
+const METHOD_OPTIONS: Record<
+  AssetCategoryType,
+  Array<{ value: string; label: string }>
+> = {
+  electronics: [
+    { value: 'E-waste', label: 'E-waste Recycling' },
+    { value: 'Sold', label: 'Sold / Auctioned' },
+    { value: 'Donated', label: 'Donated' },
+    { value: 'Stolen', label: 'Stolen / Written Off' },
+  ],
+  furniture: [
+    { value: 'Donated', label: 'Donated' },
+    { value: 'Sold', label: 'Sold / Auctioned' },
+    { value: 'Recycled', label: 'Recycled / Scrapped' },
+    { value: 'Disposed', label: 'Disposed / Landfill' },
+    { value: 'Stolen', label: 'Written Off' },
+  ],
+  general: [
+    { value: 'E-waste', label: 'E-waste Recycling' },
+    { value: 'Sold', label: 'Sold / Auctioned' },
+    { value: 'Donated', label: 'Donated' },
+    { value: 'Recycled', label: 'Recycled / Scrapped' },
+    { value: 'Disposed', label: 'Disposed / Landfill' },
+    { value: 'Stolen', label: 'Stolen / Written Off' },
+  ],
+};
+
 export function ExecuteDisposalDialog({
   isOpen,
   onOpenChange,
   selectedAssets,
   onSuccess,
   singleCategory = '',
+  currencyCode = SUMMARY_CURRENCY,
 }: ExecuteDisposalDialogProps) {
   const [reason, setReason] = useState('');
-  const [method, setMethod] = useState<
-    'Sold' | 'Stolen' | 'E-waste' | 'Donated' | ''
-  >('');
+  const [method, setMethod] = useState('');
   const [salvageValue, setSalvageValue] = useState('');
   const [dataWiped, setDataWiped] = useState(false);
   const [tagsRemoved, setTagsRemoved] = useState(false);
@@ -89,6 +165,14 @@ export function ExecuteDisposalDialog({
   const isBulk = selectedAssets.length > 1;
   const singleAsset = selectedAssets[0];
 
+  // Derive the category type — 'general' for bulk (mixed categories)
+  const categoryType: AssetCategoryType = isBulk
+    ? 'general'
+    : getAssetCategoryType(singleCategory);
+
+  const reasonOptions = REASON_OPTIONS[categoryType];
+  const methodOptions = METHOD_OPTIONS[categoryType];
+
   const expectedConfirmText = isBulk
     ? `DISPOSE ${selectedAssets.length} ASSETS`
     : singleAsset?.assetTag || '';
@@ -97,7 +181,6 @@ export function ExecuteDisposalDialog({
     selectedAssets.length > 0 &&
     reason !== '' &&
     method !== '' &&
-    dataWiped &&
     tagsRemoved &&
     confirmText.trim() === expectedConfirmText.trim();
 
@@ -173,7 +256,11 @@ export function ExecuteDisposalDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0 sm:max-w-lg overflow-hidden bg-background">
+      <DialogContent
+        className="flex max-h-[90vh] flex-col gap-0 p-0 sm:max-w-lg overflow-hidden bg-background"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <div className="p-6 pb-4">
           <DialogHeader>
             <div className="flex items-center gap-2 text-destructive">
@@ -260,16 +347,16 @@ export function ExecuteDisposalDialog({
                   Reason for Disposal{' '}
                   <span className="text-destructive">*</span>
                 </Label>
-                <Select value={reason} onValueChange={setReason}>
+                <Select value={reason} onValueChange={setReason} modal={false}>
                   <SelectTrigger className="w-full h-10 border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select a reason" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Defective">
-                      Defective / Broken
-                    </SelectItem>
-                    <SelectItem value="Obsolete">Obsolete</SelectItem>
-                    <SelectItem value="Lost">Lost</SelectItem>
+                    {reasonOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -280,27 +367,25 @@ export function ExecuteDisposalDialog({
                 </Label>
                 <Select
                   value={method}
-                  onValueChange={(val: string) =>
-                    setMethod(
-                      val as 'Sold' | 'Stolen' | 'E-waste' | 'Donated' | ''
-                    )
-                  }
+                  onValueChange={(val: string) => setMethod(val)}
+                  modal={false}
                 >
                   <SelectTrigger className="w-full h-10 border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select a method" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="E-waste">E-waste Recycling</SelectItem>
-                    <SelectItem value="Sold">Sold / Auctioned</SelectItem>
-                    <SelectItem value="Donated">Donated</SelectItem>
-                    <SelectItem value="Stolen">Stolen / Written Off</SelectItem>
+                    {methodOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex flex-col gap-1.5 w-full">
                 <Label className="text-sm font-medium text-foreground">
-                  Actual Salvage Value ($){' '}
+                  Actual Salvage Value ({formatCurrencySymbol(currencyCode)}){' '}
                   <span className="text-xs text-muted-foreground font-normal">
                     (Optional)
                   </span>
@@ -332,7 +417,9 @@ export function ExecuteDisposalDialog({
                   className="cursor-pointer text-sm font-medium text-foreground"
                 >
                   Data wiped and factory reset confirmed.{' '}
-                  <span className="text-destructive">*</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    (If applicable)
+                  </span>
                 </Label>
               </div>
               <div className="flex items-start gap-3">
