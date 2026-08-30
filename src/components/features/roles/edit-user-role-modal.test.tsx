@@ -33,7 +33,7 @@ describe('EditUserRoleModal', () => {
         currentUserId="current-1"
       />
     );
-    expect(screen.getAllByText('Change User Details')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Change User Role')[0]).toBeInTheDocument();
     expect(screen.getByText('Update')).toBeInTheDocument();
   });
 
@@ -71,45 +71,9 @@ describe('EditUserRoleModal', () => {
     });
   });
 
-  it('calls setUserActiveStatus when submitted with changed active status', async () => {
-    const onOpenChange = vi.fn();
-    const onUpdated = vi.fn();
-    vi.mocked(roleActions.setUserActiveStatus).mockResolvedValue({
-      success: true,
-    });
-
-    render(
-      <EditUserRoleModal
-        isOpen={true}
-        onOpenChange={onOpenChange}
-        onUpdated={onUpdated}
-        user={mockUser}
-        currentUserId="current-1"
-      />
-    );
-
-    // Wait, let's trigger submission. In our handleSubmit:
-    // If isActive !== user.isActive, it calls setUserActiveStatus.
-    // Let's change the status dropdown selection from Active to Disabled.
-    const statusSelect = screen.getByLabelText('Status');
-    fireEvent.click(statusSelect);
-
-    // Select the disabled option
-    const disabledOption = await screen.findByText('Disabled');
-    fireEvent.click(disabledOption);
-
-    const updateButton = screen.getByText('Update');
-    fireEvent.click(updateButton);
-
-    await waitFor(() => {
-      expect(roleActions.setUserActiveStatus).toHaveBeenCalledWith(
-        'user-1',
-        false
-      );
-      expect(onOpenChange).toHaveBeenCalledWith(false);
-      expect(onUpdated).toHaveBeenCalled();
-    });
-  });
+  // Activating/deactivating a user moved to the toggle on the roles table;
+  // this modal only changes the role now. Coverage for the status action lives
+  // in roles-management-table.test.tsx.
 
   it('disables update button if user is modifying their own role', () => {
     render(
@@ -124,7 +88,7 @@ describe('EditUserRoleModal', () => {
     const updateButton = screen.getByText('Update');
     expect(updateButton).toBeDisabled();
     expect(
-      screen.getByText('You cannot modify your own role or status.')
+      screen.getByText('You cannot modify your own role.')
     ).toBeInTheDocument();
   });
 });

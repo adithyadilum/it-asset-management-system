@@ -701,15 +701,20 @@ export async function initiateVendorRepair(
         .from(maintenanceTickets)
         .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .limit(1);
-      if (triageResult.length === 0)
-        throw new Error('Failed to close initial triage ticket');
+      if (triageResult.length === 0) throw new Error('Triage ticket not found');
       const triageTicket = triageResult[0];
 
       if (triageTicket.assetId !== parsed.data.assetId)
         throw new Error('Ticket does not belong to this asset');
       // Guards against dispatching the same ticket twice from a stale tab.
+      // Status alone is not enough: dispatching leaves the ticket ACTIVE and
+      // only flips ticketType, so a second submit would sail past a status
+      // check and overwrite the vendor and RMA while duplicating the audit log
+      // and webhook. Only a ticket still in triage can be dispatched.
       if (triageTicket.status !== 'ACTIVE')
         throw new Error('Ticket is no longer active');
+      if (triageTicket.ticketType !== 'INTERNAL')
+        throw new Error('Ticket has already been dispatched to a vendor');
 
       const updatedAsset = await tx
         .update(assets)
@@ -735,7 +740,7 @@ export async function initiateVendorRepair(
         .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .returning();
       if (!dispatchedTickets[0])
-        throw new Error('Failed to create vendor repair ticket');
+        throw new Error('Failed to update vendor repair ticket');
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
@@ -782,14 +787,15 @@ export async function initiateVendorRepair(
     const knownMessages = [
       'Asset ',
       'Vendor ',
-      'Failed to close',
+      'Triage ticket not found',
       'Failed to update asset status',
-      'Failed to create vendor repair ticket',
+      'Failed to update vendor repair ticket',
       // Both are actionable by the operator — usually a second tab that already
       // dispatched this ticket — so they must not collapse into the generic
       // message.
       'Ticket does not belong to this asset',
       'Ticket is no longer active',
+      'Ticket has already been dispatched to a vendor',
     ];
     const isKnown =
       error instanceof Error &&

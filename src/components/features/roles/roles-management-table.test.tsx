@@ -101,7 +101,7 @@ describe('RolesManagementTable', () => {
     expect(removeButtons[1]).not.toBeDisabled(); // Bob (id=2)
 
     const editButtons = screen.getAllByRole('button', {
-      name: /Edit role and status for/i,
+      name: /Change role for/i,
     });
     expect(editButtons[0]).toBeDisabled(); // Alice (id=1)
     expect(editButtons[1]).not.toBeDisabled(); // Bob (id=2)
@@ -178,7 +178,7 @@ describe('RolesManagementTable', () => {
     );
 
     const editButtons = screen.queryAllByRole('button', {
-      name: /Edit role and status for/i,
+      name: /Change role for/i,
     });
     expect(editButtons).toHaveLength(2);
 
@@ -201,7 +201,7 @@ describe('RolesManagementTable', () => {
     );
 
     const editButtons = screen.getAllByRole('button', {
-      name: /Edit role and status for/i,
+      name: /Change role for/i,
     });
     fireEvent.click(editButtons[0]); // Click Alice's edit button
 
