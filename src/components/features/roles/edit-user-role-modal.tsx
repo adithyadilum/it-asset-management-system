@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
-import { assignUserRole, setUserActiveStatus } from '@/actions/roles';
+import { assignUserRole } from '@/actions/roles';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
-import { cn } from '@/lib/utils';
+import { cn, getInitials } from '@/lib/utils';
 import type { UserRole, RoleUser } from '@/types/auth';
 
 interface EditUserRoleModalProps {
@@ -45,7 +46,6 @@ export function EditUserRoleModal({
   currentUserId,
 }: EditUserRoleModalProps) {
   const [selectedRole, setSelectedRole] = useState<UserRole>('Employee');
-  const [isActive, setIsActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,18 +57,14 @@ export function EditUserRoleModal({
       setError(null);
     } else if (user) {
       setSelectedRole(user.role);
-      setIsActive(user.isActive);
     }
   }
 
-  // Also need to handle when 'user' changes while open, or we can just rely on the open toggle
-  // The original useEffect watched [isOpen, user]
   const [prevUser, setPrevUser] = useState(user);
   if (user !== prevUser) {
     setPrevUser(user);
     if (isOpen && user) {
       setSelectedRole(user.role);
-      setIsActive(user.isActive);
     }
   }
 
@@ -91,15 +87,6 @@ export function EditUserRoleModal({
         }
       }
 
-      if (isActive !== user.isActive) {
-        const result = await setUserActiveStatus(user.id, isActive);
-        if (!result.success) {
-          setError(result.error ?? 'Failed to update user status.');
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
       onOpenChange(false);
       onUpdated?.();
     } catch (caughtError) {
@@ -117,34 +104,73 @@ export function EditUserRoleModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-190 p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
-        <DialogTitle className="sr-only">Change User Role</DialogTitle>
-        <DialogDescription className="sr-only">
-          {user
-            ? `Update permissions and status for ${user.name} (${user.email}).`
-            : 'Select a user to update.'}
-        </DialogDescription>
-
-        <div className="space-y-4 p-5">
-          <div className="flex items-center justify-between">
-            <h3
+      <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-125 [&>button]:hidden">
+        <div className="p-6">
+          <div className="mb-2 flex items-start justify-between">
+            <DialogTitle
               className={cn(
-                'text-foreground',
-                TYPOGRAPHY_CLASSNAMES.textLgSemiBold
+                TYPOGRAPHY_CLASSNAMES.textLgSemiBold,
+                'text-foreground'
               )}
             >
-              Change User Details
-            </h3>
+              Change User Role
+            </DialogTitle>
             <Button
               type="button"
               variant="ghost"
-              size="icon-xs"
-              className="text-muted-foreground hover:bg-muted"
+              size="icon"
+              aria-label="Close"
+              className="-mr-2 -mt-2 h-8 w-8 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
               onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
+
+          <DialogDescription
+            className={cn(
+              'mb-6 text-muted-foreground',
+              TYPOGRAPHY_CLASSNAMES.textSmRegular
+            )}
+          >
+            {user
+              ? `Update the role for ${user.name}.`
+              : 'Select a user to update.'}
+          </DialogDescription>
+
+          {user && (
+            <div className="mx-1 mb-6 flex items-center gap-3 rounded-lg border border-border bg-muted/80 p-3">
+              <Avatar className="h-10 w-10 overflow-hidden rounded-full bg-muted">
+                <AvatarFallback
+                  className={cn(
+                    'rounded-full bg-muted text-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textXsMedium
+                  )}
+                >
+                  {getInitials(user.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 text-left">
+                <p
+                  className={cn(
+                    'truncate text-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textSmSemiBold
+                  )}
+                >
+                  {user.name}
+                </p>
+                <p
+                  className={cn(
+                    'truncate text-muted-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textXsRegular
+                  )}
+                >
+                  {user.email}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1">
             <label
@@ -174,71 +200,50 @@ export function EditUserRoleModal({
             </Select>
           </div>
 
-          <div className="space-y-1">
-            <label
-              htmlFor="user-status"
-              className={cn(
-                'text-foreground',
-                TYPOGRAPHY_CLASSNAMES.textSmMedium
-              )}
-            >
-              Status
-            </label>
-            <Select
-              value={isActive ? 'active' : 'disabled'}
-              onValueChange={(val) => setIsActive(val === 'active')}
-              disabled={isSubmitting || isSelf}
-            >
-              <SelectTrigger id="user-status" className="w-full">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="disabled">Disabled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {error ? (
             <p
-              className={cn('text-red-600', TYPOGRAPHY_CLASSNAMES.textSmMedium)}
+              className={cn(
+                'mt-3 text-red-600',
+                TYPOGRAPHY_CLASSNAMES.textSmMedium
+              )}
             >
               {error}
             </p>
           ) : null}
 
-          <div className="flex flex-col items-end gap-2 pt-1">
-            <div className="flex w-full justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className={TYPOGRAPHY_CLASSNAMES.textSmMedium}
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                className={TYPOGRAPHY_CLASSNAMES.textSmMedium}
-                onClick={handleSubmit}
-                disabled={isSubmitting || !user || isSelf}
-              >
-                {isSubmitting ? 'Updating...' : 'Update'}
-              </Button>
-            </div>
-
-            {isSelf && (
-              <p
-                className={cn(
-                  'text-right text-muted-foreground',
-                  TYPOGRAPHY_CLASSNAMES.textXsRegular
-                )}
-              >
-                You cannot modify your own role or status.
-              </p>
-            )}
+          <div className="mt-4 flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className={cn(
+                'px-6 hover:bg-muted',
+                TYPOGRAPHY_CLASSNAMES.textSmMedium
+              )}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className={cn('px-6', TYPOGRAPHY_CLASSNAMES.textSmMedium)}
+              onClick={handleSubmit}
+              disabled={isSubmitting || !user || isSelf}
+            >
+              {isSubmitting ? 'Updating...' : 'Update'}
+            </Button>
           </div>
+
+          {isSelf && (
+            <p
+              className={cn(
+                'mt-2 text-right text-muted-foreground',
+                TYPOGRAPHY_CLASSNAMES.textXsRegular
+              )}
+            >
+              You cannot modify your own role.
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
