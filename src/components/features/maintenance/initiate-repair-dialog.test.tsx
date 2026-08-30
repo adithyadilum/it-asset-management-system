@@ -94,6 +94,7 @@ describe('InitiateRepairDialog', () => {
         vendorId: '1',
         rmaNumber: 'RMA-123',
         estimatedCost: '150.00',
+        currencyCode: 'LKR',
         expectedReturnDate: '',
       });
       expect(mockOnClose).toHaveBeenCalled();

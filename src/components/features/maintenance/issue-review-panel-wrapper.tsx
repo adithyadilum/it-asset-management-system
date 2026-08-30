@@ -95,7 +95,8 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
         formData.vendorId,
         formData.rmaNumber,
         formData.estimatedCost,
-        formData.expectedReturnDate
+        formData.expectedReturnDate,
+        formData.currencyCode
       );
       toast.success("Repair initiated successfully");
       onSuccess?.(); // Refresh the table

@@ -468,7 +468,8 @@ export function AssetDetailsPanelWrapper({
               formData.vendorId,
               formData.rmaNumber,
               formData.estimatedCost || undefined,
-              formData.expectedReturnDate || undefined
+              formData.expectedReturnDate || undefined,
+              formData.currencyCode
             );
 
             if (!result.success) {

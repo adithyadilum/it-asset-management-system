@@ -43,6 +43,7 @@ export function InitiateRepairDialog({
     vendorId: '',
     rmaNumber: '',
     estimatedCost: '',
+    currencyCode: 'LKR',
     expectedReturnDate: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof InitiateRepairFormData, string>>>({});
@@ -78,7 +79,7 @@ export function InitiateRepairDialog({
     if (!validateForm()) return;
     try {
       await onConfirm(formData);
-      setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', expectedReturnDate: '' });
+      setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', currencyCode: 'LKR', expectedReturnDate: '' });
       setErrors({});
       onClose();
     } catch (err) {
@@ -89,7 +90,7 @@ export function InitiateRepairDialog({
 
   const handleClose = () => {
     if (!isLoading) {
-      setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', expectedReturnDate: '' });
+      setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', currencyCode: 'LKR', expectedReturnDate: '' });
       setErrors({});
       setSubmitError(null);
       onClose();
@@ -200,7 +201,13 @@ export function InitiateRepairDialog({
                 Estimated Cost
               </Label>
               <div className="flex items-center shadow-sm rounded-lg border border-input bg-background w-full h-9 overflow-hidden">
-                <Select defaultValue="LKR" disabled={isLoading}>
+                <Select
+                  value={formData.currencyCode || 'LKR'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, currencyCode: value })
+                  }
+                  disabled={isLoading}
+                >
                   <SelectTrigger className={`w-[70px] h-full ${TYPOGRAPHY_CLASSNAMES.textSmMedium} border-0 border-r border-input rounded-none bg-transparent focus:ring-0 focus:ring-offset-0`}>
                     <SelectValue />
                   </SelectTrigger>

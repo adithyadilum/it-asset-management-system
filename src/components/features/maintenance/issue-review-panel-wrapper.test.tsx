@@ -106,7 +106,15 @@ describe('IssueReviewPanelWrapper', () => {
     fireEvent.click(screen.getByText('Initiate Repair'));
 
     await waitFor(() => {
-      expect(initiateVendorRepair).toHaveBeenCalledWith(1, 100, '1', undefined, undefined, undefined);
+      expect(initiateVendorRepair).toHaveBeenCalledWith(
+        1,
+        100,
+        '1',
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      );
       expect(mockOnSuccess).toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalled();
     });
