@@ -20,6 +20,7 @@ import type { PendingDisposalRow } from '@/types/disposals';
 interface PendingDisposalsGridProps {
   initialData: PendingDisposalRow[];
   onRowClick: (row: PendingDisposalRow) => void;
+  preferredCurrency?: string;
 }
 
 /** Returns a dash for empty/null cell values. */
@@ -52,6 +53,7 @@ function getDaysPendingStatus(
 export function PendingDisposalsGrid({
   initialData,
   onRowClick,
+  preferredCurrency = 'LKR',
 }: PendingDisposalsGridProps) {
   const [searchValue, setSearchValue] = useState('');
   const [appliedFilters, setAppliedFilters] = useState<AppliedFilter[]>([]);
@@ -256,6 +258,7 @@ export function PendingDisposalsGrid({
         isOpen={isBulkExecuteModalOpen}
         onOpenChange={setIsBulkExecuteModalOpen}
         selectedAssets={selectedRows}
+        currencyCode={preferredCurrency}
         onSuccess={() => {
           setIsBulkExecuteModalOpen(false);
           setRowSelection({}); // Clear checkboxes after success

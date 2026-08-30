@@ -150,3 +150,19 @@ export const getAssetMaintenanceHistoryParamsSchema = z.object({
 export type GetAssetMaintenanceHistoryParams = z.infer<
   typeof getAssetMaintenanceHistoryParamsSchema
 >;
+
+// ---------------------------------------------------------------------------
+// flagAssetForRepair (flag an asset for repair from the detail panel)
+// Creates an INTERNAL ticket → appears in Pending Review tab.
+// ---------------------------------------------------------------------------
+
+export const flagForRepairSchema = z.object({
+  assetId: z.string().uuid('Invalid asset ID format.'),
+  issueNote: z
+    .string()
+    .trim()
+    .min(1, 'Issue description is required.')
+    .max(1000, 'Issue description must be 1000 characters or fewer.'),
+});
+
+export type FlagForRepairInput = z.infer<typeof flagForRepairSchema>;

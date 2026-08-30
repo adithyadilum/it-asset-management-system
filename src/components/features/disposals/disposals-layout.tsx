@@ -144,6 +144,7 @@ export function DisposalsLayout({
                 <PendingDisposalsGrid
                   initialData={pendingData}
                   onRowClick={openReviewPanel}
+                  preferredCurrency={preferredCurrency}
                 />
               </TabsContent>
             )}
