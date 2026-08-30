@@ -53,15 +53,30 @@ export function MultiAssetAssignmentModal({
 }: MultiAssetAssignmentModalProps) {
   const router = useRouter();
 
-  const hasLocationOnlyAssets = assets.some((asset) =>
-    isLocationAssignedPillar(asset.assetGroup)
-  );
-  const hasSoftwareAssets = assets.some(
+  // Three groups, each with a different valid target:
+  //   Software              -> a person only (a licence seat has no room)
+  //   Office Furniture/Elec -> a location only
+  //   everything else       -> either
+  //
+  // A batch is assignable only where those constraints still leave one shared
+  // target. Software plus office assets leaves none, so it is blocked rather
+  // than quietly resolved: picking a mode for the operator is how a laptop
+  // selected next to a desk ended up assigned to a room instead of a person.
+  const softwareAssets = assets.filter(
     (asset) => asset.assetGroup === 'Software'
   );
+  const locationOnlyAssets = assets.filter((asset) =>
+    isLocationAssignedPillar(asset.assetGroup)
+  );
 
-  const disableUserAssignment = hasLocationOnlyAssets;
-  const disableLocationAssignment = hasSoftwareAssets;
+  const hasSoftwareAssets = softwareAssets.length > 0;
+  const hasLocationOnlyAssets = locationOnlyAssets.length > 0;
+
+  // Both constraints at once means no target satisfies the whole selection.
+  const isMixedSelection = hasSoftwareAssets && hasLocationOnlyAssets;
+
+  const disableUserAssignment = hasLocationOnlyAssets && !isMixedSelection;
+  const disableLocationAssignment = hasSoftwareAssets && !isMixedSelection;
 
   const {
     assignmentMode,
@@ -100,6 +115,13 @@ export function MultiAssetAssignmentModal({
 
     if (assets.length === 0) {
       tiqriToast.warning('Select at least one asset.');
+      return;
+    }
+
+    if (isMixedSelection) {
+      tiqriToast.warning(
+        'Assign these separately: software goes to a person and office assets go to a location.'
+      );
       return;
     }
 
@@ -183,28 +205,54 @@ export function MultiAssetAssignmentModal({
             </ScrollArea>
           </div>
 
+          {isMixedSelection ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-foreground"
+            >
+              <p className="font-medium">
+                This selection cannot be assigned in one go.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {softwareAssets.length}{' '}
+                {softwareAssets.length === 1 ? 'licence goes' : 'licences go'}{' '}
+                to a person and {locationOnlyAssets.length} office{' '}
+                {locationOnlyAssets.length === 1 ? 'asset goes' : 'assets go'}{' '}
+                to a location (
+                {locationOnlyAssets
+                  .map((asset) => asset.assetTag)
+                  .slice(0, 3)
+                  .join(', ')}
+                {locationOnlyAssets.length > 3
+                  ? ` +${locationOnlyAssets.length - 3} more`
+                  : ''}
+                ). Assign each group separately.
+              </p>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <label
-              className={`flex items-center gap-2 text-sm ${disableUserAssignment ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
+              className={`flex items-center gap-2 text-sm ${disableUserAssignment || isMixedSelection ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
             >
               <input
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === 'user'}
-                disabled={disableUserAssignment}
+                disabled={disableUserAssignment || isMixedSelection}
                 onChange={() => handleAssignmentModeChange('user')}
                 className="size-4 border-border accent-primary"
               />
               Assign to User
             </label>
             <label
-              className={`flex items-center gap-2 text-sm ${disableLocationAssignment ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
+              className={`flex items-center gap-2 text-sm ${disableLocationAssignment || isMixedSelection ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
             >
               <input
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === 'location'}
-                disabled={disableLocationAssignment}
+                disabled={disableLocationAssignment || isMixedSelection}
                 onChange={() => handleAssignmentModeChange('location')}
                 className="size-4 border-border accent-primary"
               />
@@ -313,7 +361,7 @@ export function MultiAssetAssignmentModal({
             <Button
               type="submit"
               className="bg-primary hover:bg-primary/90"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isMixedSelection}
             >
               Assign {assets.length} {assets.length === 1 ? 'Asset' : 'Assets'}
             </Button>

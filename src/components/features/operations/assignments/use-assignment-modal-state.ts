@@ -26,14 +26,26 @@ export function useAssignmentModalState({
   disableUserAssignment = false,
   disableLocationAssignment = false,
 }: UseAssignmentModalStateProps) {
-  const [assignmentMode, setAssignmentMode] = useState<'user' | 'location'>(
-    () =>
-      disableLocationAssignment
-        ? 'user'
-        : disableUserAssignment
-          ? 'location'
-          : 'user'
+  const [storedAssignmentMode, setAssignmentMode] = useState<
+    'user' | 'location'
+  >(() =>
+    disableLocationAssignment
+      ? 'user'
+      : disableUserAssignment
+        ? 'location'
+        : 'user'
   );
+
+  // Corrected as it is read rather than by an effect that calls setState. The
+  // effect version renders once with a mode the current selection forbids and
+  // then re-renders to fix it, which `react-hooks/set-state-in-effect` rejects
+  // and CI fails on.
+  const assignmentMode: 'user' | 'location' =
+    disableLocationAssignment && storedAssignmentMode === 'location'
+      ? 'user'
+      : disableUserAssignment && storedAssignmentMode === 'user'
+        ? 'location'
+        : storedAssignmentMode;
   const [assignee, setAssignee] = useState('');
   const [duration, setDuration] = useState('');
   const [expectedReturn, setExpectedReturn] = useState('');
@@ -88,12 +100,6 @@ export function useAssignmentModalState({
       mounted = false;
     };
   }, [isOpen, loadOptions]);
-
-  useEffect(() => {
-    if (disableLocationAssignment && assignmentMode === 'location') {
-      setAssignmentMode('user');
-    }
-  }, [disableLocationAssignment, assignmentMode]);
 
   const resetState = useCallback(() => {
     setAssignmentMode(

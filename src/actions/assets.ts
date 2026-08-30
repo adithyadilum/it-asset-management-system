@@ -144,8 +144,7 @@ export async function registerAsset(
       shippingCost: formData.get('shippingCost') || undefined,
       currencyCode: formData.get('currencyCode') || undefined,
       warrantyMonths: formData.get('warrantyMonths') || undefined,
-      estimatedSalvageValue:
-        formData.get('estimatedSalvageValue') || undefined,
+      estimatedSalvageValue: formData.get('estimatedSalvageValue') || undefined,
       notes: formData.get('notes') || undefined,
       instanceAttributes: (() => {
         try {

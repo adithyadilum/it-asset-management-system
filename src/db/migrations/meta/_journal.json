@@ -22,6 +22,13 @@
       "when": 1787925644345,
       "tag": "0002_maintenance_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788128204143,
+      "tag": "0003_asset_estimated_salvage_value",
+      "breakpoints": true
     }
   ]
 }
