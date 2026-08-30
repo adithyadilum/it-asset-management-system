@@ -8,21 +8,46 @@ import { ResolvedImportRow } from '@/lib/bulk-import/types';
 // ---------------------------------------------------------------------------
 
 const mockGetAuthenticatedUser = vi.fn();
+const { mockRedisSet, mockRedisEval } = vi.hoisted(() => ({
+  mockRedisSet: vi.fn().mockResolvedValue('OK'),
+  mockRedisEval: vi.fn().mockResolvedValue(1),
+}));
+vi.mock('@upstash/redis', () => ({
+  Redis: { fromEnv: () => ({ set: mockRedisSet, eval: mockRedisEval }) },
+}));
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
+  }),
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
   convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
 }));
 
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from'].forEach(
-      (m) => (c[m] = vi.fn().mockReturnThis())
-    );
+    [
+      'values',
+      'set',
+      'where',
+      'returning',
+      'limit',
+      'offset',
+      'innerJoin',
+      'leftJoin',
+      'orderBy',
+      'from',
+    ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     const proxy = new Proxy(c, {
       get(t, p) {
@@ -39,14 +64,25 @@ const { mockDb, chain } = vi.hoisted(() => {
     delete: vi.fn().mockReturnValue(chain([])),
     select: vi.fn().mockReturnValue(chain([])),
     from: vi.fn().mockReturnValue(chain([])),
-    execute: vi.fn().mockResolvedValue({ rows: [{ pg_try_advisory_lock: true }] }),
+    execute: vi
+      .fn()
+      .mockResolvedValue({ rows: [{ pg_try_advisory_lock: true }] }),
     query: {
       categories: {
-        findFirst: vi.fn().mockResolvedValue({ id: 1, isActive: true, prefix: 'LPT', requiresSerial: true }),
-      }
+        findFirst: vi.fn().mockResolvedValue({
+          id: 1,
+          isActive: true,
+          prefix: 'LPT',
+          requiresSerial: true,
+        }),
+      },
     },
     transaction: vi.fn(async (cb) => {
-      try { return await cb(db); } catch (e) { throw e; }
+      try {
+        return await cb(db);
+      } catch (e) {
+        throw e;
+      }
     }),
   };
   return { mockDb: db, chain };
@@ -60,22 +96,31 @@ vi.mock('@/db/schema', () => ({
   systemAuditLogs: { id: 'systemAuditLogs.id' },
 }));
 
-const mockGenerateTemplateWorkbook = vi.fn().mockResolvedValue({ buffer: Buffer.from('test'), fileName: 'template.xlsx' });
+const mockGenerateTemplateWorkbook = vi.fn().mockResolvedValue({
+  buffer: Buffer.from('test'),
+  fileName: 'template.xlsx',
+});
 vi.mock('@/lib/bulk-import/generate-template', () => ({
-  generateTemplateWorkbook: (...args: unknown[]) => mockGenerateTemplateWorkbook(...args),
+  generateTemplateWorkbook: (...args: unknown[]) =>
+    mockGenerateTemplateWorkbook(...args),
 }));
 
-const mockParseFile = vi.fn().mockResolvedValue({ rows: [], skippedEmptyRows: 0 });
+const mockParseFile = vi
+  .fn()
+  .mockResolvedValue({ rows: [], skippedEmptyRows: 0 });
 vi.mock('@/lib/bulk-import/parse-file', () => ({
   parseFile: (...args: unknown[]) => mockParseFile(...args),
 }));
 
 const mockPreloadMasterDataCache = vi.fn().mockResolvedValue({});
 vi.mock('@/lib/bulk-import/resolve-references', () => ({
-  preloadMasterDataCache: (...args: unknown[]) => mockPreloadMasterDataCache(...args),
+  preloadMasterDataCache: (...args: unknown[]) =>
+    mockPreloadMasterDataCache(...args),
 }));
 
-const mockValidateRows = vi.fn().mockReturnValue({ validRows: [], errorRows: [] });
+const mockValidateRows = vi
+  .fn()
+  .mockReturnValue({ validRows: [], errorRows: [] });
 vi.mock('@/lib/bulk-import/validate-rows', () => ({
   validateRows: (...args: unknown[]) => mockValidateRows(...args),
 }));
@@ -180,17 +225,21 @@ describe('executeBulkImport', () => {
 
   it('returns error if lock cannot be acquired', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.execute.mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: false }] });
-    
-    const res = await executeBulkImport(1, [{}] as unknown as ResolvedImportRow[], 'file.csv');
+    mockRedisSet.mockResolvedValueOnce(null);
+
+    const res = await executeBulkImport(
+      1,
+      [{}] as unknown as ResolvedImportRow[],
+      'file.csv'
+    );
     expect(res.success).toBe(false);
     expect(res.message).toContain('progress');
   });
 
   it('successfully executes bulk import', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-    mockDb.execute.mockResolvedValue({ rows: [{ pg_try_advisory_lock: true }] });
-    
+    mockRedisSet.mockResolvedValueOnce('OK');
+
     // Select count returns 0
     mockDb.select.mockReturnValueOnce(chain([{ value: 0 }]));
     mockDb.insert.mockReturnValue(chain([{ id: 1, assetTag: 'LPT-001' }]));
@@ -212,8 +261,12 @@ describe('executeBulkImport', () => {
       warrantyMonths: 12,
     };
 
-    const res = await executeBulkImport(1, [mockRow as unknown as ResolvedImportRow], 'file.csv');
-    
+    const res = await executeBulkImport(
+      1,
+      [mockRow as unknown as ResolvedImportRow],
+      'file.csv'
+    );
+
     expect(res.success).toBe(true);
     // 1 asset + 1 purchase + 1 audit (inside tx)
     // Wait, audit might use its own tx or db depending on how logAuditActionTx is mocked

@@ -1,7 +1,13 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IssueReviewPanelWrapper } from './issue-review-panel-wrapper';
-import { getTicketForIssueReview, getVendors, resolveIssueInternally, initiateVendorRepair } from '@/actions/maintenance';
+import {
+  getTicketForIssueReview,
+  getVendors,
+  resolveIssueInternally,
+  initiateVendorRepair,
+} from '@/actions/maintenance';
 
 vi.mock('@/actions/maintenance', () => ({
   getTicketForIssueReview: vi.fn(),
@@ -18,13 +24,22 @@ vi.mock('sonner', () => ({
 }));
 
 vi.mock('./issue-review-panel', () => ({
-  IssueReviewPanel: ({ isOpen, data, onResolveInternally, onInitiateRepair }: any) => {
+  IssueReviewPanel: ({
+    isOpen,
+    data,
+    onResolveInternally,
+    onInitiateRepair,
+  }: any) => {
     if (!isOpen) return null;
     return (
       <div data-testid="issue-review-panel">
         <div>Data: {data ? 'Loaded' : 'Loading'}</div>
-        <button onClick={() => onResolveInternally('Test note')}>Resolve Internally</button>
-        <button onClick={() => onInitiateRepair({ vendorId: '1' })}>Initiate Repair</button>
+        <button onClick={() => onResolveInternally('Test note')}>
+          Resolve Internally
+        </button>
+        <button onClick={() => onInitiateRepair({ vendorId: '1' })}>
+          Initiate Repair
+        </button>
       </div>
     );
   },
@@ -36,23 +51,23 @@ describe('IssueReviewPanelWrapper', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     (getTicketForIssueReview as any).mockResolvedValue({
-      ticket: { id: 1, asset: { id: 100 } }
+      ticket: { id: 1, asset: { id: 100 } },
     });
-    
-    (getVendors as any).mockResolvedValue([
-      { id: 1, companyName: 'Vendor A' }
-    ]);
+
+    (getVendors as any).mockResolvedValue([{ id: 1, companyName: 'Vendor A' }]);
   });
 
   it('fetches data when opened with a ticketId', async () => {
     render(
-      <IssueReviewPanelWrapper
-        isOpen={true}
-        onClose={mockOnClose}
-        ticketId={1}
-      />
+      <CurrencyProvider initialCurrency="USD">
+        <IssueReviewPanelWrapper
+          isOpen={true}
+          onClose={mockOnClose}
+          ticketId={1}
+        />
+      </CurrencyProvider>
     );
 
     await waitFor(() => {
@@ -64,14 +79,16 @@ describe('IssueReviewPanelWrapper', () => {
 
   it('handles resolve internally successfully', async () => {
     (resolveIssueInternally as any).mockResolvedValue(true);
-    
+
     render(
-      <IssueReviewPanelWrapper
-        isOpen={true}
-        onClose={mockOnClose}
-        ticketId={1}
-        onSuccess={mockOnSuccess}
-      />
+      <CurrencyProvider initialCurrency="USD">
+        <IssueReviewPanelWrapper
+          isOpen={true}
+          onClose={mockOnClose}
+          ticketId={1}
+          onSuccess={mockOnSuccess}
+        />
+      </CurrencyProvider>
     );
 
     await waitFor(() => {
@@ -89,14 +106,16 @@ describe('IssueReviewPanelWrapper', () => {
 
   it('handles initiate repair successfully', async () => {
     (initiateVendorRepair as any).mockResolvedValue(true);
-    
+
     render(
-      <IssueReviewPanelWrapper
-        isOpen={true}
-        onClose={mockOnClose}
-        ticketId={1}
-        onSuccess={mockOnSuccess}
-      />
+      <CurrencyProvider initialCurrency="USD">
+        <IssueReviewPanelWrapper
+          isOpen={true}
+          onClose={mockOnClose}
+          ticketId={1}
+          onSuccess={mockOnSuccess}
+        />
+      </CurrencyProvider>
     );
 
     await waitFor(() => {

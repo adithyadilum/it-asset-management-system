@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { RolesManagementTable } from './roles-management-table';
@@ -7,17 +8,34 @@ vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
 }));
 
-// We only need to mock the external data-table if it uses ResizeObserver or features that crash in JSDOM,
-// but usually @tanstack/react-table with simple UI works fine. We mock the remove modal.
 vi.mock('./remove-user-modal', () => ({
-  RemoveUserModal: ({ isOpen, onOpenChange, user }: any) => (
+  RemoveUserModal: ({ isOpen, onOpenChange, user }: any) =>
     isOpen ? (
       <div data-testid="mock-remove-modal">
         Remove Mock Modal for {user?.name}
         <button onClick={() => onOpenChange(false)}>Close Mock</button>
       </div>
-    ) : null
-  ),
+    ) : null,
+}));
+
+vi.mock('./add-users-to-role-modal', () => ({
+  AddUsersToRoleModal: ({ isOpen, onOpenChange }: any) =>
+    isOpen ? (
+      <div data-testid="mock-add-modal">
+        Add User Mock Modal
+        <button onClick={() => onOpenChange(false)}>Close Mock</button>
+      </div>
+    ) : null,
+}));
+
+vi.mock('./edit-user-role-modal', () => ({
+  EditUserRoleModal: ({ isOpen, onOpenChange, user }: any) =>
+    isOpen ? (
+      <div data-testid="mock-edit-modal">
+        Edit User Role Mock Modal for {user?.name}
+        <button onClick={() => onOpenChange(false)}>Close Mock</button>
+      </div>
+    ) : null,
 }));
 
 describe('RolesManagementTable', () => {
@@ -34,6 +52,7 @@ describe('RolesManagementTable', () => {
       email: 'alice@example.com',
       department: 'IT',
       role: 'ITOperator' as const,
+      isActive: true,
     },
     {
       id: '2',
@@ -41,7 +60,8 @@ describe('RolesManagementTable', () => {
       email: 'bob@example.com',
       department: 'Finance',
       role: 'ITOperator' as const,
-    }
+      isActive: true,
+    },
   ];
 
   it('renders the table with user data', () => {
@@ -52,6 +72,7 @@ describe('RolesManagementTable', () => {
         users={mockUsers}
         roleLabel="IT Operator"
         currentUserId="3"
+        selectedRole="ITOperator"
       />
     );
 
@@ -68,13 +89,22 @@ describe('RolesManagementTable', () => {
         users={mockUsers}
         roleLabel="IT Operator"
         currentUserId="1"
+        selectedRole="ITOperator"
       />
     );
 
-    const removeButtons = screen.getAllByRole('button', { name: /Remove .* from IT Operator/i });
+    const removeButtons = screen.getAllByRole('button', {
+      name: /Remove .* from IT Operator/i,
+    });
     // Assuming buttons are rendered in order
     expect(removeButtons[0]).toBeDisabled(); // Alice (id=1)
     expect(removeButtons[1]).not.toBeDisabled(); // Bob (id=2)
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /Change role for/i,
+    });
+    expect(editButtons[0]).toBeDisabled(); // Alice (id=1)
+    expect(editButtons[1]).not.toBeDisabled(); // Bob (id=2)
   });
 
   it('opens the remove modal when remove is clicked', () => {
@@ -85,13 +115,99 @@ describe('RolesManagementTable', () => {
         users={mockUsers}
         roleLabel="IT Operator"
         currentUserId="3"
+        selectedRole="ITOperator"
       />
     );
 
-    const removeButtons = screen.getAllByRole('button', { name: /Remove .* from IT Operator/i });
+    const removeButtons = screen.getAllByRole('button', {
+      name: /Remove .* from IT Operator/i,
+    });
     fireEvent.click(removeButtons[0]); // Click Alice's remove button
 
     expect(screen.getByTestId('mock-remove-modal')).toBeInTheDocument();
-    expect(screen.getByText(/Remove Mock Modal for Alice Smith/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Remove Mock Modal for Alice Smith/)
+    ).toBeInTheDocument();
+  });
+
+  it('opens the assignment modal when Add User is clicked', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="IT Operator"
+        currentUserId="3"
+        selectedRole="ITOperator"
+      />
+    );
+
+    const addButton = screen.getByRole('button', { name: /Add User/i });
+    expect(addButton).toBeInTheDocument();
+
+    fireEvent.click(addButton);
+    expect(screen.getByTestId('mock-add-modal')).toBeInTheDocument();
+  });
+
+  it('does not render the Add User button when selectedRole is Employee', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="Employee"
+        currentUserId="3"
+        selectedRole="Employee"
+      />
+    );
+
+    const addButton = screen.queryByRole('button', { name: /Add User/i });
+    expect(addButton).not.toBeInTheDocument();
+  });
+
+  it('renders edit but not remove action buttons when selectedRole is Employee', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="Employee"
+        currentUserId="3"
+        selectedRole="Employee"
+      />
+    );
+
+    const editButtons = screen.queryAllByRole('button', {
+      name: /Change role for/i,
+    });
+    expect(editButtons).toHaveLength(2);
+
+    const removeButtons = screen.queryAllByRole('button', {
+      name: /Remove .* from Employee/i,
+    });
+    expect(removeButtons).toHaveLength(0);
+  });
+
+  it('opens the edit modal when edit is clicked', () => {
+    (useRouter as any).mockReturnValue({ refresh: vi.fn() });
+
+    render(
+      <RolesManagementTable
+        users={mockUsers}
+        roleLabel="IT Operator"
+        currentUserId="3"
+        selectedRole="ITOperator"
+      />
+    );
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /Change role for/i,
+    });
+    fireEvent.click(editButtons[0]); // Click Alice's edit button
+
+    expect(screen.getByTestId('mock-edit-modal')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Edit User Role Mock Modal for Alice Smith/)
+    ).toBeInTheDocument();
   });
 });

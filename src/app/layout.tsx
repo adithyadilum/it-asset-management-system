@@ -1,32 +1,33 @@
-import type { Metadata } from "next";
-import { Geist_Mono, Noto_Sans } from "next/font/google";
-import { Toaster } from "@/components/shared/sonner";
-import { ThemeProvider } from "@/components/shared/theme-provider";
-import { NextAuthSessionProvider } from "@/components/shared/auth/session-provider";
-import { GlobalBarcodeListener } from "@/components/shared/global-barcode-listener";
-import "./globals.css";
-import { cn } from "@/lib/utils";
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { Geist_Mono, Noto_Sans } from 'next/font/google';
+import { Toaster } from '@/components/shared/sonner';
+import { ThemeProvider } from '@/components/shared/theme-provider';
+import { NextAuthSessionProvider } from '@/components/shared/auth/session-provider';
+import { GlobalBarcodeListener } from '@/components/shared/global-barcode-listener';
+import './globals.css';
+import { cn } from '@/lib/utils';
 
 const notoSansHeading = Noto_Sans({
-  subsets: ["latin"],
-  variable: "--font-heading"
+  subsets: ['latin'],
+  variable: '--font-heading',
 });
 
 const notoSans = Noto_Sans({
-  variable: "--font-noto-sans",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
+  variable: '--font-noto-sans',
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: "TIQRI Assets",
-  description: "The asset management application for TIQRI corporation",
+  title: 'TIQRI Assets',
+  description: 'The asset management application for TIQRI corporation',
 };
 
 export default function RootLayout({
@@ -38,7 +39,14 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("h-full", "antialiased", geistMono.variable, notoSansHeading.variable, "font-sans", notoSans.variable)}
+      className={cn(
+        'h-full',
+        'antialiased',
+        geistMono.variable,
+        notoSansHeading.variable,
+        'font-sans',
+        notoSans.variable
+      )}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider
@@ -47,10 +55,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NextAuthSessionProvider>
-            <GlobalBarcodeListener />
-            {children}
-          </NextAuthSessionProvider>
+          <Suspense fallback={null}>
+            <NextAuthSessionProvider>
+              <GlobalBarcodeListener />
+              {children}
+            </NextAuthSessionProvider>
+          </Suspense>
           <Toaster position="bottom-center" />
         </ThemeProvider>
       </body>

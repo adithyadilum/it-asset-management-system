@@ -1,34 +1,57 @@
 'use server';
 
-import { desc, eq, and, count } from 'drizzle-orm';
+import { desc, eq, and, count, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { appNotifications, integrationSettings } from '@/db/schema';
-import { getAuthenticatedUser } from '@/actions/auth';
+import {
+  appNotifications,
+  integrationSettings,
+  notificationRules,
+} from '@/db/schema';
+import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
 import { Resend } from 'resend';
 import { serverEnv } from '@/lib/env';
+import {
+  getNotificationsParamsSchema,
+  markAsReadParamsSchema,
+} from '@/lib/validations/notifications';
 
 /**
- * Validate Teams Webhook URL scheme and host
+ * Microsoft Teams webhook endpoints must stay on this host allow-list.
+ * Add new Microsoft-owned webhook hosts here when Teams changes endpoint formats.
  */
-function isValidTeamsWebhookUrl(urlStr: string): boolean {
+const TEAMS_WEBHOOK_ALLOWED_ORIGINS = {
+  'outlook.office.com': 'https://outlook.office.com',
+  'outlook.office365.com': 'https://outlook.office365.com',
+  'webhook.office.com': 'https://webhook.office.com',
+} as const;
+
+/**
+ * Normalize a Teams Webhook URL so fetch never receives a user-controlled host.
+ */
+function toSafeTeamsWebhookUrl(urlStr: string): string | null {
   try {
     const url = new URL(urlStr);
-    if (url.protocol !== 'https:') return false;
+    if (url.protocol !== 'https:') return null;
+    if (url.username || url.password) return null;
+
     const hostname = url.hostname.toLowerCase();
-    const allowed = [
-      'outlook.office.com',
-      'outlook.office365.com',
-      'webhook.office.com',
-    ];
-    return (
-      allowed.includes(hostname) || hostname.endsWith('.webhook.office.com')
-    );
+    const allowedOrigin =
+      TEAMS_WEBHOOK_ALLOWED_ORIGINS[
+        hostname as keyof typeof TEAMS_WEBHOOK_ALLOWED_ORIGINS
+      ];
+
+    if (!allowedOrigin) return null;
+
+    const safeUrl = new URL(allowedOrigin);
+    safeUrl.pathname = url.pathname;
+    safeUrl.search = url.search;
+    return safeUrl.toString();
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -50,7 +73,7 @@ function escapeHtml(unsafe: string): string {
  */
 function escapeMarkdown(unsafe: string): string {
   if (!unsafe) return '';
-  return unsafe.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
+  return unsafe.replace(/([\\_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
 }
 
 export async function getUnreadCount() {
@@ -85,13 +108,22 @@ export async function getNotifications(limit = 10, offset = 0) {
     const user = await getAuthenticatedUser();
     if (!user) return [];
 
+    const validation = getNotificationsParamsSchema.safeParse({
+      limit,
+      offset,
+    });
+    if (!validation.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { limit: safeLimit, offset: safeOffset } = validation.data;
+
     const data = await db
       .select()
       .from(appNotifications)
       .where(eq(appNotifications.userId, user.id))
       .orderBy(desc(appNotifications.createdAt))
-      .limit(limit)
-      .offset(offset);
+      .limit(safeLimit)
+      .offset(safeOffset);
 
     return data;
   } finally {
@@ -103,20 +135,93 @@ export async function getNotifications(limit = 10, offset = 0) {
   }
 }
 
-export async function markAsRead(id: string) {
+/** Load the bell badge and first notification page with one auth/DB round trip. */
+export async function getNotificationSummary(limit = 10, offset = 0) {
   const timer = startLatencyTimer();
   try {
     const user = await getAuthenticatedUser();
-    if (!user) throw new Error('Unauthorized');
+    if (!user) return { notifications: [], unreadCount: 0 };
 
-    await db
+    const validation = getNotificationsParamsSchema.safeParse({
+      limit,
+      offset,
+    });
+    if (!validation.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const { limit: safeLimit, offset: safeOffset } = validation.data;
+
+    // Two queries rather than one with `count(*) ... OVER ()`.
+    //
+    // The window aggregate had to see every notification the user had ever
+    // received before LIMIT could apply, so the cost grew with their whole
+    // history: measured on 20k rows it read 456 buffers and sorted the lot to
+    // return ten. Split, the page is an index scan that touches 3 buffers and
+    // the count is served from the is_read index. Issued together so this is
+    // still a single round trip's worth of latency, which matters when the
+    // database is a region away.
+    const [rows, [unread]] = await Promise.all([
+      db
+        .select({
+          id: appNotifications.id,
+          userId: appNotifications.userId,
+          title: appNotifications.title,
+          message: appNotifications.message,
+          targetUrl: appNotifications.targetUrl,
+          isRead: appNotifications.isRead,
+          eventType: appNotifications.eventType,
+          createdAt: appNotifications.createdAt,
+        })
+        .from(appNotifications)
+        .where(eq(appNotifications.userId, user.id))
+        .orderBy(desc(appNotifications.createdAt))
+        .limit(safeLimit)
+        .offset(safeOffset),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(appNotifications)
+        .where(
+          and(
+            eq(appNotifications.userId, user.id),
+            eq(appNotifications.isRead, false)
+          )
+        ),
+    ]);
+
+    return {
+      notifications: rows,
+      unreadCount: unread?.count ?? 0,
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'notifications.getNotificationSummary',
+      startTime: timer,
+    });
+  }
+}
+
+export async function markAsRead(id: string) {
+  const timer = startLatencyTimer();
+  try {
+    const user = await enforceActionAccess();
+
+    const validation = markAsReadParamsSchema.safeParse({ id });
+    if (!validation.success) {
+      throw new Error('Invalid notification ID format.');
+    }
+
+    const updated = await db
       .update(appNotifications)
       .set({ isRead: true })
       .where(
         and(eq(appNotifications.id, id), eq(appNotifications.userId, user.id))
-      );
+      )
+      .returning();
 
-    // Usually with server actions it's good to revalidate paths, but if we're using SWR, SWR handles the revalidation.
+    if (updated.length === 0) {
+      throw new Error('Notification not found or unauthorized.');
+    }
   } finally {
     logLatency({
       scope: 'ACTION',
@@ -129,8 +234,7 @@ export async function markAsRead(id: string) {
 export async function markAllAsRead() {
   const timer = startLatencyTimer();
   try {
-    const user = await getAuthenticatedUser();
-    if (!user) throw new Error('Unauthorized');
+    const user = await enforceActionAccess();
 
     await db
       .update(appNotifications)
@@ -140,7 +244,8 @@ export async function markAllAsRead() {
           eq(appNotifications.userId, user.id),
           eq(appNotifications.isRead, false)
         )
-      );
+      )
+      .returning();
   } finally {
     logLatency({
       scope: 'ACTION',
@@ -188,6 +293,45 @@ export async function getIntegrationStatus() {
   }
 }
 
+/** Server-rendered bootstrap for the alerts settings page. */
+export async function getAlertsSettingsBootstrap() {
+  const timer = startLatencyTimer();
+  try {
+    const user = await enforceActionAccess();
+    if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator') {
+      throw new Error('Forbidden: Unauthorized role');
+    }
+
+    const [settingsRows, rules] = await Promise.all([
+      db
+        .select({
+          resendApiKey: integrationSettings.resendApiKey,
+          teamsWebhookUrl: integrationSettings.teamsWebhookUrl,
+        })
+        .from(integrationSettings)
+        .where(eq(integrationSettings.id, 1))
+        .limit(1),
+      db.select().from(notificationRules).orderBy(notificationRules.id),
+    ]);
+    const settings = settingsRows[0];
+
+    return {
+      rules,
+      integrations: {
+        resendConfigured: Boolean(settings?.resendApiKey),
+        teamsConfigured: Boolean(settings?.teamsWebhookUrl),
+      },
+      isAdmin: user.role === 'GlobalAdmin',
+    };
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'notifications.getAlertsSettingsBootstrap',
+      startTime: timer,
+    });
+  }
+}
+
 /**
  * Encrypt and save Resend and Teams Webhook credentials.
  */
@@ -217,12 +361,13 @@ export async function saveIntegrationSettings(data: {
       valuesToUpdate.resendApiKey = encrypt(resendApiKey);
     }
     if (teamsWebhookUrl && teamsWebhookUrl !== '••••••••') {
-      if (!isValidTeamsWebhookUrl(teamsWebhookUrl)) {
+      const safeTeamsWebhookUrl = toSafeTeamsWebhookUrl(teamsWebhookUrl);
+      if (!safeTeamsWebhookUrl) {
         throw new Error(
           'Invalid Teams Webhook URL. Must be an HTTPS outlook or office.com webhook URL.'
         );
       }
-      valuesToUpdate.teamsWebhookUrl = encrypt(teamsWebhookUrl);
+      valuesToUpdate.teamsWebhookUrl = encrypt(safeTeamsWebhookUrl);
     }
 
     if (Object.keys(valuesToUpdate).length === 0) {
@@ -357,14 +502,16 @@ export async function testIntegrationConnection(
         url = decrypt(settings.teamsWebhookUrl);
       }
 
-      if (!isValidTeamsWebhookUrl(url)) {
+      const safeTeamsWebhookUrl = toSafeTeamsWebhookUrl(url);
+      if (!safeTeamsWebhookUrl) {
         throw new Error(
           'Invalid Teams Webhook URL. Must be an HTTPS outlook or office.com webhook URL.'
         );
       }
 
-      const response = await fetch(url, {
+      const response = await fetch(safeTeamsWebhookUrl, {
         method: 'POST',
+        redirect: 'error',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           '@type': 'MessageCard',
@@ -390,7 +537,7 @@ export async function testIntegrationConnection(
 
     throw new Error('Invalid channel selected');
   } catch (error: unknown) {
-    console.error(`Failed to test ${channel} integration:`, error);
+    console.error('Failed to test %s integration:', channel, error);
     const errMsg = error instanceof Error ? error.message : String(error);
     return { success: false, error: errMsg };
   } finally {

@@ -41,12 +41,29 @@ export interface AssetEditFormProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const CONDITION_OPTIONS = ['New', 'Excellent', 'Fair', 'Poor', 'Damaged'] as const;
+const CONDITION_OPTIONS = [
+  'New',
+  'Excellent',
+  'Fair',
+  'Poor',
+  'Damaged',
+] as const;
 
-function LockedField({ label, value }: { label: string; value: React.ReactNode }) {
+function LockedField({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
-      <Label className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground flex items-center gap-1.5')}>
+      <Label
+        className={cn(
+          TYPOGRAPHY_CLASSNAMES.textSmMedium,
+          'text-muted-foreground flex items-center gap-1.5'
+        )}
+      >
         <Lock className="h-3 w-3 shrink-0" />
         {label}
       </Label>
@@ -70,7 +87,10 @@ function EditableField({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={htmlFor} className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-foreground')}>
+      <Label
+        htmlFor={htmlFor}
+        className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-foreground')}
+      >
         {label}
       </Label>
       {children}
@@ -102,7 +122,9 @@ export function AssetEditForm({
 
   // ---- Form State ----
   const [name, setName] = useState(data.asset.name ?? '');
-  const [condition, setCondition] = useState<string>(data.asset.condition ?? '');
+  const [condition, setCondition] = useState<string>(
+    data.asset.condition ?? ''
+  );
   const [locationId, setLocationId] = useState<string>(
     data.location ? String(data.location.id) : ''
   );
@@ -112,10 +134,18 @@ export function AssetEditForm({
   const [warrantyExpiry, setWarrantyExpiry] = useState<string>(
     data.purchase?.warrantyExpiry ?? ''
   );
-  const [instanceAttributes, setInstanceAttributes] = useState<Record<string, string>>(() => {
+  const [instanceAttributes, setInstanceAttributes] = useState<
+    Record<string, string>
+  >(() => {
     const attrs = {
-      ...(data.model.technicalDetails as Record<string, string | number | undefined> | null),
-      ...(data.asset.instanceAttributes as Record<string, string | number | undefined> | null),
+      ...(data.model.technicalDetails as Record<
+        string,
+        string | number | undefined
+      > | null),
+      ...(data.asset.instanceAttributes as Record<
+        string,
+        string | number | undefined
+      > | null),
     };
     const result: Record<string, string> = {};
     for (const [key, val] of Object.entries(attrs)) {
@@ -190,7 +220,8 @@ export function AssetEditForm({
 
     // Instance attributes — only send the instance-level keys, not model-level technicalDetails
     if (editableAttrKeys.size > 0) {
-      const originalAttrs = (data.asset.instanceAttributes as Record<string, unknown>) || {};
+      const originalAttrs =
+        (data.asset.instanceAttributes as Record<string, unknown>) || {};
       const updatedAttrs: Record<string, unknown> = { ...originalAttrs };
       let hasAttrChanges = false;
 
@@ -246,9 +277,20 @@ export function AssetEditForm({
       }
     });
   }, [
-    name, condition, locationId, ownerId, warrantyExpiry, instanceAttributes,
-    data, showCondition, showLocation, isSoftware, editableAttrKeys,
-    onClose, onSaved, startTransition,
+    name,
+    condition,
+    locationId,
+    ownerId,
+    warrantyExpiry,
+    instanceAttributes,
+    data,
+    showCondition,
+    showLocation,
+    isSoftware,
+    editableAttrKeys,
+    onClose,
+    onSaved,
+    startTransition,
   ]);
 
   // ---- Locked Fields ----
@@ -271,10 +313,17 @@ export function AssetEditForm({
   // ---- Spec Entries (model-level technicalDetails — read-only) ----
 
   const modelSpecEntries = useMemo(() => {
-    const techDetails = data.model.technicalDetails as Record<string, string | number | undefined> | null;
+    const techDetails = data.model.technicalDetails as Record<
+      string,
+      string | number | undefined
+    > | null;
     if (!techDetails) return [];
     return Object.entries(techDetails).filter(
-      ([key, val]) => val !== undefined && val !== null && val !== '' && !editableAttrKeys.has(key)
+      ([key, val]) =>
+        val !== undefined &&
+        val !== null &&
+        val !== '' &&
+        !editableAttrKeys.has(key)
     );
   }, [data.model.technicalDetails, editableAttrKeys]);
 
@@ -324,25 +373,43 @@ export function AssetEditForm({
     <div className="flex flex-col gap-6 pb-6">
       {/* ---- Section: Locked System Fields ---- */}
       <section>
-        <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-4 text-muted-foreground')}>
+        <h3
+          className={cn(
+            TYPOGRAPHY_CLASSNAMES.textSmSemiBold,
+            'mb-4 text-muted-foreground'
+          )}
+        >
           System &amp; Identification
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {lockedFields.map((field) => (
-            <LockedField key={field.label} label={field.label} value={field.value} />
+            <LockedField
+              key={field.label}
+              label={field.label}
+              value={field.value}
+            />
           ))}
         </div>
       </section>
 
       {/* ---- Section: Editable Fields ---- */}
       <section>
-        <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-4 text-foreground')}>
+        <h3
+          className={cn(
+            TYPOGRAPHY_CLASSNAMES.textSmSemiBold,
+            'mb-4 text-foreground'
+          )}
+        >
           Editable Details
         </h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* Asset Name */}
           <div className="md:col-span-2">
-            <EditableField label="Asset Name" htmlFor="edit-name" error={errors.name}>
+            <EditableField
+              label="Asset Name"
+              htmlFor="edit-name"
+              error={errors.name}
+            >
               <Input
                 id="edit-name"
                 value={name}
@@ -399,7 +466,11 @@ export function AssetEditForm({
           )}
 
           {/* Warranty Expiry */}
-          <EditableField label="Warranty Expiry" htmlFor="edit-warranty" error={errors.warrantyExpiry}>
+          <EditableField
+            label="Warranty Expiry"
+            htmlFor="edit-warranty"
+            error={errors.warrantyExpiry}
+          >
             <Input
               id="edit-warranty"
               type="date"
@@ -413,7 +484,12 @@ export function AssetEditForm({
       {/* ---- Section: Locked Model Specs (read-only technicalDetails) ---- */}
       {modelSpecEntries.length > 0 && (
         <section>
-          <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-4 text-muted-foreground')}>
+          <h3
+            className={cn(
+              TYPOGRAPHY_CLASSNAMES.textSmSemiBold,
+              'mb-4 text-muted-foreground'
+            )}
+          >
             Model Specifications (Read-Only)
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -431,7 +507,12 @@ export function AssetEditForm({
       {/* ---- Section: Instance Attributes (editable JSONB) ---- */}
       {editableAttrEntries.length > 0 && (
         <section>
-          <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textSmSemiBold, 'mb-4 text-foreground')}>
+          <h3
+            className={cn(
+              TYPOGRAPHY_CLASSNAMES.textSmSemiBold,
+              'mb-4 text-foreground'
+            )}
+          >
             {isFurniture ? 'Physical Details' : 'Instance Attributes'}
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

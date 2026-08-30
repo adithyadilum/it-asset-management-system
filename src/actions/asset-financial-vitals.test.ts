@@ -1,10 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getAssetFinancialVitals } from '@/actions/asset-financial-vitals';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
+  }),
 }));
 
 const mockResolveAssetPrimaryId = vi.fn();
@@ -15,9 +25,19 @@ vi.mock('@/lib/data/asset-details-repo', () => ({
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from', 'groupBy'].forEach(
-      (m) => (c[m] = vi.fn().mockReturnThis())
-    );
+    [
+      'values',
+      'set',
+      'where',
+      'returning',
+      'limit',
+      'offset',
+      'innerJoin',
+      'leftJoin',
+      'orderBy',
+      'from',
+      'groupBy',
+    ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     const proxy = new Proxy(c, {
       get(t, p) {
@@ -37,9 +57,13 @@ const { mockDb, chain } = vi.hoisted(() => {
 vi.mock('@/db', () => ({ db: mockDb }));
 
 vi.mock('@/db/schema', () => ({
-  assets: { id: 'assets.id', assetTag: 'assets.assetTag', usefulLifeMonths: 'assets.usefulLifeMonths' },
-  assetPurchases: { 
-    assetId: 'assetPurchases.assetId', 
+  assets: {
+    id: 'assets.id',
+    assetTag: 'assets.assetTag',
+    usefulLifeMonths: 'assets.usefulLifeMonths',
+  },
+  assetPurchases: {
+    assetId: 'assetPurchases.assetId',
     purchaseDate: 'assetPurchases.purchaseDate',
     basePrice: 'assetPurchases.basePrice',
     tax: 'assetPurchases.tax',
@@ -48,8 +72,8 @@ vi.mock('@/db/schema', () => ({
     currencyCode: 'assetPurchases.currencyCode',
     warrantyExpiry: 'assetPurchases.warrantyExpiry',
   },
-  maintenanceTickets: { 
-    assetId: 'maintenanceTickets.assetId', 
+  maintenanceTickets: {
+    assetId: 'maintenanceTickets.assetId',
     status: 'maintenanceTickets.status',
     actualCost: 'maintenanceTickets.actualCost',
   },
@@ -62,19 +86,25 @@ describe('getAssetFinancialVitals', () => {
     vi.clearAllMocks();
   });
 
-  it('restricts access to FinanceAuditor and GlobalAdmin', async () => {
+  it('restricts access to FinancialAuditor and GlobalAdmin', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-    await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow('Forbidden');
+    await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow(
+      'Forbidden'
+    );
 
     mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
-    await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow('Forbidden');
+    await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow(
+      'Forbidden'
+    );
   });
 
   it('throws error if asset not found', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     mockResolveAssetPrimaryId.mockResolvedValue(null);
 
-    await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow('Failed to load financial vitals.');
+    await expect(getAssetFinancialVitals(MOCK_ASSET_ID)).rejects.toThrow(
+      'Failed to load financial vitals.'
+    );
   });
 
   it('aggregates purchase details and repair costs correctly', async () => {
@@ -82,18 +112,22 @@ describe('getAssetFinancialVitals', () => {
     mockResolveAssetPrimaryId.mockResolvedValue(MOCK_ASSET_ID);
 
     mockDb.select
-      .mockReturnValueOnce(chain([{
-        id: MOCK_ASSET_ID,
-        assetTag: 'TAG-123',
-        usefulLifeMonths: 60,
-        purchaseDate: new Date().toISOString(),
-        basePrice: '1000',
-        tax: '100',
-        shippingCost: '50',
-        totalCost: '1150',
-        currencyCode: 'USD',
-        warrantyExpiry: null,
-      }]))
+      .mockReturnValueOnce(
+        chain([
+          {
+            id: MOCK_ASSET_ID,
+            assetTag: 'TAG-123',
+            usefulLifeMonths: 60,
+            purchaseDate: new Date().toISOString(),
+            basePrice: '1000',
+            tax: '100',
+            shippingCost: '50',
+            totalCost: '1150',
+            currencyCode: 'USD',
+            warrantyExpiry: null,
+          },
+        ])
+      )
       .mockReturnValueOnce(chain([{ totalRepair: '350' }])); // repair costs
 
     const result = await getAssetFinancialVitals(MOCK_ASSET_ID);
@@ -112,18 +146,22 @@ describe('getAssetFinancialVitals', () => {
     futureDate.setFullYear(futureDate.getFullYear() + 1);
 
     mockDb.select
-      .mockReturnValueOnce(chain([{
-        id: MOCK_ASSET_ID,
-        assetTag: 'TAG-123',
-        usefulLifeMonths: 60,
-        purchaseDate: new Date().toISOString(),
-        basePrice: '1000',
-        tax: '0',
-        shippingCost: '0',
-        totalCost: '1000',
-        currencyCode: 'USD',
-        warrantyExpiry: futureDate.toISOString(),
-      }]))
+      .mockReturnValueOnce(
+        chain([
+          {
+            id: MOCK_ASSET_ID,
+            assetTag: 'TAG-123',
+            usefulLifeMonths: 60,
+            purchaseDate: new Date().toISOString(),
+            basePrice: '1000',
+            tax: '0',
+            shippingCost: '0',
+            totalCost: '1000',
+            currencyCode: 'USD',
+            warrantyExpiry: futureDate.toISOString(),
+          },
+        ])
+      )
       .mockReturnValueOnce(chain([{ totalRepair: '0' }]));
 
     const result = await getAssetFinancialVitals(MOCK_ASSET_ID);

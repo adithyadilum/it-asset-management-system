@@ -1,9 +1,10 @@
 'use client';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import { useState, useTransition } from 'react';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, ChevronDown, Loader2, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ArrowRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,9 +29,9 @@ import { cn } from '@/lib/utils';
 interface InteractiveStatusBadgeProps {
   assetId: string;
   currentStatus: string;
-  availableStatuses: Array<{ 
-    value: string; 
-    label: string; 
+  availableStatuses: Array<{
+    value: string;
+    label: string;
     colorTheme?: string;
     iconName?: string;
   }>;
@@ -97,10 +98,15 @@ export function InteractiveStatusBadge({
     (s) => s.value !== localStatus
   );
 
-  const selectedStatusConfig = availableStatuses.find(s => s.value === selectedStatus);
-  const currentStatusConfig = availableStatuses.find(s => s.value === localStatus);
+  const selectedStatusConfig = availableStatuses.find(
+    (s) => s.value === selectedStatus
+  );
+  const currentStatusConfig = availableStatuses.find(
+    (s) => s.value === localStatus
+  );
 
-  const isLockedStatus = localStatus === 'Disposed' || localStatus === 'Pending Disposal';
+  const isLockedStatus =
+    localStatus === 'Disposed' || localStatus === 'Pending Disposal';
 
   if (isLockedStatus) {
     return (
@@ -143,9 +149,9 @@ export function InteractiveStatusBadge({
                 onClick={() => handleStatusSelect(status.value)}
                 className="flex items-center gap-2 cursor-pointer p-1 rounded-md"
               >
-                <StatusBadge 
-                  value={status.value} 
-                  showIcon 
+                <StatusBadge
+                  value={status.value}
+                  showIcon
                   colorTheme={status.colorTheme}
                   iconName={status.iconName}
                   className="w-full justify-start border-none bg-transparent"
@@ -165,21 +171,22 @@ export function InteractiveStatusBadge({
           <DialogHeader>
             <DialogTitle>Update Asset Status</DialogTitle>
             <DialogDescription>
-              Manually overriding the status will bypass the standard workflow and be recorded in the audit logs.
+              Manually overriding the status will bypass the standard workflow
+              and be recorded in the audit logs.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-6 py-4">
             <div className="flex items-center justify-center gap-4 py-2">
-              <StatusBadge 
-                value={localStatus} 
+              <StatusBadge
+                value={localStatus}
                 showIcon
                 colorTheme={currentStatusConfig?.colorTheme}
                 iconName={currentStatusConfig?.iconName}
               />
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              <StatusBadge 
-                value={selectedStatus ?? ''} 
+              <StatusBadge
+                value={selectedStatus ?? ''}
                 showIcon
                 colorTheme={selectedStatusConfig?.colorTheme}
                 iconName={selectedStatusConfig?.iconName}
@@ -191,7 +198,8 @@ export function InteractiveStatusBadge({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Warning</AlertTitle>
                 <AlertDescription>
-                  This asset is currently assigned. Overriding the status will automatically terminate the active assignment.
+                  This asset is currently assigned. Overriding the status will
+                  automatically terminate the active assignment.
                 </AlertDescription>
               </Alert>
             )}
@@ -199,10 +207,14 @@ export function InteractiveStatusBadge({
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="reason">Justification</Label>
-                <span className={cn(
-                  "text-[11px] font-medium",
-                  reasonNote.trim().length < 10 ? "text-destructive" : "text-emerald-600"
-                )}>
+                <span
+                  className={cn(
+                    'text-[11px] font-medium',
+                    reasonNote.trim().length < 10
+                      ? 'text-destructive'
+                      : 'text-emerald-600'
+                  )}
+                >
                   {reasonNote.trim().length} / 10 characters
                 </span>
               </div>
@@ -228,7 +240,7 @@ export function InteractiveStatusBadge({
               onClick={handleConfirm}
               disabled={isPending || reasonNote.trim().length < 10}
             >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isPending && <LoadingSpinner size="sm" />}
               Confirm Override
             </Button>
           </DialogFooter>

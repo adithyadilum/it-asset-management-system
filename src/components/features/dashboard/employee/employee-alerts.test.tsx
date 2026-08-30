@@ -1,9 +1,11 @@
+import { CurrencyProvider } from '@/components/providers/currency-provider';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { EmployeeAlerts } from './employee-alerts';
+import type { PortalAlerts } from '@/lib/data/portal-repo';
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() })
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
 describe('EmployeeAlerts', () => {
@@ -13,22 +15,49 @@ describe('EmployeeAlerts', () => {
     vi.clearAllMocks();
   });
 
-  it('renders employee alerts component', () => {
-    const mockAlerts = {
-      pendingAcceptance: [{
-        assignmentId: 'a1',
-        assetId: '1',
-        assetTag: 'AST-1',
-        assetName: 'Laptop',
-        assignedDate: '2023-01-01',
-        status: 'pending'
-      }],
+  const renderAlerts = (alerts: PortalAlerts) =>
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <EmployeeAlerts alerts={alerts} />
+      </CurrencyProvider>
+    );
+
+  it('renders return reminders', () => {
+    renderAlerts({
+      pendingAcceptance: [],
+      returnRequested: [
+        {
+          assignmentId: 2,
+          assetId: '2',
+          assetTag: 'AST-2',
+          modelName: 'Dock',
+          returnRequestedAt: '2026-08-20',
+        },
+      ],
+      upcomingReturns: [],
+    });
+
+    expect(screen.getByText(/Urgent Action Required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dock/)).toBeInTheDocument();
+  });
+
+  it('leaves acceptance to the asset card rather than duplicating it here', () => {
+    renderAlerts({
+      pendingAcceptance: [
+        {
+          assignmentId: 1,
+          assetId: '1',
+          assetTag: 'AST-1',
+          modelName: 'Laptop',
+          category: 'Laptop',
+          assignedDate: '2023-01-01',
+          assignedByName: 'IT',
+        },
+      ],
       returnRequested: [],
-      upcomingReturns: []
-    };
-    // @ts-ignore
-    render(<EmployeeAlerts alerts={mockAlerts as any} onAccept={vi.fn()} onReject={vi.fn()} onReport={vi.fn()} />);
-    
-    expect(screen.getByText(/Action Required/i)).toBeInTheDocument();
+      upcomingReturns: [],
+    });
+
+    expect(screen.queryByText(/Review & Accept/i)).not.toBeInTheDocument();
   });
 });

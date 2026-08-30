@@ -1,19 +1,23 @@
 'use server';
 
-import { getAuthenticatedUser } from '@/actions/auth';
+import { enforceActionAccess } from '@/actions/auth';
+import { isITOperator } from '@/lib/auth/roles';
+import { getCachedDashboardKpiMetrics } from './queries/kpis';
 import {
-  assertAdminOrOperator,
-  getCachedDashboardKpiMetrics,
   getCachedInventoryStatus,
   getCachedDepartmentAllocation,
   getOverdueReturnsInternal,
   getHighMaintenanceAssetsInternal,
-  type DashboardKpiMetrics,
-  type InventoryStatusResponse,
-  type DepartmentAllocationItem,
-  type OverdueReturnRow,
-  type HighMaintenanceRow,
-} from './shared';
+  getPendingMaintenanceRequestsInternal,
+} from './queries/inventory';
+import type {
+  DashboardKpiMetrics,
+  InventoryStatusResponse,
+  DepartmentAllocationItem,
+  OverdueReturnRow,
+  HighMaintenanceRow,
+  PendingMaintenanceRow,
+} from '@/types/dashboard';
 
 export interface ITDashboardBatchData {
   kpiMetrics: DashboardKpiMetrics;
@@ -21,18 +25,12 @@ export interface ITDashboardBatchData {
   departmentAllocation: DepartmentAllocationItem[];
   overdueReturns: OverdueReturnRow[];
   highMaintenanceAssets: HighMaintenanceRow[];
+  pendingMaintenance: PendingMaintenanceRow[];
 }
 
-/**
- * Fetches all IT-related dashboard data in a single call, performing auth once
- * and running all queries in parallel.
- *
- * Strictly locks entry point to GlobalAdmin or ITOperator.
- */
+/** Fetches all IT-related dashboard data in parallel. Restricted to ITOperator / GlobalAdmin. */
 export async function getITDashboardData(): Promise<ITDashboardBatchData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  assertAdminOrOperator(user);
+  await enforceActionAccess(isITOperator);
 
   const results = await Promise.allSettled([
     getCachedDashboardKpiMetrics(),
@@ -40,9 +38,9 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
     getCachedDepartmentAllocation(),
     getOverdueReturnsInternal(),
     getHighMaintenanceAssetsInternal(),
+    getPendingMaintenanceRequestsInternal(),
   ]);
 
-  // Handle promise resolution with fallbacks if queries fail
   const kpiMetrics: DashboardKpiMetrics =
     results[0].status === 'fulfilled'
       ? results[0].value
@@ -57,7 +55,6 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
           impactedSoftwareEmployees: 0,
         };
 
-  // Strictly filter out any financial values to keep Operator view isolated from price/financial details
   const filteredKpiMetrics: DashboardKpiMetrics = {
     totalActiveAssets: kpiMetrics.totalActiveAssets,
     totalActiveAssetsChange: kpiMetrics.totalActiveAssetsChange,
@@ -76,10 +73,20 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
         ? results[1].value
         : { inventoryData: [], utilizationRate: 0 },
     departmentAllocation:
-      results[2].status === 'fulfilled' ? (results[2].value as DepartmentAllocationItem[]) : [],
+      results[2].status === 'fulfilled'
+        ? (results[2].value as DepartmentAllocationItem[])
+        : [],
     overdueReturns:
-      results[3].status === 'fulfilled' ? (results[3].value as OverdueReturnRow[]) : [],
+      results[3].status === 'fulfilled'
+        ? (results[3].value as OverdueReturnRow[])
+        : [],
     highMaintenanceAssets:
-      results[4].status === 'fulfilled' ? (results[4].value as HighMaintenanceRow[]) : [],
+      results[4].status === 'fulfilled'
+        ? (results[4].value as HighMaintenanceRow[])
+        : [],
+    pendingMaintenance:
+      results[5].status === 'fulfilled'
+        ? (results[5].value as PendingMaintenanceRow[])
+        : [],
   };
 }

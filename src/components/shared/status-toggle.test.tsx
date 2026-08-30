@@ -18,12 +18,22 @@ describe('StatusToggle', () => {
 
   it('renders custom text for active/inactive states', () => {
     const { rerender } = render(
-      <StatusToggle isActive={true} onToggle={vi.fn()} activeText="On" inactiveText="Off" />
+      <StatusToggle
+        isActive={true}
+        onToggle={vi.fn()}
+        activeText="On"
+        inactiveText="Off"
+      />
     );
     expect(screen.getByText('On')).toBeInTheDocument();
 
     rerender(
-      <StatusToggle isActive={false} onToggle={vi.fn()} activeText="On" inactiveText="Off" />
+      <StatusToggle
+        isActive={false}
+        onToggle={vi.fn()}
+        activeText="On"
+        inactiveText="Off"
+      />
     );
     expect(screen.getByText('Off')).toBeInTheDocument();
   });
@@ -31,7 +41,7 @@ describe('StatusToggle', () => {
   it('calls onToggle when clicked', async () => {
     const user = userEvent.setup();
     const onToggleMock = vi.fn();
-    
+
     render(<StatusToggle isActive={false} onToggle={onToggleMock} />);
     const toggle = screen.getByRole('switch');
     await user.click(toggle);
@@ -42,11 +52,13 @@ describe('StatusToggle', () => {
   it('respects the disabled prop', async () => {
     const user = userEvent.setup();
     const onToggleMock = vi.fn();
-    
-    render(<StatusToggle isActive={false} onToggle={onToggleMock} disabled={true} />);
+
+    render(
+      <StatusToggle isActive={false} onToggle={onToggleMock} disabled={true} />
+    );
     const toggle = screen.getByRole('switch');
     expect(toggle).toBeDisabled();
-    
+
     await user.click(toggle);
     expect(onToggleMock).not.toHaveBeenCalled();
   });

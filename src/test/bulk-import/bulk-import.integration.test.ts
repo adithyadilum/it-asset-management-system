@@ -1,9 +1,20 @@
-import { parseAndValidateImport, executeBulkImport } from '@/actions/bulk-import';
+import {
+  parseAndValidateImport,
+  executeBulkImport,
+} from '@/actions/bulk-import';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { getAuthenticatedUser } from '@/actions/auth';
 import { canManageAssets } from '@/lib/auth/roles';
 import { describe, it, expect, vi } from 'vitest';
+
+const { mockRedisSet, mockRedisEval } = vi.hoisted(() => ({
+  mockRedisSet: vi.fn().mockResolvedValue('OK'),
+  mockRedisEval: vi.fn().mockResolvedValue(1),
+}));
+vi.mock('@upstash/redis', () => ({
+  Redis: { fromEnv: () => ({ set: mockRedisSet, eval: mockRedisEval }) },
+}));
 
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: vi.fn(),
@@ -18,8 +29,11 @@ vi.mock('next/cache', () => ({
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
   convertCurrencyAmount: vi.fn().mockReturnValue(100),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/db', () => ({
@@ -37,21 +51,25 @@ vi.mock('@/db', () => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn(() => Promise.resolve([{ value: 10 }])),
-         
+
         then: function (resolve: any) {
           resolve([]);
         },
       })),
     })),
-    execute: vi.fn(() => Promise.resolve({ rows: [{ pg_try_advisory_lock: true }] })),
+    execute: vi.fn(() =>
+      Promise.resolve({ rows: [{ pg_try_advisory_lock: true }] })
+    ),
     transaction: vi.fn(async (cb) => {
       // Create a mock transaction object
       const tx = {
         insert: vi.fn(() => ({
           values: vi.fn(() => ({
             returning: vi.fn(() => [{ id: 1, assetTag: 'HRW-LAP-011' }]),
-             
-            then: function (resolve: any) { resolve([{ id: 1 }]); },
+
+            then: function (resolve: any) {
+              resolve([{ id: 1 }]);
+            },
           })),
         })),
       };
@@ -70,10 +88,12 @@ describe('Bulk Import Integration', () => {
   });
 
   it('rejects users without proper permissions', async () => {
-     
-    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ id: 'user-1', role: 'Employee' } as any);
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({
+      id: 'user-1',
+      role: 'Employee',
+    } as any);
     vi.mocked(canManageAssets).mockReturnValueOnce(false);
-    
+
     const formData = new FormData();
     const result = await parseAndValidateImport(formData);
     expect(result.success).toBe(false);
@@ -81,8 +101,10 @@ describe('Bulk Import Integration', () => {
   });
 
   it('executes bulk import successfully when lock is acquired', async () => {
-     
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'admin', role: 'GlobalAdmin' } as any);
+    vi.mocked(getAuthenticatedUser).mockResolvedValue({
+      id: 'admin',
+      role: 'GlobalAdmin',
+    } as any);
     vi.mocked(canManageAssets).mockReturnValue(true);
 
     vi.mocked(db.query.categories.findFirst).mockResolvedValueOnce({
@@ -91,10 +113,8 @@ describe('Bulk Import Integration', () => {
       pillar: 'Hardware',
       prefix: 'LAP',
       isActive: true,
-     
     } as any);
 
-     
     const resolvedRows: any[] = [
       {
         rowNumber: 2,
@@ -108,7 +128,7 @@ describe('Bulk Import Integration', () => {
         tax: 200,
         shippingCost: 50,
         currencyCode: 'USD',
-      }
+      },
     ];
 
     const result = await executeBulkImport(1, resolvedRows, 'import.csv');
@@ -120,15 +140,16 @@ describe('Bulk Import Integration', () => {
   });
 
   it('fails execute if lock is not granted', async () => {
-     
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'admin', role: 'GlobalAdmin' } as any);
+    vi.mocked(getAuthenticatedUser).mockResolvedValue({
+      id: 'admin',
+      role: 'GlobalAdmin',
+    } as any);
     vi.mocked(canManageAssets).mockReturnValue(true);
 
     // Mock lock failure
-     
-    vi.mocked(db.execute).mockResolvedValueOnce({ rows: [{ pg_try_advisory_lock: false }] } as any);
 
-     
+    mockRedisSet.mockResolvedValueOnce(null);
+
     const result = await executeBulkImport(1, [{}] as any, 'import.csv');
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/currently in progress/i);

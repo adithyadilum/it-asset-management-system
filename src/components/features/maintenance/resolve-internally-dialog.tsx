@@ -1,6 +1,15 @@
 'use client';
 import { useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -47,15 +56,26 @@ export function ResolveInternallyDialog({
     <AlertDialog open={isOpen} onOpenChange={handleClose}>
       <AlertDialogContent className="max-w-md bg-background border-border">
         <AlertDialogHeader>
-          <AlertDialogTitle className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>Resolve Issue Internally</AlertDialogTitle>
-          <AlertDialogDescription className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-            Resolving this issue will update the asset status to &quot;Available&quot;, update the maintenance ticket, and add an audit log entry.
+          <AlertDialogTitle
+            className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+          >
+            Resolve Issue Internally
+          </AlertDialogTitle>
+          <AlertDialogDescription
+            className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+          >
+            Resolving this issue will update the asset status to
+            &quot;Available&quot;, update the maintenance ticket, and add an
+            audit log entry.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="resolution-note" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+            <Label
+              htmlFor="resolution-note"
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+            >
               Resolution Note <span className="text-destructive">*</span>
             </Label>
             <Textarea
@@ -69,20 +89,29 @@ export function ResolveInternallyDialog({
               className={`min-h-24 resize-none border-input focus-visible:ring-ring ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               disabled={isLoading}
             />
-            <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}>
+            <p
+              className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}
+            >
               {resolutionNote.length}/500 characters
             </p>
           </div>
 
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 border border-destructive/20">
-              <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-destructive`}>{error}</p>
+              <p
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-destructive`}
+              >
+                {error}
+              </p>
             </div>
           )}
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading} className="border-border text-foreground hover:bg-muted/50">
+          <AlertDialogCancel
+            disabled={isLoading}
+            className="border-border text-foreground hover:bg-muted/50"
+          >
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction

@@ -1,10 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, X, Laptop, CalendarDays } from 'lucide-react';
 import type { Vendor, InitiateRepairFormData } from '@/types/maintenance';
@@ -46,8 +57,10 @@ export function InitiateRepairDialog({
     currencyCode: 'LKR',
     expectedReturnDate: '',
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof InitiateRepairFormData, string>>>({});
-  
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof InitiateRepairFormData, string>>
+  >({});
+
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validateForm = () => {
@@ -67,7 +80,8 @@ export function InitiateRepairDialog({
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (selectedDate < today) {
-        newErrors.expectedReturnDate = 'Expected Return Date must be in the future';
+        newErrors.expectedReturnDate =
+          'Expected Return Date must be in the future';
       }
     }
     setErrors(newErrors);
@@ -79,32 +93,47 @@ export function InitiateRepairDialog({
     if (!validateForm()) return;
     try {
       await onConfirm(formData);
-      setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', currencyCode: 'LKR', expectedReturnDate: '' });
+      setFormData({
+        vendorId: '',
+        rmaNumber: '',
+        estimatedCost: '',
+        currencyCode: 'LKR',
+        expectedReturnDate: '',
+      });
       setErrors({});
       onClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to initiate repair';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to initiate repair';
       setSubmitError(errorMessage);
     }
   };
 
   const handleClose = () => {
     if (!isLoading) {
-      setFormData({ vendorId: '', rmaNumber: '', estimatedCost: '', currencyCode: 'LKR', expectedReturnDate: '' });
+      setFormData({
+        vendorId: '',
+        rmaNumber: '',
+        estimatedCost: '',
+        currencyCode: 'LKR',
+        expectedReturnDate: '',
+      });
       setErrors({});
       setSubmitError(null);
       onClose();
     }
   };
 
-  const isFormValid = formData.vendorId.trim() !== '' && formData.rmaNumber.trim() !== '';
+  const isFormValid =
+    formData.vendorId.trim() !== '' && formData.rmaNumber.trim() !== '';
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] w-full p-6 bg-background rounded-xl shadow-lg border border-border [&>button]:hidden flex flex-col gap-6">
-        
         <div className="flex items-center justify-between">
-          <DialogTitle className={`flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+          <DialogTitle
+            className={`flex items-center gap-2 ${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+          >
             <AlertCircle className="h-6 w-6 opacity-70" strokeWidth={1.5} />
             Send Asset for Repair
           </DialogTitle>
@@ -119,51 +148,71 @@ export function InitiateRepairDialog({
 
         <div className="bg-muted/30 border border-border rounded-lg py-6 flex flex-col items-center gap-6 shadow-sm w-full">
           <div className="flex items-center justify-center gap-3 w-full px-6">
-            <Laptop className="h-10 w-10 text-foreground shrink-0" strokeWidth={1} />
-            <span className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground truncate`}>
+            <Laptop
+              className="h-10 w-10 text-foreground shrink-0"
+              strokeWidth={1}
+            />
+            <span
+              className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground truncate`}
+            >
               {assetName || 'Unknown Asset'}
             </span>
           </div>
 
           <div className="w-full flex justify-center px-6">
-            <div className={`grid grid-cols-[120px_1fr] gap-x-8 gap-y-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground w-fit min-w-[280px]`}>
-              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Asset ID:</div>
+            <div
+              className={`grid grid-cols-[120px_1fr] gap-x-8 gap-y-2 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground w-fit min-w-[280px]`}
+            >
+              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                Asset ID:
+              </div>
               <div className="truncate">{assetId || 'N/A'}</div>
-              
+
               <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Serial:</div>
               <div className="truncate">{assetSerial || 'N/A'}</div>
-              
-              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Reported By:</div>
+
+              <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                Reported By:
+              </div>
               <div className="truncate">{reportedBy || 'N/A'}</div>
-              
+
               <div className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Date:</div>
               <div className="truncate">
-                {reportedDate ? format(new Date(reportedDate), 'MMM dd, yyyy') : 'N/A'}
+                {reportedDate
+                  ? format(new Date(reportedDate), 'MMM dd, yyyy')
+                  : 'N/A'}
               </div>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-6 w-full">
-          
           <div className="flex flex-col gap-3">
-            <Label htmlFor="vendor" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground flex items-baseline gap-1`}>
+            <Label
+              htmlFor="vendor"
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground flex items-baseline gap-1`}
+            >
               Vendor <span className="text-destructive">*</span>
             </Label>
-            <Select 
+            <Select
               disabled={isLoading}
-              value={formData.vendorId} 
+              value={formData.vendorId}
               onValueChange={(value) => {
                 setFormData({ ...formData, vendorId: value });
                 setErrors({ ...errors, vendorId: undefined });
               }}
             >
-              <SelectTrigger id="vendor" className={`h-9 px-3 border-input bg-background shadow-sm rounded-lg ${errors.vendorId ? 'border-destructive' : ''} ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}>
+              <SelectTrigger
+                id="vendor"
+                className={`h-9 px-3 border-input bg-background shadow-sm rounded-lg ${errors.vendorId ? 'border-destructive' : ''} ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
+              >
                 <SelectValue placeholder="Select a vendor" />
               </SelectTrigger>
               <SelectContent className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
                 {vendors.length === 0 ? (
-                  <div className="p-2 text-muted-foreground">No vendors available</div>
+                  <div className="p-2 text-muted-foreground">
+                    No vendors available
+                  </div>
                 ) : (
                   vendors.map((vendor) => (
                     <SelectItem key={vendor.id} value={vendor.id.toString()}>
@@ -173,11 +222,20 @@ export function InitiateRepairDialog({
                 )}
               </SelectContent>
             </Select>
-            {errors.vendorId && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.vendorId}</p>}
+            {errors.vendorId && (
+              <p
+                className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}
+              >
+                {errors.vendorId}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">
-            <Label htmlFor="rma-number" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground flex items-baseline gap-1`}>
+            <Label
+              htmlFor="rma-number"
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground flex items-baseline gap-1`}
+            >
               RMA / Ticket Number: <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -192,12 +250,21 @@ export function InitiateRepairDialog({
               className={`h-9 px-3 border-input bg-background shadow-sm rounded-lg ${errors.rmaNumber ? 'border-destructive' : ''} ${TYPOGRAPHY_CLASSNAMES.textSmRegular}`}
               maxLength={50}
             />
-            {errors.rmaNumber && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.rmaNumber}</p>}
+            {errors.rmaNumber && (
+              <p
+                className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}
+              >
+                {errors.rmaNumber}
+              </p>
+            )}
           </div>
 
           <div className="flex items-start gap-5 w-full">
             <div className="flex flex-col gap-3 flex-1">
-              <Label htmlFor="estimated-cost" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              <Label
+                htmlFor="estimated-cost"
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+              >
                 Estimated Cost
               </Label>
               <div className="flex items-center shadow-sm rounded-lg border border-input bg-background w-full h-9 overflow-hidden">
@@ -208,7 +275,9 @@ export function InitiateRepairDialog({
                   }
                   disabled={isLoading}
                 >
-                  <SelectTrigger className={`w-[70px] h-full ${TYPOGRAPHY_CLASSNAMES.textSmMedium} border-0 border-r border-input rounded-none bg-transparent focus:ring-0 focus:ring-offset-0`}>
+                  <SelectTrigger
+                    className={`w-[70px] h-full ${TYPOGRAPHY_CLASSNAMES.textSmMedium} border-0 border-r border-input rounded-none bg-transparent focus:ring-0 focus:ring-offset-0`}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -232,11 +301,20 @@ export function InitiateRepairDialog({
                   className={`flex-1 h-full ${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground border-0 bg-transparent rounded-none focus-visible:ring-0 px-3 ${errors.estimatedCost ? 'bg-destructive/10' : ''}`}
                 />
               </div>
-              {errors.estimatedCost && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.estimatedCost}</p>}
+              {errors.estimatedCost && (
+                <p
+                  className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}
+                >
+                  {errors.estimatedCost}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-3 flex-1">
-              <Label htmlFor="return-date" className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+              <Label
+                htmlFor="return-date"
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+              >
                 Expected Return Date
               </Label>
               <div className="relative w-full shadow-sm rounded-lg h-9">
@@ -245,7 +323,10 @@ export function InitiateRepairDialog({
                   type="date"
                   value={formData.expectedReturnDate}
                   onChange={(e) => {
-                    setFormData({ ...formData, expectedReturnDate: e.target.value });
+                    setFormData({
+                      ...formData,
+                      expectedReturnDate: e.target.value,
+                    });
                     setErrors({ ...errors, expectedReturnDate: undefined });
                   }}
                   disabled={isLoading}
@@ -256,14 +337,24 @@ export function InitiateRepairDialog({
                   <CalendarDays className="h-4 w-4" />
                 </div>
               </div>
-              {errors.expectedReturnDate && <p className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}>{errors.expectedReturnDate}</p>}
+              {errors.expectedReturnDate && (
+                <p
+                  className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-destructive mt-[-4px]`}
+                >
+                  {errors.expectedReturnDate}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
         {submitError && (
           <div className="rounded-md bg-destructive/10 p-3 w-full">
-            <p className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-destructive`}>{submitError}</p>
+            <p
+              className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-destructive`}
+            >
+              {submitError}
+            </p>
           </div>
         )}
 
@@ -284,7 +375,6 @@ export function InitiateRepairDialog({
             {isLoading ? 'Dispatching...' : 'Confirm & Dispatch'}
           </Button>
         </DialogFooter>
-
       </DialogContent>
     </Dialog>
   );

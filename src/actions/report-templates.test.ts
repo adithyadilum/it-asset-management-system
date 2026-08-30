@@ -5,11 +5,21 @@ import {
   updateReportTemplate,
   deleteReportTemplate,
 } from '@/actions/report-templates';
-import { ADMIN_USER, EMPLOYEE_USER, IT_OPERATOR_USER } from '@/test/fixtures/users';
+import {
+  ADMIN_USER,
+  EMPLOYEE_USER,
+  IT_OPERATOR_USER,
+} from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: vi.fn(async (validator) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('Unauthorized');
+    if (validator && !validator(user.role)) throw new Error('Forbidden');
+    return user;
+  }),
 }));
 
 const mockLogAuditAction = vi.fn();
@@ -30,9 +40,18 @@ vi.mock('@/lib/latency', () => ({
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from'].forEach(
-      (m) => (c[m] = vi.fn().mockReturnThis())
-    );
+    [
+      'values',
+      'set',
+      'where',
+      'returning',
+      'limit',
+      'offset',
+      'innerJoin',
+      'leftJoin',
+      'orderBy',
+      'from',
+    ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     const proxy = new Proxy(c, {
       get(t, p) {
@@ -86,7 +105,9 @@ describe('Report Templates Actions', () => {
   describe('getReportTemplates', () => {
     it('throws unauthorized for non-admin/auditor/operator', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      await expect(getReportTemplates()).rejects.toThrow('Forbidden: You do not have permission to access reports.');
+      await expect(getReportTemplates()).rejects.toThrow(
+        'Forbidden: You do not have permission to access reports.'
+      );
     });
 
     it('returns templates for authorized user', async () => {
@@ -109,16 +130,20 @@ describe('Report Templates Actions', () => {
     it('validates payload and inserts into DB linking creator user ID', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
       mockDb.select.mockReturnValueOnce(chain([{ maxSequence: 5 }])); // For reportCode generation
-      mockDb.insert.mockReturnValueOnce(chain([{ id: 1, reportCode: 'RPT-2023-006' }]));
+      mockDb.insert.mockReturnValueOnce(
+        chain([{ id: 1, reportCode: 'RPT-2023-006' }])
+      );
 
       const result = await createReportTemplate(validPayload);
-      
+
       expect(result.success).toBe(true);
       expect(mockDb.insert).toHaveBeenCalled();
-      expect(mockLogAuditAction).toHaveBeenCalledWith(expect.objectContaining({
-        actionType: 'CREATE',
-        performedById: ADMIN_USER.id,
-      }));
+      expect(mockLogAuditAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: 'CREATE',
+          performedById: ADMIN_USER.id,
+        })
+      );
     });
 
     it('returns error on bad payload', async () => {
@@ -137,16 +162,22 @@ describe('Report Templates Actions', () => {
 
     it('updates valid fields and audits changes', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(IT_OPERATOR_USER);
-      mockDb.select.mockReturnValueOnce(chain([{ id: 1, name: 'Old Template' }]));
-      mockDb.update.mockReturnValueOnce(chain([{ id: 1, name: 'Test Report' }]));
+      mockDb.select.mockReturnValueOnce(
+        chain([{ id: 1, name: 'Old Template' }])
+      );
+      mockDb.update.mockReturnValueOnce(
+        chain([{ id: 1, name: 'Test Report' }])
+      );
 
       const result = await updateReportTemplate(1, validPayload);
       expect(result.success).toBe(true);
       expect(mockDb.update).toHaveBeenCalled();
-      expect(mockLogAuditAction).toHaveBeenCalledWith(expect.objectContaining({
-        actionType: 'UPDATE',
-        oldData: { id: 1, name: 'Old Template' },
-      }));
+      expect(mockLogAuditAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: 'UPDATE',
+          oldData: { id: 1, name: 'Old Template' },
+        })
+      );
     });
 
     it('returns error if template not found', async () => {
@@ -173,10 +204,12 @@ describe('Report Templates Actions', () => {
       const result = await deleteReportTemplate(1);
       expect(result.success).toBe(true);
       expect(mockDb.delete).toHaveBeenCalled();
-      expect(mockLogAuditAction).toHaveBeenCalledWith(expect.objectContaining({
-        actionType: 'DELETE',
-        performedById: ADMIN_USER.id,
-      }));
+      expect(mockLogAuditAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: 'DELETE',
+          performedById: ADMIN_USER.id,
+        })
+      );
     });
   });
 });

@@ -1,7 +1,7 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
@@ -72,7 +72,10 @@ describe('CreateTemplateDialog', () => {
   };
 
   it('renders and allows creating a template', async () => {
-    (createReportTemplate as any).mockResolvedValue({ success: true, message: 'Created' });
+    (createReportTemplate as any).mockResolvedValue({
+      success: true,
+      message: 'Created',
+    });
 
     render(
       <CreateTemplateDialog
@@ -96,7 +99,7 @@ describe('CreateTemplateDialog', () => {
     const nameInput = screen.getByLabelText(/Report Name/);
     fireEvent.input(nameInput, { target: { value: 'My Report' } });
     fireEvent.change(nameInput, { target: { value: 'My Report' } });
-    
+
     fireEvent.click(screen.getByRole('button', { name: 'Save Template' }));
 
     await waitFor(() => {

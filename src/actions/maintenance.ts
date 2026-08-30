@@ -16,14 +16,17 @@ import {
   assetAssignments,
 } from '@/db/schema';
 import { eq, and, ilike, or, desc, sql, isNull } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { enforceActionAccess } from '@/actions/auth';
+import { calculateCurrentBookValue } from '@/lib/depreciation';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import {
   resolveIssueSchema,
   initiateVendorRepairSchema,
   completeRepairSchema,
   panelRepairSchema,
+  flagForRepairSchema,
+  getRepairHistoryParamsSchema,
+  getAssetMaintenanceHistoryParamsSchema,
 } from '@/lib/validations/maintenance';
 import type {
   PendingReviewTicket,
@@ -48,148 +51,46 @@ const DEFAULT_HISTORY_LIMIT = 3;
 // READ OPERATIONS
 // ============================================================================
 
-export async function getPendingMaintenanceTickets(searchTerm = '') {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
-  )
-    throw new Error('Forbidden');
-
-  const baseCondition = and(
-    eq(maintenanceTickets.status, 'ACTIVE'),
-    eq(maintenanceTickets.ticketType, 'INTERNAL')
-  );
-
-  const searchCondition = searchTerm.trim()
-    ? or(
-        ilike(assets.assetTag, `%${searchTerm}%`),
-        ilike(assets.name, `%${searchTerm}%`),
-        ilike(maintenanceTickets.reportedIssue, `%${searchTerm}%`)
-      )
-    : undefined;
-
-  const result = await db
-    .select({
-      ticket: maintenanceTickets,
-      asset: assets,
-      model: models,
-      brand: brands,
-      category: categories,
-      purchase: assetPurchases,
-      reportedBy: users,
-    })
-    .from(maintenanceTickets)
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    )
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(brands, eq(models.brandId, brands.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-    .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
-    .limit(MAX_QUERY_LIMIT);
-
-  if (result.length === 0) return { tickets: [], total: 0 };
-
-  const tickets = result.map((row) => ({
-    ...row.ticket,
-    asset: row.asset,
-    model: row.model,
-    brand: row.brand,
-    category: row.category,
-    purchase: row.purchase,
-    reportedBy: row.reportedBy,
-  })) as unknown as PendingReviewTicket[];
-
-  return { tickets, total: tickets.length };
-}
-
-export async function getTicketForIssueReview(
-  ticketId: number
-): Promise<IssueReviewPanelData> {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
-  )
-    throw new Error('Forbidden');
-
-  const result = await db
-    .select({
-      ticket: maintenanceTickets,
-      asset: assets,
-      model: models,
-      brand: brands,
-      category: categories,
-      purchase: assetPurchases,
-      reportedBy: users,
-    })
-    .from(maintenanceTickets)
-    .where(
-      and(
-        eq(maintenanceTickets.id, ticketId),
-        eq(maintenanceTickets.status, 'ACTIVE')
-      )
-    )
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .innerJoin(models, eq(assets.modelId, models.id))
-    .innerJoin(brands, eq(models.brandId, brands.id))
-    .innerJoin(categories, eq(models.categoryId, categories.id))
-    .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-    .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
-    .limit(1);
-
-  if (result.length === 0) throw new Error('Ticket not found');
-
-  const row = result[0];
-  const purchase = row.purchase;
-
-  // Calculate Depreciation & Book Value from available purchase data
-  const totalCost = purchase?.totalCost
-    ? parseFloat(purchase.totalCost.toString())
-    : 0;
-  const bookValue = calculateStraightLineDepreciation(
-    totalCost,
-    row.asset.usefulLifeMonths,
-    purchase?.purchaseDate ?? null
-  );
-
-  // Calculate Total Cost of Ownership (add repair costs)
-  const repairResult = await db
-    .select({
-      totalRepair:
-        sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
-          'totalRepair'
-        ),
-    })
-    .from(maintenanceTickets)
-    .where(
-      and(
-        eq(maintenanceTickets.assetId, row.asset.id),
-        eq(maintenanceTickets.status, 'COMPLETED')
-      )
+async function loadPendingMaintenanceTickets(searchTerm = '') {
+  try {
+    const baseCondition = and(
+      eq(maintenanceTickets.status, 'ACTIVE'),
+      eq(maintenanceTickets.ticketType, 'INTERNAL')
     );
 
-  const totalRepairCosts = parseFloat(
-    repairResult[0]?.totalRepair?.toString() || '0'
-  );
-  const totalTCO = Math.round((totalCost + totalRepairCosts) * 100) / 100;
+    const searchCondition = searchTerm.trim()
+      ? or(
+          ilike(assets.assetTag, `%${searchTerm}%`),
+          ilike(assets.name, `%${searchTerm}%`),
+          ilike(maintenanceTickets.reportedIssue, `%${searchTerm}%`)
+        )
+      : undefined;
 
-  // Determine Warranty Status
-  let warrantyStatus: 'Active' | 'Expired' = 'Expired';
-  if (purchase?.warrantyExpiry) {
-    const expiryDate = new Date(purchase.warrantyExpiry);
-    warrantyStatus = expiryDate > new Date() ? 'Active' : 'Expired';
-  }
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+        model: models,
+        brand: brands,
+        category: categories,
+        purchase: assetPurchases,
+        reportedBy: users,
+      })
+      .from(maintenanceTickets)
+      .where(
+        searchCondition ? and(baseCondition, searchCondition) : baseCondition
+      )
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
+      .limit(MAX_QUERY_LIMIT);
 
-  return {
-    ticket: {
+    if (result.length === 0) return { tickets: [], total: 0 };
+
+    const tickets = result.map((row) => ({
       ...row.ticket,
       asset: row.asset,
       model: row.model,
@@ -197,78 +98,287 @@ export async function getTicketForIssueReview(
       category: row.category,
       purchase: row.purchase,
       reportedBy: row.reportedBy,
-    },
-    warrantyStatus,
-    bookValue: Math.round(bookValue * 100) / 100,
-    originalCost: totalCost,
-    totalTCO,
-  } as unknown as IssueReviewPanelData;
+    })) as unknown as PendingReviewTicket[];
+
+    return { tickets, total: tickets.length };
+  } catch (error) {
+    console.error(
+      '[getPendingMaintenanceTickets]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    throw new Error('Failed to load maintenance data.');
+  }
+}
+
+export async function getPendingMaintenanceTickets(searchTerm = '') {
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
+  return loadPendingMaintenanceTickets(searchTerm);
+}
+
+export async function getTicketForIssueReview(
+  ticketId: number
+): Promise<IssueReviewPanelData> {
+  // Fix A — FinanceAuditor must not access individual operational ticket details
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
+  try {
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+        model: models,
+        brand: brands,
+        category: categories,
+        purchase: assetPurchases,
+        reportedBy: users,
+      })
+      .from(maintenanceTickets)
+      .where(
+        and(
+          eq(maintenanceTickets.id, ticketId),
+          eq(maintenanceTickets.status, 'ACTIVE')
+        )
+      )
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
+      .limit(1);
+
+    if (result.length === 0) throw new Error('Ticket not found');
+
+    const row = result[0];
+    const purchase = row.purchase;
+
+    const totalCost = purchase?.totalCost
+      ? parseFloat(purchase.totalCost.toString())
+      : 0;
+    const salvage = row.asset.salvageValue
+      ? parseFloat(row.asset.salvageValue.toString())
+      : 0;
+    const bookValue = calculateCurrentBookValue({
+      cost: totalCost,
+      salvageValue: salvage,
+      usefulLifeMonths: row.asset.usefulLifeMonths,
+      purchaseDate: purchase?.purchaseDate ?? null,
+    });
+
+    // Calculate Total Cost of Ownership (add repair costs)
+    const repairResult = await db
+      .select({
+        totalRepair:
+          sql<number>`COALESCE(SUM(${maintenanceTickets.actualCost}), 0)`.as(
+            'totalRepair'
+          ),
+      })
+      .from(maintenanceTickets)
+      .where(
+        and(
+          eq(maintenanceTickets.assetId, row.asset.id),
+          eq(maintenanceTickets.status, 'COMPLETED')
+        )
+      );
+
+    const totalRepairCosts = parseFloat(
+      repairResult[0]?.totalRepair?.toString() || '0'
+    );
+    const totalTCO = Math.round((totalCost + totalRepairCosts) * 100) / 100;
+
+    // Determine Warranty Status
+    let warrantyStatus: 'Active' | 'Expired' = 'Expired';
+    if (purchase?.warrantyExpiry) {
+      const expiryDate = new Date(purchase.warrantyExpiry);
+      warrantyStatus = expiryDate > new Date() ? 'Active' : 'Expired';
+    }
+
+    return {
+      ticket: {
+        ...row.ticket,
+        asset: row.asset,
+        model: row.model,
+        brand: row.brand,
+        category: row.category,
+        purchase: row.purchase,
+        reportedBy: row.reportedBy,
+      },
+      warrantyStatus,
+      bookValue: Math.round(bookValue * 100) / 100,
+      originalCost: totalCost,
+      totalTCO,
+    } as unknown as IssueReviewPanelData;
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Ticket not found')
+      throw error;
+    console.error(
+      '[getTicketForIssueReview]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 export async function getVendors() {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
-  )
+  // Fix A — FinanceAuditor must not access vendor operational data
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
-  return await db
-    .select({
-      id: vendors.id,
-      companyName: vendors.companyName,
-      email: vendors.email,
-      phone: vendors.phone,
-      website: vendors.website,
-      isActive: vendors.isActive,
-    })
-    .from(vendors)
-    .where(eq(vendors.isActive, true))
-    .orderBy(vendors.companyName);
+  try {
+    return await db
+      .select({
+        id: vendors.id,
+        companyName: vendors.companyName,
+        email: vendors.email,
+        phone: vendors.phone,
+        website: vendors.website,
+        isActive: vendors.isActive,
+      })
+      .from(vendors)
+      .where(eq(vendors.isActive, true))
+      .orderBy(vendors.companyName);
+  } catch (error) {
+    console.error(
+      '[getVendors]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    throw new Error('Failed to load maintenance data.');
+  }
+}
+
+async function loadActiveRepairTickets(searchTerm = '') {
+  try {
+    const baseCondition = and(
+      eq(maintenanceTickets.status, 'ACTIVE'),
+      eq(maintenanceTickets.ticketType, 'VENDOR')
+    );
+
+    const searchCondition = searchTerm.trim()
+      ? or(
+          ilike(maintenanceTickets.rmaNumber, `%${searchTerm}%`),
+          ilike(maintenanceTickets.vendorName, `%${searchTerm}%`)
+        )
+      : undefined;
+
+    const result = await db
+      .select({
+        ticket: maintenanceTickets,
+        asset: assets,
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(
+        searchCondition ? and(baseCondition, searchCondition) : baseCondition
+      )
+      .limit(MAX_QUERY_LIMIT);
+
+    const tickets = result.map((row) => ({
+      ...row.ticket,
+      asset: row.asset,
+    })) as unknown as ActiveRepairTicket[];
+
+    return { tickets, total: tickets.length };
+  } catch (error) {
+    console.error(
+      '[getActiveRepairTickets]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 export async function getActiveRepairTickets(searchTerm = '') {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
-  if (
-    user.role !== 'GlobalAdmin' &&
-    user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
-  )
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
-  const baseCondition = and(
-    eq(maintenanceTickets.status, 'ACTIVE'),
-    eq(maintenanceTickets.ticketType, 'VENDOR')
-  );
+  return loadActiveRepairTickets(searchTerm);
+}
 
-  const searchCondition = searchTerm.trim()
-    ? or(
-        ilike(maintenanceTickets.rmaNumber, `%${searchTerm}%`),
-        ilike(maintenanceTickets.vendorName, `%${searchTerm}%`)
+async function loadRepairHistory(page = 1, pageSize = 10, searchTerm = '') {
+  // Validate and bound pagination parameters.
+  const paramsResult = getRepairHistoryParamsSchema.safeParse({
+    page,
+    pageSize,
+    searchTerm,
+  });
+  if (!paramsResult.success) {
+    throw new Error(
+      paramsResult.error.issues[0]?.message ?? 'Invalid pagination parameters.'
+    );
+  }
+  const safeParams = paramsResult.data;
+
+  try {
+    const offset = (safeParams.page - 1) * safeParams.pageSize;
+    const baseCondition = eq(maintenanceTickets.status, 'COMPLETED');
+
+    const searchCondition = safeParams.searchTerm.trim()
+      ? or(
+          ilike(assets.assetTag, `%${safeParams.searchTerm}%`),
+          ilike(maintenanceTickets.vendorName, `%${safeParams.searchTerm}%`)
+        )
+      : undefined;
+
+    const result = await db
+      .select({
+        totalCount: sql<number>`count(*) over()::int`,
+        ticket: {
+          id: maintenanceTickets.id,
+          assetId: assets.assetTag,
+          vendorName: maintenanceTickets.vendorName,
+          actualCompletionDate: maintenanceTickets.actualCompletionDate,
+          actualCost: maintenanceTickets.actualCost,
+          currencyCode: maintenanceTickets.currencyCode,
+          resolutionNotes: maintenanceTickets.resolutionNotes,
+          status: maintenanceTickets.status,
+          createdAt: maintenanceTickets.createdAt,
+          updatedAt: maintenanceTickets.updatedAt,
+        },
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(
+        searchCondition ? and(baseCondition, searchCondition) : baseCondition
       )
-    : undefined;
+      .orderBy(desc(maintenanceTickets.actualCompletionDate))
+      .limit(safeParams.pageSize)
+      .offset(offset);
 
-  const result = await db
-    .select({
-      ticket: maintenanceTickets,
-      asset: assets,
-    })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    )
-    .limit(MAX_QUERY_LIMIT);
+    let total = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && safeParams.page > 1) {
+      const countResult = await db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(maintenanceTickets)
+        .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+        .where(
+          searchCondition ? and(baseCondition, searchCondition) : baseCondition
+        );
+      total = countResult[0]?.count ?? 0;
+    }
 
-  const tickets = result.map((row) => ({
-    ...row.ticket,
-    asset: row.asset,
-  })) as unknown as ActiveRepairTicket[];
+    const tickets = result.map((row) => row.ticket) as RepairHistoryTicket[];
 
-  return { tickets, total: tickets.length };
+    return {
+      tickets,
+      total,
+      page: safeParams.page,
+      pageSize: safeParams.pageSize,
+      totalPages: Math.ceil(total / safeParams.pageSize),
+    };
+  } catch (error) {
+    console.error(
+      '[getRepairHistory]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 export async function getRepairHistory(
@@ -276,67 +386,42 @@ export async function getRepairHistory(
   pageSize = 10,
   searchTerm = ''
 ) {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
-  const offset = (page - 1) * pageSize;
-  const baseCondition = eq(maintenanceTickets.status, 'COMPLETED');
+  return loadRepairHistory(page, pageSize, searchTerm);
+}
 
-  const searchCondition = searchTerm.trim()
-    ? or(
-        ilike(assets.assetTag, `%${searchTerm}%`),
-        ilike(maintenanceTickets.vendorName, `%${searchTerm}%`)
-      )
-    : undefined;
+/** Load all maintenance tabs through one authenticated action request. */
+export async function getMaintenanceOverview(searchTerm = '') {
+  const user = await enforceActionAccess();
+  if (
+    user.role !== 'GlobalAdmin' &&
+    user.role !== 'ITOperator' &&
+    user.role !== 'FinancialAuditor'
+  )
+    throw new Error('Forbidden');
 
-  const countResult = await db
-    .select({ count: sql<number>`cast(count(*) as integer)` })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    );
-
-  const total = countResult[0]?.count || 0;
-
-  const result = await db
-    .select({
-      ticket: {
-        id: maintenanceTickets.id,
-        assetId: assets.assetTag,
-        vendorName: maintenanceTickets.vendorName,
-        actualCompletionDate: maintenanceTickets.actualCompletionDate,
-        actualCost: maintenanceTickets.actualCost,
-        currencyCode: maintenanceTickets.currencyCode,
-        resolutionNotes: maintenanceTickets.resolutionNotes,
-        status: maintenanceTickets.status,
-        createdAt: maintenanceTickets.createdAt,
-        updatedAt: maintenanceTickets.updatedAt,
-      },
-    })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(
-      searchCondition ? and(baseCondition, searchCondition) : baseCondition
-    )
-    .orderBy(desc(maintenanceTickets.actualCompletionDate))
-    .limit(pageSize)
-    .offset(offset);
-
-  const tickets = result.map((row) => row.ticket) as RepairHistoryTicket[];
+  const canReadOperationalTickets = user.role !== 'FinancialAuditor';
+  const [pendingResult, activeResult, historyResult] = await Promise.all([
+    canReadOperationalTickets
+      ? loadPendingMaintenanceTickets(searchTerm)
+      : Promise.resolve({ tickets: [], total: 0 }),
+    canReadOperationalTickets
+      ? loadActiveRepairTickets(searchTerm)
+      : Promise.resolve({ tickets: [], total: 0 }),
+    loadRepairHistory(1, MAX_QUERY_LIMIT, searchTerm),
+  ]);
 
   return {
-    tickets,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.ceil(total / pageSize),
+    pendingTickets: pendingResult.tickets,
+    activeRepairTickets: activeResult.tickets,
+    repairHistoryTickets: historyResult.tickets,
   };
 }
 
@@ -344,44 +429,66 @@ export async function getAssetMaintenanceHistory(
   assetId: string,
   limit = DEFAULT_HISTORY_LIMIT
 ) {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  // FinanceAuditor allowed — this is the asset detail panel history view (last 3 records)
+  const user = await enforceActionAccess();
   if (
     user.role !== 'GlobalAdmin' &&
     user.role !== 'ITOperator' &&
-    user.role !== 'FinanceAuditor'
+    user.role !== 'FinancialAuditor'
   )
     throw new Error('Forbidden');
 
-  const assetRecord = await db
-    .select({ id: assets.id })
-    .from(assets)
-    .where(eq(assets.assetTag, assetId))
-    .limit(1);
+  // Fix B — Validate and bound assetId and limit parameters
+  const paramsResult = getAssetMaintenanceHistoryParamsSchema.safeParse({
+    assetId,
+    limit,
+  });
+  if (!paramsResult.success) {
+    throw new Error(
+      paramsResult.error.issues[0]?.message ?? 'Invalid parameters.'
+    );
+  }
+  const safeParams = paramsResult.data;
 
-  if (assetRecord.length === 0) throw new Error('Asset not found');
+  try {
+    const assetRecord = await db
+      .select({ id: assets.id })
+      .from(assets)
+      .where(eq(assets.assetTag, safeParams.assetId))
+      .limit(1);
 
-  const numericAssetId = assetRecord[0].id;
+    if (assetRecord.length === 0) throw new Error('Asset not found');
 
-  const result = await db
-    .select({
-      id: maintenanceTickets.id,
-      assetId: assets.assetTag,
-      ticketType: maintenanceTickets.ticketType,
-      vendorName: maintenanceTickets.vendorName,
-      reportedIssue: maintenanceTickets.reportedIssue,
-      resolutionNotes: maintenanceTickets.resolutionNotes,
-      actualCost: maintenanceTickets.actualCost,
-      actualCompletionDate: maintenanceTickets.actualCompletionDate,
-      status: maintenanceTickets.status,
-    })
-    .from(maintenanceTickets)
-    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
-    .where(eq(maintenanceTickets.assetId, numericAssetId))
-    .orderBy(desc(maintenanceTickets.createdAt))
-    .limit(limit);
+    const numericAssetId = assetRecord[0].id;
 
-  return result as AssetMaintenanceRecord[];
+    const result = await db
+      .select({
+        id: maintenanceTickets.id,
+        assetId: assets.assetTag,
+        ticketType: maintenanceTickets.ticketType,
+        vendorName: maintenanceTickets.vendorName,
+        reportedIssue: maintenanceTickets.reportedIssue,
+        resolutionNotes: maintenanceTickets.resolutionNotes,
+        actualCost: maintenanceTickets.actualCost,
+        actualCompletionDate: maintenanceTickets.actualCompletionDate,
+        status: maintenanceTickets.status,
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .where(eq(maintenanceTickets.assetId, numericAssetId))
+      .orderBy(desc(maintenanceTickets.createdAt))
+      .limit(safeParams.limit);
+
+    return result as AssetMaintenanceRecord[];
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Asset not found')
+      throw error;
+    console.error(
+      '[getAssetMaintenanceHistory]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    throw new Error('Failed to load maintenance data.');
+  }
 }
 
 // ============================================================================
@@ -393,8 +500,7 @@ export async function resolveIssueInternally(
   resolutionNote: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -426,6 +532,10 @@ export async function resolveIssueInternally(
         throw new Error(`Asset with ID ${ticket.assetId} not found`);
       const currentAsset = currentAssetResult[0];
 
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
+
       const now = new Date();
 
       const updatedAssets = await tx
@@ -436,16 +546,23 @@ export async function resolveIssueInternally(
       if (updatedAssets.length === 0)
         throw new Error('Failed to update asset status');
 
-      // Terminate any active assignments since the asset is now Available
-      await tx
-        .update(assetAssignments)
-        .set({ returnedDate: now })
-        .where(
-          and(
-            eq(assetAssignments.assetId, ticket.assetId),
-            isNull(assetAssignments.returnedDate)
-          )
+      // Fix C — Terminate any active assignments since the asset is now Available
+      // No row-count check required (0 open assignments is valid), but DB errors must surface
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, ticket.assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${assignErr instanceof Error ? assignErr.message : 'Unknown error'}`
         );
+      }
 
       const updatedTickets = await tx
         .update(maintenanceTickets)
@@ -523,8 +640,7 @@ export async function initiateVendorRepair(
   currencyCode?: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -554,6 +670,10 @@ export async function initiateVendorRepair(
         throw new Error(`Asset ${parsed.data.assetId} not found`);
       const currentAsset = currentAssetResult[0];
 
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
+
       const vendorResult = await tx
         .select()
         .from(vendors)
@@ -565,18 +685,40 @@ export async function initiateVendorRepair(
 
       const now = new Date();
 
-      const closedTicket = await tx
-        .update(maintenanceTickets)
-        .set({
-          status: 'COMPLETED',
-          resolutionNotes: 'Dispatched to vendor repair',
-          actualCompletionDate: now,
-          updatedAt: now,
-        })
-        .where(eq(maintenanceTickets.id, ticketId))
-        .returning({ id: maintenanceTickets.id });
-      if (closedTicket.length === 0)
-        throw new Error('Failed to close initial triage ticket');
+      // Dispatching is a stage of the existing ticket, not a new one.
+      //
+      // This used to close the triage ticket as COMPLETED and insert a second
+      // VENDOR ticket, which broke two things at once. Repair History lists
+      // every COMPLETED ticket, so the dispatch row showed up there as a
+      // finished repair with no cost, sitting next to the real one — the same
+      // asset recorded twice for a single repair. And the new ticket's
+      // reportedIssue was overwritten with "Vendor repair dispatch - <vendor>",
+      // so the operator closing the repair saw that placeholder instead of the
+      // fault someone actually reported.
+      //
+      // `ticketType` + `status` already encode the stage: INTERNAL/ACTIVE is
+      // the triage queue, VENDOR/ACTIVE is Active Repairs, COMPLETED is
+      // history. Promoting the row moves it between those views on its own and
+      // keeps reportedIssue intact for the whole lifecycle.
+      const triageResult = await tx
+        .select()
+        .from(maintenanceTickets)
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
+        .limit(1);
+      if (triageResult.length === 0) throw new Error('Triage ticket not found');
+      const triageTicket = triageResult[0];
+
+      if (triageTicket.assetId !== parsed.data.assetId)
+        throw new Error('Ticket does not belong to this asset');
+      // Guards against dispatching the same ticket twice from a stale tab.
+      // Status alone is not enough: dispatching leaves the ticket ACTIVE and
+      // only flips ticketType, so a second submit would sail past a status
+      // check and overwrite the vendor and RMA while duplicating the audit log
+      // and webhook. Only a ticket still in triage can be dispatched.
+      if (triageTicket.status !== 'ACTIVE')
+        throw new Error('Ticket is no longer active');
+      if (triageTicket.ticketType !== 'INTERNAL')
+        throw new Error('Ticket has already been dispatched to a vendor');
 
       const updatedAsset = await tx
         .update(assets)
@@ -586,30 +728,24 @@ export async function initiateVendorRepair(
       if (updatedAsset.length === 0)
         throw new Error('Failed to update asset status');
 
-      const newTicketValues = {
-        assetId: parsed.data.assetId,
-        ticketType: 'VENDOR' as const,
-        vendorName: vendor.companyName,
-        rmaNumber: parsed.data.rmaNumber ?? null,
-        reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-        estimatedCost:
-          parsed.data.estimatedCost != null
-            ? parsed.data.estimatedCost.toString()
-            : null,
-        currencyCode: parsed.data.currencyCode ?? 'LKR',
-        estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
-        status: 'ACTIVE' as const,
-        dispatchedById: user.id,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      const newTickets = await tx
-        .insert(maintenanceTickets)
-        .values(newTicketValues)
+      const dispatchedTickets = await tx
+        .update(maintenanceTickets)
+        .set({
+          ticketType: 'VENDOR' as const,
+          vendorName: vendor.companyName,
+          rmaNumber: parsed.data.rmaNumber ?? null,
+          estimatedCost:
+            parsed.data.estimatedCost != null
+              ? parsed.data.estimatedCost.toString()
+              : null,
+          currencyCode: parsed.data.currencyCode,
+          estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
+          updatedAt: now,
+        })
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .returning();
-      if (!newTickets[0])
-        throw new Error('Failed to create vendor repair ticket');
+      if (!dispatchedTickets[0])
+        throw new Error('Failed to update vendor repair ticket');
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
@@ -629,16 +765,16 @@ export async function initiateVendorRepair(
       });
 
       void dispatchWebhookEvent('maintenance.created', {
-        ticketId: newTickets[0].id,
+        ticketId: dispatchedTickets[0].id,
         assetId: parsed.data.assetId,
-        ticketType: newTicketValues.ticketType,
-        reportedIssue: newTicketValues.reportedIssue,
+        ticketType: 'VENDOR',
+        reportedIssue: dispatchedTickets[0].reportedIssue,
       });
 
       return {
         success: true,
         message: 'Asset dispatched successfully',
-        ticketId: newTickets[0].id,
+        ticketId: dispatchedTickets[0].id,
         assetId: parsed.data.assetId,
       };
     });
@@ -656,9 +792,15 @@ export async function initiateVendorRepair(
     const knownMessages = [
       'Asset ',
       'Vendor ',
-      'Failed to close',
+      'Triage ticket not found',
       'Failed to update asset status',
-      'Failed to create vendor repair ticket',
+      'Failed to update vendor repair ticket',
+      // Both are actionable by the operator — usually a second tab that already
+      // dispatched this ticket — so they must not collapse into the generic
+      // message.
+      'Ticket does not belong to this asset',
+      'Ticket is no longer active',
+      'Ticket has already been dispatched to a vendor',
     ];
     const isKnown =
       error instanceof Error &&
@@ -675,11 +817,11 @@ export async function completeRepairTicket(
   ticketId: number,
   actualCost: string,
   resolutionNotes: string,
-  updateStatusTo: 'Available' | 'Disposed'
+  updateStatusTo: 'Available' | 'Disposed',
+  currencyCode = 'LKR'
 ) {
   // 1. Zero Trust: Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -689,6 +831,7 @@ export async function completeRepairTicket(
     actualCost,
     resolutionNotes,
     updateStatusTo,
+    currencyCode,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
@@ -716,6 +859,10 @@ export async function completeRepairTicket(
         throw new Error(`Asset ${assetId} not found`);
       const currentAsset = currentAssetResult[0];
 
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
+
       const now = new Date();
 
       const updatedTickets = await tx
@@ -723,6 +870,7 @@ export async function completeRepairTicket(
         .set({
           status: 'COMPLETED',
           actualCost: parsed.data.actualCost.toString(),
+          currencyCode: parsed.data.currencyCode,
           actualCompletionDate: now,
           resolutionNotes: parsed.data.resolutionNotes,
           updatedAt: now,
@@ -741,16 +889,23 @@ export async function completeRepairTicket(
         .returning({ id: assets.id });
       if (updatedAssets.length === 0) throw new Error('Failed to update asset');
 
-      // Terminate any active assignments since the asset is now Available or Disposed
-      await tx
-        .update(assetAssignments)
-        .set({ returnedDate: now })
-        .where(
-          and(
-            eq(assetAssignments.assetId, assetId),
-            isNull(assetAssignments.returnedDate)
-          )
+      // Fix C — Terminate any active assignments since the asset is now Available or Disposed
+      // No row-count check required (0 open assignments is valid), but DB errors must surface
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${assignErr instanceof Error ? assignErr.message : 'Unknown error'}`
         );
+      }
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
@@ -768,6 +923,7 @@ export async function completeRepairTicket(
           isArchived,
           ticketStatus: 'COMPLETED',
           actualCost: parsed.data.actualCost,
+          currencyCode: parsed.data.currencyCode,
           resolutionNotes: parsed.data.resolutionNotes,
           actionContext: 'MAINTENANCE_REPAIR_COMPLETED',
         },
@@ -826,12 +982,10 @@ export async function reportDefectiveFromPanel(
   vendorId: string,
   rmaNumber: string,
   estimatedCost?: string,
-  expectedReturnDate?: string,
-  currencyCode?: string
+  expectedReturnDate?: string
 ): Promise<{ success: boolean; message: string; ticketId?: number }> {
   // 1. Auth & Role Validation
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
   if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
     throw new Error('Forbidden');
 
@@ -842,7 +996,6 @@ export async function reportDefectiveFromPanel(
     rmaNumber: rmaNumber || undefined,
     estimatedCost: estimatedCost || undefined,
     expectedReturnDate: expectedReturnDate || undefined,
-    currencyCode: currencyCode || undefined,
   });
   if (!parsed.success) {
     return {
@@ -862,6 +1015,10 @@ export async function reportDefectiveFromPanel(
       if (currentAssetResult.length === 0)
         throw new Error(`Asset ${parsed.data.assetId} not found`);
       const currentAsset = currentAssetResult[0];
+
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
+        throw new Error('Asset is disposed or archived');
+      }
 
       // Verify vendor exists
       const vendorResult = await tx
@@ -884,16 +1041,23 @@ export async function reportDefectiveFromPanel(
       if (updatedAsset.length === 0)
         throw new Error('Failed to update asset status');
 
-      // Terminate any active assignments
-      await tx
-        .update(assetAssignments)
-        .set({ returnedDate: now })
-        .where(
-          and(
-            eq(assetAssignments.assetId, parsed.data.assetId),
-            isNull(assetAssignments.returnedDate)
-          )
+      // Fix C — Terminate any active assignments
+      // No row-count check required (0 open assignments is valid), but DB errors must surface
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, parsed.data.assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${assignErr instanceof Error ? assignErr.message : 'Unknown error'}`
         );
+      }
 
       // Create vendor repair ticket
       const newTicketValues = {
@@ -906,7 +1070,6 @@ export async function reportDefectiveFromPanel(
           parsed.data.estimatedCost != null
             ? parsed.data.estimatedCost.toString()
             : null,
-        currencyCode: parsed.data.currencyCode ?? 'LKR',
         estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
         status: 'ACTIVE' as const,
         dispatchedById: user.id,
@@ -977,6 +1140,150 @@ export async function reportDefectiveFromPanel(
         isKnown && error instanceof Error
           ? error.message
           : 'Failed to dispatch asset for repair.',
+    };
+  }
+}
+
+/**
+ * Flags an asset for repair from the asset detail panel.
+ * Creates an INTERNAL maintenance ticket (ticketType = 'INTERNAL') so the
+ * asset appears in the Pending Review tab of the Maintenance module. The IT
+ * team can then triage it and dispatch to a vendor or resolve it internally
+ * using the existing maintenance workflows.
+ */
+export async function flagAssetForRepair(
+  assetId: string,
+  issueNote: string
+): Promise<{ success: boolean; message: string; ticketId?: number }> {
+  // 1. Auth & Role Validation
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
+  // 2. Input Validation
+  const parsed = flagForRepairSchema.safeParse({ assetId, issueNote });
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? 'Invalid input.',
+    };
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Verify asset exists and is actionable
+      const [currentAsset] = await tx
+        .select()
+        .from(assets)
+        .where(eq(assets.id, parsed.data.assetId))
+        .limit(1);
+
+      if (!currentAsset)
+        throw new Error(`Asset ${parsed.data.assetId} not found`);
+
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived)
+        throw new Error('Asset is disposed or archived');
+
+      const now = new Date();
+
+      // Create INTERNAL maintenance ticket → lands in Pending Review tab
+      const [newTicket] = await tx
+        .insert(maintenanceTickets)
+        .values({
+          assetId: parsed.data.assetId,
+          ticketType: 'INTERNAL',
+          reportedIssue: parsed.data.issueNote,
+          status: 'ACTIVE',
+          dispatchedById: user.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      if (!newTicket) throw new Error('Failed to create maintenance ticket');
+
+      // Update asset status to 'In Repair'
+      const [updatedAsset] = await tx
+        .update(assets)
+        .set({ status: 'In Repair', updatedAt: now })
+        .where(eq(assets.id, parsed.data.assetId))
+        .returning({ id: assets.id });
+
+      if (!updatedAsset) throw new Error('Failed to update asset status');
+
+      // Terminate any active assignments
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, parsed.data.assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${
+            assignErr instanceof Error ? assignErr.message : 'Unknown error'
+          }`
+        );
+      }
+
+      // Audit log
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: parsed.data.assetId,
+        actionType: 'UPDATE',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status },
+        newValue: {
+          status: 'In Repair',
+          actionContext: 'REPAIR_FLAGGED_FROM_PANEL',
+          issueNote: parsed.data.issueNote,
+        },
+        performedAt: now,
+      });
+
+      void dispatchWebhookEvent('maintenance.created', {
+        ticketId: newTicket.id,
+        assetId: parsed.data.assetId,
+        ticketType: 'INTERNAL',
+        reportedIssue: parsed.data.issueNote,
+      });
+
+      return {
+        success: true as const,
+        message: 'Asset flagged for repair. It will appear in Pending Review.',
+        ticketId: newTicket.id,
+      };
+    });
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
+  } catch (error) {
+    const knownMessages = [
+      'Asset ',
+      'Asset is disposed or archived',
+      'Failed to create maintenance ticket',
+      'Failed to update asset status',
+      'Failed to close active assignments',
+    ];
+    const isKnown =
+      error instanceof Error &&
+      knownMessages.some((m) => error.message.startsWith(m));
+    return {
+      success: false,
+      message:
+        isKnown && error instanceof Error
+          ? error.message
+          : 'Failed to flag asset for repair.',
     };
   }
 }

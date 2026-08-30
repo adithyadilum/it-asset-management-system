@@ -21,10 +21,31 @@ describe('PurchaseDetailsTab', () => {
       vendor: {
         vendorId: 'v1',
         vendorCode: 'V-001',
-        vendorName: 'Apple'
-      }
+        vendorName: 'Apple',
+      },
     };
-    render(<PurchaseDetailsTab {...mockDetails as any} />);
+    render(<PurchaseDetailsTab {...(mockDetails as any)} />);
     expect(screen.getByText('Apple')).toBeInTheDocument();
+  });
+
+  it('hides shipping cost when it is not applicable', () => {
+    const mockDetails = {
+      currency: 'USD',
+      purchaseDate: '2023-01-01',
+      basePrice: '2000',
+      shippingCost: '100',
+      tax: '0',
+      totalCost: '2100',
+      warrantyPeriod: '1 Year',
+      hideShippingCost: true,
+      vendor: {
+        vendorId: 'v1',
+        vendorCode: 'V-001',
+        vendorName: 'Apple',
+      },
+    };
+
+    render(<PurchaseDetailsTab {...(mockDetails as any)} />);
+    expect(screen.queryByText('Shipping Cost')).not.toBeInTheDocument();
   });
 });

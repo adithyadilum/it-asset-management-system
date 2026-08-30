@@ -11,8 +11,14 @@ interface RecentMaintenanceProps {
   onViewAll?: () => void;
 }
 
-export function RecentMaintenance({ assetTag, isOpen = true, onViewAll }: RecentMaintenanceProps) {
-  const [maintenanceHistory, setMaintenanceHistory] = useState<AssetMaintenanceRecord[]>([]);
+export function RecentMaintenance({
+  assetTag,
+  isOpen = true,
+  onViewAll,
+}: RecentMaintenanceProps) {
+  const [maintenanceHistory, setMaintenanceHistory] = useState<
+    AssetMaintenanceRecord[]
+  >([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
@@ -42,7 +48,10 @@ export function RecentMaintenance({ assetTag, isOpen = true, onViewAll }: Recent
           Recent Maintenance
         </h3>
         {maintenanceHistory.length > 0 && onViewAll && (
-          <button onClick={onViewAll} className="text-[13px] text-primary dark:text-blue-400 hover:underline font-medium">
+          <button
+            onClick={onViewAll}
+            className="text-[13px] text-primary dark:text-blue-400 hover:underline font-medium"
+          >
             View All
           </button>
         )}
@@ -56,10 +65,15 @@ export function RecentMaintenance({ assetTag, isOpen = true, onViewAll }: Recent
       ) : maintenanceHistory.length > 0 ? (
         <div className="space-y-3">
           {maintenanceHistory.map((record) => (
-            <div key={record.id} className="p-4 border border-border rounded-xl bg-muted/50">
+            <div
+              key={record.id}
+              className="p-4 border border-border rounded-xl bg-muted/50"
+            >
               <div className="flex justify-between items-start mb-2">
                 <span className="font-medium text-[14px] text-foreground">
-                  {record.ticketType === 'VENDOR' ? record.vendorName : 'Internal Repair'}
+                  {record.ticketType === 'VENDOR'
+                    ? record.vendorName
+                    : 'Internal Repair'}
                 </span>
                 <Badge
                   variant="outline"
@@ -82,7 +96,10 @@ export function RecentMaintenance({ assetTag, isOpen = true, onViewAll }: Recent
               <div className="flex justify-between items-center text-[12px] text-muted-foreground font-medium pt-3 border-t border-border/60">
                 <span>
                   {record.actualCompletionDate
-                    ? new Date(record.actualCompletionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    ? new Date(record.actualCompletionDate).toLocaleDateString(
+                        'en-US',
+                        { month: 'short', day: 'numeric', year: 'numeric' }
+                      )
                     : 'In Progress'}
                 </span>
                 {record.actualCost && (
@@ -96,7 +113,9 @@ export function RecentMaintenance({ assetTag, isOpen = true, onViewAll }: Recent
         </div>
       ) : (
         <div className="flex items-center justify-center p-6 border border-dashed border-border rounded-xl bg-muted">
-          <p className="text-sm text-muted-foreground">No maintenance records found.</p>
+          <p className="text-sm text-muted-foreground">
+            No maintenance records found.
+          </p>
         </div>
       )}
     </div>

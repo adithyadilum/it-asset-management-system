@@ -82,7 +82,9 @@ describe('DisposalHistoryGrid', () => {
 
   it('calls onRowClick when a row is clicked', () => {
     const mockOnRowClick = vi.fn();
-    render(<DisposalHistoryGrid initialData={mockData} onRowClick={mockOnRowClick} />);
+    render(
+      <DisposalHistoryGrid initialData={mockData} onRowClick={mockOnRowClick} />
+    );
 
     fireEvent.click(screen.getByTestId('row-0'));
     expect(mockOnRowClick).toHaveBeenCalledWith(mockData[0]);

@@ -29,10 +29,7 @@ export type NotificationChannel = 'in_app' | 'email' | 'teams';
  * Notification category for grouping in settings UI
  */
 export type NotificationCategory =
-  | 'HARDWARE_LIFECYCLE'
-  | 'OPERATIONAL'
-  | 'SECURITY'
-  | 'FINANCIAL';
+  'HARDWARE_LIFECYCLE' | 'OPERATIONAL' | 'SECURITY' | 'FINANCIAL';
 
 /**
  * Notification payload for internal dispatcher

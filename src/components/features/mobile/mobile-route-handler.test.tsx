@@ -4,7 +4,7 @@ import { MobileRouteHandler } from './mobile-route-handler';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/mobile'
+  usePathname: () => '/mobile',
 }));
 
 describe('MobileRouteHandler', () => {
@@ -15,7 +15,7 @@ describe('MobileRouteHandler', () => {
   beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
-      value: vi.fn().mockImplementation(query => ({
+      value: vi.fn().mockImplementation((query) => ({
         matches: false,
         media: query,
         onchange: null,
@@ -28,6 +28,6 @@ describe('MobileRouteHandler', () => {
     });
   });
   it('renders children correctly', () => {
-    render(<MobileRouteHandler role={"Admin" as any} />);
+    render(<MobileRouteHandler role={'Admin' as any} />);
   });
 });

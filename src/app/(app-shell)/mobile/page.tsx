@@ -1,27 +1,40 @@
-import { getAuthenticatedUser } from "@/actions/auth"
-import { canManageAssets } from "@/lib/auth/roles"
-import { redirect } from "next/navigation"
-import { Suspense } from "react"
-import { AdminMobileScannerButton } from "@/components/features/mobile/admin-mobile-scanner-button"
-import { AdminMobileMetrics } from "@/components/features/mobile/admin-mobile-metrics"
-import { AdminMobileMetricsSkeleton } from "@/components/features/mobile/admin-mobile-metrics-skeleton"
+import { PageSkeleton } from '@/components/shared/page-skeleton';
+import { requirePageAuth } from '@/lib/auth/page-guard';
+import { canManageAssets } from '@/lib/auth/roles';
+import { Suspense } from 'react';
+import { AdminMobileScannerButton } from '@/components/features/mobile/admin-mobile-scanner-button';
+import { AdminMobileMetrics } from '@/components/features/mobile/admin-mobile-metrics';
+import { AdminMobileMetricsSkeleton } from '@/components/features/mobile/admin-mobile-metrics-skeleton';
 
-export default async function MobilePage() {
-  const user = await getAuthenticatedUser()
-
-  if (!user || !canManageAssets(user.role)) {
-    redirect("/dashboard")
-  }
+async function MobilePageContent() {
+  await requirePageAuth(canManageAssets);
 
   return (
     <div className="flex w-full flex-col h-full bg-background md:hidden">
       <div className="flex flex-col gap-6 p-4 pb-32 md:hidden bg-white min-h-screen font-sans">
         <AdminMobileScannerButton />
-        
+
         <Suspense fallback={<AdminMobileMetricsSkeleton />}>
           <AdminMobileMetrics />
         </Suspense>
       </div>
     </div>
-  )
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function MobilePage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <MobilePageContent />
+    </Suspense>
+  );
 }

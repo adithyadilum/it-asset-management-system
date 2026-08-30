@@ -1,15 +1,15 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RejectDisposalDialog } from './reject-disposal-dialog';
-import { rejectDisposalRequest } from '@/actions/disposals';
+import { rejectDisposalRequest } from '@/actions/disposals/reject';
 import { tiqriToast } from '@/components/shared/sonner';
 
-vi.mock('@/actions/disposals', () => ({
+vi.mock('@/actions/disposals/reject', () => ({
   rejectDisposalRequest: vi.fn(),
 }));
 
@@ -24,10 +24,14 @@ vi.mock('@/components/ui/select', () => ({
   Select: ({ value, onValueChange, children }: any) => (
     <div data-testid="select-mock" data-value={value}>
       {children}
-      <button onClick={() => onValueChange('In Repair')}>Select In Repair</button>
+      <button onClick={() => onValueChange('In Repair')}>
+        Select In Repair
+      </button>
     </div>
   ),
-  SelectTrigger: ({ children }: any) => <div data-testid="select-trigger">{children}</div>,
+  SelectTrigger: ({ children }: any) => (
+    <div data-testid="select-trigger">{children}</div>
+  ),
   SelectValue: ({ children }: any) => <div>{children}</div>,
   SelectContent: ({ children }: any) => <div>{children}</div>,
   SelectItem: ({ children }: any) => <div>{children}</div>,
@@ -103,7 +107,9 @@ describe('RejectDisposalDialog', () => {
 
     // Type reason (> 10 chars)
     const reasonInput = screen.getByLabelText(/Rejection Reason/);
-    fireEvent.change(reasonInput, { target: { value: 'This is a valid long reason' } });
+    fireEvent.change(reasonInput, {
+      target: { value: 'This is a valid long reason' },
+    });
 
     await waitFor(() => {
       expect(submitBtn).not.toBeDisabled();
@@ -130,13 +136,15 @@ describe('RejectDisposalDialog', () => {
 
     // Type reason
     const reasonInput = screen.getByLabelText(/Rejection Reason/);
-    fireEvent.change(reasonInput, { target: { value: 'This is a valid long reason' } });
+    fireEvent.change(reasonInput, {
+      target: { value: 'This is a valid long reason' },
+    });
 
     // Select In Repair
     fireEvent.click(screen.getByText('Select In Repair'));
 
     const submitBtn = screen.getByRole('button', { name: 'Confirm Rejection' });
-    
+
     // Should be disabled because maintenance issue is required
     await waitFor(() => {
       expect(submitBtn).toBeDisabled();

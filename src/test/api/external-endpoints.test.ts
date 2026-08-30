@@ -3,7 +3,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/db';
 import { GET as getUsers } from '@/app/api/v1/external/users/route';
 import { GET as getMaintenance } from '@/app/api/v1/external/maintenance/route';
@@ -11,7 +11,7 @@ import { GET as getDisposals } from '@/app/api/v1/external/disposals/route';
 import { GET as getFinancials } from '@/app/api/v1/external/financials/route';
 import { POST as postAssets } from '@/app/api/v1/external/assets/route';
 import { applyRateLimit } from '@/lib/api/rate-limiter';
-import { createHash } from 'node:crypto';
+import { hashApiKey } from '@/lib/api/api-key-hash';
 
 // Mock DB queries
 vi.mock('@/db', () => ({
@@ -35,13 +35,21 @@ vi.mock('@/db', () => ({
     transaction: vi.fn((cb) => cb(db)),
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
-        returning: vi.fn().mockResolvedValue([{ id: 'mock-uuid', assetTag: 'HRW-001' }]),
+        returning: vi
+          .fn()
+          .mockResolvedValue([{ id: 'mock-uuid', assetTag: 'HRW-001' }]),
       })),
     })),
   },
 }));
 
 vi.mock('@/lib/api/rate-limiter', () => ({
+  applyPreAuthRateLimit: vi.fn().mockResolvedValue({
+    success: true,
+    limit: 20,
+    remaining: 19,
+    reset: 1234,
+  }),
   applyRateLimit: vi.fn(),
   injectRateLimitHeaders: vi.fn((resp) => resp),
 }));
@@ -55,8 +63,11 @@ vi.mock('@/lib/webhooks/dispatcher', () => ({
 }));
 
 vi.mock('@/lib/currency', () => ({
-  fetchLiveExchangeRates: vi.fn(() => Promise.resolve({ USD: 0.003 })),
   convertCurrencyAmount: vi.fn(() => 300),
+}));
+
+vi.mock('@/lib/currency-server', () => ({
+  fetchLiveExchangeRates: vi.fn(() => Promise.resolve({ USD: 0.003 })),
 }));
 
 // Generates a mock select chain that works with await regardless of the last method called (thenable)
@@ -74,7 +85,12 @@ function createSelectChain(result: unknown) {
   return chain;
 }
 
-function createRequest(url: string, method = 'GET', authHeader?: string, body?: string): NextRequest {
+function createRequest(
+  url: string,
+  method = 'GET',
+  authHeader?: string,
+  body?: string
+): NextRequest {
   const headers = new Headers();
   if (authHeader) headers.set('authorization', authHeader);
   return {
@@ -87,7 +103,7 @@ function createRequest(url: string, method = 'GET', authHeader?: string, body?: 
 
 describe('External API Endpoints Scoping', () => {
   const validToken = 'test-token-123';
-  const hashedToken = createHash('sha256').update(validToken).digest('hex');
+  let hashedToken = '';
   const authHeader = `Bearer ${validToken}`;
 
   const mockApiKeyRecord = {
@@ -100,13 +116,23 @@ describe('External API Endpoints Scoping', () => {
     createdById: 'user-id',
     createdAt: new Date(),
     keyPrefix: 'eitams_',
-    keySuffix: 'abcd',
+    keySuffix: validToken.slice(-4),
     lastUsedAt: null,
   };
 
+  beforeAll(async () => {
+    hashedToken = await hashApiKey(validToken);
+    mockApiKeyRecord.keyHash = hashedToken;
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(applyRateLimit).mockResolvedValue({ success: true, limit: 100, remaining: 99, reset: 1234 });
+    vi.mocked(applyRateLimit).mockResolvedValue({
+      success: true,
+      limit: 100,
+      remaining: 99,
+      reset: 1234,
+    });
   });
 
   describe('GET /api/v1/external/users', () => {
@@ -116,7 +142,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:assets'], // Missing read:users
       });
 
-      const req = createRequest('http://localhost/api/v1/external/users', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/users',
+        'GET',
+        authHeader
+      );
       const res = await getUsers(req, {});
       expect(res.status).toBe(403);
       const body = await res.json();
@@ -133,9 +163,13 @@ describe('External API Endpoints Scoping', () => {
       const dbSelectMock = db.select as unknown as ReturnType<typeof vi.fn>;
       dbSelectMock
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }])) // First call: count
-        .mockImplementationOnce(() => createSelectChain(mockUsers));      // Second call: users list
+        .mockImplementationOnce(() => createSelectChain(mockUsers)); // Second call: users list
 
-      const req = createRequest('http://localhost/api/v1/external/users', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/users',
+        'GET',
+        authHeader
+      );
       const res = await getUsers(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -151,7 +185,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:users'], // Missing read:maintenance
       });
 
-      const req = createRequest('http://localhost/api/v1/external/maintenance', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/maintenance',
+        'GET',
+        authHeader
+      );
       const res = await getMaintenance(req, {});
       expect(res.status).toBe(403);
     });
@@ -162,13 +200,19 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:maintenance'],
       });
 
-      const mockTickets = [{ id: 1, status: 'ACTIVE', reportedIssue: 'Broken Screen' }];
+      const mockTickets = [
+        { id: 1, status: 'ACTIVE', reportedIssue: 'Broken Screen' },
+      ];
       const dbSelectMock = db.select as unknown as ReturnType<typeof vi.fn>;
       dbSelectMock
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }]))
         .mockImplementationOnce(() => createSelectChain(mockTickets));
 
-      const req = createRequest('http://localhost/api/v1/external/maintenance', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/maintenance',
+        'GET',
+        authHeader
+      );
       const res = await getMaintenance(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -183,7 +227,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:users'],
       });
 
-      const req = createRequest('http://localhost/api/v1/external/disposals', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/disposals',
+        'GET',
+        authHeader
+      );
       const res = await getDisposals(req, {});
       expect(res.status).toBe(403);
     });
@@ -194,13 +242,19 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:disposals'],
       });
 
-      const mockDisposals = [{ id: 1, status: 'Pending Approval', reason: 'Old age' }];
+      const mockDisposals = [
+        { id: 1, status: 'Pending Approval', reason: 'Old age' },
+      ];
       const dbSelectMock = db.select as unknown as ReturnType<typeof vi.fn>;
       dbSelectMock
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }]))
         .mockImplementationOnce(() => createSelectChain(mockDisposals));
 
-      const req = createRequest('http://localhost/api/v1/external/disposals', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/disposals',
+        'GET',
+        authHeader
+      );
       const res = await getDisposals(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -215,7 +269,11 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:users'],
       });
 
-      const req = createRequest('http://localhost/api/v1/external/financials', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/financials',
+        'GET',
+        authHeader
+      );
       const res = await getFinancials(req, {});
       expect(res.status).toBe(403);
     });
@@ -247,7 +305,11 @@ describe('External API Endpoints Scoping', () => {
         .mockImplementationOnce(() => createSelectChain([{ count: 1 }]))
         .mockImplementationOnce(() => createSelectChain(mockFinancials));
 
-      const req = createRequest('http://localhost/api/v1/external/financials', 'GET', authHeader);
+      const req = createRequest(
+        'http://localhost/api/v1/external/financials',
+        'GET',
+        authHeader
+      );
       const res = await getFinancials(req, {});
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -275,7 +337,12 @@ describe('External API Endpoints Scoping', () => {
         scopes: ['read:assets'], // Missing write:assets
       });
 
-      const req = createRequest('http://localhost/api/v1/external/assets', 'POST', authHeader, validAssetBody);
+      const req = createRequest(
+        'http://localhost/api/v1/external/assets',
+        'POST',
+        authHeader,
+        validAssetBody
+      );
       const res = await postAssets(req, {});
       expect(res.status).toBe(403);
     });
@@ -301,7 +368,12 @@ describe('External API Endpoints Scoping', () => {
         where: vi.fn().mockResolvedValue([{ value: 0 }]),
       }));
 
-      const req = createRequest('http://localhost/api/v1/external/assets', 'POST', authHeader, validAssetBody);
+      const req = createRequest(
+        'http://localhost/api/v1/external/assets',
+        'POST',
+        authHeader,
+        validAssetBody
+      );
       const res = await postAssets(req, {});
 
       expect(res.status).toBe(201);
@@ -321,7 +393,12 @@ describe('External API Endpoints Scoping', () => {
         name: '', // Empty name triggers validation failure
       });
 
-      const req = createRequest('http://localhost/api/v1/external/assets', 'POST', authHeader, invalidBody);
+      const req = createRequest(
+        'http://localhost/api/v1/external/assets',
+        'POST',
+        authHeader,
+        invalidBody
+      );
       const res = await postAssets(req, {});
 
       expect(res.status).toBe(400);

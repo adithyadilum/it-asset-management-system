@@ -6,7 +6,7 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 
 ## In Scope
 
-- An "Initiate Disposal" intake modal capturing the technical reason and notes, supporting bulk selection (`createBulkDisposalRequests`).
+- An "Initiate Disposal" intake modal capturing the technical reason and notes, supporting bulk selection (`createDisposalRequest`).
 - The `Pending Disposal` data grid tab.
 - A "Disposal Request Review" slide-out panel fetching dynamic real-time financial and warranty data (`getDisposalReviewDetails`).
 - A "Reject Request" modal backed by strict Zod validation (`rejectDisposalSchema`) that handles status re-routing, soft-delete (`isArchived`) reversals, and conditional Maintenance Ticket creation.
@@ -42,7 +42,7 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 
 - **Scenario: Routing to the Pending Queue & Assignment Closure**
   - **Given** I complete the intake modal and click "Submit"
-  - **When** the `createBulkDisposalRequests` Server Action executes
+  - **When** the `createDisposalRequest` Server Action executes
   - **Then** the backend automatically terminates any active user assignments (`returnedDate = new Date()`).
   - **And** the asset's global status is updated to `Pending Disposal` inside an atomic transaction.
   - **And** an explicit Audit Log entry (`DISPOSAL_REQUESTED`) is written.
@@ -51,15 +51,18 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Initiate Disposal" intake modal (`dispose-assets-request-dialog`) capturing reason and justification.
 - [x] Build the `Operations > Disposals` layout component (`disposals-layout`) with the tab structure (`Pending Disposal`, `Disposal History`).
 - [x] Configure the `Pending Disposal` data grid (`pending-disposals-grid`) to filter by `status === 'Pending Disposal'`.
 
 #### Backend
-- [x] Create the `createBulkDisposalRequests` Server Action handling the atomic multi-table insertions (disposals, assets, assignments, systemAuditLogs).
+
+- [x] Create the `createDisposalRequest` Server Action handling the atomic multi-table insertions (disposals, assets, assignments, systemAuditLogs).
 - [x] Automatically dispatch the `disposal.requested` Webhook event.
 
 #### Database
+
 - [x] Create an `asset_disposals` table via Drizzle ORM mapping the requested details.
 
 ---
@@ -83,10 +86,12 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Disposal Request Review" slide-out panel displaying disposal context and a distinct financial summary block.
 - [x] Add "Reject" (secondary style) and "Initiate Disposal" (destructive red) action buttons to the panel footer.
 
 #### Backend
+
 - [x] Create the `getDisposalReviewDetails` Server Action that aggregates disposal context alongside real-time financial book value computations.
 
 ---
@@ -122,9 +127,11 @@ This epic builds the initial queue and review workflow for retiring corporate ha
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the "Reject Disposal Request" modal integrating React Hook Form and Zod to conditionally disable the submit button until validation passes.
 
 #### Backend
+
 - [x] Create the `rejectDisposalRequest` Server Action managing atomic updates.
 - [x] Enforce the strict soft-delete reversal (`isArchived: false`) inside the `assets` table.
 - [x] Implement conditional logic: dynamically insert a new `maintenance_tickets` row if the admin selects the `In Repair` fallback status.

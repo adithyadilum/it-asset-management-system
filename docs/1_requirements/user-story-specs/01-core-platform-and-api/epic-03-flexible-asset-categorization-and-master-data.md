@@ -2,7 +2,7 @@
 
 ## Summary
 
-This epic builds the dynamic data foundation of the IT Asset Management platform. The system is built on core pillars (e.g., IT & Digital, Software, Office Furniture, Office Electronics). This epic allows Global Admins to define their own standardized Master Data entities (Locations, Departments, Vendors, Brands, Models, Owners, and Custom Statuses) and build dynamic *Categories* with custom JSONB data schemas.
+This epic builds the dynamic data foundation of the IT Asset Management platform. The system is built on core pillars (e.g., IT & Digital, Software, Office Furniture, Office Electronics). This epic allows Global Admins to define their own standardized Master Data entities (Locations, Departments, Vendors, Brands, Models, Owners, and Custom Statuses) and build dynamic _Categories_ with custom JSONB data schemas.
 
 By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency checking, the system ensures master data integrity, prevents orphaned relational records, and auto-generates sequential prefix codes (e.g., `LOC-0001`, `CAT-0001`). Furthermore, every mutation is securely recorded in the system's Audit Logs.
 
@@ -12,7 +12,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 - CRUD management for 8 master data entities: Locations, Asset Categories, Brands, Device Models, Vendors, Owners, Departments, and Custom Statuses.
 - Category creation strictly nested under main system pillars.
 - Universal duplicate-entry prevention across all Master Data lists.
-- Universal database-level relational safeguards preventing the deletion of *any* master data record that has linked child references (e.g., assets, users, purchase orders).
+- Universal database-level relational safeguards preventing the deletion of _any_ master data record that has linked child references (e.g., assets, users, purchase orders).
 - Auto-generated standard Prefix Codes and a Custom Field Builder (JSONB schema) for Categories.
 - Image uploads to Vercel Blob for Device Models.
 - Immutable Audit Logging of all CREATE, UPDATE, and DELETE actions.
@@ -20,7 +20,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ## Out of Scope / Limitations
 
 - Custom role creation for Master Data management (restricted strictly to GlobalAdmin).
-- IT Operators, Finance Auditors, and Standard Employees are restricted from mutating these endpoints.
+- IT Operators, Financial Auditors, and Standard Employees are restricted from mutating these endpoints.
 
 ## Assumptions & Dependencies
 
@@ -64,7 +64,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
   - **Then** the data table renders an empty state illustration stating "No records found. Click 'Add Brand' to get started."
 
 - **Scenario: Unauthorized Access Attempt**
-  - **Given** I am logged in as an IT Operator or Finance Auditor
+  - **Given** I am logged in as an IT Operator or Financial Auditor
   - **When** I attempt to bypass UI restrictions and trigger a Master Data Server Action directly
   - **Then** the Server Action immediately halts execution
   - **And** returns a strict error: "Forbidden: only Global Administrators can manage master data."
@@ -72,11 +72,13 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the `MasterDataLayout` React wrapper component for centralized navigation.
 - [x] Implement a reusable `DataTable` UI component with built-in selection, empty states, and bulk actions.
 - [x] Build reusable add/edit modals relying on the unified `createMasterDataRecord` action.
 
 #### Backend
+
 - [x] Implement `currentUser.role !== 'GlobalAdmin'` guards at the very top of `createMasterDataRecord`, `updateMasterDataRecord`, and `deleteMasterDataRecords`.
 
 ---
@@ -110,6 +112,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Implement `searchLocations` with proper `canManageAssets` role checks.
 - [x] Write relational dependency queries (`countChildLocations`, `countLocationAssignments`, `countLinkedAssetsForEntity`) inside `deleteMasterDataRecords` to prevent orphaned constraints.
 
@@ -137,6 +140,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Implement department validation schema (Zod) enforcing shortCode lengths.
 - [x] Write server-side code generation logic mapping short codes into internal Cost Centers.
 - [x] Implement relational deletion checks against the `users` table via `countLinkedUsersForDepartments`.
@@ -166,6 +170,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Handle unified insertion/updating for `vendors` and `owners` inside the master data Server Actions using Zod `vendorSchema` and `ownerSchema`.
 - [x] Build safe relational delete blocks: `countVendorPurchaseReferences` and `countVendorMaintenanceReferences`.
 
@@ -194,6 +199,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Create the `createBrand` specialized server action utilizing Zod validation schemas.
 - [x] Implement database-level uniqueness constraints and active/inactive flag states.
 - [x] Protect brands in `deleteMasterDataRecords` via the `countLinkedModelsForBrands` relational lock.
@@ -222,6 +228,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Integrate `uploadFileToStorage` capabilities inside the `createMasterDataRecord` switch block for `device-models`.
 - [x] Maintain explicit foreign key validations for both `brandId` and `categoryId`.
 - [x] Ensure `deleteMasterDataRecords` blocks the removal of models actively linked to items in the `assets` table.
@@ -250,6 +257,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Build the specialized `createCategory` Server Action.
 - [x] Validate category data structure, enforcing required properties and storing custom schemas natively in Postgres `JSONB`.
 - [x] Validate incoming pillar strings against predefined application constants (`IT & Digital`, `Software`, `Office Furniture`, `Office Electronics`).
@@ -278,6 +286,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Add `statuses` entity handling to the master data action switch blocks.
 - [x] Utilize the `customStatusSchema` to validate `name`, `iconName`, and `colorTheme`.
 - [x] Store the creator's ID natively on insertion.
@@ -307,6 +316,7 @@ By leveraging Next.js Server Actions, Drizzle ORM, and comprehensive dependency 
 ### Technical Implementation Tasks
 
 #### Backend
+
 - [x] Define a strict dictionary of code prefixes for all 8 entities (`locations: 'LOC'`, `vendors: 'VND'`, etc.).
 - [x] Implement the `formatMasterDataCode` generator padding IDs to 4 zero-filled digits.
 - [x] Ensure `logAuditAction` is injected after every successful `insert`, `update`, and `delete` across all switch cases in `master-data.ts`.

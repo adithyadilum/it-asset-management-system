@@ -2,16 +2,18 @@
 
 import { signIn } from 'next-auth/react';
 import { AlertCircle } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LoginBrandHeader } from '@/components/shared/brand-header';
-
-type KeycloakLoginProps = {
-  redirectTo: string;
-};
+import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
+import {
+  DEFAULT_POST_LOGIN_REDIRECT,
+  sanitizeRedirectPath,
+} from '@/lib/auth/auth-redirect';
 
 function MicrosoftMark() {
   return (
@@ -22,15 +24,52 @@ function MicrosoftMark() {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <rect x="3" y="3" width="8" height="8" fill="currentColor" opacity="0.95" />
-      <rect x="13" y="3" width="8" height="8" fill="currentColor" opacity="0.75" />
-      <rect x="3" y="13" width="8" height="8" fill="currentColor" opacity="0.75" />
-      <rect x="13" y="13" width="8" height="8" fill="currentColor" opacity="0.95" />
+      <rect
+        x="3"
+        y="3"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.95"
+      />
+      <rect
+        x="13"
+        y="3"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.75"
+      />
+      <rect
+        x="3"
+        y="13"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.75"
+      />
+      <rect
+        x="13"
+        y="13"
+        width="8"
+        height="8"
+        fill="currentColor"
+        opacity="0.95"
+      />
     </svg>
   );
 }
 
-export function KeycloakLogin({ redirectTo }: KeycloakLoginProps) {
+export function KeycloakLogin() {
+  // Read on the client so the page itself stays static. `sanitizeRedirectPath`
+  // is a pure function and does the same filtering it did on the server:
+  // same-origin paths only, never back to /login.
+  const searchParams = useSearchParams();
+  const redirectTo = sanitizeRedirectPath(
+    searchParams.get('redirectTo'),
+    DEFAULT_POST_LOGIN_REDIRECT
+  );
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -55,7 +94,9 @@ export function KeycloakLogin({ redirectTo }: KeycloakLoginProps) {
 
             {isProcessing ? (
               <div className="animate-in fade-in zoom-in w-full px-6 py-2 text-center duration-300">
-                <h2 className="mb-8 text-xl font-medium text-foreground">Redirecting to login...</h2>
+                <h2 className="mb-8 text-xl font-medium text-foreground">
+                  Redirecting to login...
+                </h2>
                 <div className="flex justify-center">
                   <div className="size-10 animate-spin rounded-full border-4 border-border border-t-primary" />
                 </div>
@@ -100,7 +141,13 @@ export function KeycloakLogin({ redirectTo }: KeycloakLoginProps) {
 
         <footer className="inline-flex items-center justify-center">
           <p className="w-57.25 text-center text-xs leading-4 text-muted-foreground">
-            Need help? Contact TIQRI IT Support
+            Need help?{' '}
+            <a
+              href={SUPPORT_MAILTO}
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Contact {SUPPORT_LABEL}
+            </a>
           </p>
         </footer>
       </div>

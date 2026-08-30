@@ -1,16 +1,16 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DisposeAssetsRequestDialog } from './dispose-assets-request-dialog';
-import { createBulkDisposalRequests } from '@/actions/disposals';
+import { createDisposalRequest } from '@/actions/disposals/create-request';
 import { tiqriToast } from '@/components/shared/sonner';
 
-vi.mock('@/actions/disposals', () => ({
-  createBulkDisposalRequests: vi.fn(),
+vi.mock('@/actions/disposals/create-request', () => ({
+  createDisposalRequest: vi.fn(),
 }));
 
 vi.mock('@/components/shared/sonner', () => ({
@@ -24,10 +24,14 @@ vi.mock('@/components/ui/select', () => ({
   Select: ({ value, onValueChange, children }: any) => (
     <div data-testid="select-mock" data-value={value}>
       {children}
-      <button onClick={() => onValueChange('Damaged beyond repair')}>Select Damaged</button>
+      <button onClick={() => onValueChange('Damaged beyond repair')}>
+        Select Damaged
+      </button>
     </div>
   ),
-  SelectTrigger: ({ children }: any) => <div data-testid="select-trigger">{children}</div>,
+  SelectTrigger: ({ children }: any) => (
+    <div data-testid="select-trigger">{children}</div>
+  ),
   SelectValue: ({ children }: any) => <div>{children}</div>,
   SelectContent: ({ children }: any) => <div>{children}</div>,
   SelectItem: ({ children }: any) => <div>{children}</div>,
@@ -64,9 +68,7 @@ describe('DisposeAssetsRequestDialog', () => {
 
   const mockOnOpenChange = vi.fn();
   const mockOnSubmitted = vi.fn();
-  const mockAssets = [
-    { id: '1', assetTag: 'TAG-1', assetName: 'Laptop' },
-  ];
+  const mockAssets = [{ id: '1', assetTag: 'TAG-1', assetName: 'Laptop' }];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -87,7 +89,10 @@ describe('DisposeAssetsRequestDialog', () => {
   });
 
   it('validates and submits successfully', async () => {
-    (createBulkDisposalRequests as any).mockResolvedValue({ inserted: 1, skipped: 0 });
+    (createDisposalRequest as any).mockResolvedValue({
+      inserted: 1,
+      skipped: 0,
+    });
 
     render(
       <DisposeAssetsRequestDialog
@@ -113,7 +118,7 @@ describe('DisposeAssetsRequestDialog', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(createBulkDisposalRequests).toHaveBeenCalledWith({
+      expect(createDisposalRequest).toHaveBeenCalledWith({
         assetIds: ['1'],
         reason: 'Damaged beyond repair', // Assuming it's the first option
         justification: '',
@@ -124,7 +129,9 @@ describe('DisposeAssetsRequestDialog', () => {
   });
 
   it('handles error on submit', async () => {
-    (createBulkDisposalRequests as any).mockRejectedValue(new Error('Submit failed'));
+    (createDisposalRequest as any).mockRejectedValue(
+      new Error('Submit failed')
+    );
 
     render(
       <DisposeAssetsRequestDialog

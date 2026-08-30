@@ -8,19 +8,12 @@
  * Run: npx tsx src/db/seed.dashboard.ts
  */
 
-import * as dotenv from 'dotenv';
+import '../lib/load-env';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { serverEnv } from '../lib/env';
 import { eq, and, isNull } from 'drizzle-orm';
-import {
-  assetAssignments,
-  assets,
-  maintenanceTickets,
-  users,
-} from './schema';
-
-dotenv.config({ path: '.env.local' });
+import { assetAssignments, assets, maintenanceTickets, users } from './schema';
 
 async function first<T>(query: Promise<T[]>): Promise<T | null> {
   const rows = await query;
@@ -35,13 +28,25 @@ async function seedDashboard() {
 
   // ── Resolve required users ──────────────────────────────────────────────────
   const admin = await first(
-    db.select({ id: users.id }).from(users).where(eq(users.email, 'admin@tiqri.com')).limit(1)
+    db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, 'admin@tiqri.com'))
+      .limit(1)
   );
   const employee = await first(
-    db.select({ id: users.id }).from(users).where(eq(users.email, 'employee@tiqri.com')).limit(1)
+    db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, 'employee@tiqri.com'))
+      .limit(1)
   );
   const itUser = await first(
-    db.select({ id: users.id }).from(users).where(eq(users.email, 'it@tiqri.com')).limit(1)
+    db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, 'it@tiqri.com'))
+      .limit(1)
   );
 
   if (!admin || !employee || !itUser) {
@@ -58,7 +63,9 @@ async function seedDashboard() {
   if (assignedAssets.length === 0) {
     console.log('⚠  No Available assets found — skipping overdue assignments.');
   } else {
-    console.log(`📋 Creating overdue assignments for ${assignedAssets.length} assets...`);
+    console.log(
+      `📋 Creating overdue assignments for ${assignedAssets.length} assets...`
+    );
 
     for (const [i, asset] of assignedAssets.entries()) {
       // Check if an active assignment already exists
@@ -76,7 +83,9 @@ async function seedDashboard() {
       );
 
       if (existing) {
-        console.log(`   ↳ ${asset.assetTag}: active assignment already exists, skipping.`);
+        console.log(
+          `   ↳ ${asset.assetTag}: active assignment already exists, skipping.`
+        );
         continue;
       }
 
@@ -116,7 +125,9 @@ async function seedDashboard() {
   if (repairCandidates.length === 0) {
     console.log('⚠  No In Repair assets found — skipping lemons seed.');
   } else {
-    console.log(`🔧 Creating maintenance tickets for ${repairCandidates.length} lemon assets...`);
+    console.log(
+      `🔧 Creating maintenance tickets for ${repairCandidates.length} lemon assets...`
+    );
 
     for (const asset of repairCandidates) {
       // Check existing ticket count
@@ -127,15 +138,18 @@ async function seedDashboard() {
 
       const needed = Math.max(0, 3 - existingTickets.length);
       if (needed === 0) {
-        console.log(`   ↳ ${asset.assetTag}: already has ${existingTickets.length} tickets, skipping.`);
+        console.log(
+          `   ↳ ${asset.assetTag}: already has ${existingTickets.length} tickets, skipping.`
+        );
         continue;
       }
 
       for (let t = 0; t < needed; t++) {
         const createdAt = new Date(Date.now() - (t + 1) * 30 * 86400000); // 30, 60, 90 days ago
-        const completedAt = t < needed - 1
-          ? new Date(createdAt.getTime() + 7 * 86400000) // resolved after 7 days
-          : null; // last ticket still active
+        const completedAt =
+          t < needed - 1
+            ? new Date(createdAt.getTime() + 7 * 86400000) // resolved after 7 days
+            : null; // last ticket still active
 
         await db.insert(maintenanceTickets).values({
           assetId: asset.id,
@@ -143,7 +157,9 @@ async function seedDashboard() {
           vendorName: 'Atlas Tech Services',
           rmaNumber: `RMA-SEED-${asset.assetTag}-${t + 1}`,
           reportedIssue: `Issue #${t + 1}: Hardware fault detected during routine check.`,
-          resolutionNotes: completedAt ? 'Repaired and returned to service.' : null,
+          resolutionNotes: completedAt
+            ? 'Repaired and returned to service.'
+            : null,
           estimatedCost: '150.00',
           actualCost: completedAt ? '145.00' : null,
           status: completedAt ? 'COMPLETED' : 'ACTIVE',
@@ -154,7 +170,9 @@ async function seedDashboard() {
         });
       }
 
-      console.log(`   ✅ ${asset.assetTag}: created ${needed} ticket(s) (total now >= 3)`);
+      console.log(
+        `   ✅ ${asset.assetTag}: created ${needed} ticket(s) (total now >= 3)`
+      );
     }
   }
 

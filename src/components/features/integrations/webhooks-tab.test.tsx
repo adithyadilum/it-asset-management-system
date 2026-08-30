@@ -7,7 +7,7 @@ vi.mock('./webhooks-tab-client', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() })
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 
 describe('WebhooksTab', () => {

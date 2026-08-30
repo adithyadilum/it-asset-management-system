@@ -8,20 +8,12 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { useDebounce } from '@/hooks/use-debounce';
-import { FilterBar, type AppliedFilter, type FilterFieldConfig } from '@/components/shared/filter-bar';
-
-export interface HistoryDisposalRow {
-  id: number;
-  assetId: string;
-  assetTag: string;
-  category: string;
-  reason: string;
-  flaggedBy: string;
-  disposedBy: string | null;
-  disposalDate: Date | null;
-  status: string;
-  documentUrls: string[];
-}
+import {
+  FilterBar,
+  type AppliedFilter,
+  type FilterFieldConfig,
+} from '@/components/shared/filter-bar';
+import type { HistoryDisposalRow } from '@/types/disposals';
 
 interface DisposalHistoryGridProps {
   initialData: HistoryDisposalRow[];
@@ -39,8 +31,8 @@ function toCellText(value: string | null | undefined) {
   return value;
 }
 
-export function DisposalHistoryGrid({ 
-  initialData, 
+export function DisposalHistoryGrid({
+  initialData,
   pageCount = 1,
   currentPage = 1,
   pageSize = 10,
@@ -78,7 +70,7 @@ export function DisposalHistoryGrid({
   // Sync search changes to URL
   useEffect(() => {
     if (debouncedSearch === searchQuery) return;
-    
+
     const params = new URLSearchParams(searchParams.toString());
     if (debouncedSearch) {
       params.set('search', debouncedSearch);
@@ -121,7 +113,9 @@ export function DisposalHistoryGrid({
   );
 
   const handlePaginationChange = useCallback(
-    (updater: PaginationState | ((old: PaginationState) => PaginationState)) => {
+    (
+      updater: PaginationState | ((old: PaginationState) => PaginationState)
+    ) => {
       const nextState =
         typeof updater === 'function' ? updater(paginationState) : updater;
 
@@ -167,15 +161,12 @@ export function DisposalHistoryGrid({
         cell: ({ row }) => {
           // Status is either 'Completed' or 'Rejected' mapped to 'disposed' or 'rejected'
           const rawStatus = row.original.status;
-          const badgeValue = rawStatus === 'Completed' ? 'disposed' : rawStatus.toLowerCase();
-          const displayLabel = rawStatus === 'Completed' ? 'Disposed' : rawStatus;
-          
-          return (
-            <StatusBadge
-              value={badgeValue}
-              label={displayLabel}
-            />
-          );
+          const badgeValue =
+            rawStatus === 'Completed' ? 'disposed' : rawStatus.toLowerCase();
+          const displayLabel =
+            rawStatus === 'Completed' ? 'Disposed' : rawStatus;
+
+          return <StatusBadge value={badgeValue} label={displayLabel} />;
         },
       },
       {
@@ -215,7 +206,7 @@ export function DisposalHistoryGrid({
           if (urls.length === 0) {
             return <span className="text-muted-foreground text-sm">-</span>;
           }
-          
+
           return (
             <div className="flex flex-col gap-1.5 py-1">
               {urls.map((url, index) => {
@@ -240,7 +231,12 @@ export function DisposalHistoryGrid({
                     className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                   >
                     <FileText className="h-4 w-4 shrink-0 text-red-500" />
-                    <span className="truncate text-sm font-medium" title={filename}>{filename}</span>
+                    <span
+                      className="truncate text-sm font-medium"
+                      title={filename}
+                    >
+                      {filename}
+                    </span>
                   </a>
                 );
               })}
@@ -289,7 +285,8 @@ export function DisposalHistoryGrid({
           }}
           emptyState={{
             title: 'No disposal history',
-            description: 'There are no completed or rejected disposals on record.',
+            description:
+              'There are no completed or rejected disposals on record.',
           }}
         />
       </div>

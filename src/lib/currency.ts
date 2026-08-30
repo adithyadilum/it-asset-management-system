@@ -1,8 +1,4 @@
-export const SUPPORTED_CURRENCIES = [
-  'LKR',
-  'USD',
-  'NOK',
-] as const;
+export const SUPPORTED_CURRENCIES = ['LKR', 'USD', 'NOK'] as const;
 
 const USD_EXCHANGE_RATE_BY_CURRENCY: Record<SupportedCurrency, number> = {
   USD: 1,
@@ -11,6 +7,15 @@ const USD_EXCHANGE_RATE_BY_CURRENCY: Record<SupportedCurrency, number> = {
 };
 
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
+
+/**
+ * The currency server-side totals are reported in.
+ *
+ * Assets are purchased in any of the supported currencies, so a sum has to be
+ * normalised to one of them before it means anything. The client converts from
+ * here to whatever the currency switcher is set to.
+ */
+export const SUMMARY_CURRENCY: SupportedCurrency = 'LKR';
 
 export function isSupportedCurrency(
   currency: string
@@ -68,24 +73,6 @@ export function tryParseCurrencyAmount(
   return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
-export async function fetchLiveExchangeRates(): Promise<Record<string, number> | null> {
-  try {
-    const res = await fetch('https://open.er-api.com/v6/latest/USD', {
-      next: { revalidate: 86400 }, // Cache for 24 hours
-    });
-    
-    if (!res.ok) {
-      return null;
-    }
-    
-    const data = await res.json();
-    return data.rates as Record<string, number>;
-  } catch (error) {
-    console.error('Failed to fetch exchange rates:', error);
-    return null;
-  }
-}
-
 export function convertCurrencyAmount(
   amount: number,
   fromCurrency: string,
@@ -100,13 +87,13 @@ export function convertCurrencyAmount(
   }
 
   if (apiRates) {
-     const fromRate = apiRates[resolvedFromCurrency];
-     const toRate = apiRates[resolvedToCurrency];
-     if (fromRate && toRate) {
-       // API provides rates as 1 USD = X Currency
-       const amountInUsd = amount / fromRate;
-       return amountInUsd * toRate;
-     }
+    const fromRate = apiRates[resolvedFromCurrency];
+    const toRate = apiRates[resolvedToCurrency];
+    if (fromRate && toRate) {
+      // API provides rates as 1 USD = X Currency
+      const amountInUsd = amount / fromRate;
+      return amountInUsd * toRate;
+    }
   }
 
   const fromRate = USD_EXCHANGE_RATE_BY_CURRENCY[resolvedFromCurrency];

@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---------------------------------------------------------------------------
 
 const mockGetServerSession = vi.fn();
+const mockFindUser = vi.fn();
 vi.mock('next-auth', () => ({
   getServerSession: (...args: unknown[]) => mockGetServerSession(...args),
 }));
@@ -13,9 +14,33 @@ vi.mock('@/lib/auth/auth-options', () => ({
   authOptions: {},
 }));
 
+vi.mock('@/db', () => ({
+  db: {
+    query: {
+      users: { findFirst: (...args: unknown[]) => mockFindUser(...args) },
+    },
+  },
+}));
+vi.mock('@/db/schema', () => ({ users: { id: 'users.id' } }));
+vi.mock('drizzle-orm', () => ({ eq: vi.fn() }));
+
 const mockLogAuditAction = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/audit', () => ({
   logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
+}));
+
+vi.mock('@/lib/env', () => ({
+  serverEnv: {
+    get KEYCLOAK_ISSUER() {
+      return process.env.KEYCLOAK_ISSUER;
+    },
+    get NEXTAUTH_URL() {
+      return process.env.NEXTAUTH_URL;
+    },
+    get KEYCLOAK_CLIENT_ID() {
+      return process.env.KEYCLOAK_CLIENT_ID;
+    },
+  },
 }));
 
 // ---------------------------------------------------------------------------
@@ -31,6 +56,12 @@ import { getAuthenticatedUser, getFederatedLogoutUrl } from '@/actions/auth';
 describe('getAuthenticatedUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFindUser.mockImplementation(async () => {
+      const session = await mockGetServerSession();
+      return session?.user
+        ? { ...session.user, isActive: session.user.isActive ?? true }
+        : null;
+    });
   });
 
   it('returns null when no session exists', async () => {
@@ -67,7 +98,12 @@ describe('getAuthenticatedUser', () => {
 
   it('returns null when session.user.name is undefined', async () => {
     mockGetServerSession.mockResolvedValue({
-      user: { id: 'u1', email: 'a@b.com', name: undefined, role: 'GlobalAdmin' },
+      user: {
+        id: 'u1',
+        email: 'a@b.com',
+        name: undefined,
+        role: 'GlobalAdmin',
+      },
     });
     expect(await getAuthenticatedUser()).toBeNull();
   });
@@ -90,6 +126,7 @@ describe('getAuthenticatedUser', () => {
       email: 'a@b.com',
       name: 'Admin',
       role: 'GlobalAdmin',
+      isActive: true,
     });
   });
 
@@ -120,17 +157,19 @@ describe('getAuthenticatedUser', () => {
     expect(user?.role).toBe('Employee');
   });
 
-  it.each(['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee'] as const)(
-    'preserves %s role exactly',
-    async (role) => {
-      mockGetServerSession.mockResolvedValue({
-        user: { id: 'u1', email: 'a@b.com', name: 'A', role },
-      });
+  it.each([
+    'GlobalAdmin',
+    'ITOperator',
+    'FinancialAuditor',
+    'Employee',
+  ] as const)('preserves %s role exactly', async (role) => {
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com', name: 'A', role },
+    });
 
-      const user = await getAuthenticatedUser();
-      expect(user?.role).toBe(role);
-    }
-  );
+    const user = await getAuthenticatedUser();
+    expect(user?.role).toBe(role);
+  });
 });
 
 describe('getFederatedLogoutUrl', () => {
@@ -140,6 +179,7 @@ describe('getFederatedLogoutUrl', () => {
     vi.clearAllMocks();
     process.env.KEYCLOAK_ISSUER = KEYCLOAK_ISSUER;
     process.env.NEXTAUTH_URL = 'https://app.tiqri.com';
+    process.env.KEYCLOAK_CLIENT_ID = 'test-client';
   });
 
   it('constructs correct Keycloak end-session URL', async () => {
@@ -190,5 +230,38 @@ describe('getFederatedLogoutUrl', () => {
 
     const url = await getFederatedLogoutUrl();
     expect(url).toContain(encodeURIComponent('http://localhost:3000/login'));
+  });
+
+  it('always sends client_id so the provider can validate the redirect', async () => {
+    // Keycloak validates post_logout_redirect_uri against the id_token_hint or
+    // the client_id. With only the hint, logout failed with "Invalid logout
+    // URL" once that token expired -- which it does after five minutes.
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com' },
+      idToken: 'tok',
+    });
+
+    const url = new URL(await getFederatedLogoutUrl());
+    expect(url.searchParams.get('client_id')).toBe(
+      process.env.KEYCLOAK_CLIENT_ID
+    );
+    expect(url.searchParams.get('id_token_hint')).toBe('tok');
+  });
+
+  it('omits id_token_hint entirely when there is no id token', async () => {
+    // An empty `id_token_hint=` is worse than none: the provider reads it as a
+    // malformed hint rather than an absent one.
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com' },
+    });
+
+    const url = new URL(await getFederatedLogoutUrl());
+    expect(url.searchParams.has('id_token_hint')).toBe(false);
+    expect(url.searchParams.get('client_id')).toBe(
+      process.env.KEYCLOAK_CLIENT_ID
+    );
+    expect(url.searchParams.get('post_logout_redirect_uri')).toContain(
+      '/login'
+    );
   });
 });

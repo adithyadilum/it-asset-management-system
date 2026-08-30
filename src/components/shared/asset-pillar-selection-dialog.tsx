@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import {
   Dialog,
@@ -6,13 +6,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Monitor,
-  Armchair,
-  Speaker,
-  Code,
-} from 'lucide-react'
+} from '@/components/ui/dialog';
+import { Monitor, Armchair, Speaker, Code } from 'lucide-react';
 
 export const PILLAR_OPTIONS = [
   {
@@ -39,12 +34,12 @@ export const PILLAR_OPTIONS = [
     icon: Code,
     description: 'Software licenses and subscriptions',
   },
-] as const
+] as const;
 
 interface AssetPillarSelectionDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSelect: (slug: string) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (slug: string) => void;
 }
 
 export function AssetPillarSelectionDialog({
@@ -84,5 +79,5 @@ export function AssetPillarSelectionDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

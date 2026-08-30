@@ -1,17 +1,27 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  CurrencyFormatted,
+  DateFormatted,
+} from '@/components/shared/formatters';
 import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
+import {
+  SlidePanel,
+  type SlidePanelAction,
+} from '@/components/shared/slide-panel';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { cn } from '@/lib/utils';
 import { ResolveInternallyDialog } from './resolve-internally-dialog';
 import { InitiateRepairDialog } from './initiate-repair-dialog';
-import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from '@/types/maintenance';
+import type {
+  IssueReviewPanelData,
+  Vendor,
+  InitiateRepairFormData,
+} from '@/types/maintenance';
 
 interface IssueReviewPanelProps {
   isOpen: boolean;
@@ -40,19 +50,11 @@ export function IssueReviewPanel({
   const [showRepairDialog, setShowRepairDialog] = useState(false);
 
   const formatCurrency = (value: number | string | null) => {
-    if (value === null) return 'N/A';
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(num)) return 'N/A';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(num);
+    return <CurrencyFormatted amount={value} compact />;
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    } catch {
-      return 'N/A';
-    }
+    return <DateFormatted date={dateString} />;
   };
 
   if (isLoading || !data) {
@@ -62,8 +64,16 @@ export function IssueReviewPanel({
           <Skeleton className="w-45 h-30 rounded-lg" />
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 shrink-0">
-          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-          <div className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </div>
         </div>
         <Skeleton className="h-28 w-full rounded-xl shrink-0" />
       </div>
@@ -84,8 +94,13 @@ export function IssueReviewPanel({
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
-      <span className="truncate">{ticket.asset.name || ticket.model?.name || 'Asset'}</span>
-      <StatusBadge variant="metadata" label={`ID: ${ticket.asset.assetTag || '-'}`} />
+      <span className="truncate">
+        {ticket.asset.name || ticket.model?.name || 'Asset'}
+      </span>
+      <StatusBadge
+        variant="metadata"
+        label={`ID: ${ticket.asset.assetTag || '-'}`}
+      />
       <StatusBadge value={ticket.asset.status} showIcon />
     </div>
   );
@@ -100,22 +115,44 @@ export function IssueReviewPanel({
   ];
 
   const financialFields = [
-    { label: 'Purchase Date', value: formatDate(ticket.purchase?.purchaseDate || null) },
+    {
+      label: 'Purchase Date',
+      value: formatDate(ticket.purchase?.purchaseDate || null),
+    },
     { label: 'Original Cost', value: formatCurrency(originalCost) },
     { label: 'Current Book Value', value: formatCurrency(bookValue) },
     {
-      label: 'Warranty Status',
+      // "Active" alone does not answer the reviewer's question, which is how
+      // long is left before this repair stops being covered.
+      label: 'Warranty',
       value: (
-        <Badge variant="outline" className={warrantyStatus === 'Active' ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm' : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'}>
-          {warrantyStatus}
-        </Badge>
-      )
+        <div className="flex items-center gap-2">
+          <StatusBadge
+            value={warrantyStatus === 'Active' ? 'active' : 'expired'}
+            label={warrantyStatus}
+          />
+          {ticket.purchase?.warrantyExpiry ? (
+            <span className="text-xs text-muted-foreground">
+              {warrantyStatus === 'Active' ? 'expires' : 'expired'}{' '}
+              {formatDate(ticket.purchase.warrantyExpiry)}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              no warranty recorded
+            </span>
+          )}
+        </div>
+      ),
     },
   ];
   if (data.totalTCO != null) {
     financialFields.push({
       label: 'Total TCO',
-      value: <span className="font-semibold text-primary">{formatCurrency(data.totalTCO)}</span>
+      value: (
+        <span className="font-semibold text-primary">
+          {formatCurrency(data.totalTCO)}
+        </span>
+      ),
     });
   }
 
@@ -123,9 +160,14 @@ export function IssueReviewPanel({
     <div className="flex w-full flex-col items-start gap-6">
       {/* Image Container */}
       <div className="mt-2 flex w-full flex-col items-center gap-2.5">
-        {ticket.asset.imageUrl ? (
+        {ticket.model?.imageUrl ? (
           <div className="relative w-38.25 h-30.25 rounded bg-background overflow-hidden border border-border">
-            <Image src={ticket.asset.imageUrl} alt="Asset Image" fill className="object-contain p-2" />
+            <Image
+              src={ticket.model.imageUrl}
+              alt="Asset Image"
+              fill
+              className="object-contain p-2"
+            />
           </div>
         ) : (
           <div className="flex h-30.25 w-38.25 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 px-3 text-center text-xs text-muted-foreground">
@@ -137,9 +179,27 @@ export function IssueReviewPanel({
       {/* Details Grid */}
       <div className="mt-4 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
         {detailsFields.map((item, index) => (
-          <div key={`detail-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground', item.label === 'Asset ID' && 'font-mono tracking-wide')}>{item.value || '-'}</div>
+          <div
+            key={`detail-${index}`}
+            className="flex items-center justify-between border-b border-border/40 py-2.5"
+          >
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'shrink-0 pr-4 text-muted-foreground'
+              )}
+            >
+              {item.label}
+            </div>
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'text-right text-foreground',
+                item.label === 'Asset ID' && 'font-mono tracking-wide'
+              )}
+            >
+              {item.value || '-'}
+            </div>
           </div>
         ))}
       </div>
@@ -148,11 +208,30 @@ export function IssueReviewPanel({
 
       {/* Financials Grid */}
       <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-        <h3 className="col-span-full text-base font-medium leading-6 text-foreground mb-2">Financial Vitals</h3>
+        <h3 className="col-span-full text-base font-medium leading-6 text-foreground mb-2">
+          Financial Vitals
+        </h3>
         {financialFields.map((item, index) => (
-          <div key={`financial-${index}`} className="flex items-center justify-between border-b border-border/40 py-2.5">
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>{item.label}</div>
-            <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-right text-foreground')}>{item.value || '-'}</div>
+          <div
+            key={`financial-${index}`}
+            className="flex items-center justify-between border-b border-border/40 py-2.5"
+          >
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'shrink-0 pr-4 text-muted-foreground'
+              )}
+            >
+              {item.label}
+            </div>
+            <div
+              className={cn(
+                TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                'text-right text-foreground'
+              )}
+            >
+              {item.value || '-'}
+            </div>
           </div>
         ))}
       </div>
@@ -162,10 +241,23 @@ export function IssueReviewPanel({
       {/* Reported Issue Section */}
       <div className="w-full mt-2">
         <div className="space-y-2">
-          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
-            Reported Issue (Dispatched By: <span className="font-semibold text-foreground">{ticket.reportedBy?.name || 'Unknown'}</span>)
+          <div
+            className={cn(
+              TYPOGRAPHY_CLASSNAMES.textSmMedium,
+              'text-muted-foreground'
+            )}
+          >
+            Reported Issue (Dispatched By:{' '}
+            <span className="font-semibold text-foreground">
+              {ticket.reportedBy?.name || 'Unknown'}
+            </span>
+            )
           </div>
-          <Textarea readOnly value={ticket.reportedIssue} className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0" />
+          <Textarea
+            readOnly
+            value={ticket.reportedIssue}
+            className="min-h-25 w-full resize-none bg-muted/30 text-foreground focus-visible:ring-0"
+          />
         </div>
       </div>
     </div>
@@ -218,7 +310,9 @@ export function IssueReviewPanel({
             vendors={vendors}
             isLoading={isInitiatingRepair}
             assetId={data.ticket.asset.assetTag}
-            assetName={data.ticket.model?.name || data.ticket.asset.name || undefined}
+            assetName={
+              data.ticket.model?.name || data.ticket.asset.name || undefined
+            }
             assetSerial={data.ticket.asset.serialNumber || undefined}
             reportedBy={data.ticket.reportedBy?.name || undefined}
             reportedDate={data.ticket.createdAt}

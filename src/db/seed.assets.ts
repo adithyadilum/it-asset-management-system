@@ -1,5 +1,5 @@
+import '../lib/load-env';
 import { serverEnv } from '@/lib/env';
-import * as dotenv from 'dotenv';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
@@ -18,15 +18,12 @@ import {
   maintenanceTickets,
   models,
   owners,
-
   softwareAllocations,
   softwareLicenses,
   systemAuditLogs,
   users,
   vendors,
 } from './schema';
-
-dotenv.config({ path: '.env.local' });
 
 async function first<T>(query: Promise<T[]>): Promise<T | null> {
   const rows = await query;
@@ -102,8 +99,8 @@ export async function seedAssets() {
       },
       {
         email: 'finance@tiqri.com',
-        name: 'Finance Auditor',
-        role: 'FinanceAuditor',
+        name: 'Financial Auditor',
+        role: 'FinancialAuditor',
         department: 'Finance',
       },
       {
@@ -155,7 +152,6 @@ export async function seedAssets() {
     const itUserId = userIds['it@tiqri.com'];
     const financeUserId = userIds['finance@tiqri.com'];
     const employeeUserId = userIds['employee@tiqri.com'];
-
 
     const locationSeeds = [
       { name: 'Colombo HQ', type: 'HQ', parent: null, isActive: true },

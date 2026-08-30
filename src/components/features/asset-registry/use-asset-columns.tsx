@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { PillarBadge } from '@/components/shared/pillar-badge';
-import { SoftwareExpiryStatus } from '@/components/shared/software-expiry-status';
 import { CopyableField } from '@/components/shared/copyable-field';
 import type { RegistryView } from './registry-config';
 import type { AssetRegistryRow } from './asset-registry.types';
@@ -15,13 +14,6 @@ export interface ManualStatus {
   colorTheme?: string;
   iconName?: string;
 }
-
-const ELECTRONICS_CONDITION_STYLES: Record<string, string> = {
-  Active: 'border border-green-300 bg-green-50 text-green-700',
-  'Inspection Due': 'border border-blue-300 bg-blue-50 text-blue-700',
-  'Under Maintenance': 'border border-orange-300 bg-orange-50 text-orange-700',
-  Scheduled: 'border border-border bg-muted text-foreground',
-};
 
 function toElectronicsDisplayCondition(row: AssetRegistryRow) {
   if (row.condition) {
@@ -55,18 +47,47 @@ function toCellText(value: string | null | undefined) {
   return value;
 }
 
-function renderElectronicsConditionBadge(condition: string) {
-  const className =
-    ELECTRONICS_CONDITION_STYLES[condition] ??
-    'border border-border bg-muted text-foreground';
+/**
+ * Was a hand-rolled `<span>` with its own padding and radius, which is why
+ * these badges looked unlike the rest of the registry. StatusBadge knows every
+ * condition and derived status this column can produce.
+ */
+/**
+ * Asset status plus, when one is outstanding, the assignment's own state.
+ *
+ * An asset flips to 'Assigned' the moment an assignment is created, so status
+ * alone cannot distinguish an acknowledged assignment from one still waiting on
+ * the assignee. Shown as a second badge rather than replacing the status,
+ * because they answer different questions.
+ */
+function StatusWithAssignment({
+  status,
+  assignmentState,
+  colorTheme,
+  iconName,
+}: {
+  status: string;
+  assignmentState?: string | null;
+  colorTheme?: string;
+  iconName?: string;
+}) {
+  const isPending = assignmentState === 'pending approval';
 
   return (
-    <span
-      className={`inline-flex h-5 items-center rounded-full px-2 text-[11px] ${className}`}
-    >
-      {condition}
-    </span>
+    <div className="flex flex-col items-start gap-1">
+      <StatusBadge
+        value={status}
+        showIcon
+        colorTheme={colorTheme}
+        iconName={iconName}
+      />
+      {isPending ? <StatusBadge value="pending approval" showIcon /> : null}
+    </div>
   );
+}
+
+function renderElectronicsConditionBadge(condition: string) {
+  return <StatusBadge value={condition} showIcon />;
 }
 
 export function useAssetColumns(
@@ -95,12 +116,18 @@ export function useAssetColumns(
         {
           accessorKey: 'status',
           header: 'Status',
-          cell: ({ row }) => {
-            if (row.original.pillar === 'Software') {
-              return <SoftwareExpiryStatus status={row.original.status} expiryDate={row.original.expiryDate} />;
-            }
-            return <StatusBadge value={row.original.status} showIcon />;
-          },
+          // One badge for every row, software included. `status` has already
+          // been replaced with the derived licence state upstream in
+          // asset-registry-repo, so rendering SoftwareExpiryStatus here stacked
+          // a second, redundant reading of the same thing ("Expired" above
+          // "Expired") under the badge. Expiry dates remain on the licence
+          // detail panel and in the dedicated Software view.
+          cell: ({ row }) => (
+            <StatusWithAssignment
+              status={row.original.status}
+              assignmentState={row.original.assignmentState}
+            />
+          ),
         },
         {
           id: 'assignment',
@@ -108,14 +135,25 @@ export function useAssetColumns(
           cell: ({ row }) => {
             if (row.original.pillar === 'Software') {
               const coreTotal = row.original.totalSeats || 0;
-              const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
-              const total = coreTotal > 0 ? coreTotal : (isNaN(attrTotal) ? 0 : attrTotal);
-              const available = coreTotal > 0 ? (row.original.availableSeats ?? 0) : total;
+              const attrTotal = parseInt(
+                String(
+                  row.original.instanceAttributes?.['total_seats'] ??
+                    row.original.instanceAttributes?.['Total Seats'] ??
+                    row.original.instanceAttributes?.['max_seats'] ??
+                    '0'
+                ),
+                10
+              );
+              const total =
+                coreTotal > 0 ? coreTotal : isNaN(attrTotal) ? 0 : attrTotal;
+              const available =
+                coreTotal > 0 ? (row.original.availableSeats ?? 0) : total;
               const assigned = Math.max(0, total - available);
               return (
-                <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-muted text-foreground ring-border whitespace-nowrap">
-                  {assigned} / {total} Assigned
-                </span>
+                <StatusBadge
+                  variant="metadata"
+                  label={`${assigned} / ${total} Assigned`}
+                />
               );
             }
             return toCellText(row.original.assignedTo || row.original.location);
@@ -164,14 +202,17 @@ export function useAssetColumns(
         {
           id: 'ipOrMacAddress',
           header: 'IP/MAC Address',
-          cell: ({ row }) => String(row.original.instanceAttributes?.['IP/MAC Address'] ?? '-'),
+          cell: ({ row }) =>
+            String(row.original.instanceAttributes?.['IP/MAC Address'] ?? '-'),
           enableSorting: false,
         },
         {
           id: 'electronicsCondition',
           header: 'Condition',
           cell: ({ row }) =>
-            renderElectronicsConditionBadge(toElectronicsDisplayCondition(row.original)),
+            renderElectronicsConditionBadge(
+              toElectronicsDisplayCondition(row.original)
+            ),
           enableSorting: false,
         },
       ];
@@ -194,7 +235,11 @@ export function useAssetColumns(
           cell: ({ row }) => {
             const serialNumber =
               row.original.serialNumber ||
-              String(row.original.instanceAttributes?.['license_key'] ?? row.original.instanceAttributes?.['License Key'] ?? '');
+              String(
+                row.original.instanceAttributes?.['license_key'] ??
+                  row.original.instanceAttributes?.['License Key'] ??
+                  ''
+              );
 
             if (!serialNumber || serialNumber === '-') return '-';
 
@@ -223,9 +268,18 @@ export function useAssetColumns(
             const coreAvailable = row.original.availableSeats;
 
             // Fallbacks from instance attributes
-            const attrTotal = parseInt(String(row.original.instanceAttributes?.['total_seats'] ?? row.original.instanceAttributes?.['Total Seats'] ?? row.original.instanceAttributes?.['max_seats'] ?? '0'), 10);
+            const attrTotal = parseInt(
+              String(
+                row.original.instanceAttributes?.['total_seats'] ??
+                  row.original.instanceAttributes?.['Total Seats'] ??
+                  row.original.instanceAttributes?.['max_seats'] ??
+                  '0'
+              ),
+              10
+            );
 
-            const total = coreTotal > 0 ? coreTotal : (isNaN(attrTotal) ? 0 : attrTotal);
+            const total =
+              coreTotal > 0 ? coreTotal : isNaN(attrTotal) ? 0 : attrTotal;
             // Crude fallback for availability if coreTotal is 0
             const available = coreTotal > 0 ? (coreAvailable ?? 0) : total;
 
@@ -233,16 +287,39 @@ export function useAssetColumns(
 
             if (row.original.pillar !== 'Software') return null;
 
+            // Seats are irrelevant once the licence has lapsed: an expired
+            // licence with eight free seats is not eight seats you can use.
+            const expiryDate = row.original.expiryDate
+              ? new Date(row.original.expiryDate)
+              : null;
+            const isExpired = expiryDate ? expiryDate < new Date() : false;
+
+            if (isExpired) {
+              return (
+                <StatusBadge
+                  variant="metadata"
+                  label="Unavailable"
+                  className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                />
+              );
+            }
+
+            // Seat availability is a judgement, not a status name, so the
+            // colour is chosen here — but the shape comes from StatusBadge like
+            // every other badge.
             return (
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${available === 0
-                  ? 'bg-red-50 text-red-700 ring-red-600/10'
-                  : isLow
-                    ? 'bg-amber-50 text-amber-700 ring-amber-600/10'
-                    : 'bg-green-50 text-green-700 ring-green-600/10'
-                  }`}>
-                  {available} / {total} Available
-                </span>
+                <StatusBadge
+                  variant="metadata"
+                  label={`${available} / ${total} Available`}
+                  className={
+                    available === 0
+                      ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400'
+                      : isLow
+                        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400'
+                        : 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400'
+                  }
+                />
               </div>
             );
           },
@@ -253,7 +330,12 @@ export function useAssetColumns(
           header: 'Expiration Date',
           cell: ({ row }) => {
             const coreExpiry = row.original.expiryDate;
-            const attrExpiry = String(row.original.instanceAttributes?.['expiry_date'] ?? row.original.instanceAttributes?.['Expiration Date'] ?? row.original.instanceAttributes?.['license_expiry'] ?? '');
+            const attrExpiry = String(
+              row.original.instanceAttributes?.['expiry_date'] ??
+                row.original.instanceAttributes?.['Expiration Date'] ??
+                row.original.instanceAttributes?.['license_expiry'] ??
+                ''
+            );
 
             const expiryStr = coreExpiry || attrExpiry;
             if (!expiryStr || expiryStr === 'null') return '-';
@@ -302,11 +384,13 @@ export function useAssetColumns(
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => {
-          const statusConfig = manualStatuses.find(s => s.value === row.original.status);
+          const statusConfig = manualStatuses.find(
+            (s) => s.value === row.original.status
+          );
           return (
-            <StatusBadge
-              value={row.original.status}
-              showIcon
+            <StatusWithAssignment
+              status={row.original.status}
+              assignmentState={row.original.assignmentState}
               colorTheme={statusConfig?.colorTheme}
               iconName={statusConfig?.iconName}
             />

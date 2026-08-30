@@ -23,10 +23,21 @@ describe('FormPanel', () => {
   });
 
   it('shows submitting state', () => {
-    render(<FormPanel {...defaultProps} isSubmitting={true} submittingLabel="Saving..." />);
-    const submitBtn = screen.getByRole('button', { name: 'Saving...', hidden: true });
+    render(
+      <FormPanel
+        {...defaultProps}
+        isSubmitting={true}
+        submittingLabel="Saving..."
+      />
+    );
+    const submitBtn = screen.getByRole('button', {
+      name: 'Saving...',
+      hidden: true,
+    });
     expect(submitBtn).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel', hidden: true })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Cancel', hidden: true })
+    ).toBeDisabled();
   });
 
   it('renders fallback when no children are provided', () => {
@@ -37,10 +48,12 @@ describe('FormPanel', () => {
   it('calls onClose when cancel is clicked', async () => {
     const user = userEvent.setup();
     const onCloseMock = vi.fn();
-    
+
     render(<FormPanel {...defaultProps} onClose={onCloseMock} />);
-    await user.click(screen.getByRole('button', { name: 'Cancel', hidden: true }));
-    
+    await user.click(
+      screen.getByRole('button', { name: 'Cancel', hidden: true })
+    );
+
     expect(onCloseMock).toHaveBeenCalledWith(false);
   });
 });

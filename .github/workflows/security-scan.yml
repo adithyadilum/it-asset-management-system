@@ -1,0 +1,30 @@
+name: 'Security Scan'
+
+on:
+  push:
+    branches: ['main', 'master', 'dev']
+  pull_request:
+    branches: ['main', 'master', 'dev']
+  schedule:
+    - cron: '30 1 * * 0' # Runs automatically every Sunday at 1:30 AM
+
+jobs:
+  analyze:
+    name: Analyze Code
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@1ad29ea4a422cce9a242a9fae469541dcd08addc # v4
+        with:
+          languages: javascript, typescript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@1ad29ea4a422cce9a242a9fae469541dcd08addc # v4

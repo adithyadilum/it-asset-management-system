@@ -7,9 +7,7 @@ export const reportTemplateSchema = z.object({
     .max(255, 'Report name must be 255 characters or fewer.'),
   description: z.string().max(1000).optional(),
   isActive: z.boolean(),
-  dataSource: z
-    .string()
-    .min(1, 'Primary data source is required.'),
+  dataSource: z.string().min(1, 'Primary data source is required.'),
   filters: z.object({
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),

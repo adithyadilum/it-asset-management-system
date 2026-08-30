@@ -29,21 +29,32 @@ describe('SoftwareExpiryStatus', () => {
 
   it('renders warning threshold (<= 30 days) with amber styling', () => {
     // 15 days in the future
-    render(<SoftwareExpiryStatus status="Expiring Soon" expiryDate="2024-01-16T00:00:00Z" />);
+    render(
+      <SoftwareExpiryStatus
+        status="Expiring Soon"
+        expiryDate="2024-01-16T00:00:00Z"
+      />
+    );
     const text = screen.getByText('15 days left');
     expect(text).toHaveClass('text-amber-600');
   });
 
   it('renders safe threshold (> 30 days) with green styling', () => {
     // 60 days in the future
-    render(<SoftwareExpiryStatus status="Active" expiryDate="2024-03-01T00:00:00Z" />);
+    render(
+      <SoftwareExpiryStatus status="Active" expiryDate="2024-03-01T00:00:00Z" />
+    );
     const text = screen.getByText('60 days left');
     expect(text).toHaveClass('text-green-600');
   });
 
   it('applies custom className to the container', () => {
     const { container } = render(
-      <SoftwareExpiryStatus status="Active" expiryDate={null} className="custom-wrapper" />
+      <SoftwareExpiryStatus
+        status="Active"
+        expiryDate={null}
+        className="custom-wrapper"
+      />
     );
     expect(container.firstChild).toHaveClass('custom-wrapper');
   });

@@ -22,20 +22,28 @@ describe('sanitizeRedirectPath', () => {
   });
 
   it('returns fallback for protocol-relative URLs (//evil.com)', () => {
-    expect(sanitizeRedirectPath('//evil.com/hack')).toBe(DEFAULT_POST_LOGIN_REDIRECT);
+    expect(sanitizeRedirectPath('//evil.com/hack')).toBe(
+      DEFAULT_POST_LOGIN_REDIRECT
+    );
   });
 
   it('returns fallback for /login paths to prevent redirect loop', () => {
     expect(sanitizeRedirectPath('/login')).toBe(DEFAULT_POST_LOGIN_REDIRECT);
-    expect(sanitizeRedirectPath('/login?foo=bar')).toBe(DEFAULT_POST_LOGIN_REDIRECT);
+    expect(sanitizeRedirectPath('/login?foo=bar')).toBe(
+      DEFAULT_POST_LOGIN_REDIRECT
+    );
   });
 
   it('returns fallback for non-slash-prefixed paths', () => {
-    expect(sanitizeRedirectPath('assets/hardware')).toBe(DEFAULT_POST_LOGIN_REDIRECT);
+    expect(sanitizeRedirectPath('assets/hardware')).toBe(
+      DEFAULT_POST_LOGIN_REDIRECT
+    );
   });
 
   it('returns fallback for absolute URLs', () => {
-    expect(sanitizeRedirectPath('https://evil.com/hack')).toBe(DEFAULT_POST_LOGIN_REDIRECT);
+    expect(sanitizeRedirectPath('https://evil.com/hack')).toBe(
+      DEFAULT_POST_LOGIN_REDIRECT
+    );
   });
 
   it('preserves query parameters on valid paths', () => {

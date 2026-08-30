@@ -1,8 +1,11 @@
-import { redirect } from 'next/navigation';
-
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { AssignmentsDashboard } from '@/components/features/operations/assignments/assignments-dashboard';
-import { type AssignmentsDashboardTab, getAssignmentsDashboardData } from '@/lib/data/operations-assignments-repo';
-import { getAuthenticatedUser } from '@/actions/auth';
+import {
+  type AssignmentsDashboardTab,
+  getAssignmentsDashboardData,
+} from '@/lib/data/operations-assignments-repo';
+import { requirePageAuth } from '@/lib/auth/page-guard';
 import { canManageAssets } from '@/lib/auth/roles';
 
 function serializeDatesForClient<T>(value: T): T {
@@ -19,27 +22,51 @@ function serializeDatesForClient<T>(value: T): T {
       Object.entries(value).map(([key, nestedValue]) => [
         key,
         serializeDatesForClient(nestedValue),
-      ]),
+      ])
     ) as T;
   }
 
   return value;
 }
 
-export default async function AssignmentsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser || !canManageAssets(currentUser.role)) {
-    redirect('/403');
-  }
+async function AssignmentsPageContent({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  await requirePageAuth(canManageAssets);
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const tabParam = typeof resolvedSearchParams?.tab === 'string' ? resolvedSearchParams.tab : undefined;
+  const tabParam =
+    typeof resolvedSearchParams?.tab === 'string'
+      ? resolvedSearchParams.tab
+      : undefined;
   // Map UI tab ids to repo tab keys
   const requestedTab = tabParam === 'assigned-assets' ? 'assigned' : undefined;
 
-  const data = await getAssignmentsDashboardData(requestedTab as AssignmentsDashboardTab | undefined);
+  const data = await getAssignmentsDashboardData(
+    requestedTab as AssignmentsDashboardTab | undefined
+  );
   const serializedData = serializeDatesForClient(data);
 
   return <AssignmentsDashboard data={serializedData as never} />;
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function AssignmentsPage(props: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AssignmentsPageContent {...props} />
+    </Suspense>
+  );
 }

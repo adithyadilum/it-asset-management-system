@@ -43,7 +43,9 @@ describe('OmniSearchTrigger', () => {
 
     await user.click(input);
     expect(
-      screen.getByText('Start typing to search pages, assets, reports, and users.')
+      screen.getByText(
+        'Start typing to search pages, assets, reports, and users.'
+      )
     ).toBeInTheDocument();
 
     const popoverContent = screen
@@ -64,9 +66,9 @@ describe('OmniSearchTrigger', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('No records found').length).toBeGreaterThanOrEqual(
-        4
-      );
+      expect(
+        screen.getAllByText('No records found').length
+      ).toBeGreaterThanOrEqual(4);
     });
 
     expect(

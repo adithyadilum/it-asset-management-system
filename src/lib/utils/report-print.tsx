@@ -1,6 +1,4 @@
-"use client";
-
-import { pdf } from '@react-pdf/renderer';
+'use client';
 
 import { tiqriToast } from '@/components/shared/sonner';
 import { ReportPdfDocument } from '@/components/features/standard-reports/report-pdf-document';
@@ -10,6 +8,7 @@ export async function generateAndOpenReportPdf(
   data: ReportPdfData,
   options?: { preview?: boolean; download?: boolean; filename?: string }
 ): Promise<void> {
+  const { pdf } = await import('@react-pdf/renderer');
   const blob = await pdf(<ReportPdfDocument data={data} />).toBlob();
   const blobUrl = URL.createObjectURL(blob);
 

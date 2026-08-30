@@ -25,7 +25,12 @@ interface DetailFieldProps {
   isLong?: boolean;
 }
 
-function DetailField({ label, value, isMono = false, isLong = false }: DetailFieldProps) {
+function DetailField({
+  label,
+  value,
+  isMono = false,
+  isLong = false,
+}: DetailFieldProps) {
   return (
     <div
       className={cn(
@@ -33,7 +38,12 @@ function DetailField({ label, value, isMono = false, isLong = false }: DetailFie
         isLong && 'col-span-full'
       )}
     >
-      <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'shrink-0 pr-4 text-muted-foreground')}>
+      <div
+        className={cn(
+          TYPOGRAPHY_CLASSNAMES.textSmMedium,
+          'shrink-0 pr-4 text-muted-foreground'
+        )}
+      >
         {label}
       </div>
       <div
@@ -43,7 +53,7 @@ function DetailField({ label, value, isMono = false, isLong = false }: DetailFie
           isMono && 'font-mono tabular-nums tracking-wide'
         )}
       >
-        {(value !== null && value !== undefined && value !== '') ? value : '-'}
+        {value !== null && value !== undefined && value !== '' ? value : '-'}
       </div>
     </div>
   );
@@ -76,6 +86,7 @@ export interface PurchaseDetailsTabProps {
   onInvoiceClick?: () => void;
   className?: string;
   hideWarranty?: boolean;
+  hideShippingCost?: boolean;
 }
 
 export function PurchaseDetailsTab({
@@ -96,6 +107,7 @@ export function PurchaseDetailsTab({
   onInvoiceClick,
   className = '',
   hideWarranty = false,
+  hideShippingCost = false,
 }: PurchaseDetailsTabProps) {
   const resolvedSourceCurrency = sourceCurrency ?? currency;
 
@@ -103,7 +115,11 @@ export function PurchaseDetailsTab({
     if (!value) return '-';
     const d = new Date(value);
     if (isNaN(d.getTime())) return value || '-';
-    return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).format(d);
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(d);
   };
 
   const getInvoiceFilename = (url?: string) => {
@@ -141,18 +157,23 @@ export function PurchaseDetailsTab({
   const formattedTotalRepairCost = totalRepairCost
     ? formatConvertedMoney(totalRepairCost)
     : undefined;
-  const formattedBookValue = currentBookValue != null
-    ? formatConvertedMoney(String(currentBookValue))
-    : undefined;
-  const formattedTCO = totalTCO != null
-    ? formatConvertedMoney(String(totalTCO))
-    : undefined;
+  const formattedBookValue =
+    currentBookValue != null
+      ? formatConvertedMoney(String(currentBookValue))
+      : undefined;
+  const formattedTCO =
+    totalTCO != null ? formatConvertedMoney(String(totalTCO)) : undefined;
 
   return (
-    <div className={cn('flex w-full flex-col gap-8 text-sm text-foreground', className)}>
+    <div
+      className={cn(
+        'flex w-full flex-col gap-8 text-sm text-foreground',
+        className
+      )}
+    >
       {/* Currency Selector */}
       <div className="mt-2 flex w-full items-center">
-        <Select value={currency} onValueChange={onCurrencyChange ?? (() => { })}>
+        <Select value={currency} onValueChange={onCurrencyChange ?? (() => {})}>
           <SelectTrigger className="h-8 w-28">
             <SelectValue placeholder="Currency" />
           </SelectTrigger>
@@ -170,19 +191,47 @@ export function PurchaseDetailsTab({
       <div className="grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
         <DetailField label="Purchase Date" value={formatDate(purchaseDate)} />
         <DetailField label="Base Price" value={formattedBasePrice} isMono />
-        <DetailField label="Shipping Cost" value={formattedShippingCost} isMono />
+        {!hideShippingCost && (
+          <DetailField
+            label="Shipping Cost"
+            value={formattedShippingCost}
+            isMono
+          />
+        )}
         <DetailField label="Tax" value={formattedTax} isMono />
         <DetailField label="Total Cost" value={formattedTotalCost} isMono />
-        {!hideWarranty && <DetailField label="Warranty Period" value={warrantyPeriod} />}
-        {formattedTotalRepairCost &&
-          <DetailField label="Total Repair Cost" value={formattedTotalRepairCost} isMono />}
-        {formattedBookValue &&
-          <DetailField label="Current Book Value" value={formattedBookValue} isMono />}
-        {formattedTCO &&
-          <DetailField label="Total Cost of Ownership (TCO)" value={formattedTCO} isMono />}
+        {!hideWarranty && (
+          <DetailField label="Warranty Period" value={warrantyPeriod} />
+        )}
+        {formattedTotalRepairCost && (
+          <DetailField
+            label="Total Repair Cost"
+            value={formattedTotalRepairCost}
+            isMono
+          />
+        )}
+        {formattedBookValue && (
+          <DetailField
+            label="Current Book Value"
+            value={formattedBookValue}
+            isMono
+          />
+        )}
+        {formattedTCO && (
+          <DetailField
+            label="Total Cost of Ownership (TCO)"
+            value={formattedTCO}
+            isMono
+          />
+        )}
 
         <div className="flex items-center justify-between border-b border-border/40 py-2.5">
-          <div className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>
+          <div
+            className={cn(
+              TYPOGRAPHY_CLASSNAMES.textSmMedium,
+              'text-muted-foreground'
+            )}
+          >
             Invoice PDF
           </div>
           <div>
@@ -195,10 +244,19 @@ export function PurchaseDetailsTab({
                 className="flex w-fit items-center justify-center gap-2.5 rounded-lg border border-border bg-muted px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent"
               >
                 <FileText size={16} />
-                <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>{getInvoiceFilename(invoicePdf)}</span>
+                <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                  {getInvoiceFilename(invoicePdf)}
+                </span>
               </a>
             ) : (
-              <span className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-muted-foreground')}>-</span>
+              <span
+                className={cn(
+                  TYPOGRAPHY_CLASSNAMES.textSmMedium,
+                  'text-muted-foreground'
+                )}
+              >
+                -
+              </span>
             )}
           </div>
         </div>
@@ -206,9 +264,20 @@ export function PurchaseDetailsTab({
 
       {/* Vendor Details */}
       <div className="flex w-full flex-col gap-6 rounded-lg border border-border bg-muted/30 p-6 shadow-sm">
-        <h3 className={cn(TYPOGRAPHY_CLASSNAMES.textLgSemiBold, 'text-foreground')}>Vendor Details</h3>
+        <h3
+          className={cn(
+            TYPOGRAPHY_CLASSNAMES.textLgSemiBold,
+            'text-foreground'
+          )}
+        >
+          Vendor Details
+        </h3>
         <div className="grid grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
-          <DetailField label="Vendor ID" value={vendor.vendorCode ?? vendor.vendorId} isMono />
+          <DetailField
+            label="Vendor ID"
+            value={vendor.vendorCode ?? vendor.vendorId}
+            isMono
+          />
           <DetailField label="Vendor Name" value={vendor.vendorName} />
           <DetailField label="Contact Person" value={vendor.contactPerson} />
           <DetailField label="Contact Number" value={vendor.contactNumber} />

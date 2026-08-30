@@ -1,15 +1,21 @@
-"use client";
+'use client';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import { useCallback, useMemo, useState } from 'react';
-import { AlertCircle, Loader2, TriangleAlert } from 'lucide-react';
+import { AlertCircle, TriangleAlert } from 'lucide-react';
 
 import { fetchReportPreview } from '@/actions/standard-reports';
 import { tiqriToast } from '@/components/shared/sonner';
 import { StandardModal } from '@/components/ui/standard-modal';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import type { FilterState, ReportPdfData, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  FilterState,
+  ReportPdfData,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 import { generateAndOpenReportPdf } from '@/lib/utils/report-print';
+import { logReportExportAction } from '@/actions/standard-reports';
 
 interface GenerateReportPdfModalProps {
   isOpen: boolean;
@@ -26,7 +32,7 @@ interface GenerateReportPdfModalProps {
 type ExportScope = 'preview' | 'all';
 
 const LARGE_EXPORT_THRESHOLD = 5000;
-const MAX_EXPORT_PAGE_SIZE = 100000;
+const MAX_EXPORT_PAGE_SIZE = 5000;
 
 function formatFilterValue(value: string | undefined) {
   return value && value.trim().length > 0 ? value : 'All';
@@ -43,7 +49,9 @@ function buildFiltersApplied(filterState: FilterState) {
   ];
 
   if (filterState.dateFrom || filterState.dateTo) {
-    parts.push(`Date Range: ${formatFilterValue(filterState.dateFrom)} to ${formatFilterValue(filterState.dateTo)}`);
+    parts.push(
+      `Date Range: ${formatFilterValue(filterState.dateFrom)} to ${formatFilterValue(filterState.dateTo)}`
+    );
   }
 
   return parts.join(' | ');
@@ -56,7 +64,10 @@ function buildFilterDetails(filterState: FilterState) {
     { label: 'Category', value: formatFilterValue(filterState.category) },
     { label: 'Location', value: formatFilterValue(filterState.location) },
     { label: 'Status', value: formatFilterValue(filterState.status) },
-    { label: 'Record Type', value: formatFilterValue(filterState.masterDataType) },
+    {
+      label: 'Record Type',
+      value: formatFilterValue(filterState.masterDataType),
+    },
   ];
 
   if (filterState.dateFrom || filterState.dateTo) {
@@ -77,7 +88,11 @@ function buildReportTitle(source: string, templateName?: string) {
   return source ? `${source} Report` : 'Report';
 }
 
-function buildReportDescription(reportDescription?: string, source?: string, templateName?: string) {
+function buildReportDescription(
+  reportDescription?: string,
+  source?: string,
+  templateName?: string
+) {
   if (reportDescription && reportDescription.trim().length > 0) {
     return reportDescription.trim();
   }
@@ -130,7 +145,11 @@ export function GenerateReportPdfModal({
     async (rows: ReportPreviewRow[]) => {
       const reportData: ReportPdfData = {
         title: buildReportTitle(source, templateName),
-        description: buildReportDescription(reportDescription, source, templateName),
+        description: buildReportDescription(
+          reportDescription,
+          source,
+          templateName
+        ),
         generatedBy,
         generatedAt: new Date().toISOString(),
         filtersApplied: buildFiltersApplied(filterState),
@@ -144,9 +163,27 @@ export function GenerateReportPdfModal({
       };
 
       await generateAndOpenReportPdf(reportData);
+
+      // Same reasoning as the CSV path: the PDF is assembled in the browser, so
+      // nothing on the server would otherwise record that it left.
+      void logReportExportAction({
+        source,
+        format: 'PDF',
+        rowCount: rows.length,
+        templateName,
+      });
+
       handleOpenChange(false);
     },
-    [filterState, generatedBy, handleOpenChange, headers, reportDescription, source, templateName]
+    [
+      filterState,
+      generatedBy,
+      handleOpenChange,
+      headers,
+      reportDescription,
+      source,
+      templateName,
+    ]
   );
 
   const handleGenerate = useCallback(
@@ -174,7 +211,10 @@ export function GenerateReportPdfModal({
 
         await assembleAndPrint(result.data);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to generate PDF report.';
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate PDF report.';
         setErrorMessage(message);
         tiqriToast.error(message);
       } finally {
@@ -185,7 +225,8 @@ export function GenerateReportPdfModal({
   );
 
   const proceedLabel = useMemo(
-    () => `This report contains ${largeExportTotalRows} rows and may take a while to generate. Do you want to proceed?`,
+    () =>
+      `This report contains ${largeExportTotalRows} rows and may take a while to generate. Do you want to proceed?`,
     [largeExportTotalRows]
   );
 
@@ -218,7 +259,11 @@ export function GenerateReportPdfModal({
             </Button>
           </div>
         ) : (
-          <Button type="button" onClick={() => void handleGenerate()} disabled={isGenerating}>
+          <Button
+            type="button"
+            onClick={() => void handleGenerate()}
+            disabled={isGenerating}
+          >
             Generate
           </Button>
         )
@@ -226,7 +271,7 @@ export function GenerateReportPdfModal({
     >
       {isGenerating ? (
         <div className="flex items-center justify-center gap-3 py-6 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+          <LoadingSpinner size="sm" />
           <span>Preparing report…</span>
         </div>
       ) : (
@@ -245,7 +290,9 @@ export function GenerateReportPdfModal({
                 }}
               />
               <span>
-                <span className="block text-sm font-medium text-foreground">Current Page (Preview)</span>
+                <span className="block text-sm font-medium text-foreground">
+                  Current Page (Preview)
+                </span>
                 <span className="block text-sm text-muted-foreground">
                   Export just the {rowCount} rows visible on this page.
                 </span>
@@ -265,7 +312,9 @@ export function GenerateReportPdfModal({
                 }}
               />
               <span>
-                <span className="block text-sm font-medium text-foreground">All Matching Records</span>
+                <span className="block text-sm font-medium text-foreground">
+                  All Matching Records
+                </span>
                 <span className="block text-sm text-muted-foreground">
                   Export all matching records using the current filters.
                 </span>

@@ -1,14 +1,20 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { TabbedPanel, type TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
+import {
+  TabbedPanel,
+  type TabbedPanelTab,
+} from '@/components/shared/slide-panels/tabbed-panel';
 import { type SlidePanelAction } from '@/components/shared/slide-panel';
 import { AssetDetailsTab } from './asset-details-tab';
 import { TechnicalDetailsTab } from './technical-details-tab';
 import { PurchaseDetailsTab } from './purchase-details-tab';
 import { HistoryTab } from './history-tab';
 import { AllocationsTab, type AllocationUser } from './allocations-tab';
-import type { HistoryEvent, MaintenanceEvent } from '@/lib/data/asset-details-repo';
+import type {
+  HistoryEvent,
+  MaintenanceEvent,
+} from '@/lib/data/asset-details-repo';
 import { AssetLoadingSkeleton } from './asset-loading-skeleton';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { InteractiveStatusBadge } from '@/components/shared/interactive-status-badge';
@@ -20,9 +26,12 @@ import { getAllAssetAuditHistory } from '@/actions/audit-log';
 import { format } from 'date-fns';
 import { CopyableField } from '@/components/shared/copyable-field';
 import { RecentMaintenance } from './recent-maintenance';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
+  /** Open without the slide animation, for a panel swapped in place. */
+  disableTransition?: boolean;
   onClose: () => void;
   isLoading?: boolean;
 
@@ -30,14 +39,24 @@ export interface AssetDetailsPanelProps {
   assetId: string;
   assetTag: string;
   assetName?: string;
-  assetCategory: 'Hardware' | 'Software' | 'Office Furniture' | 'Office Electronics' | string;
+  assetCategory:
+    | 'Hardware'
+    | 'Software'
+    | 'Office Furniture'
+    | 'Office Electronics'
+    | string;
   model: string;
   brand: string;
   serialNumber?: string;
   owner?: string;
   assignedTo?: string;
+  /** Assignment dates, shown on the details tab while the asset is out. */
+  assignedDate?: string;
+  expectedReturnDate?: string;
   group?: string;
   location?: string;
+  /** Drives whether the assignment row reads "Location" or "Assigned to". */
+  pillar?: string;
   condition?: string;
   warranty?: string;
   lastRepaired?: string;
@@ -65,7 +84,16 @@ export interface AssetDetailsPanelProps {
   currentBookValue?: number;
   totalRepairCosts?: number;
   totalTCO?: number;
-  vendorInfo?: { vendorId: string; vendorCode?: string; vendorName: string; contactPerson?: string; contactNumber?: string; email?: string; website?: string; address?: string; };
+  vendorInfo?: {
+    vendorId: string;
+    vendorCode?: string;
+    vendorName: string;
+    contactPerson?: string;
+    contactNumber?: string;
+    email?: string;
+    website?: string;
+    address?: string;
+  };
 
   // Event Data
   historyEvents?: HistoryEvent[];
@@ -77,6 +105,7 @@ export interface AssetDetailsPanelProps {
   availableSeats?: number;
   expiryDate?: string | null;
   licenseType?: string | null;
+  billingCycle?: string | null;
 
   // Actions
   onEdit?: () => void;
@@ -87,6 +116,9 @@ export interface AssetDetailsPanelProps {
   onRemindReturn?: () => void;
   onMarkReturned?: () => void;
   onProcessReturn?: () => void;
+  onRenewLicense?: () => void;
+  /** Withdrawing an assignment the assignee has not acknowledged yet. */
+  onCancelAssignment?: () => void;
   onActionButtonClick?: () => void;
   onViewAllHistory?: () => void;
   onViewAllMaintenance?: () => void;
@@ -118,20 +150,39 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     // SAM Data mapping from repo
     const softwareLicenseKey = props.serialNumber || '-';
-    const softwareLicenseType = props.licenseType || props.specs?.license_type?.toString() || 'Subscription';
+    const softwareLicenseType =
+      props.licenseType ||
+      props.specs?.license_type?.toString() ||
+      'Subscription';
+    const softwareBillingCycle =
+      props.billingCycle || props.specs?.billing_cycle?.toString() || '-';
     const softwareVersion = props.specs?.version?.toString() || '-';
-    const rawExpiry = (props.expiryDate && props.expiryDate !== '-') 
-      ? props.expiryDate 
-      : (props.specs?.expiry_date?.toString() || props.specs?.expiration_date?.toString() || props.specs?.['Expiration Date']?.toString());
-    const softwareExpirationDate = rawExpiry && rawExpiry !== '-' ? (
-      !Number.isNaN(new Date(rawExpiry).getTime()) 
-        ? format(new Date(rawExpiry), 'dd MMM yyyy') 
-        : rawExpiry
-    ) : '-';
-    const softwareTotalSeats = (props.totalSeats !== undefined && props.totalSeats !== null) 
-      ? props.totalSeats.toString() 
-      : (props.specs?.max_seats?.toString() || props.specs?.total_seats?.toString() || props.specs?.['Total Seats']?.toString() || '-');
+    const rawExpiry =
+      props.expiryDate && props.expiryDate !== '-'
+        ? props.expiryDate
+        : props.specs?.expiry_date?.toString() ||
+          props.specs?.expiration_date?.toString() ||
+          props.specs?.['Expiration Date']?.toString();
+    const softwareExpirationDate =
+      rawExpiry && rawExpiry !== '-'
+        ? !Number.isNaN(new Date(rawExpiry).getTime())
+          ? format(new Date(rawExpiry), 'dd MMM yyyy')
+          : rawExpiry
+        : '-';
+    const softwareTotalSeats =
+      props.totalSeats !== undefined && props.totalSeats !== null
+        ? props.totalSeats.toString()
+        : props.specs?.max_seats?.toString() ||
+          props.specs?.total_seats?.toString() ||
+          props.specs?.['Total Seats']?.toString() ||
+          '-';
     const resolvedTotalSeats = parseInt(softwareTotalSeats, 10) || 0;
+
+    // Furniture and electronics are assigned to a room, not a person, so
+    // "Assigned to: Room B" reads wrong. Label the row for what it holds.
+    const assignmentLabel = isLocationAssignedPillar(props.pillar)
+      ? 'Location'
+      : 'Assigned to';
 
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
@@ -150,13 +201,22 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     } else if (isSoftware) {
       detailsFields.push(
         { label: 'Product', value: props.model || props.assetName || '-' },
-        { label: 'License Key', value: softwareLicenseKey !== '-' ? <CopyableField value={softwareLicenseKey} label="License Key" /> : '-' },
+        {
+          label: 'License Key',
+          value:
+            softwareLicenseKey !== '-' ? (
+              <CopyableField value={softwareLicenseKey} label="License Key" />
+            ) : (
+              '-'
+            ),
+        },
         { label: 'License Type', value: softwareLicenseType },
+        { label: 'Billing Cycle', value: softwareBillingCycle },
         { label: 'Version', value: softwareVersion },
         { label: 'Total Seats', value: softwareTotalSeats },
         { label: 'Expiration Date', value: softwareExpirationDate },
         { label: 'Publisher', value: props.brand },
-        { label: 'Assigned to', value: props.assignedTo || '-' },
+        { label: assignmentLabel, value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     } else {
@@ -166,8 +226,17 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Brand', value: props.brand },
         { label: 'Serial Number', value: props.serialNumber || '-' },
         { label: 'Owner', value: props.owner || '-' },
-        { label: 'Assigned to', value: props.assignedTo || '-' },
+        { label: assignmentLabel, value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
+      );
+    }
+
+    // The dates only mean anything while the asset is out, and the operations
+    // panel was the only place that showed them.
+    if (props.assignedDate || props.expectedReturnDate) {
+      detailsFields.push(
+        { label: 'Assigned Date', value: props.assignedDate || '-' },
+        { label: 'Due Date', value: props.expectedReturnDate || '-' }
       );
     }
 
@@ -196,33 +265,59 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             mode={isSoftware ? 'software' : 'default'}
             totalSeats={resolvedTotalSeats}
             allocatedCount={props.allocations?.length}
-            softwareSections={isSoftware ? [
-              {
-                title: 'License Details',
-                rows: [
-                  { label: 'Product', value: props.model || props.assetName || '-' },
-                  { label: 'Publisher', value: props.brand || '-' },
-                  { 
-                    label: 'License Key', 
-                    value: softwareLicenseKey !== '-' ? (
-                      <CopyableField value={softwareLicenseKey} label="License Key" />
-                    ) : '-' 
-                  },
-                  { label: 'License Type', value: softwareLicenseType },
-                  { label: 'Version', value: softwareVersion },
-                  { label: 'Expiration Date', value: softwareExpirationDate },
-                ],
-              },
-              {
-                title: 'Asset Details',
-                rows: [
-                  { label: 'Asset ID', value: props.assetTag || '-' },
-                  { label: 'Purchase Date', value: props.purchaseDate || '-' },
-                  { label: 'Registered On', value: props.dateCreated || '-' },
-                  { label: 'Last Updated', value: props.updatedAt || '-' },
-                ],
-              },
-            ] : undefined}
+            softwareSections={
+              isSoftware
+                ? [
+                    {
+                      title: 'License Details',
+                      rows: [
+                        {
+                          label: 'Product',
+                          value: props.model || props.assetName || '-',
+                        },
+                        { label: 'Publisher', value: props.brand || '-' },
+                        {
+                          label: 'License Key',
+                          value:
+                            softwareLicenseKey !== '-' ? (
+                              <CopyableField
+                                value={softwareLicenseKey}
+                                label="License Key"
+                              />
+                            ) : (
+                              '-'
+                            ),
+                        },
+                        { label: 'License Type', value: softwareLicenseType },
+                        { label: 'Billing Cycle', value: softwareBillingCycle },
+                        { label: 'Version', value: softwareVersion },
+                        {
+                          label: 'Expiration Date',
+                          value: softwareExpirationDate,
+                        },
+                      ],
+                    },
+                    {
+                      title: 'Asset Details',
+                      rows: [
+                        { label: 'Asset ID', value: props.assetTag || '-' },
+                        {
+                          label: 'Purchase Date',
+                          value: props.purchaseDate || '-',
+                        },
+                        {
+                          label: 'Registered On',
+                          value: props.dateCreated || '-',
+                        },
+                        {
+                          label: 'Last Updated',
+                          value: props.updatedAt || '-',
+                        },
+                      ],
+                    },
+                  ]
+                : undefined
+            }
             hideMaintenance={true} // Force hide so our dynamic UI takes over
             onQRCodeClick={props.onQRCodeClick}
           />
@@ -240,12 +335,18 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       ),
     });
 
-
     if (!isSoftware) {
       tabsList.push({
         id: isFurniture ? 'physical-details' : 'technical-details',
         label: isFurniture ? 'Physical Details' : 'Technical Details',
-        content: props.isLoading ? <AssetLoadingSkeleton /> : <TechnicalDetailsTab specs={props.specs || {}} note={props.techNote} />,
+        content: props.isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
+          <TechnicalDetailsTab
+            specs={props.specs || {}}
+            note={props.techNote}
+          />
+        ),
       });
     }
 
@@ -265,13 +366,18 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             tax={props.tax || '-'}
             totalCost={props.totalCost || '-'}
             warrantyPeriod={props.warrantyPeriod || '-'}
-            totalRepairCost={props.totalRepairCosts ? String(props.totalRepairCosts) : props.totalRepairCost}
+            totalRepairCost={
+              props.totalRepairCosts
+                ? String(props.totalRepairCosts)
+                : props.totalRepairCost
+            }
             currentBookValue={props.currentBookValue}
             totalTCO={props.totalTCO}
             invoicePdf={props.invoiceUrl}
             vendor={props.vendorInfo || { vendorId: '', vendorName: 'N/A' }}
             onCurrencyChange={props.onCurrencyChange}
             hideWarranty={isSoftware}
+            hideShippingCost={isSoftware}
           />
         ),
       });
@@ -292,7 +398,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
             allocatedCount={allocatedCount}
             allocations={props.allocations ?? []}
             onRevoke={props.onRevokeAllocation}
-            isReadOnly={true}
+            isReadOnly={!props.onRevokeAllocation}
           />
         ),
       });
@@ -302,7 +408,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       tabsList.push({
         id: 'history',
         label: 'History',
-        content: props.isLoading ? <AssetLoadingSkeleton /> : <HistoryTab key={props.assetId} assetId={props.assetId} />,
+        content: props.isLoading ? (
+          <AssetLoadingSkeleton />
+        ) : (
+          <HistoryTab key={props.assetId} assetId={props.assetId} />
+        ),
       });
     }
     if (props.additionalTabs) {
@@ -317,44 +427,52 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       setIsExporting(true);
       const rows = await getAllAssetAuditHistory(props.assetId);
 
-      const escapeCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
+      const escapeCsvValue = (value: string) =>
+        `"${value.replaceAll('"', '""')}"`;
 
       const header = [
-        "Timestamp",
-        "User",
-        "Action Taken",
-        "Target Entity",
-        "IP Address",
+        'Timestamp',
+        'User',
+        'Action Taken',
+        'Target Entity',
+        'IP Address',
       ];
 
       const csvRows = rows.map((row) => {
         const user = row.performedBy
           ? `${row.performedBy.name} <${row.performedBy.email}>`
-          : "Unknown";
+          : 'Unknown';
 
-        const target = row.entityLabel && row.entityLabel.trim().length > 0
-          ? row.entityLabel
-          : `${row.entityType}: ${row.entityId}`;
+        const target =
+          row.entityLabel && row.entityLabel.trim().length > 0
+            ? row.entityLabel
+            : `${row.entityType}: ${row.entityId}`;
 
-        const timestamp = row.performedAt instanceof Date
-          ? row.performedAt
-          : new Date(row.performedAt);
+        const timestamp =
+          row.performedAt instanceof Date
+            ? row.performedAt
+            : new Date(row.performedAt);
 
         return [
-          Number.isNaN(timestamp.getTime()) ? String(row.performedAt) : format(timestamp, "yyyy-MM-dd HH:mm:ss"),
+          Number.isNaN(timestamp.getTime())
+            ? String(row.performedAt)
+            : format(timestamp, 'yyyy-MM-dd HH:mm:ss'),
           user,
           row.actionType,
           target,
-          row.ipAddress ?? "-",
+          row.ipAddress ?? '-',
         ].map(escapeCsvValue);
       });
 
-      const csv = [header.map(escapeCsvValue).join(","), ...csvRows.map((row) => row.join(","))].join("\r\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const csv = [
+        header.map(escapeCsvValue).join(','),
+        ...csvRows.map((row) => row.join(',')),
+      ].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
+      const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `asset-${props.assetTag}-history-${format(new Date(), "yyyyMMdd-HHmmss")}.csv`;
+      anchor.download = `asset-${props.assetTag}-history-${format(new Date(), 'yyyyMMdd-HHmmss')}.csv`;
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -365,17 +483,36 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   }, [props.assetId, props.assetTag]);
 
   // Map action IDs to their handler callbacks
-  const actionHandlers = useMemo<Record<AssetActionId, (() => void) | undefined>>(() => ({
-    'edit': props.onEdit,
-    'assign': props.onAssign,
-    'request-return': props.onRequestReturn,
-    'remind-return': props.onRemindReturn,
-    'mark-returned': props.onMarkReturned,
-    'send-for-repair': props.onSendForRepair,
-    'request-disposal': props.onRequestDisposal,
-    'add-user': props.onActionButtonClick,
-    'process-return': props.onProcessReturn,
-  }), [props.onEdit, props.onAssign, props.onRequestReturn, props.onRemindReturn, props.onMarkReturned, props.onSendForRepair, props.onRequestDisposal, props.onActionButtonClick, props.onProcessReturn]);
+  const actionHandlers = useMemo<
+    Record<AssetActionId, (() => void) | undefined>
+  >(
+    () => ({
+      edit: props.onEdit,
+      assign: props.onAssign,
+      'request-return': props.onRequestReturn,
+      'remind-return': props.onRemindReturn,
+      'mark-returned': props.onMarkReturned,
+      'send-for-repair': props.onSendForRepair,
+      'request-disposal': props.onRequestDisposal,
+      'add-user': props.onActionButtonClick,
+      'process-return': props.onProcessReturn,
+      'renew-license': props.onRenewLicense,
+      'cancel-assignment': props.onCancelAssignment,
+    }),
+    [
+      props.onEdit,
+      props.onAssign,
+      props.onRequestReturn,
+      props.onRemindReturn,
+      props.onMarkReturned,
+      props.onSendForRepair,
+      props.onRequestDisposal,
+      props.onActionButtonClick,
+      props.onProcessReturn,
+      props.onRenewLicense,
+      props.onCancelAssignment,
+    ]
+  );
 
   const actions: SlidePanelAction[] = useMemo(() => {
     const list: SlidePanelAction[] = [];
@@ -386,7 +523,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         label: isExporting ? 'Exporting...' : 'Export to CSV',
         variant: 'default',
         onClick: handleExportCSV,
-        disabled: isExporting
+        disabled: isExporting,
       });
       return list;
     }
@@ -395,8 +532,16 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
 
     if (props.isLoading) {
       list.push(
-        { id: 'skel-1', label: <Skeleton className="h-9 w-20 bg-muted-foreground/20" />, disabled: true },
-        { id: 'skel-2', label: <Skeleton className="h-9 w-28 bg-muted-foreground/20" />, disabled: true }
+        {
+          id: 'skel-1',
+          label: <Skeleton className="h-9 w-20 bg-muted-foreground/20" />,
+          disabled: true,
+        },
+        {
+          id: 'skel-2',
+          label: <Skeleton className="h-9 w-28 bg-muted-foreground/20" />,
+          disabled: true,
+        }
       );
       return list;
     }
@@ -417,6 +562,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     });
 
     for (const action of dynamicActions) {
+      // A button with no handler does nothing when pressed, which reads as a
+      // broken panel; an explicitly disabled one is a deliberate signal and
+      // stays. Operations has no edit flow, so its Edit simply does not appear.
+      if (!action.disabled && !actionHandlers[action.id]) continue;
+
       list.push({
         id: action.id,
         label: action.label,
@@ -427,15 +577,25 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     }
 
     return list;
-  }, [activeTabId, isExporting, handleExportCSV, props.hideActions, props.status, props.assetCategory, isSoftware, actionHandlers, props.isLoading, props.assignmentState]);
+  }, [
+    activeTabId,
+    isExporting,
+    handleExportCSV,
+    props.hideActions,
+    props.status,
+    props.assetCategory,
+    isSoftware,
+    actionHandlers,
+    props.isLoading,
+    props.assignmentState,
+  ]);
 
   const resolvedPanelTitle = (
     <div className="flex min-w-0 items-center gap-2">
-      <span className="truncate">{props.assetName || props.model || 'Asset'}</span>
-      <StatusBadge
-        variant="metadata"
-        label={`ID: ${props.assetTag || '-'}`}
-      />
+      <span className="truncate">
+        {props.assetName || props.model || 'Asset'}
+      </span>
+      <StatusBadge variant="metadata" label={`ID: ${props.assetTag || '-'}`} />
       {isSoftware || props.hideActions ? (
         <StatusBadge value={props.status} showIcon />
       ) : (
@@ -443,9 +603,16 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
           assetId={props.assetId}
           currentStatus={props.status}
           availableStatuses={props.manualStatuses ?? []}
-          hasActiveAssignment={Boolean(props.assignedTo && props.assignedTo !== '-')}
+          hasActiveAssignment={Boolean(
+            props.assignedTo && props.assignedTo !== '-'
+          )}
           onStatusChanged={props.onStatusChanged}
         />
+      )}
+      {/* An asset reads 'Assigned' the moment an assignment exists, so this is
+          the only thing distinguishing acknowledged from still-waiting. */}
+      {props.assignmentState === 'pending approval' && (
+        <StatusBadge value="pending approval" showIcon />
       )}
     </div>
   );
@@ -453,6 +620,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
   return (
     <TabbedPanel
       isOpen={props.isOpen}
+      disableTransition={props.disableTransition}
       onClose={props.onClose}
       title={resolvedPanelTitle}
       tabs={tabs}

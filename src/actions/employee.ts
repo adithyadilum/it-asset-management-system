@@ -1,5 +1,6 @@
 'use server';
 
+import { logInfo } from '@/lib/latency';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { ZodError } from 'zod';
@@ -13,6 +14,10 @@ import {
   categories,
   models,
   notificationQueue,
+  softwareAllocations,
+  softwareLicenses,
+  brands,
+  users,
 } from '@/db/schema';
 import { getPortalAlerts, type PortalAlerts } from '@/lib/data/portal-repo';
 import {
@@ -28,9 +33,38 @@ export type EmployeeAssignedAsset = {
   assetTag: string;
   serialNumber: string | null;
   modelName: string;
+  /** Brand, so the card can title the asset the way a person names it. */
+  brandName: string | null;
+  /** The specific kind of thing -- "Laptops", "Monitors" -- not the pillar. */
+  categoryName: string;
   status: string;
   assignedDate: string;
   pillar: string;
+  /** Where the assignment sits in its lifecycle, for the card badge. */
+  assignmentState: string;
+  /** The one date the holder cares about; null when open-ended. */
+  expectedReturnDate: string | null;
+  /** Whether that date has passed, decided here so the card stays pure. */
+  isOverdue: boolean;
+  /** Model photo. Falls back to the pillar icon on the card. */
+  imageUrl: string | null;
+  assignedByName: string | null;
+};
+
+export type EmployeeSoftwareAsset = {
+  allocationId: number;
+  assetId: string;
+  assetTag: string;
+  licenseKey: string | null;
+  modelName: string;
+  brandName: string | null;
+  categoryName: string;
+  /** Publisher logo, so software cards are not the only ones without an image. */
+  imageUrl: string | null;
+  status: string;
+  allocatedDate: string;
+  licenseType: string;
+  pillar: 'Software';
 };
 
 /**
@@ -54,30 +88,53 @@ export async function getCurrentEmployeeAssets(): Promise<
         assetTag: assets.assetTag,
         serialNumber: assets.serialNumber,
         modelName: models.name,
+        brandName: brands.name,
+        categoryName: categories.name,
         status: assets.status,
         assignedDate: assetAssignments.assignedDate,
         pillar: categories.pillar,
+        assignmentState: assetAssignments.state,
+        expectedReturnDate: assetAssignments.expectedReturnDate,
+        imageUrl: models.imageUrl,
+        assignedByName: users.name,
       })
       .from(assetAssignments)
       .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
       .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
       .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(users, eq(assetAssignments.assignedById, users.id))
       .where(
         and(
           eq(assetAssignments.assignedToUserId, currentUser.id),
           isNull(assetAssignments.returnedDate),
-          inArray(assetAssignments.state, ['assigned', 'overdue', 'requested'])
+          // 'pending approval' now belongs here: the Accept/Decline prompt sits
+          // on the asset's own card, so the asset has to be on the page.
+          inArray(assetAssignments.state, [
+            'pending approval',
+            'assigned',
+            'overdue',
+            'requested',
+          ])
         )
       )
       .orderBy(desc(assetAssignments.assignedDate));
-    console.info('getCurrentEmployeeAssets succeeded', {
+    logInfo('getCurrentEmployeeAssets succeeded', {
       userId: currentUser.id,
       durationMs: Date.now() - startTime,
       rowCount: rows.length,
     });
+    // Day granularity: an asset due back today is not late yet, so compare
+    // against the start of today rather than the current instant.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     return rows.map((row) => ({
       ...row,
       assignedDate: row.assignedDate.toISOString(),
+      isOverdue: row.expectedReturnDate
+        ? new Date(row.expectedReturnDate) < startOfToday
+        : false,
     }));
   } catch (error) {
     console.error('getCurrentEmployeeAssets failed', {
@@ -86,6 +143,81 @@ export async function getCurrentEmployeeAssets(): Promise<
       error,
     });
     throw new Error('Failed to load your assigned assets.');
+  }
+}
+
+/**
+ * Returns active software license allocations for the currently authenticated employee.
+ */
+export async function getCurrentEmployeeSoftwareAssets(): Promise<
+  EmployeeSoftwareAsset[]
+> {
+  const currentUser = await getAuthenticatedUser();
+
+  if (!currentUser) {
+    throw new Error('Unauthorized');
+  }
+
+  const startTime = Date.now();
+  try {
+    const rows = await db
+      .select({
+        allocationId: softwareAllocations.id,
+        assetId: assets.id,
+        assetTag: assets.assetTag,
+        licenseKey: softwareLicenses.licenseKey,
+        modelName: models.name,
+        brandName: brands.name,
+        categoryName: categories.name,
+        imageUrl: models.imageUrl,
+        allocatedDate: softwareAllocations.allocatedAt,
+        licenseType: softwareLicenses.licenseType,
+      })
+      .from(softwareAllocations)
+      .innerJoin(
+        softwareLicenses,
+        eq(softwareAllocations.licenseId, softwareLicenses.id)
+      )
+      .innerJoin(assets, eq(softwareLicenses.assetId, assets.id))
+      .innerJoin(models, eq(softwareLicenses.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .where(
+        and(
+          eq(softwareAllocations.assignedToUserId, currentUser.id),
+          isNull(softwareAllocations.revokedAt),
+          eq(softwareLicenses.isActive, true)
+        )
+      )
+      .orderBy(desc(softwareAllocations.allocatedAt));
+
+    logInfo('getCurrentEmployeeSoftwareAssets succeeded', {
+      userId: currentUser.id,
+      durationMs: Date.now() - startTime,
+      rowCount: rows.length,
+    });
+
+    return rows.map((row) => ({
+      allocationId: row.allocationId,
+      assetId: row.assetId,
+      assetTag: row.assetTag,
+      licenseKey: row.licenseKey,
+      modelName: row.modelName,
+      brandName: row.brandName,
+      categoryName: row.categoryName,
+      imageUrl: row.imageUrl,
+      status: 'active',
+      allocatedDate: row.allocatedDate.toISOString(),
+      licenseType: row.licenseType,
+      pillar: 'Software',
+    }));
+  } catch (error) {
+    console.error('getCurrentEmployeeSoftwareAssets failed', {
+      userId: currentUser.id,
+      durationMs: Date.now() - startTime,
+      error,
+    });
+    throw new Error('Failed to load your software access.');
   }
 }
 

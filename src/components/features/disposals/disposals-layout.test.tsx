@@ -20,9 +20,14 @@ vi.mock('./disposal-history-grid', () => ({
   DisposalHistoryGrid: () => <div data-testid="history-grid">History</div>,
 }));
 
-vi.mock('@/components/features/disposals/disposal-review-panel-wrapper', () => ({
-  DisposalReviewPanelWrapper: () => <div data-testid="review-wrapper">Review</div>,
-}));
+vi.mock(
+  '@/components/features/disposals/disposal-review-panel-wrapper',
+  () => ({
+    DisposalReviewPanelWrapper: () => (
+      <div data-testid="review-wrapper">Review</div>
+    ),
+  })
+);
 
 vi.mock('./disposal-asset-detail-panel', () => ({
   DisposalAssetDetailPanel: () => <div data-testid="detail-panel">Detail</div>,
@@ -41,17 +46,23 @@ describe('DisposalsLayout', () => {
     expect(screen.getByText('Disposals')).toBeInTheDocument();
     expect(screen.getByText(/Pending Disposal/)).toBeInTheDocument();
     expect(screen.getByText('Disposal History')).toBeInTheDocument();
-    
+
     // Default tab is pending
     expect(screen.getByTestId('pending-grid')).toBeInTheDocument();
   });
 
-  it('renders only history tab for FinanceAuditor', () => {
-    render(<DisposalsLayout pendingData={[]} historyData={[]} userRole="FinanceAuditor" />);
+  it('renders only history tab for FinancialAuditor', () => {
+    render(
+      <DisposalsLayout
+        pendingData={[]}
+        historyData={[]}
+        userRole="FinancialAuditor"
+      />
+    );
 
     expect(screen.queryByText(/Pending Disposal/)).not.toBeInTheDocument();
     expect(screen.getByText('Disposal History')).toBeInTheDocument();
-    
+
     // Default tab is history
     expect(screen.getByTestId('history-grid')).toBeInTheDocument();
   });

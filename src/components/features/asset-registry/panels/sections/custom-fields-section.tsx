@@ -24,7 +24,9 @@ type CustomFieldsSectionProps = {
   state: RegisterAssetActionState;
   assetTrackingFields: CustomSchemaField[];
   customFieldValues: Record<string, string>;
-  setCustomFieldValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setCustomFieldValues: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   instanceAttributesPayload: Record<string, string | boolean>;
   ownerId: string;
   onOwnerChange: (v: string) => void;
@@ -48,10 +50,14 @@ export function CustomFieldsSection({
         <div className="col-span-full rounded-lg border border-border bg-background p-4 sm:col-span-2">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h3 className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}>
+              <h3
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground`}
+              >
                 Custom Inputs
               </h3>
-              <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
+              <p
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+              >
                 {`Fields are driven by the selected ${config.modelLabel.toLowerCase()}'s category.`}
               </p>
             </div>
@@ -70,9 +76,13 @@ export function CustomFieldsSection({
               if (field.inputType === 'Boolean') {
                 return (
                   <div key={field.fieldName} className="space-y-2">
-                    <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                    <label
+                      className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+                    >
                       {field.fieldName}
-                      {field.required ? <span className="text-red-500"> *</span> : null}
+                      {field.required ? (
+                        <span className="text-red-500"> *</span>
+                      ) : null}
                     </label>
                     <Select
                       value={fieldValue}
@@ -97,9 +107,13 @@ export function CustomFieldsSection({
 
               return (
                 <div key={field.fieldName} className="space-y-2">
-                  <label className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}>
+                  <label
+                    className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} text-foreground`}
+                  >
                     {field.fieldName}
-                    {field.required ? <span className="text-red-500"> *</span> : null}
+                    {field.required ? (
+                      <span className="text-red-500"> *</span>
+                    ) : null}
                   </label>
                   <Input
                     type={

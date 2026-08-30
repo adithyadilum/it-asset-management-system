@@ -9,11 +9,11 @@ services:
       POSTGRES_PASSWORD: test_password
       POSTGRES_DB: eitams_test
     ports:
-      - "54322:5432" # Maps localhost:54322 to the container's 5432
+      - '54322:5432' # Maps localhost:54322 to the container's 5432
     # This command makes Postgres run faster in testing by disabling disk syncing
     command: postgres -c fsync=off -c full_page_writes=off -c synchronous_commit=OFF
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test_user -d eitams_test"]
+      test: ['CMD-SHELL', 'pg_isready -U test_user -d eitams_test']
       interval: 2s
       timeout: 5s
       retries: 10

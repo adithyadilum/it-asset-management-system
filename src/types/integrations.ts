@@ -15,21 +15,52 @@ export const API_KEY_SCOPES = [
 export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
 
 // Grouped for the UI scope selector
-export const API_KEY_SCOPE_GROUPS: Record<string, { scope: ApiKeyScope; label: string; description: string }[]> = {
+export const API_KEY_SCOPE_GROUPS: Record<
+  string,
+  { scope: ApiKeyScope; label: string; description: string }[]
+> = {
   Assets: [
-    { scope: 'read:assets', label: 'Read Assets', description: 'View full asset inventory' },
-    { scope: 'read:assets:by-user', label: 'Read Assets by User', description: 'Lookup assets assigned to a specific employee' },
-    { scope: 'write:assets', label: 'Write Assets', description: 'Create and update assets via API' },
+    {
+      scope: 'read:assets',
+      label: 'Read Assets',
+      description: 'View full asset inventory',
+    },
+    {
+      scope: 'read:assets:by-user',
+      label: 'Read Assets by User',
+      description: 'Lookup assets assigned to a specific employee',
+    },
+    {
+      scope: 'write:assets',
+      label: 'Write Assets',
+      description: 'Create and update assets via API',
+    },
   ],
   Users: [
-    { scope: 'read:users', label: 'Read Users', description: 'View user directory' },
+    {
+      scope: 'read:users',
+      label: 'Read Users',
+      description: 'View user directory',
+    },
   ],
   Operations: [
-    { scope: 'read:maintenance', label: 'Read Maintenance', description: 'View maintenance tickets' },
-    { scope: 'read:disposals', label: 'Read Disposals', description: 'View disposal requests' },
+    {
+      scope: 'read:maintenance',
+      label: 'Read Maintenance',
+      description: 'View maintenance tickets',
+    },
+    {
+      scope: 'read:disposals',
+      label: 'Read Disposals',
+      description: 'View disposal requests',
+    },
   ],
   Finance: [
-    { scope: 'read:financials', label: 'Read Financials', description: 'View financial data and depreciation' },
+    {
+      scope: 'read:financials',
+      label: 'Read Financials',
+      description: 'View financial data and depreciation',
+    },
   ],
 };
 
@@ -44,7 +75,7 @@ export type ApiKeyDisplay = {
   lastUsedAt: Date | null;
   expiresAt: Date | null;
   isRevoked: boolean;
-  isExpired: boolean;       // Computed: expiresAt !== null && expiresAt < now
+  isExpired: boolean; // Computed: expiresAt !== null && expiresAt < now
   createdAt: Date;
 };
 
@@ -67,7 +98,10 @@ export const WEBHOOK_EVENT_TYPES = [
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
 
 // Grouped for the UI event selector checkboxes
-export const WEBHOOK_EVENT_GROUPS: Record<string, { event: WebhookEventType; label: string }[]> = {
+export const WEBHOOK_EVENT_GROUPS: Record<
+  string,
+  { event: WebhookEventType; label: string }[]
+> = {
   'Asset Lifecycle': [
     { event: 'asset.created', label: 'Asset Created' },
     { event: 'asset.status_changed', label: 'Asset Status Changed' },
@@ -101,6 +135,6 @@ export type WebhookSubscriptionDisplay = {
 export type WebhookEnvelope = {
   event_id: string;
   event_type: WebhookEventType;
-  created_at: string;         // ISO 8601
+  created_at: string; // ISO 8601
   data: Record<string, unknown>;
 };

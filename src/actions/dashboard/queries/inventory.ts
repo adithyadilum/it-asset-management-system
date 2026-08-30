@@ -1,0 +1,348 @@
+import { and, count, eq, isNull, ne, sql } from 'drizzle-orm';
+import { db } from '@/db';
+import {
+  assetAssignments,
+  assetDisposals,
+  assets,
+  categories,
+  customStatuses,
+  departments,
+  maintenanceTickets,
+  models,
+  users,
+} from '@/db/schema';
+import { unstable_cache } from 'next/cache';
+import {
+  DASHBOARD_CHART_CACHE_TTL,
+  DASHBOARD_TABLE_DEFAULT_LIMIT,
+  HIGH_MAINTENANCE_TICKET_THRESHOLD,
+} from '@/lib/constants/dashboard';
+import type {
+  OverdueReturnRow,
+  PendingDisposalRow,
+  HighMaintenanceRow,
+  PendingMaintenanceRow,
+  InventoryStatusResponse,
+  InventoryStatusItem,
+  DepartmentAllocationItem,
+  AssetsByCategoryItem,
+} from '@/types/dashboard';
+import { resolveStatusColor } from '@/lib/status-colors';
+
+export async function getOverdueReturnsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<OverdueReturnRow[]> {
+  const rows = await db
+    .select({
+      assignmentId: assetAssignments.id,
+      assetId: assets.id,
+      assetTag: assets.assetTag,
+      assetName: models.name,
+      employeeName: users.name,
+      employeeEmail: users.email,
+      department: departments.name,
+      expectedReturnDate: assetAssignments.expectedReturnDate,
+      daysOverdue:
+        sql<number>`(CURRENT_DATE - ${assetAssignments.expectedReturnDate}::date)`.as(
+          'days_overdue'
+        ),
+    })
+    .from(assetAssignments)
+    .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .leftJoin(departments, eq(users.departmentId, departments.id))
+    .where(
+      and(
+        isNull(assetAssignments.returnedDate),
+        sql`${assetAssignments.expectedReturnDate}::date < CURRENT_DATE`
+      )
+    )
+    .orderBy(sql`${assetAssignments.expectedReturnDate}::date ASC`)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    assignmentId: row.assignmentId,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    assetName: row.assetName,
+    employeeName: row.employeeName,
+    employeeEmail: row.employeeEmail,
+    department: row.department ?? null,
+    expectedReturnDate: row.expectedReturnDate!,
+    daysOverdue: Math.max(0, Number(row.daysOverdue ?? 0)),
+  }));
+}
+
+export async function getPendingDisposalsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<PendingDisposalRow[]> {
+  const rows = await db
+    .select({
+      disposalId: assetDisposals.id,
+      assetId: assets.id,
+      assetTag: assets.assetTag,
+      assetName: models.name,
+      requestedBy: users.name,
+      requestedByEmail: users.email,
+      daysPending:
+        sql<number>`GREATEST(0, CURRENT_DATE - ${assetDisposals.requestedAt}::date)`.as(
+          'days_pending'
+        ),
+    })
+    .from(assetDisposals)
+    .innerJoin(assets, eq(assetDisposals.assetId, assets.id))
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(users, eq(assetDisposals.requestedById, users.id))
+    .where(eq(assetDisposals.status, 'Pending Approval'))
+    .orderBy(assetDisposals.requestedAt)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    disposalId: row.disposalId,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    assetName: row.assetName,
+    requestedBy: row.requestedBy,
+    requestedByEmail: row.requestedByEmail,
+    daysPending: Number(row.daysPending ?? 0),
+  }));
+}
+
+export async function getHighMaintenanceAssetsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<HighMaintenanceRow[]> {
+  const rows = await db
+    .select({
+      assetId: assets.id,
+      assetTag: assets.assetTag,
+      assetName: models.name,
+      currentStatus: assets.status,
+      repairCount: count(maintenanceTickets.id).as('repair_count'),
+      totalDowntimeDays: sql<number>`
+        CEIL(
+          SUM(
+            EXTRACT(epoch FROM (
+              COALESCE(${maintenanceTickets.actualCompletionDate}, NOW())
+              - ${maintenanceTickets.createdAt}
+            ))
+          ) / 86400
+        )
+      `.as('total_downtime_days'),
+    })
+    .from(maintenanceTickets)
+    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+    .innerJoin(models, eq(assets.modelId, models.id))
+    // A cancelled ticket is not a repair, and because it never gets an
+    // `actual_completion_date` the downtime sum below treated it as still open
+    // -- accruing phantom days forever. Archived assets are excluded here for
+    // the same reason every other dashboard query excludes them.
+    .where(
+      and(
+        ne(maintenanceTickets.status, 'CANCELLED'),
+        eq(assets.isArchived, false)
+      )
+    )
+    .groupBy(assets.id, assets.assetTag, models.name, assets.status)
+    .having(
+      sql`COUNT(${maintenanceTickets.id}) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`
+    )
+    .orderBy(sql`repair_count DESC`)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    assetName: row.assetName,
+    currentStatus: row.currentStatus,
+    repairCount: Number(row.repairCount),
+    totalDowntimeDays: Number(row.totalDowntimeDays ?? 0),
+  }));
+}
+
+export const getCachedInventoryStatus = unstable_cache(
+  async (): Promise<InventoryStatusResponse> => {
+    const results = await db
+      .select({
+        status: assets.status,
+        count: count(assets.id),
+      })
+      .from(assets)
+      .where(eq(assets.isArchived, false))
+      .groupBy(assets.status);
+
+    // Colours come from the shared status palette so a slice matches the badge
+    // for the same status; only the display labels live here.
+    const statusLabelMap: Record<string, string> = {
+      Available: 'New / Available',
+      Assigned: 'Assigned',
+      'In Repair': 'In Repair',
+      Defective: 'Defective',
+      Lost: 'Lost',
+      Retired: 'Retired',
+      'Pending Disposal': 'Pending Disposal',
+      Disposed: 'Disposed',
+    };
+
+    // A custom status is stored on the asset by name, so its configured colour
+    // has to be looked up separately. Without this every custom status was
+    // drawn in the same grey.
+    const customStatusRows = await db
+      .select({
+        name: customStatuses.name,
+        colorTheme: customStatuses.colorTheme,
+      })
+      .from(customStatuses);
+    const customStatusThemes = new Map(
+      customStatusRows.map((row) => [row.name, row.colorTheme])
+    );
+
+    const dataMap = new Map<string, number>();
+    let totalActive = 0;
+    let assignedCount = 0;
+
+    results.forEach((r) => {
+      const val = Number(r.count);
+      dataMap.set(r.status, val);
+      if (r.status !== 'Retired' && r.status !== 'Disposed') {
+        totalActive += val;
+      }
+      if (r.status === 'Assigned') {
+        assignedCount = val;
+      }
+    });
+
+    const inventoryData: InventoryStatusItem[] = [];
+
+    Object.entries(statusLabelMap).forEach(([status, label]) => {
+      const val = dataMap.get(status) || 0;
+      if (val > 0) {
+        inventoryData.push({
+          name: label,
+          value: val,
+          color: resolveStatusColor(status),
+        });
+      }
+    });
+
+    results.forEach((r) => {
+      if (!statusLabelMap[r.status] && Number(r.count) > 0) {
+        inventoryData.push({
+          name: r.status,
+          value: Number(r.count),
+          color: resolveStatusColor(r.status, customStatusThemes.get(r.status)),
+        });
+      }
+    });
+
+    const utilizationRate =
+      totalActive > 0 ? Math.round((assignedCount / totalActive) * 100) : 0;
+
+    return { inventoryData, utilizationRate };
+  },
+  ['dashboard-inventory-status'],
+  { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-inventory'] }
+);
+
+export const getCachedDepartmentAllocation = unstable_cache(
+  async (): Promise<DepartmentAllocationItem[]> => {
+    const results = await db
+      .select({
+        name: departments.name,
+        value: count(assets.id),
+      })
+      .from(assets)
+      .innerJoin(assetAssignments, eq(assets.id, assetAssignments.assetId))
+      .innerJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+      .innerJoin(departments, eq(users.departmentId, departments.id))
+      .where(
+        and(eq(assets.isArchived, false), isNull(assetAssignments.returnedDate))
+      )
+      .groupBy(departments.name);
+
+    return results.map((r) => ({
+      name: r.name,
+      value: Number(r.value),
+    }));
+  },
+  ['dashboard-department-allocation'],
+  { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-dept-allocation'] }
+);
+
+export const getCachedAssetsByCategory = unstable_cache(
+  async (): Promise<AssetsByCategoryItem[]> => {
+    const results = await db
+      .select({
+        categoryName: categories.name,
+        pillar: categories.pillar,
+        count: count(assets.id),
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .where(eq(assets.isArchived, false))
+      .groupBy(categories.name, categories.pillar)
+      .orderBy(sql`count DESC`);
+
+    return results.map((r) => ({
+      categoryName: r.categoryName,
+      pillar: r.pillar,
+      count: Number(r.count),
+    }));
+  },
+  ['dashboard-assets-by-category'],
+  { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-categories'] }
+);
+
+/**
+ * Reported issues waiting on IT: internal tickets that are still open.
+ *
+ * The counterpart to overdue returns and pending disposals -- work that has
+ * been raised and not yet actioned. `loadPendingMaintenanceTickets` in
+ * `src/actions/maintenance.ts` answers the same question for the maintenance
+ * page, but returns whole joined records; the dashboard needs six columns.
+ */
+export async function getPendingMaintenanceRequestsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<PendingMaintenanceRow[]> {
+  const rows = await db
+    .select({
+      ticketId: maintenanceTickets.id,
+      assetId: assets.id,
+      assetTag: assets.assetTag,
+      assetName: models.name,
+      reportedIssue: maintenanceTickets.reportedIssue,
+      reportedBy: users.name,
+      reportedByEmail: users.email,
+      daysPending:
+        sql<number>`GREATEST(0, CURRENT_DATE - ${maintenanceTickets.createdAt}::date)`.as(
+          'days_pending'
+        ),
+    })
+    .from(maintenanceTickets)
+    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
+    .where(
+      and(
+        eq(maintenanceTickets.status, 'ACTIVE'),
+        // INTERNAL means reported and not yet sent anywhere; a VENDOR ticket is
+        // already being worked on and belongs to Active Repairs.
+        eq(maintenanceTickets.ticketType, 'INTERNAL'),
+        eq(assets.isArchived, false)
+      )
+    )
+    .orderBy(maintenanceTickets.createdAt)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    ticketId: row.ticketId,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    assetName: row.assetName,
+    reportedIssue: row.reportedIssue,
+    reportedBy: row.reportedBy,
+    reportedByEmail: row.reportedByEmail,
+    daysPending: Number(row.daysPending ?? 0),
+  }));
+}

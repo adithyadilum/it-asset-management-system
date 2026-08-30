@@ -1,5 +1,3 @@
-import { pdf } from '@react-pdf/renderer';
-import QRCode from 'qrcode';
 import TagPdfDocument from '@/components/features/asset-registry/tags/tag-pdf-document';
 import { tiqriToast } from '@/components/shared/sonner';
 
@@ -25,6 +23,12 @@ export async function generateAndPrintTagPdf({
     typeof window !== 'undefined'
       ? window.location.origin
       : 'https://assets.tiqri.com';
+
+  const [QRCodeModule, { pdf }] = await Promise.all([
+    import('qrcode'),
+    import('@react-pdf/renderer'),
+  ]);
+  const QRCode = QRCodeModule.default;
 
   // Pre-generate QR data URLs locally to avoid hitting third-party APIs
   // This ensures offline capability and privacy for asset URLs.
@@ -66,8 +70,6 @@ export async function generateAndPrintTagPdf({
     };
   } else {
     URL.revokeObjectURL(blobUrl);
-    tiqriToast.error(
-      'Popup blocker prevented opening the print window.'
-    );
+    tiqriToast.error('Popup blocker prevented opening the print window.');
   }
 }

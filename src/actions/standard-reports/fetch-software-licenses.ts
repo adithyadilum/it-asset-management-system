@@ -1,8 +1,16 @@
 import { eq, and, isNull, inArray, sql, desc } from 'drizzle-orm';
 import { db } from '@/db';
-import { softwareLicenses, softwareAllocations, models, brands } from '@/db/schema';
+import {
+  softwareLicenses,
+  softwareAllocations,
+  models,
+  brands,
+} from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchSoftwareLicenses(
   filters: ReportPreviewFilters,
@@ -17,23 +25,16 @@ export async function fetchSoftwareLicenses(
     filters.status !== 'All statuses' &&
     filters.status !== 'All Types'
   ) {
-    conditions.push(
-      eq(softwareLicenses.licenseType, filters.status as never)
-    );
+    conditions.push(eq(softwareLicenses.licenseType, filters.status as never));
   }
   if (filters.dateFrom) {
-    conditions.push(
-      sql`${softwareLicenses.expiryDate} >= ${filters.dateFrom}`
-    );
+    conditions.push(sql`${softwareLicenses.expiryDate} >= ${filters.dateFrom}`);
   }
   if (filters.dateTo) {
-    conditions.push(
-      sql`${softwareLicenses.expiryDate} <= ${filters.dateTo}`
-    );
+    conditions.push(sql`${softwareLicenses.expiryDate} <= ${filters.dateTo}`);
   }
 
-  const whereCondition =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
   const baseQuery = db
     .select({

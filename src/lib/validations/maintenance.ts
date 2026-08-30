@@ -22,7 +22,10 @@ export type ResolveIssueInput = z.infer<typeof resolveIssueSchema>;
 export const initiateVendorRepairSchema = z.object({
   ticketId: z.number().int().positive('Invalid ticket ID.'),
   assetId: z.string().uuid('Invalid asset ID format.'),
-  vendorId: z.coerce.number().int().positive('A valid vendor must be selected.'),
+  vendorId: z.coerce
+    .number()
+    .int()
+    .positive('A valid vendor must be selected.'),
   rmaNumber: z
     .string()
     .trim()
@@ -32,19 +35,25 @@ export const initiateVendorRepairSchema = z.object({
     .number()
     .nonnegative('Estimated cost must be 0 or more.')
     .optional(),
+  expectedReturnDate: z
+    .string()
+    .regex(
+      /^\d{4}-\d{2}-\d{2}$/,
+      'Expected return date must be in YYYY-MM-DD format.'
+    )
+    .optional(),
+  // The dispatch dialog offers a currency picker; without this the estimate was
+  // stored bare and every grid rendered it as USD regardless.
   currencyCode: z
     .string()
     .trim()
     .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
-    .optional()
     .default('LKR'),
-  expectedReturnDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected return date must be in YYYY-MM-DD format.')
-    .optional(),
 });
 
-export type InitiateVendorRepairInput = z.infer<typeof initiateVendorRepairSchema>;
+export type InitiateVendorRepairInput = z.infer<
+  typeof initiateVendorRepairSchema
+>;
 
 // ---------------------------------------------------------------------------
 // completeRepairTicket
@@ -64,11 +73,12 @@ export const completeRepairSchema = z.object({
   updateStatusTo: z.enum(['Available', 'Disposed'], {
     message: 'Status must be either Available or Disposed.',
   }),
+  // Defaults to LKR so existing callers and rows keep the meaning they already
+  // had -- the cost was always read as LKR, just never recorded as such.
   currencyCode: z
     .string()
     .trim()
     .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
-    .optional()
     .default('LKR'),
 });
 
@@ -80,7 +90,10 @@ export type CompleteRepairInput = z.infer<typeof completeRepairSchema>;
 
 export const panelRepairSchema = z.object({
   assetId: z.string().uuid('Invalid asset ID format.'),
-  vendorId: z.coerce.number().int().positive('A valid vendor must be selected.'),
+  vendorId: z.coerce
+    .number()
+    .int()
+    .positive('A valid vendor must be selected.'),
   rmaNumber: z
     .string()
     .trim()
@@ -90,16 +103,73 @@ export const panelRepairSchema = z.object({
     .number()
     .nonnegative('Estimated cost must be 0 or more.')
     .optional(),
-  currencyCode: z
-    .string()
-    .trim()
-    .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
-    .optional()
-    .default('LKR'),
   expectedReturnDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected return date must be in YYYY-MM-DD format.')
+    .regex(
+      /^\d{4}-\d{2}-\d{2}$/,
+      'Expected return date must be in YYYY-MM-DD format.'
+    )
     .optional(),
 });
 
 export type PanelRepairInput = z.infer<typeof panelRepairSchema>;
+
+// ---------------------------------------------------------------------------
+// getRepairHistory (pagination parameter bounds)
+// ---------------------------------------------------------------------------
+
+export const getRepairHistoryParamsSchema = z.object({
+  page: z.number().int().min(1, 'Page must be 1 or greater.'),
+  pageSize: z
+    .number()
+    .int()
+    .min(1, 'Page size must be at least 1.')
+    .max(100, 'Page size must not exceed 100.'),
+  searchTerm: z
+    .string()
+    .trim()
+    .max(200, 'Search term must be 200 characters or fewer.')
+    .optional()
+    .default(''),
+});
+
+export type GetRepairHistoryParams = z.infer<
+  typeof getRepairHistoryParamsSchema
+>;
+
+// ---------------------------------------------------------------------------
+// getAssetMaintenanceHistory (limit parameter bounds)
+// ---------------------------------------------------------------------------
+
+export const getAssetMaintenanceHistoryParamsSchema = z.object({
+  assetId: z
+    .string()
+    .trim()
+    .min(1, 'Asset ID is required.')
+    .max(100, 'Asset ID must be 100 characters or fewer.'),
+  limit: z
+    .number()
+    .int()
+    .min(1, 'Limit must be at least 1.')
+    .max(100, 'Limit must not exceed 100.'),
+});
+
+export type GetAssetMaintenanceHistoryParams = z.infer<
+  typeof getAssetMaintenanceHistoryParamsSchema
+>;
+
+// ---------------------------------------------------------------------------
+// flagAssetForRepair (flag an asset for repair from the detail panel)
+// Creates an INTERNAL ticket → appears in Pending Review tab.
+// ---------------------------------------------------------------------------
+
+export const flagForRepairSchema = z.object({
+  assetId: z.string().uuid('Invalid asset ID format.'),
+  issueNote: z
+    .string()
+    .trim()
+    .min(1, 'Issue description is required.')
+    .max(1000, 'Issue description must be 1000 characters or fewer.'),
+});
+
+export type FlagForRepairInput = z.infer<typeof flagForRepairSchema>;

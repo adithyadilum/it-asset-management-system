@@ -1,20 +1,20 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { AlertCircle, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { useEffect } from 'react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function DashboardError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[Dashboard Error]', error)
-  }, [error])
+    console.error('[Dashboard Error]', error);
+  }, [error]);
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-6">
@@ -34,11 +34,7 @@ export default function DashboardError({
             </p>
           </div>
 
-          <Button
-            onClick={reset}
-            variant="outline"
-            className="mt-2 gap-2"
-          >
+          <Button onClick={reset} variant="outline" className="mt-2 gap-2">
             <RotateCcw className="h-4 w-4" />
             Try again
           </Button>
@@ -51,5 +47,5 @@ export default function DashboardError({
         </CardContent>
       </Card>
     </main>
-  )
+  );
 }

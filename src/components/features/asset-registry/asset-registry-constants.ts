@@ -42,7 +42,14 @@ export const DEFAULT_STATUS_OPTIONS = [
 export const SKELETON_COLUMN_WIDTHS: Record<RegistryView, string[]> = {
   software: ['w-[26%]', 'w-[22%]', 'w-[17%]', 'w-[17%]', 'w-[18%]'],
   furniture: ['w-[18%]', 'w-[26%]', 'w-[16%]', 'w-[20%]', 'w-[20%]'],
-  'office-electronics': ['w-[16%]', 'w-[20%]', 'w-[14%]', 'w-[16%]', 'w-[18%]', 'w-[16%]'],
+  'office-electronics': [
+    'w-[16%]',
+    'w-[20%]',
+    'w-[14%]',
+    'w-[16%]',
+    'w-[18%]',
+    'w-[16%]',
+  ],
   hardware: ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'],
   unified: ['w-[14%]', 'w-[24%]', 'w-[16%]', 'w-[14%]', 'w-[16%]', 'w-[16%]'],
 };

@@ -52,12 +52,7 @@ export function TimelineItem({
         </div>
 
         {!isLast && (
-          <div
-            className={cn(
-              'w-0.5 grow',
-              lineColorClasses[iconColor]
-            )}
-          />
+          <div className={cn('w-0.5 grow', lineColorClasses[iconColor])} />
         )}
       </div>
 

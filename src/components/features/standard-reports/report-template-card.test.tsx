@@ -1,16 +1,22 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterAll, afterEach } from 'vitest';
 import { ReportTemplateCard } from './report-template-card';
 
 vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: any) => <div data-testid="dropdown-menu">{children}</div>,
-  DropdownMenuTrigger: ({ children }: any) => <div data-testid="dropdown-trigger">{children}</div>,
-  DropdownMenuContent: ({ children }: any) => <div data-testid="dropdown-content">{children}</div>,
+  DropdownMenu: ({ children }: any) => (
+    <div data-testid="dropdown-menu">{children}</div>
+  ),
+  DropdownMenuTrigger: ({ children }: any) => (
+    <div data-testid="dropdown-trigger">{children}</div>
+  ),
+  DropdownMenuContent: ({ children }: any) => (
+    <div data-testid="dropdown-content">{children}</div>
+  ),
   DropdownMenuItem: ({ children, onClick }: any) => (
     <div data-testid="dropdown-item" onClick={onClick}>
       {children}
@@ -66,7 +72,12 @@ describe('ReportTemplateCard', () => {
 
   it('handles preview click', () => {
     const mockOnPreviewClick = vi.fn();
-    render(<ReportTemplateCard template={mockTemplate} onPreviewClick={mockOnPreviewClick} />);
+    render(
+      <ReportTemplateCard
+        template={mockTemplate}
+        onPreviewClick={mockOnPreviewClick}
+      />
+    );
 
     fireEvent.click(screen.getByText(/Preview report/));
     expect(mockOnPreviewClick).toHaveBeenCalledWith(1);

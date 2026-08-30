@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
@@ -24,8 +24,11 @@ export class MaintenanceErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Maintenance Module Error Captured:', error, errorInfo);
+  public componentDidCatch(error: Error) {
+    console.error(
+      '[MaintenanceErrorBoundary]',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 
   public render() {
@@ -33,17 +36,24 @@ export class MaintenanceErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex h-[calc(100vh-64px)] w-full items-center justify-center bg-muted/20 p-5">
           <div className="flex max-w-md flex-col items-center gap-4 rounded-xl border border-border bg-card p-8 text-center shadow-md">
-            
             <div className="rounded-full bg-destructive/10 p-3">
-              <AlertCircle className="h-8 w-8 text-destructive" strokeWidth={1.5} />
+              <AlertCircle
+                className="h-8 w-8 text-destructive"
+                strokeWidth={1.5}
+              />
             </div>
-            
+
             <div className="space-y-1">
-              <h2 className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}>
+              <h2
+                className={`${TYPOGRAPHY_CLASSNAMES.textLgSemiBold} text-foreground`}
+              >
                 Something went wrong
               </h2>
-              <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-                The maintenance module encountered an unexpected error. Don&apos;t worry, your data is safe.
+              <p
+                className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
+              >
+                The maintenance module encountered an unexpected error.
+                Don&apos;t worry, your data is safe.
               </p>
             </div>
 

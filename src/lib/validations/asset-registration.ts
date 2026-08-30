@@ -22,210 +22,293 @@ export type RegistrationPillarInput = DbPillar;
 // Pillar-specific custom field data is captured in `instanceAttributes` (JSONB).
 // ---------------------------------------------------------------------------
 
-export const assetRegistrationSchema = z.object({
-  // Classification (always required)
-  pillar: z.enum(DB_PILLAR_VALUES, {
-    message: 'Pillar is required.',
-  }),
-  categoryId: z.coerce
-    .number({ message: 'Category is required.' })
-    .int({ message: 'Category is required.' })
-    .positive({ message: 'Category is required.' }),
-  brandId: z.coerce
-    .number({ message: 'Brand is required.' })
-    .int({ message: 'Brand is required.' })
-    .positive({ message: 'Brand is required.' }),
-  modelId: z.coerce
-    .number({ message: 'Model is required.' })
-    .int({ message: 'Model is required.' })
-    .positive({ message: 'Model is required.' }),
+export const assetRegistrationSchema = z
+  .object({
+    // Classification (always required)
+    pillar: z.enum(DB_PILLAR_VALUES, {
+      message: 'Pillar is required.',
+    }),
+    categoryId: z.coerce
+      .number({ message: 'Category is required.' })
+      .int({ message: 'Category is required.' })
+      .positive({ message: 'Category is required.' }),
+    brandId: z.coerce
+      .number({ message: 'Brand is required.' })
+      .int({ message: 'Brand is required.' })
+      .positive({ message: 'Brand is required.' }),
+    modelId: z.coerce
+      .number({ message: 'Model is required.' })
+      .int({ message: 'Model is required.' })
+      .positive({ message: 'Model is required.' }),
 
-  // Identity
-  name: z
-    .string()
-    .trim()
-    .min(1, { message: 'Asset name is required.' })
-    .max(255, { message: 'Asset name must be 255 characters or less.' }),
-  serialNumber: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z
+    // Identity
+    name: z
       .string()
-      .max(255, { message: 'Serial number must be 255 characters or less.' })
-      .optional()
-  ),
+      .trim()
+      .min(1, { message: 'Asset name is required.' })
+      .max(255, { message: 'Asset name must be 255 characters or less.' }),
+    serialNumber: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z
+        .string()
+        .max(255, { message: 'Serial number must be 255 characters or less.' })
+        .optional()
+    ),
 
-  // Location (optional — applies to furniture, electronics, etc.)
-  locationId: z.preprocess(
-    (value) => {
-      if (value === '' || value === null || value === undefined)
-        return undefined;
-      return value;
-    },
-    z.coerce
-      .number({ message: 'Location must be a valid selection.' })
-      .int()
-      .positive()
-      .optional()
-  ),
+    // Location (optional — applies to furniture, electronics, etc.)
+    locationId: z.preprocess(
+      (value) => {
+        if (value === '' || value === null || value === undefined)
+          return undefined;
+        return value;
+      },
+      z.coerce
+        .number({ message: 'Location must be a valid selection.' })
+        .int()
+        .positive()
+        .optional()
+    ),
 
-  // Assignment (optional)
-  ownerId: z.preprocess(
-    (value) => {
-      if (value === '' || value === null || value === undefined)
-        return undefined;
-      return value;
-    },
-    z.coerce
-      .number({ message: 'Owner is invalid.' })
-      .int()
-      .positive()
-      .optional()
-  ),
+    // Assignment (optional)
+    ownerId: z.preprocess(
+      (value) => {
+        if (value === '' || value === null || value === undefined)
+          return undefined;
+        return value;
+      },
+      z.coerce
+        .number({ message: 'Owner is invalid.' })
+        .int()
+        .positive()
+        .optional()
+    ),
 
-  // Condition (optional — applies to furniture, electronics)
-  condition: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z
-      .enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged'], {
-        message: 'Condition must be a valid option.',
-      })
-      .optional()
-  ),
+    // Condition (optional — applies to furniture, electronics)
+    condition: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z
+        .enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged'], {
+          message: 'Condition must be a valid option.',
+        })
+        .optional()
+    ),
 
-  // Financials
-  purchaseDate: z
-    .string()
-    .trim()
-    .min(1, { message: 'Purchase date is required.' })
-    .pipe(z.coerce.date({ message: 'Purchase date is invalid.' })),
-  basePrice: z.coerce
-    .number({ message: 'Base price is required.' })
-    .nonnegative({ message: 'Base price must be 0 or more.' }),
-  shippingCost: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z.coerce
-      .number({ message: 'Shipping cost must be a valid number.' })
-      .nonnegative({ message: 'Shipping cost must be 0 or more.' })
-      .optional()
-  ),
-  tax: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z.coerce
-      .number({ message: 'Tax must be a valid number.' })
-      .nonnegative({ message: 'Tax must be 0 or more.' })
-      .optional()
-  ),
-  currencyCode: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim().toUpperCase();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z
+    // Financials
+    purchaseDate: z
       .string()
-      .regex(/^[A-Z]{3}$/, {
-        message: 'Currency code must be a 3-letter code (e.g. USD).',
-      })
-      .optional()
-  ),
-  warrantyMonths: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z.coerce
-      .number({ message: 'Warranty months must be a valid number.' })
-      .int({ message: 'Warranty months must be a whole number.' })
-      .min(1, { message: 'Warranty months must be at least 1.' })
-      .max(120, { message: 'Warranty months must be 120 or less.' })
-      .optional()
-  ),
-  vendorId: z.coerce
-    .number({ message: 'Vendor is required.' })
-    .int({ message: 'Vendor is required.' })
-    .positive({ message: 'Vendor is required.' }),
+      .trim()
+      .min(1, { message: 'Purchase date is required.' })
+      .pipe(z.coerce.date({ message: 'Purchase date is invalid.' })),
+    basePrice: z.coerce
+      .number({ message: 'Base price is required.' })
+      .nonnegative({ message: 'Base price must be 0 or more.' }),
+    shippingCost: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce
+        .number({ message: 'Shipping cost must be a valid number.' })
+        .nonnegative({ message: 'Shipping cost must be 0 or more.' })
+        .optional()
+    ),
+    tax: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce
+        .number({ message: 'Tax must be a valid number.' })
+        .nonnegative({ message: 'Tax must be 0 or more.' })
+        .optional()
+    ),
+    currencyCode: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim().toUpperCase();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z
+        .string()
+        .regex(/^[A-Z]{3}$/, {
+          message: 'Currency code must be a 3-letter code (e.g. USD).',
+        })
+        .optional()
+    ),
+    warrantyMonths: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce
+        .number({ message: 'Warranty months must be a valid number.' })
+        .int({ message: 'Warranty months must be a whole number.' })
+        .min(1, { message: 'Warranty months must be at least 1.' })
+        .max(120, { message: 'Warranty months must be 120 or less.' })
+        .optional()
+    ),
+    // Expected lifespan, captured in years because that is how people talk
+    // about it; stored as `assets.useful_life_months`. Drives the straight-line
+    // depreciation in lib/depreciation.ts. Optional, and defaulted downstream,
+    // so an asset registered without one still depreciates over 5 years.
+    expectedLifespanYears: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce
+        .number({ message: 'Expected lifespan must be a valid number.' })
+        .int({ message: 'Expected lifespan must be a whole number of years.' })
+        .min(1, { message: 'Expected lifespan must be at least 1 year.' })
+        .max(30, { message: 'Expected lifespan must be 30 years or less.' })
+        .optional()
+    ),
+    vendorId: z.coerce
+      .number({ message: 'Vendor is required.' })
+      .int({ message: 'Vendor is required.' })
+      .positive({ message: 'Vendor is required.' }),
 
-  // Notes
-  notes: z
-    .string()
-    .trim()
-    .max(2_000, { message: 'Notes must be 2000 characters or less.' })
-    .optional(),
+    // Notes
+    notes: z
+      .string()
+      .trim()
+      .max(2_000, { message: 'Notes must be 2000 characters or less.' })
+      .optional(),
 
-  // Dynamic attributes from category custom schema (JSONB)
-  // Validated loosely here — the server can enforce per-field rules if needed.
-  instanceAttributes: z.record(z.string(), z.unknown()).optional(),
+    // Dynamic attributes from category custom schema (JSONB)
+    // Validated loosely here — the server can enforce per-field rules if needed.
+    instanceAttributes: z.record(z.string(), z.unknown()).optional(),
 
-  // Software Licensing
-  licenseType: z.preprocess(
-    (value) => {
+    // Software Licensing
+    licenseType: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z
+        .enum(['Perpetual', 'Subscription', 'Open Source / Free'], {
+          message: 'License type must be a valid option.',
+        })
+        .optional()
+    ),
+    billingCycle: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z
+        .enum(['Monthly', 'Annual'], {
+          message: 'Billing cycle must be monthly or annual.',
+        })
+        .optional()
+    ),
+    totalSeats: z.preprocess((value) => {
       if (typeof value !== 'string') return value;
       const trimmed = value.trim();
       return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z.enum(['Perpetual', 'Subscription', 'Open Source / Free'], {
-      message: 'License type must be a valid option.',
-    }).optional()
-  ),
-  totalSeats: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z.coerce.number().int().min(1, 'Total seats must be at least 1.').optional()
-  ),
-  licenseStartDate: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z.coerce.date({ message: 'Start date is invalid.' }).optional()
-  ),
-  licenseExpiryDate: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? undefined : trimmed;
-    },
-    z.coerce.date({ message: 'Expiry date is invalid.' }).optional()
-  ),
-}).superRefine((data, ctx) => {
-  if (data.pillar === 'Software') {
-    if (!data.licenseType) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['licenseType'],
-        message: 'License type is required for software.',
-      });
+    }, z.coerce.number().int().min(1, 'Total seats must be at least 1.').optional()),
+    licenseStartDate: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce.date({ message: 'Start date is invalid.' }).optional()
+    ),
+    licenseExpiryDate: z.preprocess(
+      (value) => {
+        if (typeof value !== 'string') return value;
+        const trimmed = value.trim();
+        return trimmed.length === 0 ? undefined : trimmed;
+      },
+      z.coerce.date({ message: 'Expiry date is invalid.' }).optional()
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (data.pillar === 'Software') {
+      if (!data.licenseType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['licenseType'],
+          message: 'License type is required for software.',
+        });
+      }
+      if (!data.totalSeats || data.totalSeats < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['totalSeats'],
+          message: 'Total seats is required for software.',
+        });
+      }
+      if (data.licenseType === 'Subscription') {
+        if (!data.billingCycle) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['billingCycle'],
+            message: 'Billing cycle is required for subscription licenses.',
+          });
+        }
+        if (!data.licenseExpiryDate) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['licenseExpiryDate'],
+            message: 'Expiry date is required for subscription licenses.',
+          });
+        }
+      }
+      if (data.licenseType === 'Perpetual' && data.licenseExpiryDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['licenseExpiryDate'],
+          message: 'Perpetual licenses must not have an expiry date.',
+        });
+      }
+      if (data.licenseType !== 'Subscription' && data.billingCycle) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['billingCycle'],
+          message: 'Billing cycle only applies to subscription licenses.',
+        });
+      }
+      if (
+        data.licenseType === 'Open Source / Free' &&
+        (data.basePrice !== 0 ||
+          (data.tax ?? 0) !== 0 ||
+          (data.shippingCost ?? 0) !== 0)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['basePrice'],
+          message: 'Free software must have a total cost of 0.',
+        });
+      }
+      if (
+        data.licenseStartDate &&
+        data.licenseExpiryDate &&
+        data.licenseExpiryDate < data.licenseStartDate
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['licenseExpiryDate'],
+          message: 'Expiry date must be after the start date.',
+        });
+      }
     }
-    if (!data.totalSeats || data.totalSeats < 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['totalSeats'],
-        message: 'Total seats is required for software.',
-      });
-    }
-  }
-});
+  });
 
 export type AssetRegistrationInput = z.infer<typeof assetRegistrationSchema>;
 
@@ -247,7 +330,7 @@ export const initialRegisterAssetActionState: RegisterAssetActionState = {
 // ---------------------------------------------------------------------------
 
 export const PILLAR_PREFIX_MAP: Record<DbPillar, string> = {
-  'Hardware': 'HRW',
+  Hardware: 'HRW',
   Software: 'SFT',
   'Office Furniture': 'FUR',
   'Office Electronics': 'ELC',
@@ -294,4 +377,6 @@ export const manualStatusOverrideSchema = z.object({
     .max(1000, 'Justification must be 1000 characters or fewer.'),
 });
 
-export type ManualStatusOverrideInput = z.infer<typeof manualStatusOverrideSchema>;
+export type ManualStatusOverrideInput = z.infer<
+  typeof manualStatusOverrideSchema
+>;

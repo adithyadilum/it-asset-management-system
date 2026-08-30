@@ -2,8 +2,6 @@
  * @vitest-environment node
  */
 
- 
-
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
@@ -23,6 +21,20 @@ vi.mock('@upstash/qstash', () => {
     },
   };
 });
+
+vi.mock('@/lib/env', () => ({
+  serverEnv: {
+    get QSTASH_CURRENT_SIGNING_KEY() {
+      return process.env.QSTASH_CURRENT_SIGNING_KEY;
+    },
+    get QSTASH_NEXT_SIGNING_KEY() {
+      return process.env.QSTASH_NEXT_SIGNING_KEY;
+    },
+    get QSTASH_TOKEN() {
+      return process.env.QSTASH_TOKEN;
+    },
+  },
+}));
 
 // Setup a sequential queue for database query results
 let mockQueriesQueue: any[] = [];

@@ -1,8 +1,20 @@
 import { eq, and, isNull, inArray, asc, desc, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { assets, categories, brands, models, locations, users, assetAssignments, assetPurchases } from '@/db/schema';
+import {
+  assets,
+  categories,
+  brands,
+  models,
+  locations,
+  users,
+  assetAssignments,
+  assetPurchases,
+} from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchAssetRegistry(
   filters: ReportPreviewFilters,
@@ -41,8 +53,7 @@ export async function fetchAssetRegistry(
     conditions.push(eq(assets.status, filters.status));
   }
 
-  const whereCondition =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
   const baseQuery = db
     .select({

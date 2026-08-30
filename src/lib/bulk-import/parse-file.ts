@@ -1,3 +1,4 @@
+import { MAX_IMPORT_FILE_BYTES, MAX_IMPORT_FILE_LABEL } from '@/lib/constants';
 import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 
@@ -29,9 +30,10 @@ function getCellStringValue(cell: ExcelJS.Cell): string {
 }
 
 export async function parseFile(file: File): Promise<ParsedFileResult> {
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  if (file.size > MAX_FILE_SIZE) {
-    throw new Error('File exceeds the maximum limit of 10MB.');
+  if (file.size > MAX_IMPORT_FILE_BYTES) {
+    throw new Error(
+      `File exceeds the maximum limit of ${MAX_IMPORT_FILE_LABEL}.`
+    );
   }
 
   const mimeType = file.type;
@@ -61,7 +63,10 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
     if (result.errors.length > 0) {
       // Only throw if it's not just a trailing empty line parsing error
       const nonTrivialErrors = result.errors.filter(
-        (err) => err.code !== 'TooManyFields' && err.code !== 'TooFewFields' && err.code !== 'UndetectableDelimiter'
+        (err) =>
+          err.code !== 'TooManyFields' &&
+          err.code !== 'TooFewFields' &&
+          err.code !== 'UndetectableDelimiter'
       );
       if (nonTrivialErrors.length > 0) {
         const firstError = nonTrivialErrors[0];
@@ -83,7 +88,8 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
       } else {
         const trimmedRow: Record<string, string> = {};
         for (const [key, value] of Object.entries(row)) {
-          trimmedRow[key] = (value && typeof value === 'string') ? value.trim() : '';
+          trimmedRow[key] =
+            value && typeof value === 'string' ? value.trim() : '';
         }
         rows.push(trimmedRow);
       }
@@ -110,16 +116,19 @@ export async function parseFile(file: File): Promise<ParsedFileResult> {
       let isEmpty = true;
       const rowData: Record<string, string> = {};
 
-      row.eachCell({ includeEmpty: true }, (cell: ExcelJS.Cell, colNumber: number) => {
-        const header = headers[colNumber - 1];
-        if (header) {
-          const textValue = getCellStringValue(cell);
-          rowData[header] = textValue;
-          if (textValue !== '') {
-            isEmpty = false;
+      row.eachCell(
+        { includeEmpty: true },
+        (cell: ExcelJS.Cell, colNumber: number) => {
+          const header = headers[colNumber - 1];
+          if (header) {
+            const textValue = getCellStringValue(cell);
+            rowData[header] = textValue;
+            if (textValue !== '') {
+              isEmpty = false;
+            }
           }
         }
-      });
+      );
 
       // Fill in missing headers with empty strings
       headers.forEach((h) => {

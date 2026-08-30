@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { AlertTriangle, ChevronRight, Download, Filter } from 'lucide-react';
-import Papa from 'papaparse';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -10,7 +9,10 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { DataTable } from '@/components/shared/data-table';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { StandardModal } from '@/components/ui/standard-modal';
-import { type FilterState, type ReportPreviewRow } from '@/types/standard-reports';
+import {
+  type FilterState,
+  type ReportPreviewRow,
+} from '@/types/standard-reports';
 import { fetchReportPreview } from '@/actions/standard-reports';
 import { GenerateReportPdfModal } from './generate-report-pdf-modal';
 
@@ -32,9 +34,8 @@ interface StandardReportsPreviewPanelProps {
   pageCount: number;
 }
 
-
-
 import { useReportColumns } from './use-report-columns';
+import { logReportExportAction } from '@/actions/standard-reports';
 
 // ... other imports should be intact, we will fix imports if needed
 
@@ -73,7 +74,10 @@ export function StandardReportsPreviewPanel({
           if (column.id) {
             return column.id;
           }
-          if ('accessorKey' in column && typeof column.accessorKey === 'string') {
+          if (
+            'accessorKey' in column &&
+            typeof column.accessorKey === 'string'
+          ) {
             return column.accessorKey;
           }
           return '';
@@ -82,7 +86,7 @@ export function StandardReportsPreviewPanel({
     [columns]
   );
 
-  const generateCsv = (dataToExport: ReportPreviewRow[]) => {
+  const generateCsv = async (dataToExport: ReportPreviewRow[]) => {
     const rows = dataToExport.map((r) => {
       const obj: Record<string, unknown> = {};
       for (const h of headers) {
@@ -91,6 +95,7 @@ export function StandardReportsPreviewPanel({
       return obj;
     });
 
+    const Papa = (await import('papaparse')).default;
     const csv = Papa.unparse({ fields: headers, data: rows });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -117,12 +122,22 @@ export function StandardReportsPreviewPanel({
         const result = await fetchReportPreview({
           ...filterState,
           page: 0,
-          pageSize: 100000, // Large number to fetch all records
+          pageSize: 5000,
         });
         dataToExport = result.data;
       }
 
-      generateCsv(dataToExport);
+      await generateCsv(dataToExport);
+
+      // Recorded server-side because the export itself never touches the
+      // server: without this a full CSV of the asset register leaves no trace.
+      void logReportExportAction({
+        source,
+        format: 'CSV',
+        rowCount: dataToExport.length,
+        templateName,
+      });
+
       setExportModalOpen(false);
     } catch (err) {
       console.error('Failed to export data:', err);
@@ -169,7 +184,10 @@ export function StandardReportsPreviewPanel({
           <Card className="border-border bg-card flex h-full min-h-0 flex-col rounded-xl shadow-sm overflow-hidden">
             <CardContent className="flex h-full flex-1 items-center justify-center p-4">
               <div className="flex max-w-lg flex-col items-center gap-4 text-center text-destructive">
-                <AlertTriangle className="size-12 text-destructive" strokeWidth={1} />
+                <AlertTriangle
+                  className="size-12 text-destructive"
+                  strokeWidth={1}
+                />
                 <div className="space-y-1.5">
                   <p className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
                     Error loading report
@@ -185,7 +203,13 @@ export function StandardReportsPreviewPanel({
           <Card className="border-border bg-card flex h-full min-h-0 flex-col rounded-xl shadow-sm overflow-hidden">
             <CardContent className="flex h-full flex-1 items-center justify-center p-4">
               <TableSkeleton
-                columnWidths={['w-[15%]', 'w-[25%]', 'w-[20%]', 'w-[20%]', 'w-[20%]']}
+                columnWidths={[
+                  'w-[15%]',
+                  'w-[25%]',
+                  'w-[20%]',
+                  'w-[20%]',
+                  'w-[20%]',
+                ]}
                 rowCount={8}
                 showCheckbox={false}
               />
@@ -215,7 +239,8 @@ export function StandardReportsPreviewPanel({
                 <Filter className="size-12 text-foreground" strokeWidth={1} />
                 <div className="space-y-1.5">
                   <p className={TYPOGRAPHY_CLASSNAMES.textSmRegular}>
-                    Select your filters and click Preview Data to see results here.
+                    Select your filters and click Preview Data to see results
+                    here.
                   </p>
                 </div>
               </div>
@@ -245,10 +270,15 @@ export function StandardReportsPreviewPanel({
               className="mt-1 size-4 accent-primary"
             />
             <div>
-              <label htmlFor="export-preview" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              <label
+                htmlFor="export-preview"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
                 Current Page (Preview)
               </label>
-              <p className="text-sm text-muted-foreground">Export just the {rowCount} rows visible on this page.</p>
+              <p className="text-sm text-muted-foreground">
+                Export just the {rowCount} rows visible on this page.
+              </p>
             </div>
           </div>
 
@@ -261,10 +291,15 @@ export function StandardReportsPreviewPanel({
               className="mt-1 size-4 accent-primary"
             />
             <div>
-              <label htmlFor="export-all" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+              <label
+                htmlFor="export-all"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
                 All Records
               </label>
-              <p className="text-sm text-muted-foreground">Export all matching records using the current filters.</p>
+              <p className="text-sm text-muted-foreground">
+                Export all matching records using the current filters.
+              </p>
             </div>
           </div>
         </div>

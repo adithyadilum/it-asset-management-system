@@ -1,7 +1,7 @@
-
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture;
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture;
+const originalReleasePointerCapture =
+  HTMLElement.prototype.releasePointerCapture;
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -55,7 +55,9 @@ describe('LogCompleteRepairDialog', () => {
     fireEvent.change(costInput, { target: { value: '250.00' } });
 
     // Notes
-    const notesInput = screen.getByPlaceholderText(/e.g., "Replaced display cable"/i);
+    const notesInput = screen.getByPlaceholderText(
+      /e.g., "Replaced display cable"/i
+    );
     fireEvent.change(notesInput, { target: { value: 'Replaced motherboard' } });
 
     // The status select has default value 'Available', so button should be enabled
@@ -67,6 +69,9 @@ describe('LogCompleteRepairDialog', () => {
     await waitFor(() => {
       expect(mockOnConfirm).toHaveBeenCalledWith({
         actualCost: '250.00',
+        // The currency picker used to be uncontrolled, so the chosen currency
+        // never reached the payload at all.
+        currencyCode: 'LKR',
         resolutionNotes: 'Replaced motherboard',
         updateStatusTo: 'Available',
       });
@@ -79,7 +84,9 @@ describe('LogCompleteRepairDialog', () => {
     const costInput = screen.getByPlaceholderText('10.00');
     fireEvent.change(costInput, { target: { value: '250.00' } });
 
-    const notesInput = screen.getByPlaceholderText(/e.g., "Replaced display cable"/i);
+    const notesInput = screen.getByPlaceholderText(
+      /e.g., "Replaced display cable"/i
+    );
     fireEvent.change(notesInput, { target: { value: 'Replaced motherboard' } });
 
     // Change status using Shadcn Select
@@ -88,9 +95,11 @@ describe('LogCompleteRepairDialog', () => {
     // Wait, there are two Selects: Currency and Status!
     const selects = screen.getAllByRole('combobox');
     const statusSelect = selects[1]; // second one is status
-    
+
     fireEvent.click(statusSelect);
-    const disposedOption = await screen.findByRole('option', { name: 'Disposed' });
+    const disposedOption = await screen.findByRole('option', {
+      name: 'Disposed',
+    });
     fireEvent.click(disposedOption);
 
     const submitBtn = screen.getByRole('button', { name: 'Confirm' });
@@ -99,9 +108,55 @@ describe('LogCompleteRepairDialog', () => {
     await waitFor(() => {
       expect(mockOnConfirm).toHaveBeenCalledWith({
         actualCost: '250.00',
+        currencyCode: 'LKR',
         resolutionNotes: 'Replaced motherboard',
         updateStatusTo: 'Disposed',
       });
     });
+  });
+
+  it('keeps submit disabled until the notes meet the ten-character minimum', () => {
+    renderDialog();
+
+    fireEvent.change(screen.getByPlaceholderText('10.00'), {
+      target: { value: '250.00' },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/e.g., "Replaced display cable"/i),
+      { target: { value: 'too short' } }
+    );
+
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    expect(screen.getByText('9/500')).toBeInTheDocument();
+  });
+
+  it('shows the ticket context and the variance against the estimate', () => {
+    renderDialog({
+      ticket: {
+        id: 1,
+        assetId: 'asset-uuid',
+        asset: { assetTag: 'AST-014' },
+        ticketType: 'VENDOR',
+        vendorName: 'Acme Repairs',
+        rmaNumber: 'RMA-77',
+        reportedIssue: 'Screen flickers',
+        estimatedCost: '200.00',
+        currencyCode: 'LKR',
+        estimatedReturnDate: '2026-09-01',
+        status: 'ACTIVE',
+        createdAt: '2026-08-01',
+        updatedAt: '2026-08-01',
+      },
+    });
+
+    expect(screen.getByText('AST-014')).toBeInTheDocument();
+    expect(screen.getByText('Acme Repairs')).toBeInTheDocument();
+    expect(screen.getByText(/Estimated/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('10.00'), {
+      target: { value: '250' },
+    });
+
+    expect(screen.getByText(/over estimate/)).toBeInTheDocument();
   });
 });

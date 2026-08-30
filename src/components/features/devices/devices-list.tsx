@@ -1,4 +1,5 @@
 'use client';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,7 +10,6 @@ import {
   Clock,
   CalendarDays,
   Unlink,
-  Loader2,
   SmartphoneNfc,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,14 @@ interface DevicesListProps {
 function getDeviceIcon(deviceOs: string | null) {
   if (!deviceOs) return Smartphone;
   const os = deviceOs.toLowerCase();
-  if (os.includes('ipad') || os.includes('tablet') || os.includes('android tablet')) return Tablet;
-  if (os.includes('windows') || os.includes('macos') || os.includes('linux')) return Monitor;
+  if (
+    os.includes('ipad') ||
+    os.includes('tablet') ||
+    os.includes('android tablet')
+  )
+    return Tablet;
+  if (os.includes('windows') || os.includes('macos') || os.includes('linux'))
+    return Monitor;
   return Smartphone;
 }
 
@@ -61,7 +67,11 @@ function formatRelativeTime(date: Date | string | null) {
   if (diffMinutes < 60) return `${diffMinutes}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatDate(date: Date | string) {
@@ -114,8 +124,8 @@ export function DevicesList({ devices }: DevicesListProps) {
           No Linked Devices
         </h3>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Link a mobile device by clicking &quot;Link New Device&quot; above, then scan the
-          QR code with the EITAMS Mobile Scanner app.
+          Link a mobile device by clicking &quot;Link New Device&quot; above,
+          then scan the QR code with the EITAMS Mobile Scanner app.
         </p>
       </div>
     );
@@ -153,7 +163,9 @@ export function DevicesList({ devices }: DevicesListProps) {
                 </div>
 
                 {device.deviceOs && (
-                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${osBadgeClass}`}>
+                  <span
+                    className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${osBadgeClass}`}
+                  >
                     {device.deviceOs}
                   </span>
                 )}
@@ -163,11 +175,21 @@ export function DevicesList({ devices }: DevicesListProps) {
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>Last active: <span className="text-foreground font-medium">{formatRelativeTime(device.lastActiveAt)}</span></span>
+                  <span>
+                    Last active:{' '}
+                    <span className="text-foreground font-medium">
+                      {formatRelativeTime(device.lastActiveAt)}
+                    </span>
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span>Linked: <span className="text-foreground font-medium">{formatDate(device.linkedAt)}</span></span>
+                  <span>
+                    Linked:{' '}
+                    <span className="text-foreground font-medium">
+                      {formatDate(device.linkedAt)}
+                    </span>
+                  </span>
                 </div>
               </div>
 
@@ -180,7 +202,7 @@ export function DevicesList({ devices }: DevicesListProps) {
                 className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-colors"
               >
                 {isUnlinking ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <LoadingSpinner size="sm" />
                 ) : (
                   <Unlink className="h-3.5 w-3.5" />
                 )}
@@ -192,13 +214,20 @@ export function DevicesList({ devices }: DevicesListProps) {
       </div>
 
       {/* Confirmation Dialog */}
-      <AlertDialog open={!!confirmDevice} onOpenChange={(open) => !open && setConfirmDevice(null)}>
+      <AlertDialog
+        open={!!confirmDevice}
+        onOpenChange={(open) => !open && setConfirmDevice(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Unlink Device</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to unlink <span className="font-semibold text-foreground">{confirmDevice?.deviceName}</span>?
-              The device will immediately lose access to the EITAMS Mobile Scanner and will need to be re-paired.
+              Are you sure you want to unlink{' '}
+              <span className="font-semibold text-foreground">
+                {confirmDevice?.deviceName}
+              </span>
+              ? The device will immediately lose access to the EITAMS Mobile
+              Scanner and will need to be re-paired.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

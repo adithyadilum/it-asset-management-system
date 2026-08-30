@@ -1,6 +1,13 @@
 export type MaintenanceTicketType = 'VENDOR' | 'INTERNAL';
 export type MaintenanceTicketStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-export type AssetStatus = 'Available' | 'Assigned' | 'In Repair' | 'Defective' | 'Lost' | 'Retired' | 'Disposed';
+export type AssetStatus =
+  | 'Available'
+  | 'Assigned'
+  | 'In Repair'
+  | 'Defective'
+  | 'Lost'
+  | 'Retired'
+  | 'Disposed';
 export type WarrantyStatus = 'Active' | 'Expired';
 
 export interface MaintenanceTicket {
@@ -25,7 +32,6 @@ export interface Asset {
   id: string;
   assetTag: string;
   name: string | null;
-  imageUrl?: string | null;
   status: AssetStatus;
   condition: string | null;
   modelId: number;
@@ -40,6 +46,10 @@ export interface Model {
   name: string;
   brandId: number;
   categoryId: number;
+  // The asset image lives here. `Asset` used to declare an `imageUrl` the
+  // `assets` table does not have, so the issue review panel read `undefined`
+  // and always showed "No image available".
+  imageUrl?: string | null;
 }
 
 export interface Brand {
@@ -98,6 +108,7 @@ export interface InitiateRepairFormData {
   vendorId: string;
   rmaNumber: string;
   estimatedCost?: string;
+  /** Currency the estimate is entered in; stored on the ticket. */
   currencyCode?: string;
   expectedReturnDate?: string;
 }
@@ -111,6 +122,7 @@ export interface ActiveRepairTicket {
   rmaNumber: string | null;
   reportedIssue: string;
   estimatedCost: string | null;
+  /** Currency the estimate is denominated in; the completion form defaults to it. */
   currencyCode: string | null;
   estimatedReturnDate: string | null;
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
@@ -120,7 +132,8 @@ export interface ActiveRepairTicket {
 
 export interface CompleteRepairFormData {
   actualCost: string;
-  currencyCode?: string;
+  /** ISO code the cost is denominated in. */
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }
@@ -128,7 +141,7 @@ export interface CompleteRepairFormData {
 export interface LogCompleteRepairData {
   ticketId: number;
   actualCost: string;
-  currencyCode?: string;
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }
@@ -139,7 +152,8 @@ export interface RepairHistoryTicket {
   vendorName: string | null;
   actualCompletionDate: string | null;
   actualCost: string | null;
-  currencyCode?: string | null;
+  /** Currency `actualCost` is denominated in; the grid used to assume USD. */
+  currencyCode: string | null;
   resolutionNotes: string | null;
   status: 'COMPLETED' | 'CANCELLED';
   createdAt: Date;

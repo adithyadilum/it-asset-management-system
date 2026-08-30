@@ -1,16 +1,13 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { StandardReportsShell } from '@/components/features/standard-reports/standard-reports-shell';
 import { getStandardReportsFilterOptions } from '@/actions/standard-reports';
 import { getReportTemplates } from '@/actions/report-templates';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { redirect } from 'next/navigation';
+import { requirePageAuth } from '@/lib/auth/page-guard';
 import type { ReportTemplateData } from '@/types/standard-reports';
 
-export default async function Page() {
-  const currentUser = await getAuthenticatedUser();
-
-  if (!currentUser) {
-    redirect('/login');
-  }
+async function PageContent() {
+  const currentUser = await requirePageAuth();
 
   const [filterOptions, rawTemplates] = await Promise.all([
     getStandardReportsFilterOptions(),
@@ -37,5 +34,22 @@ export default async function Page() {
       templates={templates}
       generatedBy={currentUser.name}
     />
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function Page() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <PageContent />
+    </Suspense>
   );
 }

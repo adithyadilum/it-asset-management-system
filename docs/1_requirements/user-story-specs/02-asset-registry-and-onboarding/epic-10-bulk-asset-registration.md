@@ -56,11 +56,13 @@ This epic builds the mass-ingestion engine for the IDAMS platform. Accessed dire
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Update the `RegistryHeader` component to convert the "+ Add Asset" button into a split-button dropdown.
 - [x] Build the `BulkImportWizard` component with a Stepper flow (Upload, Preview, Summary).
 - [x] Implement category-selection dropdown inside the wizard.
 
 #### Backend
+
 - [x] Create the `generateImportTemplate` Server Action that dynamically queries the schema and returns a base64 encoded template file.
 
 ---
@@ -90,9 +92,11 @@ This epic builds the mass-ingestion engine for the IDAMS platform. Accessed dire
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Preview UI displaying success/error row counts and rendering the data tables for review.
 
 #### Backend
+
 - [x] Build `parseAndValidateImport` utilizing `PapaParse` and `validateRows` for client-side dry runs.
 - [x] Implement the `preloadMasterDataCache` function to optimize DB lookups, preventing N+1 queries during row resolution.
 
@@ -124,9 +128,11 @@ This epic builds the mass-ingestion engine for the IDAMS platform. Accessed dire
 ### Technical Implementation Tasks
 
 #### Frontend
+
 - [x] Build the Success Summary screen displaying: success count (green), failure count (red), and a "Download Error CSV" utility.
 
 #### Backend
+
 - [x] Build `executeBulkImport` managing atomic insertions of `assets` and `assetPurchases`.
 - [x] Implement robust concurrency protection using `pg_try_advisory_lock` to block overlapping CSV processing tasks globally.
 - [x] Dynamically generate base64/parsed CSV dumps (`Papa.unparse`) containing specific row errors and return them safely to the client.

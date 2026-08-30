@@ -42,7 +42,9 @@ export async function getApiKeys(): Promise<ApiKeyDisplay[]> {
   }));
 }
 
-export async function getWebhookSubscriptions(): Promise<WebhookSubscriptionDisplay[]> {
+export async function getWebhookSubscriptions(): Promise<
+  WebhookSubscriptionDisplay[]
+> {
   const rows = await db
     .select({
       id: webhookSubscriptions.id,

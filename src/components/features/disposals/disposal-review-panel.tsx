@@ -4,9 +4,13 @@ import React from 'react';
 import Image from 'next/image';
 import { AlertCircle } from 'lucide-react';
 
-import { SlidePanel, type SlidePanelAction } from '@/components/shared/slide-panel';
+import {
+  SlidePanel,
+  type SlidePanelAction,
+} from '@/components/shared/slide-panel';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { AssetLoadingSkeleton } from '@/components/features/asset-registry/panels/asset-loading-skeleton';
+import { formatMoneyByCurrency } from '@/lib/currency';
 
 export interface DisposalReviewPanelProps {
   isOpen: boolean;
@@ -29,6 +33,7 @@ export interface DisposalReviewPanelProps {
   purchaseDate?: string;
   originalCost?: number;
   currentBookValue?: number;
+  currencyCode?: string;
   warrantyStatus?: string;
 
   onReject?: () => void;
@@ -59,22 +64,19 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start text-sm leading-5">
-      <span className={`w-40 ${bold ? 'font-semibold text-foreground' : 'font-semibold text-foreground'}`}>
-        {label}:
-      </span>
-      <span className={`flex-1 ${bold ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground'}`}>
+      <span className="w-40 font-semibold text-foreground">{label}:</span>
+      <span
+        className={`flex-1 ${bold ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground'}`}
+      >
         {value || '-'}
       </span>
     </div>
   );
 }
 
-function WarrantyStatusBadge({
-  status,
-}: {
-  status?: string;
-}) {
-  if (!status) return <span className="text-sm font-normal text-muted-foreground">-</span>;
+function WarrantyStatusBadge({ status }: { status?: string }) {
+  if (!status)
+    return <span className="text-sm font-normal text-muted-foreground">-</span>;
 
   if (status === 'Expired') {
     return (
@@ -92,7 +94,9 @@ function WarrantyStatusBadge({
     );
   }
 
-  return <span className="text-sm font-normal text-muted-foreground">{status}</span>;
+  return (
+    <span className="text-sm font-normal text-muted-foreground">{status}</span>
+  );
 }
 
 export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
@@ -106,7 +110,7 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
     },
     {
       id: 'approve',
-      label: 'Initiate Disposal',
+      label: props.isLoading ? 'Processing...' : 'Approve',
       variant: 'destructive',
       onClick: props.onApprove,
       disabled: props.isLoading,
@@ -156,8 +160,10 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
           <DetailRow label="Model" value={props.model} />
           <DetailRow label="Brand" value={props.brand} />
           <DetailRow label="Serial Number" value={props.serialNumber} />
-          <DetailRow label="Date Created" value={formatDateString(props.dateCreated)} />
-          
+          <DetailRow
+            label="Date Created"
+            value={formatDateString(props.dateCreated)}
+          />
         </div>
       </div>
 
@@ -165,16 +171,23 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
       <div className="rounded-lg border border-border bg-muted p-6 space-y-4">
         <div className="space-y-3">
           <DetailRow label="Requested By" value={props.requestedBy} />
-          <DetailRow label="Date Requested" value={formatDateString(props.dateRequested)} />
+          <DetailRow
+            label="Date Requested"
+            value={formatDateString(props.dateRequested)}
+          />
           <DetailRow label="Reason Category" value={props.reason} />
         </div>
 
         {/* Technician Notes */}
         <div className="border-t border-border pt-4">
-          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground mb-2`}>
+          <p
+            className={`${TYPOGRAPHY_CLASSNAMES.textSmSemiBold} text-foreground mb-2`}
+          >
             Technician Notes:
           </p>
-          <p className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground leading-relaxed`}>
+          <p
+            className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground leading-relaxed`}
+          >
             {props.justification || 'No additional notes provided.'}
           </p>
         </div>
@@ -183,11 +196,37 @@ export function DisposalReviewPanel(props: DisposalReviewPanelProps) {
       {/* Financial Information Section */}
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-          <DetailRow label="Purchase Date" value={formatDateString(props.purchaseDate)} />
-          <DetailRow label="Original Cost" value={props.originalCost !== undefined && props.originalCost !== null ? `$${props.originalCost.toFixed(0)}` : '-'} />
-          <DetailRow label="Current Book Value" value={props.currentBookValue !== undefined && props.currentBookValue !== null ? `$${props.currentBookValue.toFixed(0)}` : '-'} />
+          <DetailRow
+            label="Purchase Date"
+            value={formatDateString(props.purchaseDate)}
+          />
+          <DetailRow
+            label="Original Cost"
+            value={
+              props.originalCost !== undefined && props.originalCost !== null
+                ? formatMoneyByCurrency(
+                    props.originalCost,
+                    props.currencyCode || 'LKR'
+                  )
+                : '-'
+            }
+          />
+          <DetailRow
+            label="Current Book Value"
+            value={
+              props.currentBookValue !== undefined &&
+              props.currentBookValue !== null
+                ? formatMoneyByCurrency(
+                    props.currentBookValue,
+                    props.currencyCode || 'LKR'
+                  )
+                : '-'
+            }
+          />
           <div className="flex items-start text-sm leading-5">
-            <span className="w-40 font-semibold text-foreground">Warranty Status:</span>
+            <span className="w-40 font-semibold text-foreground">
+              Warranty Status:
+            </span>
             <WarrantyStatusBadge status={props.warrantyStatus} />
           </div>
         </div>

@@ -62,7 +62,7 @@ This epic governs the final, secure execution of an asset disposal. It introduce
   - When I look at the bottom of the modal
   - Then I am prompted to type the exact Asset Tag (e.g., `AST-0142`) into a text input to confirm.
   - And the "Confirm Disposal" button ONLY becomes clickable when the typed string perfectly matches the Tag.
-  
+
 ### UI/UX Specifications & Constraints
 
 - Destructive UX Patterns: The modal must utilize high-alert styling. The warning icon at the top, the confirmation input border, and the "Confirm Disposal" button must use a high-contrast danger red color to signal finality.

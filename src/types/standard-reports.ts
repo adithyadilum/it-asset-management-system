@@ -337,68 +337,176 @@ export interface FilterOptions {
 // Source-to-Filters Dynamic Mapping
 // ---------------------------------------------------------------------------
 
-export const REPORT_FILTERS_BY_SOURCE: Record<string, {
-  key: keyof FilterState;
-  label: string;
-  type: 'select' | 'searchable' | 'date';
-  optionsKey?: keyof FilterOptions;
-}[]> = {
-  'Assets': [
-    { key: 'assetType', label: 'Asset Type', type: 'select', optionsKey: 'assetTypes' },
-    { key: 'category', label: 'Category', type: 'searchable', optionsKey: 'categories' },
-    { key: 'location', label: 'Location', type: 'searchable', optionsKey: 'locations' },
-    { key: 'status', label: 'Status', type: 'searchable', optionsKey: 'statuses' },
+export const REPORT_FILTERS_BY_SOURCE: Record<
+  string,
+  {
+    key: keyof FilterState;
+    label: string;
+    type: 'select' | 'searchable' | 'date';
+    optionsKey?: keyof FilterOptions;
+  }[]
+> = {
+  Assets: [
+    {
+      key: 'assetType',
+      label: 'Asset Type',
+      type: 'select',
+      optionsKey: 'assetTypes',
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      type: 'searchable',
+      optionsKey: 'categories',
+    },
+    {
+      key: 'location',
+      label: 'Location',
+      type: 'searchable',
+      optionsKey: 'locations',
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'searchable',
+      optionsKey: 'statuses',
+    },
   ],
   'Active Assignments': [
-    { key: 'assetType', label: 'Asset Type', type: 'select', optionsKey: 'assetTypes' },
-    { key: 'status', label: 'State', type: 'searchable', optionsKey: 'assignmentStates' },
+    {
+      key: 'assetType',
+      label: 'Asset Type',
+      type: 'select',
+      optionsKey: 'assetTypes',
+    },
+    {
+      key: 'status',
+      label: 'State',
+      type: 'searchable',
+      optionsKey: 'assignmentStates',
+    },
     { key: 'dateFrom', label: 'Date From', type: 'date' },
     { key: 'dateTo', label: 'Date To', type: 'date' },
   ],
   'Return History': [
-    { key: 'assetType', label: 'Asset Type', type: 'select', optionsKey: 'assetTypes' },
-    { key: 'status', label: 'Return Condition', type: 'searchable', optionsKey: 'returnConditions' },
+    {
+      key: 'assetType',
+      label: 'Asset Type',
+      type: 'select',
+      optionsKey: 'assetTypes',
+    },
+    {
+      key: 'status',
+      label: 'Return Condition',
+      type: 'searchable',
+      optionsKey: 'returnConditions',
+    },
     { key: 'dateFrom', label: 'Returned From', type: 'date' },
     { key: 'dateTo', label: 'Returned To', type: 'date' },
   ],
   'Maintenance Records': [
-    { key: 'assetType', label: 'Ticket Type', type: 'select', optionsKey: 'ticketTypes' },
-    { key: 'status', label: 'Status', type: 'searchable', optionsKey: 'maintenanceStatuses' },
+    {
+      key: 'assetType',
+      label: 'Ticket Type',
+      type: 'select',
+      optionsKey: 'ticketTypes',
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'searchable',
+      optionsKey: 'maintenanceStatuses',
+    },
     { key: 'dateFrom', label: 'Date From', type: 'date' },
     { key: 'dateTo', label: 'Date To', type: 'date' },
   ],
   'Disposal Records': [
-    { key: 'status', label: 'Status', type: 'searchable', optionsKey: 'disposalStatuses' },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'searchable',
+      optionsKey: 'disposalStatuses',
+    },
     { key: 'dateFrom', label: 'Date From', type: 'date' },
     { key: 'dateTo', label: 'Date To', type: 'date' },
   ],
   'Purchase Records': [
-    { key: 'location', label: 'Vendor', type: 'searchable', optionsKey: 'vendors' },
+    {
+      key: 'location',
+      label: 'Vendor',
+      type: 'searchable',
+      optionsKey: 'vendors',
+    },
     { key: 'dateFrom', label: 'Date From', type: 'date' },
     { key: 'dateTo', label: 'Date To', type: 'date' },
   ],
   'Depreciation Ledger': [
-    { key: 'assetType', label: 'Asset Type', type: 'select', optionsKey: 'assetTypes' },
-    { key: 'category', label: 'Category', type: 'searchable', optionsKey: 'categories' },
+    {
+      key: 'assetType',
+      label: 'Asset Type',
+      type: 'select',
+      optionsKey: 'assetTypes',
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      type: 'searchable',
+      optionsKey: 'categories',
+    },
   ],
   'TCO Overview': [
-    { key: 'assetType', label: 'Asset Type', type: 'select', optionsKey: 'assetTypes' },
-    { key: 'category', label: 'Category', type: 'searchable', optionsKey: 'categories' },
+    {
+      key: 'assetType',
+      label: 'Asset Type',
+      type: 'select',
+      optionsKey: 'assetTypes',
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      type: 'searchable',
+      optionsKey: 'categories',
+    },
   ],
   'Software Licenses': [
-    { key: 'status', label: 'License Type', type: 'searchable', optionsKey: 'licenseTypes' },
+    {
+      key: 'status',
+      label: 'License Type',
+      type: 'searchable',
+      optionsKey: 'licenseTypes',
+    },
     { key: 'dateFrom', label: 'Expiry From', type: 'date' },
     { key: 'dateTo', label: 'Expiry To', type: 'date' },
   ],
   'Audit Logs': [
-    { key: 'status', label: 'Action Type', type: 'searchable', optionsKey: 'auditActionTypes' },
+    {
+      key: 'status',
+      label: 'Action Type',
+      type: 'searchable',
+      optionsKey: 'auditActionTypes',
+    },
     { key: 'dateFrom', label: 'Date From', type: 'date' },
     { key: 'dateTo', label: 'Date To', type: 'date' },
   ],
   'Master Data': [
-    { key: 'assetType', label: 'Asset Type', type: 'select', optionsKey: 'assetTypes' },
-    { key: 'masterDataType', label: 'Record Type', type: 'searchable', optionsKey: 'masterDataTypes' },
-    { key: 'status', label: 'Status', type: 'searchable', optionsKey: 'statuses' },
+    {
+      key: 'assetType',
+      label: 'Asset Type',
+      type: 'select',
+      optionsKey: 'assetTypes',
+    },
+    {
+      key: 'masterDataType',
+      label: 'Record Type',
+      type: 'searchable',
+      optionsKey: 'masterDataTypes',
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'searchable',
+      optionsKey: 'statuses',
+    },
   ],
 };
 
@@ -409,4 +517,3 @@ export function getPrimaryIdColumn(source: string): string {
   }
   return 'Asset Tag';
 }
-

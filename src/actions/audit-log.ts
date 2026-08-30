@@ -2,6 +2,7 @@
 
 import { db } from '@/db';
 import {
+  assetAssignments,
   assets,
   brands,
   categories,
@@ -16,9 +17,10 @@ import {
 } from '@/db/schema';
 import { eq, ilike, or, and, desc, ne, sql, not, inArray } from 'drizzle-orm';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
-import { getAuthenticatedUser } from '@/actions/auth';
+import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { extractLabelFromValues } from '@/lib/audit';
+import { AUDIT_EXPORT_LIMIT } from '@/lib/audit-events';
 import { auditLogQuerySchema } from '@/lib/validations/audit-log';
 
 export interface AuditLogFilter {
@@ -84,8 +86,6 @@ function formatEntityLabel(
 
   return trimmedName || trimmedCode || '';
 }
-
-
 
 function buildTargetEntitySearchCondition(searchValue: string) {
   // Match audit rows against the resolved entity record, not just raw IDs.
@@ -191,14 +191,14 @@ export async function resolveAuditValueLabels(
   if (
     !currentUser ||
     (currentUser.role !== 'GlobalAdmin' &&
-      currentUser.role !== 'FinanceAuditor' &&
+      currentUser.role !== 'FinancialAuditor' &&
       !canManageAssets(currentUser.role))
   ) {
     throw new Error('Unauthorized access to audit metadata.');
   }
 
   const labels = new Map<string, string>();
-  
+
   // 1. Identify all ID fields we want to resolve
   const idMappings: Record<string, string> = {
     locationId: 'locations',
@@ -291,7 +291,11 @@ export async function resolveAuditValueLabels(
   ] = await Promise.all([
     collectedIds.Asset.size > 0
       ? db
-          .select({ id: assets.id, assetTag: assets.assetTag, name: assets.name })
+          .select({
+            id: assets.id,
+            assetTag: assets.assetTag,
+            name: assets.name,
+          })
           .from(assets)
           .where(inArray(assets.id, Array.from(collectedIds.Asset) as string[]))
       : Promise.resolve([]),
@@ -303,45 +307,91 @@ export async function resolveAuditValueLabels(
       : Promise.resolve([]),
     collectedIds.locations.size > 0
       ? db
-          .select({ id: locations.id, code: locations.locationCode, name: locations.name })
+          .select({
+            id: locations.id,
+            code: locations.locationCode,
+            name: locations.name,
+          })
           .from(locations)
-          .where(inArray(locations.id, Array.from(collectedIds.locations) as number[]))
+          .where(
+            inArray(
+              locations.id,
+              Array.from(collectedIds.locations) as number[]
+            )
+          )
       : Promise.resolve([]),
     collectedIds['asset-categories'].size > 0
       ? db
-          .select({ id: categories.id, code: categories.categoryCode, name: categories.name })
+          .select({
+            id: categories.id,
+            code: categories.categoryCode,
+            name: categories.name,
+          })
           .from(categories)
-          .where(inArray(categories.id, Array.from(collectedIds['asset-categories']) as number[]))
+          .where(
+            inArray(
+              categories.id,
+              Array.from(collectedIds['asset-categories']) as number[]
+            )
+          )
       : Promise.resolve([]),
     collectedIds.brands.size > 0
       ? db
           .select({ id: brands.id, code: brands.brandCode, name: brands.name })
           .from(brands)
-          .where(inArray(brands.id, Array.from(collectedIds.brands) as number[]))
+          .where(
+            inArray(brands.id, Array.from(collectedIds.brands) as number[])
+          )
       : Promise.resolve([]),
     collectedIds['device-models'].size > 0
       ? db
           .select({ id: models.id, code: models.modelCode, name: models.name })
           .from(models)
-          .where(inArray(models.id, Array.from(collectedIds['device-models']) as number[]))
+          .where(
+            inArray(
+              models.id,
+              Array.from(collectedIds['device-models']) as number[]
+            )
+          )
       : Promise.resolve([]),
     collectedIds.vendors.size > 0
       ? db
-          .select({ id: vendors.id, code: vendors.vendorCode, name: vendors.companyName })
+          .select({
+            id: vendors.id,
+            code: vendors.vendorCode,
+            name: vendors.companyName,
+          })
           .from(vendors)
-          .where(inArray(vendors.id, Array.from(collectedIds.vendors) as number[]))
+          .where(
+            inArray(vendors.id, Array.from(collectedIds.vendors) as number[])
+          )
       : Promise.resolve([]),
     collectedIds.owners.size > 0
       ? db
-          .select({ id: owners.id, code: owners.ownerCode, name: owners.companyName })
+          .select({
+            id: owners.id,
+            code: owners.ownerCode,
+            name: owners.companyName,
+          })
           .from(owners)
-          .where(inArray(owners.id, Array.from(collectedIds.owners) as number[]))
+          .where(
+            inArray(owners.id, Array.from(collectedIds.owners) as number[])
+          )
       : Promise.resolve([]),
     collectedIds.departments.size > 0
       ? db
-          .select({ id: departments.id, code: departments.departmentCode, name: departments.name })
+          .select({
+            id: departments.id,
+            code: departments.departmentCode,
+            name: departments.name,
+          })
           .from(departments)
-          .where(inArray(departments.id, Array.from(collectedIds.departments) as number[]))
+          .where(
+            inArray(
+              departments.id,
+              Array.from(collectedIds.departments) as number[]
+            )
+          )
       : Promise.resolve([]),
   ]);
 
@@ -349,15 +399,30 @@ export async function resolveAuditValueLabels(
     labels.set(`${type}::${id}`, label);
   };
 
-  for (const row of assetRows) addLabel('Asset', row.id, formatEntityLabel(row.assetTag, row.name));
-  for (const row of userRows) addLabel('users', row.id, row.name && row.email ? `${row.name} <${row.email}>` : (row.name ?? row.email ?? ''));
-  for (const row of locationRows) addLabel('locations', row.id, formatEntityLabel(row.code, row.name));
-  for (const row of categoryRows) addLabel('asset-categories', row.id, formatEntityLabel(row.code, row.name));
-  for (const row of brandRows) addLabel('brands', row.id, formatEntityLabel(row.code, row.name));
-  for (const row of modelRows) addLabel('device-models', row.id, formatEntityLabel(row.code, row.name));
-  for (const row of vendorRows) addLabel('vendors', row.id, formatEntityLabel(row.code, row.name));
-  for (const row of ownerRows) addLabel('owners', row.id, formatEntityLabel(row.code, row.name));
-  for (const row of departmentRows) addLabel('departments', row.id, formatEntityLabel(row.code, row.name));
+  for (const row of assetRows)
+    addLabel('Asset', row.id, formatEntityLabel(row.assetTag, row.name));
+  for (const row of userRows)
+    addLabel(
+      'users',
+      row.id,
+      row.name && row.email
+        ? `${row.name} <${row.email}>`
+        : (row.name ?? row.email ?? '')
+    );
+  for (const row of locationRows)
+    addLabel('locations', row.id, formatEntityLabel(row.code, row.name));
+  for (const row of categoryRows)
+    addLabel('asset-categories', row.id, formatEntityLabel(row.code, row.name));
+  for (const row of brandRows)
+    addLabel('brands', row.id, formatEntityLabel(row.code, row.name));
+  for (const row of modelRows)
+    addLabel('device-models', row.id, formatEntityLabel(row.code, row.name));
+  for (const row of vendorRows)
+    addLabel('vendors', row.id, formatEntityLabel(row.code, row.name));
+  for (const row of ownerRows)
+    addLabel('owners', row.id, formatEntityLabel(row.code, row.name));
+  for (const row of departmentRows)
+    addLabel('departments', row.id, formatEntityLabel(row.code, row.name));
 
   return { labels, idMappings };
 }
@@ -369,7 +434,7 @@ export async function resolveTargetEntityLabels(
   if (
     !currentUser ||
     (currentUser.role !== 'GlobalAdmin' &&
-      currentUser.role !== 'FinanceAuditor' &&
+      currentUser.role !== 'FinancialAuditor' &&
       !canManageAssets(currentUser.role))
   ) {
     throw new Error('Unauthorized access to audit metadata.');
@@ -392,7 +457,6 @@ export async function resolveTargetEntityLabels(
     .filter((record) => record.entityType === 'users')
     .map((record) => record.entityId)
     .filter((entityId) => entityId.trim().length > 0);
-
 
   const numericEntityIds = {
     locations: records
@@ -541,7 +605,9 @@ export async function resolveTargetEntityLabels(
             name: reportTemplates.name,
           })
           .from(reportTemplates)
-          .where(inArray(reportTemplates.id, numericEntityIds['report-template']))
+          .where(
+            inArray(reportTemplates.id, numericEntityIds['report-template'])
+          )
       : Promise.resolve([]),
   ]);
 
@@ -558,8 +624,6 @@ export async function resolveTargetEntityLabels(
         : (row.name ?? row.email ?? '')
     );
   }
-
-
 
   for (const row of locationRows) {
     addLabel(
@@ -616,6 +680,90 @@ export async function resolveTargetEntityLabels(
   return labels;
 }
 
+/**
+ * Builds the audit-log WHERE clause from search text and filter chips.
+ *
+ * Shared by the paginated read and the export so a filtered view and its export
+ * cannot disagree about what "matching" means.
+ */
+function buildAuditLogWhere(params: {
+  search?: string;
+  filters?: AuditLogFilter[];
+  dateFrom?: string;
+  dateTo?: string;
+}) {
+  const baseWhere = [];
+
+  if (params.search && params.search.trim().length > 0) {
+    const q = `%${params.search.trim()}%`;
+    baseWhere.push(
+      or(
+        ilike(systemAuditLogs.actionType, q),
+        ilike(systemAuditLogs.entityType, q),
+        ilike(systemAuditLogs.entityId, q),
+        ilike(systemAuditLogs.ipAddress, q),
+        buildTargetEntitySearchCondition(q),
+        sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
+        sql`${systemAuditLogs.newValue}::text ILIKE ${q}`,
+        ilike(users.name, q),
+        ilike(users.email, q)
+      )
+    );
+  }
+
+  if (params.filters && params.filters.length > 0) {
+    for (const filter of params.filters) {
+      const { field, operator, value } = filter;
+      const q = `%${value}%`;
+      const isNot = operator === 'is not';
+
+      if (field === 'Action Taken') {
+        baseWhere.push(
+          isNot
+            ? ne(systemAuditLogs.actionType, value)
+            : eq(systemAuditLogs.actionType, value)
+        );
+      } else if (field === 'User') {
+        const userCondition = or(ilike(users.name, q), ilike(users.email, q));
+        if (userCondition)
+          baseWhere.push(isNot ? not(userCondition) : userCondition);
+      } else if (field === 'Target Entity') {
+        const entityCondition = or(
+          ilike(systemAuditLogs.entityType, q),
+          ilike(systemAuditLogs.entityId, q),
+          buildTargetEntitySearchCondition(q)
+        );
+        if (entityCondition)
+          baseWhere.push(isNot ? not(entityCondition) : entityCondition);
+      } else if (field === 'IP Address') {
+        const ipCondition = ilike(systemAuditLogs.ipAddress, q);
+        if (ipCondition) baseWhere.push(isNot ? not(ipCondition) : ipCondition);
+      } else if (field === 'Event Details') {
+        const detailCondition = or(
+          sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
+          sql`${systemAuditLogs.newValue}::text ILIKE ${q}`
+        );
+        if (detailCondition)
+          baseWhere.push(isNot ? not(detailCondition) : detailCondition);
+      }
+    }
+  }
+
+  if (params.dateFrom) {
+    baseWhere.push(
+      sql`${systemAuditLogs.performedAt} >= ${params.dateFrom}::timestamp`
+    );
+  }
+  if (params.dateTo) {
+    // Inclusive of the whole end day, which is what a date picker implies.
+    baseWhere.push(
+      sql`${systemAuditLogs.performedAt} < (${params.dateTo}::date + interval '1 day')`
+    );
+  }
+
+  return baseWhere.length > 0 ? and(...baseWhere) : undefined;
+}
+
 export async function getAuditLogs(
   params: GetAuditLogsParams
 ): Promise<PaginatedAuditLogsResult> {
@@ -627,7 +775,7 @@ export async function getAuditLogs(
     if (
       !currentUser ||
       (currentUser.role !== 'GlobalAdmin' &&
-        currentUser.role !== 'FinanceAuditor')
+        currentUser.role !== 'FinancialAuditor')
     ) {
       throw new Error('Unauthorized access to audit logs.');
     }
@@ -642,78 +790,11 @@ export async function getAuditLogs(
     const pageSize = parsedParams.data.pageSize;
     const offset = (page - 1) * pageSize;
 
-    const baseWhere = [];
-
-    if (params.search && params.search.trim().length > 0) {
-      const q = `%${params.search.trim()}%`;
-      baseWhere.push(
-        or(
-          ilike(systemAuditLogs.actionType, q),
-          ilike(systemAuditLogs.entityType, q),
-          ilike(systemAuditLogs.entityId, q),
-          ilike(systemAuditLogs.ipAddress, q),
-          buildTargetEntitySearchCondition(q),
-          sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
-          sql`${systemAuditLogs.newValue}::text ILIKE ${q}`,
-          ilike(users.name, q),
-          ilike(users.email, q)
-        )
-      );
-    }
-
-    if (params.filters && params.filters.length > 0) {
-      for (const filter of params.filters) {
-        const { field, operator, value } = filter;
-        const q = `%${value}%`;
-        const isNot = operator === 'is not';
-
-        if (field === 'Action Taken') {
-          baseWhere.push(
-            isNot
-              ? ne(systemAuditLogs.actionType, value)
-              : eq(systemAuditLogs.actionType, value)
-          );
-        } else if (field === 'User') {
-          const userCondition = or(ilike(users.name, q), ilike(users.email, q));
-          if (userCondition)
-            baseWhere.push(isNot ? not(userCondition) : userCondition);
-        } else if (field === 'Target Entity') {
-          const entityCondition = or(
-            ilike(systemAuditLogs.entityType, q),
-            ilike(systemAuditLogs.entityId, q),
-            buildTargetEntitySearchCondition(q)
-          );
-          if (entityCondition)
-            baseWhere.push(isNot ? not(entityCondition) : entityCondition);
-        } else if (field === 'IP Address') {
-          const ipCondition = ilike(systemAuditLogs.ipAddress, q);
-          if (ipCondition)
-            baseWhere.push(isNot ? not(ipCondition) : ipCondition);
-        } else if (field === 'Event Details') {
-          const detailCondition = or(
-            sql`${systemAuditLogs.oldValue}::text ILIKE ${q}`,
-            sql`${systemAuditLogs.newValue}::text ILIKE ${q}`
-          );
-          if (detailCondition)
-            baseWhere.push(isNot ? not(detailCondition) : detailCondition);
-        }
-      }
-    }
-
-    const whereCondition = baseWhere.length > 0 ? and(...baseWhere) : undefined;
-
-    // Count first so the table can paginate before fetching the page slice.
-    const totalRowsCount = await db
-      .select({ total: sql<number>`cast(count(*) as integer)` })
-      .from(systemAuditLogs)
-      .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
-      .where(whereCondition);
-
-    const total = totalRowsCount[0]?.total ?? 0;
-    const totalPages = Math.ceil(total / pageSize);
+    const whereCondition = buildAuditLogWhere(params);
 
     const records = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: systemAuditLogs.id,
         performedAt: systemAuditLogs.performedAt,
         entityType: systemAuditLogs.entityType,
@@ -734,9 +815,23 @@ export async function getAuditLogs(
       .limit(pageSize)
       .offset(offset);
 
+    let total = records[0]?.totalCount ?? 0;
+    if (records.length === 0 && page > 1) {
+      const totalRowsCount = await db
+        .select({ total: sql<number>`cast(count(*) as integer)` })
+        .from(systemAuditLogs)
+        .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+        .where(whereCondition);
+      total = totalRowsCount[0]?.total ?? 0;
+    }
+    const totalPages = Math.ceil(total / pageSize);
+
     // Resolve display labels after the page query so the list stays readable.
-    const targetEntityLabels = await resolveTargetEntityLabels(records);
-    const { labels: valueLabels, idMappings } = await resolveAuditValueLabels(records);
+    const [targetEntityLabels, { labels: valueLabels, idMappings }] =
+      await Promise.all([
+        resolveTargetEntityLabels(records),
+        resolveAuditValueLabels(records),
+      ]);
 
     const data: AuditLogRow[] = records.map((record) => {
       const oldValue = record.oldValue as Record<string, unknown> | null;
@@ -781,7 +876,6 @@ export async function getAuditLogs(
       };
     });
 
-
     logLatency({ scope: 'audit-log', label: 'getAuditLogs', startTime: timer });
 
     return {
@@ -803,6 +897,33 @@ export async function getAuditLogs(
   }
 }
 
+/**
+ * Everything that belongs on one asset's history.
+ *
+ * Assignment events are logged against the assignment rather than the asset —
+ * `entityType: 'asset_assignment'`, with the assignment id as `entityId` — so
+ * matching only on 'Asset' showed an assignment being created but never its
+ * acceptance, decline, cancellation or return.
+ */
+function assetHistoryCondition(assetId: string) {
+  return or(
+    and(
+      eq(systemAuditLogs.entityType, 'Asset'),
+      eq(systemAuditLogs.entityId, assetId)
+    ),
+    and(
+      eq(systemAuditLogs.entityType, 'asset_assignment'),
+      // Raw fragment rather than a nested `db.select()`: this stays one
+      // statement, and the query builder is not invoked a second time.
+      sql`${systemAuditLogs.entityId} IN (
+        SELECT ${assetAssignments.id}::text
+        FROM ${assetAssignments}
+        WHERE ${assetAssignments.assetId} = ${assetId}
+      )`
+    )
+  );
+}
+
 export async function getAssetAuditHistory(
   assetId: string,
   page: number = 1,
@@ -811,10 +932,7 @@ export async function getAssetAuditHistory(
   const timer = startLatencyTimer();
 
   try {
-    const currentUser = await getAuthenticatedUser();
-    if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
-      throw new Error('Unauthorized access to asset history.');
-    }
+    await enforceActionAccess(canViewAssetRegistry);
 
     // Keep paging bounded so history requests stay predictable.
     const validatedPage = Math.max(1, page);
@@ -823,10 +941,7 @@ export async function getAssetAuditHistory(
     // Fetch one extra record to determine if there is a next page
     const limit = validatedPageSize + 1;
 
-    const whereCondition = and(
-      eq(systemAuditLogs.entityType, 'Asset'),
-      eq(systemAuditLogs.entityId, assetId)
-    );
+    const whereCondition = assetHistoryCondition(assetId);
 
     const records = await db
       .select({
@@ -855,7 +970,8 @@ export async function getAssetAuditHistory(
 
     // Reuse the same label resolver as the system audit log.
     const targetEntityLabels = await resolveTargetEntityLabels(pageRecords);
-    const { labels: valueLabels, idMappings } = await resolveAuditValueLabels(pageRecords);
+    const { labels: valueLabels, idMappings } =
+      await resolveAuditValueLabels(pageRecords);
 
     const data: AuditLogRow[] = pageRecords.map((record) => {
       const oldValue = record.oldValue as Record<string, unknown> | null;
@@ -921,15 +1037,9 @@ export async function getAllAssetAuditHistory(
   const timer = startLatencyTimer();
 
   try {
-    const currentUser = await getAuthenticatedUser();
-    if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
-      throw new Error('Unauthorized access to asset history.');
-    }
+    await enforceActionAccess(canViewAssetRegistry);
 
-    const whereCondition = and(
-      eq(systemAuditLogs.entityType, 'Asset'),
-      eq(systemAuditLogs.entityId, assetId)
-    );
+    const whereCondition = assetHistoryCondition(assetId);
 
     const records = await db
       .select({
@@ -952,7 +1062,8 @@ export async function getAllAssetAuditHistory(
       .orderBy(desc(systemAuditLogs.performedAt), desc(systemAuditLogs.id));
 
     const targetEntityLabels = await resolveTargetEntityLabels(records);
-    const { labels: valueLabels, idMappings } = await resolveAuditValueLabels(records);
+    const { labels: valueLabels, idMappings } =
+      await resolveAuditValueLabels(records);
 
     const data: AuditLogRow[] = records.map((record) => {
       const oldValue = record.oldValue as Record<string, unknown> | null;
@@ -1009,5 +1120,103 @@ export async function getAllAssetAuditHistory(
       error,
     });
     throw new Error('Failed to fetch all asset history.');
+  }
+}
+
+export interface ExportAuditLogsParams {
+  search?: string;
+  filters?: AuditLogFilter[];
+  /** Inclusive ISO date bounds, when the user picks a custom range. */
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+/**
+ * Rows for a CSV export, honouring the filters currently on screen.
+ *
+ * Export previously took whatever was on the current page, so a filtered search
+ * across thousands of rows exported sixteen of them. Capped at
+ * AUDIT_EXPORT_LIMIT and ordered newest-first, so the default "last 10,000"
+ * is the most recent activity rather than an arbitrary slice.
+ */
+export async function exportAuditLogs(
+  params: ExportAuditLogsParams
+): Promise<{ rows: AuditLogRow[]; truncated: boolean }> {
+  const timer = startLatencyTimer();
+
+  try {
+    const currentUser = await getAuthenticatedUser();
+
+    if (
+      !currentUser ||
+      (currentUser.role !== 'GlobalAdmin' &&
+        currentUser.role !== 'FinancialAuditor')
+    ) {
+      throw new Error('Unauthorized access to audit logs.');
+    }
+
+    const whereCondition = buildAuditLogWhere(params);
+
+    // One extra row is fetched purely to detect truncation.
+    const records = await db
+      .select({
+        id: systemAuditLogs.id,
+        performedAt: systemAuditLogs.performedAt,
+        entityType: systemAuditLogs.entityType,
+        entityId: systemAuditLogs.entityId,
+        actionType: systemAuditLogs.actionType,
+        oldValue: systemAuditLogs.oldValue,
+        newValue: systemAuditLogs.newValue,
+        ipAddress: systemAuditLogs.ipAddress,
+        performedById: users.id,
+        performedByName: users.name,
+        performedByEmail: users.email,
+        performedByRole: users.role,
+      })
+      .from(systemAuditLogs)
+      .leftJoin(users, eq(systemAuditLogs.performedById, users.id))
+      .where(whereCondition)
+      .orderBy(desc(systemAuditLogs.performedAt), desc(systemAuditLogs.id))
+      .limit(AUDIT_EXPORT_LIMIT + 1);
+
+    const truncated = records.length > AUDIT_EXPORT_LIMIT;
+    const pageRecords = truncated
+      ? records.slice(0, AUDIT_EXPORT_LIMIT)
+      : records;
+
+    const targetEntityLabels = await resolveTargetEntityLabels(pageRecords);
+
+    const rows: AuditLogRow[] = pageRecords.map((record) => ({
+      id: record.id,
+      performedAt: record.performedAt,
+      entityType: record.entityType,
+      entityId: record.entityId,
+      entityLabel:
+        targetEntityLabels.get(`${record.entityType}::${record.entityId}`) ??
+        null,
+      actionType: record.actionType,
+      performedBy: record.performedById
+        ? {
+            id: record.performedById,
+            name: record.performedByName ?? 'Unknown',
+            email: record.performedByEmail ?? '',
+            role: record.performedByRole ?? 'Employee',
+          }
+        : null,
+      oldValue: record.oldValue as Record<string, unknown> | null,
+      newValue: record.newValue as Record<string, unknown> | null,
+      ipAddress: record.ipAddress,
+    }));
+
+    return { rows, truncated };
+  } catch (error) {
+    logError({ scope: 'ACTION', label: 'auditLog.exportAuditLogs', error });
+    throw new Error('Failed to export audit logs.');
+  } finally {
+    logLatency({
+      scope: 'ACTION',
+      label: 'auditLog.exportAuditLogs',
+      startTime: timer,
+    });
   }
 }

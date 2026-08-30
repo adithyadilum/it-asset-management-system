@@ -44,7 +44,9 @@ describe('StandardReportsPreviewPanel', () => {
 
   const defaultProps = {
     showDataGrid: true,
-    previewData: [{ id: '1', 'Asset Tag': 'AST-001', 'Asset Name': 'MacBook Pro' }],
+    previewData: [
+      { id: '1', 'Asset Tag': 'AST-001', 'Asset Name': 'MacBook Pro' },
+    ],
     isLoading: false,
     selectedFields: ['Asset Tag', 'Asset Name'],
     source: 'Asset Registry',
@@ -62,14 +64,23 @@ describe('StandardReportsPreviewPanel', () => {
   });
 
   it('shows error state when errorMessage is provided', () => {
-    render(<StandardReportsPreviewPanel {...defaultProps} errorMessage="Failed to load" />);
+    render(
+      <StandardReportsPreviewPanel
+        {...defaultProps}
+        errorMessage="Failed to load"
+      />
+    );
     expect(screen.getByText('Error loading report')).toBeInTheDocument();
     expect(screen.getByText('Failed to load')).toBeInTheDocument();
   });
 
   it('shows empty state when showDataGrid is false', () => {
-    render(<StandardReportsPreviewPanel {...defaultProps} showDataGrid={false} />);
-    expect(screen.getByText(/Select your filters and click Preview Data/i)).toBeInTheDocument();
+    render(
+      <StandardReportsPreviewPanel {...defaultProps} showDataGrid={false} />
+    );
+    expect(
+      screen.getByText(/Select your filters and click Preview Data/i)
+    ).toBeInTheDocument();
   });
 
   it('handles Export CSV flow', async () => {

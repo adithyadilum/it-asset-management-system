@@ -22,7 +22,9 @@ vi.mock('./standard-reports-config-panel', () => ({
   StandardReportsConfigPanel: ({ onManualPreview, onFilterChange }: any) => (
     <div data-testid="config-panel">
       <button onClick={onManualPreview}>Preview</button>
-      <button onClick={() => onFilterChange('source', 'Assets')}>Change Source</button>
+      <button onClick={() => onFilterChange('source', 'Assets')}>
+        Change Source
+      </button>
     </div>
   ),
 }));
@@ -51,7 +53,26 @@ describe('StandardReportsShell', () => {
       pageCount: 1,
     });
 
-    render(<StandardReportsShell filterOptions={{ assetTypes: [], categories: [], locations: [], statuses: [], masterDataTypes: [], vendors: [], manufacturers: [], roleTypes: [], permissionModules: [], dateRanges: [] } as any} templates={[]} generatedBy="User A" />);
+    render(
+      <StandardReportsShell
+        filterOptions={
+          {
+            assetTypes: [],
+            categories: [],
+            locations: [],
+            statuses: [],
+            masterDataTypes: [],
+            vendors: [],
+            manufacturers: [],
+            roleTypes: [],
+            permissionModules: [],
+            dateRanges: [],
+          } as any
+        }
+        templates={[]}
+        generatedBy="User A"
+      />
+    );
 
     expect(screen.getByTestId('config-panel')).toBeInTheDocument();
     expect(screen.getByTestId('preview-panel-hidden')).toBeInTheDocument();

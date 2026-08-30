@@ -1,37 +1,37 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
 
-import { bulkAssignAssetsAction } from "@/actions/assignments";
-import { searchUsers } from "@/actions/users";
-import { searchLocations } from "@/actions/locations";
-import { tiqriToast } from "@/components/shared/sonner";
+import { bulkAssignAssetsAction } from '@/actions/assignments';
+import { tiqriToast } from '@/components/shared/sonner';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 import {
   DURATION_OPTIONS,
-  isPresetDuration,
-  calculateExpectedReturnDate,
-  calculateDurationFromDate,
-} from "@/lib/assignment-date-utils";
-import { Button } from "@/components/ui/button";
+  CUSTOM_DURATION_VALUE,
+  findDurationPreset,
+} from '@/lib/assignment-date-utils';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+
+import { useAssignmentModalState } from './use-assignment-modal-state';
 
 export type MultiAssetAssignmentItem = {
   assetId: string;
@@ -46,86 +46,50 @@ interface MultiAssetAssignmentModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type AssigneeOption = {
-  id: string;
-  label: string;
-};
-
 export function MultiAssetAssignmentModal({
   isOpen,
   assets,
   onOpenChange,
 }: MultiAssetAssignmentModalProps) {
   const router = useRouter();
-  const disableUserAssignment = assets.some(
-    (asset) => asset.assetGroup === "Office Furniture" || asset.assetGroup === "Office Electronics"
+
+  // Office Furniture and Office Electronics go to a location; everything else
+  // goes to a person. A selection spanning both has no single valid target.
+  //
+  // This used to be one `.some()` over the location-only pillars, which is
+  // right for a uniform selection and wrong for a mixed one: any furniture in
+  // the set forced the whole batch to location assignment, so laptops picked
+  // alongside a desk were quietly assigned to a room instead of to the person
+  // the operator had in mind. Nothing surfaced that, because the radio was
+  // disabled rather than the submission blocked.
+  const locationOnlyAssets = assets.filter((asset) =>
+    isLocationAssignedPillar(asset.assetGroup)
   );
-  const [assignmentMode, setAssignmentMode] = React.useState<"user" | "location">(() =>
-    disableUserAssignment ? "location" : "user"
+  const personAssignableAssets = assets.filter(
+    (asset) => !isLocationAssignedPillar(asset.assetGroup)
   );
-  const [assignee, setAssignee] = React.useState("");
-  const [duration, setDuration] = React.useState("");
-  const [expectedReturn, setExpectedReturn] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [userOptions, setUserOptions] = React.useState<AssigneeOption[]>([]);
-  const [locationOptions, setLocationOptions] = React.useState<AssigneeOption[]>([]);
+  const isMixedSelection =
+    locationOnlyAssets.length > 0 && personAssignableAssets.length > 0;
+  const disableUserAssignment =
+    locationOnlyAssets.length > 0 && !isMixedSelection;
 
-  const activeOptions = assignmentMode === "user" ? userOptions : locationOptions;
-
-  const loadOptions = React.useCallback(async () => {
-    try {
-      const [usersResult, locationsResult] = await Promise.all([
-        searchUsers(),
-        searchLocations(),
-      ]);
-
-      if (!usersResult.success || !locationsResult.success) {
-        throw new Error("Failed to load assignment options.");
-      }
-
-      setUserOptions(
-        (usersResult.data ?? []).map((user) => ({
-          id: user.id,
-          label: user.name,
-        }))
-      );
-
-      setLocationOptions(
-        (locationsResult.data ?? []).map((location) => ({
-          id: String(location.id),
-          label: location.name,
-        }))
-      );
-    } catch {
-      tiqriToast.error("Failed to load assignment options.");
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    let mounted = true;
-
-    (async () => {
-      if (!mounted) return;
-      await loadOptions();
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isOpen, loadOptions]);
-
-  const resetState = React.useCallback(() => {
-    setAssignmentMode(disableUserAssignment ? "location" : "user");
-    setAssignee("");
-    setDuration("");
-    setExpectedReturn("");
-    setNotes("");
-  }, [disableUserAssignment]);
+  const {
+    assignmentMode,
+    assignee,
+    setAssignee,
+    duration,
+    expectedReturn,
+    notes,
+    setNotes,
+    isSubmitting,
+    setIsSubmitting,
+    activeOptions,
+    resetState,
+    handleAssignmentModeChange,
+    handleDurationChange,
+    handleExpectedReturnChange,
+    validateAssignment,
+  } = useAssignmentModalState({ isOpen, disableUserAssignment });
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
@@ -139,41 +103,35 @@ export function MultiAssetAssignmentModal({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const resolvedAssignmentMode = disableUserAssignment ? "location" : assignmentMode;
 
     if (assets.length === 0) {
-      tiqriToast.warning("Select at least one asset.");
+      tiqriToast.warning('Select at least one asset.');
       return;
     }
 
-    if (!assignee) {
+    if (isMixedSelection) {
       tiqriToast.warning(
-        resolvedAssignmentMode === "user"
-          ? "Please select a user."
-          : "Please select a location."
+        'Assign these separately: the selection mixes assets that go to a person with assets that go to a location.'
       );
       return;
     }
 
-    if (resolvedAssignmentMode === "user" && expectedReturn) {
-      const [year, month, day] = expectedReturn.split("-").map(Number);
-      const selectedDate = new Date(year, month - 1, day);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      if (selectedDate < today) {
-        tiqriToast.error("Select a valid date");
-        return;
-      }
-    }
+    if (!validateAssignment()) return;
 
     setIsSubmitting(true);
 
-    const expectedDate = resolvedAssignmentMode === "user" ? expectedReturn || undefined : undefined;
+    const resolvedAssignmentMode = disableUserAssignment
+      ? 'location'
+      : assignmentMode;
+    const expectedDate =
+      resolvedAssignmentMode === 'user'
+        ? expectedReturn || undefined
+        : undefined;
     const bulkAssignInput = {
       assetIds: assets.map((asset) => asset.assetId),
       assignmentType: resolvedAssignmentMode,
-      targetId: resolvedAssignmentMode === "location" ? Number(assignee) : assignee,
+      targetId:
+        resolvedAssignmentMode === 'location' ? Number(assignee) : assignee,
       expectedReturnDate: expectedDate,
       notes: notes || undefined,
     };
@@ -181,16 +139,16 @@ export function MultiAssetAssignmentModal({
     bulkAssignAssetsAction(bulkAssignInput)
       .then((result) => {
         if (!result.success) {
-          throw new Error(result.error || "Bulk assignment failed.");
+          throw new Error(result.error || 'Bulk assignment failed.');
         }
 
-        tiqriToast.success("Assets assigned successfully.");
+        tiqriToast.success('Assets assigned successfully.');
         handleOpenChange(false);
         router.refresh();
       })
       .catch((error: unknown) => {
         tiqriToast.error(
-          error instanceof Error ? error.message : "Bulk assignment failed."
+          error instanceof Error ? error.message : 'Bulk assignment failed.'
         );
       })
       .finally(() => {
@@ -198,39 +156,17 @@ export function MultiAssetAssignmentModal({
       });
   };
 
-  const handleAssignmentModeChange = React.useCallback((mode: "user" | "location") => {
-    setAssignmentMode(mode);
-    setDuration("");
-    setExpectedReturn("");
-  }, []);
-
-  const handleDurationChange = React.useCallback((value: string) => {
-    setDuration(`${value}`);
-
-    const durationDays = Number(value);
-    if (Number.isFinite(durationDays) && durationDays > 0) {
-      setExpectedReturn(calculateExpectedReturnDate(durationDays));
-      return;
-    }
-
-    setExpectedReturn("");
-  }, []);
-
-  const handleExpectedReturnChange = React.useCallback((value: string) => {
-    setExpectedReturn(value);
-
-    const calculatedDuration = calculateDurationFromDate(value);
-    setDuration(`${calculatedDuration}`);
-  }, []);
-
   const assetCount = assets.length;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-160 rounded-xl p-0" showCloseButton={true}>
+      <DialogContent
+        className="max-w-160 rounded-xl p-0"
+        showCloseButton={true}
+      >
         <DialogHeader className="gap-1 px-6 pt-5 pb-4">
           <DialogTitle className="text-[18px] font-semibold text-foreground">
-            Assign {assetCount} {assetCount === 1 ? "Asset" : "Assets"}
+            Assign {assetCount} {assetCount === 1 ? 'Asset' : 'Assets'}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             Choose how you would like to assign the selected assets.
@@ -246,22 +182,52 @@ export function MultiAssetAssignmentModal({
                     key={asset.assetId}
                     className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 text-xs"
                   >
-                    <p className="font-medium text-foreground">{asset.assetTag}</p>
-                    <p className="truncate text-foreground">{asset.assetName}</p>
+                    <p className="font-medium text-foreground">
+                      {asset.assetTag}
+                    </p>
+                    <p className="truncate text-foreground">
+                      {asset.assetName}
+                    </p>
                   </div>
                 ))}
               </div>
             </ScrollArea>
           </div>
 
+          {isMixedSelection ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-foreground"
+            >
+              <p className="font-medium">
+                This selection cannot be assigned in one go.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {personAssignableAssets.length}{' '}
+                {personAssignableAssets.length === 1 ? 'asset' : 'assets'} go to
+                a person and {locationOnlyAssets.length} to a location (
+                {locationOnlyAssets
+                  .map((asset) => asset.assetTag)
+                  .slice(0, 3)
+                  .join(', ')}
+                {locationOnlyAssets.length > 3
+                  ? ` +${locationOnlyAssets.length - 3} more`
+                  : ''}
+                ). Assign each group separately.
+              </p>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
-            <label className={`flex items-center gap-2 text-sm ${disableUserAssignment ? "cursor-not-allowed text-muted-foreground" : "text-foreground"}`}>
+            <label
+              className={`flex items-center gap-2 text-sm ${disableUserAssignment ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
+            >
               <input
                 type="radio"
                 name="multi-assignment-mode"
-                checked={assignmentMode === "user"}
-                disabled={disableUserAssignment}
-                onChange={() => handleAssignmentModeChange("user")}
+                checked={assignmentMode === 'user'}
+                disabled={disableUserAssignment || isMixedSelection}
+                onChange={() => handleAssignmentModeChange('user')}
                 className="size-4 border-border accent-primary"
               />
               Assign to User
@@ -270,8 +236,9 @@ export function MultiAssetAssignmentModal({
               <input
                 type="radio"
                 name="multi-assignment-mode"
-                checked={assignmentMode === "location"}
-                onChange={() => handleAssignmentModeChange("location")}
+                checked={assignmentMode === 'location'}
+                disabled={isMixedSelection}
+                onChange={() => handleAssignmentModeChange('location')}
                 className="size-4 border-border accent-primary"
               />
               Assign to Location
@@ -280,22 +247,24 @@ export function MultiAssetAssignmentModal({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-foreground">
-              {disableUserAssignment || assignmentMode === "location" ? "Select a location" : "Select a user"}
+              {disableUserAssignment || assignmentMode === 'location'
+                ? 'Select a location'
+                : 'Select a user'}
             </Label>
             <Select value={assignee} onValueChange={setAssignee}>
               <SelectTrigger className="h-9 bg-background">
                 <SelectValue
                   placeholder={
-                    disableUserAssignment || assignmentMode === "location"
-                      ? "Select a location"
-                      : "Select a user"
+                    disableUserAssignment || assignmentMode === 'location'
+                      ? 'Select a location'
+                      : 'Select a user'
                   }
                 />
               </SelectTrigger>
               <SelectContent>
                 {activeOptions.length > 0 ? (
                   activeOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
+                    <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
                   ))
@@ -308,25 +277,32 @@ export function MultiAssetAssignmentModal({
             </Select>
           </div>
 
-          {disableUserAssignment || assignmentMode === "location" ? null : (
+          {disableUserAssignment || assignmentMode === 'location' ? null : (
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-foreground">Expected Return Date</Label>
+              <Label className="text-xs font-medium text-foreground">
+                Expected Return Date
+              </Label>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[160px_minmax(0,1fr)]">
-                <Select key={duration || "preset-duration"} value={`${duration}`} onValueChange={handleDurationChange}>
+                <Select
+                  key={duration || 'preset-duration'}
+                  value={duration}
+                  onValueChange={handleDurationChange}
+                >
                   <SelectTrigger className="h-9 w-full bg-background">
                     <SelectValue placeholder="Select the duration">
-                      {duration ? `${duration} days` : undefined}
+                      {findDurationPreset(duration)?.label ??
+                        (duration ? 'Custom' : undefined)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {DURATION_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={`${option}`}>
-                        {option} days
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
-                    {duration !== "" && !isPresetDuration(duration) ? (
-                      <SelectItem value={`${duration}`}>{duration} days</SelectItem>
-                    ) : null}
+                    <SelectItem value={CUSTOM_DURATION_VALUE}>
+                      Custom
+                    </SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -334,7 +310,9 @@ export function MultiAssetAssignmentModal({
                   <Input
                     type="date"
                     value={expectedReturn}
-                    onChange={(event) => handleExpectedReturnChange(event.target.value)}
+                    onChange={(event) =>
+                      handleExpectedReturnChange(event.target.value)
+                    }
                     className="h-9 w-full"
                   />
                 </div>
@@ -361,8 +339,12 @@ export function MultiAssetAssignmentModal({
             >
               Cancel
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
-              Assign {assets.length} {assets.length === 1 ? "Asset" : "Assets"}
+            <Button
+              type="submit"
+              className="bg-primary hover:bg-primary/90"
+              disabled={isSubmitting || isMixedSelection}
+            >
+              Assign {assets.length} {assets.length === 1 ? 'Asset' : 'Assets'}
             </Button>
           </div>
         </form>

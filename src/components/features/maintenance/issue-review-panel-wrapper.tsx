@@ -1,10 +1,19 @@
 'use client';
 
-import { useEffect, useState } from "react";
-import { IssueReviewPanel } from "./issue-review-panel";
-import { getTicketForIssueReview, getVendors, resolveIssueInternally, initiateVendorRepair } from "@/actions/maintenance";
-import { toast } from "sonner"; 
-import type { IssueReviewPanelData, Vendor, InitiateRepairFormData } from "@/types/maintenance";
+import { useEffect, useState } from 'react';
+import { IssueReviewPanel } from './issue-review-panel';
+import {
+  getTicketForIssueReview,
+  getVendors,
+  resolveIssueInternally,
+  initiateVendorRepair,
+} from '@/actions/maintenance';
+import { toast } from 'sonner';
+import type {
+  IssueReviewPanelData,
+  Vendor,
+  InitiateRepairFormData,
+} from '@/types/maintenance';
 
 export interface IssueReviewPanelWrapperProps {
   isOpen: boolean;
@@ -13,7 +22,12 @@ export interface IssueReviewPanelWrapperProps {
   onSuccess?: () => void; // Optional callback to refresh the table on the main page
 }
 
-export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }: IssueReviewPanelWrapperProps) {
+export function IssueReviewPanelWrapper({
+  isOpen,
+  onClose,
+  ticketId,
+  onSuccess,
+}: IssueReviewPanelWrapperProps) {
   const [data, setData] = useState<IssueReviewPanelData | null>(null);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,10 +52,7 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
       let isMounted = true;
 
       // Fetch both the ticket data and the vendor list simultaneously
-      Promise.all([
-        getTicketForIssueReview(ticketId),
-        getVendors()
-      ])
+      Promise.all([getTicketForIssueReview(ticketId), getVendors()])
         .then(([ticketRes, vendorsRes]) => {
           if (isMounted) {
             setData(ticketRes);
@@ -50,9 +61,15 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
         })
         .catch((err) => {
           if (isMounted) {
-            console.error(err);
+            console.error(
+              '[IssueReviewPanelWrapper] Failed to load panel data:',
+              err instanceof Error ? err.message : 'Unknown error'
+            );
             // FIX: Extract specific error for initial load
-            const errorMessage = err instanceof Error ? err.message : "Failed to load issue review data";
+            const errorMessage =
+              err instanceof Error
+                ? err.message
+                : 'Failed to load issue review data';
             toast.error(`Failed: ${errorMessage}`);
           }
         })
@@ -73,12 +90,13 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
     setIsResolving(true);
     try {
       await resolveIssueInternally(ticketId, resolutionNote);
-      toast.success("Issue resolved successfully");
+      toast.success('Issue resolved successfully');
       onSuccess?.(); // Refresh the table
       onClose();
     } catch (err) {
       // FIX: Extract specific error for resolving internally
-      const errorMessage = err instanceof Error ? err.message : "Failed to resolve issue";
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to resolve issue';
       toast.error(`Failed: ${errorMessage}`);
     } finally {
       setIsResolving(false);
@@ -90,20 +108,21 @@ export function IssueReviewPanelWrapper({ isOpen, onClose, ticketId, onSuccess }
     setIsInitiating(true);
     try {
       await initiateVendorRepair(
-        data.ticket.id,          
-        data.ticket.asset.id,    
+        data.ticket.id,
+        data.ticket.asset.id,
         formData.vendorId,
         formData.rmaNumber,
         formData.estimatedCost,
         formData.expectedReturnDate,
         formData.currencyCode
       );
-      toast.success("Repair initiated successfully");
+      toast.success('Repair initiated successfully');
       onSuccess?.(); // Refresh the table
       onClose();
     } catch (err) {
       // FIX: Extract specific error for initiating repair
-      const errorMessage = err instanceof Error ? err.message : "Failed to initiate repair";
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to initiate repair';
       toast.error(`Failed: ${errorMessage}`);
     } finally {
       setIsInitiating(false);

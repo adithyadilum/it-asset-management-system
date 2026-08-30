@@ -34,7 +34,7 @@ export const reportPreviewFiltersSchema = z.object({
         .optional()
     ),
   page: z.coerce.number().int().min(0).optional().default(0),
-  pageSize: z.coerce.number().int().min(1).max(100000).optional().default(16),
+  pageSize: z.coerce.number().int().min(1).max(5000).optional().default(16),
 });
 
 export type ReportPreviewFilters = z.infer<typeof reportPreviewFiltersSchema>;

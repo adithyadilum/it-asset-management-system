@@ -11,7 +11,7 @@ This epic builds the primary "Command Center" landing page for the ITAM system. 
 - Visual reporting charts (Bar Chart for Allocation, Donut Chart for Status).
 - A "Recent Activities" log widget.
 - Actionable data tables (`Overdue Returns`, `Pending Disposals`, `High-Maintenance Assets`, `Software Seat Cost Optimization`, `Asset Write-offs`).
-- Dynamic rendering logic and table swapping based on user role (Global Admin, IT Operator, Finance Auditor).
+- Dynamic rendering logic and table swapping based on user role (Global Admin, IT Operator, Financial Auditor).
 
 ## Out of Scope / Limitations
 
@@ -126,14 +126,14 @@ This epic builds the primary "Command Center" landing page for the ITAM system. 
 
 ## User Story: US-20.4 — Finance View (Financial Access)
 
-- As a Finance Auditor,
+- As a Financial Auditor,
 - I want to see a dashboard focused on asset valuation, write-offs, and software optimization,
 - So that I can monitor capital expenditure without being cluttered by minor hardware repairs or overdue return logistics.
 
 ### Acceptance Criteria (Gherkin)
 
 - Scenario: Emphasizing Financial Data
-  - Given I log in with the `Finance Auditor` role
+  - Given I log in with the `Financial Auditor` role
   - When the dashboard loads
   - Then the KPI metrics strictly focus on financial indicators.
   - And the middle row displays all 3 widgets: `Department Allocation`, `Inventory Status`, and `Recent Activities`.

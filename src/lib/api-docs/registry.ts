@@ -1,4 +1,8 @@
-import { extendZodWithOpenApi, OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
+import {
+  extendZodWithOpenApi,
+  OpenAPIRegistry,
+  OpenApiGeneratorV3,
+} from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import { omniSearchQuerySchema } from '../validations/omni-search';
 import { updateNotificationRuleSchema } from '../validations/settings';
@@ -50,7 +54,12 @@ const NotificationRuleSchema = registry.register(
     id: z.number(),
     ruleKey: z.string(),
     displayName: z.string(),
-    category: z.enum(['HARDWARE_LIFECYCLE', 'OPERATIONAL', 'SECURITY', 'FINANCIAL']),
+    category: z.enum([
+      'HARDWARE_LIFECYCLE',
+      'OPERATIONAL',
+      'SECURITY',
+      'FINANCIAL',
+    ]),
     isEnabled: z.boolean(),
     thresholdDays: z.number().nullable(),
     channelInApp: z.boolean(),
@@ -71,7 +80,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/profile',
   summary: 'Get Authenticated User Profile',
-  description: 'Returns profile details for the currently logged-in user. Authenticated via the mobile JWT Bearer token.',
+  description:
+    'Returns profile details for the currently logged-in user. Authenticated via the mobile JWT Bearer token.',
   security: [{ MobileBearerAuth: [] }],
   tags: ['User Profile'],
   responses: {
@@ -84,14 +94,25 @@ registry.registerPath({
               id: z.string(),
               name: z.string(),
               email: z.string().email(),
-              role: z.enum(['GlobalAdmin', 'ITOperator', 'FinanceAuditor', 'Employee']),
+              role: z.enum([
+                'GlobalAdmin',
+                'ITOperator',
+                'FinancialAuditor',
+                'Employee',
+              ]),
             }),
           }),
         },
       },
     },
-    401: { description: 'Unauthorized (invalid or missing JWT token)', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    404: { description: 'User not found', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized (invalid or missing JWT token)',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'User not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -101,7 +122,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/search',
   summary: 'Omni Search',
-  description: 'Performs multi-entity queries across Assets, Users, and Reports. Authenticated via the web session cookie.',
+  description:
+    'Performs multi-entity queries across Assets, Users, and Reports. Authenticated via the web session cookie.',
   security: [{ CookieAuth: [] }],
   tags: ['Search'],
   request: {
@@ -143,8 +165,14 @@ registry.registerPath({
         },
       },
     },
-    400: { description: 'Invalid search query parameter', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    401: { description: 'Unauthorized session', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    400: {
+      description: 'Invalid search query parameter',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthorized session',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -154,7 +182,8 @@ registry.registerPath({
   method: 'post',
   path: '/v1/scan',
   summary: 'Process QR Barcode Scan',
-  description: 'Submits a scanned QR/barcode payload. Authenticated via either the Mobile JWT Bearer token or Web Dashboard session cookie.',
+  description:
+    'Submits a scanned QR/barcode payload. Authenticated via either the Mobile JWT Bearer token or Web Dashboard session cookie.',
   security: [{ MobileBearerAuth: [] }, { CookieAuth: [] }],
   tags: ['Device Operations'],
   request: {
@@ -162,7 +191,9 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            barcode: z.string().openapi({ description: 'The scanned asset tag or serial barcode string' }),
+            barcode: z.string().openapi({
+              description: 'The scanned asset tag or serial barcode string',
+            }),
           }),
         },
       },
@@ -180,7 +211,10 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -188,7 +222,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/activity/recent',
   summary: 'Get Recent System Activities',
-  description: 'Returns the 5 most recent system audit log events. Authenticated via the mobile JWT Bearer token.',
+  description:
+    'Returns the 5 most recent system audit log events. Authenticated via the mobile JWT Bearer token.',
   security: [{ MobileBearerAuth: [] }],
   tags: ['Device Operations'],
   responses: {
@@ -217,7 +252,10 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -227,7 +265,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/notifications',
   summary: 'Get Notifications',
-  description: 'Returns a paginated list of notifications for the logged-in user. Authenticated via the web session cookie.',
+  description:
+    'Returns a paginated list of notifications for the logged-in user. Authenticated via the web session cookie.',
   security: [{ CookieAuth: [] }],
   tags: ['Notifications'],
   parameters: [
@@ -264,7 +303,10 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -272,7 +314,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/notifications/unread-count',
   summary: 'Get Unread Notifications Count',
-  description: 'Returns the count of unread notifications. Authenticated via the web session cookie.',
+  description:
+    'Returns the count of unread notifications. Authenticated via the web session cookie.',
   security: [{ CookieAuth: [] }],
   tags: ['Notifications'],
   responses: {
@@ -286,7 +329,10 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -294,7 +340,8 @@ registry.registerPath({
   method: 'patch',
   path: '/v1/notifications/read-all',
   summary: 'Mark All Notifications as Read',
-  description: 'Marks all notifications for the user as read. Authenticated via the web session cookie.',
+  description:
+    'Marks all notifications for the user as read. Authenticated via the web session cookie.',
   security: [{ CookieAuth: [] }],
   tags: ['Notifications'],
   responses: {
@@ -309,7 +356,10 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -317,12 +367,15 @@ registry.registerPath({
   method: 'patch',
   path: '/v1/notifications/{id}/read',
   summary: 'Mark Notification as Read',
-  description: 'Marks a single notification as read by ID. Authenticated via the web session cookie.',
+  description:
+    'Marks a single notification as read by ID. Authenticated via the web session cookie.',
   security: [{ CookieAuth: [] }],
   tags: ['Notifications'],
   request: {
     params: z.object({
-      id: z.string().openapi({ description: 'The unique ID of the notification' }),
+      id: z
+        .string()
+        .openapi({ description: 'The unique ID of the notification' }),
     }),
   },
   responses: {
@@ -339,8 +392,14 @@ registry.registerPath({
       },
     },
     400: { description: 'Notification ID missing' },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    404: { description: 'Notification not found', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Notification not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -348,7 +407,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/portal/notifications',
   summary: 'Get Portal Alerts (Employee)',
-  description: 'Returns alerts for the employee portal view. Authenticated via the web session cookie (Employee role required).',
+  description:
+    'Returns alerts for the employee portal view. Authenticated via the web session cookie (Employee role required).',
   security: [{ CookieAuth: [] }],
   tags: ['Notifications'],
   responses: {
@@ -363,8 +423,14 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient permissions', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient permissions',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -374,7 +440,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/settings/notification-rules',
   summary: 'Get Notification Rules',
-  description: 'Returns system-wide notification rule triggers. Authenticated via the web session cookie (Management permissions required).',
+  description:
+    'Returns system-wide notification rule triggers. Authenticated via the web session cookie (Management permissions required).',
   security: [{ CookieAuth: [] }],
   tags: ['Notification Rules Settings'],
   responses: {
@@ -389,8 +456,14 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient permissions', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient permissions',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -398,12 +471,15 @@ registry.registerPath({
   method: 'put',
   path: '/v1/settings/notification-rules/{id}',
   summary: 'Update Notification Rule',
-  description: 'Updates a specific notification rule settings by ID. Authenticated via the web session cookie (Management permissions required).',
+  description:
+    'Updates a specific notification rule settings by ID. Authenticated via the web session cookie (Management permissions required).',
   security: [{ CookieAuth: [] }],
   tags: ['Notification Rules Settings'],
   request: {
     params: z.object({
-      id: z.string().openapi({ description: 'The numeric database ID of the rule' }),
+      id: z
+        .string()
+        .openapi({ description: 'The numeric database ID of the rule' }),
     }),
     body: {
       content: {
@@ -425,10 +501,22 @@ registry.registerPath({
         },
       },
     },
-    400: { description: 'Validation failed or invalid JSON body', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient permissions', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    404: { description: 'Notification rule not found', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    400: {
+      description: 'Validation failed or invalid JSON body',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient permissions',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Notification rule not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -438,7 +526,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/external/assets',
   summary: 'Fetch Assets List',
-  description: 'Retrieves hardware/software assets for third-party scripts. Authenticated via header API Key.',
+  description:
+    'Retrieves hardware/software assets for third-party scripts. Authenticated via header API Key.',
   security: [{ 'X-API-Key': [] }],
   tags: ['External Integrations'],
   parameters: [
@@ -461,14 +550,16 @@ registry.registerPath({
       in: 'query',
       required: false,
       schema: { type: 'string' },
-      description: 'Filter assets by status (e.g., Available, Assigned, In Repair)',
+      description:
+        'Filter assets by status (e.g., Available, Assigned, In Repair)',
     },
     {
       name: 'pillar',
       in: 'query',
       required: false,
       schema: { type: 'string' },
-      description: 'Filter assets by category pillar (e.g. Hardware, Software, Furniture)',
+      description:
+        'Filter assets by category pillar (e.g. Hardware, Software, Furniture)',
     },
   ],
   responses: {
@@ -489,8 +580,14 @@ registry.registerPath({
         },
       },
     },
-    400: { description: 'Invalid limit or offset parameter', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    401: { description: 'Unauthorized / Invalid API Key', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    400: {
+      description: 'Invalid limit or offset parameter',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthorized / Invalid API Key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -498,12 +595,15 @@ registry.registerPath({
   method: 'get',
   path: '/v1/external/assets/user/{employee_id}',
   summary: 'Fetch Assets Assigned to Employee',
-  description: 'Retrieves all assets currently assigned to a user by employee UUID. Authenticated via header API Key.',
+  description:
+    'Retrieves all assets currently assigned to a user by employee UUID. Authenticated via header API Key.',
   security: [{ 'X-API-Key': [] }],
   tags: ['External Integrations'],
   request: {
     params: z.object({
-      employee_id: z.string().openapi({ description: 'The UUID of the employee' }),
+      employee_id: z
+        .string()
+        .openapi({ description: 'The UUID of the employee' }),
     }),
   },
   responses: {
@@ -522,9 +622,18 @@ registry.registerPath({
         },
       },
     },
-    400: { description: 'Invalid UUID format', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    401: { description: 'Unauthorized / Invalid API Key', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    404: { description: 'Employee not found', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    400: {
+      description: 'Invalid UUID format',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthorized / Invalid API Key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Employee not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -532,7 +641,8 @@ registry.registerPath({
   method: 'post',
   path: '/v1/external/assets',
   summary: 'Create Asset (External API)',
-  description: 'Registers a new hardware, software, or office asset. Authenticated via header API Key (requires write:assets scope).',
+  description:
+    'Registers a new hardware, software, or office asset. Authenticated via header API Key (requires write:assets scope).',
   security: [{ 'X-API-Key': [] }],
   tags: ['External Integrations'],
   request: {
@@ -540,7 +650,12 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            pillar: z.enum(['Hardware', 'Software', 'Office Furniture', 'Office Electronics']),
+            pillar: z.enum([
+              'Hardware',
+              'Software',
+              'Office Furniture',
+              'Office Electronics',
+            ]),
             categoryId: z.number(),
             brandId: z.number(),
             modelId: z.number(),
@@ -548,8 +663,12 @@ registry.registerPath({
             serialNumber: z.string().optional(),
             locationId: z.number().optional(),
             ownerId: z.number().optional(),
-            condition: z.enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged']).optional(),
-            purchaseDate: z.string().openapi({ description: 'ISO Date string' }),
+            condition: z
+              .enum(['New', 'Excellent', 'Fair', 'Poor', 'Damaged'])
+              .optional(),
+            purchaseDate: z
+              .string()
+              .openapi({ description: 'ISO Date string' }),
             basePrice: z.number(),
             shippingCost: z.number().optional(),
             tax: z.number().optional(),
@@ -558,7 +677,10 @@ registry.registerPath({
             vendorId: z.number(),
             notes: z.string().optional(),
             instanceAttributes: z.record(z.string(), z.any()).optional(),
-            licenseType: z.enum(['Perpetual', 'Subscription', 'Open Source / Free']).optional(),
+            licenseType: z
+              .enum(['Perpetual', 'Subscription', 'Open Source / Free'])
+              .optional(),
+            billingCycle: z.enum(['Monthly', 'Annual']).optional(),
             totalSeats: z.number().optional(),
             licenseStartDate: z.string().optional(),
             licenseExpiryDate: z.string().optional(),
@@ -583,9 +705,18 @@ registry.registerPath({
         },
       },
     },
-    400: { description: 'Validation failed or model not found', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    401: { description: 'Unauthorized / Invalid API Key', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient scopes', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    400: {
+      description: 'Validation failed or model not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthorized / Invalid API Key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient scopes',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -593,7 +724,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/external/users',
   summary: 'View User Directory',
-  description: 'Retrieves EITAMS active user directory. Authenticated via header API Key (requires read:users scope).',
+  description:
+    'Retrieves EITAMS active user directory. Authenticated via header API Key (requires read:users scope).',
   security: [{ 'X-API-Key': [] }],
   tags: ['External Integrations'],
   parameters: [
@@ -634,12 +766,14 @@ registry.registerPath({
                 role: z.string(),
                 isActive: z.boolean(),
                 createdAt: z.string(),
-                department: z.object({
-                  id: z.number(),
-                  name: z.string(),
-                  shortCode: z.string(),
-                  costCenterId: z.string(),
-                }).nullable(),
+                department: z
+                  .object({
+                    id: z.number(),
+                    name: z.string(),
+                    shortCode: z.string(),
+                    costCenterId: z.string(),
+                  })
+                  .nullable(),
               })
             ),
             pagination: z.object({
@@ -652,8 +786,14 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized / Invalid API Key', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient scopes', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized / Invalid API Key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient scopes',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -661,7 +801,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/external/maintenance',
   summary: 'View Maintenance Tickets',
-  description: 'Retrieves list of active or completed asset maintenance tickets. Authenticated via header API Key (requires read:maintenance scope).',
+  description:
+    'Retrieves list of active or completed asset maintenance tickets. Authenticated via header API Key (requires read:maintenance scope).',
   security: [{ 'X-API-Key': [] }],
   tags: ['External Integrations'],
   parameters: [
@@ -705,8 +846,14 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized / Invalid API Key', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient scopes', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized / Invalid API Key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient scopes',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -714,7 +861,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/external/disposals',
   summary: 'View Disposal Requests',
-  description: 'Retrieves list of asset disposal requests. Authenticated via header API Key (requires read:disposals scope).',
+  description:
+    'Retrieves list of asset disposal requests. Authenticated via header API Key (requires read:disposals scope).',
   security: [{ 'X-API-Key': [] }],
   tags: ['External Integrations'],
   parameters: [
@@ -736,7 +884,10 @@ registry.registerPath({
       name: 'status',
       in: 'query',
       required: false,
-      schema: { type: 'string', enum: ['Pending Approval', 'Approved', 'Rejected', 'Completed'] },
+      schema: {
+        type: 'string',
+        enum: ['Pending Approval', 'Approved', 'Rejected', 'Completed'],
+      },
       description: 'Filter requests by status',
     },
   ],
@@ -758,8 +909,14 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized / Invalid API Key', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient scopes', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized / Invalid API Key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient scopes',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -767,7 +924,8 @@ registry.registerPath({
   method: 'get',
   path: '/v1/external/financials',
   summary: 'View Financial Ledger',
-  description: 'Retrieves financial valuation, original pricing, and depreciation status for all active assets. Authenticated via header API Key (requires read:financials scope).',
+  description:
+    'Retrieves financial valuation, original pricing, and depreciation status for all active assets. Authenticated via header API Key (requires read:financials scope).',
   security: [{ 'X-API-Key': [] }],
   tags: ['External Integrations'],
   parameters: [
@@ -823,8 +981,14 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized / Invalid API Key', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden: Insufficient scopes', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized / Invalid API Key',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden: Insufficient scopes',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -834,7 +998,8 @@ registry.registerPath({
   method: 'post',
   path: '/auth/generate-qr',
   summary: 'Generate Device Pairing Token',
-  description: 'Initiates mobile device pairing. Generates a link token stored temporarily in Redis. Authenticated via the web session cookie.',
+  description:
+    'Initiates mobile device pairing. Generates a link token stored temporarily in Redis. Authenticated via the web session cookie.',
   security: [{ CookieAuth: [] }],
   tags: ['Mobile Device Pairing Flow'],
   responses: {
@@ -849,7 +1014,10 @@ registry.registerPath({
         },
       },
     },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -857,7 +1025,8 @@ registry.registerPath({
   method: 'get',
   path: '/auth/check-qr-status',
   summary: 'Check Device Pairing Status',
-  description: 'Polls the status of the pairing QR token. Publicly accessible (no authentication required).',
+  description:
+    'Polls the status of the pairing QR token. Publicly accessible (no authentication required).',
   tags: ['Mobile Device Pairing Flow'],
   parameters: [
     {
@@ -886,7 +1055,8 @@ registry.registerPath({
   method: 'post',
   path: '/auth/mobile-exchange',
   summary: 'Exchange Pairing Token for JWT',
-  description: 'Exchanges a linking token for a long-lived mobile access JWT token. Publicly accessible (no authentication required).',
+  description:
+    'Exchanges a linking token for a long-lived mobile access JWT token. Publicly accessible (no authentication required).',
   tags: ['Mobile Device Pairing Flow'],
   request: {
     body: {
@@ -914,8 +1084,14 @@ registry.registerPath({
         },
       },
     },
-    400: { description: 'Missing token', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    401: { description: 'QR Code expired or invalid', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    400: {
+      description: 'Missing token',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'QR Code expired or invalid',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -923,7 +1099,8 @@ registry.registerPath({
   method: 'post',
   path: '/auth/unlink-device',
   summary: 'Revoke Device Link (Unpair)',
-  description: 'Revokes a linked mobile device by ID. Authenticated via the web session cookie (device owner or GlobalAdmin required).',
+  description:
+    'Revokes a linked mobile device by ID. Authenticated via the web session cookie (device owner or GlobalAdmin required).',
   security: [{ CookieAuth: [] }],
   tags: ['Mobile Device Pairing Flow'],
   request: {
@@ -931,7 +1108,9 @@ registry.registerPath({
       content: {
         'application/json': {
           schema: z.object({
-            deviceId: z.number().openapi({ description: 'The database ID of the linked device' }),
+            deviceId: z
+              .number()
+              .openapi({ description: 'The database ID of the linked device' }),
           }),
         },
       },
@@ -949,10 +1128,22 @@ registry.registerPath({
         },
       },
     },
-    400: { description: 'Missing deviceId', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    401: { description: 'Unauthorized', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    403: { description: 'Forbidden', content: { 'application/json': { schema: ErrorResponseSchema } } },
-    404: { description: 'Device not found', content: { 'application/json': { schema: ErrorResponseSchema } } },
+    400: {
+      description: 'Missing deviceId',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    403: {
+      description: 'Forbidden',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
+    404: {
+      description: 'Device not found',
+      content: { 'application/json': { schema: ErrorResponseSchema } },
+    },
   },
 });
 
@@ -967,7 +1158,8 @@ export function getOpenApiSpec() {
     info: {
       title: 'EITAMS API Documentation',
       version: '1.0.0',
-      description: 'REST API documentation for the Enterprise IT Asset Management System (EITAMS).',
+      description:
+        'REST API documentation for the Enterprise IT Asset Management System (EITAMS).',
     },
     servers: [
       {

@@ -29,7 +29,11 @@ vi.mock('next/headers', () => ({
 // Import under test
 // ---------------------------------------------------------------------------
 
-import { logAuditAction, logAuditActionTx, extractLabelFromValues } from '@/lib/audit';
+import {
+  logAuditAction,
+  logAuditActionTx,
+  extractLabelFromValues,
+} from '@/lib/audit';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -168,7 +172,9 @@ describe('logAuditActionTx', () => {
   });
 
   it('writes via provided transaction', async () => {
-    const txInsert = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+    const txInsert = vi
+      .fn()
+      .mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
     const tx = { insert: txInsert };
 
     await logAuditActionTx(tx, {
@@ -182,7 +188,7 @@ describe('logAuditActionTx', () => {
     expect(txInsert).toHaveBeenCalled();
   });
 
-  it('does not throw on tx insert failure', async () => {
+  it('fails the transaction when the audit insert fails', async () => {
     const tx = {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockRejectedValue(new Error('tx failed')),
@@ -196,13 +202,16 @@ describe('logAuditActionTx', () => {
         actionType: 'CREATE',
         performedById: 'user-1',
       })
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow('tx failed');
   });
 });
 
 describe('extractLabelFromValues', () => {
   it('extracts code + name from newValue', () => {
-    const label = extractLabelFromValues(null, { assetTag: 'HRW-001', name: 'Laptop' });
+    const label = extractLabelFromValues(null, {
+      assetTag: 'HRW-001',
+      name: 'Laptop',
+    });
     expect(label).toBe('HRW-001 · Laptop');
   });
 

@@ -9,41 +9,34 @@ import {
   categories,
   maintenanceTickets,
   assetDisposals,
+  locations,
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/actions/auth';
-import { calculateStraightLineDepreciation } from '@/lib/financial-math';
+import { unstable_rethrow } from 'next/navigation';
+import { enforceActionAccess } from '@/actions/auth';
+import { convertCurrencyAmount, SUMMARY_CURRENCY } from '@/lib/currency';
+import {
+  DEFAULT_USEFUL_LIFE_MONTHS,
+  calculateCurrentBookValue,
+  calculateMonthsElapsed,
+  projectBookValueSeries,
+} from '@/lib/depreciation';
+import {
+  depreciationLedgerParamsSchema,
+  tcoLedgerParamsSchema,
+  writeOffsLedgerParamsSchema,
+} from '@/lib/validations/financials';
 
 /**
  * Reusable RBAC guard for all financial endpoints
  */
 async function enforceFinanceAccess() {
-  const user = await getAuthenticatedUser();
-  if (!user) throw new Error('Unauthorized');
+  const user = await enforceActionAccess();
 
-  if (user.role !== 'GlobalAdmin' && user.role !== 'FinanceAuditor') {
+  if (user.role !== 'GlobalAdmin' && user.role !== 'FinancialAuditor') {
     throw new Error('Forbidden');
   }
   return user;
-}
-
-/**
- * Validates and normalizes pagination parameters to prevent abuse.
- * Enforces server-side limits on page size.
- */
-function validatePaginationParams(
-  page?: number,
-  pageSize?: number
-): { page: number; pageSize: number } {
-  const MAX_PAGE_SIZE = 1000; // Prevent excessive DB load
-
-  const validPage = Math.max(1, Math.floor(page || 1));
-  const validPageSize = Math.min(
-    Math.max(1, Math.floor(pageSize || 16)),
-    MAX_PAGE_SIZE
-  );
-
-  return { page: validPage, pageSize: validPageSize };
 }
 
 // --- Pagination Interface ---
@@ -52,6 +45,8 @@ export interface LedgerPaginationParams {
   pageSize?: number;
   search?: string;
   category?: string;
+  pillar?: string;
+  location?: string;
 }
 
 /**
@@ -64,13 +59,31 @@ export async function getDepreciationLedger(
   try {
     await enforceFinanceAccess();
 
-    const { page: validPage, pageSize: validPageSize } =
-      validatePaginationParams(params.page, params.pageSize);
-    const { search, category, ageFilter } = params;
+    const resultParse = depreciationLedgerParamsSchema.safeParse(params);
+    if (!resultParse.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const {
+      page: validPage,
+      pageSize: validPageSize,
+      search,
+      category,
+      pillar,
+      location,
+      ageFilter,
+    } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
-    const conditions = [ne(assets.status, 'Disposed')];
+    const conditions = [
+      ne(assets.status, 'Disposed'),
+      // Software assets are not depreciable; exclude them unless the caller
+      // explicitly filters for the Software pillar (contradictory predicates
+      // would always produce zero rows).
+      ...(pillar && pillar !== 'All' && pillar === 'Software'
+        ? []
+        : [ne(categories.pillar, 'Software')]),
+    ];
 
     if (search) {
       conditions.push(
@@ -83,6 +96,18 @@ export async function getDepreciationLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (ageFilter && ageFilter !== 'All') {
@@ -103,20 +128,9 @@ export async function getDepreciationLedger(
 
     const whereClause = and(...conditions);
 
-    // 2. Get Total Count for Pagination Metadata
-    const totalCountRes = await db
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch ONLY the requested page slice
     const result = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -124,6 +138,7 @@ export async function getDepreciationLedger(
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
         usefulLifeMonths: assets.usefulLifeMonths,
+        salvageValue: assets.salvageValue,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
@@ -134,13 +149,32 @@ export async function getDepreciationLedger(
       .limit(validPageSize)
       .offset(offset);
 
-    // 4. Perform math mapping on the small slice using shared helper
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
+
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
-      const bookValue = calculateStraightLineDepreciation(
-        price,
-        row.usefulLifeMonths,
-        row.purchaseDate
+      const salvage = parseFloat(row.salvageValue?.toString() || '0');
+      const bookValue = calculateCurrentBookValue({
+        cost: price,
+        salvageValue: salvage,
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      });
+
+      const lifeMonths = row.usefulLifeMonths || DEFAULT_USEFUL_LIFE_MONTHS;
+      const monthsElapsed = Math.min(
+        lifeMonths,
+        Math.max(0, calculateMonthsElapsed(row.purchaseDate))
       );
 
       return {
@@ -150,13 +184,87 @@ export async function getDepreciationLedger(
         purchaseDate: row.purchaseDate,
         originalPrice: price,
         currencyCode: row.currencyCode || 'LKR',
-        expectedLifespan: `${(row.usefulLifeMonths || 60) / 12} years`,
+        expectedLifespan: `${lifeMonths / 12} years`,
+        // The column showed a life but never how much of it was left, which is
+        // the number a reviewer is actually after.
+        lifeMonths,
+        monthsElapsed,
         currentBookValue: Math.round(bookValue * 100) / 100,
       };
     });
 
+    // Totals across everything the filters match, not just the page. Computed
+    // from the same inputs the rows use so the header cannot disagree with the
+    // table under it.
+    const summaryRows = await db
+      .select({
+        originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
+        salvageValue: assets.salvageValue,
+        usefulLifeMonths: assets.usefulLifeMonths,
+        purchaseDate: assetPurchases.purchaseDate,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .where(whereClause);
+
+    // Every total below is normalised to LKR before being added up. Assets are
+    // purchased in three currencies and the rows carry their native one, so
+    // summing them raw would produce a number in no currency at all.
+    const toLkr = (value: unknown, from: string | null) =>
+      convertCurrencyAmount(
+        parseFloat(value?.toString() || '0'),
+        from || 'LKR',
+        SUMMARY_CURRENCY
+      );
+
+    const bookValueSeries = projectBookValueSeries(
+      summaryRows.map((row) => ({
+        cost: toLkr(row.originalPrice, row.currencyCode),
+        salvageValue: toLkr(row.salvageValue, row.currencyCode),
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      }))
+    );
+
+    let totalCost = 0;
+    let totalBookValue = 0;
+    let fullyDepreciated = 0;
+
+    for (const row of summaryRows) {
+      const price = toLkr(row.originalPrice, row.currencyCode);
+      const salvage = toLkr(row.salvageValue, row.currencyCode);
+      const bookValue = calculateCurrentBookValue({
+        cost: price,
+        salvageValue: salvage,
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      });
+
+      totalCost += price;
+      totalBookValue += bookValue;
+      // "Fully depreciated" means written down to salvage, which is the floor
+      // calculateStraightLineNBV clamps to.
+      if (bookValue <= salvage + 0.005) fullyDepreciated += 1;
+    }
+
     return {
       data: ledgers,
+      summary: {
+        bookValueSeries,
+        totalCost: Math.round(totalCost * 100) / 100,
+        totalBookValue: Math.round(totalBookValue * 100) / 100,
+        accumulatedDepreciation:
+          Math.round((totalCost - totalBookValue) * 100) / 100,
+        fullyDepreciated,
+        assetCount: summaryRows.length,
+        // Depreciation steps in whole calendar months, so a figure that does
+        // not move between visits is correct rather than stale. Saying when it
+        // was computed makes that legible.
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -165,8 +273,17 @@ export async function getDepreciationLedger(
       },
     };
   } catch (error) {
-    console.error('[getDepreciationLedger] Error:', error);
-    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+    unstable_rethrow(error);
+    console.error(
+      '[getDepreciationLedger] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    if (
+      error instanceof Error &&
+      (error.message === 'Unauthorized' ||
+        error.message === 'Forbidden' ||
+        error.message === 'Invalid query parameters.')
+    ) {
       throw error;
     }
     throw new Error('Failed to load depreciation ledger.');
@@ -183,9 +300,19 @@ export async function getTCOLedger(
   try {
     await enforceFinanceAccess();
 
-    const { page: validPage, pageSize: validPageSize } =
-      validatePaginationParams(params.page, params.pageSize);
-    const { search, category, costFilter } = params;
+    const resultParse = tcoLedgerParamsSchema.safeParse(params);
+    if (!resultParse.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const {
+      page: validPage,
+      pageSize: validPageSize,
+      search,
+      category,
+      pillar,
+      location,
+      costFilter,
+    } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     const repairCostsSq = db.$with('repair_costs_sq').as(
@@ -218,6 +345,18 @@ export async function getTCOLedger(
       conditions.push(eq(categories.name, category));
     }
 
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
+    }
+
     if (costFilter && costFilter !== 'All') {
       const totalTcoSql = sql`COALESCE(${assetPurchases.totalCost}, 0) + COALESCE(${repairCostsSq.totalRepair}, 0)`;
       if (costFilter === 'High Value (>$1000)')
@@ -230,23 +369,10 @@ export async function getTCOLedger(
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    // 2. Get Total Count
-    const totalCountRes = await db
-      .with(repairCostsSq)
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch Page Slice
     const result = await db
       .with(repairCostsSq)
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -265,6 +391,20 @@ export async function getTCOLedger(
       .limit(validPageSize)
       .offset(offset);
 
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .with(repairCostsSq)
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
+
     const ledgers = result.map((row) => {
       const price = parseFloat(row.originalPrice?.toString() || '0');
       const repairs = parseFloat(row.totalRepairCosts?.toString() || '0');
@@ -281,8 +421,146 @@ export async function getTCOLedger(
       };
     });
 
+    // Totals across everything the filters match. Purchase and maintenance are
+    // kept apart because the question this page answers is how much an asset
+    // has cost *since* it was bought.
+    const summaryRows = await db
+      // The CTE has to be declared on this query too; without it the join
+      // references a table the statement never defines.
+      .with(repairCostsSq)
+      .select({
+        originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
+        totalRepairCosts: repairCostsSq.totalRepair,
+        // Only used to date the trend series below; the totals ignore it.
+        purchaseDate: assetPurchases.purchaseDate,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+      .where(whereClause);
+
+    // Repairs have to be dated individually for the trend. `repairCostsSq`
+    // collapses them to one figure per asset, which says nothing about when the
+    // money was spent.
+    const maintenanceEvents = await db
+      .with(repairCostsSq)
+      .select({
+        completedAt: maintenanceTickets.actualCompletionDate,
+        actualCost: maintenanceTickets.actualCost,
+        currencyCode: maintenanceTickets.currencyCode,
+      })
+      .from(maintenanceTickets)
+      .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+      .where(
+        whereClause
+          ? and(eq(maintenanceTickets.status, 'COMPLETED'), whereClause)
+          : eq(maintenanceTickets.status, 'COMPLETED')
+      );
+
+    let totalPurchase = 0;
+    let totalMaintenance = 0;
+    let maintainedCount = 0;
+
+    for (const row of summaryRows) {
+      const price = convertCurrencyAmount(
+        parseFloat(row.originalPrice?.toString() || '0'),
+        row.currencyCode || 'LKR',
+        SUMMARY_CURRENCY
+      );
+      const repairs = convertCurrencyAmount(
+        parseFloat(row.totalRepairCosts?.toString() || '0'),
+        row.currencyCode || 'LKR',
+        SUMMARY_CURRENCY
+      );
+      totalPurchase += price;
+      totalMaintenance += repairs;
+      if (repairs > 0) maintainedCount += 1;
+    }
+
+    // Cost accumulated per month, so the chart can show ownership cost building
+    // up over time rather than a snapshot. Undated rows still count toward the
+    // totals above; they just have no month to sit in.
+    const monthlyPurchase = new Map<string, number>();
+    const monthlyMaintenance = new Map<string, number>();
+
+    const addToMonth = (
+      bucket: Map<string, number>,
+      date: Date | string | null,
+      amount: number
+    ) => {
+      if (!date || !Number.isFinite(amount) || amount === 0) return;
+      const parsed = date instanceof Date ? date : new Date(date);
+      if (Number.isNaN(parsed.getTime())) return;
+      const key = `${parsed.getUTCFullYear()}-${String(
+        parsed.getUTCMonth() + 1
+      ).padStart(2, '0')}`;
+      bucket.set(key, (bucket.get(key) ?? 0) + amount);
+    };
+
+    for (const row of summaryRows) {
+      addToMonth(
+        monthlyPurchase,
+        row.purchaseDate,
+        convertCurrencyAmount(
+          parseFloat(row.originalPrice?.toString() || '0'),
+          row.currencyCode || 'LKR',
+          SUMMARY_CURRENCY
+        )
+      );
+    }
+
+    for (const row of maintenanceEvents) {
+      addToMonth(
+        monthlyMaintenance,
+        row.completedAt,
+        convertCurrencyAmount(
+          parseFloat(row.actualCost?.toString() || '0'),
+          row.currencyCode || 'LKR',
+          SUMMARY_CURRENCY
+        )
+      );
+    }
+
+    const months = Array.from(
+      new Set([...monthlyPurchase.keys(), ...monthlyMaintenance.keys()])
+    ).sort();
+
+    let runningPurchase = 0;
+    let runningMaintenance = 0;
+    const round = (value: number) => Math.round(value * 100) / 100;
+    const trend = months.map((month) => {
+      runningPurchase += monthlyPurchase.get(month) ?? 0;
+      runningMaintenance += monthlyMaintenance.get(month) ?? 0;
+      return {
+        month,
+        purchase: round(runningPurchase),
+        maintenance: round(runningMaintenance),
+        total: round(runningPurchase + runningMaintenance),
+      };
+    });
+
     return {
       data: ledgers,
+      trend,
+      summary: {
+        totalPurchase: Math.round(totalPurchase * 100) / 100,
+        totalMaintenance: Math.round(totalMaintenance * 100) / 100,
+        totalTCO: Math.round((totalPurchase + totalMaintenance) * 100) / 100,
+        maintenanceShare:
+          totalPurchase > 0
+            ? Math.round((totalMaintenance / totalPurchase) * 1000) / 10
+            : 0,
+        maintainedCount,
+        assetCount: summaryRows.length,
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -291,8 +569,17 @@ export async function getTCOLedger(
       },
     };
   } catch (error) {
-    console.error('[getTCOLedger] Error:', error);
-    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+    unstable_rethrow(error);
+    console.error(
+      '[getTCOLedger] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    if (
+      error instanceof Error &&
+      (error.message === 'Unauthorized' ||
+        error.message === 'Forbidden' ||
+        error.message === 'Invalid query parameters.')
+    ) {
       throw error;
     }
     throw new Error('Failed to load TCO ledger.');
@@ -309,13 +596,31 @@ export async function getWriteOffsLedger(
   try {
     await enforceFinanceAccess();
 
-    const { page: validPage, pageSize: validPageSize } =
-      validatePaginationParams(params.page, params.pageSize);
-    const { search, category, salvageFilter } = params;
+    const resultParse = writeOffsLedgerParamsSchema.safeParse(params);
+    if (!resultParse.success) {
+      throw new Error('Invalid query parameters.');
+    }
+    const {
+      page: validPage,
+      pageSize: validPageSize,
+      search,
+      category,
+      pillar,
+      location,
+      salvageFilter,
+    } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
-    const conditions = [eq(assetDisposals.status, 'Completed')];
+    const conditions = [
+      eq(assetDisposals.status, 'Completed'),
+      // Software assets are excluded from the write-offs ledger; skip the
+      // exclusion only if the caller explicitly filters for 'Software' so the
+      // two predicates don't cancel each other out.
+      ...(pillar && pillar !== 'All' && pillar === 'Software'
+        ? []
+        : [ne(categories.pillar, 'Software')]),
+    ];
 
     if (search) {
       conditions.push(
@@ -328,6 +633,18 @@ export async function getWriteOffsLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (salvageFilter && salvageFilter !== 'All') {
@@ -351,21 +668,9 @@ export async function getWriteOffsLedger(
 
     const whereClause = and(...conditions);
 
-    // 2. Get Total Count
-    const totalCountRes = await db
-      .select({ value: count() })
-      .from(assets)
-      .innerJoin(models, eq(assets.modelId, models.id))
-      .innerJoin(categories, eq(models.categoryId, categories.id))
-      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
-      .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
-      .where(whereClause);
-
-    const totalRows = totalCountRes[0].value;
-
-    // 3. Fetch Page Slice
     const result = await db
       .select({
+        totalCount: sql<number>`count(*) over()::int`,
         id: assets.id,
         assetTag: assets.assetTag,
         categoryName: categories.name,
@@ -373,7 +678,8 @@ export async function getWriteOffsLedger(
         originalPrice: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
         bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
-        salvageValue: assetDisposals.actualSalvageValue,
+        estimatedSalvageValue: assets.salvageValue,
+        actualSalvageValue: assetDisposals.actualSalvageValue,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
@@ -385,6 +691,19 @@ export async function getWriteOffsLedger(
       .limit(validPageSize)
       .offset(offset);
 
+    let totalRows = result[0]?.totalCount ?? 0;
+    if (result.length === 0 && validPage > 1) {
+      const totalCountRes = await db
+        .select({ value: count() })
+        .from(assets)
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
+        .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+        .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
+        .where(whereClause);
+      totalRows = totalCountRes[0]?.value ?? 0;
+    }
+
     const ledgers = result.map((row) => ({
       id: row.id,
       assetId: row.assetTag,
@@ -393,11 +712,81 @@ export async function getWriteOffsLedger(
       originalPrice: parseFloat(row.originalPrice?.toString() || '0'),
       currencyCode: row.currencyCode || 'LKR',
       bookValue: parseFloat(row.bookValueAtDisposal?.toString() || '0'),
-      salvageValue: parseFloat(row.salvageValue?.toString() || '0'),
+      estimatedSalvageValue: parseFloat(
+        row.estimatedSalvageValue?.toString() || '0'
+      ),
+      actualSalvageValue: parseFloat(row.actualSalvageValue?.toString() || '0'),
     }));
+
+    // Realised against expected is the question this page exists to answer:
+    // whether disposals recovered what they were forecast to.
+    const summaryRows = await db
+      .select({
+        bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
+        currencyCode: assetPurchases.currencyCode,
+        estimatedSalvageValue: assets.salvageValue,
+        actualSalvageValue: assetDisposals.actualSalvageValue,
+        status: assetDisposals.status,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
+      .where(whereClause);
+
+    let totalWrittenOff = 0;
+    let totalExpectedSalvage = 0;
+    let totalRealisedSalvage = 0;
+    // Grouped by outcome because "did disposals recover what we expected?" is
+    // a different question for a sale than for a write-off.
+    const byStatus = new Map<
+      string,
+      { count: number; expected: number; realised: number }
+    >();
+
+    for (const row of summaryRows) {
+      // Normalised to one currency before being added up -- assets are bought
+      // in three, and the rows carry their native one.
+      const toLkr = (value: unknown) =>
+        convertCurrencyAmount(
+          parseFloat(value?.toString() || '0'),
+          row.currencyCode || 'LKR',
+          SUMMARY_CURRENCY
+        );
+
+      totalWrittenOff += toLkr(row.bookValueAtDisposal);
+      totalExpectedSalvage += toLkr(row.estimatedSalvageValue);
+      totalRealisedSalvage += toLkr(row.actualSalvageValue);
+      const status = row.status ?? 'Unknown';
+      const group = byStatus.get(status) ?? {
+        count: 0,
+        expected: 0,
+        realised: 0,
+      };
+      group.count += 1;
+      group.expected += toLkr(row.estimatedSalvageValue);
+      group.realised += toLkr(row.actualSalvageValue);
+      byStatus.set(status, group);
+    }
 
     return {
       data: ledgers,
+      summary: {
+        disposalCount: summaryRows.length,
+        totalWrittenOff: Math.round(totalWrittenOff * 100) / 100,
+        totalExpectedSalvage: Math.round(totalExpectedSalvage * 100) / 100,
+        totalRealisedSalvage: Math.round(totalRealisedSalvage * 100) / 100,
+        salvageVariance:
+          Math.round((totalRealisedSalvage - totalExpectedSalvage) * 100) / 100,
+        byStatus: Array.from(byStatus.entries()).map(([status, group]) => ({
+          status,
+          count: group.count,
+          expected: Math.round(group.expected * 100) / 100,
+          realised: Math.round(group.realised * 100) / 100,
+        })),
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -406,10 +795,73 @@ export async function getWriteOffsLedger(
       },
     };
   } catch (error) {
-    console.error('[getWriteOffsLedger] Error:', error);
-    if (error instanceof Error && (error.message === 'Unauthorized' || error.message === 'Forbidden')) {
+    unstable_rethrow(error);
+    console.error(
+      '[getWriteOffsLedger] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    if (
+      error instanceof Error &&
+      (error.message === 'Unauthorized' ||
+        error.message === 'Forbidden' ||
+        error.message === 'Invalid query parameters.')
+    ) {
       throw error;
     }
     throw new Error('Failed to load write-offs ledger.');
   }
+}
+
+/**
+ * The values the ledger filters offer.
+ *
+ * The three ledgers each derived their category list from the rows they had
+ * been handed, which is one page -- sixteen assets. Any category absent from
+ * that page could not be filtered for, so the filter could not reach the rows
+ * it existed to find. Read the distinct values from the tables instead.
+ */
+export async function getFinancialsFilterOptions(
+  // Depreciation and write-offs exclude software, so offering the pillar there
+  // would only ever return zero rows. TCO does include software -- purchase
+  // cost plus maintenance applies to a licence like anything else -- so it opts
+  // back in rather than showing rows it cannot filter by.
+  options: { includeSoftwarePillar?: boolean } = {}
+) {
+  await enforceFinanceAccess();
+
+  const [categoryRows, locationRows] = await Promise.all([
+    db
+      .selectDistinct({ name: categories.name, pillar: categories.pillar })
+      .from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(categories.name),
+    db
+      .selectDistinct({ name: locations.name })
+      .from(locations)
+      .where(eq(locations.isActive, true))
+      .orderBy(locations.name),
+  ]);
+
+  return {
+    categories: categoryRows.map((row) => row.name),
+    // Software assets are excluded from all financial ledgers that calculate
+    // depreciation or write-offs, so offering 'Software' as a pillar option
+    // would surface zero rows and mislead the auditor.
+    pillars: Array.from(
+      new Set(
+        categoryRows
+          .filter(
+            (row) => options.includeSoftwarePillar || row.pillar !== 'Software'
+          )
+          .map((row) => row.pillar)
+      )
+    ).sort(),
+    locations: locationRows.map((row) => row.name),
+  };
+}
+
+export interface FinancialsFilterOptions {
+  categories: string[];
+  pillars: string[];
+  locations: string[];
 }

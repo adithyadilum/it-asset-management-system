@@ -24,17 +24,15 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ListFilter } from 'lucide-react';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { tiqriToast } from '@/components/shared/sonner';
 
-import { createReportTemplate, updateReportTemplate } from '@/actions/report-templates';
+import {
+  createReportTemplate,
+  updateReportTemplate,
+} from '@/actions/report-templates';
 import {
   REPORT_DATA_SOURCES,
   REPORT_FIELD_OPTIONS_BY_SOURCE,
@@ -43,6 +41,7 @@ import {
   type ReportTemplateData,
   type FilterOptions,
 } from '@/types/standard-reports';
+import { formatAssignmentState } from '@/lib/assignments/labels';
 import { FilterRow } from './standard-reports-page';
 
 interface CreateTemplateDialogProps {
@@ -123,22 +122,33 @@ export function CreateTemplateDialog({
       const fields = editingTemplate.fields || [];
       const primaryIdField = getPrimaryIdColumn(editingTemplate.dataSource);
       const primaryIdFields = [
-        'Record ID', 'Business Key', 'Asset ID', 'Asset Tag', 'Record Code',
-        'Assignment ID', 'Return ID', 'Ticket ID', 'Disposal ID', 'Purchase ID',
-        'License ID', 'Log ID'
+        'Record ID',
+        'Business Key',
+        'Asset ID',
+        'Asset Tag',
+        'Record Code',
+        'Assignment ID',
+        'Return ID',
+        'Ticket ID',
+        'Disposal ID',
+        'Purchase ID',
+        'License ID',
+        'Log ID',
       ];
-      const normalizedFields = Array.from(new Set(
-        fields.map(f =>
-          primaryIdFields.includes(f) ? primaryIdField : f
+      const normalizedFields = Array.from(
+        new Set(
+          fields.map((f) => (primaryIdFields.includes(f) ? primaryIdField : f))
         )
-      ));
+      );
       if (normalizedFields.includes(primaryIdField)) {
         normalizedFields.splice(normalizedFields.indexOf(primaryIdField), 1);
         normalizedFields.unshift(primaryIdField);
       }
       setSelectedFields(normalizedFields);
 
-      setSortDirection((editingTemplate.sortDirection as 'asc' | 'desc') || 'asc');
+      setSortDirection(
+        (editingTemplate.sortDirection as 'asc' | 'desc') || 'asc'
+      );
     } else if (open && !editingTemplate) {
       resetForm();
     }
@@ -164,47 +174,67 @@ export function CreateTemplateDialog({
 
   const locationOptions = [
     { value: '', label: 'All Locations' },
-    ...filterOptions.locations.filter((x) => x !== 'All locations').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.locations
+      .filter((x) => x !== 'All locations')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    ...filterOptions.statuses.filter((x) => x !== 'All statuses').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.statuses
+      .filter((x) => x !== 'All statuses')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const assignmentStateOptions = [
     { value: '', label: 'All States' },
-    ...filterOptions.assignmentStates.filter((x) => x !== 'All States').map((opt) => ({ value: opt, label: opt })),
+    // Value stays the stored enum so the query is unaffected; only the option
+    // text is humanised.
+    ...filterOptions.assignmentStates
+      .filter((x) => x !== 'All States')
+      .map((opt) => ({ value: opt, label: formatAssignmentState(opt) })),
   ];
 
   const returnConditionOptions = [
     { value: '', label: 'All Conditions' },
-    ...filterOptions.returnConditions.filter((x) => x !== 'All Conditions').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.returnConditions
+      .filter((x) => x !== 'All Conditions')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const maintenanceStatusOptions = [
     { value: '', label: 'All Statuses' },
-    ...filterOptions.maintenanceStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.maintenanceStatuses
+      .filter((x) => x !== 'All Statuses')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const disposalStatusOptions = [
     { value: '', label: 'All Statuses' },
-    ...filterOptions.disposalStatuses.filter((x) => x !== 'All Statuses').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.disposalStatuses
+      .filter((x) => x !== 'All Statuses')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const licenseTypeOptions = [
     { value: '', label: 'All Types' },
-    ...filterOptions.licenseTypes.filter((x) => x !== 'All Types').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.licenseTypes
+      .filter((x) => x !== 'All Types')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const auditActionOptions = [
     { value: '', label: 'All Actions' },
-    ...filterOptions.auditActionTypes.filter((x) => x !== 'All Actions').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.auditActionTypes
+      .filter((x) => x !== 'All Actions')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const vendorOptions = [
     { value: '', label: 'All Vendors' },
-    ...filterOptions.vendors.filter((x) => x !== 'All Vendors').map((opt) => ({ value: opt, label: opt })),
+    ...filterOptions.vendors
+      .filter((x) => x !== 'All Vendors')
+      .map((opt) => ({ value: opt, label: opt })),
   ];
 
   const masterDataTypeOptions = filterOptions.masterDataTypes;
@@ -228,20 +258,36 @@ export function CreateTemplateDialog({
     const oldFields = editingTemplate.fields || [];
     const primaryIdField = getPrimaryIdColumn(editingTemplate.dataSource);
     const primaryIdFields = [
-      'Record ID', 'Business Key', 'Asset ID', 'Asset Tag', 'Record Code',
-      'Assignment ID', 'Return ID', 'Ticket ID', 'Disposal ID', 'Purchase ID',
-      'License ID', 'Log ID'
+      'Record ID',
+      'Business Key',
+      'Asset ID',
+      'Asset Tag',
+      'Record Code',
+      'Assignment ID',
+      'Return ID',
+      'Ticket ID',
+      'Disposal ID',
+      'Purchase ID',
+      'License ID',
+      'Log ID',
     ];
-    const normalizedOldFields = Array.from(new Set(
-      oldFields.map(f => primaryIdFields.includes(f) ? primaryIdField : f)
-    ));
+    const normalizedOldFields = Array.from(
+      new Set(
+        oldFields.map((f) => (primaryIdFields.includes(f) ? primaryIdField : f))
+      )
+    );
     if (normalizedOldFields.includes(primaryIdField)) {
-      normalizedOldFields.splice(normalizedOldFields.indexOf(primaryIdField), 1);
+      normalizedOldFields.splice(
+        normalizedOldFields.indexOf(primaryIdField),
+        1
+      );
       normalizedOldFields.unshift(primaryIdField);
     }
-    
+
     if (selectedFields.length !== normalizedOldFields.length) return true;
-    return selectedFields.some((field, index) => field !== normalizedOldFields[index]);
+    return selectedFields.some(
+      (field, index) => field !== normalizedOldFields[index]
+    );
   })();
 
   const hasTemplateChanges =
@@ -254,7 +300,8 @@ export function CreateTemplateDialog({
     (category || '') !== (editingTemplate.filters?.category || '') ||
     (location || '') !== (editingTemplate.filters?.location || '') ||
     (status || '') !== (editingTemplate.filters?.status || '') ||
-    (masterDataType || '') !== (editingTemplate.filters?.masterDataType || '') ||
+    (masterDataType || '') !==
+      (editingTemplate.filters?.masterDataType || '') ||
     (dateFrom || '') !== (editingTemplate.filters?.dateFrom || '') ||
     (dateTo || '') !== (editingTemplate.filters?.dateTo || '') ||
     sortDirection !== (editingTemplate.sortDirection as 'asc' | 'desc') ||
@@ -328,7 +375,10 @@ export function CreateTemplateDialog({
           setError(result.message);
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred.';
         tiqriToast.error(message);
         setError(message);
       }
@@ -354,7 +404,10 @@ export function CreateTemplateDialog({
   ]);
 
   // Split fields into two columns for the checkbox grid
-  const currentOptions = dataSource && REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] ? REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource] : [];
+  const currentOptions =
+    dataSource && REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource]
+      ? REPORT_FIELD_OPTIONS_BY_SOURCE[dataSource]
+      : [];
   const midpoint = Math.ceil(currentOptions.length / 2);
   const leftFields = currentOptions.slice(0, midpoint);
   const rightFields = currentOptions.slice(midpoint);
@@ -367,7 +420,9 @@ export function CreateTemplateDialog({
             {editingTemplate ? 'Update Report Template' : 'Add New Template'}
           </DialogTitle>
           <DialogDescription>
-            {editingTemplate ? 'Update the details for this report template.' : 'Create and configure reusable report templates with custom filters.'}
+            {editingTemplate
+              ? 'Update the details for this report template.'
+              : 'Create and configure reusable report templates with custom filters.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -381,7 +436,10 @@ export function CreateTemplateDialog({
                 </h3>
 
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
-                  <Label htmlFor="template-name" className="text-sm font-medium">
+                  <Label
+                    htmlFor="template-name"
+                    className="text-sm font-medium"
+                  >
                     Report Name<span className="text-destructive">*</span>:
                   </Label>
                   <Input
@@ -393,9 +451,7 @@ export function CreateTemplateDialog({
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
-                  <Label className="text-sm font-medium">
-                    Report Code:
-                  </Label>
+                  <Label className="text-sm font-medium">Report Code:</Label>
                   <Input
                     value="Auto-generated"
                     disabled
@@ -404,7 +460,10 @@ export function CreateTemplateDialog({
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-start">
-                  <Label htmlFor="template-description" className="text-sm font-medium pt-2">
+                  <Label
+                    htmlFor="template-description"
+                    className="text-sm font-medium pt-2"
+                  >
                     Description:
                   </Label>
                   <Textarea
@@ -418,10 +477,7 @@ export function CreateTemplateDialog({
 
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:items-center">
                   <Label className="text-sm font-medium">Is Active:</Label>
-                  <Switch
-                    checked={isActive}
-                    onCheckedChange={setIsActive}
-                  />
+                  <Switch checked={isActive} onCheckedChange={setIsActive} />
                 </div>
               </div>
 
@@ -430,11 +486,14 @@ export function CreateTemplateDialog({
                 <Label className="text-sm font-medium">
                   Primary Data Source:
                 </Label>
-                <Select value={dataSource} onValueChange={(val) => {
-                  setDataSource(val);
-                  const sourceFields = REPORT_FIELD_OPTIONS_BY_SOURCE[val];
-                  setSelectedFields(sourceFields ? [sourceFields[0]] : []);
-                }}>
+                <Select
+                  value={dataSource}
+                  onValueChange={(val) => {
+                    setDataSource(val);
+                    const sourceFields = REPORT_FIELD_OPTIONS_BY_SOURCE[val];
+                    setSelectedFields(sourceFields ? [sourceFields[0]] : []);
+                  }}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Choose source" />
                   </SelectTrigger>
@@ -485,28 +544,43 @@ export function CreateTemplateDialog({
                       };
 
                       if (filter.type === 'select') {
-                        const opts = filter.optionsKey === 'ticketTypes'
-                          ? ['All Types', 'VENDOR', 'INTERNAL']
-                          : filterOptions.assetTypes;
+                        const opts =
+                          filter.optionsKey === 'ticketTypes'
+                            ? ['All Types', 'VENDOR', 'INTERNAL']
+                            : filterOptions.assetTypes;
 
-                        const placeholderVal = filter.optionsKey === 'ticketTypes' ? 'All Types' : 'All Assets';
+                        const placeholderVal =
+                          filter.optionsKey === 'ticketTypes'
+                            ? 'All Types'
+                            : 'All Assets';
 
                         return (
                           <FilterRow key={filter.key} label={filter.label}>
                             <Select
                               value={valueMap[filter.key] || '__all__'}
-                              onValueChange={(value) => setterMap[filter.key](value === '__all__' ? '' : value)}
+                              onValueChange={(value) =>
+                                setterMap[filter.key](
+                                  value === '__all__' ? '' : value
+                                )
+                              }
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder={placeholderVal} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="__all__">{placeholderVal}</SelectItem>
-                                {opts.filter(x => x !== 'All Assets' && x !== 'All Types').map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
-                                  </SelectItem>
-                                ))}
+                                <SelectItem value="__all__">
+                                  {placeholderVal}
+                                </SelectItem>
+                                {opts
+                                  .filter(
+                                    (x) =>
+                                      x !== 'All Assets' && x !== 'All Types'
+                                  )
+                                  .map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
                               </SelectContent>
                             </Select>
                           </FilterRow>
@@ -514,7 +588,9 @@ export function CreateTemplateDialog({
                       }
 
                       if (filter.type === 'searchable') {
-                        const opts = filter.optionsKey ? optionsMap[filter.optionsKey] : [];
+                        const opts = filter.optionsKey
+                          ? optionsMap[filter.optionsKey]
+                          : [];
                         const emptyMsg = `No ${filter.label.toLowerCase()} found.`;
                         return (
                           <FilterRow key={filter.key} label={filter.label}>
@@ -535,7 +611,9 @@ export function CreateTemplateDialog({
                             <Input
                               type="date"
                               value={valueMap[filter.key] || ''}
-                              onChange={(e) => setterMap[filter.key](e.target.value)}
+                              onChange={(e) =>
+                                setterMap[filter.key](e.target.value)
+                              }
                               className="w-full bg-background"
                             />
                           </FilterRow>
@@ -591,7 +669,8 @@ export function CreateTemplateDialog({
                 ) : (
                   <div className="rounded-lg border border-dashed border-border p-6 text-center">
                     <p className="text-sm text-muted-foreground">
-                      Please select a primary data source first to configure report fields.
+                      Please select a primary data source first to configure
+                      report fields.
                     </p>
                   </div>
                 )}
@@ -644,8 +723,17 @@ export function CreateTemplateDialog({
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending || (editingTemplate ? !hasTemplateChanges : false)}>
-            {isPending ? 'Saving...' : editingTemplate ? 'Update Template' : 'Save Template'}
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              isPending || (editingTemplate ? !hasTemplateChanges : false)
+            }
+          >
+            {isPending
+              ? 'Saving...'
+              : editingTemplate
+                ? 'Update Template'
+                : 'Save Template'}
           </Button>
         </div>
       </DialogContent>

@@ -47,14 +47,25 @@ export async function getCustomStatuses(): Promise<CustomStatusRow[]> {
   }
 }
 
-export async function createCustomStatus(name: string, colorTheme: string, iconName: string, allowedActions: string[] = ['edit']) {
+export async function createCustomStatus(
+  name: string,
+  colorTheme: string,
+  iconName: string,
+  allowedActions: string[] = ['edit']
+) {
   const timer = startLatencyTimer();
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('UNAUTHENTICATED');
   if (user.role !== 'GlobalAdmin') throw new Error('FORBIDDEN');
 
   // Validate inputs with Zod
-  const parsed = customStatusSchema.safeParse({ name, colorTheme, iconName, isActive: true, allowedActions: JSON.stringify(allowedActions) });
+  const parsed = customStatusSchema.safeParse({
+    name,
+    colorTheme,
+    iconName,
+    isActive: true,
+    allowedActions: JSON.stringify(allowedActions),
+  });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
   }
@@ -130,11 +141,11 @@ export async function getManualOverrideStatuses() {
 
     // Fetch active custom statuses from master data
     const customRows = await db
-      .select({ 
-        name: customStatuses.name, 
-        colorTheme: customStatuses.colorTheme, 
+      .select({
+        name: customStatuses.name,
+        colorTheme: customStatuses.colorTheme,
         iconName: customStatuses.iconName,
-        allowedActions: customStatuses.allowedActions
+        allowedActions: customStatuses.allowedActions,
       })
       .from(customStatuses)
       .where(eq(customStatuses.isActive, true));

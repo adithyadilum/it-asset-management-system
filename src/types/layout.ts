@@ -1,17 +1,16 @@
-import type { UserRole } from "@/types/auth"
+import type { UserRole } from '@/types/auth';
 
 export interface ShellUser {
-    name: string
-    email: string
-    role: UserRole
+  name: string;
+  email: string;
+  role: UserRole;
 }
 
 export interface TopHeaderProps {
-    user: ShellUser
-    preferredCurrency?: string
+  user: ShellUser;
 }
 
 export interface HeaderBreadcrumb {
-    href: string
-    label: string
+  href: string;
+  label: string;
 }

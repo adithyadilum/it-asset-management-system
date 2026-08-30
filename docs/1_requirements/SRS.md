@@ -11,11 +11,11 @@
 
 ## Revision History
 
-| Name | Date       | Reason For Changes                        | Version |
-| :--- | :--------- | :---------------------------------------- | :------ |
-| Team | 12/02/2026 | Initial draft                             | 1.0     |
-| Team | 02/26/2026 | Aligned with updated FRs/NFRs (Epics 1–5) | 1.1     |
-| Team | 05/23/2026 | Added Report Engine and Dashboards Epics (6-7) and supporting requirements | 1.2 |
+| Name | Date       | Reason For Changes                                                         | Version |
+| :--- | :--------- | :------------------------------------------------------------------------- | :------ |
+| Team | 12/02/2026 | Initial draft                                                              | 1.0     |
+| Team | 02/26/2026 | Aligned with updated FRs/NFRs (Epics 1–5)                                  | 1.1     |
+| Team | 05/23/2026 | Added Report Engine and Dashboards Epics (6-7) and supporting requirements | 1.2     |
 
 ---
 
@@ -610,7 +610,7 @@ The Platform Foundation is the architectural bedrock of the IDAMS system. It est
 - **Stimulus:** Unauthenticated user attempts to access the application URL.
   - **Response:** The system displays the NextAuth.js powered login screen, supporting both secure local credentials and Microsoft Entra ID (Azure AD) Single Sign-On (SSO).
 - **Stimulus:** User successfully authenticates using secure local credentials or Microsoft Entra ID.
-  - **Response:** The system establishes a secure session using cryptographically signed tokens. Baseline system permissions and specific application roles (GlobalAdmin, ITOperator, FinanceAuditor, Employee) are mapped from the database user profile, loading the appropriate Dashboard view.
+  - **Response:** The system establishes a secure session using cryptographically signed tokens. Baseline system permissions and specific application roles (GlobalAdmin, ITOperator, FinancialAuditor, Employee) are mapped from the database user profile, loading the appropriate Dashboard view.
 - **Stimulus:** A "Standard Employee" attempts to manually navigate to an Admin-only API route (e.g., `/api/v1/master-data/categories`).
   - **Response:** The RBAC middleware blocks the request, returns a `403 Forbidden` error, and logs the unauthorized access attempt in the Audit Log.
 - **Stimulus:** Global Admin navigates to the Role Assignment screen and searches for an employee.
@@ -639,8 +639,8 @@ The Platform Foundation is the architectural bedrock of the IDAMS system. It est
 - **REQ-FND-1.1 (Authentication & SSO):** Support user authentication via secure local credentials (email/password) and integrate with Azure Active Directory (Entra ID) using OAuth 2.0 / NextAuth.js.
 - **REQ-FND-1.2 (Web Security):** Enforce strict HTTPS (TLS 1.2+) for all system connections.
 - **REQ-FND-1.3 (Data Encryption):** Encrypt sensitive financial fields and software license keys at rest using AES-256.
-- **REQ-FND-1.4 (Role Mapping):** Maintain role-based access mapping for roles (GlobalAdmin, ITOperator, FinanceAuditor, Employee) dynamically linked to authenticated user sessions.
-- **REQ-FND-1.5 (Automated Access Control):** Automatically assign baseline system permissions (e.g., Finance Auditor, Employee) based on user directory group configurations.
+- **REQ-FND-1.4 (Role Mapping):** Maintain role-based access mapping for roles (GlobalAdmin, ITOperator, FinancialAuditor, Employee) dynamically linked to authenticated user sessions.
+- **REQ-FND-1.5 (Automated Access Control):** Automatically assign baseline system permissions (e.g., Financial Auditor, Employee) based on user directory group configurations.
 - **REQ-FND-1.6 (Dynamic Categories):** Allow admins to create custom asset categories and automatically generate a locked, unique 3-letter Prefix Code (e.g., `LAP` for Laptops) to standardize future Asset IDs.
 - **REQ-FND-1.7 (JSONB Schema Builder):** Provide a schema configuration interface allowing admins to define category-specific dynamic fields (specs/tracking) stored as JSONB metadata on categories.
 - **REQ-FND-1.8 (Non-IT Asset Support):** Support asset categories for Furniture and Facilities, allowing for physical attributes (Dimensions, Material) rather than technical specs.
@@ -1490,16 +1490,14 @@ erDiagram
 
 The following items have been identified as To Be Determined (TBD). These values or definitions are not currently available but are required prior to the Deployment/Release phase.
 
-| TBD ID     | Section | Description                                                                                                                                              | Responsibility       | Status / Resolution |
-| :--------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- | :------------------ |
-| **TBD-01** | 2.4     | **Production Hosting URL:** The final public-facing domain name (e.g., assets.tiqri.com) for the production environment has not yet been assigned.       | TIQRI IT Ops         | **Pending:** Awaiting final production domain from TIQRI IT Ops; Vercel deployment server actively functions. |
+| TBD ID     | Section | Description                                                                                                                                              | Responsibility       | Status / Resolution                                                                                                                                                                                                                  |
+| :--------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **TBD-01** | 2.4     | **Production Hosting URL:** The final public-facing domain name (e.g., assets.tiqri.com) for the production environment has not yet been assigned.       | TIQRI IT Ops         | **Pending:** Awaiting final production domain from TIQRI IT Ops; Vercel deployment server actively functions.                                                                                                                        |
 | **TBD-02** | 3.3     | **Azure AD Tenant Credentials:** The specific Tenant ID, Client ID, and Client Secret for the production identity provider are pending provision.        | TIQRI Security       | **Resolved:** NextAuth.js uses standard Entra ID environment variables (`AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID`) in production, with bcryptjs local credentials serving as development/admin fallbacks. |
-| **TBD-03** | 3.4     | **SMTP Relay Configuration:** The exact Hostname, Port, and Allow-list configurations for the corporate SMTP email relay are pending.                    | TIQRI Infrastructure | **Resolved:** The system supports both **Resend API keys** and direct **SMTP servers** (host, port, user) dynamically managed in the `integration_settings` database table and encrypted at rest via AES-256 (`lib/crypto.ts`). |
-| **TBD-04** | 4.5     | **Disposal Reason Codes:** The finalized list of legally compliant "Disposal Reasons" (e.g., WEEE-Category-A) is pending review by the Legal department. | TIQRI Compliance     | **Resolved:** The `disposal_status` enum ('Pending Approval', 'Approved', 'Rejected', 'Completed') and disposal method string capture specific compliance reasons (E-waste, Sold, Donated, Stolen) on final transaction. |
-| **TBD-05** | 6.1     | **Exchange Rate Source:** The specific API source or fixed monthly rate policy for converting NOK/USD to LKR is to be decided by Finance.                | TIQRI Finance        | **Resolved:** Cost tracking maps acquisition values in NOK, USD, and LKR using precise decimals, with transaction-level conversion rate storage mapping baseline values. |
+| **TBD-03** | 3.4     | **SMTP Relay Configuration:** The exact Hostname, Port, and Allow-list configurations for the corporate SMTP email relay are pending.                    | TIQRI Infrastructure | **Resolved:** The system supports both **Resend API keys** and direct **SMTP servers** (host, port, user) dynamically managed in the `integration_settings` database table and encrypted at rest via AES-256 (`lib/crypto.ts`).      |
+| **TBD-04** | 4.5     | **Disposal Reason Codes:** The finalized list of legally compliant "Disposal Reasons" (e.g., WEEE-Category-A) is pending review by the Legal department. | TIQRI Compliance     | **Resolved:** The `disposal_status` enum ('Pending Approval', 'Approved', 'Rejected', 'Completed') and disposal method string capture specific compliance reasons (E-waste, Sold, Donated, Stolen) on final transaction.             |
+| **TBD-05** | 6.1     | **Exchange Rate Source:** The specific API source or fixed monthly rate policy for converting NOK/USD to LKR is to be decided by Finance.                | TIQRI Finance        | **Resolved:** Cost tracking maps acquisition values in NOK, USD, and LKR using precise decimals, with transaction-level conversion rate storage mapping baseline values.                                                             |
 
 ---
 
 [< Back to Requirements](./README.md)
-
-

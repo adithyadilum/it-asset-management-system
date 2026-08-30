@@ -1,6 +1,7 @@
 ## Elicitation Questions
 
 ## Features of the Existing System
+
 - The current system at Tiqri is described as a "basic system" used to manage various IT and office assets.
 - User Roles & Access: Includes an Admin user role with exclusive rights to add new categories, models, and hardware specifications (RAM, etc.). It uses Azure AD (SSO) for authentication.
 - Asset Categories: Tracks items such as laptops, conference devices, displays, mobiles, and laser pointers.
@@ -13,46 +14,46 @@
 ### Part 0: Scope
 
 - User Volume: Who are the key stakeholder groups (IT Ops, Finance, Procurement) and approximately how many users will be in each group?
-<br> <em> Stakeholders: The top stakeholders are IT, IT Admin, and Finance. There is no separate procurement department.</em>
+  <br> <em> Stakeholders: The top stakeholders are IT, IT Admin, and Finance. There is no separate procurement department.</em>
 
 ### Part 1: Core Asset Registry (REQ-REG)
 
 **[REQ-REG-1.1 – Asset Creation & Identification](functional-requirements.md#core-asset-registry)**
 
 - **ID Generation:** Should the system auto-generate Asset IDs, or will admins manually enter them? If auto-generated, do you prefer a simple sequential format (00001) or logic-based "Smart IDs" (e.g., LAP-NY-001)?
-<br><em>Asset tags must be auto-generated to prevent duplicates, prefer logic-based "Smart IDs" (e.g., LAP-NY-001) related to the existing format for the IDs.</em>
+  <br><em>Asset tags must be auto-generated to prevent duplicates, prefer logic-based "Smart IDs" (e.g., LAP-NY-001) related to the existing format for the IDs.</em>
 - **Tagging Technology:** Do you currently have existing Barcode/RFID stickers we must scan, or will the system need to generate and print new labels?
-<br><em>There is an interest in barcodes for scanning via mobile to see asset info and owner (currently a "nice to have").</em>
+  <br><em>There is an interest in barcodes for scanning via mobile to see asset info and owner (currently a "nice to have").</em>
 - **Duplicate Logic:** Which fields constitute a unique constraint (Asset ID only, or Serial Number + Category)? Should the system block duplicates entirely or just warn the user?
-<br><em>The Serial Number is unique for IT items and Asset Number is unique for non-IT Assets.</em>
+  <br><em>The Serial Number is unique for IT items and Asset Number is unique for non-IT Assets.</em>
 
 **[REQ-REG-1.2 – Data Storage & Attributes](functional-requirements.md#core-asset-registry)**
 
 - **Mandatory Fields:** Which fields are mandatory at creation vs. can be filled later? (e.g., Can I create a "Draft" asset without a Serial Number if it hasn't arrived?)
-<br><em>The Asset Number,Serial Number ,Categorization</em>
+  <br><em>The Asset Number,Serial Number ,Categorization</em>
 - **Attachments:** Do we need to store file attachments like PDF invoices, warranty documents, or photos of damage?
-<br><em>The system should store PDF invoices and documents.</em>
+  <br><em>The system should store PDF invoices and documents.</em>
 - **Customization:** Do you need a "Form Builder" feature where Admins can add custom fields without developer involvement?
-<br><em>The system needs the ability to define custom fields.</em>
+  <br><em>The system needs the ability to define custom fields.</em>
 
 **[REQ-REG-1.3 – Asset Scope & Conditional Logic](functional-requirements.md#core-asset-registry)**
 
 - **Scope:** What specific asset types must be supported initially? (Hardware, Software, Cloud)? Do we also need to track components (RAM, Hard Drives), IoT devices?
-<br><em>Initially hardware (laptops, monitors, etc.) and software. Also includes office equipment (tables, chairs) under Admin/Facilities.</em>
+  <br><em>Initially hardware (laptops, monitors, etc.) and software. Also includes office equipment (tables, chairs) under Admin/Facilities.</em>
 - **Consumables vs. Assets:** For low-value items like mice, keyboards, or HDMI cables, do we track them as individual assets with unique IDs, or do we simply track the quantity in stock (e.g., "50 mice") without unique serialization?
-<br><em>Items like keyboards and mice must be tracked per user, while HDMI cables are tracked by count only.</em>
+  <br><em>Items like keyboards and mice must be tracked per user, while HDMI cables are tracked by count only.</em>
 - **Peripherals & Linking:** For complex setups, do we need to track peripherals (monitors, docking stations) as separate assets linked to the parent Computer ID, or are they considered part of a single "Kit"?
-<br><em>Items like external adapters (USB-HDMI) need separate identification.</em>
+  <br><em>Items like external adapters (USB-HDMI) need separate identification.</em>
 - **Software Specifics:** For software, do we track license keys, expiry dates, and vendor portal links? Do we distinguish between named users and concurrent seats?
-<br><em>Needs to track license keys, expiry dates, and vendors.</em>
+  <br><em>Needs to track license keys, expiry dates, and vendors.</em>
 - **Form Dynamics:** Should the form fields update in real-time as the Asset Type is selected (e.g., hiding "RAM" when "Software" is selected)?<br><em>Yes, form fields should update in real-time based on the selected category.</em>
 
 **[REQ-REG-1.4 – Categorization](functional-requirements.md#core-asset-registry)**
 
 - **Hierarchy:** Do you need a multi-level hierarchy (e.g., Hardware > IT > Laptop > MacBook) or a flat list?
-<br><em>Uses a Brand > Model > Serial Number hierarchy.</em>
+  <br><em>Uses a Brand > Model > Serial Number hierarchy.</em>
 - **Governance:** Who can create/edit asset categories? Should they be global or department-specific?
-<br><em>Only admins can create categories, and these can be department-specific.</em>
+  <br><em>Only admins can create categories, and these can be department-specific.</em>
 
 **[REQ-REG-1.5 – Search & Filter](functional-requirements.md#core-asset-registry)**
 
@@ -135,7 +136,5 @@
 - **Spare Parts:** Do we need to track an inventory of "Spare Parts" (e.g., five hard drives in a closet) within this system?<br><em>Track individual spare parts (like hard disks) for data devices.</em>
 - **Vendor Ratings:** Do you need the ability to rate vendor performance (1–5 stars) on maintenance tickets?<br><em>There is no requirement to rate vendor performance within this system</em>
 - **Lemon Law:** Do we need logic to trigger an alert if an asset breaks multiple times in a short period (e.g., three times in one month)?<br><em>Dashboard should highlight assets that break multiple times in a short period.</em>
-
-
 
 [< Back to Requirements](./README.md)

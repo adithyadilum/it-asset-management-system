@@ -1,24 +1,35 @@
 import { NextResponse } from 'next/server';
+import { unstable_rethrow } from 'next/navigation';
 import { db } from '@/db';
 import { notificationRules } from '@/db/schema';
-import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
+import { withSessionAuth } from '@/lib/api/with-auth';
 import { canManageAssets } from '@/lib/auth/roles';
 
-export async function GET() {
+export const GET = withSessionAuth(canManageAssets, async () => {
   try {
-    const user = await getAuthenticatedUser();
+    const rules = await db
+      .select()
+      .from(notificationRules)
+      .orderBy(notificationRules.id);
 
-    if (!user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!canManageAssets(user.role)) {
-      return NextResponse.json(
-        { error: 'Forbidden: Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
+    return NextResponse.json(
+      {
+        success: true,
+        data: rules,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error('GET /api/v1/settings/notification-rules error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+});
+export const POST = withSessionAuth(canManageAssets, async () => {
+  try {
     let rules = await db
       .select()
       .from(notificationRules)
@@ -158,7 +169,9 @@ export async function GET() {
     ];
 
     const existingKeys = new Set(rules.map((r) => r.ruleKey));
-    const missingRules = defaultRules.filter((r) => !existingKeys.has(r.ruleKey));
+    const missingRules = defaultRules.filter(
+      (r) => !existingKeys.has(r.ruleKey)
+    );
 
     if (missingRules.length > 0) {
       const inserted = await db
@@ -182,10 +195,11 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error) {
-    console.error('GET /api/v1/settings/notification-rules error:', error);
+    unstable_rethrow(error);
+    console.error('POST /api/v1/settings/notification-rules error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
-}
+});

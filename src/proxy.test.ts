@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 // replicate and verify exhaustively.
 // ---------------------------------------------------------------------------
 
-type TokenRole = 'GlobalAdmin' | 'ITOperator' | 'FinanceAuditor' | 'Employee';
+type TokenRole = 'GlobalAdmin' | 'ITOperator' | 'FinancialAuditor' | 'Employee';
 
 // Replicated from src/proxy.ts for isolated pure-function testing
 function getTopLevelSegment(pathname: string) {
@@ -37,7 +37,7 @@ function canAccessRoute(role: TokenRole, pathname: string) {
     return !isSettingsRoute && !isFinancialsRoute;
   }
 
-  if (role === 'FinanceAuditor') {
+  if (role === 'FinancialAuditor') {
     if (isSettingsRoute) return false;
     if (isOperationsRoute) {
       return (
@@ -107,8 +107,8 @@ describe('RBAC Route Access Matrix', () => {
     });
   });
 
-  describe('FinanceAuditor', () => {
-    const role: TokenRole = 'FinanceAuditor';
+  describe('FinancialAuditor', () => {
+    const role: TokenRole = 'FinancialAuditor';
 
     it('can access dashboard and root', () => {
       expect(canAccessRoute(role, '/')).toBe(true);

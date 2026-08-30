@@ -2,7 +2,16 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { assets, models, categories, assetPurchases } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
-import type { ReportPreviewFilters, ReportPreviewRow } from '@/types/standard-reports';
+import {
+  DEFAULT_USEFUL_LIFE_MONTHS,
+  calculateCurrentBookValue,
+  calculateMonthlyDepreciation,
+  calculateMonthsElapsed,
+} from '@/lib/depreciation';
+import type {
+  ReportPreviewFilters,
+  ReportPreviewRow,
+} from '@/types/standard-reports';
 
 export async function fetchDepreciationLedger(
   filters: ReportPreviewFilters,
@@ -27,8 +36,7 @@ export async function fetchDepreciationLedger(
     conditions.push(eq(categories.pillar, dbPillar as never));
   }
 
-  const whereCondition =
-    conditions.length > 0 ? and(...conditions) : undefined;
+  const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
   const baseQuery = db
     .select({
@@ -72,26 +80,27 @@ export async function fetchDepreciationLedger(
   const data: ReportPreviewRow[] = rows.map((row) => {
     const cost = Number(row.totalCost || 0);
     const salvage = Number(row.salvageValue || 0);
-    const usefulLife = row.usefulLifeMonths || 36;
-    const ageMonths = row.purchaseDate
-      ? Math.max(
-          0,
-          Math.floor(
-            (Date.now() - new Date(row.purchaseDate).getTime()) /
-              (1000 * 60 * 60 * 24 * 30.4)
-          )
-        )
-      : Math.max(
-          0,
-          Math.floor(
-            (Date.now() - new Date(row.createdAt).getTime()) /
-              (1000 * 60 * 60 * 24 * 30.4)
-          )
-        );
+    // This file used to default to 36 months and count age in 30.4-day steps,
+    // while lib/depreciation.ts uses 60 and whole calendar months. The same
+    // asset therefore had a different book value on the Financials tab and in
+    // this report. There is one implementation now.
+    const usefulLife = row.usefulLifeMonths || DEFAULT_USEFUL_LIFE_MONTHS;
+    const depreciationBasis = row.purchaseDate ?? row.createdAt;
+    const ageMonths = Math.max(0, calculateMonthsElapsed(depreciationBasis));
 
-    const monthlyDep = usefulLife > 0 ? (cost - salvage) / usefulLife : 0;
-    const accDep = monthlyDep * Math.min(usefulLife, ageMonths);
-    const bookVal = cost - accDep;
+    const monthlyDep = calculateMonthlyDepreciation({
+      cost,
+      salvageValue: salvage,
+      usefulLifeMonths: usefulLife,
+      purchaseDate: depreciationBasis,
+    });
+    const bookVal = calculateCurrentBookValue({
+      cost,
+      salvageValue: salvage,
+      usefulLifeMonths: usefulLife,
+      purchaseDate: depreciationBasis,
+    });
+    const accDep = cost - bookVal;
     const depPct = cost > 0 ? (accDep / cost) * 100 : 0;
 
     return {

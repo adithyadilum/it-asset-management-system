@@ -1,10 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchReportPreview, getStandardReportsFilterOptions } from '@/actions/standard-reports';
+import {
+  fetchReportPreview,
+  getStandardReportsFilterOptions,
+} from '@/actions/standard-reports';
 import { ADMIN_USER, EMPLOYEE_USER } from '@/test/fixtures/users';
 
 const mockGetAuthenticatedUser = vi.fn();
 vi.mock('@/actions/auth', () => ({
   getAuthenticatedUser: () => mockGetAuthenticatedUser(),
+  enforceActionAccess: async (predicate?: (role: string) => boolean) => {
+    const user = await mockGetAuthenticatedUser();
+    if (!user) throw new Error('UNAUTHENTICATED');
+    if (predicate && !predicate(user.role))
+      throw new Error('FORBIDDEN: Forbidden');
+    return user;
+  },
 }));
 
 vi.mock('@/lib/latency', () => ({
@@ -16,15 +26,25 @@ vi.mock('@/lib/latency', () => ({
 const { mockDb, chain } = vi.hoisted(() => {
   const chain = (resolvedValue: unknown = []) => {
     const c: Record<string, ReturnType<typeof vi.fn>> = {};
-    ['values', 'set', 'where', 'returning', 'limit', 'offset', 'innerJoin', 'leftJoin', 'orderBy', 'from', 'groupBy'].forEach(
-      (m) => (c[m] = vi.fn().mockReturnThis())
-    );
+    [
+      'values',
+      'set',
+      'where',
+      'returning',
+      'limit',
+      'offset',
+      'innerJoin',
+      'leftJoin',
+      'orderBy',
+      'from',
+      'groupBy',
+    ].forEach((m) => (c[m] = vi.fn().mockReturnThis()));
     // Add dynamic for drizzle dynamic query building
     c.$dynamic = vi.fn().mockReturnThis();
-    
+
     // Add execute for getting counts
     c.execute = vi.fn().mockResolvedValue([]);
-    
+
     c.returning = vi.fn().mockResolvedValue(resolvedValue);
     const proxy = new Proxy(c, {
       get(t, p) {
@@ -44,9 +64,21 @@ const { mockDb, chain } = vi.hoisted(() => {
 vi.mock('@/db', () => ({ db: mockDb }));
 
 vi.mock('@/db/schema', () => ({
-  assetAssignments: { id: 'assetAssignments.id', returnedDate: 'assetAssignments.returnedDate' },
-  assets: { id: 'assets.id', status: 'assets.status', isArchived: 'assets.isArchived' },
-  categories: { id: 'categories.id', name: 'categories.name', pillar: 'categories.pillar', isActive: 'categories.isActive' },
+  assetAssignments: {
+    id: 'assetAssignments.id',
+    returnedDate: 'assetAssignments.returnedDate',
+  },
+  assets: {
+    id: 'assets.id',
+    status: 'assets.status',
+    isArchived: 'assets.isArchived',
+  },
+  categories: {
+    id: 'categories.id',
+    name: 'categories.name',
+    pillar: 'categories.pillar',
+    isActive: 'categories.isActive',
+  },
   locations: { id: 'locations.id', isActive: 'locations.isActive' },
   models: { id: 'models.id' },
   users: { id: 'users.id', name: 'users.name' },
@@ -59,25 +91,35 @@ vi.mock('@/db/schema', () => ({
   softwareLicenses: { id: 'softwareLicenses.id' },
   softwareAllocations: { id: 'softwareAllocations.id' },
   systemAuditLogs: { id: 'systemAuditLogs.id' },
-  customStatuses: { id: 'customStatuses.id', name: 'customStatuses.name', isActive: 'customStatuses.isActive' },
+  customStatuses: {
+    id: 'customStatuses.id',
+    name: 'customStatuses.name',
+    isActive: 'customStatuses.isActive',
+  },
 }));
 
 describe('Standard Reports Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDb.select.mockReset();
+    mockDb.select.mockReturnValue(chain([]));
   });
 
   describe('getStandardReportsFilterOptions', () => {
     it('throws unauthorized for unauthorized user', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(EMPLOYEE_USER);
-      await expect(getStandardReportsFilterOptions()).rejects.toThrow('Forbidden');
+      await expect(getStandardReportsFilterOptions()).rejects.toThrow(
+        'Forbidden'
+      );
     });
 
     it('returns options for admin', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
       mockDb.select.mockReturnValueOnce(chain([{ name: 'Location 1' }])); // locations
       mockDb.select.mockReturnValueOnce(chain([{ name: 'Custom Status' }])); // customStatuses
-      mockDb.select.mockReturnValueOnce(chain([{ name: 'Laptops', pillar: 'Hardware' }])); // categories
+      mockDb.select.mockReturnValueOnce(
+        chain([{ name: 'Laptops', pillar: 'Hardware' }])
+      ); // categories
       mockDb.select.mockReturnValueOnce(chain([{ companyName: 'Vendor 1' }])); // vendors
 
       const result = await getStandardReportsFilterOptions();
@@ -100,14 +142,20 @@ describe('Standard Reports Actions', () => {
 
     it('throws validation error for invalid source', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      await expect(fetchReportPreview({ source: 123 as unknown as string })).rejects.toThrow(/Expected string|Invalid report filters|Failed to fetch/);
+      await expect(
+        fetchReportPreview({ source: 123 as unknown as string })
+      ).rejects.toThrow(
+        /Expected string|Invalid report filters|Failed to fetch/
+      );
     });
 
     it('handles Master Data report source', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      mockDb.select.mockReturnValue(chain([
-        { id: 1, name: 'Category 1', categoryCode: 'CAT-01', isActive: true }
-      ]));
+      mockDb.select.mockReturnValue(
+        chain([
+          { id: 1, name: 'Category 1', categoryCode: 'CAT-01', isActive: true },
+        ])
+      );
 
       const result = await fetchReportPreview({
         source: 'Master Data',
@@ -123,15 +171,17 @@ describe('Standard Reports Actions', () => {
 
     it('handles Active Assignments report source', async () => {
       mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
-      
-      const mockChain = chain([{ 
-        id: 1, 
-        assetTag: 'TAG-123', 
-        assetName: 'Asset 1', 
-        assignedTo: 'User 1',
-        assignedBy: 'Admin',
-        assignedDate: new Date().toISOString(),
-      }]);
+
+      const mockChain = chain([
+        {
+          id: 1,
+          assetTag: 'TAG-123',
+          assetName: 'Asset 1',
+          assignedTo: 'User 1',
+          assignedBy: 'Admin',
+          assignedDate: new Date().toISOString(),
+        },
+      ]);
       mockDb.select.mockReturnValue(mockChain);
 
       const result = await fetchReportPreview({

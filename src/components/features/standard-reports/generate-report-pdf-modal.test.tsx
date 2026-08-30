@@ -45,7 +45,14 @@ describe('GenerateReportPdfModal', () => {
     onOpenChange: vi.fn(),
     previewData: [{ id: '1', name: 'Test' }],
     headers: ['name'],
-    filterState: { source: 'Assets', assetType: '', category: '', location: '', status: '', masterDataType: '' } as any,
+    filterState: {
+      source: 'Assets',
+      assetType: '',
+      category: '',
+      location: '',
+      status: '',
+      masterDataType: '',
+    } as any,
     source: 'Assets',
     generatedBy: 'User A',
   };
@@ -63,7 +70,10 @@ describe('GenerateReportPdfModal', () => {
   });
 
   it('handles generating all records and large export warning', async () => {
-    (fetchReportPreview as any).mockResolvedValue({ data: [{ id: 1 }, { id: 2 }], totalRows: 6000 });
+    (fetchReportPreview as any).mockResolvedValue({
+      data: [{ id: 1 }, { id: 2 }],
+      totalRows: 6000,
+    });
 
     render(<GenerateReportPdfModal {...defaultProps} />);
 

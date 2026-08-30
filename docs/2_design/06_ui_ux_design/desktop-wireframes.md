@@ -256,7 +256,7 @@ The central hub for viewing, filtering, and managing the complete IT inventory. 
 
 | Zone                | Content                                                                                                                                                                                                   |
 | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Toolbar**         | Global search input, facet filter dropdowns (Category, Status, Location, Custodian), Column Visibility "View" button (multi-select checklist), action buttons (+ New Asset, 🖨 Print Labels).             |
+| **Toolbar**         | Global search input, facet filter dropdowns (Category, Status, Location, Custodian), Column Visibility "View" button (multi-select checklist), action buttons (+ New Asset, 🖨 Print Labels).              |
 | **Data Grid**       | Sticky header row. Columns: ☐ (checkbox), Asset ID, Name, Category, Status (colour-coded Badge), Location, Custodian, Purchase Date, Book Value, ⋯ (action menu). Pagination: 10/25/50/100 rows per page. |
 | **Bulk Toolbar**    | Appears when ≥1 row selected. Actions: "Bulk Edit" (Location/Status), "Print Labels", "Bulk Dispose" (Epic 4). Selection count displayed.                                                                 |
 | **Row Interaction** | Single click opens the Asset Details Slide-Out Panel from the right. Grid scroll position and active filters are preserved.                                                                               |
@@ -929,5 +929,3 @@ Complete index of all wireframe mockup images, organised by Epic and screen.
 | 58  | `Bulk Tranfer pop up -Desktop.png`                     | 3    | Bulk Location Transfer Modal                 |
 
 [< Back to Design Docs](../README.md)
-
-

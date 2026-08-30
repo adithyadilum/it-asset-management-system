@@ -33,7 +33,10 @@ import {
   editAssetSchema,
   type EditAssetActionState,
 } from '@/lib/validations/asset-edit';
-import { fetchLiveExchangeRates, convertCurrencyAmount } from '@/lib/currency';
+import { convertCurrencyAmount } from '@/lib/currency';
+import { fetchLiveExchangeRates } from '@/lib/currency-server';
+import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -150,6 +153,7 @@ export async function registerAsset(
         }
       })(),
       licenseType: formData.get('licenseType') || undefined,
+      billingCycle: formData.get('billingCycle') || undefined,
       totalSeats: formData.get('totalSeats') || undefined,
       licenseStartDate: formData.get('licenseStartDate') || undefined,
       licenseExpiryDate: formData.get('licenseExpiryDate') || undefined,
@@ -165,9 +169,27 @@ export async function registerAsset(
     const input = {
       ...parsed.data,
       pillar: parsed.data.pillar,
-      usefulLifeMonths:
-        parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
+      // Comes from the validated Expected Lifespan field now. It used to be
+      // read straight off formData, outside the schema, with a hardcoded 60 --
+      // and since no form input ever set it, every asset silently got 5 years
+      // whether or not that was right for it.
+      usefulLifeMonths: parsed.data.expectedLifespanYears
+        ? parsed.data.expectedLifespanYears * 12
+        : DEFAULT_USEFUL_LIFE_MONTHS,
       invoiceFile: formData.get('invoiceFile') as File | null,
+    };
+    // A location-pillar asset registered with a location starts out assigned to
+    // it; everything else starts Available.
+    const registersAsAssigned =
+      isLocationAssignedPillar(input.pillar) && Boolean(input.locationId);
+
+    const instanceAttributes = {
+      ...(input.instanceAttributes ?? {}),
+      ...(input.pillar === 'Software' &&
+      input.licenseType === 'Subscription' &&
+      input.billingCycle
+        ? { billing_cycle: input.billingCycle }
+        : {}),
     };
 
     // 3. File Upload (Placeholder)
@@ -228,10 +250,15 @@ export async function registerAsset(
               serialNumber: input.serialNumber,
               locationId: input.locationId,
               ownerId: input.ownerId,
-              status: 'Available',
+              // Furniture and electronics are assigned to a place, so giving
+              // one a location at registration *is* the assignment. Recording
+              // it as Available and letting somebody assign it to the room it
+              // is already in was busywork that also left the registry showing
+              // occupied desks as free.
+              status: registersAsAssigned ? 'Assigned' : 'Available',
               condition: input.condition,
               usefulLifeMonths: input.usefulLifeMonths,
-              instanceAttributes: input.instanceAttributes,
+              instanceAttributes,
             })
             .returning({ id: assets.id, assetTag: assets.assetTag });
 
@@ -294,6 +321,21 @@ export async function registerAsset(
         });
       }
 
+      // Give the asset the assignment its status implies. Without this the
+      // registry would show it Assigned while the detail panel had no
+      // assignment to display and no way to transfer it.
+      if (registersAsAssigned && input.locationId) {
+        await tx.insert(assetAssignments).values({
+          assetId: insertedAsset.id,
+          assignedById: currentUser.id,
+          assignedToLocationId: input.locationId,
+          assignedToUserId: null,
+          // Effective immediately: a location has nobody to acknowledge it.
+          state: 'assigned',
+          notes: 'Assigned to its location at registration.',
+        });
+      }
+
       return insertedAsset;
     });
 
@@ -309,6 +351,10 @@ export async function registerAsset(
         ...(input.pillar === 'Software' && input.licenseType
           ? {
               licenseType: input.licenseType,
+              billingCycle:
+                input.licenseType === 'Subscription'
+                  ? input.billingCycle
+                  : undefined,
               totalSeats: input.totalSeats ?? 1,
             }
           : {}),
@@ -442,7 +488,7 @@ export async function updateAsset(
       throw new Error('Asset not found');
     }
 
-    if (currentAsset.status === 'Disposed') {
+    if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
       throw new Error('Disposed assets cannot be edited.');
     }
 
@@ -572,11 +618,12 @@ export async function manualStatusOverrideAction(
 
     if (
       currentAsset.status === 'Disposed' ||
-      currentAsset.status === 'Pending Disposal'
+      currentAsset.status === 'Pending Disposal' ||
+      currentAsset.isArchived
     ) {
       return {
         success: false,
-        message: `Assets in "${currentAsset.status}" status cannot have their status changed manually.`,
+        message: `Assets in "${currentAsset.status}" status or archived assets cannot have their status changed manually.`,
       };
     }
 
@@ -707,7 +754,7 @@ export async function editAssetDetailsAction(
       return { success: false, message: 'Asset not found.' };
     }
 
-    if (currentAsset.status === 'Disposed') {
+    if (currentAsset.status === 'Disposed' || currentAsset.isArchived) {
       return {
         success: false,
         message: 'Disposed assets cannot be edited.',
@@ -724,6 +771,14 @@ export async function editAssetDetailsAction(
       assetUpdatePayload.locationId = assetFields.locationId;
     if (assetFields.ownerId !== undefined)
       assetUpdatePayload.ownerId = assetFields.ownerId;
+    if (assetFields.expectedLifespanYears !== undefined) {
+      // Stored in months; null clears it and falls back to the default when
+      // depreciation is computed.
+      assetUpdatePayload.usefulLifeMonths =
+        assetFields.expectedLifespanYears === null
+          ? null
+          : assetFields.expectedLifespanYears * 12;
+    }
     if (assetFields.instanceAttributes !== undefined) {
       // Only allow keys that already exist on the asset's instance attributes
       const existingKeys = new Set(
@@ -783,9 +838,19 @@ export async function editAssetDetailsAction(
           .returning({ id: assetPurchases.id });
 
         if (result.length === 0) {
-          throw new Error(
-            'Failed to update asset purchase. Row not found or not updated.'
-          );
+          // If no purchase record exists, insert a new one
+          const inserted = await tx
+            .insert(assetPurchases)
+            .values({
+              assetId,
+              warrantyExpiry,
+              updatedAt: new Date(),
+            })
+            .returning({ id: assetPurchases.id });
+
+          if (inserted.length === 0) {
+            throw new Error('Failed to create asset purchase record.');
+          }
         }
       }
 
