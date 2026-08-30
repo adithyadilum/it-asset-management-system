@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { bulkAssignAssetsAction } from '@/actions/assignments';
 import { tiqriToast } from '@/components/shared/sonner';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 import {
   DURATION_OPTIONS,
   CUSTOM_DURATION_VALUE,
@@ -51,11 +52,26 @@ export function MultiAssetAssignmentModal({
   onOpenChange,
 }: MultiAssetAssignmentModalProps) {
   const router = useRouter();
-  const disableUserAssignment = assets.some(
-    (asset) =>
-      asset.assetGroup === 'Office Furniture' ||
-      asset.assetGroup === 'Office Electronics'
+
+  // Office Furniture and Office Electronics go to a location; everything else
+  // goes to a person. A selection spanning both has no single valid target.
+  //
+  // This used to be one `.some()` over the location-only pillars, which is
+  // right for a uniform selection and wrong for a mixed one: any furniture in
+  // the set forced the whole batch to location assignment, so laptops picked
+  // alongside a desk were quietly assigned to a room instead of to the person
+  // the operator had in mind. Nothing surfaced that, because the radio was
+  // disabled rather than the submission blocked.
+  const locationOnlyAssets = assets.filter((asset) =>
+    isLocationAssignedPillar(asset.assetGroup)
   );
+  const personAssignableAssets = assets.filter(
+    (asset) => !isLocationAssignedPillar(asset.assetGroup)
+  );
+  const isMixedSelection =
+    locationOnlyAssets.length > 0 && personAssignableAssets.length > 0;
+  const disableUserAssignment =
+    locationOnlyAssets.length > 0 && !isMixedSelection;
 
   const {
     assignmentMode,
@@ -90,6 +106,13 @@ export function MultiAssetAssignmentModal({
 
     if (assets.length === 0) {
       tiqriToast.warning('Select at least one asset.');
+      return;
+    }
+
+    if (isMixedSelection) {
+      tiqriToast.warning(
+        'Assign these separately: the selection mixes assets that go to a person with assets that go to a location.'
+      );
       return;
     }
 
@@ -171,6 +194,30 @@ export function MultiAssetAssignmentModal({
             </ScrollArea>
           </div>
 
+          {isMixedSelection ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-foreground"
+            >
+              <p className="font-medium">
+                This selection cannot be assigned in one go.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {personAssignableAssets.length}{' '}
+                {personAssignableAssets.length === 1 ? 'asset' : 'assets'} go to
+                a person and {locationOnlyAssets.length} to a location (
+                {locationOnlyAssets
+                  .map((asset) => asset.assetTag)
+                  .slice(0, 3)
+                  .join(', ')}
+                {locationOnlyAssets.length > 3
+                  ? ` +${locationOnlyAssets.length - 3} more`
+                  : ''}
+                ). Assign each group separately.
+              </p>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <label
               className={`flex items-center gap-2 text-sm ${disableUserAssignment ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
@@ -179,7 +226,7 @@ export function MultiAssetAssignmentModal({
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === 'user'}
-                disabled={disableUserAssignment}
+                disabled={disableUserAssignment || isMixedSelection}
                 onChange={() => handleAssignmentModeChange('user')}
                 className="size-4 border-border accent-primary"
               />
@@ -190,6 +237,7 @@ export function MultiAssetAssignmentModal({
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === 'location'}
+                disabled={isMixedSelection}
                 onChange={() => handleAssignmentModeChange('location')}
                 className="size-4 border-border accent-primary"
               />
@@ -294,7 +342,7 @@ export function MultiAssetAssignmentModal({
             <Button
               type="submit"
               className="bg-primary hover:bg-primary/90"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isMixedSelection}
             >
               Assign {assets.length} {assets.length === 1 ? 'Asset' : 'Assets'}
             </Button>
