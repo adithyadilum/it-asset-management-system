@@ -17,15 +17,22 @@ export type AssigneeOption = {
 
 interface UseAssignmentModalStateProps {
   isOpen: boolean;
-  disableUserAssignment: boolean;
+  disableUserAssignment?: boolean;
+  disableLocationAssignment?: boolean;
 }
 
 export function useAssignmentModalState({
   isOpen,
-  disableUserAssignment,
+  disableUserAssignment = false,
+  disableLocationAssignment = false,
 }: UseAssignmentModalStateProps) {
   const [assignmentMode, setAssignmentMode] = useState<'user' | 'location'>(
-    () => (disableUserAssignment ? 'location' : 'user')
+    () =>
+      disableLocationAssignment
+        ? 'user'
+        : disableUserAssignment
+          ? 'location'
+          : 'user'
   );
   const [assignee, setAssignee] = useState('');
   const [duration, setDuration] = useState('');
@@ -82,13 +89,25 @@ export function useAssignmentModalState({
     };
   }, [isOpen, loadOptions]);
 
+  useEffect(() => {
+    if (disableLocationAssignment && assignmentMode === 'location') {
+      setAssignmentMode('user');
+    }
+  }, [disableLocationAssignment, assignmentMode]);
+
   const resetState = useCallback(() => {
-    setAssignmentMode(disableUserAssignment ? 'location' : 'user');
+    setAssignmentMode(
+      disableLocationAssignment
+        ? 'user'
+        : disableUserAssignment
+          ? 'location'
+          : 'user'
+    );
     setAssignee('');
     setDuration('');
     setExpectedReturn('');
     setNotes('');
-  }, [disableUserAssignment]);
+  }, [disableUserAssignment, disableLocationAssignment]);
 
   const handleAssignmentModeChange = useCallback(
     (mode: 'user' | 'location') => {
@@ -118,9 +137,11 @@ export function useAssignmentModalState({
   }, []);
 
   const validateAssignment = () => {
-    const resolvedAssignmentMode = disableUserAssignment
-      ? 'location'
-      : assignmentMode;
+    const resolvedAssignmentMode = disableLocationAssignment
+      ? 'user'
+      : disableUserAssignment
+        ? 'location'
+        : assignmentMode;
 
     if (!assignee) {
       tiqriToast.warning(
