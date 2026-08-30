@@ -53,11 +53,15 @@ export function MultiAssetAssignmentModal({
 }: MultiAssetAssignmentModalProps) {
   const router = useRouter();
 
+  const hasLocationOnlyAssets = assets.some((asset) =>
+    isLocationAssignedPillar(asset.assetGroup)
+  );
   const hasSoftwareAssets = assets.some(
     (asset) => asset.assetGroup === 'Software'
   );
+
+  const disableUserAssignment = hasLocationOnlyAssets;
   const disableLocationAssignment = hasSoftwareAssets;
-  const disableUserAssignment = false;
 
   const {
     assignmentMode,
