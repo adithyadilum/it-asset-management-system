@@ -24,6 +24,7 @@ import {
   initiateVendorRepairSchema,
   completeRepairSchema,
   panelRepairSchema,
+  flagForRepairSchema,
   getRepairHistoryParamsSchema,
   getAssetMaintenanceHistoryParamsSchema,
 } from '@/lib/validations/maintenance';
@@ -1113,6 +1114,142 @@ export async function reportDefectiveFromPanel(
         isKnown && error instanceof Error
           ? error.message
           : 'Failed to dispatch asset for repair.',
+    };
+  }
+}
+
+/**
+ * Flags an asset for repair from the asset detail panel.
+ * Creates an INTERNAL maintenance ticket (ticketType = 'INTERNAL') so the
+ * asset appears in the Pending Review tab of the Maintenance module. The IT
+ * team can then triage it and dispatch to a vendor or resolve it internally
+ * using the existing maintenance workflows.
+ */
+export async function flagAssetForRepair(
+  assetId: string,
+  issueNote: string
+): Promise<{ success: boolean; message: string; ticketId?: number }> {
+  // 1. Auth & Role Validation
+  const user = await enforceActionAccess();
+  if (user.role !== 'GlobalAdmin' && user.role !== 'ITOperator')
+    throw new Error('Forbidden');
+
+  // 2. Input Validation
+  const parsed = flagForRepairSchema.safeParse({ assetId, issueNote });
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? 'Invalid input.',
+    };
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Verify asset exists and is actionable
+      const [currentAsset] = await tx
+        .select()
+        .from(assets)
+        .where(eq(assets.id, parsed.data.assetId))
+        .limit(1);
+
+      if (!currentAsset)
+        throw new Error(`Asset ${parsed.data.assetId} not found`);
+
+      if (currentAsset.status === 'Disposed' || currentAsset.isArchived)
+        throw new Error('Asset is disposed or archived');
+
+      const now = new Date();
+
+      // Create INTERNAL maintenance ticket → lands in Pending Review tab
+      const [newTicket] = await tx
+        .insert(maintenanceTickets)
+        .values({
+          assetId: parsed.data.assetId,
+          ticketType: 'INTERNAL',
+          reportedIssue: parsed.data.issueNote,
+          status: 'ACTIVE',
+          dispatchedById: user.id,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      if (!newTicket) throw new Error('Failed to create maintenance ticket');
+
+      // Update asset status to 'In Repair'
+      const [updatedAsset] = await tx
+        .update(assets)
+        .set({ status: 'In Repair', updatedAt: now })
+        .where(eq(assets.id, parsed.data.assetId))
+        .returning({ id: assets.id });
+
+      if (!updatedAsset) throw new Error('Failed to update asset status');
+
+      // Terminate any active assignments
+      try {
+        await tx
+          .update(assetAssignments)
+          .set({ returnedDate: now })
+          .where(
+            and(
+              eq(assetAssignments.assetId, parsed.data.assetId),
+              isNull(assetAssignments.returnedDate)
+            )
+          );
+      } catch (assignErr) {
+        throw new Error(
+          `Failed to close active assignments: ${
+            assignErr instanceof Error ? assignErr.message : 'Unknown error'
+          }`
+        );
+      }
+
+      // Audit log
+      await tx.insert(systemAuditLogs).values({
+        entityType: 'Asset',
+        entityId: parsed.data.assetId,
+        actionType: 'UPDATE',
+        performedById: user.id,
+        oldValue: { status: currentAsset.status },
+        newValue: {
+          status: 'In Repair',
+          actionContext: 'REPAIR_FLAGGED_FROM_PANEL',
+          issueNote: parsed.data.issueNote,
+        },
+        performedAt: now,
+      });
+
+      return {
+        success: true as const,
+        message: 'Asset flagged for repair. It will appear in Pending Review.',
+        ticketId: newTicket.id,
+      };
+    });
+
+    revalidatePath('/assets');
+    revalidatePath('/assets/hardware');
+    revalidatePath('/assets/software');
+    revalidatePath('/assets/furniture');
+    revalidatePath('/assets/office-electronics');
+    revalidatePath('/operations/maintenance');
+
+    return result;
+  } catch (error) {
+    const knownMessages = [
+      'Asset ',
+      'Failed to create maintenance ticket',
+      'Failed to update asset status',
+      'Failed to close active assignments',
+    ];
+    const isKnown =
+      error instanceof Error &&
+      knownMessages.some((m) => error.message.startsWith(m));
+    return {
+      success: false,
+      message:
+        isKnown && error instanceof Error
+          ? error.message
+          : 'Failed to flag asset for repair.',
     };
   }
 }
