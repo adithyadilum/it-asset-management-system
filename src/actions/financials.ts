@@ -75,7 +75,10 @@ export async function getDepreciationLedger(
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
-    const conditions = [ne(assets.status, 'Disposed')];
+    const conditions = [
+      ne(assets.status, 'Disposed'),
+      ne(categories.pillar, 'Software'),
+    ];
 
     if (search) {
       conditions.push(
@@ -517,7 +520,10 @@ export async function getWriteOffsLedger(
     const offset = (validPage - 1) * validPageSize;
 
     // 1. Build Dynamic Conditions
-    const conditions = [eq(assetDisposals.status, 'Completed')];
+    const conditions = [
+      eq(assetDisposals.status, 'Completed'),
+      ne(categories.pillar, 'Software'),
+    ];
 
     if (search) {
       conditions.push(
