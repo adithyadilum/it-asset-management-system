@@ -29,11 +29,11 @@ test.describe('Role boundary', () => {
     // Control: the session is valid and the role is read correctly. Employees
     // have no dashboard, so they are sent to /my-assets.
     await employeePage.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(employeePage).toHaveURL(/\/my-assets$/);
+    await employeePage.waitForURL(/\/my-assets$/, { timeout: 30_000 });
 
     // The boundary.
     await employeePage.goto('/financials', { waitUntil: 'domcontentloaded' });
-    await expect(employeePage).toHaveURL(/\/403$/);
+    await employeePage.waitForURL(/\/403$/, { timeout: 30_000 });
     await expect(employeePage.getByText('403 - Access Denied')).toBeVisible();
   });
 });

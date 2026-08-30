@@ -31,9 +31,13 @@ export class DashboardPage {
    * the app did.
    */
   async expectLandedOn(pathname: RegExp, heading: RegExp) {
-    await expect(this.page).toHaveURL(pathname);
-    await expect(
-      this.page.getByRole('heading', { name: heading })
-    ).toBeVisible();
+    // `waitForURL`, not `toHaveURL`: `/` returns a 200 shell and redirects from
+    // the client once hydrated, so the browser sits on `/` for a moment. On a
+    // cold CI runner the session call alone took 4.6s, past the 5s default
+    // expect timeout, which read as "never redirected" rather than "not yet".
+    await this.page.waitForURL(pathname, { timeout: 30_000 });
+    await expect(this.page.getByRole('heading', { name: heading })).toBeVisible(
+      { timeout: 15_000 }
+    );
   }
 }

@@ -27,7 +27,7 @@ The `api` alternative is a prefix, not a path segment, so it also excludes
 ```
 
 The Swagger page is therefore reachable without a session. The spec it fetches
-(`/api/openapi.json`) *is* guarded by `withSessionAuth`, so an anonymous
+(`/api/openapi.json`) _is_ guarded by `withSessionAuth`, so an anonymous
 visitor sees the page shell and an error, not the API surface. The exposure is
 the page itself, not the documentation.
 
