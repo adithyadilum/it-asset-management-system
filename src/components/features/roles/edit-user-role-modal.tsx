@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
 import { assignUserRole } from '@/actions/roles';
@@ -49,24 +49,13 @@ export function EditUserRoleModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
-  if (isOpen !== prevIsOpen) {
-    setPrevIsOpen(isOpen);
-    if (!isOpen) {
+  useEffect(() => {
+    if (isOpen) {
       setIsSubmitting(false);
       setError(null);
-    } else if (user) {
-      setSelectedRole(user.role);
+      if (user) setSelectedRole(user.role);
     }
-  }
-
-  const [prevUser, setPrevUser] = useState(user);
-  if (user !== prevUser) {
-    setPrevUser(user);
-    if (isOpen && user) {
-      setSelectedRole(user.role);
-    }
-  }
+  }, [isOpen, user]);
 
   const handleSubmit = async () => {
     if (!user) {
