@@ -102,7 +102,9 @@ export function FlagForRepairDialog({
           <div
             className={`grid grid-cols-[100px_1fr] gap-x-6 gap-y-1.5 ${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-foreground`}
           >
-            <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Asset ID:</span>
+            <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+              Asset ID:
+            </span>
             <span className="truncate">{assetTag || 'N/A'}</span>
 
             <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>Name:</span>
