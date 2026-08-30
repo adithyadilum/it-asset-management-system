@@ -36,6 +36,7 @@ import {
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
 import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -177,6 +178,11 @@ export async function registerAsset(
         : DEFAULT_USEFUL_LIFE_MONTHS,
       invoiceFile: formData.get('invoiceFile') as File | null,
     };
+    // A location-pillar asset registered with a location starts out assigned to
+    // it; everything else starts Available.
+    const registersAsAssigned =
+      isLocationAssignedPillar(input.pillar) && Boolean(input.locationId);
+
     const instanceAttributes = {
       ...(input.instanceAttributes ?? {}),
       ...(input.pillar === 'Software' &&
@@ -244,7 +250,12 @@ export async function registerAsset(
               serialNumber: input.serialNumber,
               locationId: input.locationId,
               ownerId: input.ownerId,
-              status: 'Available',
+              // Furniture and electronics are assigned to a place, so giving
+              // one a location at registration *is* the assignment. Recording
+              // it as Available and letting somebody assign it to the room it
+              // is already in was busywork that also left the registry showing
+              // occupied desks as free.
+              status: registersAsAssigned ? 'Assigned' : 'Available',
               condition: input.condition,
               usefulLifeMonths: input.usefulLifeMonths,
               instanceAttributes,
@@ -307,6 +318,21 @@ export async function registerAsset(
           expiryDate: input.licenseExpiryDate
             ? toDateString(input.licenseExpiryDate)
             : null,
+        });
+      }
+
+      // Give the asset the assignment its status implies. Without this the
+      // registry would show it Assigned while the detail panel had no
+      // assignment to display and no way to transfer it.
+      if (registersAsAssigned && input.locationId) {
+        await tx.insert(assetAssignments).values({
+          assetId: insertedAsset.id,
+          assignedById: currentUser.id,
+          assignedToLocationId: input.locationId,
+          assignedToUserId: null,
+          // Effective immediately: a location has nobody to acknowledge it.
+          state: 'assigned',
+          notes: 'Assigned to its location at registration.',
         });
       }
 

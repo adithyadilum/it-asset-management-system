@@ -790,7 +790,8 @@ export async function completeRepairTicket(
   ticketId: number,
   actualCost: string,
   resolutionNotes: string,
-  updateStatusTo: 'Available' | 'Disposed'
+  updateStatusTo: 'Available' | 'Disposed',
+  currencyCode = 'LKR'
 ) {
   // 1. Zero Trust: Auth & Role Validation
   const user = await enforceActionAccess();
@@ -803,6 +804,7 @@ export async function completeRepairTicket(
     actualCost,
     resolutionNotes,
     updateStatusTo,
+    currencyCode,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
@@ -841,6 +843,7 @@ export async function completeRepairTicket(
         .set({
           status: 'COMPLETED',
           actualCost: parsed.data.actualCost.toString(),
+          currencyCode: parsed.data.currencyCode,
           actualCompletionDate: now,
           resolutionNotes: parsed.data.resolutionNotes,
           updatedAt: now,
@@ -893,6 +896,7 @@ export async function completeRepairTicket(
           isArchived,
           ticketStatus: 'COMPLETED',
           actualCost: parsed.data.actualCost,
+          currencyCode: parsed.data.currencyCode,
           resolutionNotes: parsed.data.resolutionNotes,
           actionContext: 'MAINTENANCE_REPAIR_COMPLETED',
         },

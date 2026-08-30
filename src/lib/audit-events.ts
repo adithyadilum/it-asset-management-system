@@ -34,6 +34,7 @@ const ACTION_PHRASES: Record<string, string> = {
   LOGOUT: 'signed out',
   ACCESS_DENIED: 'was denied access to',
   IMPORT: 'imported',
+  REPORT_EXPORTED: 'exported a report from',
   API_KEY_CREATED: 'created an API key',
   API_KEY_REVOKED: 'revoked an API key',
   WEBHOOK_CREATED: 'created a webhook',
@@ -296,3 +297,12 @@ export function buildEventDetailsSentence(
 
   return 'Updated record';
 }
+
+/**
+ * Hard ceiling on an audit export, so one click cannot pull the whole ledger.
+ *
+ * Lives here rather than beside the export action: a `'use server'` module may
+ * only export async functions, and a stray constant silently strips every
+ * export from it at build time.
+ */
+export const AUDIT_EXPORT_LIMIT = 10_000;

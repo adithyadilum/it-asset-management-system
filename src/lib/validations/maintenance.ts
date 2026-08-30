@@ -66,6 +66,13 @@ export const completeRepairSchema = z.object({
   updateStatusTo: z.enum(['Available', 'Disposed'], {
     message: 'Status must be either Available or Disposed.',
   }),
+  // Defaults to LKR so existing callers and rows keep the meaning they already
+  // had -- the cost was always read as LKR, just never recorded as such.
+  currencyCode: z
+    .string()
+    .trim()
+    .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
+    .default('LKR'),
 });
 
 export type CompleteRepairInput = z.infer<typeof completeRepairSchema>;

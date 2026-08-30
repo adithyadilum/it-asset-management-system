@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { STATUS_THEMES } from '@/lib/constants';
+import { BADGE_LAYOUT } from '@/components/shared/badge-layout';
 
 // 1. Define the distinct domains we are badging
 export type BadgeType = 'assetStatus' | 'hardwareCondition' | 'userRole';
@@ -122,6 +123,34 @@ const BADGE_DICTIONARY: Record<
     className:
       'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800',
     icon: AlertTriangle,
+  },
+
+  // Derived Office Electronics statuses, shown when an asset has no recorded
+  // condition. Previously rendered by a hand-rolled <span> in the registry
+  // column, which is why those badges did not match the rest of the app.
+  inspection_due: {
+    label: 'Inspection Due',
+    className:
+      'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800',
+    icon: AlertCircle,
+  },
+  under_maintenance: {
+    label: 'Under Maintenance',
+    className:
+      'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800',
+    icon: Wrench,
+  },
+  scheduled: {
+    label: 'Scheduled',
+    className:
+      'bg-muted text-foreground border-border dark:bg-muted dark:text-foreground dark:border-border',
+    icon: CircleDot,
+  },
+  requested: {
+    label: 'Return requested',
+    className:
+      'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800',
+    icon: AlertCircle,
   },
 
   // Assignment state. The stored enum value is 'pending approval'; the label
@@ -308,11 +337,7 @@ export function StatusBadge({
     return (
       <Badge
         variant="outline"
-        className={cn(
-          'font-medium gap-1.5 whitespace-nowrap',
-          themeClass,
-          className
-        )}
+        className={cn(BADGE_LAYOUT, themeClass, className)}
       >
         {showIcon && <Icon className="h-3.5 w-3.5" />}
         {label ?? value}
@@ -332,11 +357,7 @@ export function StatusBadge({
   return (
     <Badge
       variant="outline"
-      className={cn(
-        'font-medium gap-1.5 whitespace-nowrap',
-        resolvedConfig.className,
-        className
-      )}
+      className={cn(BADGE_LAYOUT, resolvedConfig.className, className)}
     >
       {showIcon && <Icon className="h-3.5 w-3.5" />}
       {displayLabel}

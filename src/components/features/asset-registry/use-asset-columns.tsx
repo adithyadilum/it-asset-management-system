@@ -15,30 +15,6 @@ export interface ManualStatus {
   iconName?: string;
 }
 
-/**
- * Badge colours for the Office Electronics condition column.
- *
- * Two different vocabularies land in this column and both need entries. When an
- * asset has a `condition` set, that enum value is shown verbatim; only when it
- * is null does `toElectronicsDisplayCondition` derive a status word. The map
- * previously held the derived words alone, so every asset that actually had a
- * condition recorded fell through to the grey default -- which is most of them.
- */
-const ELECTRONICS_CONDITION_STYLES: Record<string, string> = {
-  // asset_condition enum values.
-  New: 'border border-emerald-300 bg-emerald-50 text-emerald-700',
-  Excellent: 'border border-green-300 bg-green-50 text-green-700',
-  Fair: 'border border-amber-300 bg-amber-50 text-amber-700',
-  Poor: 'border border-orange-300 bg-orange-50 text-orange-700',
-  Damaged: 'border border-red-300 bg-red-50 text-red-700',
-
-  // Derived from asset status when no condition has been recorded.
-  Active: 'border border-green-300 bg-green-50 text-green-700',
-  'Inspection Due': 'border border-blue-300 bg-blue-50 text-blue-700',
-  'Under Maintenance': 'border border-orange-300 bg-orange-50 text-orange-700',
-  Scheduled: 'border border-border bg-muted text-foreground',
-};
-
 function toElectronicsDisplayCondition(row: AssetRegistryRow) {
   if (row.condition) {
     return row.condition;
@@ -71,18 +47,47 @@ function toCellText(value: string | null | undefined) {
   return value;
 }
 
-function renderElectronicsConditionBadge(condition: string) {
-  const className =
-    ELECTRONICS_CONDITION_STYLES[condition] ??
-    'border border-border bg-muted text-foreground';
+/**
+ * Was a hand-rolled `<span>` with its own padding and radius, which is why
+ * these badges looked unlike the rest of the registry. StatusBadge knows every
+ * condition and derived status this column can produce.
+ */
+/**
+ * Asset status plus, when one is outstanding, the assignment's own state.
+ *
+ * An asset flips to 'Assigned' the moment an assignment is created, so status
+ * alone cannot distinguish an acknowledged assignment from one still waiting on
+ * the assignee. Shown as a second badge rather than replacing the status,
+ * because they answer different questions.
+ */
+function StatusWithAssignment({
+  status,
+  assignmentState,
+  colorTheme,
+  iconName,
+}: {
+  status: string;
+  assignmentState?: string | null;
+  colorTheme?: string;
+  iconName?: string;
+}) {
+  const isPending = assignmentState === 'pending approval';
 
   return (
-    <span
-      className={`inline-flex h-5 items-center rounded-full px-2 text-[11px] ${className}`}
-    >
-      {condition}
-    </span>
+    <div className="flex flex-col items-start gap-1">
+      <StatusBadge
+        value={status}
+        showIcon
+        colorTheme={colorTheme}
+        iconName={iconName}
+      />
+      {isPending ? <StatusBadge value="pending approval" showIcon /> : null}
+    </div>
   );
+}
+
+function renderElectronicsConditionBadge(condition: string) {
+  return <StatusBadge value={condition} showIcon />;
 }
 
 export function useAssetColumns(
@@ -118,7 +123,10 @@ export function useAssetColumns(
           // "Expired") under the badge. Expiry dates remain on the licence
           // detail panel and in the dedicated Software view.
           cell: ({ row }) => (
-            <StatusBadge value={row.original.status} showIcon />
+            <StatusWithAssignment
+              status={row.original.status}
+              assignmentState={row.original.assignmentState}
+            />
           ),
         },
         {
@@ -142,9 +150,10 @@ export function useAssetColumns(
                 coreTotal > 0 ? (row.original.availableSeats ?? 0) : total;
               const assigned = Math.max(0, total - available);
               return (
-                <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset bg-muted text-foreground ring-border whitespace-nowrap">
-                  {assigned} / {total} Assigned
-                </span>
+                <StatusBadge
+                  variant="metadata"
+                  label={`${assigned} / ${total} Assigned`}
+                />
               );
             }
             return toCellText(row.original.assignedTo || row.original.location);
@@ -278,19 +287,39 @@ export function useAssetColumns(
 
             if (row.original.pillar !== 'Software') return null;
 
+            // Seats are irrelevant once the licence has lapsed: an expired
+            // licence with eight free seats is not eight seats you can use.
+            const expiryDate = row.original.expiryDate
+              ? new Date(row.original.expiryDate)
+              : null;
+            const isExpired = expiryDate ? expiryDate < new Date() : false;
+
+            if (isExpired) {
+              return (
+                <StatusBadge
+                  variant="metadata"
+                  label="Unavailable"
+                  className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                />
+              );
+            }
+
+            // Seat availability is a judgement, not a status name, so the
+            // colour is chosen here — but the shape comes from StatusBadge like
+            // every other badge.
             return (
               <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                <StatusBadge
+                  variant="metadata"
+                  label={`${available} / ${total} Available`}
+                  className={
                     available === 0
-                      ? 'bg-red-50 text-red-700 ring-red-600/10'
+                      ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400'
                       : isLow
-                        ? 'bg-amber-50 text-amber-700 ring-amber-600/10'
-                        : 'bg-green-50 text-green-700 ring-green-600/10'
-                  }`}
-                >
-                  {available} / {total} Available
-                </span>
+                        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400'
+                        : 'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400'
+                  }
+                />
               </div>
             );
           },
@@ -359,9 +388,9 @@ export function useAssetColumns(
             (s) => s.value === row.original.status
           );
           return (
-            <StatusBadge
-              value={row.original.status}
-              showIcon
+            <StatusWithAssignment
+              status={row.original.status}
+              assignmentState={row.original.assignmentState}
               colorTheme={statusConfig?.colorTheme}
               iconName={statusConfig?.iconName}
             />

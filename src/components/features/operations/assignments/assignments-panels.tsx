@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AssetAssignmentDetailsPanel } from '@/components/features/asset-registry/panels/asset-assignment-panel';
+import { AssetDetailsPanel } from '@/components/features/asset-registry/panels/asset-details-panel';
 import { AssetAssignmentModal } from './asset-assignment-modal';
 import {
   getAssetDetailsByIdAction,
@@ -51,6 +51,23 @@ interface AssignmentsPanelsProps {
   onClose: () => void;
 }
 
+function formatDisplayDate(value: string | null | undefined) {
+  if (!value) return '';
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-GB');
+}
+
+/**
+ * The asset panel, opened from the operations assignments grid.
+ *
+ * This used to render its own panel component, a near-copy of the registry's
+ * that had drifted: it missed the model image, printed '-' for fields the
+ * registry showed, and labelled a location assignment "Assigned to". Both
+ * paths now render `AssetDetailsPanel` over the same `getAssetDetailsByIdAction`
+ * payload, so a fix to one is a fix to both. The lifecycle actions this path
+ * needs -- reminder, cancel, receive -- live in `asset-action-config.ts` and
+ * are chosen from the assignment state.
+ */
 export function AssignmentsPanels({
   isOpen,
   disableTransition,
@@ -123,6 +140,8 @@ export function AssignmentsPanels({
     return null;
   }
 
+  const details = fetchedData?.details ?? null;
+
   const handleSendReminder = async () => {
     if (!cachedAsset.assignmentId) return;
     const result = await sendAssignmentReminderAction([
@@ -167,63 +186,103 @@ export function AssignmentsPanels({
     }
   };
 
+  const lastCompletedRepair = fetchedData?.maintenance?.find(
+    (event: MaintenanceEvent) => event.status === 'COMPLETED'
+  )?.actualCompletionDate;
+
   return (
     <>
-      <AssetAssignmentDetailsPanel
+      <AssetDetailsPanel
         isOpen={isOpen}
         disableTransition={disableTransition}
         isLoading={isLoading}
         onClose={onClose}
         assetId={cachedAsset.assetId ?? ''}
         assetTag={cachedAsset.assetTag ?? '-'}
-        assetName={cachedAsset.assetName}
-        category={cachedAsset.category ?? ''}
-        model={fetchedData?.details?.model?.name ?? cachedAsset.model ?? ''}
-        // The details fetch above already carries the model image; it was
-        // simply never passed on, so this panel always fell through to the
-        // "No image available" placeholder.
-        imageUrl={fetchedData?.details?.model?.imageUrl ?? ''}
-        brand={
-          fetchedData?.details?.model?.brand?.name ?? cachedAsset.brand ?? ''
+        assetName={details?.asset.name ?? cachedAsset.assetName}
+        assetCategory={
+          details?.model.category.pillar ?? cachedAsset.group ?? ''
         }
-        serialNumber={cachedAsset.serialNumber ?? ''}
-        owner={
-          fetchedData?.details?.owner?.companyName ?? cachedAsset.owner ?? ''
+        pillar={details?.model.category.pillar ?? cachedAsset.group ?? ''}
+        model={details?.model?.name ?? cachedAsset.model ?? ''}
+        // The details fetch above already carries the model image; the old
+        // panel never passed it on, so it always showed the placeholder.
+        imageUrl={details?.model?.imageUrl ?? ''}
+        brand={details?.model?.brand?.name ?? cachedAsset.brand ?? ''}
+        serialNumber={details?.asset.serialNumber ?? cachedAsset.serialNumber}
+        owner={details?.owner?.companyName ?? cachedAsset.owner ?? ''}
+        // A location assignment has no user; falling through to '-' made an
+        // assigned asset look unassigned.
+        assignedTo={
+          details?.assignment?.assignedToUser?.name ??
+          details?.assignment?.assignedToLocation?.name ??
+          cachedAsset.assignedTo ??
+          ''
         }
-        assignedTo={cachedAsset.assignedTo ?? ''}
-        department={cachedAsset.department ?? ''}
-        assignedDate={cachedAsset.assignedDate ?? ''}
-        expectedReturnDate={cachedAsset.expectedReturnDate ?? ''}
+        assignedDate={
+          formatDisplayDate(details?.assignment?.assignedDate) ||
+          cachedAsset.assignedDate
+        }
+        expectedReturnDate={
+          formatDisplayDate(details?.assignment?.expectedReturnDate) ||
+          cachedAsset.expectedReturnDate
+        }
+        location={details?.location?.name ?? ''}
+        condition={details?.asset.condition ?? ''}
         group={cachedAsset.group ?? ''}
         dateCreated={cachedAsset.dateCreated ?? ''}
         updatedAt={cachedAsset.updatedAt ?? ''}
         warranty={
-          fetchedData?.details?.purchase?.warrantyExpiry
-            ? new Date(
-                fetchedData.details.purchase.warrantyExpiry
-              ).toLocaleDateString('en-GB')
-            : (cachedAsset.warranty ?? '')
+          formatDisplayDate(details?.purchase?.warrantyExpiry) ||
+          (cachedAsset.warranty ?? '')
         }
         lastRepaired={
-          fetchedData?.maintenance?.find(
-            (m: MaintenanceEvent) => m.status === 'COMPLETED'
-          )?.actualCompletionDate
-            ? new Date(
-                fetchedData.maintenance.find(
-                  (m: MaintenanceEvent) => m.status === 'COMPLETED'
-                )!.actualCompletionDate!
-              ).toLocaleDateString('en-GB')
-            : (cachedAsset.lastRepaired ?? '')
+          formatDisplayDate(lastCompletedRepair) ||
+          (cachedAsset.lastRepaired ?? '')
         }
-        note={cachedAsset.note ?? ''}
-        status={cachedAsset.status ?? 'Available'}
-        state={cachedAsset.state}
+        note={details?.assignment?.notes ?? cachedAsset.note ?? ''}
+        status={details?.asset.status ?? cachedAsset.status ?? 'Available'}
+        assignmentState={details?.assignment?.state ?? cachedAsset.state}
+        specs={{
+          ...(details?.model?.technicalDetails as Record<
+            string,
+            string | number | undefined
+          >),
+          ...(details?.asset?.instanceAttributes as Record<
+            string,
+            string | number | undefined
+          >),
+        }}
+        purchaseDate={formatDisplayDate(details?.purchase?.purchaseDate)}
+        basePrice={details?.purchase?.basePrice ?? ''}
+        shippingCost={details?.purchase?.shippingCost ?? ''}
+        tax={details?.purchase?.tax ?? ''}
+        totalCost={String(details?.purchase?.totalCost ?? '')}
+        currency={details?.purchase?.currencyCode}
+        sourceCurrency={details?.purchase?.currencyCode}
+        invoiceUrl={details?.purchase?.invoiceUrl ?? ''}
+        vendorInfo={
+          details?.vendor
+            ? {
+                vendorId: String(details.vendor.id),
+                vendorCode: details.vendor.vendorCode ?? undefined,
+                vendorName: details.vendor.companyName,
+                contactNumber: details.vendor.phone ?? undefined,
+                email: details.vendor.email ?? undefined,
+                website: details.vendor.website ?? undefined,
+              }
+            : undefined
+        }
+        totalSeats={details?.softwareLicense?.totalSeats}
+        availableSeats={details?.softwareLicense?.availableSeats}
+        expiryDate={formatDisplayDate(details?.softwareLicense?.expiryDate)}
+        licenseType={details?.softwareLicense?.licenseType}
         maintenanceEvents={fetchedData?.maintenance ?? []}
-        onEdit={() => {}}
         onAssign={() => setIsAssignmentModalOpen(true)}
-        onSendReminder={handleSendReminder}
+        onRemindReturn={handleSendReminder}
         onRequestReturn={handleRequestReturn}
-        onMarkReceived={handleMarkReceived}
+        onMarkReturned={handleMarkReceived}
+        onProcessReturn={handleMarkReceived}
         onCancelAssignment={handleCancelAssignment}
       />
 

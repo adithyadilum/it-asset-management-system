@@ -9,11 +9,18 @@ import {
   categories,
   maintenanceTickets,
   assetDisposals,
+  locations,
 } from '@/db/schema';
 import { eq, sql, desc, and, ne, ilike, or, count } from 'drizzle-orm';
 import { unstable_rethrow } from 'next/navigation';
 import { enforceActionAccess } from '@/actions/auth';
-import { calculateCurrentBookValue } from '@/lib/depreciation';
+import { convertCurrencyAmount, SUMMARY_CURRENCY } from '@/lib/currency';
+import {
+  DEFAULT_USEFUL_LIFE_MONTHS,
+  calculateCurrentBookValue,
+  calculateMonthsElapsed,
+  projectBookValueSeries,
+} from '@/lib/depreciation';
 import {
   depreciationLedgerParamsSchema,
   tcoLedgerParamsSchema,
@@ -38,6 +45,8 @@ export interface LedgerPaginationParams {
   pageSize?: number;
   search?: string;
   category?: string;
+  pillar?: string;
+  location?: string;
 }
 
 /**
@@ -59,6 +68,8 @@ export async function getDepreciationLedger(
       pageSize: validPageSize,
       search,
       category,
+      pillar,
+      location,
       ageFilter,
     } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
@@ -77,6 +88,18 @@ export async function getDepreciationLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (ageFilter && ageFilter !== 'All') {
@@ -140,6 +163,12 @@ export async function getDepreciationLedger(
         purchaseDate: row.purchaseDate,
       });
 
+      const lifeMonths = row.usefulLifeMonths || DEFAULT_USEFUL_LIFE_MONTHS;
+      const monthsElapsed = Math.min(
+        lifeMonths,
+        Math.max(0, calculateMonthsElapsed(row.purchaseDate))
+      );
+
       return {
         id: row.id,
         assetId: row.assetTag,
@@ -147,13 +176,87 @@ export async function getDepreciationLedger(
         purchaseDate: row.purchaseDate,
         originalPrice: price,
         currencyCode: row.currencyCode || 'LKR',
-        expectedLifespan: `${(row.usefulLifeMonths || 60) / 12} years`,
+        expectedLifespan: `${lifeMonths / 12} years`,
+        // The column showed a life but never how much of it was left, which is
+        // the number a reviewer is actually after.
+        lifeMonths,
+        monthsElapsed,
         currentBookValue: Math.round(bookValue * 100) / 100,
       };
     });
 
+    // Totals across everything the filters match, not just the page. Computed
+    // from the same inputs the rows use so the header cannot disagree with the
+    // table under it.
+    const summaryRows = await db
+      .select({
+        originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
+        salvageValue: assets.salvageValue,
+        usefulLifeMonths: assets.usefulLifeMonths,
+        purchaseDate: assetPurchases.purchaseDate,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .where(whereClause);
+
+    // Every total below is normalised to LKR before being added up. Assets are
+    // purchased in three currencies and the rows carry their native one, so
+    // summing them raw would produce a number in no currency at all.
+    const toLkr = (value: unknown, from: string | null) =>
+      convertCurrencyAmount(
+        parseFloat(value?.toString() || '0'),
+        from || 'LKR',
+        SUMMARY_CURRENCY
+      );
+
+    const bookValueSeries = projectBookValueSeries(
+      summaryRows.map((row) => ({
+        cost: toLkr(row.originalPrice, row.currencyCode),
+        salvageValue: toLkr(row.salvageValue, row.currencyCode),
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      }))
+    );
+
+    let totalCost = 0;
+    let totalBookValue = 0;
+    let fullyDepreciated = 0;
+
+    for (const row of summaryRows) {
+      const price = toLkr(row.originalPrice, row.currencyCode);
+      const salvage = toLkr(row.salvageValue, row.currencyCode);
+      const bookValue = calculateCurrentBookValue({
+        cost: price,
+        salvageValue: salvage,
+        usefulLifeMonths: row.usefulLifeMonths,
+        purchaseDate: row.purchaseDate,
+      });
+
+      totalCost += price;
+      totalBookValue += bookValue;
+      // "Fully depreciated" means written down to salvage, which is the floor
+      // calculateStraightLineNBV clamps to.
+      if (bookValue <= salvage + 0.005) fullyDepreciated += 1;
+    }
+
     return {
       data: ledgers,
+      summary: {
+        bookValueSeries,
+        totalCost: Math.round(totalCost * 100) / 100,
+        totalBookValue: Math.round(totalBookValue * 100) / 100,
+        accumulatedDepreciation:
+          Math.round((totalCost - totalBookValue) * 100) / 100,
+        fullyDepreciated,
+        assetCount: summaryRows.length,
+        // Depreciation steps in whole calendar months, so a figure that does
+        // not move between visits is correct rather than stale. Saying when it
+        // was computed makes that legible.
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -198,6 +301,8 @@ export async function getTCOLedger(
       pageSize: validPageSize,
       search,
       category,
+      pillar,
+      location,
       costFilter,
     } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
@@ -230,6 +335,18 @@ export async function getTCOLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (costFilter && costFilter !== 'All') {
@@ -296,8 +413,59 @@ export async function getTCOLedger(
       };
     });
 
+    // Totals across everything the filters match. Purchase and maintenance are
+    // kept apart because the question this page answers is how much an asset
+    // has cost *since* it was bought.
+    const summaryRows = await db
+      // The CTE has to be declared on this query too; without it the join
+      // references a table the statement never defines.
+      .with(repairCostsSq)
+      .select({
+        originalPrice: assetPurchases.totalCost,
+        currencyCode: assetPurchases.currencyCode,
+        totalRepairCosts: repairCostsSq.totalRepair,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .innerJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .leftJoin(repairCostsSq, eq(assets.id, repairCostsSq.assetId))
+      .where(whereClause);
+
+    let totalPurchase = 0;
+    let totalMaintenance = 0;
+    let maintainedCount = 0;
+
+    for (const row of summaryRows) {
+      const price = convertCurrencyAmount(
+        parseFloat(row.originalPrice?.toString() || '0'),
+        row.currencyCode || 'LKR',
+        SUMMARY_CURRENCY
+      );
+      const repairs = convertCurrencyAmount(
+        parseFloat(row.totalRepairCosts?.toString() || '0'),
+        row.currencyCode || 'LKR',
+        SUMMARY_CURRENCY
+      );
+      totalPurchase += price;
+      totalMaintenance += repairs;
+      if (repairs > 0) maintainedCount += 1;
+    }
+
     return {
       data: ledgers,
+      summary: {
+        totalPurchase: Math.round(totalPurchase * 100) / 100,
+        totalMaintenance: Math.round(totalMaintenance * 100) / 100,
+        totalTCO: Math.round((totalPurchase + totalMaintenance) * 100) / 100,
+        maintenanceShare:
+          totalPurchase > 0
+            ? Math.round((totalMaintenance / totalPurchase) * 1000) / 10
+            : 0,
+        maintainedCount,
+        assetCount: summaryRows.length,
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -342,6 +510,8 @@ export async function getWriteOffsLedger(
       pageSize: validPageSize,
       search,
       category,
+      pillar,
+      location,
       salvageFilter,
     } = resultParse.data;
     const offset = (validPage - 1) * validPageSize;
@@ -360,6 +530,18 @@ export async function getWriteOffsLedger(
 
     if (category && category !== 'All') {
       conditions.push(eq(categories.name, category));
+    }
+
+    if (pillar && pillar !== 'All') {
+      conditions.push(eq(categories.pillar, pillar));
+    }
+
+    if (location && location !== 'All') {
+      // A subquery rather than a join: the count and summary queries would each
+      // need the same join added, and a stray one would change their row count.
+      conditions.push(
+        sql`${assets.locationId} IN (SELECT ${locations.id} FROM ${locations} WHERE ${locations.name} = ${location})`
+      );
     }
 
     if (salvageFilter && salvageFilter !== 'All') {
@@ -433,8 +615,75 @@ export async function getWriteOffsLedger(
       actualSalvageValue: parseFloat(row.actualSalvageValue?.toString() || '0'),
     }));
 
+    // Realised against expected is the question this page exists to answer:
+    // whether disposals recovered what they were forecast to.
+    const summaryRows = await db
+      .select({
+        bookValueAtDisposal: assetDisposals.bookValueAtDisposal,
+        currencyCode: assetPurchases.currencyCode,
+        estimatedSalvageValue: assets.salvageValue,
+        actualSalvageValue: assetDisposals.actualSalvageValue,
+        status: assetDisposals.status,
+      })
+      .from(assets)
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
+      .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(assetDisposals, eq(assets.id, assetDisposals.assetId))
+      .where(whereClause);
+
+    let totalWrittenOff = 0;
+    let totalExpectedSalvage = 0;
+    let totalRealisedSalvage = 0;
+    // Grouped by outcome because "did disposals recover what we expected?" is
+    // a different question for a sale than for a write-off.
+    const byStatus = new Map<
+      string,
+      { count: number; expected: number; realised: number }
+    >();
+
+    for (const row of summaryRows) {
+      // Normalised to one currency before being added up -- assets are bought
+      // in three, and the rows carry their native one.
+      const toLkr = (value: unknown) =>
+        convertCurrencyAmount(
+          parseFloat(value?.toString() || '0'),
+          row.currencyCode || 'LKR',
+          SUMMARY_CURRENCY
+        );
+
+      totalWrittenOff += toLkr(row.bookValueAtDisposal);
+      totalExpectedSalvage += toLkr(row.estimatedSalvageValue);
+      totalRealisedSalvage += toLkr(row.actualSalvageValue);
+      const status = row.status ?? 'Unknown';
+      const group = byStatus.get(status) ?? {
+        count: 0,
+        expected: 0,
+        realised: 0,
+      };
+      group.count += 1;
+      group.expected += toLkr(row.estimatedSalvageValue);
+      group.realised += toLkr(row.actualSalvageValue);
+      byStatus.set(status, group);
+    }
+
     return {
       data: ledgers,
+      summary: {
+        disposalCount: summaryRows.length,
+        totalWrittenOff: Math.round(totalWrittenOff * 100) / 100,
+        totalExpectedSalvage: Math.round(totalExpectedSalvage * 100) / 100,
+        totalRealisedSalvage: Math.round(totalRealisedSalvage * 100) / 100,
+        salvageVariance:
+          Math.round((totalRealisedSalvage - totalExpectedSalvage) * 100) / 100,
+        byStatus: Array.from(byStatus.entries()).map(([status, group]) => ({
+          status,
+          count: group.count,
+          expected: Math.round(group.expected * 100) / 100,
+          realised: Math.round(group.realised * 100) / 100,
+        })),
+        asOf: new Date().toISOString(),
+      },
       meta: {
         total: totalRows,
         page: validPage,
@@ -458,4 +707,41 @@ export async function getWriteOffsLedger(
     }
     throw new Error('Failed to load write-offs ledger.');
   }
+}
+
+/**
+ * The values the ledger filters offer.
+ *
+ * The three ledgers each derived their category list from the rows they had
+ * been handed, which is one page -- sixteen assets. Any category absent from
+ * that page could not be filtered for, so the filter could not reach the rows
+ * it existed to find. Read the distinct values from the tables instead.
+ */
+export async function getFinancialsFilterOptions() {
+  await enforceFinanceAccess();
+
+  const [categoryRows, locationRows] = await Promise.all([
+    db
+      .selectDistinct({ name: categories.name, pillar: categories.pillar })
+      .from(categories)
+      .where(eq(categories.isActive, true))
+      .orderBy(categories.name),
+    db
+      .selectDistinct({ name: locations.name })
+      .from(locations)
+      .where(eq(locations.isActive, true))
+      .orderBy(locations.name),
+  ]);
+
+  return {
+    categories: categoryRows.map((row) => row.name),
+    pillars: Array.from(new Set(categoryRows.map((row) => row.pillar))).sort(),
+    locations: locationRows.map((row) => row.name),
+  };
+}
+
+export interface FinancialsFilterOptions {
+  categories: string[];
+  pillars: string[];
+  locations: string[];
 }

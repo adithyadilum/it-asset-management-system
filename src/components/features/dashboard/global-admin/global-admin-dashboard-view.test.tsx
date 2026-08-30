@@ -43,7 +43,8 @@ describe('GlobalAdminDashboardView', () => {
       recentActivities: [],
       overdueReturns: [],
       pendingDisposals: [],
-      highMaintenance: [],
+      highMaintenanceAssets: [],
+      pendingMaintenance: [],
     };
 
     render(

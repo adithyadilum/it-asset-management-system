@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { assignAssetAction } from '@/actions/assignments';
 import { tiqriToast } from '@/components/shared/sonner';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 import {
   DURATION_OPTIONS,
   CUSTOM_DURATION_VALUE,
@@ -48,8 +49,7 @@ export function AssetAssignmentModal({
   onOpenChange,
 }: AssetAssignmentModalProps) {
   const router = useRouter();
-  const disableUserAssignment =
-    assetGroup === 'Office Furniture' || assetGroup === 'Office Electronics';
+  const disableUserAssignment = isLocationAssignedPillar(assetGroup);
 
   const {
     assignmentMode,

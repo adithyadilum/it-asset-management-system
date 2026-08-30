@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { PageSkeleton } from '@/components/shared/page-skeleton';
+import { DashboardSkeleton } from '@/components/features/dashboard/dashboard-skeleton';
 import { getAuthenticatedUser } from '@/actions/auth';
 
 import { DashboardHeader } from '@/components/features/dashboard/shared/dashboard-header';
@@ -81,7 +81,7 @@ async function DashboardPageContent() {
  */
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<PageSkeleton />}>
+    <Suspense fallback={<DashboardSkeleton />}>
       <DashboardPageContent />
     </Suspense>
   );

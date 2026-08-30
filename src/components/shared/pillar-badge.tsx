@@ -2,6 +2,7 @@ import { Code, Laptop, Monitor, Sofa } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { BADGE_LAYOUT } from '@/components/shared/badge-layout';
 import type { RegistryPillar } from '@/lib/data/asset-registry-repo';
 
 interface PillarBadgeProps {
@@ -43,14 +44,10 @@ export function PillarBadge({ pillar, className }: PillarBadgeProps) {
   return (
     <Badge
       variant="outline"
-      className={cn(
-        'flex w-fit items-center gap-1.5 px-2.5 py-0.5 whitespace-nowrap',
-        colorClass,
-        className
-      )}
+      className={cn(BADGE_LAYOUT, colorClass, className)}
     >
       <Icon className="h-3.5 w-3.5" />
-      <span className="font-medium">{pillar}</span>
+      <span>{pillar}</span>
     </Badge>
   );
 }

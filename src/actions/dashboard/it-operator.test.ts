@@ -23,6 +23,7 @@ const mockGetCachedInventoryStatus = vi.fn();
 const mockGetCachedDepartmentAllocation = vi.fn();
 const mockGetOverdueReturnsInternal = vi.fn();
 const mockGetHighMaintenanceAssetsInternal = vi.fn();
+const mockGetPendingMaintenanceRequestsInternal = vi.fn();
 
 vi.mock('./queries/kpis', () => ({
   getCachedDashboardKpiMetrics: () => mockGetCachedDashboardKpiMetrics(),
@@ -34,6 +35,8 @@ vi.mock('./queries/inventory', () => ({
   getOverdueReturnsInternal: () => mockGetOverdueReturnsInternal(),
   getHighMaintenanceAssetsInternal: () =>
     mockGetHighMaintenanceAssetsInternal(),
+  getPendingMaintenanceRequestsInternal: () =>
+    mockGetPendingMaintenanceRequestsInternal(),
 }));
 
 describe('getITDashboardData', () => {
