@@ -437,6 +437,33 @@ describe('Write Operations: initiateVendorRepair', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
   });
 
+  it('refuses to re-dispatch a ticket already sent to a vendor', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const validUuid = '550e8400-e29b-41d4-a716-446655440000';
+
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: validUuid, status: 'In Repair' }])
+    ); // Asset
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, companyName: 'Dell' }])); // Vendor
+    // Dispatching leaves the ticket ACTIVE and only flips ticketType, so a
+    // status-only guard would let a stale tab dispatch it a second time.
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: 1,
+          assetId: validUuid,
+          status: 'ACTIVE',
+          ticketType: 'VENDOR',
+        },
+      ])
+    );
+    mockDb.update.mockReturnValue(chain([{ id: 1 }]));
+
+    await expect(
+      initiateVendorRepair(1, validUuid, '1', 'RMA-123')
+    ).rejects.toThrow('Ticket has already been dispatched to a vendor');
+  });
+
   it('refuses to dispatch a ticket that is already dispatched', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     const validUuid = '550e8400-e29b-41d4-a716-446655440000';

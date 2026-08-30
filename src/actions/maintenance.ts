@@ -707,8 +707,14 @@ export async function initiateVendorRepair(
       if (triageTicket.assetId !== parsed.data.assetId)
         throw new Error('Ticket does not belong to this asset');
       // Guards against dispatching the same ticket twice from a stale tab.
+      // Status alone is not enough: dispatching leaves the ticket ACTIVE and
+      // only flips ticketType, so a second submit would sail past a status
+      // check and overwrite the vendor and RMA while duplicating the audit log
+      // and webhook. Only a ticket still in triage can be dispatched.
       if (triageTicket.status !== 'ACTIVE')
         throw new Error('Ticket is no longer active');
+      if (triageTicket.ticketType !== 'INTERNAL')
+        throw new Error('Ticket has already been dispatched to a vendor');
 
       const updatedAsset = await tx
         .update(assets)
@@ -789,6 +795,7 @@ export async function initiateVendorRepair(
       // message.
       'Ticket does not belong to this asset',
       'Ticket is no longer active',
+      'Ticket has already been dispatched to a vendor',
     ];
     const isKnown =
       error instanceof Error &&
