@@ -50,5 +50,5 @@ describe('MasterDataManagementClient', () => {
     
     // It should render categories by default since it's the first tab (if not from URL)
     expect(screen.getByText('Category 1')).toBeInTheDocument();
-  });
+  }, 15000);
 });

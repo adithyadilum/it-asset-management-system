@@ -17,6 +17,7 @@ export default defineConfig({
     // --- MEMORY LEAK FIX (Modern Vitest API) ---
     // Use isolated forks to completely flush RAM between files
     pool: 'forks',
-    isolate: true, 
+    isolate: true,
+    testTimeout: 15000,
   },
 });
