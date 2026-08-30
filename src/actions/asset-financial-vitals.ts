@@ -1,5 +1,6 @@
 'use server';
 
+import { logInfo } from '@/lib/latency';
 import { enforceActionAccess } from '@/actions/auth';
 import { resolveAssetPrimaryId } from '@/lib/data/asset-details-repo';
 import {
@@ -51,7 +52,7 @@ export async function getAssetFinancialVitals(
         error.message.includes('Forbidden'));
 
     if (isAuthError) {
-      console.debug(
+      logInfo(
         '[getAssetFinancialVitals] Authorization denied for asset %s',
         assetId
       );

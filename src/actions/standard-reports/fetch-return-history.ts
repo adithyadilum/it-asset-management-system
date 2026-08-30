@@ -9,6 +9,7 @@ import {
   users,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
+import { formatAssignmentState } from '@/lib/assignments/labels';
 import type {
   ReportPreviewFilters,
   ReportPreviewRow,
@@ -130,7 +131,7 @@ export async function fetchReturnHistory(
         : '-',
       'Duration (Days)': String(duration >= 0 ? duration : 0),
       'Return Condition': row.returnCondition || '-',
-      State: row.state,
+      State: formatAssignmentState(row.state),
       Notes: row.notes || '-',
     };
   });

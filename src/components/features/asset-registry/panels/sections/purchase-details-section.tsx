@@ -56,6 +56,10 @@ type PurchaseDetailsSectionProps = {
   setWarrantyMonths: (v: string) => void;
   WARRANTY_MONTH_OPTIONS: RegistrationOption[];
 
+  expectedLifespanYears: string;
+  setExpectedLifespanYears: (v: string) => void;
+  EXPECTED_LIFESPAN_OPTIONS: RegistrationOption[];
+
   invoiceInputRef: React.RefObject<HTMLInputElement | null>;
   showInvoiceUploader: boolean;
   setShowInvoiceUploader: (v: boolean) => void;
@@ -94,6 +98,9 @@ export function PurchaseDetailsSection({
   warrantyMonths,
   setWarrantyMonths,
   WARRANTY_MONTH_OPTIONS,
+  expectedLifespanYears,
+  setExpectedLifespanYears,
+  EXPECTED_LIFESPAN_OPTIONS,
   invoiceInputRef,
   showInvoiceUploader,
   setShowInvoiceUploader,
@@ -254,6 +261,29 @@ export function PurchaseDetailsSection({
             />
           </InlineFieldRow>
         )}
+
+        <InlineFieldRow
+          label="Expected Lifespan :"
+          error={getError(state, 'expectedLifespanYears')}
+          alignTop
+        >
+          <>
+            <SearchableDropdown
+              options={EXPECTED_LIFESPAN_OPTIONS}
+              placeholder="Expected Lifespan.."
+              emptyMessage="No lifespan options found."
+              onSelect={setExpectedLifespanYears}
+              value={expectedLifespanYears}
+            />
+            {/* Drives straight-line depreciation. Editable later from the
+                asset edit panel. */}
+            <input
+              type="hidden"
+              name="expectedLifespanYears"
+              value={expectedLifespanYears}
+            />
+          </>
+        </InlineFieldRow>
 
         {config.showWarrantyPeriod && (
           <InlineFieldRow

@@ -13,10 +13,16 @@ export function useBarcodeInjection(onInject: (barcode: string) => void) {
     // Initialize Pusher
     const pusher = new Pusher(clientEnv.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: clientEnv.NEXT_PUBLIC_PUSHER_CLUSTER,
+      // Private channels are authorized server-side; the session cookie rides
+      // along with the same-origin request.
+      channelAuthorization: {
+        endpoint: '/api/v1/pusher/auth',
+        transport: 'ajax',
+      },
     });
 
-    // Subscribe to user-specific channel
-    const channelName = `user-${userId}`;
+    // Private channel scoped to this user; nobody else can subscribe.
+    const channelName = `private-user-${userId}`;
     const channel = pusher.subscribe(channelName);
 
     // Bind to the barcode scanned event

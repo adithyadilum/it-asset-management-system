@@ -3,6 +3,19 @@ import { Redis } from '@upstash/redis';
 import { serverEnv } from '@/lib/env';
 
 let ratelimitInstance: Ratelimit | null = null;
+
+/**
+ * Whether Upstash credentials are present.
+ *
+ * `Redis.fromEnv()` throws when they are not, so callers that must not fail the
+ * request check this first. Production always has them — `assertProductionEnv`
+ * refuses to start the server otherwise.
+ */
+export function isRateLimitConfigured(): boolean {
+  return Boolean(
+    serverEnv.UPSTASH_REDIS_REST_URL && serverEnv.UPSTASH_REDIS_REST_TOKEN
+  );
+}
 let preAuthRateLimitInstance: Ratelimit | null = null;
 
 export function getRateLimiter(): Ratelimit {

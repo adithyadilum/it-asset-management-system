@@ -8,6 +8,15 @@ const USD_EXCHANGE_RATE_BY_CURRENCY: Record<SupportedCurrency, number> = {
 
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
+/**
+ * The currency server-side totals are reported in.
+ *
+ * Assets are purchased in any of the supported currencies, so a sum has to be
+ * normalised to one of them before it means anything. The client converts from
+ * here to whatever the currency switcher is set to.
+ */
+export const SUMMARY_CURRENCY: SupportedCurrency = 'LKR';
+
 export function isSupportedCurrency(
   currency: string
 ): currency is SupportedCurrency {

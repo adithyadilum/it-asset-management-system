@@ -10,6 +10,7 @@ import {
   getOverdueReturnsInternal,
   getPendingDisposalsInternal,
   getHighMaintenanceAssetsInternal,
+  getPendingMaintenanceRequestsInternal,
 } from './queries/inventory';
 import { getRecentActivitiesInternal } from './queries/activities';
 import {
@@ -23,6 +24,7 @@ import type {
   OverdueReturnRow,
   PendingDisposalRow,
   HighMaintenanceRow,
+  PendingMaintenanceRow,
   RecentActivity,
   TopHighValueAssetRow,
   SoftwareOptimizationRow,
@@ -36,6 +38,7 @@ export interface GlobalAdminDashboardBatchData {
   overdueReturns: OverdueReturnRow[];
   pendingDisposals: PendingDisposalRow[];
   highMaintenanceAssets: HighMaintenanceRow[];
+  pendingMaintenance: PendingMaintenanceRow[];
   recentActivities: RecentActivity[];
   topHighValueAssets: TopHighValueAssetRow[];
   writeOffsLedger: WriteOffLedgerRow[];
@@ -59,6 +62,7 @@ export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboar
     getDashboardTopHighValueAssetsInternal(),
     getWriteOffsLedger({ pageSize: 100 }).then((res) => res.data),
     getDashboardSoftwareOptimizationInternal(),
+    getPendingMaintenanceRequestsInternal(),
   ]);
 
   const QUERY_LABELS = [
@@ -72,6 +76,7 @@ export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboar
     'topHighValueAssets',
     'writeOffsLedger',
     'softwareOptimization',
+    'pendingMaintenance',
   ] as const;
 
   const dataErrors: string[] = results
@@ -135,6 +140,10 @@ export async function getGlobalAdminDashboardData(): Promise<GlobalAdminDashboar
     softwareOptimization:
       results[9].status === 'fulfilled'
         ? (results[9].value as SoftwareOptimizationRow[])
+        : [],
+    pendingMaintenance:
+      results[10].status === 'fulfilled'
+        ? (results[10].value as PendingMaintenanceRow[])
         : [],
     dataErrors,
   };

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SUPPORT_LABEL, SUPPORT_URL } from '@/lib/constants';
 import {
   Empty,
   EmptyContent,
@@ -25,8 +26,8 @@ export default function ForbiddenPage() {
             403 - Access Denied
           </EmptyTitle>
           <EmptyDescription className="max-w-md text-slate-600">
-            Sorry, you do not have permission to access this page. Please
-            contact your administrator if you believe this is an error.
+            Sorry, you do not have permission to access this page. Contact{' '}
+            {SUPPORT_LABEL} if you believe this is an error.
           </EmptyDescription>
         </EmptyHeader>
 
@@ -34,11 +35,15 @@ export default function ForbiddenPage() {
           <Button asChild className="h-11 px-8 bg-[#000066] hover:bg-[#000044]">
             <Link href="/dashboard">Return to Dashboard</Link>
           </Button>
+          {/* This had no onClick and no href at all: clicking it did nothing. */}
           <Button
+            asChild
             variant="outline"
             className="h-11 px-8 border-slate-200 text-slate-600"
           >
-            Contact IT Support
+            <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+              Contact {SUPPORT_LABEL}
+            </a>
           </Button>
         </EmptyContent>
       </Empty>

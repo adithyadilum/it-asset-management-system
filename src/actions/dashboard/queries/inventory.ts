@@ -1,10 +1,11 @@
-import { and, count, eq, isNull, sql } from 'drizzle-orm';
+import { and, count, eq, isNull, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   assetAssignments,
   assetDisposals,
   assets,
   categories,
+  customStatuses,
   departments,
   maintenanceTickets,
   models,
@@ -20,11 +21,13 @@ import type {
   OverdueReturnRow,
   PendingDisposalRow,
   HighMaintenanceRow,
+  PendingMaintenanceRow,
   InventoryStatusResponse,
   InventoryStatusItem,
   DepartmentAllocationItem,
   AssetsByCategoryItem,
 } from '@/types/dashboard';
+import { resolveStatusColor } from '@/lib/status-colors';
 
 export async function getOverdueReturnsInternal(
   limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
@@ -130,6 +133,16 @@ export async function getHighMaintenanceAssetsInternal(
     .from(maintenanceTickets)
     .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
     .innerJoin(models, eq(assets.modelId, models.id))
+    // A cancelled ticket is not a repair, and because it never gets an
+    // `actual_completion_date` the downtime sum below treated it as still open
+    // -- accruing phantom days forever. Archived assets are excluded here for
+    // the same reason every other dashboard query excludes them.
+    .where(
+      and(
+        ne(maintenanceTickets.status, 'CANCELLED'),
+        eq(assets.isArchived, false)
+      )
+    )
     .groupBy(assets.id, assets.assetTag, models.name, assets.status)
     .having(
       sql`COUNT(${maintenanceTickets.id}) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`
@@ -158,16 +171,31 @@ export const getCachedInventoryStatus = unstable_cache(
       .where(eq(assets.isArchived, false))
       .groupBy(assets.status);
 
-    const statusColorMap: Record<string, { label: string; color: string }> = {
-      Available: { label: 'New / Available', color: '#2563eb' },
-      Assigned: { label: 'Assigned', color: '#84cc16' },
-      'In Repair': { label: 'In Repair', color: '#9333ea' },
-      Defective: { label: 'Defective', color: '#ef4444' },
-      Lost: { label: 'Lost', color: '#f97316' },
-      Retired: { label: 'Retired', color: '#64748b' },
-      'Pending Disposal': { label: 'Pending Disposal', color: '#94a3b8' },
-      Disposed: { label: 'Disposed', color: '#e11d48' },
+    // Colours come from the shared status palette so a slice matches the badge
+    // for the same status; only the display labels live here.
+    const statusLabelMap: Record<string, string> = {
+      Available: 'New / Available',
+      Assigned: 'Assigned',
+      'In Repair': 'In Repair',
+      Defective: 'Defective',
+      Lost: 'Lost',
+      Retired: 'Retired',
+      'Pending Disposal': 'Pending Disposal',
+      Disposed: 'Disposed',
     };
+
+    // A custom status is stored on the asset by name, so its configured colour
+    // has to be looked up separately. Without this every custom status was
+    // drawn in the same grey.
+    const customStatusRows = await db
+      .select({
+        name: customStatuses.name,
+        colorTheme: customStatuses.colorTheme,
+      })
+      .from(customStatuses);
+    const customStatusThemes = new Map(
+      customStatusRows.map((row) => [row.name, row.colorTheme])
+    );
 
     const dataMap = new Map<string, number>();
     let totalActive = 0;
@@ -186,19 +214,23 @@ export const getCachedInventoryStatus = unstable_cache(
 
     const inventoryData: InventoryStatusItem[] = [];
 
-    Object.entries(statusColorMap).forEach(([status, meta]) => {
+    Object.entries(statusLabelMap).forEach(([status, label]) => {
       const val = dataMap.get(status) || 0;
       if (val > 0) {
-        inventoryData.push({ name: meta.label, value: val, color: meta.color });
+        inventoryData.push({
+          name: label,
+          value: val,
+          color: resolveStatusColor(status),
+        });
       }
     });
 
     results.forEach((r) => {
-      if (!statusColorMap[r.status] && Number(r.count) > 0) {
+      if (!statusLabelMap[r.status] && Number(r.count) > 0) {
         inventoryData.push({
           name: r.status,
           value: Number(r.count),
-          color: '#6b7280',
+          color: resolveStatusColor(r.status, customStatusThemes.get(r.status)),
         });
       }
     });
@@ -261,3 +293,56 @@ export const getCachedAssetsByCategory = unstable_cache(
   ['dashboard-assets-by-category'],
   { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-categories'] }
 );
+
+/**
+ * Reported issues waiting on IT: internal tickets that are still open.
+ *
+ * The counterpart to overdue returns and pending disposals -- work that has
+ * been raised and not yet actioned. `loadPendingMaintenanceTickets` in
+ * `src/actions/maintenance.ts` answers the same question for the maintenance
+ * page, but returns whole joined records; the dashboard needs six columns.
+ */
+export async function getPendingMaintenanceRequestsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<PendingMaintenanceRow[]> {
+  const rows = await db
+    .select({
+      ticketId: maintenanceTickets.id,
+      assetId: assets.id,
+      assetTag: assets.assetTag,
+      assetName: models.name,
+      reportedIssue: maintenanceTickets.reportedIssue,
+      reportedBy: users.name,
+      reportedByEmail: users.email,
+      daysPending:
+        sql<number>`GREATEST(0, CURRENT_DATE - ${maintenanceTickets.createdAt}::date)`.as(
+          'days_pending'
+        ),
+    })
+    .from(maintenanceTickets)
+    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
+    .where(
+      and(
+        eq(maintenanceTickets.status, 'ACTIVE'),
+        // INTERNAL means reported and not yet sent anywhere; a VENDOR ticket is
+        // already being worked on and belongs to Active Repairs.
+        eq(maintenanceTickets.ticketType, 'INTERNAL'),
+        eq(assets.isArchived, false)
+      )
+    )
+    .orderBy(maintenanceTickets.createdAt)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    ticketId: row.ticketId,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    assetName: row.assetName,
+    reportedIssue: row.reportedIssue,
+    reportedBy: row.reportedBy,
+    reportedByEmail: row.reportedByEmail,
+    daysPending: Number(row.daysPending ?? 0),
+  }));
+}

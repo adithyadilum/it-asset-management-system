@@ -71,6 +71,10 @@ vi.mock('@/db/schema', () => ({
     performedById: 'systemAuditLogs.performedById',
   },
   assets: { id: 'assets.id', assetTag: 'assets.assetTag', name: 'assets.name' },
+  assetAssignments: {
+    id: 'assetAssignments.id',
+    assetId: 'assetAssignments.assetId',
+  },
   users: {
     id: 'users.id',
     name: 'users.name',

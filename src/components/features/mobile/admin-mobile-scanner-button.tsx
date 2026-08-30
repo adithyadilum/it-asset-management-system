@@ -5,14 +5,13 @@ import { Camera } from 'lucide-react';
 export function AdminMobileScannerButton() {
   const handleLaunchScanner = () => {
     // Placeholder click handler
-    console.log('Scanner launched');
   };
 
   return (
     <section>
       <button
         onClick={handleLaunchScanner}
-        className="w-full bg-gradient-to-br from-primary to-primary/80 hover:to-primary/70 active:scale-[0.98] text-primary-foreground py-10 px-6 rounded-[28px] flex flex-col items-center justify-center gap-4 shadow-[0_8px_30px_rgb(10,17,66,0.2)] transition-all duration-300 ease-out"
+        className="w-full bg-linear-to-br from-primary to-primary/80 hover:to-primary/70 active:scale-[0.98] text-primary-foreground py-10 px-6 rounded-[28px] flex flex-col items-center justify-center gap-4 shadow-[0_8px_30px_rgb(10,17,66,0.2)] transition-all duration-300 ease-out"
       >
         <div className="bg-background/10 backdrop-blur-md p-4 rounded-full border border-white/10 shadow-inner">
           <Camera

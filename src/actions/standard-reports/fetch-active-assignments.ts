@@ -9,6 +9,7 @@ import {
   users,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
+import { formatAssignmentState } from '@/lib/assignments/labels';
 import type {
   ReportPreviewFilters,
   ReportPreviewRow,
@@ -132,7 +133,7 @@ export async function fetchActiveAssignments(
       'Expected Return Date': row.expectedReturnDate
         ? new Date(row.expectedReturnDate).toLocaleDateString()
         : '-',
-      State: row.state,
+      State: formatAssignmentState(row.state),
       'Acceptance Status': row.acceptanceStatus || 'Pending',
       'Days Since Assigned':
         daysSinceAssigned >= 0 ? String(daysSinceAssigned) : '0',

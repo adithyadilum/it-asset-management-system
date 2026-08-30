@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { cookies } from 'next/headers';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import { db } from '@/db';
@@ -11,6 +13,7 @@ import {
 } from '@/db/schema';
 import { eq, desc, inArray, and, sql, or, ilike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { disposalDocumentJoin } from '@/lib/data/disposal-documents';
 import { DisposalsLayout } from '@/components/features/disposals/disposals-layout';
 
 export const metadata = {
@@ -21,9 +24,7 @@ interface DisposalsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function DisposalsPage({
-  searchParams,
-}: DisposalsPageProps) {
+async function DisposalsPageContent({ searchParams }: DisposalsPageProps) {
   const user = await requirePageAuth(
     (role) => role === 'GlobalAdmin' || role === 'FinancialAuditor'
   );
@@ -110,13 +111,7 @@ export default async function DisposalsPage({
     .innerJoin(categories, eq(models.categoryId, categories.id))
     .innerJoin(requester, eq(assetDisposals.requestedById, requester.id))
     .leftJoin(approver, eq(assetDisposals.approvedById, approver.id))
-    .leftJoin(
-      assetDocuments,
-      and(
-        eq(assetDocuments.assetId, assets.id),
-        eq(assetDocuments.documentType, 'disposal-certificate')
-      )
-    )
+    .leftJoin(assetDocuments, disposalDocumentJoin)
     .where(historyBaseCondition)
     .groupBy(
       assetDisposals.id,
@@ -180,5 +175,22 @@ export default async function DisposalsPage({
       userRole={user.role}
       preferredCurrency={preferredCurrency}
     />
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function DisposalsPage(props: DisposalsPageProps) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <DisposalsPageContent {...props} />
+    </Suspense>
   );
 }

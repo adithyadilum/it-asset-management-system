@@ -8,6 +8,7 @@ import {
   getCachedDepartmentAllocation,
   getOverdueReturnsInternal,
   getHighMaintenanceAssetsInternal,
+  getPendingMaintenanceRequestsInternal,
 } from './queries/inventory';
 import type {
   DashboardKpiMetrics,
@@ -15,6 +16,7 @@ import type {
   DepartmentAllocationItem,
   OverdueReturnRow,
   HighMaintenanceRow,
+  PendingMaintenanceRow,
 } from '@/types/dashboard';
 
 export interface ITDashboardBatchData {
@@ -23,6 +25,7 @@ export interface ITDashboardBatchData {
   departmentAllocation: DepartmentAllocationItem[];
   overdueReturns: OverdueReturnRow[];
   highMaintenanceAssets: HighMaintenanceRow[];
+  pendingMaintenance: PendingMaintenanceRow[];
 }
 
 /** Fetches all IT-related dashboard data in parallel. Restricted to ITOperator / GlobalAdmin. */
@@ -35,6 +38,7 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
     getCachedDepartmentAllocation(),
     getOverdueReturnsInternal(),
     getHighMaintenanceAssetsInternal(),
+    getPendingMaintenanceRequestsInternal(),
   ]);
 
   const kpiMetrics: DashboardKpiMetrics =
@@ -79,6 +83,10 @@ export async function getITDashboardData(): Promise<ITDashboardBatchData> {
     highMaintenanceAssets:
       results[4].status === 'fulfilled'
         ? (results[4].value as HighMaintenanceRow[])
+        : [],
+    pendingMaintenance:
+      results[5].status === 'fulfilled'
+        ? (results[5].value as PendingMaintenanceRow[])
         : [],
   };
 }

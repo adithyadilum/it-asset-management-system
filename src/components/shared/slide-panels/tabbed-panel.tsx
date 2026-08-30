@@ -17,6 +17,8 @@ export type TabbedPanelTab = {
 
 interface TabbedPanelProps {
   isOpen: boolean;
+  /** Open without the slide animation, for a panel swapped in place. */
+  disableTransition?: boolean;
   onClose: (open: boolean) => void;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -37,6 +39,7 @@ function getInitialTabId(tabs: TabbedPanelTab[], preferredTabId?: string) {
 
 export function TabbedPanel({
   isOpen,
+  disableTransition,
   onClose,
   title,
   description,
@@ -124,6 +127,7 @@ export function TabbedPanel({
   return (
     <SlidePanel
       isOpen={isOpen}
+      disableTransition={disableTransition}
       onClose={onClose}
       title={title}
       description={description}

@@ -37,6 +37,9 @@ vi.mock('@/lib/env', () => ({
     get NEXTAUTH_URL() {
       return process.env.NEXTAUTH_URL;
     },
+    get KEYCLOAK_CLIENT_ID() {
+      return process.env.KEYCLOAK_CLIENT_ID;
+    },
   },
 }));
 
@@ -176,6 +179,7 @@ describe('getFederatedLogoutUrl', () => {
     vi.clearAllMocks();
     process.env.KEYCLOAK_ISSUER = KEYCLOAK_ISSUER;
     process.env.NEXTAUTH_URL = 'https://app.tiqri.com';
+    process.env.KEYCLOAK_CLIENT_ID = 'test-client';
   });
 
   it('constructs correct Keycloak end-session URL', async () => {
@@ -226,5 +230,38 @@ describe('getFederatedLogoutUrl', () => {
 
     const url = await getFederatedLogoutUrl();
     expect(url).toContain(encodeURIComponent('http://localhost:3000/login'));
+  });
+
+  it('always sends client_id so the provider can validate the redirect', async () => {
+    // Keycloak validates post_logout_redirect_uri against the id_token_hint or
+    // the client_id. With only the hint, logout failed with "Invalid logout
+    // URL" once that token expired -- which it does after five minutes.
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com' },
+      idToken: 'tok',
+    });
+
+    const url = new URL(await getFederatedLogoutUrl());
+    expect(url.searchParams.get('client_id')).toBe(
+      process.env.KEYCLOAK_CLIENT_ID
+    );
+    expect(url.searchParams.get('id_token_hint')).toBe('tok');
+  });
+
+  it('omits id_token_hint entirely when there is no id token', async () => {
+    // An empty `id_token_hint=` is worse than none: the provider reads it as a
+    // malformed hint rather than an absent one.
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'u1', email: 'a@b.com' },
+    });
+
+    const url = new URL(await getFederatedLogoutUrl());
+    expect(url.searchParams.has('id_token_hint')).toBe(false);
+    expect(url.searchParams.get('client_id')).toBe(
+      process.env.KEYCLOAK_CLIENT_ID
+    );
+    expect(url.searchParams.get('post_logout_redirect_uri')).toContain(
+      '/login'
+    );
   });
 });

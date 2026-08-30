@@ -6,6 +6,7 @@ import { getAuthenticatedUser, enforceActionAccess } from '@/actions/auth';
 import { db } from '@/db';
 import { categories, locations, vendors, customStatuses } from '@/db/schema';
 import { canManageAssets } from '@/lib/auth/roles';
+import { logAuditAction } from '@/lib/audit';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { reportPreviewFiltersSchema } from '@/lib/validations/standard-reports';
 import type {
@@ -221,4 +222,35 @@ export async function fetchReportPreview(
       startTime: actionTimer,
     });
   }
+}
+
+/**
+ * Records that a report left the system.
+ *
+ * Both exports run entirely in the browser from data already on the client, so
+ * nothing on the server ever observed them -- a CSV or PDF of the full asset
+ * register could be taken with no trace. This is the deliberate round trip that
+ * makes the export visible in the audit log.
+ */
+export async function logReportExportAction(input: {
+  source: string;
+  format: 'CSV' | 'PDF';
+  rowCount: number;
+  templateName?: string;
+}): Promise<void> {
+  const user = await getAuthenticatedUser();
+  if (!user) return;
+
+  await logAuditAction({
+    entityType: 'Report',
+    entityId: input.templateName || input.source || 'ad-hoc',
+    actionType: 'REPORT_EXPORTED',
+    performedById: user.id,
+    newData: {
+      source: input.source,
+      format: input.format,
+      rowCount: input.rowCount,
+      ...(input.templateName ? { template: input.templateName } : {}),
+    },
+  });
 }

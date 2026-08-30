@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { requirePageAuth } from '@/lib/auth/page-guard';
 import {
   getCurrentEmployeeAssets,
@@ -5,6 +7,7 @@ import {
 } from '@/actions/employee';
 import { getPortalAlerts } from '@/lib/data/portal-repo';
 import { EmployeeAlerts } from '@/components/features/dashboard/employee/employee-alerts';
+import { EmployeeAssetGrid } from '@/components/features/my-assets/employee-asset-grid';
 import { AssetCard } from '@/components/shared/asset-card';
 import {
   Empty,
@@ -12,63 +15,11 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty';
-import {
-  AppWindow,
-  HardDrive,
-  Laptop,
-  Monitor,
-  Smartphone,
-  Code,
-  Armchair,
-  Speaker,
-} from 'lucide-react';
+import { AppWindow } from 'lucide-react';
+import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
+import { formatAssetName } from '@/lib/asset-name';
 
-// ── Asset icon resolver using category pillar ────────────────────────────────
-
-const PILLAR_ICON_MAP: Record<
-  string,
-  { label: string; icon: React.ReactNode }
-> = {
-  Hardware: { label: 'Device', icon: <Laptop className="h-8 w-8" /> },
-  Software: { label: 'Software', icon: <Code className="h-8 w-8" /> },
-  'Office Furniture': {
-    label: 'Furniture',
-    icon: <Armchair className="h-8 w-8" />,
-  },
-  'Office Electronics': {
-    label: 'Electronics',
-    icon: <Speaker className="h-8 w-8" />,
-  },
-};
-
-function getAssetPresentation(pillar: string | undefined, modelName: string) {
-  if (pillar && PILLAR_ICON_MAP[pillar]) {
-    return PILLAR_ICON_MAP[pillar];
-  }
-
-  // Fallback: model name heuristic for legacy data
-  const normalized = modelName.trim().toLowerCase();
-  if (
-    normalized.includes('macbook') ||
-    normalized.includes('laptop') ||
-    normalized.includes('thinkpad')
-  ) {
-    return { label: 'Laptop', icon: <Laptop className="h-8 w-8" /> };
-  }
-  if (
-    normalized.includes('iphone') ||
-    normalized.includes('phone') ||
-    normalized.includes('mobile')
-  ) {
-    return { label: 'Phone', icon: <Smartphone className="h-8 w-8" /> };
-  }
-  if (normalized.includes('monitor') || normalized.includes('display')) {
-    return { label: 'Monitor', icon: <Monitor className="h-8 w-8" /> };
-  }
-  return { label: 'Asset', icon: <HardDrive className="h-8 w-8" /> };
-}
-
-export default async function MyAssetsPage() {
+async function MyAssetsPageContent() {
   const user = await requirePageAuth();
 
   const [employeeAssets, softwareAssets, alerts] = await Promise.all([
@@ -97,30 +48,7 @@ export default async function MyAssetsPage() {
               <h2 className="text-lg font-semibold text-foreground">
                 Assigned Equipment
               </h2>
-              <div className="mt-3 grid gap-4 xl:grid-cols-3">
-                {employeeAssets.map((asset) => {
-                  const presentation = getAssetPresentation(
-                    asset.pillar,
-                    asset.modelName
-                  );
-
-                  return (
-                    <AssetCard
-                      key={asset.assignmentId}
-                      assetType={presentation.label}
-                      name={asset.modelName}
-                      status={asset.status}
-                      icon={presentation.icon}
-                      assetId={asset.assetTag}
-                      assignedDate={new Intl.DateTimeFormat('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      }).format(new Date(asset.assignedDate))}
-                    />
-                  );
-                })}
-              </div>
+              <EmployeeAssetGrid assets={employeeAssets} />
             </section>
           ) : null}
 
@@ -134,9 +62,12 @@ export default async function MyAssetsPage() {
                   <AssetCard
                     key={asset.allocationId}
                     assetType={`${asset.licenseType} Seat`}
-                    name={asset.modelName}
+                    name={formatAssetName(asset.brandName, asset.modelName)}
                     status={asset.status}
                     icon={<AppWindow className="h-8 w-8" />}
+                    // Software has a publisher logo on its model like anything
+                    // else; only these cards were never given it.
+                    imageUrl={asset.imageUrl}
                     assetId={asset.assetTag}
                     assignedDate={new Intl.DateTimeFormat('en-US', {
                       month: 'short',
@@ -159,8 +90,14 @@ export default async function MyAssetsPage() {
                   We couldn&apos;t find any equipment or software linked to your
                   profile.
                   <br />
-                  If you&apos;re expecting access, please check back later or
-                  contact the IT Helpdesk.
+                  If you&apos;re expecting access, check back later or contact{' '}
+                  <a
+                    href={SUPPORT_MAILTO}
+                    className="underline underline-offset-2"
+                  >
+                    {SUPPORT_LABEL}
+                  </a>
+                  .
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -168,5 +105,22 @@ export default async function MyAssetsPage() {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function MyAssetsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <MyAssetsPageContent />
+    </Suspense>
   );
 }

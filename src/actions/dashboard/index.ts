@@ -30,6 +30,7 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
       departmentAllocation: data.departmentAllocation,
       overdueReturns: data.overdueReturns,
       highMaintenanceAssets: data.highMaintenanceAssets,
+      pendingMaintenance: data.pendingMaintenance,
       pendingDisposals: [],
       recentActivities: [],
       topHighValueAssets: [],
@@ -52,6 +53,7 @@ export async function getDashboardBatchData(): Promise<DashboardBatchData> {
       overdueReturns: [],
       pendingDisposals: [],
       highMaintenanceAssets: [],
+      pendingMaintenance: [],
     };
   }
 

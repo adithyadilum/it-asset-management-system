@@ -10,6 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
 
 /**
  * Shown when a user's account has been deactivated by an administrator.
@@ -54,8 +55,14 @@ export default function AccountDisabledPage() {
           </EmptyTitle>
           <EmptyDescription className="max-w-md text-slate-600">
             Your account has been disabled by an administrator. You no longer
-            have access to this system. Please contact your IT administrator if
-            you believe this is a mistake.
+            have access to this system. Contact{' '}
+            <a
+              href={SUPPORT_MAILTO}
+              className="underline underline-offset-2 hover:text-slate-900"
+            >
+              {SUPPORT_LABEL}
+            </a>{' '}
+            if you believe this is a mistake.
           </EmptyDescription>
         </EmptyHeader>
 

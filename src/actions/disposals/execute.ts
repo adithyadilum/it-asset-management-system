@@ -238,9 +238,16 @@ export async function executeAssetDisposal(
       }
 
       // 7. Save uploaded disposal certificates/receipts (optional)
-      const documentEntries = normalizedAssetIds.flatMap((assetId) =>
+      //
+      // A bulk disposal shares one upload across the batch, so each asset does
+      // get a row — that part is intended. What was missing is `disposalId`:
+      // without it a document was tied only to an asset, so an asset disposed
+      // more than once (rejected, re-requested, completed) showed every receipt
+      // it had ever accumulated on every one of its disposal rows.
+      const documentEntries = disposalRecords.flatMap((record) =>
         validData.receiptUrls.map((url) => ({
-          assetId,
+          assetId: record.assetId,
+          disposalId: record.disposalId,
           documentType: 'disposal-certificate',
           fileUrl: url,
           uploadedById: user.id,
