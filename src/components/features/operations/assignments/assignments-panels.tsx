@@ -279,6 +279,7 @@ export function AssignmentsPanels({
         licenseType={details?.softwareLicense?.licenseType}
         maintenanceEvents={fetchedData?.maintenance ?? []}
         onAssign={() => setIsAssignmentModalOpen(true)}
+        onActionButtonClick={() => setIsAssignmentModalOpen(true)}
         onRemindReturn={handleSendReminder}
         onRequestReturn={handleRequestReturn}
         onMarkReturned={handleMarkReceived}
