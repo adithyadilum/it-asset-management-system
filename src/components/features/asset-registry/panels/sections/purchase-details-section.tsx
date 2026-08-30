@@ -318,6 +318,7 @@ export function PurchaseDetailsSection({
             label="Estimated Salvage Value :"
             htmlFor="estimatedSalvageValue"
             error={getError(state, 'estimatedSalvageValue')}
+            alignTop
           >
             <CurrencyInput
               id="estimatedSalvageValue"
