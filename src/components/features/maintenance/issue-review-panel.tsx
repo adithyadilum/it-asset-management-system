@@ -6,7 +6,6 @@ import {
   DateFormatted,
 } from '@/components/shared/formatters';
 import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -123,18 +122,26 @@ export function IssueReviewPanel({
     { label: 'Original Cost', value: formatCurrency(originalCost) },
     { label: 'Current Book Value', value: formatCurrency(bookValue) },
     {
-      label: 'Warranty Status',
+      // "Active" alone does not answer the reviewer's question, which is how
+      // long is left before this repair stops being covered.
+      label: 'Warranty',
       value: (
-        <Badge
-          variant="outline"
-          className={
-            warrantyStatus === 'Active'
-              ? 'bg-success/10 border-success text-success rounded-full px-3 py-0.5 shadow-sm'
-              : 'bg-destructive/10 border-destructive text-destructive rounded-full px-3 py-0.5 shadow-sm'
-          }
-        >
-          {warrantyStatus}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <StatusBadge
+            value={warrantyStatus === 'Active' ? 'active' : 'expired'}
+            label={warrantyStatus}
+          />
+          {ticket.purchase?.warrantyExpiry ? (
+            <span className="text-xs text-muted-foreground">
+              {warrantyStatus === 'Active' ? 'expires' : 'expired'}{' '}
+              {formatDate(ticket.purchase.warrantyExpiry)}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              no warranty recorded
+            </span>
+          )}
+        </div>
       ),
     },
   ];
@@ -153,10 +160,10 @@ export function IssueReviewPanel({
     <div className="flex w-full flex-col items-start gap-6">
       {/* Image Container */}
       <div className="mt-2 flex w-full flex-col items-center gap-2.5">
-        {ticket.asset.imageUrl ? (
+        {ticket.model?.imageUrl ? (
           <div className="relative w-38.25 h-30.25 rounded bg-background overflow-hidden border border-border">
             <Image
-              src={ticket.asset.imageUrl}
+              src={ticket.model.imageUrl}
               alt="Asset Image"
               fill
               className="object-contain p-2"

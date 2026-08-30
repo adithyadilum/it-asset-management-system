@@ -15,8 +15,34 @@ describe('EmployeeAlerts', () => {
     vi.clearAllMocks();
   });
 
-  it('renders employee alerts component', () => {
-    const mockAlerts: PortalAlerts = {
+  const renderAlerts = (alerts: PortalAlerts) =>
+    render(
+      <CurrencyProvider initialCurrency="USD">
+        <EmployeeAlerts alerts={alerts} />
+      </CurrencyProvider>
+    );
+
+  it('renders return reminders', () => {
+    renderAlerts({
+      pendingAcceptance: [],
+      returnRequested: [
+        {
+          assignmentId: 2,
+          assetId: '2',
+          assetTag: 'AST-2',
+          modelName: 'Dock',
+          returnRequestedAt: '2026-08-20',
+        },
+      ],
+      upcomingReturns: [],
+    });
+
+    expect(screen.getByText(/Urgent Action Required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dock/)).toBeInTheDocument();
+  });
+
+  it('leaves acceptance to the asset card rather than duplicating it here', () => {
+    renderAlerts({
       pendingAcceptance: [
         {
           assignmentId: 1,
@@ -30,13 +56,8 @@ describe('EmployeeAlerts', () => {
       ],
       returnRequested: [],
       upcomingReturns: [],
-    };
-    render(
-      <CurrencyProvider initialCurrency="USD">
-        <EmployeeAlerts alerts={mockAlerts} />
-      </CurrencyProvider>
-    );
+    });
 
-    expect(screen.getByText(/Action Required/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Review & Accept/i)).not.toBeInTheDocument();
   });
 });

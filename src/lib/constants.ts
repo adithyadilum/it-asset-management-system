@@ -153,3 +153,25 @@ export const API_RATE_LIMIT_WINDOW_SECONDS = 60;
 // below that limit, and change both together.
 export const MAX_IMPORT_FILE_BYTES = Math.floor(4.5 * 1024 * 1024);
 export const MAX_IMPORT_FILE_LABEL = '4.5MB';
+
+// Support
+//
+// Every "contact support" affordance in the app points here. Before this there
+// was no support address anywhere in the codebase: the sidebar Support button
+// navigated back to the dashboard, the 403 page's "Contact IT Support" button
+// had no handler at all, and five different pages each invented their own
+// wording ("your administrator", "your IT administrator", "the IT Helpdesk",
+// "IT Support", "TIQRI IT Support") with nothing clickable behind any of them.
+//
+// TODO(owner): replace both placeholders with the real values before release.
+// Everything already reads from here, so it is a two-line change.
+export const SUPPORT_EMAIL = 'it-support@tiqri.com';
+export const SUPPORT_URL = 'https://support.tiqri.com';
+
+/** `mailto:` href, with a subject so tickets arrive pre-labelled. */
+export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+  'EITAMS support request'
+)}`;
+
+/** One phrase, used everywhere, instead of five near-synonyms. */
+export const SUPPORT_LABEL = 'IT Support';

@@ -8,6 +8,9 @@ export interface DepreciationLedgerRecord {
   originalPrice: number;
   currencyCode: string; // Source currency of the purchase
   expectedLifespan: string;
+  /** Useful life in months, and how much of it has been used. */
+  lifeMonths: number;
+  monthsElapsed: number;
   currentBookValue: number;
 }
 

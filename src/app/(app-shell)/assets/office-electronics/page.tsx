@@ -1,4 +1,7 @@
+import { Suspense } from 'react';
+
 import { AssetRegistryShell } from '@/components/features/asset-registry/asset-registry-shell';
+import { AssetRegistrySkeleton } from '@/components/features/asset-registry/asset-registry-skeleton';
 
 export default function OfficeElectronicsPage({
   searchParams,
@@ -9,7 +12,16 @@ export default function OfficeElectronicsPage({
     id?: string | string[];
   }>;
 }) {
+  // The shell reads the session and loads the registry, none of which can be
+  // prerendered. Streaming it means the sidebar, header and this page's chrome
+  // paint immediately and the table fills in, rather than the whole navigation
+  // blocking on the slowest query.
   return (
-    <AssetRegistryShell view="office-electronics" searchParams={searchParams} />
+    <Suspense fallback={<AssetRegistrySkeleton />}>
+      <AssetRegistryShell
+        view="office-electronics"
+        searchParams={searchParams}
+      />
+    </Suspense>
   );
 }

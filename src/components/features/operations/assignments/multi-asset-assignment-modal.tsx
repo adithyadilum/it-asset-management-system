@@ -7,7 +7,8 @@ import { bulkAssignAssetsAction } from '@/actions/assignments';
 import { tiqriToast } from '@/components/shared/sonner';
 import {
   DURATION_OPTIONS,
-  isPresetDuration,
+  CUSTOM_DURATION_VALUE,
+  findDurationPreset,
 } from '@/lib/assignment-date-utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -236,25 +237,24 @@ export function MultiAssetAssignmentModal({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[160px_minmax(0,1fr)]">
                 <Select
                   key={duration || 'preset-duration'}
-                  value={`${duration}`}
+                  value={duration}
                   onValueChange={handleDurationChange}
                 >
                   <SelectTrigger className="h-9 w-full bg-background">
                     <SelectValue placeholder="Select the duration">
-                      {duration ? `${duration} days` : undefined}
+                      {findDurationPreset(duration)?.label ??
+                        (duration ? 'Custom' : undefined)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {DURATION_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={`${option}`}>
-                        {option} days
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
-                    {duration !== '' && !isPresetDuration(duration) ? (
-                      <SelectItem value={`${duration}`}>
-                        {duration} days
-                      </SelectItem>
-                    ) : null}
+                    <SelectItem value={CUSTOM_DURATION_VALUE}>
+                      Custom
+                    </SelectItem>
                   </SelectContent>
                 </Select>
 

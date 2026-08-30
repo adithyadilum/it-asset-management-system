@@ -21,25 +21,42 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   convertCurrencyAmount,
   formatMoneyByCurrency,
+  SUMMARY_CURRENCY,
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
-import { getWriteOffsLedger } from '@/actions/financials';
+import {
+  getWriteOffsLedger,
+  type FinancialsFilterOptions,
+} from '@/actions/financials';
+import { LedgerSummary } from '@/components/features/financials/ledger-summary';
+import { SalvageOutcomeChart } from '@/components/features/financials/salvage-outcome-chart';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface WriteOffsLedgerProps {
   initialData: WriteOffsLedgerRecord[];
   initialPageCount?: number;
+  /** Full option lists, read from the tables rather than the current page. */
+  filterOptions?: FinancialsFilterOptions;
+  initialSummary: WriteOffsLedgerSummary;
 }
+
+export type WriteOffsLedgerSummary = Awaited<
+  ReturnType<typeof getWriteOffsLedger>
+>['summary'];
 
 export function WriteOffsLedger({
   initialData,
   initialPageCount = 1,
+  filterOptions,
+  initialSummary,
 }: WriteOffsLedgerProps) {
   const [data, setData] = useState<WriteOffsLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  // Held here, not on the page, so filtering the table filters the totals too.
+  const [summary, setSummary] = useState(initialSummary);
   const [isPending, startTransition] = useTransition();
   const canReuseInitialDataRef = useRef(true);
 
@@ -60,9 +77,12 @@ export function WriteOffsLedger({
     'w-[14%]',
   ];
 
+  // Derived from the loaded rows only when the server list is unavailable --
+  // one page of rows can never offer the categories it does not contain.
   const uniqueCategories = useMemo(() => {
+    if (filterOptions?.categories.length) return filterOptions.categories;
     return Array.from(new Set(initialData.map((item) => item.category))).sort();
-  }, [initialData]);
+  }, [filterOptions, initialData]);
 
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(
     () => [
@@ -80,8 +100,18 @@ export function WriteOffsLedger({
           'High Salvage (>$100)',
         ],
       },
+      {
+        value: 'Asset Pillar',
+        label: 'Asset Pillar',
+        options: filterOptions?.pillars ?? [],
+      },
+      {
+        value: 'Location',
+        label: 'Location',
+        options: filterOptions?.locations ?? [],
+      },
     ],
-    [uniqueCategories]
+    [uniqueCategories, filterOptions]
   );
 
   useEffect(() => {
@@ -106,6 +136,12 @@ export function WriteOffsLedger({
       const salvageFilter = appliedFilters.find(
         (f) => f.field === 'Recouped Salvage Value' && f.operator === 'is'
       )?.value;
+      const pillarFilter = appliedFilters.find(
+        (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+      )?.value;
+      const locationFilter = appliedFilters.find(
+        (f) => f.field === 'Location' && f.operator === 'is'
+      )?.value;
 
       const response = await getWriteOffsLedger({
         page: pagination.pageIndex + 1,
@@ -113,10 +149,13 @@ export function WriteOffsLedger({
         search: debouncedSearch,
         category: categoryFilter,
         salvageFilter: salvageFilter,
+        pillar: pillarFilter,
+        location: locationFilter,
       });
 
       setData(response.data as unknown as WriteOffsLedgerRecord[]);
       setPageCount(response.meta.totalPages);
+      setSummary(response.summary);
     });
   }, [
     pagination.pageIndex,
@@ -154,6 +193,12 @@ export function WriteOffsLedger({
     const salvageFilter = appliedFilters.find(
       (f) => f.field === 'Recouped Salvage Value'
     )?.value;
+    const pillarFilter = appliedFilters.find(
+      (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+    )?.value;
+    const locationFilter = appliedFilters.find(
+      (f) => f.field === 'Location' && f.operator === 'is'
+    )?.value;
 
     const response = await getWriteOffsLedger({
       page: 1,
@@ -161,6 +206,8 @@ export function WriteOffsLedger({
       search: debouncedSearch,
       category: categoryFilter,
       salvageFilter: salvageFilter,
+      pillar: pillarFilter,
+      location: locationFilter,
     });
 
     const headers = [
@@ -329,8 +376,59 @@ export function WriteOffsLedger({
     },
   ];
 
+  const inDisplayCurrency = (value: number) =>
+    convertCurrencyAmount(value, SUMMARY_CURRENCY, currency);
+
   return (
-    <div className="flex flex-col h-full overflow-hidden gap-4">
+    // Natural height, not `h-full overflow-hidden`: the summary and the chart
+    // above the table are meant to scroll away, and a fixed-height column would
+    // instead squeeze the table into whatever was left over.
+    <div className="flex flex-col gap-4">
+      <LedgerSummary
+        asOf={summary.asOf}
+        stats={[
+          {
+            label: 'Disposals',
+            value: summary.disposalCount.toLocaleString(),
+            hint: summary.byStatus
+              .map((group) => `${group.count} ${group.status.toLowerCase()}`)
+              .join(' · '),
+          },
+          {
+            label: 'Written off',
+            value: inDisplayCurrency(summary.totalWrittenOff),
+            currencyCode: currency,
+            hint: 'Book value at disposal',
+          },
+          {
+            label: 'Salvage realised',
+            value: inDisplayCurrency(summary.totalRealisedSalvage),
+            currencyCode: currency,
+            tone: 'positive',
+          },
+          {
+            label: 'Against expected',
+            value: inDisplayCurrency(summary.salvageVariance),
+            currencyCode: currency,
+            tone: summary.salvageVariance < 0 ? 'warning' : 'positive',
+            hint: `Expected ${formatMoneyByCurrency(
+              inDisplayCurrency(summary.totalExpectedSalvage),
+              currency
+            )}`,
+          },
+        ]}
+      />
+
+      <SalvageOutcomeChart
+        points={summary.byStatus.map((group) => ({
+          status: group.status,
+          count: group.count,
+          expected: inDisplayCurrency(group.expected),
+          realised: inDisplayCurrency(group.realised),
+        }))}
+        currencyCode={currency}
+      />
+
       <FilterBar
         searchQuery={searchTerm}
         onSearchChange={(value) => {
@@ -387,7 +485,9 @@ export function WriteOffsLedger({
         </Button>
       </FilterBar>
 
-      <div className="min-h-0 flex-1 flex flex-col">
+      {/* Tall enough that once the filter row has scrolled to the top of the
+          viewport, the whole table is on screen. */}
+      <div className="flex min-h-[calc(100vh-11rem)] flex-col">
         {isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
             <TableSkeleton

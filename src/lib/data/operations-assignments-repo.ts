@@ -10,6 +10,8 @@ import {
   lt,
 } from 'drizzle-orm';
 
+import { alias } from 'drizzle-orm/pg-core';
+
 import { db } from '@/db';
 import {
   assignmentStateEnum,
@@ -26,6 +28,8 @@ import {
 import { logAuditAction, logAuditActionTx } from '@/lib/audit';
 import type { AssetStatus } from '@/lib/data/asset-registry-repo';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
+import { EMPLOYEE_ASSIGNMENTS_URL } from '@/lib/notifications/target-urls';
+import { resolveReturnStatus } from '@/lib/assignments/return-outcome';
 import { sendAssetNotification } from '../notifications';
 
 type AssignmentState = (typeof assignmentStateEnum.enumValues)[number];
@@ -76,6 +80,8 @@ export interface AssignmentsDashboardData {
   assigned: AssignmentsDashboardRow[];
   returned: AssignmentsDashboardRow[];
 }
+
+const assignedLocation = alias(locations, 'assigned_location');
 
 const DASHBOARD_PILLARS: Array<
   'Hardware' | 'Office Furniture' | 'Office Electronics'
@@ -227,6 +233,96 @@ async function ensureActiveTargetExists(
   };
 }
 
+/**
+ * The state a brand-new assignment starts in.
+ *
+ * Only a person can accept an assignment — `acceptAssignment` matches on
+ * `assignedToUserId === currentUser.id`. A location has no one to do that, so a
+ * location assignment that started as 'pending approval' could never leave it;
+ * it sat in the pending queue forever and inflated every pending count. Those
+ * assignments are effective the moment they are made.
+ */
+function initialAssignmentState(target: {
+  assignedToUserId: string | null;
+}): AssignmentState {
+  return target.assignedToUserId ? 'pending approval' : 'assigned';
+}
+
+/**
+ * Statuses an asset can be assigned from.
+ *
+ * 'Assigned' is included because reassigning is a transfer, not an error. A
+ * furniture or electronics item moving from one room to another was previously
+ * rejected with ASSET_NOT_AVAILABLE -- the first assignment worked and every
+ * one after it failed, with no way to move the asset short of returning it
+ * first. Anything else (In Repair, Defective, Lost, Disposed) still blocks.
+ */
+const ASSIGNABLE_STATUSES: AssetStatus[] = ['Available', 'Assigned'];
+
+/**
+ * Closes any assignment still open against an asset.
+ *
+ * Called before a new one is created so a transfer leaves exactly one active
+ * assignment behind it. Returning the closed rows lets the caller record what
+ * the transfer displaced.
+ */
+async function closeOpenAssignments(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  assetIds: string[],
+  closedById: string
+) {
+  const closed = await tx
+    .update(assetAssignments)
+    .set({
+      state: 'returned',
+      acceptanceStatus: 'transferred',
+      returnedDate: new Date(),
+    })
+    .where(
+      and(
+        inArray(assetAssignments.assetId, assetIds),
+        isNull(assetAssignments.returnedDate)
+      )
+    )
+    .returning({
+      id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
+    });
+
+  if (closed.length === 0) {
+    return closed;
+  }
+
+  // Any acceptance still queued against the old assignment is moot.
+  await tx
+    .update(notificationQueue)
+    .set({ isProcessed: true })
+    .where(
+      inArray(
+        notificationQueue.assignmentId,
+        closed.map((row) => row.id)
+      )
+    );
+
+  await Promise.all(
+    closed.map((row) =>
+      logAuditActionTx(tx, {
+        entityType: 'asset_assignment',
+        entityId: String(row.id),
+        actionType: 'RETURN',
+        performedById: closedById,
+        oldData: null,
+        newData: {
+          state: 'returned',
+          acceptanceStatus: 'transferred',
+        },
+      })
+    )
+  );
+
+  return closed;
+}
+
 function dedupeAssetIds(assetIds: string[]) {
   return [
     ...new Set(assetIds.map((id) => id.trim()).filter((id) => id.length > 0)),
@@ -258,7 +354,7 @@ async function validateAssetsForAssignment(assetIds: string[]) {
   }
 
   const unavailableAssets = assetsInDb.filter(
-    (asset) => asset.status !== 'Available'
+    (asset) => !ASSIGNABLE_STATUSES.includes(asset.status as AssetStatus)
   );
   if (unavailableAssets.length > 0) {
     throw new AssignmentServiceError(
@@ -300,9 +396,11 @@ async function enqueuePendingAcceptanceNotification(
     eventType: 'ASSIGNMENT_PENDING',
     userId: recipientId,
     title: 'Action Required: Assignment Pending',
+    // Employees have no dashboard — /dashboard only bounced them to /my-assets,
+    // which is where the accept and decline controls actually live.
     message:
-      'You have a new asset awaiting your acknowledgment. Please review and accept it from your dashboard.',
-    targetUrl: '/dashboard',
+      'You have a new asset awaiting your acknowledgment. Please review and accept it from My Assets.',
+    targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
   });
 }
 
@@ -324,6 +422,7 @@ async function loadAssetsByStatusDirect(
       createdAt: assets.createdAt,
       updatedAt: assets.updatedAt,
       assignedToLocationId: assetAssignments.assignedToLocationId,
+      assignedToLocationName: assignedLocation.name,
       state: assetAssignments.state,
     })
     .from(assets)
@@ -338,6 +437,10 @@ async function loadAssetsByStatusDirect(
       )
     )
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .leftJoin(
+      assignedLocation,
+      eq(assetAssignments.assignedToLocationId, assignedLocation.id)
+    )
     .where(
       and(
         eq(assets.status, status),
@@ -355,7 +458,9 @@ async function loadAssetsByStatusDirect(
     pillar: row.pillar,
     status: status,
     location: row.assetLocation,
-    assignedTo: row.assignedToUser || null,
+    // Falls back to the assigned location: furniture and electronics are
+    // assigned to a place, so there is no user to name.
+    assignedTo: row.assignedToUser || row.assignedToLocationName || null,
     assignedToEmail: row.assignedToEmail || null,
     createdAt: row.createdAt || null,
     updatedAt: row.updatedAt || null,
@@ -391,6 +496,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
       expectedReturnDate: assetAssignments.expectedReturnDate,
       createdAt: assets.createdAt,
       updatedAt: assets.updatedAt,
+      assignedToLocationName: assignedLocation.name,
       state: assetAssignments.state,
     })
     .from(assets)
@@ -406,6 +512,10 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
       eq(assetAssignments.id, latestActiveAssignments.latestAssignmentId)
     )
     .leftJoin(users, eq(assetAssignments.assignedToUserId, users.id))
+    .leftJoin(
+      assignedLocation,
+      eq(assetAssignments.assignedToLocationId, assignedLocation.id)
+    )
     .where(
       and(
         eq(assets.status, 'Assigned'),
@@ -424,7 +534,7 @@ async function loadAssignedAssetsDirect(): Promise<AssignmentsDashboardRow[]> {
     status: 'Assigned',
     location: row.assetLocation,
     assignmentId: row.assignmentId,
-    assignedTo: row.assignedToUser || null,
+    assignedTo: row.assignedToUser || row.assignedToLocationName || null,
     assignedToEmail: row.assignedToEmail || null,
     assignedDate: row.assignedDate,
     expectedReturnDate: row.expectedReturnDate
@@ -561,7 +671,10 @@ export async function assignSingleAsset(
         updatedAt: new Date(),
       })
       .where(
-        and(eq(assets.id, normalizedAssetId), eq(assets.status, 'Available'))
+        and(
+          eq(assets.id, normalizedAssetId),
+          inArray(assets.status, ASSIGNABLE_STATUSES)
+        )
       )
       .returning({
         id: assets.id,
@@ -577,6 +690,10 @@ export async function assignSingleAsset(
       );
     }
 
+    // Transfer: close whatever this asset was assigned to before, so it ends up
+    // with exactly one open assignment rather than two.
+    await closeOpenAssignments(tx, [normalizedAssetId], assignedById);
+
     // Step 2: Create assignment record
     const [assignment] = await tx
       .insert(assetAssignments)
@@ -587,7 +704,7 @@ export async function assignSingleAsset(
         assignedToLocationId: target.assignedToLocationId,
         expectedReturnDate,
         notes,
-        state: 'pending approval',
+        state: initialAssignmentState(target),
       })
       .returning({
         id: assetAssignments.id,
@@ -617,7 +734,7 @@ export async function assignSingleAsset(
         assignedToUserId: target.assignedToUserId,
         assignedToLocationId: target.assignedToLocationId,
         expectedReturnDate,
-        state: 'pending approval',
+        state: initialAssignmentState(target),
       },
     });
 
@@ -681,7 +798,7 @@ export async function assignMultipleAssets(
       .where(
         and(
           inArray(assets.id, normalizedAssetIds),
-          eq(assets.status, 'Available')
+          inArray(assets.status, ASSIGNABLE_STATUSES)
         )
       )
       .returning({ id: assets.id });
@@ -694,6 +811,10 @@ export async function assignMultipleAssets(
       );
     }
 
+    // Transfer: close whatever these assets were assigned to before, so each
+    // ends up with exactly one open assignment rather than two.
+    await closeOpenAssignments(tx, normalizedAssetIds, assignedById);
+
     // Step 2: Create assignment records
     const insertedAssignments = await tx
       .insert(assetAssignments)
@@ -705,7 +826,7 @@ export async function assignMultipleAssets(
           assignedToLocationId: target.assignedToLocationId,
           expectedReturnDate,
           notes,
-          state: 'pending approval' as AssignmentState,
+          state: initialAssignmentState(target),
         }))
       )
       .returning({
@@ -738,7 +859,7 @@ export async function assignMultipleAssets(
             assignedToUserId: target.assignedToUserId,
             assignedToLocationId: target.assignedToLocationId,
             expectedReturnDate,
-            state: 'pending approval',
+            state: initialAssignmentState(target),
           },
         })
       )
@@ -842,6 +963,7 @@ export async function triggerAssignmentReminders(
       assetName: assets.name,
       userEmail: users.email,
       assignedToUserId: assetAssignments.assignedToUserId,
+      state: assetAssignments.state,
     })
     .from(assetAssignments)
     .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
@@ -850,28 +972,45 @@ export async function triggerAssignmentReminders(
 
   await Promise.all(
     assignments.map(async (a) => {
-      // Send notification
+      // Two different nudges share this button, and they are not
+      // interchangeable: an assignment still awaiting acknowledgement needs
+      // "please accept this", while one already held past its return date
+      // needs "please bring it back". Both were previously sent as
+      // RETURN_REQUESTED with return wording, so somebody who had not yet
+      // accepted an asset was told to return it.
+      const awaitingAcknowledgement = a.state === 'pending approval';
+      const assetLabel = a.assetName || a.assetTag;
+
       await sendAssetNotification({
-        type: 'assignment_reminder',
+        type: awaitingAcknowledgement
+          ? 'assignment_reminder'
+          : 'return_request',
         recipientEmail: a.userEmail,
         assetTag: a.assetTag,
-        assetName: a.assetName || a.assetTag,
+        assetName: assetLabel,
       });
 
       if (a.assignedToUserId) {
         try {
-          await dispatchAlert({
-            eventType: 'RETURN_REQUESTED',
-            userId: a.assignedToUserId,
-            title: 'Return Reminder',
-            message: `Reminder: IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
-            targetUrl: '/dashboard',
-          });
-        } catch (error) {
-          console.error(
-            'Failed to dispatch in-app return reminder alert:',
-            error
+          await dispatchAlert(
+            awaitingAcknowledgement
+              ? {
+                  eventType: 'ASSIGNMENT_PENDING',
+                  userId: a.assignedToUserId,
+                  title: 'Reminder: Assignment Awaiting Acknowledgement',
+                  message: `${assetLabel} is still waiting for you to accept it.`,
+                  targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
+                }
+              : {
+                  eventType: 'RETURN_REQUESTED',
+                  userId: a.assignedToUserId,
+                  title: 'Return Reminder',
+                  message: `Reminder: IT has requested the return of ${assetLabel}.`,
+                  targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
+                }
           );
+        } catch (error) {
+          console.error('Failed to dispatch in-app reminder alert:', error);
         }
       }
 
@@ -881,7 +1020,11 @@ export async function triggerAssignmentReminders(
         entityId: a.assetId,
         actionType: 'UPDATE',
         performedById,
-        newData: { notificationSent: 'assignment_reminder' },
+        newData: {
+          notificationSent: awaitingAcknowledgement
+            ? 'acknowledgement_reminder'
+            : 'return_reminder',
+        },
       });
     })
   );
@@ -970,7 +1113,7 @@ export async function triggerReturnRequests(
             userId: a.assignedToUserId,
             title: 'Return Requested',
             message: `IT has requested the immediate return of ${a.assetName || a.assetTag}.`,
-            targetUrl: '/dashboard',
+            targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
           });
         } catch (error) {
           console.error(
@@ -1124,6 +1267,131 @@ export async function acceptAssignment(assignmentId: number): Promise<void> {
 }
 
 /**
+ * Withdraws an assignment that has not been acknowledged yet.
+ *
+ * The counterpart to the employee's decline: same end state, but initiated by
+ * the person who created the assignment rather than the person receiving it.
+ * Without it, a mistaken assignment could only be resolved by asking the
+ * assignee to reject something they never wanted.
+ *
+ * Restricted to 'pending approval' on purpose — once the assignee has accepted,
+ * the asset is genuinely in their hands and giving it back is a return, not a
+ * cancellation.
+ */
+export async function cancelPendingAssignment(
+  assignmentId: number,
+  cancelledById: string,
+  options: { allowAnyInitiator: boolean }
+): Promise<{ assetId: string }> {
+  const [assignment] = await db
+    .select({
+      id: assetAssignments.id,
+      assetId: assetAssignments.assetId,
+      state: assetAssignments.state,
+      assignedById: assetAssignments.assignedById,
+      assignedToUserId: assetAssignments.assignedToUserId,
+    })
+    .from(assetAssignments)
+    .where(eq(assetAssignments.id, assignmentId))
+    .limit(1);
+
+  if (!assignment) {
+    throw new AssignmentServiceError(
+      'Assignment not found.',
+      404,
+      'ASSIGNMENT_NOT_FOUND'
+    );
+  }
+
+  if (
+    !options.allowAnyInitiator &&
+    String(assignment.assignedById) !== String(cancelledById)
+  ) {
+    throw new AssignmentServiceError(
+      'Only the person who created this assignment can cancel it.',
+      403,
+      'NOT_ASSIGNMENT_INITIATOR'
+    );
+  }
+
+  if (assignment.state !== 'pending approval') {
+    throw new AssignmentServiceError(
+      'Only an assignment still awaiting acknowledgment can be cancelled.',
+      409,
+      'ASSIGNMENT_NOT_PENDING'
+    );
+  }
+
+  await db.transaction(async (tx) => {
+    // Re-check the state inside the transaction: the assignee may be accepting
+    // at this very moment, and cancelling underneath them would leave the asset
+    // marked Available while they believe they hold it.
+    const [updated] = await tx
+      .update(assetAssignments)
+      .set({
+        state: 'returned',
+        acceptanceStatus: 'cancelled',
+        returnedDate: new Date(),
+      })
+      .where(
+        and(
+          eq(assetAssignments.id, assignmentId),
+          eq(assetAssignments.state, 'pending approval')
+        )
+      )
+      .returning({ id: assetAssignments.id });
+
+    if (!updated) {
+      throw new AssignmentServiceError(
+        'Assignment is no longer pending acknowledgment.',
+        409,
+        'ASSIGNMENT_NOT_PENDING'
+      );
+    }
+
+    await tx
+      .update(notificationQueue)
+      .set({ isProcessed: true })
+      .where(eq(notificationQueue.assignmentId, assignmentId));
+
+    await tx
+      .update(assets)
+      .set({ status: 'Available' })
+      .where(eq(assets.id, assignment.assetId));
+
+    await logAuditActionTx(tx, {
+      entityType: 'asset_assignment',
+      entityId: String(assignmentId),
+      actionType: 'RETURN',
+      performedById: cancelledById,
+      oldData: { state: 'pending approval' },
+      newData: {
+        state: 'returned',
+        acceptanceStatus: 'cancelled',
+      },
+    });
+  });
+
+  // Tell the assignee it is gone, so a pending item does not linger in their
+  // notification list pointing at an assignment they can no longer act on.
+  if (assignment.assignedToUserId) {
+    try {
+      await dispatchAlert({
+        eventType: 'ASSIGNMENT_DECLINED',
+        userId: assignment.assignedToUserId,
+        title: 'Assignment Cancelled',
+        message: `Assignment #${assignmentId} was cancelled before you acknowledged it. No action is needed.`,
+        targetUrl: EMPLOYEE_ASSIGNMENTS_URL,
+      });
+    } catch (error) {
+      console.error('Failed to dispatch assignment cancelled alert:', error);
+    }
+  }
+
+  return { assetId: assignment.assetId };
+}
+
+/**
  * Processes a returned asset with physical condition check.
  */
 export async function processAssetReturn(
@@ -1145,21 +1413,8 @@ export async function processAssetReturn(
     throw new AssignmentServiceError('Asset not found', 404, 'ASSET_NOT_FOUND');
   }
 
-  let newStatus: string;
-  switch (input.condition) {
-    case 'Good Working Condition':
-      newStatus = 'Available';
-      break;
-    case 'Minor Issues':
-    case 'Needs Repair':
-      newStatus = 'In Repair';
-      break;
-    case 'Beyond Repair':
-      newStatus = 'Pending Disposal';
-      break;
-    default:
-      newStatus = 'Available';
-  }
+  // Shared with the return form, which previews this before submitting.
+  const newStatus = resolveReturnStatus(input.condition) ?? 'Available';
 
   await db.transaction(async (tx) => {
     // 1. Update asset status and physical condition

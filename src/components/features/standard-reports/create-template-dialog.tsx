@@ -41,6 +41,7 @@ import {
   type ReportTemplateData,
   type FilterOptions,
 } from '@/types/standard-reports';
+import { formatAssignmentState } from '@/lib/assignments/labels';
 import { FilterRow } from './standard-reports-page';
 
 interface CreateTemplateDialogProps {
@@ -187,9 +188,11 @@ export function CreateTemplateDialog({
 
   const assignmentStateOptions = [
     { value: '', label: 'All States' },
+    // Value stays the stored enum so the query is unaffected; only the option
+    // text is humanised.
     ...filterOptions.assignmentStates
       .filter((x) => x !== 'All States')
-      .map((opt) => ({ value: opt, label: opt })),
+      .map((opt) => ({ value: opt, label: formatAssignmentState(opt) })),
   ];
 
   const returnConditionOptions = [

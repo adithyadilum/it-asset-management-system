@@ -16,6 +16,7 @@ import { logAuditAction } from '@/lib/audit';
 import { dispatchWebhookEvent } from '@/lib/webhooks/dispatcher';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
+import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
 
 function toDateString(date: Date) {
   return date.toISOString().split('T')[0];
@@ -157,7 +158,9 @@ export const POST = withApiKey(
         apiRates
       ).toFixed(6);
 
-      const usefulLifeMonths = 60; // Default useful life of 5 years
+      // Same default the registration form applies, from the one constant, so
+      // an asset created through the API depreciates like any other.
+      const usefulLifeMonths = DEFAULT_USEFUL_LIFE_MONTHS;
 
       // 4. Database Transaction
       const insertedAsset = await db.transaction(async (tx) => {

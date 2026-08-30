@@ -1590,3 +1590,399 @@ the test does not pretend to. It was falsified by removing both layers together
 The control half is load-bearing: a redirect away from `/financials` proves
 nothing by itself, because an unrecognised session cookie produces the same
 shape of failure.
+
+## Reported bug fixes — 2026-08-20
+
+Twenty issues reported from using the app. Three findings are worth recording
+separately from the fixes themselves, because they change what the reports meant.
+
+### A defect nobody reported
+
+**Assigning an asset to a location left it pending forever.** Both
+`assignSingleAsset` and `assignMultipleAssets` hardcoded
+`state: 'pending approval'` regardless of target, but acceptance matches on
+`assignedToUserId === currentUser.id` — and a location has nobody who can
+accept. Every location assignment ever made was still sitting in the pending
+queue, inflating pending counts and the reminder list.
+
+`initialAssignmentState()` now derives the state from the target. Migration
+`0001` moves the rows that were already stuck. Verified against a real database:
+a stuck location row became `assigned` while a genuinely pending user assignment
+was left alone.
+
+### Two reports were partly wrong, in the reporter's favour
+
+**"Update depreciated value on refresh."** The ledger already recomputed on
+every request; nothing was cached. The real defect was that
+`fetch-depreciation-ledger.ts` and `fetch-tco-overview.ts` each re-implemented
+straight-line depreciation by hand, with a **36-month** default life and
+30.4-day months, while `lib/depreciation.ts`, `actions/financials.ts` and the
+disposal executor used **60** and whole calendar months. The same asset reported
+a different book value depending on which screen you opened. All callers now go
+through `calculateCurrentBookValue`.
+
+**"Assign model if no change, refresh no need."** There is no change-model
+flow — the model is immutable after registration (`asset-edit.ts` excludes it,
+and the edit panel renders it as a `LockedField`). The real fault was in the
+device-model form's dirty check: `handleModelImageSelection` set
+`removeExistingImage = true` even when the file picker was **cancelled**, and
+nothing ever reset it. Opening and dismissing the picker left the form
+permanently dirty, so Save stayed enabled and a no-op save triggered a full
+route refresh.
+
+### Symptoms that shared one cause
+
+- **"Pending approval" wording** — the assignments grid printed the raw database
+  enum with a CSS `capitalize`. Fixed with a display map
+  (`src/lib/assignments/labels.ts`); the stored value is untouched, since it is
+  embedded in every historical audit row and exposed by the public
+  `/api/v1/assets/my-assets` contract.
+- **Rejections missing from asset history** — they were logged all along, under
+  `entityType: 'asset_assignment'`, while `getAssetAuditHistory` filtered on
+  `'Asset'`. Widening the query surfaced accepts, declines, cancellations and
+  returns at once, rather than double-writing rows for rejection alone.
+- **Disposal documents on every row** — `asset_documents` had no link to a
+  disposal, so an asset disposed more than once showed every receipt it had ever
+  accumulated on all of its rows. Added `disposal_id`, backfilled only where an
+  asset has exactly one disposal record, and left genuinely ambiguous rows null
+  rather than guessing.
+- **Four sentence builders for audit text** — the dashboard feed, the audit log
+  table, the asset history timeline and the mobile activity endpoint each had
+  their own, and the dashboard's inflected verbs by inspecting the last letter.
+  Consolidated into `src/lib/audit-events.ts`, which also picked up the better
+  `formatAuditValue` and the order-insensitive `areValuesEqual` that only the
+  audit table had.
+
+### Also found while fixing
+
+- `cron/route.ts` sent two notification types to `/portal/my-assets?...`, **a
+  route that does not exist** — those notifications 404'd on click. All
+  notification destinations now come from `src/lib/notifications/target-urls.ts`.
+- The 403 page's "Contact IT Support" button had **no `onClick` and no `href`**;
+  the sidebar's Support button navigated to the dashboard. There was no support
+  address anywhere in the codebase, and five pages each invented their own
+  wording. `SUPPORT_EMAIL` / `SUPPORT_URL` in `src/lib/constants.ts` now back all
+  seven sites — **both values are placeholders and must be set before release.**
+- `BADGE_DICTIONARY` had no entries for the `excellent`, `fair` or `poor`
+  conditions, so those rendered grey with a question-mark icon across the
+  Furniture and Electronics views. The Electronics-specific colour map was keyed
+  on derived status words rather than the condition enum, so any asset with a
+  condition recorded fell through to the default.
+- Every asset silently received a 5-year lifespan: `usefulLifeMonths` was read
+  straight off `formData`, outside the Zod schema, with a hardcoded `'60'`, and
+  no form field ever set it. It is now a validated Expected Lifespan field,
+  defaulted to 5 years and editable afterwards.
+
+### Verification
+
+Lint, typecheck, formatting, 1252 unit tests and a production build all pass.
+The migration was applied to a real PostgreSQL 18 from zero, re-applied over a
+populated database with `__drizzle_migrations` cleared, and checked against a
+fixture that exercises both data migrations and both of their no-op cases.
+
+Not verifiable in CI, and worth a manual pass: the thermal and A4 asset tags
+with a long model name, the Electronics and Furniture condition badges, an asset
+disposed twice, and the Operations → Available assets detail image.
+
+## Runtime errors and latency — 2026-08-21
+
+### The Cache Components warnings were fallout from the Next upgrade
+
+`src/app/(app-shell)/layout.tsx` already carried `export const unstable_instant
+= false`. **Next 16.3 renamed that export to `instant`**, and an unrecognised
+segment export is ignored rather than rejected — so the opt-out silently stopped
+applying the moment the dependency audit moved 16.2.10 → 16.3.1, and every
+navigation started reporting "uncached data during prerendering".
+
+Renamed, and added to `src/app/page.tsx`, which exists only to `redirect()` and
+so has nothing to prerender.
+
+### The login page is now static
+
+`/login` read `redirectTo` through `await searchParams`, which made the whole
+route dynamic. The value is only ever handed to `signIn()` on click, so it is
+read on the client with `useSearchParams()` instead and the page prerenders —
+`○ /login` in the build output, where it was previously server-rendered on every
+request. `sanitizeRedirectPath` is pure and does the same filtering it did on
+the server; there are now tests for the off-site and `/login`-loop cases.
+
+### The 17-second session call
+
+`refreshAccessToken` opens a database transaction, takes a `pg_advisory_xact_lock`
+for the user, and then calls Keycloak **from inside that transaction** — with no
+timeout. Every other worker refreshing the same user blocks behind that lock for
+however long the identity provider takes, and a transaction stays open the whole
+time.
+
+The lock is deliberate (Keycloak rotates refresh tokens, so concurrent refreshes
+would revoke each other) and has been left alone. What was missing is a bound:
+the call now carries an 8-second `AbortSignal.timeout`, so a slow provider fails
+fast and frees the lock instead of stalling the session path.
+
+### Where the rest of the latency actually is
+
+Measured against the dev database rather than guessed:
+
+|                                      |             |
+| ------------------------------------ | ----------- |
+| First query (connect + Neon wake)    | **1185 ms** |
+| Steady-state round trip (`SELECT 1`) | **~125 ms** |
+
+The database is Neon in `ap-southeast-1`. **Every sequential query costs ~125ms
+before it does any work**, and the first after an idle period costs a second on
+top. A page issuing five queries in sequence spends over half a second waiting
+on the network no matter how well each one is written. That is the dominant term
+in the 2-second dashboard render, and it is infrastructure, not application code.
+
+The lever that matters is therefore the number of _sequential_ round trips, not
+the cost of each query.
+
+`getNotificationSummary` (509–826 ms) is fixed on that basis. It computed the
+unread badge with `count(*) FILTER (...) OVER ()`, a window aggregate that must
+see every notification the user has ever received before `LIMIT` can apply —
+measured on 20k rows: 456 buffers and a top-N sort to return ten. It is now a
+page query and a count **issued in parallel**, so it is still one round trip's
+worth of latency while the page half became a 3-buffer index scan.
+
+**An index that did not survive measurement.** The first attempt at this added
+`app_notifications (user_id, created_at DESC)` on the theory that the page query
+needed it. Explained across three scenarios — one user, forty users, and a user
+whose notifications are all old — the planner chose an existing index every
+time. It was removed rather than shipped: an index the planner never picks is
+write amplification on every insert for no read benefit.
+
+`getAuthenticatedUser` was already wrapped in React `cache()`, so it costs one
+round trip per request regardless of how many loaders call it. No change needed.
+
+### Migration applied to the dev database
+
+`0001` had not been run there, which is why the disposals page crashed with
+`column asset_documents.disposal_id does not exist` — the code was correct and
+the schema was behind.
+
+Applied, and the backfill rule improved first. Matching on "the asset's only
+disposal" was too strict: the one real certificate in the database belonged to an
+asset that had been **rejected once and then disposed properly**, so it had two
+records and was skipped. Since a certificate is only ever written by the
+execute-disposal action, which runs on completion, the Completed record is
+provably its owner. The rule now matches on that, still refusing to guess when
+an asset has two Completed disposals.
+
+Verified on the dev data: `DES-001` now shows the certificate against disposal
+20 (Completed) and nothing against disposal 19 (Rejected) — which is exactly the
+reported "document shows in all rows".
+
+## Streaming and connection reuse — 2026-08-21
+
+### Every page inside the app shell now streams
+
+The asset registry pages awaited their data before returning any markup, so a
+navigation painted nothing until the slowest query finished — and with Cache
+Components enabled Next reported it as "uncached data during prerendering" on
+every visit.
+
+`instant = false` on the shell layout does **not** suppress this for the pages
+beneath it, and it would not be the right fix anyway: it makes the route block,
+which is the behaviour being complained about.
+
+A shared `loading.tsx` was not enough either. It gives a navigation something to
+show, but Next validates the boundary per route, so a page whose own default
+export is `async` still reports the error — which is why the registry pages went
+quiet after being wrapped individually while every other route did not.
+
+The fix is applied per page. Each `async` page is now split into a synchronous
+default export and an inner `…Content` component that does the awaiting:
+
+```tsx
+async function AuditLogPageContent() {
+  /* session + queries */
+}
+
+export default function AuditLogPage() {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AuditLogPageContent />
+    </Suspense>
+  );
+}
+```
+
+Nineteen pages in total. The five redirect-only routes — `/financials`,
+`/reports`, `/settings`, `/operations` and `/assets/[assetId]` — get
+`export const instant = false` instead: they render no markup, so there is
+nothing to stream and blocking is the honest answer.
+
+`PageSkeleton` is deliberately one generic component rather than nineteen
+bespoke ones, which would drift out of step with the pages they stand for. The
+asset registry and dashboard keep their own, because their shape genuinely
+differs.
+
+Verified by rendering **all 24 sidebar routes** against the running dev server
+with a real session cookie: every one returned 200, with **zero** prerender
+errors and zero errors of any kind in the server log.
+
+### The database round trip is the budget, and connections are the cost
+
+Measured against the deployed Neon instance in `ap-southeast-1`:
+
+|                                                |             |
+| ---------------------------------------------- | ----------- |
+| Query on an established connection             | **~130 ms** |
+| Four concurrent queries, cold pool             | **1234 ms** |
+| The same four, warm pool                       | **136 ms**  |
+| The same four, run sequentially on a warm pool | **990 ms**  |
+
+Two things follow, and they point in opposite directions from the obvious
+guesses.
+
+**`Promise.all` is doing its job.** Four queries in 136ms against 990ms
+sequential is the whole difference between a responsive page and a slow one.
+The registry shell already batches its four loads this way; that was not the
+problem.
+
+**Opening a connection is.** Roughly 275ms each, and the pool closed them after
+**20 seconds** of inactivity — shorter than the gap between one page view and
+the next, so ordinary browsing paid full reconnection cost almost every time.
+Raised to 300 seconds, with `allowExitOnIdle` so seed and migration scripts
+still exit promptly instead of waiting out the timeout.
+
+### What was not the cause
+
+Worth recording, because the log made both look guilty:
+
+- **Data volume.** `getCategoriesByPillar` took 567ms for Hardware and 171ms for
+  Software, which reads like a scaling problem. Hardware has **10 assets** and
+  Software has 3. Run on their own, both queries take ~130ms; the difference was
+  connection acquisition, not rows.
+- **A missing index.** `getCategoriesByPillar` selects four columns from a
+  four-row table. There is nothing to index.
+
+### Still standing, by design
+
+`loadAuthenticatedUser` re-reads the user row on every request to pick up
+deactivation and role changes immediately rather than waiting for the JWT to
+expire. That is one round trip — ~130ms — on the front of every page, and it is
+already `cache()`-scoped so several loaders in one request share a single read.
+Removing it would mean trusting the token, which is a security decision rather
+than a performance one, so it has been left alone and flagged here instead.
+
+## Second round of reported bugs — 2026-08-22
+
+### The financials routes needed the layout, not the page
+
+Every page under `/financials` still reported "uncached data during
+prerendering" after the previous round. The pages were not the problem:
+`financials/layout.tsx` is an **async layout** that awaits the session before
+rendering any child, so no amount of wrapping the pages beneath it helps. It is
+a guard rather than a view — it either renders children or redirects — so it
+takes `export const instant = false`. It was the only async layout without one.
+
+### Assignment could not transfer
+
+`assignSingleAsset` and `assignMultipleAssets` both required
+`status = 'Available'`, so the first assignment succeeded and every one after
+it failed with `ASSET_NOT_AVAILABLE`. Moving a desk from one room to another
+was impossible without returning it first.
+
+`ASSIGNABLE_STATUSES` now covers `Available` and `Assigned`, and
+`closeOpenAssignments` closes the previous assignment inside the same
+transaction — marking it `returned` / `transferred`, clearing any queued
+acceptance, and writing an audit row — so a transfer leaves exactly one open
+assignment. In Repair, Defective, Lost and Disposed still block.
+
+Verified against a real database: assign to Room A, transfer to Room B, and the
+first assignment ends `returned`/`transferred` and closed while the second is
+open, with the asset still `Assigned`.
+
+### The maintenance panel read an image off the wrong table
+
+`ticket.asset.imageUrl` is always `undefined` — **`assets` has no `imageUrl`
+column**. The image belongs to `models`, which the query already selects. The
+`Asset` type in `types/maintenance.ts` declared a field the table does not
+have, which is what made the mistake invisible; it has been moved to `Model`.
+
+### Registering with a location now means assigned
+
+Furniture and electronics are assigned to a place, so giving one a location at
+registration _is_ the assignment. It was recorded as `Available`, leaving
+occupied desks showing as free and requiring somebody to assign the asset to
+the room it was already in. Registration now writes `Assigned` **and** creates
+the matching location assignment, so the detail panel has something to show and
+the asset can be transferred.
+
+Registering without a location still starts `Available`, and hardware is
+unaffected — it is assigned to people, and its location field is just where it
+sits.
+
+### The detail panel had no location to show
+
+The assignment query joined `assignedToUser` only. A location assignment has no
+user, so the panel rendered "Assigned to: -" and looked unassigned. Added the
+`assignedToLocation` relation, exposed it through the repo, and the panel now
+labels the row "Location" for the location-assigned pillars and "Assigned to"
+otherwise.
+
+`isLocationAssignedPillar` in `src/lib/assignments/pillars.ts` is the one
+definition of that distinction; the assignment modal, the detail panel and
+registration all read from it rather than each repeating the pillar names.
+
+### Badges
+
+Three different looks had grown up: the registry pillar badge, a smaller
+`h-5 rounded-full px-2 text-[11px]` pill in the assignments grid, and
+hand-rolled `<span>`s with their own ring and padding in the registry columns.
+`BADGE_LAYOUT` is now shared between `PillarBadge` and `StatusBadge`, and the
+ad-hoc badges — assignment status, category, electronics condition, and both
+seat counters — render through `StatusBadge`. The dictionary gained the four
+derived Office Electronics statuses and `requested`, which the hand-rolled
+versions had been colouring themselves.
+
+### Skeletons
+
+The dashboard already had a faithful `loading.tsx` — KPI cards, charts, tables
+— but the Suspense boundary added in the previous round fell back to the
+generic `PageSkeleton`, so a table skeleton stood in for a grid of cards. The
+dashboard skeleton is now a component used by both its `loading.tsx` and its
+Suspense boundary.
+
+### Logout
+
+`getFederatedLogoutUrl` sent only `id_token_hint`. RP-initiated logout lets the
+provider validate `post_logout_redirect_uri` against either that hint **or**
+`client_id`, and the ID tokens here live **300 seconds** — decoded from the
+failing URL, alongside an `auth_time` showing the session was already 112
+minutes old. Any session open longer than five minutes therefore could not log
+out, which "remember me" makes routine. It also sent an empty
+`id_token_hint=` when no token was present, which a provider reads as a
+malformed hint rather than an absent one.
+
+`client_id` is now always sent and `id_token_hint` only when there is one.
+
+### Being logged out after a while — not fixed, and here is why
+
+The other half of that report is two separate things. Signing back in without
+seeing the Keycloak form is **correct** SSO behaviour: the provider still holds
+a valid browser session and re-issues tokens without prompting.
+
+The unexpected logout traces to a failed refresh
+(`invalid_grant: Token is not active`), which sets `RefreshAccessTokenError` and
+makes the session null. With a 300-second access token the app must refresh
+every five minutes, so any hiccup logs the user out. The causes live in the
+Keycloak realm — token lifespan, SSO session idle, and refresh token rotation —
+not in this codebase. The one thing that was fixable here is already done: the
+refresh call is bounded by an 8-second timeout so a slow provider cannot hold
+the per-user advisory lock indefinitely.
+
+Worth raising the access token lifespan and checking **Refresh Token Max
+Reuse** in the realm before treating this as an application bug.
+
+### CodeQL: `js/insufficient-password-hash`
+
+A false positive, suppressed with the reasoning inline rather than worked
+around. The query cannot see where its input came from; `createApiKey` builds
+every key from `randomBytes(32)`, so the search space is 2^256 and no amount of
+key stretching changes an attacker's position against that. Both alternatives
+cost something real: PBKDF2 was 50–100 ms of blocking CPU per request (which is
+why it was removed), and peppering with HMAC would tie every issued key to
+`ENCRYPTION_SECRET`, so rotating that secret would silently invalidate every
+integration.

@@ -15,6 +15,9 @@ vi.mock('@/actions/audit-log', () => ({
     data: [],
     meta: { total: 0, page: 1, pageSize: 16, totalPages: 1 },
   }),
+  // Export now goes through a server action so it can honour the active
+  // filters rather than exporting whatever happens to be on screen.
+  exportAuditLogs: vi.fn().mockResolvedValue({ rows: [], truncated: false }),
 }));
 
 describe('AuditLogClient', () => {

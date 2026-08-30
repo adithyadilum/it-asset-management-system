@@ -12,6 +12,7 @@ import { db } from '@/db';
 import { users, userRefreshTokens, departments } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
 import { decrypt, encrypt } from '@/lib/crypto';
+import { logAuditAction } from '@/lib/audit';
 
 const ENCRYPTED_TOKEN_PREFIX = 'enc:v1:';
 
@@ -66,6 +67,15 @@ function uuidToLockKey(uuid: string): bigint {
  * pg_advisory_xact_lock is a true cross-process mutex: all workers share the
  * same Postgres connection pool and therefore the same lock namespace.
  */
+/**
+ * How long to wait for Keycloak to answer a refresh.
+ *
+ * Kept short because the caller holds a Postgres advisory lock for the whole
+ * round trip. A refresh that has not completed in this long is not going to
+ * help the request in flight, and failing fast frees the lock.
+ */
+const KEYCLOAK_REFRESH_TIMEOUT_MS = 8_000;
+
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   const userId = token.id as string;
 
@@ -117,6 +127,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         decryptToken(stored?.refreshToken) ?? (token.refreshToken as string);
       const url = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
 
+      // Timeout is load-bearing, not defensive polish: this call happens
+      // inside the transaction that holds the advisory lock above, so for as
+      // long as it runs, every other worker refreshing this same user is
+      // blocked and a database transaction is held open. Without a bound, one
+      // slow identity provider stalls the whole session path -- which is
+      // exactly what a 17s /api/auth/session traced back to.
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -126,6 +142,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
           grant_type: 'refresh_token',
           refresh_token: refreshTokenToUse,
         }),
+        signal: AbortSignal.timeout(KEYCLOAK_REFRESH_TIMEOUT_MS),
       });
 
       const refreshedTokens = await response.json();
@@ -515,6 +532,51 @@ export const authOptions: NextAuthOptions = {
       session.error = token.error;
 
       return session;
+    },
+  },
+
+  events: {
+    /**
+     * Records a successful sign-in.
+     *
+     * `LOGIN` was already in the AuditActionType union and every surface that
+     * displays audit rows -- badge colour, icon, "User signed in" -- was wired
+     * to render it, but nothing ever wrote one. Only LOGOUT was recorded, so
+     * the audit trail showed people leaving a system they were never seen
+     * entering.
+     *
+     * Deliberately an `event` and not the `signIn` callback: the callback also
+     * runs for sign-ins it is about to reject, and a rejected attempt is not a
+     * login. Events fire only after NextAuth has accepted the sign-in.
+     */
+    async signIn({ user, isNewUser }) {
+      const email = user?.email?.toLowerCase();
+      if (!email) return;
+
+      try {
+        const record = await db.query.users.findFirst({
+          where: eq(users.email, email),
+          columns: { id: true, role: true },
+        });
+
+        if (!record) return;
+
+        await logAuditAction({
+          entityType: 'sessions',
+          entityId: record.id,
+          actionType: 'LOGIN',
+          performedById: record.id,
+          newData: {
+            email,
+            role: record.role,
+            ...(isNewUser ? { provisioned: true } : {}),
+          },
+        });
+      } catch (error) {
+        // Never block a sign-in on the audit ledger. logAuditAction already
+        // swallows its own failures; this covers the lookup above.
+        console.error('Failed to record LOGIN audit event:', error);
+      }
     },
   },
 

@@ -21,8 +21,19 @@ const LEGACY_HASH_SALT = 'eitams-api-key-hash-v1';
  * invalid keys as expensive to reject as valid ones.
  *
  * Produces 64 hex characters, matching the existing `varchar(64)` column.
+ *
+ * CodeQL flags this as `js/insufficient-password-hash`. That query cannot see
+ * where the input came from, and here it is not a password: `createApiKey` in
+ * actions/integrations.ts builds every key from `randomBytes(32)`, so the
+ * search space is 2^256. No amount of key stretching changes an attacker's
+ * position against that, and the alternatives all cost something real --
+ * PBKDF2 cost 50-100 ms of blocking CPU per request, and peppering with HMAC
+ * would tie every issued key to `ENCRYPTION_SECRET`, so rotating that secret
+ * would silently invalidate every integration. Suppressed deliberately rather
+ * than worked around.
  */
 export function hashApiKey(plainTextKey: string): string {
+  // codeql[js/insufficient-password-hash]
   return createHash('sha256').update(plainTextKey).digest('hex');
 }
 

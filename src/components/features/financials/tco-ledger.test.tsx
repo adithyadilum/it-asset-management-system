@@ -16,6 +16,16 @@ describe('TCOLedger', () => {
     vi.clearAllMocks();
   });
 
+  const mockSummary = {
+    totalPurchase: 1500,
+    totalMaintenance: 200,
+    totalTCO: 1700,
+    maintenanceShare: 13.3,
+    maintainedCount: 1,
+    assetCount: 1,
+    asOf: '2026-08-28T00:00:00.000Z',
+  };
+
   const mockData = [
     {
       id: '1',
@@ -33,7 +43,7 @@ describe('TCOLedger', () => {
     render(
       <StrictMode>
         <CurrencyProvider initialCurrency="USD">
-          <TCOLedger initialData={mockData} />
+          <TCOLedger initialData={mockData} initialSummary={mockSummary} />
         </CurrencyProvider>
       </StrictMode>
     );

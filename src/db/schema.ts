@@ -348,6 +348,13 @@ export const assetDocuments = pgTable(
       .references(() => assets.id, { onDelete: 'cascade' }),
     documentType: varchar('document_type', { length: 100 }),
     fileUrl: varchar('file_url', { length: 500 }).notNull(),
+    // Which disposal produced this document, for 'disposal-certificate' rows.
+    // Without it a document could only be tied to an asset, so an asset
+    // disposed more than once showed every receipt on every disposal row.
+    // Nullable: documents unrelated to a disposal have no disposal.
+    disposalId: integer('disposal_id').references(() => assetDisposals.id, {
+      onDelete: 'set null',
+    }),
     uploadedById: uuid('uploaded_by_id')
       .notNull()
       .references(() => users.id),
@@ -355,6 +362,9 @@ export const assetDocuments = pgTable(
   },
   (table) => ({
     assetIdIdx: index('asset_documents_asset_id_idx').on(table.assetId),
+    disposalIdIdx: index('asset_documents_disposal_id_idx').on(
+      table.disposalId
+    ),
   })
 );
 
@@ -422,6 +432,12 @@ export const maintenanceTickets = pgTable(
 
     estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
     actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
+    // Both costs are in this currency. The repair dialogs offered a currency
+    // picker with nowhere to store the answer, so the figure was kept bare and
+    // silently read as LKR wherever it was displayed.
+    currencyCode: varchar('currency_code', { length: 3 })
+      .default('LKR')
+      .notNull(),
 
     estimatedReturnDate: date('estimated_return_date'),
     actualCompletionDate: timestamp('actual_completion_date'),
@@ -884,6 +900,12 @@ export const assetAssignmentsRelations = relations(
     assignedToUser: one(users, {
       fields: [assetAssignments.assignedToUserId],
       references: [users.id],
+    }),
+    // Furniture and electronics are assigned to a place rather than a person,
+    // so the detail panel needs this to show what an asset is assigned to.
+    assignedToLocation: one(locations, {
+      fields: [assetAssignments.assignedToLocationId],
+      references: [locations.id],
     }),
     assignedBy: one(users, {
       fields: [assetAssignments.assignedById],

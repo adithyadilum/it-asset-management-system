@@ -9,8 +9,14 @@ const applicationUrl = new URL(
 const serverActionOrigins = isProduction
   ? [applicationUrl.host]
   : [applicationUrl.host, 'localhost:3000', '127.0.0.1:3000'];
+// 'wasm-unsafe-eval' permits WebAssembly compilation and nothing else -- it does
+// not re-enable eval(). @react-pdf/renderer lays out with Yoga compiled to WASM,
+// so without it every PDF (standard reports and asset tag printing alike) fails
+// with "WebAssembly.instantiate() ... violates the following Content Security
+// policy directive". Development already allows 'unsafe-eval', which is why this
+// only ever appeared in production.
 const scriptSource = isProduction
-  ? "script-src 'self' 'unsafe-inline'"
+  ? "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'"
   : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
 const contentSecurityPolicy = [
@@ -29,7 +35,6 @@ const contentSecurityPolicy = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   reactStrictMode: true,
   allowedDevOrigins: isProduction
     ? []

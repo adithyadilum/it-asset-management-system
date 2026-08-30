@@ -1,4 +1,4 @@
-import { and, count, eq, isNull, sql } from 'drizzle-orm';
+import { and, count, eq, isNull, ne, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   assetAssignments,
@@ -20,6 +20,7 @@ import type {
   OverdueReturnRow,
   PendingDisposalRow,
   HighMaintenanceRow,
+  PendingMaintenanceRow,
   InventoryStatusResponse,
   InventoryStatusItem,
   DepartmentAllocationItem,
@@ -130,6 +131,16 @@ export async function getHighMaintenanceAssetsInternal(
     .from(maintenanceTickets)
     .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
     .innerJoin(models, eq(assets.modelId, models.id))
+    // A cancelled ticket is not a repair, and because it never gets an
+    // `actual_completion_date` the downtime sum below treated it as still open
+    // -- accruing phantom days forever. Archived assets are excluded here for
+    // the same reason every other dashboard query excludes them.
+    .where(
+      and(
+        ne(maintenanceTickets.status, 'CANCELLED'),
+        eq(assets.isArchived, false)
+      )
+    )
     .groupBy(assets.id, assets.assetTag, models.name, assets.status)
     .having(
       sql`COUNT(${maintenanceTickets.id}) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`
@@ -261,3 +272,56 @@ export const getCachedAssetsByCategory = unstable_cache(
   ['dashboard-assets-by-category'],
   { revalidate: DASHBOARD_CHART_CACHE_TTL, tags: ['dashboard-categories'] }
 );
+
+/**
+ * Reported issues waiting on IT: internal tickets that are still open.
+ *
+ * The counterpart to overdue returns and pending disposals -- work that has
+ * been raised and not yet actioned. `loadPendingMaintenanceTickets` in
+ * `src/actions/maintenance.ts` answers the same question for the maintenance
+ * page, but returns whole joined records; the dashboard needs six columns.
+ */
+export async function getPendingMaintenanceRequestsInternal(
+  limit: number = DASHBOARD_TABLE_DEFAULT_LIMIT
+): Promise<PendingMaintenanceRow[]> {
+  const rows = await db
+    .select({
+      ticketId: maintenanceTickets.id,
+      assetId: assets.id,
+      assetTag: assets.assetTag,
+      assetName: models.name,
+      reportedIssue: maintenanceTickets.reportedIssue,
+      reportedBy: users.name,
+      reportedByEmail: users.email,
+      daysPending:
+        sql<number>`GREATEST(0, CURRENT_DATE - ${maintenanceTickets.createdAt}::date)`.as(
+          'days_pending'
+        ),
+    })
+    .from(maintenanceTickets)
+    .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+    .innerJoin(models, eq(assets.modelId, models.id))
+    .innerJoin(users, eq(maintenanceTickets.dispatchedById, users.id))
+    .where(
+      and(
+        eq(maintenanceTickets.status, 'ACTIVE'),
+        // INTERNAL means reported and not yet sent anywhere; a VENDOR ticket is
+        // already being worked on and belongs to Active Repairs.
+        eq(maintenanceTickets.ticketType, 'INTERNAL'),
+        eq(assets.isArchived, false)
+      )
+    )
+    .orderBy(maintenanceTickets.createdAt)
+    .limit(limit);
+
+  return rows.map((row) => ({
+    ticketId: row.ticketId,
+    assetId: row.assetId,
+    assetTag: row.assetTag,
+    assetName: row.assetName,
+    reportedIssue: row.reportedIssue,
+    reportedBy: row.reportedBy,
+    reportedByEmail: row.reportedByEmail,
+    daysPending: Number(row.daysPending ?? 0),
+  }));
+}

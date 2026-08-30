@@ -15,6 +15,7 @@ import type {
   ReportPreviewRow,
 } from '@/types/standard-reports';
 import { generateAndOpenReportPdf } from '@/lib/utils/report-print';
+import { logReportExportAction } from '@/actions/standard-reports';
 
 interface GenerateReportPdfModalProps {
   isOpen: boolean;
@@ -162,6 +163,16 @@ export function GenerateReportPdfModal({
       };
 
       await generateAndOpenReportPdf(reportData);
+
+      // Same reasoning as the CSV path: the PDF is assembled in the browser, so
+      // nothing on the server would otherwise record that it left.
+      void logReportExportAction({
+        source,
+        format: 'PDF',
+        rowCount: rows.length,
+        templateName,
+      });
+
       handleOpenChange(false);
     },
     [

@@ -8,6 +8,10 @@ import {
   maintenanceTickets,
 } from '@/db/schema';
 import { logLatency, startLatencyTimer } from '@/lib/latency';
+import {
+  DEFAULT_USEFUL_LIFE_MONTHS,
+  calculateCurrentBookValue,
+} from '@/lib/depreciation';
 import type {
   ReportPreviewFilters,
   ReportPreviewRow,
@@ -105,26 +109,18 @@ export async function fetchTcoOverview(
   const data: ReportPreviewRow[] = rows.map((row) => {
     const cost = Number(row.totalCost || 0);
     const salvage = Number(row.salvageValue || 0);
-    const usefulLife = row.usefulLifeMonths || 36;
-    const ageMonths = row.purchaseDate
-      ? Math.max(
-          0,
-          Math.floor(
-            (Date.now() - new Date(row.purchaseDate).getTime()) /
-              (1000 * 60 * 60 * 24 * 30.4)
-          )
-        )
-      : Math.max(
-          0,
-          Math.floor(
-            (Date.now() - new Date(row.createdAt).getTime()) /
-              (1000 * 60 * 60 * 24 * 30.4)
-          )
-        );
-
-    const monthlyDep = usefulLife > 0 ? (cost - salvage) / usefulLife : 0;
-    const accDep = monthlyDep * Math.min(usefulLife, ageMonths);
-    const bookVal = cost - accDep;
+    // Was 36 months and 30.4-day steps here, 60 months and calendar months in
+    // lib/depreciation.ts — the same asset reported two different book values
+    // depending on which screen you opened.
+    const usefulLife = row.usefulLifeMonths || DEFAULT_USEFUL_LIFE_MONTHS;
+    const depreciationBasis = row.purchaseDate ?? row.createdAt;
+    const bookVal = calculateCurrentBookValue({
+      cost,
+      salvageValue: salvage,
+      usefulLifeMonths: usefulLife,
+      purchaseDate: depreciationBasis,
+    });
+    const accDep = cost - bookVal;
 
     const stats = maintenanceStats.get(row.id) || {
       totalCost: 0,

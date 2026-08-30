@@ -21,25 +21,42 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   convertCurrencyAmount,
   formatMoneyByCurrency,
+  SUMMARY_CURRENCY,
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
-import { getTCOLedger } from '@/actions/financials';
+import {
+  getTCOLedger,
+  type FinancialsFilterOptions,
+} from '@/actions/financials';
+import { LedgerSummary } from '@/components/features/financials/ledger-summary';
+import { TCOCompositionChart } from '@/components/features/financials/tco-composition-chart';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface TCOLedgerProps {
   initialData: TCOLedgerRecord[];
   initialPageCount?: number;
+  /** Full option lists, read from the tables rather than the current page. */
+  filterOptions?: FinancialsFilterOptions;
+  initialSummary: TCOLedgerSummary;
 }
+
+export type TCOLedgerSummary = Awaited<
+  ReturnType<typeof getTCOLedger>
+>['summary'];
 
 export function TCOLedger({
   initialData,
   initialPageCount = 1,
+  filterOptions,
+  initialSummary,
 }: TCOLedgerProps) {
   const [data, setData] = useState<TCOLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  // Held here, not on the page, so filtering the table filters the totals too.
+  const [summary, setSummary] = useState(initialSummary);
   const [isPending, startTransition] = useTransition();
   const canReuseInitialDataRef = useRef(true);
 
@@ -59,9 +76,12 @@ export function TCOLedger({
     'w-[16%]',
   ];
 
+  // Derived from the loaded rows only when the server list is unavailable --
+  // one page of rows can never offer the categories it does not contain.
   const uniqueCategories = useMemo(() => {
+    if (filterOptions?.categories.length) return filterOptions.categories;
     return Array.from(new Set(initialData.map((item) => item.category))).sort();
-  }, [initialData]);
+  }, [filterOptions, initialData]);
 
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(
     () => [
@@ -79,8 +99,18 @@ export function TCOLedger({
           'Low Value (<$500)',
         ],
       },
+      {
+        value: 'Asset Pillar',
+        label: 'Asset Pillar',
+        options: filterOptions?.pillars ?? [],
+      },
+      {
+        value: 'Location',
+        label: 'Location',
+        options: filterOptions?.locations ?? [],
+      },
     ],
-    [uniqueCategories]
+    [uniqueCategories, filterOptions]
   );
 
   useEffect(() => {
@@ -105,6 +135,12 @@ export function TCOLedger({
       const costFilter = appliedFilters.find(
         (f) => f.field === 'Total Cost (TCO)' && f.operator === 'is'
       )?.value;
+      const pillarFilter = appliedFilters.find(
+        (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+      )?.value;
+      const locationFilter = appliedFilters.find(
+        (f) => f.field === 'Location' && f.operator === 'is'
+      )?.value;
 
       const response = await getTCOLedger({
         page: pagination.pageIndex + 1,
@@ -112,10 +148,13 @@ export function TCOLedger({
         search: debouncedSearch,
         category: categoryFilter,
         costFilter: costFilter,
+        pillar: pillarFilter,
+        location: locationFilter,
       });
 
       setData(response.data as unknown as TCOLedgerRecord[]);
       setPageCount(response.meta.totalPages);
+      setSummary(response.summary);
     });
   }, [
     pagination.pageIndex,
@@ -153,6 +192,12 @@ export function TCOLedger({
     const costFilter = appliedFilters.find(
       (f) => f.field === 'Total Cost (TCO)'
     )?.value;
+    const pillarFilter = appliedFilters.find(
+      (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+    )?.value;
+    const locationFilter = appliedFilters.find(
+      (f) => f.field === 'Location' && f.operator === 'is'
+    )?.value;
 
     const response = await getTCOLedger({
       page: 1,
@@ -160,6 +205,8 @@ export function TCOLedger({
       search: debouncedSearch,
       category: categoryFilter,
       costFilter: costFilter,
+      pillar: pillarFilter,
+      location: locationFilter,
     });
 
     const headers = [
@@ -304,8 +351,58 @@ export function TCOLedger({
     },
   ];
 
+  const inDisplayCurrency = (value: number) =>
+    convertCurrencyAmount(value, SUMMARY_CURRENCY, currency);
+
   return (
-    <div className="flex flex-col h-full overflow-hidden gap-4">
+    // Natural height, not `h-full overflow-hidden`: the summary and the chart
+    // above the table are meant to scroll away, and a fixed-height column would
+    // instead squeeze the table into whatever was left over.
+    <div className="flex flex-col gap-4">
+      <LedgerSummary
+        asOf={summary.asOf}
+        stats={[
+          {
+            label: 'Total cost of ownership',
+            value: inDisplayCurrency(summary.totalTCO),
+            currencyCode: currency,
+          },
+          {
+            label: 'Purchase cost',
+            value: inDisplayCurrency(summary.totalPurchase),
+            currencyCode: currency,
+          },
+          {
+            label: 'Maintenance spend',
+            value: inDisplayCurrency(summary.totalMaintenance),
+            currencyCode: currency,
+            tone: 'warning',
+            hint: `${summary.maintenanceShare}% of purchase cost`,
+          },
+          {
+            label: 'Assets repaired',
+            value: `${summary.maintainedCount.toLocaleString()} of ${summary.assetCount.toLocaleString()}`,
+          },
+        ]}
+      />
+
+      <TCOCompositionChart
+        points={data.map((row) => ({
+          assetId: row.assetId,
+          purchase: convertCurrencyAmount(
+            row.originalPrice,
+            row.currencyCode || 'LKR',
+            currency
+          ),
+          maintenance: convertCurrencyAmount(
+            row.totalRepairCosts,
+            row.currencyCode || 'LKR',
+            currency
+          ),
+        }))}
+        currencyCode={currency}
+      />
+
       <FilterBar
         searchQuery={searchTerm}
         onSearchChange={(value) => {
@@ -362,7 +459,9 @@ export function TCOLedger({
         </Button>
       </FilterBar>
 
-      <div className="min-h-0 flex-1 flex flex-col">
+      {/* Tall enough that once the filter row has scrolled to the top of the
+          viewport, the whole table is on screen. */}
+      <div className="flex min-h-[calc(100vh-11rem)] flex-col">
         {isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
             <TableSkeleton
