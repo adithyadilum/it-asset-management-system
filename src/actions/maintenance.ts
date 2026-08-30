@@ -1235,6 +1235,13 @@ export async function flagAssetForRepair(
         performedAt: now,
       });
 
+      void dispatchWebhookEvent('maintenance.created', {
+        ticketId: newTicket.id,
+        assetId: parsed.data.assetId,
+        ticketType: 'INTERNAL',
+        reportedIssue: parsed.data.issueNote,
+      });
+
       return {
         success: true as const,
         message: 'Asset flagged for repair. It will appear in Pending Review.',
@@ -1253,6 +1260,7 @@ export async function flagAssetForRepair(
   } catch (error) {
     const knownMessages = [
       'Asset ',
+      'Asset is disposed or archived',
       'Failed to create maintenance ticket',
       'Failed to update asset status',
       'Failed to close active assignments',
