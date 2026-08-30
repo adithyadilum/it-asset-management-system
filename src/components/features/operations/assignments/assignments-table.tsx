@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useCallback } from 'react';
 import {
   DataTable,
   type DataTableSelectionAction,
@@ -13,6 +14,7 @@ import type {
   ColumnDef,
   RowSelectionState,
   OnChangeFn,
+  Row,
 } from '@tanstack/react-table';
 
 export type AssetAssignmentRow = {
@@ -80,6 +82,44 @@ export function AssignmentsTable({
         (col) => !('accessorKey' in col) || col.accessorKey !== 'state'
       );
 
+  const selectedPillars = useMemo(() => {
+    const pillars = new Set<string>();
+    if (!rowSelection) return pillars;
+    Object.keys(rowSelection).forEach((key) => {
+      if (rowSelection[key]) {
+        const rowIndex = Number(key);
+        const row = rows[rowIndex];
+        if (row?.group) {
+          pillars.add(row.group);
+        }
+      }
+    });
+    return pillars;
+  }, [rowSelection, rows]);
+
+  const hasSelectedSoftware = selectedPillars.has('Software');
+  const hasSelectedElectronicsOrFurniture =
+    selectedPillars.has('Office Electronics') ||
+    selectedPillars.has('Office Furniture');
+
+  const enableRowSelection = useCallback(
+    (row: Row<AssetAssignmentRow>) => {
+      const group = row.original.group;
+      if (hasSelectedSoftware) {
+        if (group === 'Office Electronics' || group === 'Office Furniture') {
+          return false;
+        }
+      }
+      if (hasSelectedElectronicsOrFurniture) {
+        if (group === 'Software') {
+          return false;
+        }
+      }
+      return true;
+    },
+    [hasSelectedSoftware, hasSelectedElectronicsOrFurniture]
+  );
+
   return (
     <div className="flex flex-col gap-4 flex-1 overflow-hidden min-h-0 mt-1">
       <FilterBar
@@ -103,6 +143,7 @@ export function AssignmentsTable({
         selectionLabel={(count) => `${count} Assets Selected`}
         rowSelection={rowSelection}
         onRowSelectionChange={onRowSelectionChange}
+        enableRowSelection={enableRowSelection}
         disableSelectionHeader={disableSelectionHeader}
       />
     </div>
