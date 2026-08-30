@@ -77,7 +77,12 @@ export async function getDepreciationLedger(
     // 1. Build Dynamic Conditions
     const conditions = [
       ne(assets.status, 'Disposed'),
-      ne(categories.pillar, 'Software'),
+      // Software assets are not depreciable; exclude them unless the caller
+      // explicitly filters for the Software pillar (contradictory predicates
+      // would always produce zero rows).
+      ...(pillar && pillar !== 'All' && pillar === 'Software'
+        ? []
+        : [ne(categories.pillar, 'Software')]),
     ];
 
     if (search) {
@@ -609,7 +614,12 @@ export async function getWriteOffsLedger(
     // 1. Build Dynamic Conditions
     const conditions = [
       eq(assetDisposals.status, 'Completed'),
-      ne(categories.pillar, 'Software'),
+      // Software assets are excluded from the write-offs ledger; skip the
+      // exclusion only if the caller explicitly filters for 'Software' so the
+      // two predicates don't cancel each other out.
+      ...(pillar && pillar !== 'All' && pillar === 'Software'
+        ? []
+        : [ne(categories.pillar, 'Software')]),
     ];
 
     if (search) {
@@ -828,7 +838,16 @@ export async function getFinancialsFilterOptions() {
 
   return {
     categories: categoryRows.map((row) => row.name),
-    pillars: Array.from(new Set(categoryRows.map((row) => row.pillar))).sort(),
+    // Software assets are excluded from all financial ledgers that calculate
+    // depreciation or write-offs, so offering 'Software' as a pillar option
+    // would surface zero rows and mislead the auditor.
+    pillars: Array.from(
+      new Set(
+        categoryRows
+          .filter((row) => row.pillar !== 'Software')
+          .map((row) => row.pillar)
+      )
+    ).sort(),
     locations: locationRows.map((row) => row.name),
   };
 }
