@@ -53,6 +53,8 @@ const eslintConfig = defineConfig([
     'playwright-report/**',
     'test-results/**',
     'coverage/**',
+    // Swagger UI bundles copied from node_modules by scripts/copy-swagger-ui.mjs.
+    'public/api-docs/vendor/**',
   ]),
 ]);
 
