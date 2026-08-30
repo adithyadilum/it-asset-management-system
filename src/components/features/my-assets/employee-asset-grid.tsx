@@ -18,6 +18,7 @@ import { AcceptAssignmentDialog } from '@/components/features/dashboard/employee
 import { RejectionDialog } from '@/components/features/dashboard/employee/rejection-dialog';
 import { AssetCard } from '@/components/shared/asset-card';
 import { tiqriToast } from '@/components/shared/sonner';
+import { formatAssetName } from '@/lib/asset-name';
 import type { PendingAcceptanceItem } from '@/lib/data/portal-repo';
 
 const PILLAR_PRESENTATION: Record<
@@ -61,17 +62,6 @@ function getAssetPresentation(pillar: string | undefined, modelName: string) {
     return { label: 'Monitor', icon: <Monitor className="h-8 w-8" /> };
   }
   return { label: 'Asset', icon: <HardDrive className="h-8 w-8" /> };
-}
-
-/**
- * How a person refers to the thing: "Dell Latitude 5540", not "Latitude 5540".
- * The brand is dropped when the model name already leads with it.
- */
-export function formatAssetName(brandName: string | null, modelName: string) {
-  if (!brandName) return modelName;
-  return modelName.toLowerCase().startsWith(brandName.toLowerCase())
-    ? modelName
-    : `${brandName} ${modelName}`;
 }
 
 function formatDay(value: string) {

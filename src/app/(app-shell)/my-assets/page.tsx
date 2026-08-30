@@ -16,8 +16,8 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { AppWindow } from 'lucide-react';
-import { formatAssetName } from '@/components/features/my-assets/employee-asset-grid';
 import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
+import { formatAssetName } from '@/lib/asset-name';
 
 async function MyAssetsPageContent() {
   const user = await requirePageAuth();
