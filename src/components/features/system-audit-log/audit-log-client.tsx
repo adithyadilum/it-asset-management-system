@@ -12,10 +12,23 @@ import { format } from 'date-fns';
 import { Download } from 'lucide-react';
 
 import {
+  exportAuditLogs,
   getAuditLogs,
   type AuditLogRow,
   type PaginatedAuditLogsResult,
 } from '@/actions/audit-log';
+import { AUDIT_EXPORT_LIMIT } from '@/lib/audit-events';
+import { toast } from 'sonner';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { PaginationState } from '@tanstack/react-table';
 
 import {
@@ -248,6 +261,48 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
     return () => window.clearTimeout(timeoutId);
   }, [searchValue]);
 
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<'page' | 'recent' | 'range'>(
+    'recent'
+  );
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (exportScope === 'page') {
+      downloadCsv(rows);
+      setExportOpen(false);
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // The filters and search currently on screen are carried through, so the
+      // export matches what the user is looking at rather than the whole table.
+      const result = await exportAuditLogs({
+        search: debouncedQuery,
+        filters: appliedFilters,
+        ...(exportScope === 'range'
+          ? { dateFrom: exportFrom || undefined, dateTo: exportTo || undefined }
+          : {}),
+      });
+
+      downloadCsv(result.rows);
+
+      if (result.truncated) {
+        toast.warning(
+          `Exported the most recent ${AUDIT_EXPORT_LIMIT.toLocaleString()} records. Narrow the date range to capture the rest.`
+        );
+      }
+      setExportOpen(false);
+    } catch {
+      toast.error('Failed to export the audit log.');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [exportScope, exportFrom, exportTo, rows, debouncedQuery, appliedFilters]);
+
   const loadRows = useCallback(async () => {
     try {
       const result = await getAuditLogs({
@@ -461,7 +516,7 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
               type="button"
               size="sm"
               className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              onClick={() => downloadCsv(rows)}
+              onClick={() => setExportOpen(true)}
             >
               <Download className="size-4" />
               Export Log (CSV)
@@ -491,6 +546,85 @@ export default function AuditLogClient({ initialResult }: AuditLogClientProps) {
           />
         </div>
       </main>
+
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Export audit log</DialogTitle>
+            <DialogDescription>
+              Your current search and filters apply to every option.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {(
+              [
+                {
+                  value: 'recent',
+                  label: `Most recent ${AUDIT_EXPORT_LIMIT.toLocaleString()} records`,
+                },
+                {
+                  value: 'page',
+                  label: `Current page (${rows.length} rows)`,
+                },
+                { value: 'range', label: 'Custom date range' },
+              ] as const
+            ).map((option) => (
+              <label
+                key={option.value}
+                className="flex items-center gap-2 text-sm"
+              >
+                <input
+                  type="radio"
+                  name="export-scope"
+                  value={option.value}
+                  checked={exportScope === option.value}
+                  onChange={() => setExportScope(option.value)}
+                />
+                {option.label}
+              </label>
+            ))}
+
+            {exportScope === 'range' && (
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1.5">
+                  <Label htmlFor="export-from">From</Label>
+                  <Input
+                    id="export-from"
+                    type="date"
+                    className="h-9"
+                    value={exportFrom}
+                    onChange={(event) => setExportFrom(event.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="export-to">To</Label>
+                  <Input
+                    id="export-to"
+                    type="date"
+                    className="h-9"
+                    value={exportTo}
+                    onChange={(event) => setExportTo(event.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExportOpen(false)}
+              disabled={isExporting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleExport} disabled={isExporting}>
+              {isExporting ? 'Exporting…' : 'Export CSV'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }

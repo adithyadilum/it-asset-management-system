@@ -21,26 +21,46 @@ import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import {
   convertCurrencyAmount,
   formatMoneyByCurrency,
+  SUMMARY_CURRENCY,
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/lib/currency';
-import { getDepreciationLedger } from '@/actions/financials';
+import {
+  getDepreciationLedger,
+  type FinancialsFilterOptions,
+} from '@/actions/financials';
+import { BookValueChart } from '@/components/features/financials/book-value-chart';
+import { LedgerSummary } from '@/components/features/financials/ledger-summary';
+import { Progress } from '@/components/ui/progress';
 import { TableSkeleton } from '@/components/shared/table-skeleton';
 import { useCurrency } from '@/components/providers/currency-provider';
 
 interface DepreciationLedgerProps {
   initialData: DepreciationLedgerRecord[];
   initialPageCount?: number;
+  /** Full option lists, read from the tables rather than the current page. */
+  filterOptions?: FinancialsFilterOptions;
+  initialSummary: DepreciationLedgerSummary;
 }
+
+export type DepreciationLedgerSummary = Awaited<
+  ReturnType<typeof getDepreciationLedger>
+>['summary'];
 
 export function DepreciationLedger({
   initialData,
   initialPageCount = 1,
+  filterOptions,
+  initialSummary,
 }: DepreciationLedgerProps) {
   // Data & Pagination State - Initialize from initialData to avoid empty flash
   const [data, setData] = useState<DepreciationLedgerRecord[]>(initialData);
   const [pageCount, setPageCount] = useState(initialPageCount);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 16 });
+  // The summary and chart live here rather than on the page so that narrowing
+  // the filters narrows them too -- a header that ignored the filters under it
+  // would be worse than no header.
+  const [summary, setSummary] = useState(initialSummary);
   const [isPending, startTransition] = useTransition();
   const canReuseInitialDataRef = useRef(true);
 
@@ -60,9 +80,12 @@ export function DepreciationLedger({
     'w-[16%]',
   ];
 
+  // Derived from the loaded rows only when the server list is unavailable --
+  // one page of rows can never offer the categories it does not contain.
   const uniqueCategories = useMemo(() => {
+    if (filterOptions?.categories.length) return filterOptions.categories;
     return Array.from(new Set(initialData.map((item) => item.category))).sort();
-  }, [initialData]);
+  }, [filterOptions, initialData]);
 
   const filterFieldConfigs: FilterFieldConfig[] = useMemo(
     () => [
@@ -76,8 +99,18 @@ export function DepreciationLedger({
         label: 'Purchase Age',
         options: ['This Year', 'Last Year', 'Older than 3 Years'],
       },
+      {
+        value: 'Asset Pillar',
+        label: 'Asset Pillar',
+        options: filterOptions?.pillars ?? [],
+      },
+      {
+        value: 'Location',
+        label: 'Location',
+        options: filterOptions?.locations ?? [],
+      },
     ],
-    [uniqueCategories]
+    [uniqueCategories, filterOptions]
   );
 
   // Debounce search input
@@ -104,6 +137,12 @@ export function DepreciationLedger({
       const ageFilter = appliedFilters.find(
         (f) => f.field === 'Purchase Age' && f.operator === 'is'
       )?.value;
+      const pillarFilter = appliedFilters.find(
+        (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+      )?.value;
+      const locationFilter = appliedFilters.find(
+        (f) => f.field === 'Location' && f.operator === 'is'
+      )?.value;
 
       const response = await getDepreciationLedger({
         page: pagination.pageIndex + 1,
@@ -111,10 +150,13 @@ export function DepreciationLedger({
         search: debouncedSearch,
         category: categoryFilter,
         ageFilter: ageFilter,
+        pillar: pillarFilter,
+        location: locationFilter,
       });
 
       setData(response.data as unknown as DepreciationLedgerRecord[]);
       setPageCount(response.meta.totalPages);
+      setSummary(response.summary);
     });
   }, [
     pagination.pageIndex,
@@ -152,6 +194,12 @@ export function DepreciationLedger({
     const ageFilter = appliedFilters.find(
       (f) => f.field === 'Purchase Age' && f.operator === 'is'
     )?.value;
+    const pillarFilter = appliedFilters.find(
+      (f) => f.field === 'Asset Pillar' && f.operator === 'is'
+    )?.value;
+    const locationFilter = appliedFilters.find(
+      (f) => f.field === 'Location' && f.operator === 'is'
+    )?.value;
 
     const response = await getDepreciationLedger({
       page: 1,
@@ -159,6 +207,8 @@ export function DepreciationLedger({
       search: debouncedSearch,
       category: categoryFilter,
       ageFilter: ageFilter,
+      pillar: pillarFilter,
+      location: locationFilter,
     });
 
     const headers = [
@@ -263,14 +313,31 @@ export function DepreciationLedger({
     },
     {
       accessorKey: 'expectedLifespan',
-      header: 'Expected Lifespan',
-      cell: ({ row }) => (
-        <span
-          className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
-        >
-          {row.original.expectedLifespan}
-        </span>
-      ),
+      header: 'Life Remaining',
+      cell: ({ row }) => {
+        // The column used to print the life and leave the reader to work out
+        // how much of it was left against the purchase date two columns over.
+        const { lifeMonths, monthsElapsed, expectedLifespan } = row.original;
+        const used = lifeMonths > 0 ? (monthsElapsed / lifeMonths) * 100 : 0;
+        const remaining = Math.max(0, lifeMonths - monthsElapsed);
+
+        return (
+          <div className="flex min-w-[120px] flex-col gap-1">
+            <Progress
+              value={Math.min(100, used)}
+              className="h-1.5"
+              aria-label={`${Math.round(used)}% of useful life elapsed`}
+            />
+            <span
+              className={`${TYPOGRAPHY_CLASSNAMES.textXsRegular} text-muted-foreground`}
+            >
+              {remaining === 0
+                ? `Fully depreciated · ${expectedLifespan}`
+                : `${remaining} of ${lifeMonths} months left`}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'currentBookValue',
@@ -292,8 +359,50 @@ export function DepreciationLedger({
     },
   ];
 
+  const inDisplayCurrency = (value: number) =>
+    convertCurrencyAmount(value, SUMMARY_CURRENCY, currency);
+
   return (
-    <div className="flex flex-col h-full overflow-hidden gap-4">
+    // Natural height, not `h-full overflow-hidden`: the summary and the chart
+    // above the table are meant to scroll away, and a fixed-height column would
+    // instead squeeze the table into whatever was left over.
+    <div className="flex flex-col gap-6">
+      <LedgerSummary
+        asOf={summary.asOf}
+        stats={[
+          {
+            label: 'Assets tracked',
+            value: summary.assetCount.toLocaleString(),
+            hint: `${summary.fullyDepreciated.toLocaleString()} fully depreciated`,
+          },
+          {
+            label: 'Original cost',
+            value: inDisplayCurrency(summary.totalCost),
+            currencyCode: currency,
+          },
+          {
+            label: 'Current book value',
+            value: inDisplayCurrency(summary.totalBookValue),
+            currencyCode: currency,
+            tone: 'positive',
+          },
+          {
+            label: 'Accumulated depreciation',
+            value: inDisplayCurrency(summary.accumulatedDepreciation),
+            currencyCode: currency,
+            tone: 'warning',
+          },
+        ]}
+      />
+
+      <BookValueChart
+        series={summary.bookValueSeries.map((point) => ({
+          month: point.month,
+          bookValue: inDisplayCurrency(point.bookValue),
+        }))}
+        currencyCode={currency}
+      />
+
       <FilterBar
         searchQuery={searchTerm}
         onSearchChange={(value) => {
@@ -351,7 +460,12 @@ export function DepreciationLedger({
         </Button>
       </FilterBar>
 
-      <div className="min-h-0 flex-1 flex flex-col">
+      {/* A fixed height, not a minimum: the DataTable inside is `flex-1
+          min-h-0` around a scroll viewport, so capping the container here is
+          what makes extra rows scroll within the table instead of stretching
+          it. With `min-h-` the container grew with the row count, the page
+          grew with it, and the rows never scrolled internally. */}
+      <div className="flex h-[calc(100vh-11rem)] flex-col pb-6">
         {isPending ? (
           <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background p-4">
             <TableSkeleton

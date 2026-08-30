@@ -559,7 +559,12 @@ export function DataTable<TData, TValue>({
               colSpan={table.getAllLeafColumns().length}
               className="h-full p-0"
             >
-              <div className="flex h-full items-center justify-center py-12">
+              {/* `py-12` on top of the full-height row pushed the empty state
+                  past a fixed-height table -- the dashboard's 318px tables
+                  measured 357px of content with no rows, so an empty table
+                  showed a scrollbar with nothing to scroll. The flex centring
+                  already does the spacing work. */}
+              <div className="flex h-full min-h-0 items-center justify-center py-6">
                 <TableEmptyState
                   title={emptyState?.title}
                   description={emptyState?.description}

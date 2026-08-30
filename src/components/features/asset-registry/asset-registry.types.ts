@@ -21,6 +21,8 @@ export type AssetRegistryRow = {
   locationId: number | null;
   location: string | null;
   assignedTo: string | null;
+  /** State of the open assignment, when there is one. */
+  assignmentState?: string | null;
   instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date | string;
   // SAM fields

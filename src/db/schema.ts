@@ -432,6 +432,12 @@ export const maintenanceTickets = pgTable(
 
     estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
     actualCost: decimal('actual_cost', { precision: 12, scale: 2 }),
+    // Both costs are in this currency. The repair dialogs offered a currency
+    // picker with nowhere to store the answer, so the figure was kept bare and
+    // silently read as LKR wherever it was displayed.
+    currencyCode: varchar('currency_code', { length: 3 })
+      .default('LKR')
+      .notNull(),
 
     estimatedReturnDate: date('estimated_return_date'),
     actualCompletionDate: timestamp('actual_completion_date'),

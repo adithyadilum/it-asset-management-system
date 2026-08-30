@@ -52,6 +52,40 @@ function toCellText(value: string | null | undefined) {
  * these badges looked unlike the rest of the registry. StatusBadge knows every
  * condition and derived status this column can produce.
  */
+/**
+ * Asset status plus, when one is outstanding, the assignment's own state.
+ *
+ * An asset flips to 'Assigned' the moment an assignment is created, so status
+ * alone cannot distinguish an acknowledged assignment from one still waiting on
+ * the assignee. Shown as a second badge rather than replacing the status,
+ * because they answer different questions.
+ */
+function StatusWithAssignment({
+  status,
+  assignmentState,
+  colorTheme,
+  iconName,
+}: {
+  status: string;
+  assignmentState?: string | null;
+  colorTheme?: string;
+  iconName?: string;
+}) {
+  const isPending = assignmentState === 'pending approval';
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <StatusBadge
+        value={status}
+        showIcon
+        colorTheme={colorTheme}
+        iconName={iconName}
+      />
+      {isPending ? <StatusBadge value="pending approval" showIcon /> : null}
+    </div>
+  );
+}
+
 function renderElectronicsConditionBadge(condition: string) {
   return <StatusBadge value={condition} showIcon />;
 }
@@ -89,7 +123,10 @@ export function useAssetColumns(
           // "Expired") under the badge. Expiry dates remain on the licence
           // detail panel and in the dedicated Software view.
           cell: ({ row }) => (
-            <StatusBadge value={row.original.status} showIcon />
+            <StatusWithAssignment
+              status={row.original.status}
+              assignmentState={row.original.assignmentState}
+            />
           ),
         },
         {
@@ -250,6 +287,23 @@ export function useAssetColumns(
 
             if (row.original.pillar !== 'Software') return null;
 
+            // Seats are irrelevant once the licence has lapsed: an expired
+            // licence with eight free seats is not eight seats you can use.
+            const expiryDate = row.original.expiryDate
+              ? new Date(row.original.expiryDate)
+              : null;
+            const isExpired = expiryDate ? expiryDate < new Date() : false;
+
+            if (isExpired) {
+              return (
+                <StatusBadge
+                  variant="metadata"
+                  label="Unavailable"
+                  className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
+                />
+              );
+            }
+
             // Seat availability is a judgement, not a status name, so the
             // colour is chosen here — but the shape comes from StatusBadge like
             // every other badge.
@@ -334,9 +388,9 @@ export function useAssetColumns(
             (s) => s.value === row.original.status
           );
           return (
-            <StatusBadge
-              value={row.original.status}
-              showIcon
+            <StatusWithAssignment
+              status={row.original.status}
+              assignmentState={row.original.assignmentState}
               colorTheme={statusConfig?.colorTheme}
               iconName={statusConfig?.iconName}
             />

@@ -61,6 +61,13 @@ export const STATUS_THEMES = {
     'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800',
   slate:
     'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-800',
+  // Already stored against custom statuses in the database but missing from
+  // this map, so those statuses fell through to the grey fallback in both the
+  // badge and the inventory donut -- the admin's chosen colour never appeared.
+  violet:
+    'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-800',
+  amber:
+    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800',
 } as const;
 
 export type StatusTheme = keyof typeof STATUS_THEMES;
@@ -82,6 +89,8 @@ export const STATUS_COLORS: Array<{
   { label: 'Cyan', value: 'cyan', hex: '#06b6d4' },
   { label: 'Indigo', value: 'indigo', hex: '#6366f1' },
   { label: 'Slate', value: 'slate', hex: '#475569' },
+  { label: 'Violet', value: 'violet', hex: '#8b5cf6' },
+  { label: 'Amber', value: 'amber', hex: '#d97706' },
 ];
 
 // 2. Curated Icons (Strings that map to Lucide)

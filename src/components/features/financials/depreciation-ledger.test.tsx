@@ -16,6 +16,19 @@ describe('DepreciationLedger', () => {
     vi.clearAllMocks();
   });
 
+  const mockSummary = {
+    bookValueSeries: [
+      { month: '2026-08', bookValue: 1000 },
+      { month: '2026-09', bookValue: 950 },
+    ],
+    totalCost: 1500,
+    totalBookValue: 1000,
+    accumulatedDepreciation: 500,
+    fullyDepreciated: 0,
+    assetCount: 1,
+    asOf: '2026-08-28T00:00:00.000Z',
+  };
+
   const mockData = [
     {
       id: '1',
@@ -24,6 +37,8 @@ describe('DepreciationLedger', () => {
       purchaseDate: '2023-01-15T00:00:00Z',
       originalPrice: 1500,
       expectedLifespan: '3 years',
+      lifeMonths: 36,
+      monthsElapsed: 30,
       currentBookValue: 1000,
       currencyCode: 'USD',
     },
@@ -33,7 +48,10 @@ describe('DepreciationLedger', () => {
     render(
       <StrictMode>
         <CurrencyProvider initialCurrency="USD">
-          <DepreciationLedger initialData={mockData} />
+          <DepreciationLedger
+            initialData={mockData}
+            initialSummary={mockSummary}
+          />
         </CurrencyProvider>
       </StrictMode>
     );

@@ -120,6 +120,8 @@ export interface ActiveRepairTicket {
   rmaNumber: string | null;
   reportedIssue: string;
   estimatedCost: string | null;
+  /** Currency the estimate is denominated in; the completion form defaults to it. */
+  currencyCode: string | null;
   estimatedReturnDate: string | null;
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   createdAt: Date;
@@ -128,6 +130,8 @@ export interface ActiveRepairTicket {
 
 export interface CompleteRepairFormData {
   actualCost: string;
+  /** ISO code the cost is denominated in. */
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }
@@ -135,6 +139,7 @@ export interface CompleteRepairFormData {
 export interface LogCompleteRepairData {
   ticketId: number;
   actualCost: string;
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }

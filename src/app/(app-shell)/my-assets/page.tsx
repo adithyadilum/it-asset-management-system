@@ -7,6 +7,7 @@ import {
 } from '@/actions/employee';
 import { getPortalAlerts } from '@/lib/data/portal-repo';
 import { EmployeeAlerts } from '@/components/features/dashboard/employee/employee-alerts';
+import { EmployeeAssetGrid } from '@/components/features/my-assets/employee-asset-grid';
 import { AssetCard } from '@/components/shared/asset-card';
 import {
   Empty,
@@ -14,62 +15,9 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty';
-import {
-  AppWindow,
-  HardDrive,
-  Laptop,
-  Monitor,
-  Smartphone,
-  Code,
-  Armchair,
-  Speaker,
-} from 'lucide-react';
+import { AppWindow } from 'lucide-react';
 import { SUPPORT_LABEL, SUPPORT_MAILTO } from '@/lib/constants';
-
-// ── Asset icon resolver using category pillar ────────────────────────────────
-
-const PILLAR_ICON_MAP: Record<
-  string,
-  { label: string; icon: React.ReactNode }
-> = {
-  Hardware: { label: 'Device', icon: <Laptop className="h-8 w-8" /> },
-  Software: { label: 'Software', icon: <Code className="h-8 w-8" /> },
-  'Office Furniture': {
-    label: 'Furniture',
-    icon: <Armchair className="h-8 w-8" />,
-  },
-  'Office Electronics': {
-    label: 'Electronics',
-    icon: <Speaker className="h-8 w-8" />,
-  },
-};
-
-function getAssetPresentation(pillar: string | undefined, modelName: string) {
-  if (pillar && PILLAR_ICON_MAP[pillar]) {
-    return PILLAR_ICON_MAP[pillar];
-  }
-
-  // Fallback: model name heuristic for legacy data
-  const normalized = modelName.trim().toLowerCase();
-  if (
-    normalized.includes('macbook') ||
-    normalized.includes('laptop') ||
-    normalized.includes('thinkpad')
-  ) {
-    return { label: 'Laptop', icon: <Laptop className="h-8 w-8" /> };
-  }
-  if (
-    normalized.includes('iphone') ||
-    normalized.includes('phone') ||
-    normalized.includes('mobile')
-  ) {
-    return { label: 'Phone', icon: <Smartphone className="h-8 w-8" /> };
-  }
-  if (normalized.includes('monitor') || normalized.includes('display')) {
-    return { label: 'Monitor', icon: <Monitor className="h-8 w-8" /> };
-  }
-  return { label: 'Asset', icon: <HardDrive className="h-8 w-8" /> };
-}
+import { formatAssetName } from '@/lib/asset-name';
 
 async function MyAssetsPageContent() {
   const user = await requirePageAuth();
@@ -100,30 +48,7 @@ async function MyAssetsPageContent() {
               <h2 className="text-lg font-semibold text-foreground">
                 Assigned Equipment
               </h2>
-              <div className="mt-3 grid gap-4 xl:grid-cols-3">
-                {employeeAssets.map((asset) => {
-                  const presentation = getAssetPresentation(
-                    asset.pillar,
-                    asset.modelName
-                  );
-
-                  return (
-                    <AssetCard
-                      key={asset.assignmentId}
-                      assetType={presentation.label}
-                      name={asset.modelName}
-                      status={asset.status}
-                      icon={presentation.icon}
-                      assetId={asset.assetTag}
-                      assignedDate={new Intl.DateTimeFormat('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      }).format(new Date(asset.assignedDate))}
-                    />
-                  );
-                })}
-              </div>
+              <EmployeeAssetGrid assets={employeeAssets} />
             </section>
           ) : null}
 
@@ -137,9 +62,12 @@ async function MyAssetsPageContent() {
                   <AssetCard
                     key={asset.allocationId}
                     assetType={`${asset.licenseType} Seat`}
-                    name={asset.modelName}
+                    name={formatAssetName(asset.brandName, asset.modelName)}
                     status={asset.status}
                     icon={<AppWindow className="h-8 w-8" />}
+                    // Software has a publisher logo on its model like anything
+                    // else; only these cards were never given it.
+                    imageUrl={asset.imageUrl}
                     assetId={asset.assetTag}
                     assignedDate={new Intl.DateTimeFormat('en-US', {
                       month: 'short',

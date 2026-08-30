@@ -28,6 +28,7 @@ const mockGetCachedDepartmentAllocation = vi.fn();
 const mockGetOverdueReturnsInternal = vi.fn();
 const mockGetPendingDisposalsInternal = vi.fn();
 const mockGetHighMaintenanceAssetsInternal = vi.fn();
+const mockGetPendingMaintenanceRequestsInternal = vi.fn();
 const mockGetRecentActivitiesInternal = vi.fn();
 const mockGetDashboardTopHighValueAssetsInternal = vi.fn();
 const mockGetDashboardSoftwareOptimizationInternal = vi.fn();
@@ -43,6 +44,8 @@ vi.mock('./queries/inventory', () => ({
   getPendingDisposalsInternal: () => mockGetPendingDisposalsInternal(),
   getHighMaintenanceAssetsInternal: () =>
     mockGetHighMaintenanceAssetsInternal(),
+  getPendingMaintenanceRequestsInternal: () =>
+    mockGetPendingMaintenanceRequestsInternal(),
 }));
 
 vi.mock('./queries/activities', () => ({

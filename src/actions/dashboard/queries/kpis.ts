@@ -1,4 +1,4 @@
-import { and, count, eq, isNull, sql, inArray } from 'drizzle-orm';
+import { and, count, eq, isNull, ne, sql, inArray } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   assets,
@@ -221,10 +221,20 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
           )
         ),
 
+      // Same definition as the high-maintenance table: cancelled tickets are
+      // not repairs and archived assets are out of the fleet. Without these the
+      // KPI counted a different set of assets than the table beneath it listed.
       db.select({ count: count() }).from(
         db
           .select({ assetId: maintenanceTickets.assetId })
           .from(maintenanceTickets)
+          .innerJoin(assets, eq(maintenanceTickets.assetId, assets.id))
+          .where(
+            and(
+              ne(maintenanceTickets.status, 'CANCELLED'),
+              eq(assets.isArchived, false)
+            )
+          )
           .groupBy(maintenanceTickets.assetId)
           .having(sql`COUNT(*) >= ${HIGH_MAINTENANCE_TICKET_THRESHOLD}`)
           .as('high_repair_assets')

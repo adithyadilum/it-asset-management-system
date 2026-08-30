@@ -9,6 +9,7 @@ import {
   sendAssignmentReminderAction,
   requestAssetReturnAction,
   markAssetReceivedAction,
+  cancelAssignmentAction,
 } from '@/actions/assignments';
 
 // Mock the actions
@@ -21,6 +22,7 @@ vi.mock('@/actions/assignments', () => ({
   sendAssignmentReminderAction: vi.fn(),
   requestAssetReturnAction: vi.fn(),
   markAssetReceivedAction: vi.fn(),
+  cancelAssignmentAction: vi.fn(),
 }));
 
 // Mock Sonner toast
@@ -32,22 +34,26 @@ vi.mock('sonner', () => ({
 }));
 
 // Mock child components
+// Both panels are now the registry's `AssetDetailsPanel`; operations supplies
+// the lifecycle handlers through its standard prop names.
 vi.mock(
-  '@/components/features/asset-registry/panels/asset-assignment-panel',
+  '@/components/features/asset-registry/panels/asset-details-panel',
   () => ({
-    AssetAssignmentDetailsPanel: ({
+    AssetDetailsPanel: ({
       assetName,
       onAssign,
-      onSendReminder,
+      onRemindReturn,
       onRequestReturn,
-      onMarkReceived,
+      onMarkReturned,
+      onCancelAssignment,
     }: any) => (
       <div data-testid="asset-assignment-details-panel">
         <h1>{assetName}</h1>
         <button onClick={onAssign}>Assign</button>
-        <button onClick={onSendReminder}>Send Reminder</button>
+        <button onClick={onRemindReturn}>Send Reminder</button>
         <button onClick={onRequestReturn}>Request Return</button>
-        <button onClick={onMarkReceived}>Mark Received</button>
+        <button onClick={onMarkReturned}>Mark Received</button>
+        <button onClick={onCancelAssignment}>Cancel Assignment</button>
       </div>
     ),
   })
@@ -86,7 +92,14 @@ describe('AssignmentsPanels', () => {
 
     (getAssetDetailsByIdAction as any).mockResolvedValue({
       success: true,
-      data: { model: { name: 'Pro Max', brand: { name: 'Apple' } } },
+      data: {
+        asset: { name: 'Test Asset', serialNumber: 'SN123', condition: null },
+        model: {
+          name: 'Pro Max',
+          brand: { name: 'Apple' },
+          category: { pillar: 'Hardware' },
+        },
+      },
     });
 
     (getAssetMaintenanceByIdAction as any).mockResolvedValue({
@@ -150,6 +163,17 @@ describe('AssignmentsPanels', () => {
     await waitFor(() => {
       expect(markAssetReceivedAction).toHaveBeenCalledWith([101]);
       expect(mockOnClose).toHaveBeenCalled();
+    });
+  });
+
+  it('cancels an assignment that has not been acknowledged', async () => {
+    (cancelAssignmentAction as any).mockResolvedValue({ success: true });
+
+    renderPanel();
+
+    fireEvent.click(screen.getByText('Cancel Assignment'));
+    await waitFor(() => {
+      expect(cancelAssignmentAction).toHaveBeenCalledWith(101);
     });
   });
 });
