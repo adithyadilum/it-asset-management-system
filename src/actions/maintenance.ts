@@ -682,18 +682,35 @@ export async function initiateVendorRepair(
 
       const now = new Date();
 
-      const closedTicket = await tx
-        .update(maintenanceTickets)
-        .set({
-          status: 'COMPLETED',
-          resolutionNotes: 'Dispatched to vendor repair',
-          actualCompletionDate: now,
-          updatedAt: now,
-        })
-        .where(eq(maintenanceTickets.id, ticketId))
-        .returning({ id: maintenanceTickets.id });
-      if (closedTicket.length === 0)
+      // Dispatching is a stage of the existing ticket, not a new one.
+      //
+      // This used to close the triage ticket as COMPLETED and insert a second
+      // VENDOR ticket, which broke two things at once. Repair History lists
+      // every COMPLETED ticket, so the dispatch row showed up there as a
+      // finished repair with no cost, sitting next to the real one — the same
+      // asset recorded twice for a single repair. And the new ticket's
+      // reportedIssue was overwritten with "Vendor repair dispatch - <vendor>",
+      // so the operator closing the repair saw that placeholder instead of the
+      // fault someone actually reported.
+      //
+      // `ticketType` + `status` already encode the stage: INTERNAL/ACTIVE is
+      // the triage queue, VENDOR/ACTIVE is Active Repairs, COMPLETED is
+      // history. Promoting the row moves it between those views on its own and
+      // keeps reportedIssue intact for the whole lifecycle.
+      const triageResult = await tx
+        .select()
+        .from(maintenanceTickets)
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
+        .limit(1);
+      if (triageResult.length === 0)
         throw new Error('Failed to close initial triage ticket');
+      const triageTicket = triageResult[0];
+
+      if (triageTicket.assetId !== parsed.data.assetId)
+        throw new Error('Ticket does not belong to this asset');
+      // Guards against dispatching the same ticket twice from a stale tab.
+      if (triageTicket.status !== 'ACTIVE')
+        throw new Error('Ticket is no longer active');
 
       const updatedAsset = await tx
         .update(assets)
@@ -703,28 +720,22 @@ export async function initiateVendorRepair(
       if (updatedAsset.length === 0)
         throw new Error('Failed to update asset status');
 
-      const newTicketValues = {
-        assetId: parsed.data.assetId,
-        ticketType: 'VENDOR' as const,
-        vendorName: vendor.companyName,
-        rmaNumber: parsed.data.rmaNumber ?? null,
-        reportedIssue: `Vendor repair dispatch - ${vendor.companyName}`,
-        estimatedCost:
-          parsed.data.estimatedCost != null
-            ? parsed.data.estimatedCost.toString()
-            : null,
-        estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
-        status: 'ACTIVE' as const,
-        dispatchedById: user.id,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      const newTickets = await tx
-        .insert(maintenanceTickets)
-        .values(newTicketValues)
+      const dispatchedTickets = await tx
+        .update(maintenanceTickets)
+        .set({
+          ticketType: 'VENDOR' as const,
+          vendorName: vendor.companyName,
+          rmaNumber: parsed.data.rmaNumber ?? null,
+          estimatedCost:
+            parsed.data.estimatedCost != null
+              ? parsed.data.estimatedCost.toString()
+              : null,
+          estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
+          updatedAt: now,
+        })
+        .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .returning();
-      if (!newTickets[0])
+      if (!dispatchedTickets[0])
         throw new Error('Failed to create vendor repair ticket');
 
       // Audit Log complies with strict Enum ('UPDATE')
@@ -745,16 +756,16 @@ export async function initiateVendorRepair(
       });
 
       void dispatchWebhookEvent('maintenance.created', {
-        ticketId: newTickets[0].id,
+        ticketId: dispatchedTickets[0].id,
         assetId: parsed.data.assetId,
-        ticketType: newTicketValues.ticketType,
-        reportedIssue: newTicketValues.reportedIssue,
+        ticketType: 'VENDOR',
+        reportedIssue: dispatchedTickets[0].reportedIssue,
       });
 
       return {
         success: true,
         message: 'Asset dispatched successfully',
-        ticketId: newTickets[0].id,
+        ticketId: dispatchedTickets[0].id,
         assetId: parsed.data.assetId,
       };
     });
@@ -775,6 +786,11 @@ export async function initiateVendorRepair(
       'Failed to close',
       'Failed to update asset status',
       'Failed to create vendor repair ticket',
+      // Both are actionable by the operator — usually a second tab that already
+      // dispatched this ticket — so they must not collapse into the generic
+      // message.
+      'Ticket does not belong to this asset',
+      'Ticket is no longer active',
     ];
     const isKnown =
       error instanceof Error &&

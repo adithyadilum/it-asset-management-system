@@ -39,11 +39,20 @@ describe('TCOLedger', () => {
     },
   ];
 
+  const mockTrend = [
+    { month: '2022-05', purchase: 5000, maintenance: 0, total: 5000 },
+    { month: '2023-01', purchase: 5000, maintenance: 200, total: 5200 },
+  ];
+
   it('renders correctly with initial data', () => {
     render(
       <StrictMode>
         <CurrencyProvider initialCurrency="USD">
-          <TCOLedger initialData={mockData} initialSummary={mockSummary} />
+          <TCOLedger
+            initialData={mockData}
+            initialSummary={mockSummary}
+            initialTrend={mockTrend}
+          />
         </CurrencyProvider>
       </StrictMode>
     );
