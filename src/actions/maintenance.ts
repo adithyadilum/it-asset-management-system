@@ -702,7 +702,7 @@ export async function initiateVendorRepair(
         .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .limit(1);
       if (triageResult.length === 0)
-        throw new Error('Failed to close initial triage ticket');
+        throw new Error('Triage ticket not found');
       const triageTicket = triageResult[0];
 
       if (triageTicket.assetId !== parsed.data.assetId)
@@ -735,7 +735,7 @@ export async function initiateVendorRepair(
         .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .returning();
       if (!dispatchedTickets[0])
-        throw new Error('Failed to create vendor repair ticket');
+        throw new Error('Failed to update vendor repair ticket');
 
       // Audit Log complies with strict Enum ('UPDATE')
       await tx.insert(systemAuditLogs).values({
