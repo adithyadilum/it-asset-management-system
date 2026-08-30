@@ -347,7 +347,7 @@ export function ExecuteDisposalDialog({
                   Reason for Disposal{' '}
                   <span className="text-destructive">*</span>
                 </Label>
-                <Select value={reason} onValueChange={setReason} modal={false}>
+                <Select value={reason} onValueChange={setReason}>
                   <SelectTrigger className="w-full h-10 border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select a reason" />
                   </SelectTrigger>
@@ -368,7 +368,6 @@ export function ExecuteDisposalDialog({
                 <Select
                   value={method}
                   onValueChange={(val: string) => setMethod(val)}
-                  modal={false}
                 >
                   <SelectTrigger className="w-full h-10 border-input bg-background shadow-sm">
                     <SelectValue placeholder="Select a method" />
