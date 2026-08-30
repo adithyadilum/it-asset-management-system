@@ -4,6 +4,13 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { StatusBadge } from '@/components/shared/status-badge';
 import type { AssetAssignmentRow } from './assignments-table';
 
+const PILLAR_LABELS: Record<string, string> = {
+  Hardware: 'Hardware',
+  Software: 'Software',
+  'Office Furniture': 'Furniture & Fixtures',
+  'Office Electronics': 'Office Electronics',
+};
+
 export const getAssignmentColumns = (): ColumnDef<AssetAssignmentRow>[] => [
   {
     accessorKey: 'assetId',
@@ -17,6 +24,14 @@ export const getAssignmentColumns = (): ColumnDef<AssetAssignmentRow>[] => [
   {
     accessorKey: 'assetName',
     header: 'Asset Name',
+  },
+  {
+    accessorKey: 'group',
+    header: 'Pillar',
+    cell: ({ row }) => {
+      const label = PILLAR_LABELS[row.original.group] ?? row.original.group;
+      return <StatusBadge variant="metadata" label={label} />;
+    },
   },
   {
     accessorKey: 'serialNumber',

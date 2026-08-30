@@ -319,6 +319,10 @@ export const assetPurchases = pgTable(
     tax: decimal('tax', { precision: 12, scale: 2 }),
     shippingCost: decimal('shipping_cost', { precision: 12, scale: 2 }),
     totalCost: decimal('total_cost', { precision: 12, scale: 2 }),
+    estimatedSalvageValue: decimal('estimated_salvage_value', {
+      precision: 12,
+      scale: 2,
+    }),
     currencyCode: varchar('currency_code', { length: 3 }).default('LKR'),
     exchangeRate: decimal('exchange_rate', { precision: 15, scale: 6 }).default(
       '1'

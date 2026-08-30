@@ -82,7 +82,7 @@ export function InlineFieldRow({
       >
         <Label
           htmlFor={htmlFor}
-          className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} whitespace-nowrap text-foreground`}
+          className={`${TYPOGRAPHY_CLASSNAMES.textSmMedium} leading-tight text-foreground`}
         >
           {label}
         </Label>

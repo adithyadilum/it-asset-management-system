@@ -53,25 +53,30 @@ export function MultiAssetAssignmentModal({
 }: MultiAssetAssignmentModalProps) {
   const router = useRouter();
 
-  // Office Furniture and Office Electronics go to a location; everything else
-  // goes to a person. A selection spanning both has no single valid target.
+  // Three groups, each with a different valid target:
+  //   Software              -> a person only (a licence seat has no room)
+  //   Office Furniture/Elec -> a location only
+  //   everything else       -> either
   //
-  // This used to be one `.some()` over the location-only pillars, which is
-  // right for a uniform selection and wrong for a mixed one: any furniture in
-  // the set forced the whole batch to location assignment, so laptops picked
-  // alongside a desk were quietly assigned to a room instead of to the person
-  // the operator had in mind. Nothing surfaced that, because the radio was
-  // disabled rather than the submission blocked.
+  // A batch is assignable only where those constraints still leave one shared
+  // target. Software plus office assets leaves none, so it is blocked rather
+  // than quietly resolved: picking a mode for the operator is how a laptop
+  // selected next to a desk ended up assigned to a room instead of a person.
+  const softwareAssets = assets.filter(
+    (asset) => asset.assetGroup === 'Software'
+  );
   const locationOnlyAssets = assets.filter((asset) =>
     isLocationAssignedPillar(asset.assetGroup)
   );
-  const personAssignableAssets = assets.filter(
-    (asset) => !isLocationAssignedPillar(asset.assetGroup)
-  );
-  const isMixedSelection =
-    locationOnlyAssets.length > 0 && personAssignableAssets.length > 0;
-  const disableUserAssignment =
-    locationOnlyAssets.length > 0 && !isMixedSelection;
+
+  const hasSoftwareAssets = softwareAssets.length > 0;
+  const hasLocationOnlyAssets = locationOnlyAssets.length > 0;
+
+  // Both constraints at once means no target satisfies the whole selection.
+  const isMixedSelection = hasSoftwareAssets && hasLocationOnlyAssets;
+
+  const disableUserAssignment = hasLocationOnlyAssets && !isMixedSelection;
+  const disableLocationAssignment = hasSoftwareAssets && !isMixedSelection;
 
   const {
     assignmentMode,
@@ -89,7 +94,11 @@ export function MultiAssetAssignmentModal({
     handleDurationChange,
     handleExpectedReturnChange,
     validateAssignment,
-  } = useAssignmentModalState({ isOpen, disableUserAssignment });
+  } = useAssignmentModalState({
+    isOpen,
+    disableUserAssignment,
+    disableLocationAssignment,
+  });
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
@@ -111,7 +120,7 @@ export function MultiAssetAssignmentModal({
 
     if (isMixedSelection) {
       tiqriToast.warning(
-        'Assign these separately: the selection mixes assets that go to a person with assets that go to a location.'
+        'Assign these separately: software goes to a person and office assets go to a location.'
       );
       return;
     }
@@ -120,9 +129,11 @@ export function MultiAssetAssignmentModal({
 
     setIsSubmitting(true);
 
-    const resolvedAssignmentMode = disableUserAssignment
-      ? 'location'
-      : assignmentMode;
+    const resolvedAssignmentMode = disableLocationAssignment
+      ? 'user'
+      : disableUserAssignment
+        ? 'location'
+        : assignmentMode;
     const expectedDate =
       resolvedAssignmentMode === 'user'
         ? expectedReturn || undefined
@@ -203,9 +214,11 @@ export function MultiAssetAssignmentModal({
                 This selection cannot be assigned in one go.
               </p>
               <p className="mt-1 text-muted-foreground">
-                {personAssignableAssets.length}{' '}
-                {personAssignableAssets.length === 1 ? 'asset' : 'assets'} go to
-                a person and {locationOnlyAssets.length} to a location (
+                {softwareAssets.length}{' '}
+                {softwareAssets.length === 1 ? 'licence goes' : 'licences go'}{' '}
+                to a person and {locationOnlyAssets.length} office{' '}
+                {locationOnlyAssets.length === 1 ? 'asset goes' : 'assets go'}{' '}
+                to a location (
                 {locationOnlyAssets
                   .map((asset) => asset.assetTag)
                   .slice(0, 3)
@@ -220,7 +233,7 @@ export function MultiAssetAssignmentModal({
 
           <div className="space-y-2">
             <label
-              className={`flex items-center gap-2 text-sm ${disableUserAssignment ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
+              className={`flex items-center gap-2 text-sm ${disableUserAssignment || isMixedSelection ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
             >
               <input
                 type="radio"
@@ -232,12 +245,14 @@ export function MultiAssetAssignmentModal({
               />
               Assign to User
             </label>
-            <label className="flex items-center gap-2 text-sm text-foreground">
+            <label
+              className={`flex items-center gap-2 text-sm ${disableLocationAssignment || isMixedSelection ? 'cursor-not-allowed text-muted-foreground' : 'text-foreground'}`}
+            >
               <input
                 type="radio"
                 name="multi-assignment-mode"
                 checked={assignmentMode === 'location'}
-                disabled={isMixedSelection}
+                disabled={disableLocationAssignment || isMixedSelection}
                 onChange={() => handleAssignmentModeChange('location')}
                 className="size-4 border-border accent-primary"
               />
@@ -247,17 +262,21 @@ export function MultiAssetAssignmentModal({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-foreground">
-              {disableUserAssignment || assignmentMode === 'location'
-                ? 'Select a location'
-                : 'Select a user'}
+              {disableLocationAssignment
+                ? 'Select a user'
+                : disableUserAssignment || assignmentMode === 'location'
+                  ? 'Select a location'
+                  : 'Select a user'}
             </Label>
             <Select value={assignee} onValueChange={setAssignee}>
               <SelectTrigger className="h-9 bg-background">
                 <SelectValue
                   placeholder={
-                    disableUserAssignment || assignmentMode === 'location'
-                      ? 'Select a location'
-                      : 'Select a user'
+                    disableLocationAssignment
+                      ? 'Select a user'
+                      : disableUserAssignment || assignmentMode === 'location'
+                        ? 'Select a location'
+                        : 'Select a user'
                   }
                 />
               </SelectTrigger>

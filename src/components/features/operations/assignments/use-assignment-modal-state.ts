@@ -17,16 +17,35 @@ export type AssigneeOption = {
 
 interface UseAssignmentModalStateProps {
   isOpen: boolean;
-  disableUserAssignment: boolean;
+  disableUserAssignment?: boolean;
+  disableLocationAssignment?: boolean;
 }
 
 export function useAssignmentModalState({
   isOpen,
-  disableUserAssignment,
+  disableUserAssignment = false,
+  disableLocationAssignment = false,
 }: UseAssignmentModalStateProps) {
-  const [assignmentMode, setAssignmentMode] = useState<'user' | 'location'>(
-    () => (disableUserAssignment ? 'location' : 'user')
+  const [storedAssignmentMode, setAssignmentMode] = useState<
+    'user' | 'location'
+  >(() =>
+    disableLocationAssignment
+      ? 'user'
+      : disableUserAssignment
+        ? 'location'
+        : 'user'
   );
+
+  // Corrected as it is read rather than by an effect that calls setState. The
+  // effect version renders once with a mode the current selection forbids and
+  // then re-renders to fix it, which `react-hooks/set-state-in-effect` rejects
+  // and CI fails on.
+  const assignmentMode: 'user' | 'location' =
+    disableLocationAssignment && storedAssignmentMode === 'location'
+      ? 'user'
+      : disableUserAssignment && storedAssignmentMode === 'user'
+        ? 'location'
+        : storedAssignmentMode;
   const [assignee, setAssignee] = useState('');
   const [duration, setDuration] = useState('');
   const [expectedReturn, setExpectedReturn] = useState('');
@@ -83,12 +102,18 @@ export function useAssignmentModalState({
   }, [isOpen, loadOptions]);
 
   const resetState = useCallback(() => {
-    setAssignmentMode(disableUserAssignment ? 'location' : 'user');
+    setAssignmentMode(
+      disableLocationAssignment
+        ? 'user'
+        : disableUserAssignment
+          ? 'location'
+          : 'user'
+    );
     setAssignee('');
     setDuration('');
     setExpectedReturn('');
     setNotes('');
-  }, [disableUserAssignment]);
+  }, [disableUserAssignment, disableLocationAssignment]);
 
   const handleAssignmentModeChange = useCallback(
     (mode: 'user' | 'location') => {
@@ -118,9 +143,11 @@ export function useAssignmentModalState({
   }, []);
 
   const validateAssignment = () => {
-    const resolvedAssignmentMode = disableUserAssignment
-      ? 'location'
-      : assignmentMode;
+    const resolvedAssignmentMode = disableLocationAssignment
+      ? 'user'
+      : disableUserAssignment
+        ? 'location'
+        : assignmentMode;
 
     if (!assignee) {
       tiqriToast.warning(

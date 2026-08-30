@@ -104,6 +104,7 @@ export function useRegistrationForm({
   const [costPerSeat, setCostPerSeat] = useState('');
   const [shippingCost, setShippingCost] = useState('');
   const [tax, setTax] = useState('');
+  const [estimatedSalvageValue, setEstimatedSalvageValue] = useState('');
   const [invoiceFileName, setInvoiceFileName] = useState('');
   const [showInvoiceUploader, setShowInvoiceUploader] = useState(false);
   const [isInvoiceDragOver, setIsInvoiceDragOver] = useState(false);
@@ -195,12 +196,26 @@ export function useRegistrationForm({
     }
   }, []);
 
+  const MAX_INVOICE_FILE_SIZE = Math.floor(4.5 * 1024 * 1024); // 4.5 MB — matches server limit in storage.ts
+
   const handleInvoiceSelection = useCallback((files: FileList | null) => {
     const selectedFile = files?.[0] ?? null;
 
     if (selectedFile && !isInvoiceAttachmentFile(selectedFile)) {
       tiqriToast.error(
         'Upload a supported document or image file for invoice attachment.'
+      );
+      if (invoiceInputRef.current) {
+        invoiceInputRef.current.value = '';
+      }
+      setInvoiceFileName('');
+      setIsInvoiceDragOver(false);
+      return;
+    }
+
+    if (selectedFile && selectedFile.size > MAX_INVOICE_FILE_SIZE) {
+      tiqriToast.error(
+        `File "${selectedFile.name}" is too large. Invoice attachments must be under 4.5 MB.`
       );
       if (invoiceInputRef.current) {
         invoiceInputRef.current.value = '';
@@ -444,6 +459,8 @@ export function useRegistrationForm({
     setShippingCost,
     tax,
     setTax,
+    estimatedSalvageValue,
+    setEstimatedSalvageValue,
     invoiceFileName,
     showInvoiceUploader,
     setShowInvoiceUploader,

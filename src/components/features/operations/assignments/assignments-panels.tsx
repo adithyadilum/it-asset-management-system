@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AssetDetailsPanel } from '@/components/features/asset-registry/panels/asset-details-panel';
 import { AssetAssignmentModal } from './asset-assignment-modal';
+import { AddSoftwareUsersModal } from '@/components/features/asset-registry/panels/add-software-users-modal';
 import {
   getAssetDetailsByIdAction,
   getAssetMaintenanceByIdAction,
@@ -76,6 +77,8 @@ export function AssignmentsPanels({
 }: AssignmentsPanelsProps) {
   const router = useRouter();
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+  const [isAllocateSoftwareModalOpen, setIsAllocateSoftwareModalOpen] =
+    useState(false);
   const [cachedAsset, setCachedAsset] = useState<AssignmentPanelAsset | null>(
     selectedAsset
   );
@@ -279,6 +282,15 @@ export function AssignmentsPanels({
         licenseType={details?.softwareLicense?.licenseType}
         maintenanceEvents={fetchedData?.maintenance ?? []}
         onAssign={() => setIsAssignmentModalOpen(true)}
+        onActionButtonClick={() => {
+          const pillar =
+            details?.model.category.pillar ?? cachedAsset.group ?? '';
+          if (pillar === 'Software') {
+            setIsAllocateSoftwareModalOpen(true);
+          } else {
+            setIsAssignmentModalOpen(true);
+          }
+        }}
         onRemindReturn={handleSendReminder}
         onRequestReturn={handleRequestReturn}
         onMarkReturned={handleMarkReceived}
@@ -293,6 +305,22 @@ export function AssignmentsPanels({
         assetGroup={cachedAsset.group ?? ''}
         onOpenChange={setIsAssignmentModalOpen}
       />
+
+      {/* ---- Software: Allocate Software License Modal ---- */}
+      {(details?.model.category.pillar ?? cachedAsset.group) === 'Software' && (
+        <AddSoftwareUsersModal
+          isOpen={isAllocateSoftwareModalOpen}
+          onClose={(didAllocate) => {
+            setIsAllocateSoftwareModalOpen(false);
+            if (didAllocate) {
+              router.refresh();
+            }
+          }}
+          assetId={cachedAsset.assetId ?? ''}
+          availableSeats={details?.softwareLicense?.availableSeats ?? 0}
+          existingAllocations={[]}
+        />
+      )}
     </>
   );
 }
