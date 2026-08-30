@@ -32,6 +32,12 @@ export const initiateVendorRepairSchema = z.object({
     .number()
     .nonnegative('Estimated cost must be 0 or more.')
     .optional(),
+  currencyCode: z
+    .string()
+    .trim()
+    .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
+    .optional()
+    .default('LKR'),
   expectedReturnDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected return date must be in YYYY-MM-DD format.')
@@ -58,6 +64,12 @@ export const completeRepairSchema = z.object({
   updateStatusTo: z.enum(['Available', 'Disposed'], {
     message: 'Status must be either Available or Disposed.',
   }),
+  currencyCode: z
+    .string()
+    .trim()
+    .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
+    .optional()
+    .default('LKR'),
 });
 
 export type CompleteRepairInput = z.infer<typeof completeRepairSchema>;
@@ -78,6 +90,12 @@ export const panelRepairSchema = z.object({
     .number()
     .nonnegative('Estimated cost must be 0 or more.')
     .optional(),
+  currencyCode: z
+    .string()
+    .trim()
+    .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
+    .optional()
+    .default('LKR'),
   expectedReturnDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected return date must be in YYYY-MM-DD format.')

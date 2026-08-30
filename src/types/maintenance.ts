@@ -97,8 +97,9 @@ export interface Vendor {
 export interface InitiateRepairFormData {
   vendorId: string;
   rmaNumber: string;
-  estimatedCost?: string;       
-  expectedReturnDate?: string;   
+  estimatedCost?: string;
+  currencyCode?: string;
+  expectedReturnDate?: string;
 }
 
 export interface ActiveRepairTicket {
@@ -110,7 +111,8 @@ export interface ActiveRepairTicket {
   rmaNumber: string | null;
   reportedIssue: string;
   estimatedCost: string | null;
-  estimatedReturnDate: string | null; 
+  currencyCode: string | null;
+  estimatedReturnDate: string | null;
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   createdAt: Date;
   updatedAt: Date;
@@ -118,6 +120,7 @@ export interface ActiveRepairTicket {
 
 export interface CompleteRepairFormData {
   actualCost: string;
+  currencyCode?: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }
@@ -125,6 +128,7 @@ export interface CompleteRepairFormData {
 export interface LogCompleteRepairData {
   ticketId: number;
   actualCost: string;
+  currencyCode?: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }
@@ -135,6 +139,7 @@ export interface RepairHistoryTicket {
   vendorName: string | null;
   actualCompletionDate: string | null;
   actualCost: string | null;
+  currencyCode?: string | null;
   resolutionNotes: string | null;
   status: 'COMPLETED' | 'CANCELLED';
   createdAt: Date;
