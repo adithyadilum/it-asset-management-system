@@ -153,20 +153,15 @@ describe('MultiAssetAssignmentModal', () => {
     });
   });
 
-  it('forces location assignment when every asset is location-only', () => {
+  it('disables location assignment when a software asset is included in selection', () => {
     renderModal({
       assets: [
+        ...mockAssets,
         {
           assetId: '3',
           assetTag: 'TAG-3',
-          assetName: 'Chair',
-          assetGroup: 'Office Furniture',
-        },
-        {
-          assetId: '4',
-          assetTag: 'TAG-4',
-          assetName: 'Monitor',
-          assetGroup: 'Office Electronics',
+          assetName: 'Software License',
+          assetGroup: 'Software',
         },
       ],
     });
@@ -178,16 +173,15 @@ describe('MultiAssetAssignmentModal', () => {
       'Assign to Location'
     ) as HTMLInputElement;
 
-    expect(userRadio.disabled).toBe(true);
-    // Uniform selections stay assignable -- only the target is constrained.
-    expect(locationRadio.disabled).toBe(false);
-    expect(locationRadio.checked).toBe(true);
+    expect(userRadio.disabled).toBe(false);
+    expect(userRadio.checked).toBe(true);
+    expect(locationRadio.disabled).toBe(true);
     expect(
-      screen.getByRole('button', { name: /Assign 2 Assets/ })
+      screen.getByRole('button', { name: /Assign 3 Assets/ })
     ).toBeEnabled();
   });
 
-  it('blocks a selection mixing person-assigned and location-assigned assets', async () => {
+  it('allows selection mixing Office assets and other assets without blocking', async () => {
     renderModal({
       assets: [
         ...mockAssets,
@@ -200,25 +194,21 @@ describe('MultiAssetAssignmentModal', () => {
       ],
     });
 
-    // A mixed batch has no single valid target, so neither mode is offered.
-    expect(
-      (screen.getByLabelText('Assign to User') as HTMLInputElement).disabled
-    ).toBe(true);
-    expect(
-      (screen.getByLabelText('Assign to Location') as HTMLInputElement).disabled
-    ).toBe(true);
+    const userRadio = screen.getByLabelText(
+      'Assign to User'
+    ) as HTMLInputElement;
+    const locationRadio = screen.getByLabelText(
+      'Assign to Location'
+    ) as HTMLInputElement;
+
+    expect(userRadio.disabled).toBe(false);
+    expect(locationRadio.disabled).toBe(false);
 
     expect(
-      screen.getByText(/cannot be assigned in one go/i)
-    ).toBeInTheDocument();
+      screen.queryByText(/cannot be assigned in one go/i)
+    ).not.toBeInTheDocument();
 
     const submit = screen.getByRole('button', { name: /Assign 3 Assets/ });
-    expect(submit).toBeDisabled();
-
-    // The furniture used to drag the laptops into a location assignment.
-    fireEvent.click(submit);
-    await waitFor(() => {
-      expect(bulkAssignAssetsAction).not.toHaveBeenCalled();
-    });
+    expect(submit).toBeEnabled();
   });
 });
