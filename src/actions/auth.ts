@@ -83,10 +83,11 @@ export async function getFederatedLogoutUrl() {
   }
 
   const idToken = session?.idToken || '';
-  const endSessionUrl = `${serverEnv.KEYCLOAK_ISSUER}/protocol/openid-connect/logout`;
+  const issuer = process.env.KEYCLOAK_ISSUER || serverEnv.KEYCLOAK_ISSUER;
+  const endSessionUrl = `${issuer}/protocol/openid-connect/logout`;
   
   // Use NEXT_PUBLIC_SITE_URL or NEXTAUTH_URL to dynamically determine the callback origin
-  const baseUrl = serverEnv.NEXTAUTH_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXTAUTH_URL || serverEnv.NEXTAUTH_URL || 'http://localhost:3000';
   const redirectUri = encodeURIComponent(`${baseUrl}/login`);
 
   return `${endSessionUrl}?id_token_hint=${idToken}&post_logout_redirect_uri=${redirectUri}`;

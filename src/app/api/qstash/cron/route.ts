@@ -35,8 +35,16 @@ import { serverEnv } from '@/lib/env';
 export async function POST(req: NextRequest) {
   try {
     // 1. Verify QStash signature for security
-    const currentKey = serverEnv.QSTASH_CURRENT_SIGNING_KEY;
-    const nextKey = serverEnv.QSTASH_NEXT_SIGNING_KEY;
+    const currentKey =
+      process.env.NODE_ENV === 'test'
+        ? process.env.QSTASH_CURRENT_SIGNING_KEY
+        : (process.env.QSTASH_CURRENT_SIGNING_KEY ||
+            serverEnv.QSTASH_CURRENT_SIGNING_KEY);
+    const nextKey =
+      process.env.NODE_ENV === 'test'
+        ? process.env.QSTASH_NEXT_SIGNING_KEY
+        : (process.env.QSTASH_NEXT_SIGNING_KEY ||
+            serverEnv.QSTASH_NEXT_SIGNING_KEY);
 
     if (!currentKey || !nextKey) {
       console.error('QStash signing keys are missing in environment variables');
