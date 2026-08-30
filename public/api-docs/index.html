@@ -4,11 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>EITAMS API Documentation</title>
-    <!-- Load Swagger UI stylesheet from verified CDN -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css"
-    />
+    <!-- Served from node_modules via scripts/copy-swagger-ui.mjs. Loading these
+         from a CDN trips the enforced CSP, which allows scripts and styles from
+         'self' only. -->
+    <link rel="stylesheet" href="vendor/swagger-ui.css" />
     <style>
       html {
         box-sizing: border-box;
@@ -49,13 +48,9 @@
   </head>
   <body>
     <div id="swagger-ui"></div>
-    <!-- Load Swagger UI scripts from verified CDN -->
+    <script src="vendor/swagger-ui-bundle.js" charset="UTF-8"></script>
     <script
-      src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"
-      charset="UTF-8"
-    ></script>
-    <script
-      src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"
+      src="vendor/swagger-ui-standalone-preset.js"
       charset="UTF-8"
     ></script>
     <script>

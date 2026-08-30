@@ -21,7 +21,9 @@ vi.mock('next-auth/jwt', () => ({
   getToken: vi.fn(),
 }));
 vi.mock('@/lib/auth/get-authenticated-user', () => ({
+  getAuthenticatedUser: vi.fn(),
   getAuthenticatedUserFromRequest: mockGetAuthenticatedUserFromRequest,
+  getAuthenticatedMobileUserFromRequest: vi.fn(),
 }));
 
 vi.mock('@/lib/latency', () => ({
@@ -50,6 +52,9 @@ function createRequest(url: string): NextRequest {
   } as unknown as NextRequest;
 }
 
+/** The route is wrapped in `withAuth`, so it receives (request, ctx). */
+const callGet = (req: NextRequest) => GET(req, {});
+
 describe('GET /api/v1/search', () => {
   const dbSelectMock = db.select as unknown as ReturnType<typeof vi.fn>;
 
@@ -60,7 +65,7 @@ describe('GET /api/v1/search', () => {
   it('returns 401 when token is missing', async () => {
     mockGetAuthenticatedUserFromRequest.mockResolvedValue(null);
 
-    const response = await GET(
+    const response = await callGet(
       createRequest('http://localhost/api/v1/search?q=laptop')
     );
     expect(response.status).toBe(401);
@@ -102,7 +107,7 @@ describe('GET /api/v1/search', () => {
       createSelectChain(queuedResults.shift() ?? [])
     );
 
-    const response = await GET(
+    const response = await callGet(
       createRequest('http://localhost/api/v1/search?q=report')
     );
 
@@ -125,7 +130,7 @@ describe('GET /api/v1/search', () => {
       role: 'Employee',
     } as never);
 
-    const response = await GET(
+    const response = await callGet(
       createRequest('http://localhost/api/v1/search?q=lap')
     );
 

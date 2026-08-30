@@ -35,6 +35,7 @@ interface StandardReportsPreviewPanelProps {
 }
 
 import { useReportColumns } from './use-report-columns';
+import { logReportExportAction } from '@/actions/standard-reports';
 
 // ... other imports should be intact, we will fix imports if needed
 
@@ -127,6 +128,16 @@ export function StandardReportsPreviewPanel({
       }
 
       await generateCsv(dataToExport);
+
+      // Recorded server-side because the export itself never touches the
+      // server: without this a full CSV of the asset register leaves no trace.
+      void logReportExportAction({
+        source,
+        format: 'CSV',
+        rowCount: dataToExport.length,
+        templateName,
+      });
+
       setExportModalOpen(false);
     } catch (err) {
       console.error('Failed to export data:', err);

@@ -27,7 +27,8 @@ describe('ITOperatorDashboardView', () => {
       inventoryStatus: { inventoryData: [], utilizationRate: 0 },
       recentActivities: [],
       overdueReturns: [],
-      highMaintenance: [],
+      highMaintenanceAssets: [],
+      pendingMaintenance: [],
       systemHealth: [],
     };
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isAllowedWebhookDestination } from '@/lib/webhooks/validate-destination';
 import { API_KEY_SCOPES, WEBHOOK_EVENT_TYPES } from '@/types/integrations';
 
 export const createApiKeySchema = z.object({
@@ -22,7 +23,11 @@ export const createWebhookSchema = z.object({
   url: z
     .string()
     .url()
-    .refine((v) => v.startsWith('https://'), { message: 'URL must use HTTPS' }),
+    .refine((v) => v.startsWith('https://'), { message: 'URL must use HTTPS' })
+    .refine(isAllowedWebhookDestination, {
+      message:
+        'URL must be a public host, and on the configured allowlist if one is set',
+    }),
   events: z
     .array(z.enum([...WEBHOOK_EVENT_TYPES] as [string, ...string[]]))
     .min(1, 'Select at least one event'),
@@ -36,6 +41,10 @@ export const updateWebhookSchema = z.object({
     .optional()
     .refine((v) => !v || v.startsWith('https://'), {
       message: 'URL must use HTTPS',
+    })
+    .refine((v) => !v || isAllowedWebhookDestination(v), {
+      message:
+        'URL must be a public host, and on the configured allowlist if one is set',
     }),
   events: z
     .array(z.enum([...WEBHOOK_EVENT_TYPES] as [string, ...string[]]))

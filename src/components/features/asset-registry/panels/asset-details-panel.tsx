@@ -26,9 +26,12 @@ import { getAllAssetAuditHistory } from '@/actions/audit-log';
 import { format } from 'date-fns';
 import { CopyableField } from '@/components/shared/copyable-field';
 import { RecentMaintenance } from './recent-maintenance';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 
 export interface AssetDetailsPanelProps {
   isOpen: boolean;
+  /** Open without the slide animation, for a panel swapped in place. */
+  disableTransition?: boolean;
   onClose: () => void;
   isLoading?: boolean;
 
@@ -47,8 +50,13 @@ export interface AssetDetailsPanelProps {
   serialNumber?: string;
   owner?: string;
   assignedTo?: string;
+  /** Assignment dates, shown on the details tab while the asset is out. */
+  assignedDate?: string;
+  expectedReturnDate?: string;
   group?: string;
   location?: string;
+  /** Drives whether the assignment row reads "Location" or "Assigned to". */
+  pillar?: string;
   condition?: string;
   warranty?: string;
   lastRepaired?: string;
@@ -108,6 +116,9 @@ export interface AssetDetailsPanelProps {
   onRemindReturn?: () => void;
   onMarkReturned?: () => void;
   onProcessReturn?: () => void;
+  onRenewLicense?: () => void;
+  /** Withdrawing an assignment the assignee has not acknowledged yet. */
+  onCancelAssignment?: () => void;
   onActionButtonClick?: () => void;
   onViewAllHistory?: () => void;
   onViewAllMaintenance?: () => void;
@@ -167,6 +178,12 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
           '-';
     const resolvedTotalSeats = parseInt(softwareTotalSeats, 10) || 0;
 
+    // Furniture and electronics are assigned to a room, not a person, so
+    // "Assigned to: Room B" reads wrong. Label the row for what it holds.
+    const assignmentLabel = isLocationAssignedPillar(props.pillar)
+      ? 'Location'
+      : 'Assigned to';
+
     // 1. Compute Dynamic Grid Fields based on Category
     const detailsFields = [];
 
@@ -199,7 +216,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Total Seats', value: softwareTotalSeats },
         { label: 'Expiration Date', value: softwareExpirationDate },
         { label: 'Publisher', value: props.brand },
-        { label: 'Assigned to', value: props.assignedTo || '-' },
+        { label: assignmentLabel, value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
       );
     } else {
@@ -209,8 +226,17 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
         { label: 'Brand', value: props.brand },
         { label: 'Serial Number', value: props.serialNumber || '-' },
         { label: 'Owner', value: props.owner || '-' },
-        { label: 'Assigned to', value: props.assignedTo || '-' },
+        { label: assignmentLabel, value: props.assignedTo || '-' },
         { label: 'Group', value: props.group || '-' }
+      );
+    }
+
+    // The dates only mean anything while the asset is out, and the operations
+    // panel was the only place that showed them.
+    if (props.assignedDate || props.expectedReturnDate) {
+      detailsFields.push(
+        { label: 'Assigned Date', value: props.assignedDate || '-' },
+        { label: 'Due Date', value: props.expectedReturnDate || '-' }
       );
     }
 
@@ -470,6 +496,8 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       'request-disposal': props.onRequestDisposal,
       'add-user': props.onActionButtonClick,
       'process-return': props.onProcessReturn,
+      'renew-license': props.onRenewLicense,
+      'cancel-assignment': props.onCancelAssignment,
     }),
     [
       props.onEdit,
@@ -481,6 +509,8 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       props.onRequestDisposal,
       props.onActionButtonClick,
       props.onProcessReturn,
+      props.onRenewLicense,
+      props.onCancelAssignment,
     ]
   );
 
@@ -532,6 +562,11 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
     });
 
     for (const action of dynamicActions) {
+      // A button with no handler does nothing when pressed, which reads as a
+      // broken panel; an explicitly disabled one is a deliberate signal and
+      // stays. Operations has no edit flow, so its Edit simply does not appear.
+      if (!action.disabled && !actionHandlers[action.id]) continue;
+
       list.push({
         id: action.id,
         label: action.label,
@@ -574,12 +609,18 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
           onStatusChanged={props.onStatusChanged}
         />
       )}
+      {/* An asset reads 'Assigned' the moment an assignment exists, so this is
+          the only thing distinguishing acknowledged from still-waiting. */}
+      {props.assignmentState === 'pending approval' && (
+        <StatusBadge value="pending approval" showIcon />
+      )}
     </div>
   );
 
   return (
     <TabbedPanel
       isOpen={props.isOpen}
+      disableTransition={props.disableTransition}
       onClose={props.onClose}
       title={resolvedPanelTitle}
       tabs={tabs}

@@ -32,7 +32,6 @@ export interface Asset {
   id: string;
   assetTag: string;
   name: string | null;
-  imageUrl?: string | null;
   status: AssetStatus;
   condition: string | null;
   modelId: number;
@@ -47,6 +46,10 @@ export interface Model {
   name: string;
   brandId: number;
   categoryId: number;
+  // The asset image lives here. `Asset` used to declare an `imageUrl` the
+  // `assets` table does not have, so the issue review panel read `undefined`
+  // and always showed "No image available".
+  imageUrl?: string | null;
 }
 
 export interface Brand {
@@ -117,6 +120,8 @@ export interface ActiveRepairTicket {
   rmaNumber: string | null;
   reportedIssue: string;
   estimatedCost: string | null;
+  /** Currency the estimate is denominated in; the completion form defaults to it. */
+  currencyCode: string | null;
   estimatedReturnDate: string | null;
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   createdAt: Date;
@@ -125,6 +130,8 @@ export interface ActiveRepairTicket {
 
 export interface CompleteRepairFormData {
   actualCost: string;
+  /** ISO code the cost is denominated in. */
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }
@@ -132,6 +139,7 @@ export interface CompleteRepairFormData {
 export interface LogCompleteRepairData {
   ticketId: number;
   actualCost: string;
+  currencyCode: string;
   resolutionNotes: string;
   updateStatusTo: 'Available' | 'Disposed';
 }

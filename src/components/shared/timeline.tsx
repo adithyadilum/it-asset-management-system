@@ -1,6 +1,10 @@
 'use client';
 
-import { formatMoneyByCurrency } from '@/lib/currency';
+import {
+  describeAuditAction,
+  formatAuditValue,
+  humanizeFieldName,
+} from '@/lib/audit-events';
 import React from 'react';
 import { format } from 'date-fns';
 import {
@@ -176,69 +180,11 @@ function areValuesEqual(left: unknown, right: unknown): boolean {
   return false;
 }
 
-function formatTimelineValue(field: string, value: unknown): string {
-  if (value === null || value === undefined || value === '') {
-    return '-';
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
-  }
-
-  if (typeof value === 'number') {
-    if (
-      /cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(
-        field
-      )
-    ) {
-      return formatMoneyByCurrency(value, 'USD');
-    }
-
-    return new Intl.NumberFormat('en-US').format(value);
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item)).join(', ');
-  }
-
-  if (isPlainObject(value)) {
-    return JSON.stringify(value);
-  }
-
-  const text = String(value);
-  if (
-    /cost|price|amount|value|salary|budget|total|salvage|shipping|tax|base/i.test(
-      field
-    )
-  ) {
-    const parsed = Number(text.replace(/[^0-9.-]/g, ''));
-    if (Number.isFinite(parsed) && text.trim().length > 0) {
-      return formatMoneyByCurrency(parsed, 'USD');
-    }
-  }
-
-  return text;
-}
-
-function humanizeFieldName(field: string): string {
-  return field
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/_/g, ' ')
-    .replace(/\bId\b/gi, 'ID')
-    .replace(/\bMac\b/gi, 'MAC')
-    .replace(/\bIp\b/gi, 'IP')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .map((word) =>
-      word.toUpperCase() === 'ID' ||
-      word.toUpperCase() === 'IP' ||
-      word.toUpperCase() === 'MAC'
-        ? word.toUpperCase()
-        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    )
-    .join(' ');
-}
+// Value and field-name rendering are shared with the audit log table and
+// the dashboard feed, so the same change reads identically wherever it is
+// shown. `formatAuditValue` also maps assignment state through its display
+// label, which is why a row no longer reads 'State: - -> pending approval'.
+const formatTimelineValue = formatAuditValue;
 
 function buildChangeList(
   oldValue: Record<string, unknown> | null,
@@ -323,7 +269,11 @@ export function AssetHistoryTimeline({
               'border-gray-300 bg-muted text-foreground dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400',
           };
           const changes = buildChangeList(log.oldValue, log.newValue);
-          const actionLabel = log.actionType.replace(/_/g, ' ');
+          // Was `log.actionType.replace(/_/g, ' ')`, which printed the raw
+          // enum: 'ASSIGN', 'ACCESS DENIED', 'STATUS CHANGE'.
+          const actionPhrase = describeAuditAction(log.actionType);
+          const actionLabel =
+            actionPhrase.charAt(0).toUpperCase() + actionPhrase.slice(1);
 
           return (
             <div key={log.id} className="relative pl-8">

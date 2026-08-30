@@ -7,6 +7,7 @@ import {
   sendAssignmentReminderAction,
   requestAssetReturnAction,
   markAssetReceivedAction,
+  cancelAssignmentAction,
 } from '@/actions/assignments';
 import type {
   AppliedFilter,
@@ -190,6 +191,10 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
       ),
     [selectedAssignedRows]
   );
+  const hasCancelCandidates = useMemo(
+    () => selectedAssignedRows.some((r) => r.state === 'pending approval'),
+    [selectedAssignedRows]
+  );
   const hasMarkReceivedCandidates = useMemo(
     () =>
       selectedAssignedRows.some((r) =>
@@ -307,6 +312,43 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
       });
     }
 
+    if (hasCancelCandidates) {
+      actions.push({
+        id: 'cancel-assignment',
+        label: 'Cancel Assignment',
+        tone: 'destructive',
+        onClick: async (selectedRows) => {
+          // Only pending rows can be withdrawn; anything already acknowledged
+          // has to go through the return flow instead.
+          const cancelIds = selectedRows
+            .filter((r) => r.state === 'pending approval')
+            .map((r) => r.assignmentId)
+            .filter((id): id is number => id !== undefined);
+
+          if (cancelIds.length === 0) return;
+
+          const results = await Promise.all(
+            cancelIds.map((id) => cancelAssignmentAction(id))
+          );
+          const failed = results.filter((r) => !r.success);
+
+          if (failed.length === 0) {
+            toast.success(
+              cancelIds.length === 1
+                ? 'Assignment cancelled'
+                : `${cancelIds.length} assignments cancelled`
+            );
+            setRowSelection({});
+          } else {
+            toast.error(
+              failed[0].error ||
+                `Failed to cancel ${failed.length} of ${cancelIds.length} assignments`
+            );
+          }
+        },
+      });
+    }
+
     if (hasReturnCandidates) {
       actions.push({
         id: 'request-return',
@@ -334,6 +376,7 @@ export function useAssignmentsDashboard(data: AssignmentsDashboardData) {
     return actions;
   }, [
     hasReminderCandidates,
+    hasCancelCandidates,
     hasMarkReceivedCandidates,
     hasRequestAgainCandidates,
     hasReturnCandidates,

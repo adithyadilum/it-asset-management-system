@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 
 import { assignAssetAction } from '@/actions/assignments';
 import { tiqriToast } from '@/components/shared/sonner';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 import {
   DURATION_OPTIONS,
-  isPresetDuration,
+  CUSTOM_DURATION_VALUE,
+  findDurationPreset,
 } from '@/lib/assignment-date-utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,8 +49,7 @@ export function AssetAssignmentModal({
   onOpenChange,
 }: AssetAssignmentModalProps) {
   const router = useRouter();
-  const disableUserAssignment =
-    assetGroup === 'Office Furniture' || assetGroup === 'Office Electronics';
+  const disableUserAssignment = isLocationAssignedPillar(assetGroup);
 
   const {
     assignmentMode,
@@ -201,25 +202,24 @@ export function AssetAssignmentModal({
               <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
                 <Select
                   key={duration || 'preset-duration'}
-                  value={`${duration}`}
+                  value={duration}
                   onValueChange={handleDurationChange}
                 >
                   <SelectTrigger className="h-9 bg-background">
                     <SelectValue placeholder="Select duration">
-                      {duration ? `${duration} days` : undefined}
+                      {findDurationPreset(duration)?.label ??
+                        (duration ? 'Custom' : undefined)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {DURATION_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={`${option}`}>
-                        {option} days
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
-                    {duration !== '' && !isPresetDuration(duration) ? (
-                      <SelectItem value={`${duration}`}>
-                        {duration} days
-                      </SelectItem>
-                    ) : null}
+                    <SelectItem value={CUSTOM_DURATION_VALUE}>
+                      Custom
+                    </SelectItem>
                   </SelectContent>
                 </Select>
 

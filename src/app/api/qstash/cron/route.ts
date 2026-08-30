@@ -1,4 +1,5 @@
 // src/app/api/qstash/cron/route.ts
+import { logInfo } from '@/lib/latency';
 import { NextRequest, NextResponse } from 'next/server';
 import { Receiver } from '@upstash/qstash';
 import { db } from '@/db';
@@ -26,6 +27,10 @@ import {
   sql,
 } from 'drizzle-orm';
 import { dispatchAlert } from '@/lib/notifications/dispatcher';
+import {
+  adminAssignmentUrl,
+  employeeAssignmentUrl,
+} from '@/lib/notifications/target-urls';
 import { formatDate } from '@/lib/date';
 import { serverEnv } from '@/lib/env';
 
@@ -78,7 +83,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(
+    logInfo(
       'CRON job signature verified successfully. Running alert checks...'
     );
 
@@ -117,7 +122,7 @@ export async function POST(req: NextRequest) {
  *   and dispatches in-app reminders at 24h, 48h, and 72h (escalate to admin).
  */
 async function runPendingAcceptanceEscalation() {
-  console.log('Starting pendingAcceptanceEscalation job...');
+  logInfo('Starting pendingAcceptanceEscalation job...');
 
   const entries = await db
     .select({
@@ -142,7 +147,7 @@ async function runPendingAcceptanceEscalation() {
     );
 
   if (!entries || entries.length === 0) {
-    console.log('No unprocessed notification_queue entries found.');
+    logInfo('No unprocessed notification_queue entries found.');
     return;
   }
 
@@ -275,7 +280,7 @@ async function dispatchPendingAcceptanceAlert(
     return;
   }
 
-  const targetUrl = `/portal/my-assets?assignmentId=${assignmentId}`;
+  const targetUrl = employeeAssignmentUrl(assignmentId);
 
   if (eventType === 'REMINDER_24H') {
     await dispatchAlert({
@@ -304,7 +309,7 @@ async function dispatchPendingAcceptanceAlert(
     userId: recipientId,
     title: 'Escalation: Assignment Not Acknowledged',
     message: `Assignment #${details.assignmentId} assigned to user ${details.assignedToUserId ?? 'unknown'} has not been acknowledged after 72 hours.`,
-    targetUrl: `/operations/assignments?assignmentId=${assignmentId}`,
+    targetUrl: adminAssignmentUrl(assignmentId),
   });
 }
 
@@ -312,7 +317,7 @@ async function dispatchPendingAcceptanceAlert(
  * Upcoming return checker: notifies employees of upcoming return dates within 14 days.
  */
 async function runUpcomingReturnCheck() {
-  console.log('Starting upcomingReturnCheck job...');
+  logInfo('Starting upcomingReturnCheck job...');
 
   const now = new Date();
   const in14 = new Date(now);
@@ -344,12 +349,15 @@ async function runUpcomingReturnCheck() {
     )
     .orderBy(asc(assetAssignments.expectedReturnDate));
 
-  console.log(
+  logInfo(
     `Found ${rows.length} assignments with upcoming returns within 14 days.`
   );
 
   for (const a of rows) {
-    const targetUrl = `/portal/my-assets?assignmentId=${a.assignmentId}`;
+    // Doubles as the dedup key below, so changing it re-sends at most one
+    // upcoming-return notice per assignment. Worth it: the old `/portal/...`
+    // form pointed at a route that does not exist and 404'd on click.
+    const targetUrl = employeeAssignmentUrl(a.assignmentId);
 
     // Deduplicate via notification_logs
     if (!a.assignedToUserId) continue;
@@ -384,7 +392,7 @@ async function runUpcomingReturnCheck() {
  * AND where a notification has not already been sent (deduplication).
  */
 async function runWarrantyExpiryCheck() {
-  console.log('Starting warrantyExpiryCheck job...');
+  logInfo('Starting warrantyExpiryCheck job...');
   const [rule] = await db
     .select()
     .from(notificationRules)
@@ -392,7 +400,7 @@ async function runWarrantyExpiryCheck() {
     .limit(1);
 
   if (!rule || !rule.isEnabled) {
-    console.log('Warranty Expiry Warning rule is disabled or not found.');
+    logInfo('Warranty Expiry Warning rule is disabled or not found.');
     return;
   }
 
@@ -420,7 +428,7 @@ async function runWarrantyExpiryCheck() {
       )
     );
 
-  console.log(
+  logInfo(
     `Found ${expiringAssets.length} assets with expiring warranties within ${thresholdDays} days.`
   );
 
@@ -471,7 +479,7 @@ async function runWarrantyExpiryCheck() {
  * Alert the assigning admin.
  */
 async function runOverdueReturnCheck() {
-  console.log('Starting overdueReturnCheck job...');
+  logInfo('Starting overdueReturnCheck job...');
   const [rule] = await db
     .select()
     .from(notificationRules)
@@ -479,7 +487,7 @@ async function runOverdueReturnCheck() {
     .limit(1);
 
   if (!rule || !rule.isEnabled) {
-    console.log('Asset Return Overdue rule is disabled or not found.');
+    logInfo('Asset Return Overdue rule is disabled or not found.');
     return;
   }
 
@@ -503,7 +511,7 @@ async function runOverdueReturnCheck() {
       )
     );
 
-  console.log(`Found ${overdueAssignments.length} overdue assignments.`);
+  logInfo(`Found ${overdueAssignments.length} overdue assignments.`);
 
   for (const assignment of overdueAssignments) {
     const targetUrl = `/operations/assignments?assignmentId=${assignment.assignmentId}`;
@@ -540,7 +548,7 @@ async function runOverdueReturnCheck() {
  * Alert the dispatching admin.
  */
 async function runOverdueRepairCheck() {
-  console.log('Starting overdueRepairCheck job...');
+  logInfo('Starting overdueRepairCheck job...');
   const [rule] = await db
     .select()
     .from(notificationRules)
@@ -548,7 +556,7 @@ async function runOverdueRepairCheck() {
     .limit(1);
 
   if (!rule || !rule.isEnabled) {
-    console.log(
+    logInfo(
       'Return Overdue rule is disabled (used for Overdue Repair checks).'
     );
     return;
@@ -573,7 +581,7 @@ async function runOverdueRepairCheck() {
       )
     );
 
-  console.log(`Found ${overdueTickets.length} overdue maintenance tickets.`);
+  logInfo(`Found ${overdueTickets.length} overdue maintenance tickets.`);
 
   for (const ticket of overdueTickets) {
     const targetUrl = `/operations/maintenance?ticketId=${ticket.ticketId}`;

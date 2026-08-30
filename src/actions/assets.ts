@@ -35,6 +35,8 @@ import {
 } from '@/lib/validations/asset-edit';
 import { convertCurrencyAmount } from '@/lib/currency';
 import { fetchLiveExchangeRates } from '@/lib/currency-server';
+import { DEFAULT_USEFUL_LIFE_MONTHS } from '@/lib/depreciation';
+import { isLocationAssignedPillar } from '@/lib/assignments/pillars';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -167,10 +169,20 @@ export async function registerAsset(
     const input = {
       ...parsed.data,
       pillar: parsed.data.pillar,
-      usefulLifeMonths:
-        parseInt(String(formData.get('usefulLifeMonths') || '60'), 10) || 60,
+      // Comes from the validated Expected Lifespan field now. It used to be
+      // read straight off formData, outside the schema, with a hardcoded 60 --
+      // and since no form input ever set it, every asset silently got 5 years
+      // whether or not that was right for it.
+      usefulLifeMonths: parsed.data.expectedLifespanYears
+        ? parsed.data.expectedLifespanYears * 12
+        : DEFAULT_USEFUL_LIFE_MONTHS,
       invoiceFile: formData.get('invoiceFile') as File | null,
     };
+    // A location-pillar asset registered with a location starts out assigned to
+    // it; everything else starts Available.
+    const registersAsAssigned =
+      isLocationAssignedPillar(input.pillar) && Boolean(input.locationId);
+
     const instanceAttributes = {
       ...(input.instanceAttributes ?? {}),
       ...(input.pillar === 'Software' &&
@@ -238,7 +250,12 @@ export async function registerAsset(
               serialNumber: input.serialNumber,
               locationId: input.locationId,
               ownerId: input.ownerId,
-              status: 'Available',
+              // Furniture and electronics are assigned to a place, so giving
+              // one a location at registration *is* the assignment. Recording
+              // it as Available and letting somebody assign it to the room it
+              // is already in was busywork that also left the registry showing
+              // occupied desks as free.
+              status: registersAsAssigned ? 'Assigned' : 'Available',
               condition: input.condition,
               usefulLifeMonths: input.usefulLifeMonths,
               instanceAttributes,
@@ -301,6 +318,21 @@ export async function registerAsset(
           expiryDate: input.licenseExpiryDate
             ? toDateString(input.licenseExpiryDate)
             : null,
+        });
+      }
+
+      // Give the asset the assignment its status implies. Without this the
+      // registry would show it Assigned while the detail panel had no
+      // assignment to display and no way to transfer it.
+      if (registersAsAssigned && input.locationId) {
+        await tx.insert(assetAssignments).values({
+          assetId: insertedAsset.id,
+          assignedById: currentUser.id,
+          assignedToLocationId: input.locationId,
+          assignedToUserId: null,
+          // Effective immediately: a location has nobody to acknowledge it.
+          state: 'assigned',
+          notes: 'Assigned to its location at registration.',
         });
       }
 
@@ -739,6 +771,14 @@ export async function editAssetDetailsAction(
       assetUpdatePayload.locationId = assetFields.locationId;
     if (assetFields.ownerId !== undefined)
       assetUpdatePayload.ownerId = assetFields.ownerId;
+    if (assetFields.expectedLifespanYears !== undefined) {
+      // Stored in months; null clears it and falls back to the default when
+      // depreciation is computed.
+      assetUpdatePayload.usefulLifeMonths =
+        assetFields.expectedLifespanYears === null
+          ? null
+          : assetFields.expectedLifespanYears * 12;
+    }
     if (assetFields.instanceAttributes !== undefined) {
       // Only allow keys that already exist on the asset's instance attributes
       const existingKeys = new Set(

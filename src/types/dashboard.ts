@@ -52,6 +52,17 @@ export interface HighMaintenanceRow {
   totalDowntimeDays: number;
 }
 
+export interface PendingMaintenanceRow {
+  ticketId: number;
+  assetId: string;
+  assetTag: string;
+  assetName: string;
+  reportedIssue: string;
+  reportedBy: string;
+  reportedByEmail: string;
+  daysPending: number;
+}
+
 export interface RecentActivity {
   id: number;
   text: string;
@@ -127,6 +138,7 @@ export interface DashboardBatchData {
   overdueReturns: OverdueReturnRow[];
   pendingDisposals: PendingDisposalRow[];
   highMaintenanceAssets: HighMaintenanceRow[];
+  pendingMaintenance: PendingMaintenanceRow[];
   recentActivities: RecentActivity[];
   topHighValueAssets: TopHighValueAssetRow[];
   depreciationLedger?: DepreciationLedgerRow[];

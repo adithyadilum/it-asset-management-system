@@ -28,6 +28,7 @@ import {
 } from '@/lib/data/asset-details-repo';
 import type { TabbedPanelTab } from '@/components/shared/slide-panels/tabbed-panel';
 import type { Vendor } from '@/types/maintenance';
+import { RenewLicenseDialog } from './renew-license-dialog';
 
 type AssetPanelRequest = ReturnType<typeof getAssetPanelDataAction>;
 const inFlightPanelRequests = new Map<string, AssetPanelRequest>();
@@ -133,6 +134,7 @@ export function AssetDetailsPanelWrapper({
     useState<AssetFinancialVitals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [isRenewOpen, setIsRenewOpen] = useState(false);
 
   // ---- Edit Mode State ----
   const [isEditing, setIsEditing] = useState(false);
@@ -360,7 +362,15 @@ export function AssetDetailsPanelWrapper({
           brand={data?.model.brand.name ?? ''}
           serialNumber={data?.asset.serialNumber ?? ''}
           owner={data?.owner?.companyName ?? ''}
-          assignedTo={data?.assignment?.assignedToUser?.name ?? ''}
+          // A location assignment has no user, so fall back to the place it is
+          // assigned to. Previously this rendered '-' and the panel looked as
+          // though the asset were unassigned.
+          assignedTo={
+            data?.assignment?.assignedToUser?.name ??
+            data?.assignment?.assignedToLocation?.name ??
+            ''
+          }
+          pillar={data?.model.category.pillar ?? ''}
           group={''}
           location={data?.location?.name ?? ''}
           condition={data?.asset.condition ?? ''}
@@ -423,6 +433,7 @@ export function AssetDetailsPanelWrapper({
           onSendForRepair={handleSendForRepairClick}
           onRequestDisposal={handleRequestDisposalClick}
           onProcessReturn={handleProcessReturnClick}
+          onRenewLicense={() => setIsRenewOpen(true)}
           onStatusChanged={(nextStatus) => {
             setData((prev) => {
               if (!prev) return null;
@@ -448,6 +459,21 @@ export function AssetDetailsPanelWrapper({
             if (pillar === 'Software') {
               setIsAddUserModalOpen(true);
             }
+          }}
+        />
+      )}
+
+      {/* ---- Software: Renew Licence ---- */}
+      {data?.model.category.pillar === 'Software' && data.asset.id && (
+        <RenewLicenseDialog
+          isOpen={isRenewOpen}
+          assetId={data.asset.id}
+          currentExpiry={data.softwareLicense?.expiryDate ?? null}
+          currentSeats={data.softwareLicense?.totalSeats ?? null}
+          onOpenChange={setIsRenewOpen}
+          onRenewed={() => {
+            setRefreshNonce((n) => n + 1);
+            onRefreshRef?.current?.();
           }}
         />
       )}

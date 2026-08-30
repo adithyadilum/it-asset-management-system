@@ -49,6 +49,15 @@ export function canViewDisposalHistory(role: UserRole): boolean {
   return role === 'GlobalAdmin' || role === 'FinancialAuditor';
 }
 
+/** GlobalAdmin, ITOperator, FinancialAuditor can read the system audit log. */
+export function canViewAuditLog(role: UserRole): boolean {
+  return (
+    role === 'GlobalAdmin' ||
+    role === 'ITOperator' ||
+    role === 'FinancialAuditor'
+  );
+}
+
 /** All roles except Employee can use the mobile app. */
 export function canAccessMobile(role: UserRole): boolean {
   return (

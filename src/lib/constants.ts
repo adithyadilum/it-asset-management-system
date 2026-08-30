@@ -61,6 +61,13 @@ export const STATUS_THEMES = {
     'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800',
   slate:
     'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-800',
+  // Already stored against custom statuses in the database but missing from
+  // this map, so those statuses fell through to the grey fallback in both the
+  // badge and the inventory donut -- the admin's chosen colour never appeared.
+  violet:
+    'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-800',
+  amber:
+    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800',
 } as const;
 
 export type StatusTheme = keyof typeof STATUS_THEMES;
@@ -82,6 +89,8 @@ export const STATUS_COLORS: Array<{
   { label: 'Cyan', value: 'cyan', hex: '#06b6d4' },
   { label: 'Indigo', value: 'indigo', hex: '#6366f1' },
   { label: 'Slate', value: 'slate', hex: '#475569' },
+  { label: 'Violet', value: 'violet', hex: '#8b5cf6' },
+  { label: 'Amber', value: 'amber', hex: '#d97706' },
 ];
 
 // 2. Curated Icons (Strings that map to Lucide)
@@ -143,3 +152,35 @@ export const API_KEY_PREFIX = 'eitams_live_';
 // Rate limit: defaults to 100 req/min if not configured
 export const API_RATE_LIMIT_MAX = 100;
 export const API_RATE_LIMIT_WINDOW_SECONDS = 60;
+
+// Bulk import
+//
+// Imports are submitted through a Server Action, and `serverActions.bodySizeLimit`
+// in next.config.ts caps the whole request at 5 MB. A ceiling above that cap is
+// unreachable: the framework rejects the request before the action body runs, so
+// the user sees an opaque error instead of a validation message. Keep this value
+// below that limit, and change both together.
+export const MAX_IMPORT_FILE_BYTES = Math.floor(4.5 * 1024 * 1024);
+export const MAX_IMPORT_FILE_LABEL = '4.5MB';
+
+// Support
+//
+// Every "contact support" affordance in the app points here. Before this there
+// was no support address anywhere in the codebase: the sidebar Support button
+// navigated back to the dashboard, the 403 page's "Contact IT Support" button
+// had no handler at all, and five different pages each invented their own
+// wording ("your administrator", "your IT administrator", "the IT Helpdesk",
+// "IT Support", "TIQRI IT Support") with nothing clickable behind any of them.
+//
+// TODO(owner): replace both placeholders with the real values before release.
+// Everything already reads from here, so it is a two-line change.
+export const SUPPORT_EMAIL = 'it-support@tiqri.com';
+export const SUPPORT_URL = 'https://support.tiqri.com';
+
+/** `mailto:` href, with a subject so tickets arrive pre-labelled. */
+export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+  'EITAMS support request'
+)}`;
+
+/** One phrase, used everywhere, instead of five near-synonyms. */
+export const SUPPORT_LABEL = 'IT Support';

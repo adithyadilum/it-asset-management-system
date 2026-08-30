@@ -1,3 +1,4 @@
+import { MAX_IMPORT_FILE_BYTES, MAX_IMPORT_FILE_LABEL } from '@/lib/constants';
 import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 
@@ -29,9 +30,10 @@ function getCellStringValue(cell: ExcelJS.Cell): string {
 }
 
 export async function parseFile(file: File): Promise<ParsedFileResult> {
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  if (file.size > MAX_FILE_SIZE) {
-    throw new Error('File exceeds the maximum limit of 10MB.');
+  if (file.size > MAX_IMPORT_FILE_BYTES) {
+    throw new Error(
+      `File exceeds the maximum limit of ${MAX_IMPORT_FILE_LABEL}.`
+    );
   }
 
   const mimeType = file.type;

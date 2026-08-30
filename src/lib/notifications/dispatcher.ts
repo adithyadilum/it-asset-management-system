@@ -1,4 +1,5 @@
 // src/lib/notifications/dispatcher.ts
+import { logInfo } from '@/lib/latency';
 import { serverEnv } from '@/lib/env';
 import { clientEnv } from '@/lib/env.client';
 import { db } from '@/db';
@@ -47,7 +48,7 @@ export async function dispatchAlert(payload: NotificationPayload) {
 
     // If the rule is not found or not enabled, skip dispatching
     if (!rule || !rule.isEnabled) {
-      console.log(
+      logInfo(
         `Notification rule '${ruleKey}' is disabled or not found. Skipping dispatch.`
       );
       return { success: false, reason: 'Rule disabled or not found' };

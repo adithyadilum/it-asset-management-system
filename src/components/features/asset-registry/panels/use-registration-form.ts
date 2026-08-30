@@ -96,6 +96,9 @@ export function useRegistrationForm({
     CURRENCY_OPTIONS[0]?.value ?? ''
   );
   const [warrantyMonths, setWarrantyMonths] = useState('');
+  // Defaults to 5 years, the value the server used to apply invisibly. Now it
+  // is on screen and editable before the asset is created.
+  const [expectedLifespanYears, setExpectedLifespanYears] = useState('5');
   const [purchaseDate, setPurchaseDate] = useState(getTodayDateValue);
   const [basePrice, setBasePrice] = useState('');
   const [costPerSeat, setCostPerSeat] = useState('');
@@ -428,6 +431,8 @@ export function useRegistrationForm({
     currencyCode,
     setCurrencyCode,
     warrantyMonths,
+    expectedLifespanYears,
+    setExpectedLifespanYears,
     setWarrantyMonths,
     purchaseDate,
     setPurchaseDate,

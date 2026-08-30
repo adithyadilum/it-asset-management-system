@@ -23,6 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  describeReturnOutcome,
+  resolveReturnStatus,
+} from '@/lib/assignments/return-outcome';
+import { StatusBadge } from '@/components/shared/status-badge';
 
 export type ReturnAssetItem = {
   assetId: string;
@@ -45,6 +50,7 @@ export function ProcessReturnModal({
 }: ProcessReturnModalProps) {
   const router = useRouter();
   const [condition, setCondition] = React.useState('');
+  const outcomeStatus = resolveReturnStatus(condition);
   const [physicalCondition, setPhysicalCondition] = React.useState('Excellent');
   const [notes, setNotes] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -164,6 +170,17 @@ export function ProcessReturnModal({
                 Beyond Repair
               </label>
             </div>
+
+            {/* The consequence was previously invisible until after submitting:
+                the condition-to-status mapping lived only on the server. */}
+            {outcomeStatus && (
+              <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3">
+                <StatusBadge value={outcomeStatus} showIcon />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {describeReturnOutcome(condition)}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">
