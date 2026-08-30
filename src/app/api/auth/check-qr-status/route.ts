@@ -1,3 +1,4 @@
+import { withRateLimit } from '@/lib/api/with-rate-limit';
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import { serverEnv } from '@/lib/env';
@@ -7,7 +8,7 @@ const redis = new Redis({
   token: serverEnv.UPSTASH_REDIS_REST_TOKEN,
 });
 
-export async function GET(req: Request) {
+export const GET = withRateLimit('qr-status', async (req: Request) => {
   const { searchParams } = new URL(req.url);
   const token = searchParams.get('token');
 
@@ -21,4 +22,4 @@ export async function GET(req: Request) {
   const claimed = await redis.exists(`qr_claimed:${token}`);
 
   return NextResponse.json({ claimed: claimed === 1 });
-}
+});

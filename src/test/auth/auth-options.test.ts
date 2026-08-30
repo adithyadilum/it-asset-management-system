@@ -7,6 +7,11 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { authOptions } from '@/lib/auth/auth-options';
 
+const mockLogAuditAction = vi.fn();
+vi.mock('@/lib/audit', () => ({
+  logAuditAction: (...args: unknown[]) => mockLogAuditAction(...args),
+}));
+
 vi.mock('@/db', () => ({
   db: {
     query: {
@@ -183,6 +188,74 @@ describe('authOptions callbacks', () => {
       } as any);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('signIn event', () => {
+    const signInEvent = authOptions.events?.signIn;
+
+    if (!signInEvent) {
+      throw new Error('signIn event is not defined in authOptions');
+    }
+
+    it('records a LOGIN audit row for a known user', async () => {
+      // Nothing wrote LOGIN before this existed, even though every audit
+      // surface was already wired to render it.
+      findFirstMock.mockResolvedValue({ id: 'user-1', role: 'GlobalAdmin' });
+
+      await signInEvent({ user: { email: 'Person@Tiqri.com' } } as any);
+
+      expect(mockLogAuditAction).toHaveBeenCalledWith({
+        entityType: 'sessions',
+        entityId: 'user-1',
+        actionType: 'LOGIN',
+        performedById: 'user-1',
+        newData: { email: 'person@tiqri.com', role: 'GlobalAdmin' },
+      });
+    });
+
+    it('marks a first sign-in as provisioned', async () => {
+      findFirstMock.mockResolvedValue({ id: 'user-2', role: 'Employee' });
+
+      await signInEvent({
+        user: { email: 'new@tiqri.com' },
+        isNewUser: true,
+      } as any);
+
+      expect(mockLogAuditAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          newData: expect.objectContaining({ provisioned: true }),
+        })
+      );
+    });
+
+    it('records nothing when there is no email', async () => {
+      await signInEvent({ user: {} } as any);
+
+      expect(mockLogAuditAction).not.toHaveBeenCalled();
+    });
+
+    it('records nothing when the user is not in the local database', async () => {
+      findFirstMock.mockResolvedValue(undefined);
+
+      await signInEvent({ user: { email: 'ghost@tiqri.com' } } as any);
+
+      expect(mockLogAuditAction).not.toHaveBeenCalled();
+    });
+
+    it('never lets an audit failure break the sign-in', async () => {
+      findFirstMock.mockRejectedValue(new Error('database is down'));
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        await expect(
+          signInEvent({ user: { email: 'person@tiqri.com' } } as any)
+        ).resolves.toBeUndefined();
+      } finally {
+        consoleError.mockRestore();
+      }
     });
   });
 });

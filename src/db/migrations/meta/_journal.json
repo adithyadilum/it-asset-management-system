@@ -5,50 +5,22 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777701048138,
-      "tag": "0000_abandoned_the_executioner",
+      "when": 1787162352371,
+      "tag": "0000_baseline_schema",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1778710255615,
-      "tag": "0001_lean_nicolaos",
+      "when": 1787223168678,
+      "tag": "0001_disposal_documents_and_location_assignments",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1778710255616,
-      "tag": "0002_atomic_notification_queue_dedup",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1780766416537,
-      "tag": "0003_rename_pillar",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1781194088932,
-      "tag": "0004_custom_status_actions",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1782336354810,
-      "tag": "0005_rename_role_enum_financial_auditor",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1784004531710,
-      "tag": "0006_security_performance_indexes",
+      "when": 1787925644345,
+      "tag": "0002_maintenance_currency",
       "breakpoints": true
     }
   ]

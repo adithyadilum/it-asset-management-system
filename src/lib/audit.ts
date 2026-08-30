@@ -16,6 +16,7 @@ export type AuditActionType =
   | 'LOGOUT'
   | 'ACCESS_DENIED'
   | 'IMPORT'
+  | 'REPORT_EXPORTED'
   | 'API_KEY_CREATED'
   | 'API_KEY_REVOKED'
   | 'WEBHOOK_CREATED'

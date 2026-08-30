@@ -1,13 +1,11 @@
 //web/src/db/seed.ts
-import * as dotenv from 'dotenv';
+import '../lib/load-env';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
 import { serverEnv } from '../lib/env';
 
 import { seedAssets } from './seed.assets';
-
-dotenv.config({ path: '.env.local' });
 
 type Db = ReturnType<typeof drizzle>;
 

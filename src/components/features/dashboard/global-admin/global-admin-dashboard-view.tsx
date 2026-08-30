@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { DataTable } from '@/components/shared/data-table';
 import { cn } from '@/lib/utils';
-import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { DisposeAssetsRequestDialog } from '@/components/features/disposals/dispose-assets-request-dialog';
 import type { SelectedAssetLite } from '@/types/disposals';
 import { tiqriToast } from '@/components/shared/sonner';
@@ -18,6 +17,7 @@ import {
   useOverdueColumns,
   usePendingDisposalColumns,
   useHighMaintenanceColumns,
+  usePendingMaintenanceColumns,
 } from '../shared/dashboard-table-columns';
 import type { GlobalAdminDashboardBatchData } from '@/actions/dashboard/global-admin';
 import type { OverdueReturnRow, HighMaintenanceRow } from '@/types/dashboard';
@@ -78,6 +78,7 @@ export function GlobalAdminDashboardView({
   );
   const pendingColumns = usePendingDisposalColumns('GlobalAdmin');
   const lemonsColumns = useHighMaintenanceColumns(handleFlagClick);
+  const pendingMaintenanceColumns = usePendingMaintenanceColumns();
 
   const tableProps = {
     enableRowSelection: false,
@@ -148,25 +149,66 @@ export function GlobalAdminDashboardView({
     </Tabs>
   );
 
+  // Two questions about the same subject: what needs fixing now, and what keeps
+  // needing fixing. Tabbed like the pair on the left rather than stacked.
   const rightTables = (
-    <>
-      <div className="h-10 mb-4 flex items-center">
-        <h3
-          className={cn(TYPOGRAPHY_CLASSNAMES.textSmMedium, 'text-foreground')}
+    <Tabs defaultValue="maintenance" className="w-full">
+      <TabsList className="h-10 mb-4 gap-1 bg-muted rounded-lg p-1 w-fit">
+        <TabsTrigger
+          value="maintenance"
+          className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
+        >
+          Pending Maintenance
+          <span
+            className={cn(
+              'text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors',
+              'group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground',
+              'group-data-[state=inactive]:bg-background group-data-[state=inactive]:text-primary border border-primary/30'
+            )}
+          >
+            {data.pendingMaintenance.length}
+          </span>
+        </TabsTrigger>
+        <TabsTrigger
+          value="lemons"
+          className="group flex items-center gap-1.5 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
         >
           High-Maintenance Assets
-        </h3>
-      </div>
-      <DataTable
-        {...tableProps}
-        columns={lemonsColumns}
-        data={data.highMaintenanceAssets}
-        emptyState={{
-          title: 'No high-maintenance assets',
-          description: 'No assets have 3 or more repair tickets.',
-        }}
-      />
-    </>
+          <span
+            className={cn(
+              'text-[9px] font-semibold rounded-full px-1.5 py-0.5 leading-none transition-colors',
+              'group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground',
+              'group-data-[state=inactive]:bg-background group-data-[state=inactive]:text-primary border border-primary/30'
+            )}
+          >
+            {data.highMaintenanceAssets.length}
+          </span>
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="maintenance">
+        <DataTable
+          {...tableProps}
+          columns={pendingMaintenanceColumns}
+          data={data.pendingMaintenance}
+          emptyState={{
+            title: 'No maintenance requests',
+            description: 'Nothing has been reported and left unactioned.',
+          }}
+        />
+      </TabsContent>
+      <TabsContent value="lemons">
+        <DataTable
+          {...tableProps}
+          columns={lemonsColumns}
+          data={data.highMaintenanceAssets}
+          emptyState={{
+            title: 'No high-maintenance assets',
+            description: 'No assets have 3 or more repair tickets.',
+          }}
+        />
+      </TabsContent>
+    </Tabs>
   );
 
   return (

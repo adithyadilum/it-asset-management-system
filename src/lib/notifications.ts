@@ -6,6 +6,8 @@
  * easily extended to use external providers (e.g., SendGrid, AWS SES, or an internal notification API).
  */
 
+import { logInfo } from '@/lib/latency';
+
 export type AssetNotificationType = 'assignment_reminder' | 'return_request';
 
 export interface AssetNotificationParams {
@@ -45,12 +47,12 @@ export async function sendAssetNotification(
   }
 
   // LOGGING (Mocking the actual send)
-  console.info('==================================================');
-  console.info(`[NOTIFICATION SENT]`);
-  console.info(`To: ${recipientEmail}`);
-  console.info(`Subject: ${subject}`);
-  console.info(`Message: ${message}`);
-  console.info('==================================================');
+  logInfo('==================================================');
+  logInfo(`[NOTIFICATION SENT]`);
+  logInfo(`To: ${recipientEmail}`);
+  logInfo(`Subject: ${subject}`);
+  logInfo(`Message: ${message}`);
+  logInfo('==================================================');
 
   return;
 }

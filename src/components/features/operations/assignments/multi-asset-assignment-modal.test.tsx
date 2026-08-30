@@ -153,7 +153,41 @@ describe('MultiAssetAssignmentModal', () => {
     });
   });
 
-  it('prevents user assignment if assets include furniture', () => {
+  it('forces location assignment when every asset is location-only', () => {
+    renderModal({
+      assets: [
+        {
+          assetId: '3',
+          assetTag: 'TAG-3',
+          assetName: 'Chair',
+          assetGroup: 'Office Furniture',
+        },
+        {
+          assetId: '4',
+          assetTag: 'TAG-4',
+          assetName: 'Monitor',
+          assetGroup: 'Office Electronics',
+        },
+      ],
+    });
+
+    const userRadio = screen.getByLabelText(
+      'Assign to User'
+    ) as HTMLInputElement;
+    const locationRadio = screen.getByLabelText(
+      'Assign to Location'
+    ) as HTMLInputElement;
+
+    expect(userRadio.disabled).toBe(true);
+    // Uniform selections stay assignable -- only the target is constrained.
+    expect(locationRadio.disabled).toBe(false);
+    expect(locationRadio.checked).toBe(true);
+    expect(
+      screen.getByRole('button', { name: /Assign 2 Assets/ })
+    ).toBeEnabled();
+  });
+
+  it('blocks a selection mixing person-assigned and location-assigned assets', async () => {
     renderModal({
       assets: [
         ...mockAssets,
@@ -166,9 +200,25 @@ describe('MultiAssetAssignmentModal', () => {
       ],
     });
 
-    const userRadio = screen.getByLabelText(
-      'Assign to User'
-    ) as HTMLInputElement;
-    expect(userRadio.disabled).toBe(true);
+    // A mixed batch has no single valid target, so neither mode is offered.
+    expect(
+      (screen.getByLabelText('Assign to User') as HTMLInputElement).disabled
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText('Assign to Location') as HTMLInputElement).disabled
+    ).toBe(true);
+
+    expect(
+      screen.getByText(/cannot be assigned in one go/i)
+    ).toBeInTheDocument();
+
+    const submit = screen.getByRole('button', { name: /Assign 3 Assets/ });
+    expect(submit).toBeDisabled();
+
+    // The furniture used to drag the laptops into a location assignment.
+    fireEvent.click(submit);
+    await waitFor(() => {
+      expect(bulkAssignAssetsAction).not.toHaveBeenCalled();
+    });
   });
 });

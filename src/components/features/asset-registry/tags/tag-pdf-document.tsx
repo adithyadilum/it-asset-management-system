@@ -51,6 +51,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     height: '100%',
     flex: 1,
+    // react-pdf's Yoga layout defaults flexShrink to 0, so without these a long
+    // model name grew this column past its share of the row and pushed the QR
+    // code to the right -- clean off a 144x72pt thermal label. minWidth lets
+    // the column shrink below its content's intrinsic width.
+    flexShrink: 1,
+    minWidth: 0,
   },
   brandSection: {
     flexDirection: 'row',
@@ -88,19 +94,30 @@ const styles = StyleSheet.create({
     fontSize: 7,
     color: '#475569',
     maxWidth: 70,
+    // Keeps a long model name on one line and ellipsises the rest. Without it
+    // the text wraps and, on a fixed-height thermal label, pushes the asset ID
+    // out of the printable area.
+    maxLines: 1,
+    textOverflow: 'ellipsis',
   },
   assetModelThermal: {
     fontSize: 5,
     color: '#475569',
     maxWidth: 55,
+    maxLines: 1,
+    textOverflow: 'ellipsis',
   },
   qrCode: {
     width: 48,
     height: 48,
+    // The QR is the one thing on the tag that must not be resized or clipped:
+    // scanning depends on it.
+    flexShrink: 0,
   },
   qrCodeThermal: {
     width: 40,
     height: 40,
+    flexShrink: 0,
   },
 });
 

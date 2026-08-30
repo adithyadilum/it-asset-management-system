@@ -382,7 +382,7 @@ describe('Write Operations: initiateVendorRepair', () => {
     ).rejects.toThrow(`Asset ${validUuid} not found`);
   });
 
-  it('creates new VENDOR ticket, updates asset, closes triage ticket, logs audit', async () => {
+  it('promotes the triage ticket to VENDOR, updates asset, logs audit', async () => {
     mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
     const validUuid = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -390,9 +390,21 @@ describe('Write Operations: initiateVendorRepair', () => {
       chain([{ id: validUuid, status: 'Available' }])
     ); // Asset
     mockDb.select.mockReturnValueOnce(chain([{ id: 1, companyName: 'Dell' }])); // Vendor
+    mockDb.select.mockReturnValueOnce(
+      chain([
+        {
+          id: 1,
+          assetId: validUuid,
+          status: 'ACTIVE',
+          ticketType: 'INTERNAL',
+          reportedIssue: 'replace display.',
+        },
+      ])
+    ); // Triage ticket being promoted
 
-    mockDb.update.mockReturnValue(chain([{ id: 1 }]));
-    mockDb.insert.mockReturnValue(chain([{ id: 2 }])); // New ticket inserted returning id=2
+    mockDb.update.mockReturnValue(
+      chain([{ id: 1, reportedIssue: 'replace display.' }])
+    );
 
     const result = await initiateVendorRepair(
       1,
@@ -403,11 +415,18 @@ describe('Write Operations: initiateVendorRepair', () => {
       '2025-12-31'
     );
     expect(result.success).toBe(true);
-    expect(result.ticketId).toBe(2);
+    // Same ticket id it started with — a second ticket is no longer inserted.
+    expect(result.ticketId).toBe(1);
 
+    // The operator's original wording has to survive the dispatch; it used to
+    // be replaced with "Vendor repair dispatch - Dell".
     expect(mockDispatchWebhookEvent).toHaveBeenCalledWith(
       'maintenance.created',
-      expect.objectContaining({ ticketId: 2, assetId: validUuid })
+      expect.objectContaining({
+        ticketId: 1,
+        assetId: validUuid,
+        reportedIssue: 'replace display.',
+      })
     );
 
     expect(revalidatePath).toHaveBeenCalledWith('/assets');
@@ -416,6 +435,24 @@ describe('Write Operations: initiateVendorRepair', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/assets/furniture');
     expect(revalidatePath).toHaveBeenCalledWith('/assets/office-electronics');
     expect(revalidatePath).toHaveBeenCalledWith('/operations/maintenance');
+  });
+
+  it('refuses to dispatch a ticket that is already dispatched', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(ADMIN_USER);
+    const validUuid = '550e8400-e29b-41d4-a716-446655440000';
+
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: validUuid, status: 'Available' }])
+    ); // Asset
+    mockDb.select.mockReturnValueOnce(chain([{ id: 1, companyName: 'Dell' }])); // Vendor
+    mockDb.select.mockReturnValueOnce(
+      chain([{ id: 1, assetId: validUuid, status: 'COMPLETED' }])
+    );
+    mockDb.update.mockReturnValue(chain([{ id: 1 }]));
+
+    await expect(
+      initiateVendorRepair(1, validUuid, '1', 'RMA-123')
+    ).rejects.toThrow('Ticket is no longer active');
   });
 });
 

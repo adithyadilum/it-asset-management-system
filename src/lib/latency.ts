@@ -82,6 +82,21 @@ export function logLatency({
   return duration;
 }
 
+/**
+ * Gated informational logging.
+ *
+ * Signature-compatible with `console.log` so call sites convert cleanly, but
+ * silenced in production unless ENABLE_RUNTIME_LOGS is set. Several of the
+ * call sites this replaced emitted user emails and ids on every request.
+ */
+export function logInfo(...args: unknown[]) {
+  if (!RUNTIME_LOGS_ENABLED) {
+    return;
+  }
+
+  console.info(...args);
+}
+
 export function logError({ scope, label, error, metadata }: ErrorLogParams) {
   if (!RUNTIME_LOGS_ENABLED) {
     return;

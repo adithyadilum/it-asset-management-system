@@ -67,6 +67,8 @@ export interface AssetRegistryRow {
   locationId: number | null;
   location: string | null;
   assignedTo: string | null;
+  /** State of the open assignment, when there is one. */
+  assignmentState?: string | null;
   instanceAttributes: Record<string, unknown> | null;
   updatedAt: Date;
   // SAM fields
@@ -189,6 +191,18 @@ export async function getAssetsByPillar(
     limit 1
   )`;
 
+  // The asset is flipped to 'Assigned' the moment an assignment is created, so
+  // asset status alone cannot tell an acknowledged assignment from one still
+  // waiting on the assignee.
+  const openAssignmentState = sql<string | null>`(
+    select ${assetAssignments.state}
+    from ${assetAssignments}
+    where ${assetAssignments.assetId} = ${assets.id}
+      and ${assetAssignments.returnedDate} is null
+    order by ${assetAssignments.assignedDate} desc
+    limit 1
+  )`;
+
   // Dynamic Status Filtering for Software
   let softwareStatusCondition = undefined;
   if (filters.status && filters.pillar === 'Software') {
@@ -264,6 +278,10 @@ export async function getAssetsByPillar(
         filters.pillar === 'Software'
           ? sql<string | null>`null`
           : latestAssignedUser,
+      assignmentState:
+        filters.pillar === 'Software'
+          ? sql<string | null>`null`
+          : openAssignmentState,
       instanceAttributes: assets.instanceAttributes,
       updatedAt: assets.updatedAt,
       // SAM fields
@@ -333,6 +351,7 @@ export async function getAssetsByPillar(
         (row.instanceAttributes as Record<string, unknown>) ?? null,
       updatedAt: row.updatedAt,
       assignedTo: row.assignedTo,
+      assignmentState: row.assignmentState ?? null,
       totalSeats: row.totalSeats,
       availableSeats: row.pillar === 'Software' ? availableSeats : undefined,
       expiryDate: row.expiryDate,

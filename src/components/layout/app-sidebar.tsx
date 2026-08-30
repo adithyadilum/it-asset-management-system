@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types/auth';
+import { SUPPORT_LABEL, SUPPORT_URL } from '@/lib/constants';
 
 type NavChild = {
   label: string;
@@ -404,11 +405,14 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-2">
-        <button
-          type="button"
-          onClick={() =>
-            router.push(userRole === 'Employee' ? '/my-assets' : '/dashboard')
-          }
+        {/* Opens the support portal. This used to be a button that navigated
+            to the dashboard, so the one global Support affordance in the app
+            did nothing but send you back where you started. */}
+        <a
+          href={SUPPORT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Contact ${SUPPORT_LABEL}`}
           className={[
             'flex h-8 w-full items-center rounded-md text-sidebar-foreground hover:bg-[#f0f7ff] dark:hover:bg-[#1e2540] hover:text-primary dark:hover:text-blue-400 transition-all duration-200',
             collapsed ? 'justify-center px-0' : 'gap-2 px-2',
@@ -420,7 +424,7 @@ export function AppSidebar({ userRole }: AppSidebarProps) {
               Support
             </span>
           ) : null}
-        </button>
+        </a>
       </SidebarFooter>
     </Sidebar>
   );

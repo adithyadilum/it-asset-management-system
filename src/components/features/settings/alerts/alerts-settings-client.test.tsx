@@ -140,9 +140,7 @@ describe('AlertsSettingsClient', () => {
     renderClient({ isAdmin: true, resendConfigured: true });
 
     await waitFor(() => {
-      expect(
-        screen.getByText('External Service Integrations')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Delivery channels')).toBeInTheDocument();
     });
 
     // Check if the input is masked for configured resend
@@ -156,15 +154,15 @@ describe('AlertsSettingsClient', () => {
     renderClient({ isAdmin: true });
 
     await waitFor(() => {
-      expect(
-        screen.getByText('External Service Integrations')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Delivery channels')).toBeInTheDocument();
     });
 
     const resendInput = screen.getByPlaceholderText('re_...');
     fireEvent.change(resendInput, { target: { value: 're_testkey' } });
 
-    const testButton = screen.getByRole('button', { name: /Test Connection/i });
+    const testButton = screen.getByRole('button', {
+      name: /Send a test email/i,
+    });
     fireEvent.click(testButton);
 
     await waitFor(() => {

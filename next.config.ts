@@ -1,4 +1,5 @@
-/** @type {import('next').NextConfig} */
+import type { NextConfig } from 'next';
+
 import './src/lib/env';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -8,8 +9,14 @@ const applicationUrl = new URL(
 const serverActionOrigins = isProduction
   ? [applicationUrl.host]
   : [applicationUrl.host, 'localhost:3000', '127.0.0.1:3000'];
+// 'wasm-unsafe-eval' permits WebAssembly compilation and nothing else -- it does
+// not re-enable eval(). @react-pdf/renderer lays out with Yoga compiled to WASM,
+// so without it every PDF (standard reports and asset tag printing alike) fails
+// with "WebAssembly.instantiate() ... violates the following Content Security
+// policy directive". Development already allows 'unsafe-eval', which is why this
+// only ever appeared in production.
 const scriptSource = isProduction
-  ? "script-src 'self' 'unsafe-inline'"
+  ? "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'"
   : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
 const contentSecurityPolicy = [
@@ -27,14 +34,16 @@ const contentSecurityPolicy = [
   ...(isProduction ? ['upgrade-insecure-requests'] : []),
 ].join('; ');
 
-const nextConfig = {
-  output: 'standalone',
+const nextConfig: NextConfig = {
   reactStrictMode: true,
-  allowedDevOrigins: isProduction ? [] : ['localhost:3000', '127.0.0.1'],
+  allowedDevOrigins: isProduction
+    ? []
+    : ['localhost:3000', '127.0.0.1', '192.168.8.101'],
   reactCompiler: true,
   cacheComponents: true,
   experimental: {
-    instantNavigationDevToolsToggle: true,
+    // `instantNavigationDevToolsToggle` was dropped in Next 16.3 with no
+    // replacement. It only controlled the dev overlay, so nothing is lost.
     serverActions: {
       bodySizeLimit: '5mb',
       allowedOrigins: serverActionOrigins,
@@ -82,4 +91,4 @@ const nextConfig = {
     ];
   },
 };
-module.exports = nextConfig;
+export default nextConfig;

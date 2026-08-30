@@ -24,7 +24,6 @@ import { isGlobalAdmin } from '@/lib/auth/roles';
 import { BrandHeader } from '@/components/shared/brand-header';
 import { OmniSearchTrigger } from '@/components/layout/omni-search-trigger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -49,6 +48,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import type { HeaderBreadcrumb, TopHeaderProps } from '@/types/layout';
 import { NotificationBell } from '@/components/features/notifications/notification-bell';
 import DevicePairingModal from '@/components/auth/device-pairing-modal';
+import { StatusBadge } from '@/components/shared/status-badge';
 
 const SIDEBAR_BREADCRUMB_LABELS: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -277,12 +277,14 @@ export function TopHeader({ user }: TopHeaderProps) {
                   <span className="truncate self-stretch font-text-xs-regular text-(length:--text-xs-regular-font-size) leading-(--text-xs-regular-line-height) tracking-(--text-xs-regular-letter-spacing) text-muted-foreground [font-style:var(--text-xs-regular-font-style)]">
                     {user.email}
                   </span>
-                  <Badge
-                    variant="outline"
-                    className="mt-1.5 border-[#7cc000]/30 bg-[#7cc000]/10 px-1.5 py-0 text-[10px] font-bold leading-4 tracking-wider text-[#7cc000] uppercase hover:bg-[#7cc000]/20"
-                  >
-                    {roleLabel}
-                  </Badge>
+                  {/* Same shape as every other badge in the app; the brand
+                      green is kept because roles are deliberately distinct
+                      from statuses. */}
+                  <StatusBadge
+                    variant="metadata"
+                    label={roleLabel}
+                    className="mt-1.5 border-[#7cc000]/30 bg-[#7cc000]/10 text-[#7cc000] hover:bg-[#7cc000]/20"
+                  />
                 </div>
               </div>
 

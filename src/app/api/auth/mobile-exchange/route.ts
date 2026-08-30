@@ -1,3 +1,4 @@
+import { withRateLimit } from '@/lib/api/with-rate-limit';
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { Redis } from '@upstash/redis';
@@ -47,7 +48,7 @@ const pairingUserSchema = z.object({
   email: z.string().email(),
 });
 
-export async function POST(req: Request) {
+export const POST = withRateLimit('mobile-exchange', async (req: Request) => {
   const parsed = exchangeSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
@@ -175,4 +176,4 @@ export async function POST(req: Request) {
   revalidatePath('/(app-shell)/(management)/settings/devices');
 
   return NextResponse.json({ accessToken: mobileJwt });
-}
+});

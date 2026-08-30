@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { PageSkeleton } from '@/components/shared/page-skeleton';
 import { asc, eq, sql } from 'drizzle-orm';
 import { cache } from 'react';
 import { getServerSession } from 'next-auth';
@@ -399,9 +401,7 @@ const getDeviceModelsData = cache(() =>
     .orderBy(asc(models.name))
 );
 
-export default async function MasterDataPage({
-  searchParams,
-}: MasterDataPageProps) {
+async function MasterDataPageContent({ searchParams }: MasterDataPageProps) {
   await assertMasterDataPageAccess();
 
   const params = await searchParams;
@@ -495,6 +495,23 @@ export default async function MasterDataPage({
         customStatuses={statusesData}
       />
     </div>
+  );
+}
+
+/**
+ * Streams rather than blocks.
+ *
+ * The body above reads the session and queries the database, none of
+ * which can be prerendered. Keeping the default export synchronous lets
+ * this route paint its chrome immediately and fill in the content when
+ * the data arrives, instead of the navigation waiting on the slowest
+ * query.
+ */
+export default function MasterDataPage(props: MasterDataPageProps) {
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <MasterDataPageContent {...props} />
+    </Suspense>
   );
 }
 
