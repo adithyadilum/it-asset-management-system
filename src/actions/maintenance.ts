@@ -701,8 +701,7 @@ export async function initiateVendorRepair(
         .from(maintenanceTickets)
         .where(eq(maintenanceTickets.id, parsed.data.ticketId))
         .limit(1);
-      if (triageResult.length === 0)
-        throw new Error('Triage ticket not found');
+      if (triageResult.length === 0) throw new Error('Triage ticket not found');
       const triageTicket = triageResult[0];
 
       if (triageTicket.assetId !== parsed.data.assetId)
@@ -782,9 +781,9 @@ export async function initiateVendorRepair(
     const knownMessages = [
       'Asset ',
       'Vendor ',
-      'Failed to close',
+      'Triage ticket not found',
       'Failed to update asset status',
-      'Failed to create vendor repair ticket',
+      'Failed to update vendor repair ticket',
       // Both are actionable by the operator — usually a second tab that already
       // dispatched this ticket — so they must not collapse into the generic
       // message.
