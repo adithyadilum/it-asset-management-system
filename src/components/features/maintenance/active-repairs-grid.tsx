@@ -54,7 +54,10 @@ export function ActiveRepairsGrid({
       header: 'Est. Cost.',
       cell: ({ row }) => (
         <span className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}>
-          {formatMoneyByCurrency(row.original.estimatedCost, 'USD')}
+          {formatMoneyByCurrency(
+            row.original.estimatedCost,
+            row.original.currencyCode || 'LKR'
+          )}
         </span>
       ),
     },
