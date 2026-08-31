@@ -3,7 +3,9 @@ import { db } from '@/db';
 import {
   assets,
   assetPurchases,
+  categories,
   maintenanceTickets,
+  models,
   softwareLicenses,
   softwareAllocations,
   assetAssignments,
@@ -161,7 +163,11 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
                       'asset_purchases.exchange_rate',
                       'assets.salvage_value',
                       'assets.useful_life_months',
-                      'asset_purchases.purchase_date'
+                      'asset_purchases.purchase_date',
+                      undefined,
+                      // Software is carried at cost, so this figure still
+                      // covers the same assets as total acquisition value.
+                      'categories.pillar'
                     )
                   )}
                 END
@@ -173,6 +179,9 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
+        // Joined only so the NBV expression can read the pillar.
+        .innerJoin(models, eq(assets.modelId, models.id))
+        .innerJoin(categories, eq(models.categoryId, categories.id))
         .where(eq(assets.isArchived, false)),
 
       // Grouped by the currency the ticket recorded, so each bucket converts
