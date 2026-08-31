@@ -105,35 +105,22 @@ export function AddUsersToRoleModal({
     setMappedSelection((prev) => prev.filter((s) => s.id !== roleUserId));
   };
 
-  // Reset state during render when modal closes — avoids stale-state flash.
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
-  if (isOpen !== prevIsOpen) {
-    setPrevIsOpen(isOpen);
-    if (!isOpen) {
-      setIsSubmitting(false);
-      setError(null);
+  // ── Close handler — resets all local state (safe: called from an event, not render) ──
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
       setSearchQuery('');
       setSearchResults([]);
       setIsSearching(false);
       setSearchError(null);
       setMappedSelection([]);
+      setIsSubmitting(false);
+      setError(null);
     }
-  }
+    onOpenChange(open);
+  };
 
   // The server requires at least 2 characters before returning results.
   const canSearch = normalizedQuery.length >= 2;
-
-  // Clear search state when query drops below the 2-char threshold.
-  // Done during render (not in an effect) to avoid the set-state-in-effect lint rule.
-  const [prevCanSearch, setPrevCanSearch] = useState(canSearch);
-  if (canSearch !== prevCanSearch) {
-    setPrevCanSearch(canSearch);
-    if (!canSearch) {
-      setSearchResults([]);
-      setIsSearching(false);
-      setSearchError(null);
-    }
-  }
 
   useEffect(() => {
     if (!isOpen || !canSearch) return;
@@ -197,7 +184,7 @@ export function AddUsersToRoleModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-125 [&>button]:hidden">
         {/* ── Header ── */}
         <div className="flex items-start justify-between border-b border-border px-6 py-4">
@@ -245,6 +232,7 @@ export function AddUsersToRoleModal({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="user-search"
+              aria-label="Search users by name or email"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search company directory by name or email..."
