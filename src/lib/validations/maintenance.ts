@@ -42,6 +42,13 @@ export const initiateVendorRepairSchema = z.object({
       'Expected return date must be in YYYY-MM-DD format.'
     )
     .optional(),
+  // The dispatch dialog offers a currency picker; without this the estimate was
+  // stored bare and every grid rendered it as USD regardless.
+  currencyCode: z
+    .string()
+    .trim()
+    .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
+    .default('LKR'),
 });
 
 export type InitiateVendorRepairInput = z.infer<

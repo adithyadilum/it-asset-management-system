@@ -108,6 +108,8 @@ export interface InitiateRepairFormData {
   vendorId: string;
   rmaNumber: string;
   estimatedCost?: string;
+  /** Currency the estimate is entered in; stored on the ticket. */
+  currencyCode?: string;
   expectedReturnDate?: string;
 }
 
@@ -150,6 +152,8 @@ export interface RepairHistoryTicket {
   vendorName: string | null;
   actualCompletionDate: string | null;
   actualCost: string | null;
+  /** Currency `actualCost` is denominated in; the grid used to assume USD. */
+  currencyCode: string | null;
   resolutionNotes: string | null;
   status: 'COMPLETED' | 'CANCELLED';
   createdAt: Date;

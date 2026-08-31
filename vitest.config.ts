@@ -18,6 +18,9 @@ export default defineConfig({
     // Use isolated forks to completely flush RAM between files
     pool: 'forks',
     isolate: true,
+    // Raised from the 5s default: the heavier suites occasionally tip over it
+    // on a loaded CI runner and fail for timing rather than behaviour.
+    testTimeout: 15000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],

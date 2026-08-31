@@ -335,6 +335,7 @@ async function loadRepairHistory(page = 1, pageSize = 10, searchTerm = '') {
           vendorName: maintenanceTickets.vendorName,
           actualCompletionDate: maintenanceTickets.actualCompletionDate,
           actualCost: maintenanceTickets.actualCost,
+          currencyCode: maintenanceTickets.currencyCode,
           resolutionNotes: maintenanceTickets.resolutionNotes,
           status: maintenanceTickets.status,
           createdAt: maintenanceTickets.createdAt,
@@ -635,7 +636,8 @@ export async function initiateVendorRepair(
   vendorId: string,
   rmaNumber: string,
   estimatedCost?: string,
-  expectedReturnDate?: string
+  expectedReturnDate?: string,
+  currencyCode?: string
 ) {
   // 1. Zero Trust: Auth & Role Validation
   const user = await enforceActionAccess();
@@ -650,6 +652,7 @@ export async function initiateVendorRepair(
     rmaNumber: rmaNumber || undefined,
     estimatedCost: estimatedCost || undefined,
     expectedReturnDate: expectedReturnDate || undefined,
+    currencyCode: currencyCode || undefined,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? 'Invalid input.');
@@ -735,6 +738,7 @@ export async function initiateVendorRepair(
             parsed.data.estimatedCost != null
               ? parsed.data.estimatedCost.toString()
               : null,
+          currencyCode: parsed.data.currencyCode,
           estimatedReturnDate: parsed.data.expectedReturnDate ?? null,
           updatedAt: now,
         })

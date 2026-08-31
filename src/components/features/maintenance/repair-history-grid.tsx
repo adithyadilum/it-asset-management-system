@@ -58,7 +58,10 @@ export function RepairHistoryGrid({
         <span
           className={`${TYPOGRAPHY_CLASSNAMES.textSmRegular} text-muted-foreground`}
         >
-          {formatMoneyByCurrency(row.original.actualCost, 'USD')}
+          {formatMoneyByCurrency(
+            row.original.actualCost,
+            row.original.currencyCode || 'LKR'
+          )}
         </span>
       ),
     },

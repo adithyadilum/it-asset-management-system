@@ -67,7 +67,7 @@ function parseOptionalBooleanField(
 }
 
 function getQStashClient() {
-  const token = serverEnv.QSTASH_TOKEN;
+  const token = process.env.QSTASH_TOKEN || serverEnv.QSTASH_TOKEN;
 
   if (!token) {
     throw new Error('QSTASH_TOKEN not set in environment variables');
