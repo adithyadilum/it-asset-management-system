@@ -12,6 +12,7 @@ import { USER_ROLES, type UserRole } from '@/types/auth';
 import { canAccessMobile } from '@/lib/auth/roles';
 import { isPublicAssetPath } from '@/lib/auth/public-paths';
 import { isSessionUnrecoverable } from '@/lib/auth/session-liveness';
+import { sessionCookieNamesToClear } from '@/lib/auth/session-cookie';
 
 /** Validates an unknown JWT claim against the known role enum. */
 function normalizeTokenRole(role: unknown): UserRole | null {
@@ -21,7 +22,7 @@ function normalizeTokenRole(role: unknown): UserRole | null {
   return null;
 }
 
-/** Decrypts the JWT cookie and extracts auth metadata (stateless â€” no Keycloak refresh). */
+/** Decrypts the JWT cookie and extracts auth metadata (stateless — no Keycloak refresh). */
 async function verifyTokenAndRole(request: NextRequest) {
   const authTimer = startLatencyTimer();
 
@@ -71,7 +72,7 @@ function getTopLevelSegment(pathname: string) {
 }
 
 /**
- * Edge RBAC gate â€” controls which top-level route segments each role can reach.
+ * Edge RBAC gate — controls which top-level route segments each role can reach.
  * GlobalAdmin: all | ITOperator: no /settings, /financials
  * FinancialAuditor: no /settings, limited /operations | Employee: /dashboard only
  */
@@ -129,14 +130,11 @@ function getLoginRedirectResponse(request: NextRequest) {
   loginUrl.searchParams.set('redirectTo', requestedPath);
   const response = NextResponse.redirect(loginUrl);
 
-  // Clear stale cookies to prevent redirect loops from broken JWTs.
-  const secureCookieName = '__Secure-next-auth.session-token';
-  const plainCookieName = 'next-auth.session-token';
-
-  if (request.cookies.has(secureCookieName)) {
-    response.cookies.delete(secureCookieName);
-  } else if (request.cookies.has(plainCookieName)) {
-    response.cookies.delete(plainCookieName);
+  // Clear stale cookies to prevent redirect loops from broken JWTs. Matched by
+  // prefix so chunked cookies go too -- see `sessionCookieNamesToClear`.
+  const present = request.cookies.getAll().map((cookie) => cookie.name);
+  for (const name of sessionCookieNamesToClear(present)) {
+    response.cookies.delete(name);
   }
 
   return response;
@@ -171,7 +169,7 @@ function buildNoncePolicy(nonce: string) {
   ].join('; ');
 }
 
-/** Main edge proxy â€” handles auth, RBAC, mobile routing, and account-status gates. */
+/** Main edge proxy — handles auth, RBAC, mobile routing, and account-status gates. */
 export async function proxy(request: NextRequest) {
   const requestTimer = startLatencyTimer();
   const { pathname } = request.nextUrl;
@@ -230,7 +228,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
 
-      // Employees don't have a dashboard â€” send them to /my-assets.
+      // Employees don't have a dashboard — send them to /my-assets.
       if (
         payload.role === 'Employee' &&
         (pathname === '/' ||
