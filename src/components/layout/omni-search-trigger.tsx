@@ -425,7 +425,7 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                     ? assetsResults.map((asset) => (
                         <CommandItem
                           key={asset.id}
-                          value={`${asset.assetTag} ${asset.name ?? ''} ${asset.serialNumber ?? ''} ${asset.category}`}
+                          value={`${asset.assetTag} ${asset.name ?? ''} ${asset.serialNumber ?? ''} ${asset.category} ${asset.brand} ${asset.model}`}
                           onSelect={() =>
                             handleSelectHref(
                               `/assets/${encodeURIComponent(asset.assetTag)}`
@@ -440,10 +440,15 @@ export function OmniSearchTrigger({ userRole }: OmniSearchTriggerProps) {
                               {asset.name ?? asset.assetTag}
                             </span>
                             <span className="truncate text-xs text-muted-foreground">
-                              {asset.assetTag}
-                              {asset.serialNumber
-                                ? ` • ${asset.serialNumber}`
-                                : ''}
+                              {[
+                                asset.assetTag,
+                                [asset.brand, asset.model]
+                                  .filter(Boolean)
+                                  .join(' '),
+                                asset.serialNumber,
+                              ]
+                                .filter(Boolean)
+                                .join(' • ')}
                             </span>
                           </div>
                         </CommandItem>

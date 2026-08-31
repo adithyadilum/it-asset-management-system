@@ -4,6 +4,12 @@ export interface OmniSearchAssetResult {
   name: string | null;
   serialNumber: string | null;
   category: string;
+  /**
+   * Shown on the result row. A brand search returns rows whose visible text
+   * would otherwise contain none of what was typed, which reads as a bug.
+   */
+  brand: string;
+  model: string;
 }
 
 export interface OmniSearchUserResult {

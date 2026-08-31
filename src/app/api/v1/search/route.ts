@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import {
   assets,
+  brands,
   categories,
   departments,
   models,
@@ -14,6 +15,11 @@ import {
 } from '@/db/schema';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
 import { omniSearchQuerySchema } from '@/lib/validations/omni-search';
+import {
+  containsPattern,
+  parseSearchTerms,
+  startsWithPattern,
+} from '@/lib/search/omni-search-terms';
 import type { UserRole } from '@/types/auth';
 import type {
   OmniSearchAssetResult,
@@ -41,20 +47,42 @@ async function searchAssetsByQuery(
   query: string
 ): Promise<OmniSearchAssetResult[]> {
   const queryTimer = startLatencyTimer();
+  const terms = parseSearchTerms(query);
+  if (terms.length === 0) return [];
+
   const exactQuery = query;
-  const startsWithQuery = `${query}%`;
-  const containsQuery = `%${query}%`;
+  const startsWith = startsWithPattern(query);
 
   try {
+    // Ranked on the whole query rather than the individual terms, so the row
+    // whose tag the user actually typed still comes first when they add a
+    // second word.
     const rankExpression = sql<number>`
       case
         when ${assets.assetTag} ilike ${exactQuery} then 0
-        when ${assets.assetTag} ilike ${startsWithQuery} then 1
-        when ${assets.name} ilike ${startsWithQuery} then 2
-        when ${assets.serialNumber} ilike ${startsWithQuery} then 3
-        else 4
+        when ${assets.assetTag} ilike ${startsWith} then 1
+        when ${assets.name} ilike ${startsWith} then 2
+        when ${assets.serialNumber} ilike ${startsWith} then 3
+        when ${brands.name} ilike ${startsWith} then 4
+        when ${models.name} ilike ${startsWith} then 5
+        else 6
       end
     `;
+
+    // One clause per term, each allowed to match any searchable column. Brand
+    // and model were joined but never searched, so "Dell" or "ThinkPad" --
+    // the way people actually refer to a machine -- returned nothing.
+    const termConditions = terms.map((term) => {
+      const pattern = containsPattern(term);
+      return or(
+        ilike(assets.assetTag, pattern),
+        ilike(assets.name, pattern),
+        ilike(assets.serialNumber, pattern),
+        ilike(brands.name, pattern),
+        ilike(models.name, pattern),
+        ilike(categories.name, pattern)
+      );
+    });
 
     const rows = await db
       .select({
@@ -63,20 +91,14 @@ async function searchAssetsByQuery(
         name: assets.name,
         serialNumber: assets.serialNumber,
         category: sql<string>`coalesce(${categories.name}, 'Uncategorized')`,
+        brand: sql<string>`coalesce(${brands.name}, '')`,
+        model: sql<string>`coalesce(${models.name}, '')`,
       })
       .from(assets)
       .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(brands, eq(models.brandId, brands.id))
       .leftJoin(categories, eq(models.categoryId, categories.id))
-      .where(
-        and(
-          ne(assets.status, 'Disposed'),
-          or(
-            ilike(assets.assetTag, containsQuery),
-            ilike(assets.name, containsQuery),
-            ilike(assets.serialNumber, containsQuery)
-          )
-        )
-      )
+      .where(and(ne(assets.status, 'Disposed'), ...termConditions))
       .orderBy(rankExpression, asc(assets.assetTag))
       .limit(MAX_RESULTS_PER_GROUP);
 
@@ -88,6 +110,7 @@ async function searchAssetsByQuery(
       startTime: queryTimer,
       metadata: {
         queryLength: query.length,
+        terms: terms.length,
       },
     });
   }
@@ -99,7 +122,6 @@ async function searchUsersByQuery(
   const queryTimer = startLatencyTimer();
   const exactQuery = query;
   const startsWithQuery = `${query}%`;
-  const containsQuery = `%${query}%`;
 
   try {
     const rankExpression = sql<number>`
@@ -123,10 +145,10 @@ async function searchUsersByQuery(
       .where(
         and(
           eq(users.isActive, true),
-          or(
-            ilike(users.name, containsQuery),
-            ilike(users.email, containsQuery)
-          )
+          ...parseSearchTerms(query).map((term) => {
+            const pattern = containsPattern(term);
+            return or(ilike(users.name, pattern), ilike(users.email, pattern));
+          })
         )
       )
       .orderBy(rankExpression, asc(users.name))
