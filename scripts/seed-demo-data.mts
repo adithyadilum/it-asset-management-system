@@ -893,7 +893,242 @@ async function run() {
       }
       summary.push(`notifications: ${notes}`);
 
-      // ── 13. Integrations, devices and delivery logs ─────────────────────
+      // ── 13. Saved report templates ──────────────────────────────────────
+      // Field names are copied from REPORT_FIELD_OPTIONS_BY_SOURCE and the
+      // filter keys are the ones the fetchers actually read, so each template
+      // runs rather than just looking plausible in the list. A test asserts
+      // the two stay in step.
+      await tx`DELETE FROM report_templates`;
+      const TEMPLATES: Array<{
+        name: string;
+        code: string;
+        description: string;
+        source: string;
+        filters: Record<string, string>;
+        fields: string[];
+      }> = [
+        {
+          name: 'Hardware register',
+          code: 'RPT-2026-001',
+          description:
+            'Every hardware asset with its custodian, location and purchase cost.',
+          source: 'Assets',
+          filters: { assetType: 'Hardware' },
+          fields: [
+            'Asset Tag',
+            'Asset Name',
+            'Category',
+            'Brand',
+            'Model',
+            'Serial Number',
+            'Status',
+            'Location',
+            'Assigned To',
+            'Purchase Cost',
+          ],
+        },
+        {
+          name: 'Office furniture by location',
+          code: 'RPT-2026-002',
+          description: 'Furniture holdings for the annual floor audit.',
+          source: 'Assets',
+          filters: { assetType: 'Office Furniture' },
+          fields: [
+            'Asset Tag',
+            'Asset Name',
+            'Category',
+            'Location',
+            'Status',
+            'Purchase Date',
+            'Purchase Cost',
+          ],
+        },
+        {
+          name: 'Assets currently on loan',
+          code: 'RPT-2026-003',
+          description: 'Open assignments and how long each has been out.',
+          source: 'Active Assignments',
+          filters: {},
+          fields: [
+            'Asset Tag',
+            'Asset Name',
+            'Assigned To',
+            'Assigned By',
+            'Assigned Date',
+            'Expected Return Date',
+            'State',
+            'Days Since Assigned',
+          ],
+        },
+        {
+          name: 'Returns and condition on hand-back',
+          code: 'RPT-2026-004',
+          description: 'What came back, from whom, and in what condition.',
+          source: 'Return History',
+          filters: {},
+          fields: [
+            'Asset Tag',
+            'Asset Name',
+            'Assigned To',
+            'Returned By',
+            'Assigned Date',
+            'Returned Date',
+            'Duration (Days)',
+            'Return Condition',
+          ],
+        },
+        {
+          name: 'Repair spend by vendor',
+          code: 'RPT-2026-005',
+          description:
+            'Completed repairs with estimate against actual, for vendor reviews.',
+          source: 'Maintenance Records',
+          filters: { status: 'COMPLETED' },
+          fields: [
+            'Asset Tag',
+            'Asset Name',
+            'Vendor Name',
+            'RMA Number',
+            'Reported Issue',
+            'Resolution Notes',
+            'Estimated Cost',
+            'Actual Cost',
+            'Cost Variance',
+            'Completion Date',
+          ],
+        },
+        {
+          name: 'Open maintenance queue',
+          code: 'RPT-2026-006',
+          description: 'Everything still with a vendor or awaiting triage.',
+          source: 'Maintenance Records',
+          filters: { status: 'ACTIVE' },
+          fields: [
+            'Ticket ID',
+            'Asset Tag',
+            'Asset Name',
+            'Ticket Type',
+            'Vendor Name',
+            'Reported Issue',
+            'Estimated Cost',
+            'Estimated Return Date',
+            'Dispatched By',
+          ],
+        },
+        {
+          name: 'Disposals and salvage recovered',
+          code: 'RPT-2026-007',
+          description: 'Completed write-offs with the value recovered on each.',
+          source: 'Disposal Records',
+          filters: {},
+          fields: [
+            'Disposal ID',
+            'Asset Tag',
+            'Asset Name',
+            'Requested By',
+            'Approved By',
+            'Status',
+            'Reason',
+            'Disposal Method',
+            'Salvage Value',
+          ],
+        },
+        {
+          name: 'Depreciation schedule',
+          code: 'RPT-2026-008',
+          description:
+            'Book value and accumulated depreciation across the depreciable fleet.',
+          source: 'Depreciation Ledger',
+          filters: {},
+          fields: [
+            'Asset Tag',
+            'Asset Name',
+            'Category',
+            'Purchase Cost',
+            'Useful Life (Months)',
+            'Salvage Value',
+            'Age (Months)',
+            'Monthly Depreciation',
+            'Accumulated Depreciation',
+            'Current Book Value',
+            'Depreciation %',
+          ],
+        },
+        {
+          name: 'Software licence renewals',
+          code: 'RPT-2026-009',
+          description: 'Seat usage and expiry dates for every active licence.',
+          source: 'Software Licenses',
+          filters: {},
+          fields: [
+            'License ID',
+            'Software Name',
+            'Publisher',
+            'License Key',
+            'License Type',
+            'Total Seats',
+            'Used Seats',
+            'Available Seats',
+            'Utilization %',
+            'Start Date',
+            'Expiry Date',
+            'Days Until Expiry',
+            'Status',
+          ],
+        },
+        {
+          name: 'Purchase history',
+          code: 'RPT-2026-010',
+          description: 'Acquisitions with vendor, tax and warranty terms.',
+          source: 'Purchase Records',
+          filters: {},
+          fields: [
+            'Purchase ID',
+            'Asset Tag',
+            'Asset Name',
+            'Vendor',
+            'Purchase Date',
+            'Base Price',
+            'Tax',
+            'Shipping Cost',
+            'Total Cost',
+            'Currency',
+            'Warranty Expiry',
+            'Warranty Remaining (Days)',
+          ],
+        },
+        {
+          name: 'Access and change audit',
+          code: 'RPT-2026-011',
+          description: 'System audit trail for compliance review.',
+          source: 'Audit Logs',
+          filters: {},
+          fields: [
+            'Log ID',
+            'Timestamp',
+            'User',
+            'Action',
+            'Entity Type',
+            'Entity ID',
+            'IP Address',
+            'Details',
+          ],
+        },
+      ];
+
+      for (const t of TEMPLATES) {
+        if (!t.fields.length)
+          throw new Error(`no fields listed for ${t.source}`);
+        await tx`
+          INSERT INTO report_templates (name, report_code, description, is_active, data_source, filters, fields, sort_direction, created_by_id)
+          VALUES (
+            ${t.name}, ${t.code}, ${t.description}, true, ${t.source},
+            ${sql.json(t.filters)}, ${sql.json(t.fields)}, 'asc', ${adminId}
+          )`;
+      }
+      summary.push(`report templates: ${TEMPLATES.length}`);
+
+      // ── 14. Integrations, devices and delivery logs ─────────────────────
       // These tables were left empty by the first pass, which reads as an
       // unfinished system on screen rather than a quiet one.
       const DEVICES: Array<[string, string, string]> = [
