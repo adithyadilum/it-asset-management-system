@@ -1,7 +1,13 @@
 import { and, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { assets, assetPurchases, maintenanceTickets } from '@/db/schema';
+import {
+  assets,
+  assetPurchases,
+  categories,
+  maintenanceTickets,
+  models,
+} from '@/db/schema';
 import { calculateCurrentBookValue } from '@/lib/depreciation';
 
 export interface AssetFinancialVitals {
@@ -42,9 +48,13 @@ export async function getAssetFinancialVitalsByResolvedId(
         totalCost: assetPurchases.totalCost,
         currencyCode: assetPurchases.currencyCode,
         warrantyExpiry: assetPurchases.warrantyExpiry,
+        // Drives whether this asset depreciates at all.
+        pillar: categories.pillar,
       })
       .from(assets)
       .leftJoin(assetPurchases, eq(assets.id, assetPurchases.assetId))
+      .innerJoin(models, eq(assets.modelId, models.id))
+      .innerJoin(categories, eq(models.categoryId, categories.id))
       .where(eq(assets.id, resolvedAssetId))
       .limit(1),
     db
@@ -78,6 +88,7 @@ export async function getAssetFinancialVitalsByResolvedId(
     salvageValue: salvage,
     usefulLifeMonths: asset.usefulLifeMonths,
     purchaseDate: asset.purchaseDate,
+    pillar: asset.pillar,
   });
 
   return {

@@ -32,6 +32,27 @@ export const DEFAULT_USEFUL_LIFE_MONTHS = 60;
 /** The active depreciation method name — update this when you switch methods. */
 export const DEPRECIATION_METHOD = 'straight-line' as const;
 
+/**
+ * Pillars that are never depreciated.
+ *
+ * A software licence is a right to use, not a wasting physical asset: it does
+ * not lose value month by month the way a laptop does, it simply lapses at its
+ * expiry date. Depreciating it understated the software estate and made the
+ * dashboard disagree with the depreciation ledger, which already excluded
+ * software from its rows.
+ *
+ * Assets in these pillars are carried at cost, so a value that includes them
+ * still covers the same population as total acquisition cost.
+ */
+export const NON_DEPRECIABLE_PILLARS = ['Software'] as const;
+
+/** False for pillars carried at cost rather than depreciated. */
+export function isDepreciablePillar(pillar: string | null | undefined) {
+  return !NON_DEPRECIABLE_PILLARS.includes(
+    pillar as (typeof NON_DEPRECIABLE_PILLARS)[number]
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
@@ -75,6 +96,11 @@ export interface StraightLineParams {
   usefulLifeMonths?: number | null;
   /** The date the asset was purchased / placed in service. */
   purchaseDate: Date | string | null | undefined;
+  /**
+   * Category pillar. Assets in a non-depreciable pillar are returned at cost;
+   * omit it and the asset is depreciated as normal.
+   */
+  pillar?: string | null;
 }
 
 /**
@@ -93,6 +119,8 @@ export function calculateStraightLineNBV(
   const { cost, purchaseDate } = params;
 
   if (cost <= 0) return 0;
+  // Carried at cost — see NON_DEPRECIABLE_PILLARS.
+  if (!isDepreciablePillar(params.pillar)) return cost;
   if (!purchaseDate) return cost; // No purchase date → assume never depreciated
 
   const pDate = new Date(purchaseDate);
@@ -238,9 +266,16 @@ export function straightLineNbvSqlFragment(
   salvageCol: string,
   lifeCol: string,
   dateCol: string,
-  defaultLife: number = DEFAULT_USEFUL_LIFE_MONTHS
+  defaultLife: number = DEFAULT_USEFUL_LIFE_MONTHS,
+  /**
+   * Column holding the category pillar. Pass it and rows in a non-depreciable
+   * pillar come back at cost, matching `calculateStraightLineNBV`. Omit it and
+   * every row depreciates, which is only right for a set already filtered to
+   * depreciable assets.
+   */
+  pillarCol?: string
 ): string {
-  return `
+  const depreciated = `
     GREATEST(
       COALESCE(${salvageCol}::numeric, 0) * COALESCE(${exchangeRateCol}::numeric, 1),
       (${costCol}::numeric * COALESCE(${exchangeRateCol}::numeric, 1))
@@ -260,4 +295,12 @@ export function straightLineNbvSqlFragment(
       )
     )
   `.trim();
+
+  if (!pillarCol) return depreciated;
+
+  const carriedAtCost = `(${costCol}::numeric * COALESCE(${exchangeRateCol}::numeric, 1))`;
+  const nonDepreciable = NON_DEPRECIABLE_PILLARS.map((p) => `'${p}'`).join(
+    ', '
+  );
+  return `CASE WHEN ${pillarCol} IN (${nonDepreciable}) THEN ${carriedAtCost} ELSE ${depreciated} END`;
 }

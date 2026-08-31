@@ -68,6 +68,128 @@ const STAFF: Array<[string, string]> = [
   ['Rashmi Peiris', 'Operations'],
 ];
 
+/** Brands to guarantee exist. Existing rows are left alone. */
+const BRANDS = [
+  'Adobe',
+  'AgileBits',
+  'Apple',
+  'Cisco',
+  'Dell',
+  'Epson',
+  'Fellowes',
+  'Framery',
+  'HP',
+  'Herman Miller',
+  'Hon',
+  'JetBrains',
+  'LG',
+  'Lenovo',
+  'Logitech',
+  'Microsoft',
+  'Steelcase',
+  // Added to widen the catalogue.
+  'Samsung',
+  'Ubiquiti',
+  'Synology',
+  'APC',
+  'Jabra',
+  'Canon',
+  'Brother',
+  'IKEA',
+  'Okamura',
+  'Autodesk',
+  'Atlassian',
+  'CrowdStrike',
+  'Veeam',
+  'Zoom',
+];
+
+/** Category, pillar, asset-tag prefix. */
+const CATEGORIES: Array<[string, string, string]> = [
+  ['Desktop', 'Hardware', 'DES'],
+  ['Laptop', 'Hardware', 'LAP'],
+  ['Monitor', 'Hardware', 'MON'],
+  ['Rack server', 'Hardware', 'SRV'],
+  ['Tablet', 'Hardware', 'TAB'],
+  ['Docking Station', 'Hardware', 'DCK'],
+  ['Network Switch', 'Hardware', 'NSW'],
+  ['Firewall', 'Hardware', 'FWL'],
+  ['Network Storage', 'Hardware', 'NAS'],
+  ['Conference Camera', 'Office Electronics', 'CCM'],
+  ['Printer', 'Office Electronics', 'PRN'],
+  ['Projector', 'Office Electronics', 'PRJ'],
+  ['Shredder', 'Office Electronics', 'SRD'],
+  ['Scanner', 'Office Electronics', 'SCN'],
+  ['VoIP Phone', 'Office Electronics', 'VOP'],
+  ['TV Display', 'Office Electronics', 'TVD'],
+  ['UPS', 'Office Electronics', 'UPS'],
+  ['Chair', 'Office Furniture', 'CHR'],
+  ['Desk', 'Office Furniture', 'DSK'],
+  ['File Cabinet', 'Office Furniture', 'CAB'],
+  ['Soundproof Pod', 'Office Furniture', 'POD'],
+  ['Meeting Table', 'Office Furniture', 'MTB'],
+  ['Storage Locker', 'Office Furniture', 'LCK'],
+  ['Whiteboard', 'Office Furniture', 'WBD'],
+  ['Bookshelf', 'Office Furniture', 'BKS'],
+  ['Design Software', 'Software', 'DIS'],
+  ['IDE', 'Software', 'IDE'],
+  ['Operating System', 'Software', 'OSS'],
+  ['Password Manager', 'Software', 'PWM'],
+  ['Security Suite', 'Software', 'SEC'],
+  ['Collaboration', 'Software', 'CLB'],
+  ['Database', 'Software', 'DBS'],
+  ['Backup', 'Software', 'BKP'],
+];
+
+/** Model name, brand, category. Images are added by hand, so none are set. */
+const MODELS: Array<[string, string, string]> = [
+  ['Vostro 3600', 'Dell', 'Desktop'],
+  ['OptiPlex 7010 Micro', 'Dell', 'Desktop'],
+  ['XPS 15 9520', 'Dell', 'Laptop'],
+  ['MacBook Pro 16"', 'Apple', 'Laptop'],
+  ['ThinkPad X1 Carbon G11', 'Lenovo', 'Laptop'],
+  ['27UN850-W 4K', 'LG', 'Monitor'],
+  ['ViewFinity S8 32"', 'Samsung', 'Monitor'],
+  ['PowerEdge R750', 'Dell', 'Rack server'],
+  ['iPad Pro 13"', 'Apple', 'Tablet'],
+  ['Galaxy Tab S9', 'Samsung', 'Tablet'],
+  ['WD22TB4 Thunderbolt Dock', 'Dell', 'Docking Station'],
+  ['Catalyst 9200 24-Port', 'Cisco', 'Network Switch'],
+  ['UniFi Switch Pro 24', 'Ubiquiti', 'Network Switch'],
+  ['Meraki MX68', 'Cisco', 'Firewall'],
+  ['DiskStation DS1522+', 'Synology', 'Network Storage'],
+  ['MeetUp 4K', 'Logitech', 'Conference Camera'],
+  ['Color LaserJet Pro M479fdw', 'HP', 'Printer'],
+  ['Pro EX9240 1080p', 'Epson', 'Projector'],
+  ['Powershred 99Ci', 'Fellowes', 'Shredder'],
+  ['imageFORMULA DR-C230', 'Canon', 'Scanner'],
+  ['ADS-4700W', 'Brother', 'Scanner'],
+  ['IP Phone 8845', 'Cisco', 'VoIP Phone'],
+  ['QM55B 55" Display', 'Samsung', 'TV Display'],
+  ['Smart-UPS 3000VA', 'APC', 'UPS'],
+  ['Gesture Office Chair', 'Steelcase', 'Chair'],
+  ['Alt Task Chair', 'Okamura', 'Chair'],
+  ['Renew Sit-to-Stand', 'Herman Miller', 'Desk'],
+  ['Bekant Desk', 'IKEA', 'Desk'],
+  ['3-Drawer Lateral', 'Hon', 'File Cabinet'],
+  ['Framery O', 'Framery', 'Soundproof Pod'],
+  ['Bekant Conference Table', 'IKEA', 'Meeting Table'],
+  ['Kajuta Locker Unit', 'IKEA', 'Storage Locker'],
+  ['Verb Whiteboard', 'Steelcase', 'Whiteboard'],
+  ['Billy Bookcase', 'IKEA', 'Bookshelf'],
+  ['Creative Cloud', 'Adobe', 'Design Software'],
+  ['AutoCAD 2026', 'Autodesk', 'Design Software'],
+  ['All Products Pack', 'JetBrains', 'IDE'],
+  ['Windows 11 Pro', 'Microsoft', 'Operating System'],
+  ['Windows Server 2022 DataCenter', 'Microsoft', 'Operating System'],
+  ['1Password Business', 'AgileBits', 'Password Manager'],
+  ['Falcon Endpoint Protection', 'CrowdStrike', 'Security Suite'],
+  ['Confluence Premium', 'Atlassian', 'Collaboration'],
+  ['Workplace Business', 'Zoom', 'Collaboration'],
+  ['SQL Server 2022 Standard', 'Microsoft', 'Database'],
+  ['Backup Essentials', 'Veeam', 'Backup'],
+];
+
 /** Unit cost in LKR, keyed by model name. Sri Lankan market prices. */
 const PRICE_LKR: Record<string, number> = {
   'MacBook Pro 16"': 1_250_000,
@@ -88,28 +210,89 @@ const PRICE_LKR: Record<string, number> = {
   'All Products Pack': 98_000,
   'Creative Cloud': 145_000,
   '1Password Business': 24_000,
+  'OptiPlex 7010 Micro': 285_000,
+  'ThinkPad X1 Carbon G11': 780_000,
+  'ViewFinity S8 32"': 265_000,
+  'iPad Pro 13"': 590_000,
+  'Galaxy Tab S9': 385_000,
+  'WD22TB4 Thunderbolt Dock': 96_000,
+  'Catalyst 9200 24-Port': 1_450_000,
+  'UniFi Switch Pro 24': 425_000,
+  'Meraki MX68': 780_000,
+  'DiskStation DS1522+': 520_000,
+  'imageFORMULA DR-C230': 145_000,
+  'ADS-4700W': 168_000,
+  'IP Phone 8845': 118_000,
+  'QM55B 55" Display': 445_000,
+  'Smart-UPS 3000VA': 395_000,
+  'Alt Task Chair': 168_000,
+  'Bekant Desk': 92_000,
+  'Bekant Conference Table': 145_000,
+  'Kajuta Locker Unit': 68_000,
+  'Verb Whiteboard': 82_000,
+  'Billy Bookcase': 34_000,
+  'AutoCAD 2026': 385_000,
+  'Falcon Endpoint Protection': 42_000,
+  'Confluence Premium': 28_000,
+  'Workplace Business': 22_000,
+  'SQL Server 2022 Standard': 1_150_000,
+  'Backup Essentials': 310_000,
 };
 
-/** Model, asset-tag prefix, how many to create. */
-const FLEET: Array<[string, string, number]> = [
-  ['XPS 15 9520', 'LAP', 8],
-  ['MacBook Pro 16"', 'MBP', 4],
-  ['Vostro 3600', 'DES', 6],
-  ['27UN850-W 4K', 'MON', 10],
-  ['PowerEdge R750', 'SRV', 4],
-  ['Color LaserJet Pro M479fdw', 'PRN', 3],
-  ['Pro EX9240 1080p', 'PRJ', 2],
-  ['MeetUp 4K', 'CCM', 3],
-  ['Powershred 99Ci', 'SRD', 2],
-  ['Gesture Office Chair', 'CHR', 5],
-  ['Renew Sit-to-Stand', 'DSK', 4],
-  ['3-Drawer Lateral', 'CAB', 2],
-  ['Framery O', 'POD', 1],
-  ['Windows 11 Pro', 'OSS', 1],
-  ['Windows Server 2022 DataCenter', 'SRL', 1],
-  ['All Products Pack', 'IDE', 1],
-  ['Creative Cloud', 'ADB', 1],
-  ['1Password Business', 'PWM', 1],
+/**
+ * Model and how many to create. Asset tags come from the category prefix, so
+ * numbering is continuous per category the way a real registry reads.
+ */
+const FLEET: Array<[string, number]> = [
+  // Hardware
+  ['XPS 15 9520', 10],
+  ['MacBook Pro 16"', 6],
+  ['ThinkPad X1 Carbon G11', 7],
+  ['Vostro 3600', 6],
+  ['OptiPlex 7010 Micro', 5],
+  ['27UN850-W 4K', 12],
+  ['ViewFinity S8 32"', 6],
+  ['PowerEdge R750', 4],
+  ['iPad Pro 13"', 4],
+  ['Galaxy Tab S9', 3],
+  ['WD22TB4 Thunderbolt Dock', 8],
+  ['Catalyst 9200 24-Port', 3],
+  ['UniFi Switch Pro 24', 4],
+  ['Meraki MX68', 2],
+  ['DiskStation DS1522+', 2],
+  // Office Electronics
+  ['Color LaserJet Pro M479fdw', 4],
+  ['Pro EX9240 1080p', 3],
+  ['MeetUp 4K', 4],
+  ['Powershred 99Ci', 2],
+  ['imageFORMULA DR-C230', 2],
+  ['ADS-4700W', 2],
+  ['IP Phone 8845', 6],
+  ['QM55B 55" Display', 3],
+  ['Smart-UPS 3000VA', 3],
+  // Office Furniture
+  ['Gesture Office Chair', 8],
+  ['Alt Task Chair', 6],
+  ['Renew Sit-to-Stand', 6],
+  ['Bekant Desk', 5],
+  ['3-Drawer Lateral', 3],
+  ['Framery O', 2],
+  ['Bekant Conference Table', 3],
+  ['Kajuta Locker Unit', 2],
+  ['Verb Whiteboard', 3],
+  ['Billy Bookcase', 2],
+  // Software
+  ['Windows 11 Pro', 1],
+  ['Windows Server 2022 DataCenter', 1],
+  ['All Products Pack', 1],
+  ['Creative Cloud', 1],
+  ['AutoCAD 2026', 1],
+  ['1Password Business', 1],
+  ['Falcon Endpoint Protection', 1],
+  ['Confluence Premium', 1],
+  ['Workplace Business', 1],
+  ['SQL Server 2022 Standard', 1],
+  ['Backup Essentials', 1],
 ];
 
 /**
@@ -201,6 +384,10 @@ async function run() {
         'asset_purchases',
         'assets',
         'sessions',
+        // Seeded below, so cleared here too -- integration_settings is a
+        // singleton keyed on id and would collide on a second run.
+        'webhook_subscriptions',
+        'integration_settings',
       ];
       let cleared = 0;
       for (const t of wipe) {
@@ -284,10 +471,53 @@ async function run() {
       const holders = [...staff, ...team];
       summary.push(`staff added: ${staff.length}, team kept: ${team.length}`);
 
-      // ── 5. Assets and purchases ─────────────────────────────────────────
+      // ── 5. Catalogue: brands, categories, models ────────────────────────
+      // Upserted rather than replaced: existing rows already carry the model
+      // images, which are maintained by hand.
+      for (const name of BRANDS) {
+        await tx`
+          INSERT INTO brands (name, is_active) VALUES (${name}, true)
+          ON CONFLICT (name) DO NOTHING`;
+      }
+      for (const [name, pillar, prefix] of CATEGORIES) {
+        await tx`
+          INSERT INTO categories (name, pillar, prefix, requires_serial, is_consumable, is_active)
+          VALUES (${name}, ${pillar}, ${prefix}, ${pillar !== 'Software'}, false, true)
+          -- Keyed on prefix: that is what carries the unique constraint, and
+          -- it is what asset tags are built from.
+          ON CONFLICT (prefix) DO UPDATE
+            SET name = EXCLUDED.name, pillar = EXCLUDED.pillar, is_active = true`;
+      }
+      const brandRows = await tx<{ id: number; name: string }[]>`
+        SELECT id, name FROM brands`;
+      const categoryRows = await tx<
+        { id: number; name: string; pillar: string; prefix: string }[]
+      >`SELECT id, name, pillar, prefix FROM categories`;
+      for (const [name, brand, category] of MODELS) {
+        const b = brandRows.find((x) => x.name === brand);
+        const c = categoryRows.find((x) => x.name === category);
+        if (!b || !c) throw new Error(`catalogue gap: ${brand} / ${category}`);
+        await tx`
+          INSERT INTO models (name, brand_id, category_id, is_active)
+          VALUES (${name}, ${b.id}, ${c.id}, true)
+          -- Existing rows keep their hand-maintained image_url.
+          ON CONFLICT (brand_id, name) DO NOTHING`;
+      }
+      summary.push(
+        `catalogue: ${BRANDS.length} brands, ${CATEGORIES.length} categories, ${MODELS.length} models`
+      );
+
+      // ── 6. Assets and purchases ─────────────────────────────────────────
       const models = await tx<
-        { id: number; name: string; pillar: string; category: string }[]
-      >`SELECT m.id, m.name, c.pillar, c.name AS category FROM models m JOIN categories c ON c.id = m.category_id`;
+        {
+          id: number;
+          name: string;
+          pillar: string;
+          category: string;
+          prefix: string;
+        }[]
+      >`SELECT m.id, m.name, c.pillar, c.name AS category, c.prefix
+        FROM models m JOIN categories c ON c.id = m.category_id`;
       const locations = await tx<{ id: number; name: string }[]>`
         SELECT id, name FROM locations WHERE is_active = true`;
       const vendors = await tx<{ id: number }[]>`SELECT id FROM vendors`;
@@ -306,16 +536,35 @@ async function run() {
       };
       const made: Made[] = [];
 
-      for (const [modelName, prefix, count] of FLEET) {
+      // Tag numbering runs per category, so two laptop models share the LAP
+      // sequence rather than each restarting at 001.
+      const nextInCategory = new Map<string, number>();
+
+      for (const [modelName, count] of FLEET) {
         const model = models.find((m) => m.name === modelName);
         if (!model) throw new Error(`model not found: ${modelName}`);
         const unit = PRICE_LKR[modelName];
         if (!unit) throw new Error(`no price for: ${modelName}`);
         const isSoftware = model.pillar === 'Software';
+        const prefix = model.prefix;
 
         for (let i = 1; i <= count; i++) {
-          const tag = `${prefix}-${String(i).padStart(3, '0')}`;
-          const purchasedDaysAgo = int(30, 1100);
+          const seq = (nextInCategory.get(prefix) ?? 0) + 1;
+          nextInCategory.set(prefix, seq);
+          const tag = `${prefix}-${String(seq).padStart(3, '0')}`;
+          // Three bands, so the ledger has something in every state:
+          //   recent  - the Total Assets / Value cards compare with 30 days
+          //             ago and read "No change / +0.0%" without them
+          //   mid     - the bulk, part way through their life
+          //   ageing  - past the 60-month life, so "fully depreciated" is not
+          //             a zero and old kit still sits on the books
+          const roll = rand();
+          const purchasedDaysAgo =
+            roll < 0.08
+              ? int(2, 27)
+              : roll < 0.88
+                ? int(35, 1100)
+                : int(1900, 2600);
           const purchaseDate = daysAgo(purchasedDaysAgo);
 
           const [asset] = await tx<{ id: string }[]>`
@@ -357,7 +606,7 @@ async function run() {
       }
       summary.push(`assets: ${made.length}`);
 
-      // ── 6. Software licences and seat allocations ───────────────────────
+      // ── 7. Software licences and seat allocations ───────────────────────
       const softwareAssets = made.filter((m) => m.pillar === 'Software');
       const seatsFor: Record<string, number> = {
         'Windows 11 Pro': 45,
@@ -371,8 +620,19 @@ async function run() {
         const total = seatsFor[s.modelName] ?? 10;
         const perpetual = s.modelName.startsWith('Windows');
         const start = daysAgo(s.purchasedDaysAgo);
-        // One licence is deliberately expired so Renew has something to act on.
-        const expired = s.modelName === 'Creative Cloud';
+        // Days until expiry, negative meaning already lapsed. Three sit inside
+        // the 30-day window the dashboard's renewals card counts, which would
+        // otherwise read zero, and one is lapsed so Renew has something to act
+        // on. The rest are comfortably out.
+        const EXPIRY_DAYS: Record<string, number> = {
+          'Creative Cloud': -21,
+          'Confluence Premium': 9,
+          'Workplace Business': 18,
+          'Falcon Endpoint Protection': 27,
+          'AutoCAD 2026': 74,
+          'Backup Essentials': 138,
+        };
+        const daysToExpiry = EXPIRY_DAYS[s.modelName] ?? int(60, 400);
         const [lic] = await tx<{ id: string }[]>`
           INSERT INTO software_licenses (model_id, asset_id, license_key, license_type, total_seats, start_date, expiry_date, is_active)
           VALUES (
@@ -380,7 +640,7 @@ async function run() {
             ${`${s.modelName.slice(0, 3).toUpperCase()}-${int(10000, 99999)}-${int(10000, 99999)}-${int(10000, 99999)}`},
             ${perpetual ? 'Perpetual' : 'Subscription'},
             ${total}, ${dateOnly(start)},
-            ${perpetual ? null : dateOnly(expired ? daysAgo(21) : daysAgo(-int(45, 300)))},
+            ${perpetual ? null : dateOnly(daysAgo(-daysToExpiry))},
             true
           ) RETURNING id`;
 
@@ -399,10 +659,10 @@ async function run() {
         }
       }
       summary.push(
-        `software licences: ${softwareAssets.length} (1 expired), seat allocations: ${allocations}`
+        `software licences: ${softwareAssets.length} (1 lapsed, 3 due within 30 days), seat allocations: ${allocations}`
       );
 
-      // ── 7. Assignments, and the statuses that follow from them ──────────
+      // ── 8. Assignments, and the statuses that follow from them ──────────
       const physical = made.filter((m) => m.pillar !== 'Software');
       const locationPillars = ['Office Furniture', 'Office Electronics'];
       let assignedCount = 0;
@@ -443,10 +703,20 @@ async function run() {
         `assignments: ${assignedCount} (${overdue.length} overdue, ${assignedCount - overdue.length} current)`
       );
 
-      // ── 8. Maintenance ──────────────────────────────────────────────────
+      // ── 9. Maintenance ──────────────────────────────────────────────────
       const repairable = physical.filter((a) => !toAssign.includes(a));
-      const inRepair = repairable.slice(0, 4);
-      const repaired = repairable.slice(4, 11);
+      // Proportional to the fleet: fixed slices left a 160-asset registry with
+      // four repairs and a huge Available bucket.
+      const nRepair = Math.max(4, Math.round(repairable.length * 0.14));
+      const nRepaired = Math.max(7, Math.round(repairable.length * 0.32));
+      const nTriage = Math.max(1, Math.round(repairable.length * 0.07));
+      const nRepeat = Math.max(2, Math.round(repairable.length * 0.05));
+
+      let cursor = 0;
+      const take = (n: number) => repairable.slice(cursor, (cursor += n));
+
+      const inRepair = take(nRepair);
+      const repaired = take(nRepaired);
       let tickets = 0;
 
       for (const a of inRepair) {
@@ -463,9 +733,12 @@ async function run() {
         tickets++;
       }
 
-      for (const a of repaired) {
-        const openedDaysAgo = int(40, 400);
-        const closedDaysAgo = openedDaysAgo - int(3, 20);
+      for (const [idx, a] of repaired.entries()) {
+        // The spend card compares this month against last. Spreading a few
+        // closures into each keeps that from reading -100%.
+        const recent = idx % 4 === 0;
+        const openedDaysAgo = recent ? int(12, 50) : int(60, 400);
+        const closedDaysAgo = recent ? int(1, 45) : openedDaysAgo - int(3, 20);
         const cost = int(12000, 120000);
         await tx`
           INSERT INTO maintenance_tickets (asset_id, ticket_type, vendor_name, rma_number, reported_issue, resolution_notes, estimated_cost, actual_cost, currency_code, actual_completion_date, status, dispatched_by_id, created_at, updated_at)
@@ -482,7 +755,7 @@ async function run() {
       // Two assets with a repeat history. The dashboard's High-Maintenance tab
       // only lists assets at or above HIGH_MAINTENANCE_TICKET_THRESHOLD (3),
       // so without these it renders empty.
-      for (const a of repairable.slice(12, 14)) {
+      for (const a of take(nRepeat)) {
         for (let k = 0; k < int(3, 4); k++) {
           const openedDaysAgo = int(60, 600);
           const closedDaysAgo = Math.max(1, openedDaysAgo - int(4, 25));
@@ -500,22 +773,28 @@ async function run() {
         }
       }
 
-      // One sitting in triage, so the Pending Review tab is not empty.
-      const triage = repairable[11];
-      if (triage) {
+      // Sitting in triage, so the Pending Review tab has a real queue.
+      const triageQueue = take(nTriage);
+      for (const t of triageQueue) {
         await tx`
           INSERT INTO maintenance_tickets (asset_id, ticket_type, reported_issue, status, dispatched_by_id, created_at, updated_at)
-          VALUES (${triage.id}, 'INTERNAL', ${issueFor(triage.category)}, 'ACTIVE', ${adminId}, ${daysAgo(3)}, ${daysAgo(3)})`;
+          VALUES (${t.id}, 'INTERNAL', ${issueFor(t.category)}, 'ACTIVE', ${adminId}, ${daysAgo(int(1, 9))}, ${daysAgo(int(1, 9))})`;
         tickets++;
       }
       summary.push(
-        `maintenance tickets: ${tickets} (${inRepair.length} at vendor, ${repaired.length} closed, 1 in triage)`
+        `maintenance tickets: ${tickets} (${inRepair.length} at vendor, ${repaired.length} closed, ${triageQueue.length} in triage)`
       );
 
-      // ── 9. Disposals ────────────────────────────────────────────────────
-      const disposalPool = repairable.slice(14);
-      const completed = disposalPool.slice(0, 3);
-      const pending = disposalPool.slice(3, 5);
+      // ── 10. Disposals ────────────────────────────────────────────────────
+      const disposalPool = repairable.slice(cursor);
+      const completed = disposalPool.slice(
+        0,
+        Math.max(3, Math.round(disposalPool.length * 0.3))
+      );
+      const pending = disposalPool.slice(
+        completed.length,
+        completed.length + Math.max(2, Math.round(disposalPool.length * 0.2))
+      );
       let disposals = 0;
 
       for (const a of completed) {
@@ -546,20 +825,20 @@ async function run() {
       }
 
       // One lost, one retired, for a believable status spread.
-      const lost = disposalPool[5];
+      const lost = disposalPool[completed.length + pending.length];
       if (lost) await tx`UPDATE assets SET status='Lost' WHERE id=${lost.id}`;
-      const retired = disposalPool[6];
+      const retired = disposalPool[completed.length + pending.length + 1];
       if (retired)
         await tx`UPDATE assets SET status='Retired' WHERE id=${retired.id}`;
       // One reported faulty but not yet triaged, so the donut shows the state.
-      const defective = disposalPool[7];
+      const defective = disposalPool[completed.length + pending.length + 2];
       if (defective)
         await tx`UPDATE assets SET status='Defective', condition='Damaged' WHERE id=${defective.id}`;
       summary.push(
         `disposals: ${disposals} (${completed.length} completed, ${pending.length} awaiting approval)`
       );
 
-      // ── 10. A believable recent audit trail ─────────────────────────────
+      // ── 11. A believable recent audit trail ─────────────────────────────
       let audits = 0;
       for (const a of made.slice(0, 40)) {
         await tx`
@@ -575,7 +854,7 @@ async function run() {
       }
       summary.push(`audit entries: ${audits}`);
 
-      // ── 11. A few notifications so the bell has something in it ─────────
+      // ── 12. A few notifications so the bell has something in it ─────────
       let notes = 0;
       const noteSeed: Array<[string, string, string]> = [
         [
@@ -613,6 +892,81 @@ async function run() {
         }
       }
       summary.push(`notifications: ${notes}`);
+
+      // ── 13. Integrations, devices and delivery logs ─────────────────────
+      // These tables were left empty by the first pass, which reads as an
+      // unfinished system on screen rather than a quiet one.
+      const DEVICES: Array<[string, string, string]> = [
+        ['Nuwan’s iPhone', 'iOS 18.2', 'iPhone 15 Pro'],
+        ['Kasun A56', 'Android 15', 'Galaxy A56'],
+        ['Dilani Pixel', 'Android 15', 'Pixel 8a'],
+        ['Chathura iPad', 'iPadOS 18.1', 'iPad Pro 13"'],
+        ['Ruwan OnePlus', 'Android 14', 'OnePlus 12R'],
+        ['Amaya iPhone', 'iOS 18.1', 'iPhone 14'],
+        ['Malith Galaxy', 'Android 15', 'Galaxy S24'],
+      ];
+      let devices = 0;
+      for (const [i, [name, os, model]] of DEVICES.entries()) {
+        const holder = holders[i % holders.length];
+        await tx`
+          INSERT INTO linked_devices (user_id, device_name, device_os, device_model, jwt_id, last_active_at, linked_at, is_revoked)
+          VALUES (
+            ${holder.id}, ${name}, ${os}, ${model},
+            ${`jwt-${int(100000, 999999)}-${int(100000, 999999)}`},
+            ${daysAgo(int(0, 5))}, ${daysAgo(int(20, 300))}, ${i === DEVICES.length - 1}
+          )`;
+        devices++;
+      }
+
+      // Delivery records for the notifications raised above.
+      const raised = await tx<
+        {
+          id: number;
+          user_id: string;
+          event_type: string;
+          target_url: string;
+        }[]
+      >`SELECT id, user_id, event_type, target_url FROM app_notifications`;
+      let logs = 0;
+      for (const n of raised) {
+        for (const channel of ['in_app', 'email'] as const) {
+          await tx`
+            INSERT INTO notification_logs (notification_id, user_id, target_url, event_type, channel, status, sent_at)
+            VALUES (${n.id}, ${n.user_id}, ${n.target_url}, ${n.event_type}, ${channel}, 'sent', ${daysAgo(int(0, 9))})`;
+          logs++;
+        }
+      }
+
+      // A short pending queue, so the worker's inbox is not empty either.
+      const openAssignments = await tx<{ id: number; who: string }[]>`
+        SELECT id, assigned_to_user_id AS who FROM asset_assignments
+        WHERE assigned_to_user_id IS NOT NULL AND returned_date IS NULL LIMIT 4`;
+      let queued = 0;
+      for (const a of openAssignments) {
+        await tx`
+          INSERT INTO notification_queue (event_type, assignment_id, recipient_id, is_processed, created_at)
+          VALUES ('PENDING_ACCEPTANCE', ${a.id}, ${a.who}, false, ${daysAgo(int(0, 3))})`;
+        queued++;
+      }
+
+      await tx`
+        INSERT INTO webhook_subscriptions (name, url, events, secret, is_active, created_by_id)
+        VALUES
+          ('Service desk bridge', 'https://hooks.tiqri.com/servicedesk',
+           ${sql.json(['maintenance.created', 'maintenance.completed'])},
+           ${`whsec_${int(100000, 999999)}${int(100000, 999999)}`}, true, ${adminId}),
+          ('Finance export', 'https://hooks.tiqri.com/finance',
+           ${sql.json(['disposal.completed', 'asset.registered'])},
+           ${`whsec_${int(100000, 999999)}${int(100000, 999999)}`}, true, ${adminId})`;
+
+      await tx`
+        INSERT INTO integration_settings (smtp_host, smtp_port, smtp_user, teams_webhook_url, updated_at)
+        VALUES ('smtp.tiqri.com', 587, 'assets-noreply@tiqri.com',
+                'https://tiqri.webhook.office.com/webhookb2/assets', NOW())`;
+
+      summary.push(
+        `devices: ${devices}, delivery logs: ${logs}, queued: ${queued}, webhooks: 2, integration settings: 1`
+      );
 
       const [{ n: finalAssets }] = await tx<{ n: number }[]>`
         SELECT count(*)::int AS n FROM assets`;

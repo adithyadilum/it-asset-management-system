@@ -61,7 +61,12 @@ vi.mock('@/db/schema', () => ({
     id: 'assets.id',
     assetTag: 'assets.assetTag',
     usefulLifeMonths: 'assets.usefulLifeMonths',
+    modelId: 'assets.modelId',
   },
+  // Joined so the vitals query can read the pillar, which decides whether the
+  // asset depreciates at all.
+  models: { id: 'models.id', categoryId: 'models.categoryId' },
+  categories: { id: 'categories.id', pillar: 'categories.pillar' },
   assetPurchases: {
     assetId: 'assetPurchases.assetId',
     purchaseDate: 'assetPurchases.purchaseDate',
