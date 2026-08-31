@@ -76,6 +76,16 @@ const dd = (fieldName: string, required = false): Field => ({
 
 const iso = (x: Date) => x.toISOString().slice(0, 10);
 const daysAgo = (nDays: number) => new Date(Date.now() - nDays * 86_400_000);
+
+/**
+ * One fixed "now" for the whole run, so a long run cannot straddle midnight
+ * and produce events a few hours apart that sort inconsistently.
+ *
+ * History must never be stamped in the future: the audit log and every recent
+ * activity list order by `performed_at DESC`, so a single event dated next year
+ * pins itself to the top and pushes real activity out of view.
+ */
+const NOW = Date.now();
 const monthsAfter = (from: Date, months: number) => {
   const x = new Date(from);
   x.setDate(1);
@@ -770,12 +780,7 @@ const CATEGORY_DETAIL: Record<string, CategoryDetail> = {
     }),
   },
   Whiteboard: {
-    modelSpecs: [
-      t('Dimensions'),
-      t('Surface'),
-      t('Mounting'),
-      b('Magnetic'),
-    ],
+    modelSpecs: [t('Dimensions'), t('Surface'), t('Mounting'), b('Magnetic')],
     assetTracking: [t('Surface condition'), b('Pen tray fitted'), dd('Room')],
     instance: () => ({
       'Surface condition': pick(SURFACE_NOTE),
@@ -1366,6 +1371,7 @@ async function run() {
         by: string;
       };
       const rows: Array<Event & { assetId: string }> = [];
+      let droppedFuture = 0;
 
       for (const a of assets) {
         const events: Event[] = [];
@@ -1385,8 +1391,17 @@ async function run() {
         });
 
         // Commissioning: New -> Available, a day or two after it lands.
+        //
+        // Bounded by how long the asset has actually existed, so an item
+        // bought this week is not commissioned next week. Clamping to exactly
+        // NOW was not enough either: for an asset bought two days ago that
+        // stamped the event on the second the script ran, which then surfaced
+        // in recent-activity lists as though it had just happened. Taking a
+        // fraction of the available window keeps it in the past instead.
+        const sinceCreated = Math.max(0, NOW - created.getTime());
         const commissioned = new Date(
-          created.getTime() + int(1, 4) * 86_400_000
+          created.getTime() +
+            Math.min(int(1, 4) * 86_400_000, Math.floor(sinceCreated * 0.6))
         );
         events.push({
           at: commissioned,
@@ -1456,9 +1471,16 @@ async function run() {
 
         // One inventory touch, so an asset that never moved still has a
         // plausible middle to its timeline rather than a two-line stub.
-        if (chance(0.55)) {
+        //
+        // Placed somewhere inside the window the asset has actually existed
+        // for. A fixed forward offset from commissioning was what stamped 18
+        // of these into 2027 and buried the genuinely recent activity.
+        const livedFor = NOW - commissioned.getTime();
+        if (livedFor > 30 * 86_400_000 && chance(0.55)) {
           events.push({
-            at: new Date(commissioned.getTime() + int(20, 300) * 86_400_000),
+            at: new Date(
+              commissioned.getTime() + Math.floor(rand() * livedFor)
+            ),
             action: 'UPDATE',
             oldV: { condition: 'New' },
             newV: {
@@ -1489,8 +1511,21 @@ async function run() {
           });
         }
 
-        events.sort((x, y) => x.at.getTime() - y.at.getTime());
-        for (const e of events) rows.push({ ...e, assetId: a.id });
+        // Backstop, not decoration. Every generator above is meant to produce
+        // a past timestamp; this catches the one that stops doing so after an
+        // edit, instead of letting it reach the audit log where it would sit
+        // at the top of every recent-activity list.
+        const past = events.filter((e) => e.at.getTime() <= NOW);
+        droppedFuture += events.length - past.length;
+
+        past.sort((x, y) => x.at.getTime() - y.at.getTime());
+        for (const e of past) rows.push({ ...e, assetId: a.id });
+      }
+
+      if (droppedFuture > 0) {
+        summary.push(
+          `  WARNING dropped ${droppedFuture} future-dated events -- a generator is producing timestamps after now`
+        );
       }
 
       // Chunked so a single statement does not carry hundreds of tuples.
@@ -1525,6 +1560,15 @@ async function run() {
         ) s`;
       summary.push(
         `  events per asset: min ${spread.mn}, avg ${spread.avg}, max ${spread.mx}`
+      );
+
+      const [{ n: future }] = await tx<{ n: number }[]>`
+        SELECT count(*)::int AS n FROM system_audit_logs
+        WHERE entity_type = 'Asset' AND performed_at > now()`;
+      const [{ latest }] = await tx<{ latest: Date }[]>`
+        SELECT max(performed_at) AS latest FROM system_audit_logs`;
+      summary.push(
+        `  future-dated asset events: ${future} (must be 0); newest audit row overall: ${latest?.toISOString() ?? 'none'}`
       );
 
       const [{ n: emptyAttrs }] = await tx<{ n: number }[]>`
