@@ -131,6 +131,7 @@ describe('IssueReviewPanelWrapper', () => {
         '1',
         undefined,
         undefined,
+        undefined,
         undefined
       );
       expect(mockOnSuccess).toHaveBeenCalled();

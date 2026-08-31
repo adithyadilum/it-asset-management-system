@@ -60,6 +60,9 @@ type PurchaseDetailsSectionProps = {
   setExpectedLifespanYears: (v: string) => void;
   EXPECTED_LIFESPAN_OPTIONS: RegistrationOption[];
 
+  estimatedSalvageValue: string;
+  setEstimatedSalvageValue: (v: string) => void;
+
   invoiceInputRef: React.RefObject<HTMLInputElement | null>;
   showInvoiceUploader: boolean;
   setShowInvoiceUploader: (v: boolean) => void;
@@ -101,6 +104,8 @@ export function PurchaseDetailsSection({
   expectedLifespanYears,
   setExpectedLifespanYears,
   EXPECTED_LIFESPAN_OPTIONS,
+  estimatedSalvageValue,
+  setEstimatedSalvageValue,
   invoiceInputRef,
   showInvoiceUploader,
   setShowInvoiceUploader,
@@ -305,6 +310,24 @@ export function PurchaseDetailsSection({
                 value={warrantyMonths}
               />
             </>
+          </InlineFieldRow>
+        )}
+
+        {config.showEstimatedSalvageValue && (
+          <InlineFieldRow
+            label="Estimated Salvage Value :"
+            htmlFor="estimatedSalvageValue"
+            error={getError(state, 'estimatedSalvageValue')}
+            alignTop
+          >
+            <CurrencyInput
+              id="estimatedSalvageValue"
+              name="estimatedSalvageValue"
+              value={estimatedSalvageValue}
+              onChange={setEstimatedSalvageValue}
+              currencySymbol={currencySymbol}
+              error={getError(state, 'estimatedSalvageValue')}
+            />
           </InlineFieldRow>
         )}
 

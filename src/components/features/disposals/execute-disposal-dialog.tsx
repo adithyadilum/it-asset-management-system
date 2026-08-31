@@ -173,6 +173,11 @@ export function ExecuteDisposalDialog({
   const reasonOptions = REASON_OPTIONS[categoryType];
   const methodOptions = METHOD_OPTIONS[categoryType];
 
+  // Only electronics hold data, so only they need the wipe confirmed. Making
+  // it optional everywhere would drop the sanitisation record for laptops and
+  // phones; making it mandatory everywhere blocks disposing a chair.
+  const requiresDataWipe = categoryType === 'electronics';
+
   const expectedConfirmText = isBulk
     ? `DISPOSE ${selectedAssets.length} ASSETS`
     : singleAsset?.assetTag || '';
@@ -181,6 +186,7 @@ export function ExecuteDisposalDialog({
     selectedAssets.length > 0 &&
     reason !== '' &&
     method !== '' &&
+    (!requiresDataWipe || dataWiped) &&
     tagsRemoved &&
     confirmText.trim() === expectedConfirmText.trim();
 
@@ -416,9 +422,13 @@ export function ExecuteDisposalDialog({
                   className="cursor-pointer text-sm font-medium text-foreground"
                 >
                   Data wiped and factory reset confirmed.{' '}
-                  <span className="text-xs text-muted-foreground font-normal">
-                    (If applicable)
-                  </span>
+                  {requiresDataWipe ? (
+                    <span className="text-destructive">*</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      (If applicable)
+                    </span>
+                  )}
                 </Label>
               </div>
               <div className="flex items-start gap-3">

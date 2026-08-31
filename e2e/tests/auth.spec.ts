@@ -13,27 +13,26 @@ test.describe('Authentication Strategy', () => {
     await loginPage.clickLogin();
     // This requires a real test user to exist in the configured Keycloak instance
     await loginPage.performRealLogin('test_employee', 'password123');
-    await dashboardPage.expectToBeVisible();
+    await dashboardPage.expectLandedOn(/\/my-assets$/, /My Assets/i);
   });
 
   // Test 2: Verify that our test bypass fixture works for an Admin
   test('Bypass Login - GlobalAdmin', async ({ adminPage, dashboardPage }) => {
     // adminPage fixture automatically creates session and injects the cookie
-    await dashboardPage.goto(); // Go to dashboard directly
-    await dashboardPage.expectToBeVisible();
+    await dashboardPage.goto();
 
-    // We can also verify that the UI shows admin specific elements,
-    // e.g., an Admin Settings link in the navigation
-    // This depends on your actual app layout, but for now we verify the URL
-    await expect(adminPage).toHaveURL(/\/?$/);
+    // A GlobalAdmin has a dashboard, so `/` resolves to it.
+    await dashboardPage.expectLandedOn(/\/dashboard$/, /Welcome back/i);
+    await expect(adminPage).toHaveURL(/\/dashboard$/);
   });
 
   // Test 3: Verify that our test bypass fixture works for an Employee
   test('Bypass Login - Employee', async ({ employeePage, dashboardPage }) => {
     // employeePage fixture automatically creates session and injects the cookie
     await dashboardPage.goto();
-    await dashboardPage.expectToBeVisible();
 
-    await expect(employeePage).toHaveURL(/\/?$/);
+    // Employees have no dashboard; the proxy sends them to their own assets.
+    await dashboardPage.expectLandedOn(/\/my-assets$/, /My Assets/i);
+    await expect(employeePage).toHaveURL(/\/my-assets$/);
   });
 });

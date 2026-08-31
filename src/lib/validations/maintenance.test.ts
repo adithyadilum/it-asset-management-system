@@ -173,6 +173,25 @@ describe('initiateVendorRepairSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('defaults currencyCode to LKR when omitted', () => {
+    const result = initiateVendorRepairSchema.safeParse(validInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.currencyCode).toBe('LKR');
+    }
+  });
+
+  it('accepts valid 3-letter currencyCode', () => {
+    const result = initiateVendorRepairSchema.safeParse({
+      ...validInput,
+      currencyCode: 'USD',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.currencyCode).toBe('USD');
+    }
+  });
 });
 
 describe('completeRepairSchema', () => {

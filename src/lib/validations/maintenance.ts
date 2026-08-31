@@ -42,6 +42,13 @@ export const initiateVendorRepairSchema = z.object({
       'Expected return date must be in YYYY-MM-DD format.'
     )
     .optional(),
+  // The dispatch dialog offers a currency picker; without this the estimate was
+  // stored bare and every grid rendered it as USD regardless.
+  currencyCode: z
+    .string()
+    .trim()
+    .length(3, 'Currency code must be a 3-letter code (e.g. USD).')
+    .default('LKR'),
 });
 
 export type InitiateVendorRepairInput = z.infer<
@@ -150,3 +157,19 @@ export const getAssetMaintenanceHistoryParamsSchema = z.object({
 export type GetAssetMaintenanceHistoryParams = z.infer<
   typeof getAssetMaintenanceHistoryParamsSchema
 >;
+
+// ---------------------------------------------------------------------------
+// flagAssetForRepair (flag an asset for repair from the detail panel)
+// Creates an INTERNAL ticket → appears in Pending Review tab.
+// ---------------------------------------------------------------------------
+
+export const flagForRepairSchema = z.object({
+  assetId: z.string().uuid('Invalid asset ID format.'),
+  issueNote: z
+    .string()
+    .trim()
+    .min(1, 'Issue description is required.')
+    .max(1000, 'Issue description must be 1000 characters or fewer.'),
+});
+
+export type FlagForRepairInput = z.infer<typeof flagForRepairSchema>;

@@ -494,7 +494,7 @@ export function AssetDetailsPanel(props: AssetDetailsPanelProps) {
       'mark-returned': props.onMarkReturned,
       'send-for-repair': props.onSendForRepair,
       'request-disposal': props.onRequestDisposal,
-      'add-user': props.onActionButtonClick,
+      'add-user': props.onActionButtonClick ?? props.onAssign,
       'process-return': props.onProcessReturn,
       'renew-license': props.onRenewLicense,
       'cancel-assignment': props.onCancelAssignment,

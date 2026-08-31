@@ -27,6 +27,7 @@ export type PillarFormConfig = {
   showSoftwareLicensingSection: boolean;
   showCostPerSeat: boolean;
   showSuccessTagDialog: boolean;
+  showEstimatedSalvageValue: boolean;
 
   // Defaults
   defaultCondition?: string;
@@ -55,12 +56,14 @@ const DEFAULT_CONFIG: PillarFormConfig = {
   showSoftwareLicensingSection: false,
   showCostPerSeat: false,
   showSuccessTagDialog: true,
+  showEstimatedSalvageValue: false,
 };
 
 export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
   Hardware: {
     ...DEFAULT_CONFIG,
     panelDescription: 'Hardware',
+    showEstimatedSalvageValue: true,
   },
   Software: {
     ...DEFAULT_CONFIG,
@@ -86,6 +89,7 @@ export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
     panelDescription: 'Office Furniture',
     showLocationField: true,
     showConditionField: true,
+    showEstimatedSalvageValue: true,
     defaultCondition: 'New',
   },
   'Office Electronics': {
@@ -93,6 +97,7 @@ export const PILLAR_FORM_CONFIGS: Record<DbPillar, PillarFormConfig> = {
     panelDescription: 'Office Electronics',
     showLocationField: true,
     showConditionField: true,
+    showEstimatedSalvageValue: true,
     defaultCondition: 'New',
   },
 };

@@ -49,13 +49,24 @@ export function EditUserRoleModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Reset during render rather than in an effect. `react-hooks/set-state-in-effect`
+  // rejects setState inside an effect body, and the compiler is right to: the
+  // effect version renders once with the previous user's role before correcting
+  // itself. Comparing against the previous props is React's documented way to
+  // adjust state when props change.
+  const [prevOpenUser, setPrevOpenUser] = useState<{
+    isOpen: boolean;
+    user: typeof user;
+  }>({ isOpen, user });
+
+  if (prevOpenUser.isOpen !== isOpen || prevOpenUser.user !== user) {
+    setPrevOpenUser({ isOpen, user });
     if (isOpen) {
       setIsSubmitting(false);
       setError(null);
       if (user) setSelectedRole(user.role);
     }
-  }, [isOpen, user]);
+  }
 
   const handleSubmit = async () => {
     if (!user) {
