@@ -123,13 +123,20 @@ export function AddUsersToRoleModal({
   // The server requires at least 2 characters before returning results.
   const canSearch = normalizedQuery.length >= 2;
 
-  useEffect(() => {
-    if (!isOpen || !canSearch) {
+  // Clear search state when query drops below the 2-char threshold.
+  // Done during render (not in an effect) to avoid the set-state-in-effect lint rule.
+  const [prevCanSearch, setPrevCanSearch] = useState(canSearch);
+  if (canSearch !== prevCanSearch) {
+    setPrevCanSearch(canSearch);
+    if (!canSearch) {
       setSearchResults([]);
       setIsSearching(false);
       setSearchError(null);
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (!isOpen || !canSearch) return;
 
     let isCancelled = false;
     const searchDebounce = setTimeout(async () => {
