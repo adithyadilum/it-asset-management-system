@@ -247,71 +247,65 @@ export function KpiMetricsRow({
             <DialogHeader>
               <DialogTitle>Fleet Health Score</DialogTitle>
               <DialogDescription>
-                How this metric is calculated and why it matters to your
-                organization.
+                What goes into the score and how to read it.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2 text-sm text-foreground">
               <p>
-                The <strong>Fleet Health Score</strong> (
-                {metrics.fleetHealthScore}/100 &mdash;{' '}
-                {metrics.fleetHealthLabel}) is a weighted average of six
-                measures, each one a way the fleet quietly costs money when it
-                slips.
+                A weighted average of six operational measures, scored out of
+                100. Your fleet currently scores{' '}
+                <strong>
+                  {metrics.fleetHealthScore} / 100 &mdash;{' '}
+                  {metrics.fleetHealthLabel}
+                </strong>
+                .
               </p>
 
               <div className="space-y-2">
                 <h4 className="font-semibold text-foreground">
-                  What it measures
+                  What the score measures
                 </h4>
                 <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
                   <li>
-                    <strong>Condition (25%):</strong> share of the fleet not
-                    currently in repair, defective or lost.
+                    <strong>Condition (25%)</strong> &mdash; assets not in
+                    repair, defective or lost.
                   </li>
                   <li>
-                    <strong>Deployment (20%):</strong> how much serviceable kit
-                    is assigned. Broken and end-of-life assets are excluded, and
-                    85% earns full marks &mdash; keeping a spare pool is good
-                    practice, not a fault.
+                    <strong>Deployment (20%)</strong> &mdash; serviceable assets
+                    assigned to a user or location. 85% or above scores full
+                    marks.
                   </li>
                   <li>
-                    <strong>Return discipline (15%):</strong> open assignments
-                    that are past their expected return date.
+                    <strong>Return discipline (15%)</strong> &mdash; open
+                    assignments still within their due date.
                   </li>
                   <li>
-                    <strong>Repeat repairs (15%):</strong> assets with three or
-                    more repairs, which are usually cheaper to replace than to
-                    fix again.
+                    <strong>Repeat repairs (15%)</strong> &mdash; assets with
+                    fewer than three repair tickets.
                   </li>
                   <li>
-                    <strong>Support cover (15%):</strong> assets either under
-                    warranty or already past their useful life. An asset due for
-                    replacement is not an exposure, so it counts as covered.
+                    <strong>Support cover (15%)</strong> &mdash; assets under
+                    warranty, or past their useful life and due for replacement.
                   </li>
                   <li>
-                    <strong>Licence use (10%):</strong> purchased seats on
-                    active licences that are actually allocated.
+                    <strong>Licence use (10%)</strong> &mdash; purchased
+                    software seats allocated to a user.
                   </li>
                 </ul>
               </div>
 
-              <p className="text-muted-foreground">
-                A measure with nothing to count is dropped and the rest are
-                reweighted, so a fleet with no software licences is not marked
-                down for seats it never bought. Bands:{' '}
-                <strong>85+ Excellent</strong>, <strong>70+ Good</strong>,{' '}
-                <strong>50+ Fair</strong>, below that <strong>Poor</strong>.
-              </p>
+              <div className="space-y-2">
+                <h4 className="font-semibold text-foreground">Ratings</h4>
+                <p className="text-muted-foreground">
+                  85&ndash;100 Excellent &middot; 70&ndash;84 Good &middot;
+                  50&ndash;69 Fair &middot; below 50 Poor
+                </p>
+              </div>
 
               <div className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
-                <strong>How to use it:</strong> the score is only useful as a
-                pointer to the component dragging it down. A low reading is
-                always attributable &mdash; idle stock to reclaim, kit out on
-                loan past its return date, devices worth retiring rather than
-                repairing again, assets running without cover, or licences paid
-                for and unassigned. Every measure is one a well-run fleet can
-                score full marks on.
+                Measures that do not apply to your fleet are excluded and the
+                remaining weights adjusted. Open the KPI cards above to see the
+                assets and licences behind each measure.
               </div>
             </div>
           </DialogContent>
