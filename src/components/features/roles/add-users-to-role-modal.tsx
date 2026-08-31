@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CirclePlus, Info, Search, Trash2, X } from 'lucide-react';
+import { CirclePlus, Info, Loader2, Search, Trash2, X } from 'lucide-react';
 
 import { assignUsersRoleBulk, searchUsers } from '@/actions/roles';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+
 import {
   Dialog,
   DialogContent,
@@ -52,7 +52,6 @@ export function AddUsersToRoleModal({
   const [searchResults, setSearchResults] = useState<RoleUser[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [hideUsersAlreadyInRole, setHideUsersAlreadyInRole] = useState(false);
   const [mappedSelection, setMappedSelection] = useState<RoleUser[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,18 +70,15 @@ export function AddUsersToRoleModal({
   );
 
   const directoryResults = useMemo(() => {
-    if (!normalizedQuery) {
-      return [];
-    }
-
+    if (!normalizedQuery) return [];
     return searchResults
       .filter((directoryUser) => {
         if (directoryUser.id === currentUserId) return false;
         if (mappedIdSet.has(directoryUser.id)) return false;
+        // Always hide users who are already assigned to this role.
         if (
-          hideUsersAlreadyInRole &&
-          (directoryUser.role === defaultRole ||
-            alreadyAssignedIdSet.has(directoryUser.id))
+          directoryUser.role === defaultRole ||
+          alreadyAssignedIdSet.has(directoryUser.id)
         ) {
           return false;
         }
@@ -91,7 +87,6 @@ export function AddUsersToRoleModal({
       .slice(0, 10);
   }, [
     currentUserId,
-    hideUsersAlreadyInRole,
     mappedIdSet,
     alreadyAssignedIdSet,
     normalizedQuery,
@@ -100,47 +95,44 @@ export function AddUsersToRoleModal({
   ]);
 
   const addUserToSelection = (directoryUser: RoleUser) => {
-    setMappedSelection((currentSelection) => {
-      if (
-        currentSelection.some((selection) => selection.id === directoryUser.id)
-      ) {
-        return currentSelection;
-      }
-      return [...currentSelection, directoryUser];
+    setMappedSelection((prev) => {
+      if (prev.some((s) => s.id === directoryUser.id)) return prev;
+      return [...prev, directoryUser];
     });
   };
 
   const removeUserFromSelection = (roleUserId: string) => {
-    setMappedSelection((currentSelection) =>
-      currentSelection.filter((selection) => selection.id !== roleUserId)
-    );
+    setMappedSelection((prev) => prev.filter((s) => s.id !== roleUserId));
   };
 
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
-  if (isOpen !== prevIsOpen) {
-    setPrevIsOpen(isOpen);
-    if (!isOpen) {
-      setIsSubmitting(false);
-      setError(null);
+  // ── Close handler — resets all local state (safe: called from an event, not render) ──
+  // Every close path routes through here -- the dialog's own onOpenChange, the
+  // header X, Cancel, and the close after a successful assign. Calling
+  // `onOpenChange(false)` directly from any of them would skip the reset and
+  // reopen the modal still holding the last search and selection.
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
       setSearchQuery('');
       setSearchResults([]);
       setIsSearching(false);
       setSearchError(null);
-      setHideUsersAlreadyInRole(false);
       setMappedSelection([]);
+      setIsSubmitting(false);
+      setError(null);
     }
-  }
+    onOpenChange(open);
+  };
+
+  // The server requires at least 2 characters before returning results.
+  const canSearch = normalizedQuery.length >= 2;
 
   useEffect(() => {
-    if (!isOpen || !normalizedQuery) {
-      return;
-    }
+    if (!isOpen || !canSearch) return;
 
     let isCancelled = false;
     const searchDebounce = setTimeout(async () => {
       setIsSearching(true);
       setSearchError(null);
-
       try {
         const results = await searchUsers(normalizedQuery);
         if (isCancelled) return;
@@ -162,11 +154,11 @@ export function AddUsersToRoleModal({
       isCancelled = true;
       clearTimeout(searchDebounce);
     };
-  }, [isOpen, normalizedQuery]);
+  }, [isOpen, canSearch, normalizedQuery]);
 
   const handleSubmit = async () => {
     if (mappedSelection.length === 0) {
-      setError('Select at least one user to map.');
+      setError('Select at least one user to assign.');
       return;
     }
 
@@ -175,7 +167,7 @@ export function AddUsersToRoleModal({
 
     try {
       const result = await assignUsersRoleBulk(
-        mappedSelection.map((selection) => selection.id),
+        mappedSelection.map((s) => s.id),
         defaultRole
       );
 
@@ -184,7 +176,7 @@ export function AddUsersToRoleModal({
         return;
       }
 
-      onOpenChange(false);
+      handleOpenChange(false);
       onUpdated?.();
     } catch (caughtError) {
       setError(
@@ -198,64 +190,53 @@ export function AddUsersToRoleModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-190 p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
-        <DialogTitle className="sr-only">
-          Assign Users to {roleLabelForAddMode}
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          Search and map users to {roleLabelForAddMode}.
-        </DialogDescription>
-
-        <div className="p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="overflow-hidden border-none p-0 shadow-2xl sm:max-w-125 [&>button]:hidden">
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between border-b border-border px-6 py-4">
+          <div>
             <div className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-muted-foreground" />
-              <h2
+              <Info className="mt-0.5 h-5 w-5 text-muted-foreground" />
+              <DialogTitle
                 className={cn(
-                  'text-foreground',
-                  TYPOGRAPHY_CLASSNAMES.textLgSemiBold
+                  TYPOGRAPHY_CLASSNAMES.textLgSemiBold,
+                  'text-foreground'
                 )}
               >
                 Assign Users to {roleLabelForAddMode}
-              </h2>
+              </DialogTitle>
             </div>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              className="-mr-1 -mt-1 text-muted-foreground hover:bg-muted"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-
-          <div className="mt-3 flex items-center gap-2">
-            <Checkbox
-              id="hide-already-mapped"
-              checked={hideUsersAlreadyInRole}
-              onCheckedChange={(checked) =>
-                setHideUsersAlreadyInRole(checked === true)
-              }
-              disabled={isSubmitting}
-              className="border-border"
-            />
-            <label
-              htmlFor="hide-already-mapped"
+            <DialogDescription
               className={cn(
-                'text-foreground',
-                TYPOGRAPHY_CLASSNAMES.textSmMedium
+                'mt-0.5 pl-7 text-muted-foreground',
+                TYPOGRAPHY_CLASSNAMES.textSmRegular
               )}
             >
-              Hide users already in this role
-            </label>
+              Search and select users to assign to this role.
+            </DialogDescription>
           </div>
 
-          <div className="mt-2 relative">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Close"
+            className="-mr-2 -mt-2 h-8 w-8 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
+            onClick={() => handleOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* ── Body ── */}
+        <div className="space-y-4 px-6 py-4">
+          {/* Search input */}
+          <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              id="user-search"
+              aria-label="Search users by name or email"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search company directory by name or email..."
@@ -264,13 +245,25 @@ export function AddUsersToRoleModal({
                 TYPOGRAPHY_CLASSNAMES.textSmRegular
               )}
               disabled={isSubmitting}
+              autoComplete="off"
             />
           </div>
 
-          {normalizedQuery ? (
-            <div className="mt-3 rounded-lg border border-border bg-background p-3 shadow-sm">
+          {/* Search results */}
+          {normalizedQuery.length === 1 ? (
+            <p
+              className={cn(
+                'text-muted-foreground',
+                TYPOGRAPHY_CLASSNAMES.textSmRegular
+              )}
+            >
+              Type at least 2 characters to search.
+            </p>
+          ) : canSearch ? (
+            <div className="rounded-lg border border-border bg-background p-3 shadow-sm">
               {isSearching ? (
-                <div className="py-3 text-center">
+                <div className="flex items-center justify-center gap-2 py-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   <p
                     className={cn(
                       'text-muted-foreground',
@@ -284,7 +277,7 @@ export function AddUsersToRoleModal({
                 <div className="py-3 text-center">
                   <p
                     className={cn(
-                      'text-red-600',
+                      'text-destructive',
                       TYPOGRAPHY_CLASSNAMES.textSmMedium
                     )}
                   >
@@ -292,11 +285,11 @@ export function AddUsersToRoleModal({
                   </p>
                 </div>
               ) : directoryResults.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {directoryResults.map((directoryUser) => (
                     <div
                       key={directoryUser.id}
-                      className="flex items-center justify-between gap-3"
+                      className="flex items-center justify-between gap-3 rounded-md px-1 py-1 transition-colors hover:bg-muted/50"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar className="size-7 rounded-md">
@@ -337,9 +330,10 @@ export function AddUsersToRoleModal({
                               type="button"
                               variant="ghost"
                               size="icon-xs"
-                              className="text-foreground hover:bg-muted"
+                              className="shrink-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
                               onClick={() => addUserToSelection(directoryUser)}
                               disabled={isSubmitting}
+                              aria-label={`Add ${directoryUser.name} to selection`}
                             >
                               <CirclePlus className="h-4 w-4" />
                             </Button>
@@ -353,7 +347,7 @@ export function AddUsersToRoleModal({
                   ))}
                 </div>
               ) : (
-                <div className="py-3 text-center">
+                <div className="flex flex-col items-center gap-1 py-4 text-center">
                   <p
                     className={cn(
                       'text-foreground',
@@ -364,127 +358,161 @@ export function AddUsersToRoleModal({
                   </p>
                   <p
                     className={cn(
-                      'mt-1 text-muted-foreground',
+                      'text-muted-foreground',
                       TYPOGRAPHY_CLASSNAMES.textXsRegular
                     )}
                   >
-                    Your search &quot;{searchQuery.trim()}&quot; did not match
-                    any users.
+                    &quot;{searchQuery.trim()}&quot; did not match any users.
                   </p>
                 </div>
               )}
             </div>
           ) : null}
 
-          <div className="mt-3 rounded-lg border border-border bg-muted/80 p-3">
-            {mappedSelection.length > 0 ? (
-              <div className="max-h-25 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted">
-                {mappedSelection.map((selection) => (
-                  <div
-                    key={selection.id}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Avatar className="size-7 rounded-md">
-                        <AvatarFallback
-                          className={cn(
-                            'rounded-md bg-muted text-foreground',
-                            TYPOGRAPHY_CLASSNAMES.textXsMedium
-                          )}
-                        >
-                          {getInitials(selection.name)}
-                        </AvatarFallback>
-                      </Avatar>
+          {/* Selected users staging area */}
+          <div>
+            <p
+              className={cn(
+                'mb-1.5 text-foreground',
+                TYPOGRAPHY_CLASSNAMES.textSmMedium
+              )}
+            >
+              Selected users
+              {mappedSelection.length > 0 && (
+                <span
+                  className={cn(
+                    'ml-1.5 text-muted-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textSmRegular
+                  )}
+                >
+                  ({mappedSelection.length})
+                </span>
+              )}
+            </p>
 
-                      <div className="min-w-0">
-                        <p
-                          className={cn(
-                            'truncate text-foreground',
-                            TYPOGRAPHY_CLASSNAMES.textSmSemiBold
-                          )}
-                        >
-                          {selection.name}
-                        </p>
-                        <p
-                          className={cn(
-                            'truncate text-muted-foreground',
-                            TYPOGRAPHY_CLASSNAMES.textXsRegular
-                          )}
-                        >
-                          {selection.email}
-                        </p>
-                      </div>
-                    </div>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-red-400 hover:bg-red-50 hover:text-red-500"
-                            onClick={() =>
-                              removeUserFromSelection(selection.id)
-                            }
-                            disabled={isSubmitting}
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              {mappedSelection.length > 0 ? (
+                <div className="max-h-36 space-y-1 overflow-y-auto pr-1 [scrollbar-color:#64748b_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted">
+                  {mappedSelection.map((selection) => (
+                    <div
+                      key={selection.id}
+                      className="flex items-center justify-between gap-3 rounded-md px-1 py-1"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar className="size-7 rounded-md">
+                          <AvatarFallback
+                            className={cn(
+                              'rounded-md bg-background text-foreground',
+                              TYPOGRAPHY_CLASSNAMES.textXsMedium
+                            )}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Remove {selection.name} from selection
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div
-                className={cn(
-                  'py-2 text-center text-muted-foreground',
-                  TYPOGRAPHY_CLASSNAMES.textXsRegular
-                )}
-              >
-                No users selected for this role.
-              </div>
-            )}
+                            {getInitials(selection.name)}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              'truncate text-foreground',
+                              TYPOGRAPHY_CLASSNAMES.textSmSemiBold
+                            )}
+                          >
+                            {selection.name}
+                          </p>
+                          <p
+                            className={cn(
+                              'truncate text-muted-foreground',
+                              TYPOGRAPHY_CLASSNAMES.textXsRegular
+                            )}
+                          >
+                            {selection.email}
+                          </p>
+                        </div>
+                      </div>
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() =>
+                                removeUserFromSelection(selection.id)
+                              }
+                              disabled={isSubmitting}
+                              aria-label={`Remove ${selection.name} from selection`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Remove {selection.name} from selection
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    'py-4 text-center text-muted-foreground',
+                    TYPOGRAPHY_CLASSNAMES.textSmRegular
+                  )}
+                >
+                  No users selected. Search above to add users.
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* Submission error */}
           {error ? (
             <p
               className={cn(
-                'mt-2 text-red-600',
+                'text-destructive',
                 TYPOGRAPHY_CLASSNAMES.textSmMedium
               )}
             >
               {error}
             </p>
           ) : null}
+        </div>
 
-          <div className="mt-3 flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className={TYPOGRAPHY_CLASSNAMES.textSmMedium}
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || mappedSelection.length === 0}
-              className={cn(
-                'bg-primary px-4 text-primary-foreground hover:bg-primary/90',
-                TYPOGRAPHY_CLASSNAMES.textSmMedium
-              )}
-            >
-              {isSubmitting ? 'Confirming...' : 'Confirm Mapping'}
-            </Button>
-          </div>
+        {/* ── Footer ── */}
+        <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => handleOpenChange(false)}
+            className={cn(
+              'px-6 hover:bg-muted',
+              TYPOGRAPHY_CLASSNAMES.textSmMedium
+            )}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting || mappedSelection.length === 0}
+            className={cn(
+              'px-6 bg-primary text-primary-foreground hover:bg-primary/90',
+              TYPOGRAPHY_CLASSNAMES.textSmMedium
+            )}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Assigning...
+              </span>
+            ) : (
+              `Assign${mappedSelection.length > 0 ? ` (${mappedSelection.length})` : ''}`
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
