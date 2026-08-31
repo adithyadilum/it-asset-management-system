@@ -19,6 +19,13 @@ interface StandardReportsShellProps {
   filterOptions: FilterOptions;
   templates: ReportTemplateData[];
   generatedBy: string;
+  /**
+   * Whether this role may create, edit or delete saved templates. Everyone who
+   * can reach this page may read templates and run reports; only the roles
+   * `canManageAssets` covers may change them, so the affordances are hidden
+   * rather than left to fail against the server guard.
+   */
+  canManageTemplates: boolean;
 }
 
 import { useReportData } from './use-report-data';
@@ -27,6 +34,7 @@ export function StandardReportsShell({
   filterOptions,
   templates,
   generatedBy,
+  canManageTemplates,
 }: StandardReportsShellProps) {
   const router = useRouter();
 
@@ -195,6 +203,7 @@ export function StandardReportsShell({
           onFilterChange={handleFilterChange}
           onTemplatePreview={handleTemplatePreview}
           onTemplateDelete={handleTemplateDelete}
+          canManageTemplates={canManageTemplates}
           onManualPreview={handleManualPreview}
           onClearFilters={handleClearFilters}
           onTemplateCreated={handleTemplateCreated}

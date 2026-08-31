@@ -76,6 +76,7 @@ describe('StandardReportsConfigPanel', () => {
         onTemplateCreated={vi.fn()}
         isLoading={false}
         resetKey={0}
+        canManageTemplates
       />
     );
 
@@ -86,5 +87,65 @@ describe('StandardReportsConfigPanel', () => {
 
     fireEvent.click(screen.getByText('Preview report'));
     expect(mockOnManualPreview).toHaveBeenCalled();
+  });
+});
+
+describe('StandardReportsConfigPanel template permissions', () => {
+  const filterOptions: any = {
+    categories: [],
+    locations: [],
+    statuses: [],
+    assignmentStates: [],
+    returnConditions: [],
+    maintenanceStatuses: [],
+    disposalStatuses: [],
+    licenseTypes: [],
+    auditActionTypes: [],
+    vendors: [],
+    masterDataTypes: [],
+    assetTypes: [],
+  };
+
+  function renderPanel(canManageTemplates: boolean) {
+    return render(
+      <StandardReportsConfigPanel
+        filterState={{
+          source: 'Assets',
+          assetType: '',
+          category: '',
+          location: '',
+          status: '',
+          masterDataType: '',
+        }}
+        filterOptions={filterOptions as any}
+        templates={[{ id: 1, name: 'Template 1', dataSource: 'Assets' }] as any}
+        onFilterChange={vi.fn()}
+        onTemplatePreview={vi.fn()}
+        onTemplateDelete={vi.fn()}
+        onManualPreview={vi.fn()}
+        onClearFilters={vi.fn()}
+        onTemplateCreated={vi.fn()}
+        isLoading={false}
+        resetKey={0}
+        canManageTemplates={canManageTemplates}
+      />
+    );
+  }
+
+  it('offers template creation to a role that may manage templates', () => {
+    renderPanel(true);
+    expect(screen.getByText('Add new template')).toBeInTheDocument();
+  });
+
+  it('hides template creation from a read-only role', () => {
+    // A FinancialAuditor may read templates and run reports, but the server
+    // guard rejects every mutation -- so the affordance must not be offered.
+    renderPanel(false);
+    expect(screen.queryByText('Add new template')).not.toBeInTheDocument();
+  });
+
+  it('still lists and previews templates for a read-only role', () => {
+    renderPanel(false);
+    expect(screen.getByText('Template 1')).toBeInTheDocument();
   });
 });
