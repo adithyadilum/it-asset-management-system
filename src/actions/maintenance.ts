@@ -168,6 +168,7 @@ export async function getTicketForIssueReview(
       salvageValue: salvage,
       usefulLifeMonths: row.asset.usefulLifeMonths,
       purchaseDate: purchase?.purchaseDate ?? null,
+      pillar: row.category?.pillar,
     });
 
     // Calculate Total Cost of Ownership (add repair costs)
