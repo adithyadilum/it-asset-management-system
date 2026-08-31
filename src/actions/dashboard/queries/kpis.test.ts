@@ -164,9 +164,7 @@ describe('calculateFleetHealthScore', () => {
         openAssignmentCount: 40,
         overdueCount: 40,
       });
-      expect(score).toBe(
-        Math.round(100 - FLEET_HEALTH_WEIGHTS.returns * 100)
-      );
+      expect(score).toBe(Math.round(100 - FLEET_HEALTH_WEIGHTS.returns * 100));
     });
 
     it('clamps a numerator larger than its denominator instead of going below zero', () => {
@@ -177,9 +175,7 @@ describe('calculateFleetHealthScore', () => {
         openAssignmentCount: 10,
         overdueCount: 40,
       });
-      expect(score).toBe(
-        Math.round(100 - FLEET_HEALTH_WEIGHTS.returns * 100)
-      );
+      expect(score).toBe(Math.round(100 - FLEET_HEALTH_WEIGHTS.returns * 100));
       expect(score).toBeGreaterThanOrEqual(0);
     });
   });
