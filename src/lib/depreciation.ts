@@ -299,6 +299,8 @@ export function straightLineNbvSqlFragment(
   if (!pillarCol) return depreciated;
 
   const carriedAtCost = `(${costCol}::numeric * COALESCE(${exchangeRateCol}::numeric, 1))`;
-  const nonDepreciable = NON_DEPRECIABLE_PILLARS.map((p) => `'${p}'`).join(', ');
+  const nonDepreciable = NON_DEPRECIABLE_PILLARS.map((p) => `'${p}'`).join(
+    ', '
+  );
   return `CASE WHEN ${pillarCol} IN (${nonDepreciable}) THEN ${carriedAtCost} ELSE ${depreciated} END`;
 }
