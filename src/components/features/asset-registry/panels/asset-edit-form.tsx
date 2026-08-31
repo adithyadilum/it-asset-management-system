@@ -3,6 +3,8 @@
 import React, { useState, useTransition, useMemo, useCallback } from 'react';
 import { Lock } from 'lucide-react';
 
+import { formatSpecValue } from '@/lib/format-spec-value';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -497,7 +499,7 @@ export function AssetEditForm({
               <LockedField
                 key={key}
                 label={key.replace(/_/g, ' ')}
-                value={String(value)}
+                value={formatSpecValue(value)}
               />
             ))}
           </div>

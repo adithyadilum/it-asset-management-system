@@ -100,31 +100,41 @@ export function ReportTemplateCard({
                 className="size-4 shrink-0 text-foreground"
               />
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => onEditClick?.(template)}
-                  >
-                    <Edit2 className="mr-2 h-4 w-4" />
-                    Edit report
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="group cursor-pointer transition-colors hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 [&>svg]:text-red-600 hover:[&>svg]:text-red-700 focus:[&>svg]:text-red-700"
-                    onClick={() => setShowDeleteDialog(true)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete report
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Rendered only when this viewer can actually act on it. A
+                  role that may read templates but not change them (a
+                  FinancialAuditor) previously still got Edit and Delete, both
+                  of which failed against the server guard. */}
+              {(onEditClick || onDeleteClick) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 -mr-2"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => onEditClick?.(template)}
+                    >
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      Edit report
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      className="group cursor-pointer transition-colors hover:bg-red-50 hover:text-red-700 focus:bg-red-50 focus:text-red-700 [&>svg]:text-red-600 hover:[&>svg]:text-red-700 focus:[&>svg]:text-red-700"
+                      onClick={() => setShowDeleteDialog(true)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete report
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
         </CardHeader>

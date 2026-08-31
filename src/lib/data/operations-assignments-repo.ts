@@ -560,6 +560,10 @@ async function loadAssetsByStatus(
 async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
   const returnedAssignments = await db
     .select({
+      // Every action offered on a returned row needs the assignment it came
+      // from. Without it Process Return had nothing to submit and failed
+      // silently, and the row's own Received action did the same.
+      assignmentId: assetAssignments.id,
       assetId: assetAssignments.assetId,
       assetTag: assets.assetTag,
       name: assets.name,
@@ -597,6 +601,7 @@ async function loadReturnedAssets(): Promise<AssignmentsDashboardRow[]> {
 
     returnedRowsByAssetId.set(record.assetId, {
       id: record.assetId,
+      assignmentId: record.assignmentId,
       assetTag: record.assetTag,
       name: record.name,
       serialNumber: record.serialNumber,

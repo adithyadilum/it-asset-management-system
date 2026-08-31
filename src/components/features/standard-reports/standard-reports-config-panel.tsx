@@ -42,6 +42,7 @@ interface StandardReportsConfigPanelProps {
   onTemplateCreated: () => void;
   isLoading: boolean;
   resetKey: number;
+  canManageTemplates: boolean;
 }
 
 export function StandardReportsConfigPanel({
@@ -56,6 +57,7 @@ export function StandardReportsConfigPanel({
   onTemplateCreated,
   isLoading,
   resetKey,
+  canManageTemplates,
 }: StandardReportsConfigPanelProps) {
   // A report needs a source to query; every other filter is optional.
   const canPreview = Boolean(filterState.source);
@@ -171,9 +173,12 @@ export function StandardReportsConfigPanel({
       {/* Header Section - Fixed */}
       <div className="px-4 pt-4 pb-0 shrink-0">
         <div className="space-y-1.5">
-          <h2 className={TYPOGRAPHY_CLASSNAMES.text2xlSemiBold}>
+          {/* h1, not h2: this names the page, and it is the topmost heading
+              on it. Every other route titles itself with an h1, so this was
+              the one page whose outline started at level two. */}
+          <h1 className={TYPOGRAPHY_CLASSNAMES.text2xlSemiBold}>
             Standard Reports
-          </h2>
+          </h1>
         </div>
       </div>
 
@@ -186,11 +191,17 @@ export function StandardReportsConfigPanel({
                 key={template.id}
                 template={template}
                 onPreviewClick={onTemplatePreview}
-                onEditClick={(template) => {
-                  setEditingTemplate(template);
-                  setDialogOpen(true);
-                }}
-                onDeleteClick={onTemplateDelete}
+                onEditClick={
+                  canManageTemplates
+                    ? (template) => {
+                        setEditingTemplate(template);
+                        setDialogOpen(true);
+                      }
+                    : undefined
+                }
+                onDeleteClick={
+                  canManageTemplates ? onTemplateDelete : undefined
+                }
               />
             ))}
 
@@ -200,19 +211,21 @@ export function StandardReportsConfigPanel({
                 stops it stretching to match the tallest template card in the
                 row, which left a size-6 icon and one line of text adrift in a
                 large empty box. */}
-            <button
-              type="button"
-              onClick={() => {
-                setEditingTemplate(undefined);
-                setDialogOpen(true);
-              }}
-              className="flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-4 text-center transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <Plus className="size-5 text-muted-foreground" />
-              <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
-                Add new template
-              </span>
-            </button>
+            {canManageTemplates && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTemplate(undefined);
+                  setDialogOpen(true);
+                }}
+                className="flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background p-4 text-center transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Plus className="size-5 text-muted-foreground" />
+                <span className={TYPOGRAPHY_CLASSNAMES.textSmMedium}>
+                  Add new template
+                </span>
+              </button>
+            )}
           </div>
         </ScrollArea>
       </div>

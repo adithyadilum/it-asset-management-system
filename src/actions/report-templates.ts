@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { reportTemplates } from '@/db/schema';
 import { getAuthenticatedUser } from '@/actions/auth';
-import { canManageAssets } from '@/lib/auth/roles';
+import { canManageAssets, canViewAssetRegistry } from '@/lib/auth/roles';
 import { logAuditAction } from '@/lib/audit';
 import { reportTemplateSchema } from '@/lib/validations/report-templates';
 import { logError, logLatency, startLatencyTimer } from '@/lib/latency';
@@ -21,8 +21,14 @@ import type {
 export async function getReportTemplates(): Promise<ReportTemplateRow[]> {
   const actionTimer = startLatencyTimer();
 
+  // Reading saved templates is a read, so it uses the registry-read rule --
+  // the same three roles the sidebar shows Standard Reports to, and the same
+  // set `fetchReportPreview` already allows to generate a report. This used to
+  // require `canManageAssets`, a write permission, so a FinancialAuditor
+  // following the nav link crashed the page before it rendered. Creating,
+  // editing and deleting templates below stay on `canManageAssets`.
   const currentUser = await getAuthenticatedUser();
-  if (!currentUser || !canManageAssets(currentUser.role)) {
+  if (!currentUser || !canViewAssetRegistry(currentUser.role)) {
     throw new Error('Forbidden: You do not have permission to access reports.');
   }
 

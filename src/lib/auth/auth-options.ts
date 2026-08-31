@@ -13,6 +13,12 @@ import { users, userRefreshTokens, departments } from '@/db/schema';
 import type { UserRole } from '@/types/auth';
 import { decrypt, encrypt } from '@/lib/crypto';
 import { logAuditAction } from '@/lib/audit';
+import {
+  FATAL_REFRESH_ERROR,
+  isFatalRefreshFailure,
+  planTokenRefresh,
+  REFRESH_RETRY_BACKOFF_MS,
+} from '@/lib/auth/session-liveness';
 
 const ENCRYPTED_TOKEN_PREFIX = 'enc:v1:';
 
@@ -81,7 +87,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
   if (!userId) {
     console.error('[AUTH] refreshAccessToken called with no user ID in token');
-    return { ...token, error: 'RefreshAccessTokenError' };
+    return { ...token, error: FATAL_REFRESH_ERROR };
   }
 
   try {
@@ -119,6 +125,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
             decryptToken(stored.refreshToken) ?? (token.refreshToken as string),
           accessTokenExpires: stored.accessTokenExpires.getTime(),
           error: undefined,
+          refreshRetryAt: undefined,
         };
       }
 
@@ -156,12 +163,6 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       const newExpires = new Date(
         Date.now() + (refreshedTokens.expires_in as number) * 1000
       );
-      // refresh_expires_in is the Keycloak field for how long the refresh token
-      // itself is valid (seconds). Fall back to 30 days if not present.
-      const newRefreshExpires =
-        typeof refreshedTokens.refresh_expires_in === 'number'
-          ? Date.now() + refreshedTokens.refresh_expires_in * 1000
-          : Date.now() + 30 * 24 * 60 * 60 * 1000;
 
       // ── 4. Persist the new refresh token before releasing the lock ────────
       await tx
@@ -206,16 +207,29 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         idToken: refreshedTokens.id_token as string,
         refreshToken: newRefreshToken,
         accessTokenExpires: newExpires.getTime(),
-        refreshTokenExpires: newRefreshExpires,
         isActive,
         error: undefined,
+        refreshRetryAt: undefined,
       };
     });
   } catch (error) {
     console.error('Error refreshing access token', error);
+
+    // Only Keycloak rejecting the refresh token ends the session. Anything
+    // else is retried after a short pause -- see `session-liveness.ts` for why
+    // a transient failure must not sign the user out.
+    if (isFatalRefreshFailure(error)) {
+      return {
+        ...token,
+        error: FATAL_REFRESH_ERROR,
+        refreshRetryAt: undefined,
+      };
+    }
+
     return {
       ...token,
-      error: 'RefreshAccessTokenError',
+      error: undefined,
+      refreshRetryAt: Date.now() + REFRESH_RETRY_BACKOFF_MS,
     };
   }
 }
@@ -457,17 +471,6 @@ export const authOptions: NextAuthOptions = {
 
             // Persist the initial refresh token to the authoritative DB store
             if (account.refresh_token && account.expires_at) {
-              // Store the refresh token expiry in the JWT so the proxy can detect
-              // a completely dead session without a DB call from the edge runtime.
-              // Keycloak returns refresh_expires_in (seconds); fall back to 30 days.
-              const refreshExpiresIn =
-                typeof (account as Record<string, unknown>)
-                  .refresh_expires_in === 'number'
-                  ? ((account as Record<string, unknown>)
-                      .refresh_expires_in as number)
-                  : 30 * 24 * 60 * 60;
-              token.refreshTokenExpires = Date.now() + refreshExpiresIn * 1000;
-
               await db
                 .insert(userRefreshTokens)
                 .values({
@@ -498,16 +501,11 @@ export const authOptions: NextAuthOptions = {
       }
 
       // ── Subsequent requests ──────────────────────────────────────────────
-      // 60-second buffer: refresh before the token actually expires to avoid
-      // serving a request with a token that expires mid-flight.
-      const BUFFER_MS = 60 * 1000;
-
-      // If token refresh already failed, do not retry on every request
-      if (token.error === 'RefreshAccessTokenError') {
-        return token;
-      }
-
-      if (Date.now() < (token.accessTokenExpires as number) - BUFFER_MS) {
+      // 'fresh'   -- still valid, nothing to do.
+      // 'backoff' -- a recent attempt failed transiently; wait it out rather
+      //              than hammering Keycloak from every server render.
+      // 'give-up' -- Keycloak rejected the refresh token; the session is over.
+      if (planTokenRefresh(token) !== 'refresh') {
         return token;
       }
 

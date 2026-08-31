@@ -8,6 +8,7 @@ import {
 import {
   ADMIN_USER,
   EMPLOYEE_USER,
+  FINANCE_AUDITOR_USER,
   IT_OPERATOR_USER,
 } from '@/test/fixtures/users';
 
@@ -117,6 +118,16 @@ describe('Report Templates Actions', () => {
       expect(result.length).toBe(1);
       expect(result[0].name).toBe('Template 1');
     });
+
+    it('returns templates for a financial auditor', async () => {
+      // Reading a saved template is a read. This used to require
+      // `canManageAssets`, so an auditor following the Standard Reports link
+      // in their own sidebar crashed the page instead of loading it.
+      mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
+      mockDb.select.mockReturnValueOnce(chain([{ id: 1, name: 'Template 1' }]));
+      const result = await getReportTemplates();
+      expect(result.length).toBe(1);
+    });
   });
 
   describe('createReportTemplate', () => {
@@ -211,5 +222,31 @@ describe('Report Templates Actions', () => {
         })
       );
     });
+  });
+});
+
+describe('report template write permissions', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('still refuses template creation to a financial auditor', async () => {
+    // Widening the read guard must not widen the write guard: an auditor may
+    // run reports, but changing saved templates stays with the roles
+    // `canManageAssets` covers.
+    mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
+    const result = await createReportTemplate({
+      name: 'Test Report',
+      isActive: true,
+      dataSource: 'assets',
+      filters: {},
+      fields: ['id'],
+      sortDirection: 'asc' as const,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('still refuses template deletion to a financial auditor', async () => {
+    mockGetAuthenticatedUser.mockResolvedValue(FINANCE_AUDITOR_USER);
+    const result = await deleteReportTemplate(1);
+    expect(result.success).toBe(false);
   });
 });

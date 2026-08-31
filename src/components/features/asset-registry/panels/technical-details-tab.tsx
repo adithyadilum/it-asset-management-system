@@ -4,9 +4,14 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY_CLASSNAMES } from '@/components/shared/typography';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  formatSpecValue,
+  hasSpecValue,
+  type SpecValue,
+} from '@/lib/format-spec-value';
 
 export interface TechnicalDetailsTabProps {
-  specs: Record<string, string | number | undefined>;
+  specs: Record<string, SpecValue>;
   note?: string;
   className?: string;
 }
@@ -16,9 +21,12 @@ export function TechnicalDetailsTab({
   note,
   className = '',
 }: TechnicalDetailsTabProps) {
-  const specEntries = Object.entries(specs).filter(
-    ([, value]) => value !== undefined && value !== null && value !== ''
-  );
+  // Formatted here rather than in the JSX below: a Boolean spec value arrives
+  // as a real boolean, and JSX renders `true` and `false` as nothing at all,
+  // so those rows drew their label with an empty space beside it.
+  const specEntries = Object.entries(specs)
+    .filter(([, value]) => hasSpecValue(value))
+    .map(([key, value]) => [key, formatSpecValue(value)] as const);
 
   return (
     <div
@@ -30,7 +38,7 @@ export function TechnicalDetailsTab({
       {/* Specifications Grid */}
       <div className="mt-2 grid w-full grid-cols-1 gap-x-12 gap-y-0 md:grid-cols-2">
         {specEntries.map(([key, value], index) => {
-          const isLongValue = typeof value === 'string' && value.length > 40;
+          const isLongValue = value.length > 40;
           return (
             <div
               key={index}

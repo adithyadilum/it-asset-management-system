@@ -118,6 +118,29 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
     [assetRows, activeAssetId]
   );
 
+  /**
+   * Opens the same modal the returned-assets table uses, so the panel and the
+   * table process a return the same way. The panel used to call
+   * `markAssetReceivedAction` instead, which skips recording the condition
+   * the asset came back in.
+   */
+  const handleProcessReturnFromPanel = (asset: {
+    assetId: string;
+    assetTag: string;
+    assetName?: string;
+    assignedTo: string;
+    assignmentId?: number;
+  }) => {
+    setProcessReturnAsset({
+      assetId: asset.assetId,
+      assetTag: asset.assetTag,
+      assetName: asset.assetName ?? '',
+      assignee: asset.assignedTo,
+      assignmentId: asset.assignmentId,
+    });
+    setIsProcessReturnModalOpen(true);
+  };
+
   const handleRowClick = (row: AssetAssignmentRow) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('panel', 'record');
@@ -246,6 +269,7 @@ export function AssignmentsDashboard({ data }: AssignmentsDashboardProps) {
         disableTransition={searchParams.get('animate') === '0'}
         selectedAsset={selectedAsset}
         onClose={handleClosePanel}
+        onProcessReturn={handleProcessReturnFromPanel}
       />
 
       <ProcessReturnModal

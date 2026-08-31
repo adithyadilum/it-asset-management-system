@@ -10,6 +10,7 @@ import { AssetDetailsTab } from './asset-details-tab';
 import { TechnicalDetailsTab } from './technical-details-tab';
 import { PurchaseDetailsTab } from './purchase-details-tab';
 import { HistoryTab } from './history-tab';
+import type { SpecValue } from '@/lib/format-spec-value';
 import { AllocationsTab, type AllocationUser } from './allocations-tab';
 import type {
   HistoryEvent,
@@ -67,7 +68,7 @@ export interface AssetDetailsPanelProps {
   assignmentState?: string;
   imageUrl?: string;
 
-  specs?: Record<string, string | number | undefined>;
+  specs?: Record<string, SpecValue>;
   techNote?: string;
 
   // Purchase

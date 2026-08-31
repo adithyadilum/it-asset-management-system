@@ -114,3 +114,42 @@ describe('ReportTemplateCard', () => {
     expect(mockOnDeleteClick).toHaveBeenCalledWith(1);
   });
 });
+
+describe('ReportTemplateCard permissions', () => {
+  const template = {
+    id: 1,
+    name: 'Assets by Location',
+    description: 'All assets grouped by site',
+    dataSource: 'Assets',
+  } as never;
+
+  it('offers the edit/delete menu when the viewer may manage templates', () => {
+    render(
+      <ReportTemplateCard
+        template={template}
+        onEditClick={vi.fn()}
+        onDeleteClick={vi.fn()}
+      />
+    );
+    expect(
+      screen.getByRole('button', { name: /open menu/i })
+    ).toBeInTheDocument();
+  });
+
+  it('hides the menu entirely for a read-only viewer', () => {
+    // Both handlers absent means every item in the menu would have failed
+    // against the server guard, so the trigger itself is not rendered.
+    render(<ReportTemplateCard template={template} />);
+    expect(
+      screen.queryByRole('button', { name: /open menu/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('still shows the template and its preview action when read-only', () => {
+    render(<ReportTemplateCard template={template} onPreviewClick={vi.fn()} />);
+    expect(screen.getByText('Assets by Location')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /preview report/i })
+    ).toBeInTheDocument();
+  });
+});

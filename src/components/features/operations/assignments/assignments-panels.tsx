@@ -50,6 +50,12 @@ interface AssignmentsPanelsProps {
   disableTransition?: boolean;
   selectedAsset: AssignmentPanelAsset | null;
   onClose: () => void;
+  /**
+   * Opens the Process Return modal, which lives on the dashboard because the
+   * returned-assets table opens it too. Distinct from marking an asset
+   * received: processing a return records the condition it came back in.
+   */
+  onProcessReturn?: (asset: AssignmentPanelAsset) => void;
 }
 
 function formatDisplayDate(value: string | null | undefined) {
@@ -74,6 +80,7 @@ export function AssignmentsPanels({
   disableTransition,
   selectedAsset,
   onClose,
+  onProcessReturn,
 }: AssignmentsPanelsProps) {
   const router = useRouter();
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
@@ -179,7 +186,12 @@ export function AssignmentsPanels({
   };
 
   const handleMarkReceived = async () => {
-    if (!cachedAsset.assignmentId) return;
+    // Was a bare `return`. Returned rows carried no assignmentId, so the
+    // button reported nothing at all when it could not act.
+    if (!cachedAsset.assignmentId) {
+      toast.error('This asset has no open assignment to close.');
+      return;
+    }
     const result = await markAssetReceivedAction([cachedAsset.assignmentId]);
     if (result.success) {
       toast.success('Asset marked as received');
@@ -294,7 +306,11 @@ export function AssignmentsPanels({
         onRemindReturn={handleSendReminder}
         onRequestReturn={handleRequestReturn}
         onMarkReturned={handleMarkReceived}
-        onProcessReturn={handleMarkReceived}
+        onProcessReturn={
+          onProcessReturn && cachedAsset
+            ? () => onProcessReturn(cachedAsset)
+            : undefined
+        }
         onCancelAssignment={handleCancelAssignment}
       />
 

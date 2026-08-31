@@ -4,6 +4,7 @@ import { StandardReportsShell } from '@/components/features/standard-reports/sta
 import { getStandardReportsFilterOptions } from '@/actions/standard-reports';
 import { getReportTemplates } from '@/actions/report-templates';
 import { requirePageAuth } from '@/lib/auth/page-guard';
+import { canManageAssets } from '@/lib/auth/roles';
 import type { ReportTemplateData } from '@/types/standard-reports';
 
 async function PageContent() {
@@ -33,6 +34,7 @@ async function PageContent() {
       filterOptions={filterOptions}
       templates={templates}
       generatedBy={currentUser.name}
+      canManageTemplates={canManageAssets(currentUser.role)}
     />
   );
 }

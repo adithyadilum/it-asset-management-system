@@ -71,6 +71,7 @@ describe('StandardReportsShell', () => {
         }
         templates={[]}
         generatedBy="User A"
+        canManageTemplates
       />
     );
 

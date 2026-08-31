@@ -40,6 +40,11 @@ declare module 'next-auth/jwt' {
     accessToken?: string;
     refreshToken?: string;
     accessTokenExpires?: number;
+    /**
+     * Set when a refresh failed for a reason worth retrying; the `jwt` callback
+     * leaves the refresh alone until this passes. Absent on a healthy token.
+     */
+    refreshRetryAt?: number;
     error?: string;
   }
 }
