@@ -266,12 +266,16 @@ export function AssetDetailsPanelWrapper({
 
   const handleProcessReturnClick = useCallback(() => {
     if (data?.asset.id) {
+      // No onClose() here. The registry closes its panel by pushing the
+      // panel-less URL, so calling it fired a second router.push in the same
+      // tick and that one won -- the button dropped you back on the registry
+      // with the panel shut and nothing else happening. Leaving the route
+      // unmounts the panel anyway.
       router.push(
         `/operations/assignments?tab=returned-assets&processReturnId=${data.asset.id}`
       );
-      onClose(); // close the panel so they are redirected nicely
     }
-  }, [data, router, onClose]);
+  }, [data, router]);
 
   const handleRevokeSoftwareAllocation = useCallback(
     async (userId: string) => {
