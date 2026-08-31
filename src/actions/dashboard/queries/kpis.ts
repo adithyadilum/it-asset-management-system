@@ -1,4 +1,13 @@
-import { and, count, eq, isNull, ne, sql, inArray } from 'drizzle-orm';
+import {
+  and,
+  count,
+  eq,
+  isNull,
+  ne,
+  notInArray,
+  sql,
+  inArray,
+} from 'drizzle-orm';
 import { db } from '@/db';
 import {
   assets,
@@ -16,6 +25,9 @@ import {
   DASHBOARD_KPI_CACHE_TTL,
   HIGH_MAINTENANCE_TICKET_THRESHOLD,
   FLEET_HEALTH_WEIGHTS,
+  TARGET_DEPLOYMENT_RATE,
+  OUT_OF_ACTION_STATUSES,
+  NON_DEPLOYABLE_STATUSES,
 } from '@/lib/constants/dashboard';
 import type { DashboardKpiMetrics } from '@/types/dashboard';
 import { convertCurrencyAmount } from '@/lib/currency';
@@ -28,71 +40,126 @@ function getFleetHealthLabel(score: number): string {
   return 'Poor';
 }
 
+/**
+ * Everything the score needs, already reduced to counts.
+ *
+ * Each denominator is named so the component that uses it can be checked
+ * against the same population -- the previous shape divided an assignment
+ * count from one table by an asset count from another, which could exceed 1
+ * and was then silently clamped to zero.
+ */
 export interface FleetHealthInputs {
+  /** Assets in the fleet: not archived, not disposed. */
   totalActiveAssets: number;
-  assignedCountHealth: number;
-  overdueCountHealth: number;
+  /** Of those, currently In Repair, Defective or Lost. */
+  outOfActionCount: number;
+  /** Of those, serviceable and available to hand out or already handed out. */
+  deployableCount: number;
+  /** Of the deployable set, currently assigned. */
+  assignedCount: number;
+  /** Open assignments (no return recorded) on assets still in the fleet. */
+  openAssignmentCount: number;
+  /** Of those, past their expected return date. */
+  overdueCount: number;
+  /** Assets with at least HIGH_MAINTENANCE_TICKET_THRESHOLD repairs. */
   highRepairCount: number;
-  warrantyCovered: number;
+  /** In-service assets that have a purchase record to judge cover against. */
+  purchasedAssetCount: number;
+  /** Of those, under warranty or already past their useful life. */
+  supportCoveredCount: number;
+  /** Seats across active licences. */
   totalSWSeats: number;
+  /** Live allocations against those same licences. */
   allocatedSWSeats: number;
 }
 
+/** Safe ratio: no denominator means no signal, not a zero. */
+function ratio(numerator: number, denominator: number): number {
+  if (denominator <= 0) return 0;
+  return Math.min(1, Math.max(0, numerator / denominator));
+}
+
+/**
+ * A 0-100 composite of six things that each cost money when they slip.
+ *
+ * Every component is scored so that a well-run fleet can actually reach 1.
+ * That was the main problem with the previous version: utilisation demanded
+ * 100% of assets be assigned (so holding any spare kit capped the score) and
+ * warranty coverage demanded every asset still be under warranty (which no
+ * ageing fleet can be, so the ceiling fell every month regardless of what
+ * anyone did). Both now measure against a target that good practice can meet.
+ *
+ * Components with no denominator are dropped and the remaining weights are
+ * renormalised, so an organisation with no software licences is not marked
+ * down for the seats it does not have.
+ */
 export function calculateFleetHealthScore(inputs: FleetHealthInputs): number {
   const {
     totalActiveAssets,
-    assignedCountHealth,
-    overdueCountHealth,
+    outOfActionCount,
+    deployableCount,
+    assignedCount,
+    openAssignmentCount,
+    overdueCount,
     highRepairCount,
-    warrantyCovered,
+    purchasedAssetCount,
+    supportCoveredCount,
     totalSWSeats,
     allocatedSWSeats,
   } = inputs;
 
   const components = [
     {
+      // How much of the fleet is usable right now. The most direct health
+      // signal there is, and the one the original score left out.
       applicable: totalActiveAssets > 0,
-      weight: FLEET_HEALTH_WEIGHTS.utilization,
-      value:
-        totalActiveAssets > 0
-          ? Math.min(1, assignedCountHealth / totalActiveAssets)
-          : 0,
+      weight: FLEET_HEALTH_WEIGHTS.condition,
+      value: 1 - ratio(outOfActionCount, totalActiveAssets),
     },
     {
-      applicable: assignedCountHealth > 0,
-      weight: FLEET_HEALTH_WEIGHTS.overdue,
-      value:
-        assignedCountHealth > 0
-          ? Math.max(0, 1 - overdueCountHealth / assignedCountHealth)
-          : 1,
+      // Idle capital, measured only against serviceable kit and only up to a
+      // realistic target, so a spare pool is not treated as a failure.
+      applicable: deployableCount > 0,
+      weight: FLEET_HEALTH_WEIGHTS.deployment,
+      value: ratio(
+        ratio(assignedCount, deployableCount),
+        TARGET_DEPLOYMENT_RATE
+      ),
     },
     {
+      // Custody risk, now measured against open assignments rather than a
+      // status count from a different table.
+      applicable: openAssignmentCount > 0,
+      weight: FLEET_HEALTH_WEIGHTS.returns,
+      value: 1 - ratio(overdueCount, openAssignmentCount),
+    },
+    {
+      // Repeat offenders: kit that should be replaced rather than repaired
+      // again.
       applicable: totalActiveAssets > 0,
       weight: FLEET_HEALTH_WEIGHTS.repairs,
-      value:
-        totalActiveAssets > 0
-          ? Math.max(0, 1 - highRepairCount / totalActiveAssets)
-          : 1,
+      value: 1 - ratio(highRepairCount, totalActiveAssets),
     },
     {
-      applicable: totalActiveAssets > 0,
-      weight: FLEET_HEALTH_WEIGHTS.warranty,
-      value:
-        totalActiveAssets > 0
-          ? Math.min(1, warrantyCovered / totalActiveAssets)
-          : 0,
+      // Unplanned cost exposure. An asset past its useful life counts as
+      // covered: replacing it is already the plan, so the absence of a
+      // warranty on it is not a risk. What this catches is a young asset with
+      // no cover, which is the case that actually costs money.
+      applicable: purchasedAssetCount > 0,
+      weight: FLEET_HEALTH_WEIGHTS.support,
+      value: ratio(supportCoveredCount, purchasedAssetCount),
     },
     {
+      // Seats paid for and not used.
       applicable: totalSWSeats > 0,
-      weight: FLEET_HEALTH_WEIGHTS.software,
-      value:
-        totalSWSeats > 0 ? Math.min(1, allocatedSWSeats / totalSWSeats) : 1,
+      weight: FLEET_HEALTH_WEIGHTS.licences,
+      value: ratio(allocatedSWSeats, totalSWSeats),
     },
   ];
 
   const applicableComponents = components.filter((c) => c.applicable);
   if (applicableComponents.length === 0) {
-    return 100; // Default when no components are applicable (clean slate)
+    return 100; // Nothing to judge: an empty fleet is a clean slate, not a sick one.
   }
 
   const totalWeight = applicableComponents.reduce(
@@ -143,6 +210,12 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
           totalActive: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' THEN 1 ELSE 0 END)`,
           createdThisMonth: sql<number>`SUM(CASE WHEN ${assets.createdAt} >= DATE_TRUNC('month', CURRENT_DATE) THEN 1 ELSE 0 END)`,
           assignedCount: sql<number>`SUM(CASE WHEN ${assets.status} = 'Assigned' THEN 1 ELSE 0 END)`,
+          // Broken, missing, or away being fixed -- the condition component.
+          outOfAction: sql<number>`SUM(CASE WHEN ${inArray(assets.status, [...OUT_OF_ACTION_STATUSES])} THEN 1 ELSE 0 END)`,
+          // Serviceable kit: what is left after the out-of-action set and
+          // everything at end of life. Deployment is judged against this, not
+          // against every asset on the books.
+          deployable: sql<number>`SUM(CASE WHEN ${notInArray(assets.status, [...NON_DEPLOYABLE_STATUSES])} THEN 1 ELSE 0 END)`,
         })
         .from(assets)
         .where(eq(assets.isArchived, false)),
@@ -175,7 +248,20 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
             )
           `,
           warrantyExpiries30Days: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' AND ${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE AND ${assetPurchases.warrantyExpiry}::date <= CURRENT_DATE + INTERVAL '30 days' THEN 1 ELSE 0 END)`,
-          warrantyCovered: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' AND ${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE THEN 1 ELSE 0 END)`,
+          // Denominator for support cover: in-service assets that have a
+          // purchase record to judge cover against.
+          purchasedAssets: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' THEN 1 ELSE 0 END)`,
+          // Covered means under warranty OR already past its useful life.
+          // An asset at end of life is due for replacement, so having no
+          // warranty on it is not an exposure -- counting it as one is what
+          // made the old warranty component impossible to score well on.
+          supportCovered: sql<number>`SUM(CASE WHEN ${assets.status} != 'Disposed' AND (
+            ${assetPurchases.warrantyExpiry}::date >= CURRENT_DATE
+            OR (
+              ${assets.usefulLifeMonths} IS NOT NULL
+              AND ${assetPurchases.purchaseDate} + (${assets.usefulLifeMonths} || ' months')::interval < CURRENT_DATE
+            )
+          ) THEN 1 ELSE 0 END)`,
         })
         .from(assetPurchases)
         .innerJoin(assets, eq(assetPurchases.assetId, assets.id))
@@ -215,22 +301,43 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
           )
         ),
 
+      // Joined to the licence so allocations are counted against the same
+      // set of licences that supplies the seat total. Without it a live
+      // allocation on a deactivated licence inflated the numerator only.
       db
         .select({
           licenseId: softwareAllocations.licenseId,
           count: count(),
         })
         .from(softwareAllocations)
-        .where(isNull(softwareAllocations.revokedAt))
+        .innerJoin(
+          softwareLicenses,
+          eq(softwareLicenses.id, softwareAllocations.licenseId)
+        )
+        .where(
+          and(
+            isNull(softwareAllocations.revokedAt),
+            eq(softwareLicenses.isActive, true)
+          )
+        )
         .groupBy(softwareAllocations.licenseId),
 
+      // Both halves of the return-discipline ratio come from one query over
+      // one population. They used to be an assignment count divided by an
+      // asset status count, which could exceed 1 whenever an archived asset
+      // still held an open assignment.
       db
-        .select({ count: count() })
+        .select({
+          open: sql<number>`COUNT(*)`,
+          overdue: sql<number>`SUM(CASE WHEN ${assetAssignments.expectedReturnDate}::date < CURRENT_DATE THEN 1 ELSE 0 END)`,
+        })
         .from(assetAssignments)
+        .innerJoin(assets, eq(assetAssignments.assetId, assets.id))
         .where(
           and(
             isNull(assetAssignments.returnedDate),
-            sql`${assetAssignments.expectedReturnDate}::date < CURRENT_DATE`
+            eq(assets.isArchived, false),
+            ne(assets.status, 'Disposed')
           )
         ),
 
@@ -270,6 +377,8 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       assetMetricsRes[0]?.createdThisMonth || 0
     );
     const assignedCountHealth = Number(assetMetricsRes[0]?.assignedCount || 0);
+    const outOfActionCount = Number(assetMetricsRes[0]?.outOfAction || 0);
+    const deployableCount = Number(assetMetricsRes[0]?.deployable || 0);
 
     const totalAssetValue = parseFloat(
       financialMetricsRes[0]?.totalAssetValue?.toString() || '0'
@@ -291,8 +400,11 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
     const warrantyExpiries30Days = Number(
       financialMetricsRes[0]?.warrantyExpiries30Days || 0
     );
-    const warrantyCovered = Number(
-      financialMetricsRes[0]?.warrantyCovered || 0
+    const purchasedAssetCount = Number(
+      financialMetricsRes[0]?.purchasedAssets || 0
+    );
+    const supportCoveredCount = Number(
+      financialMetricsRes[0]?.supportCovered || 0
     );
 
     // Repair costs carry their own currency (maintenance_tickets.currency_code,
@@ -372,15 +484,20 @@ export const getCachedDashboardKpiMetrics = unstable_cache(
       impactedSoftwareEmployees = impactedRes[0]?.count || 0;
     }
 
-    const overdueCountHealth = overdueCountRes[0]?.count || 0;
+    const openAssignmentCount = Number(overdueCountRes[0]?.open || 0);
+    const overdueCountHealth = Number(overdueCountRes[0]?.overdue || 0);
     const highRepairCount = highRepairCountRes[0]?.count || 0;
 
     const fleetHealthScore = calculateFleetHealthScore({
       totalActiveAssets,
-      assignedCountHealth,
-      overdueCountHealth,
+      outOfActionCount,
+      deployableCount,
+      assignedCount: assignedCountHealth,
+      openAssignmentCount,
+      overdueCount: overdueCountHealth,
       highRepairCount,
-      warrantyCovered,
+      purchasedAssetCount,
+      supportCoveredCount,
       totalSWSeats,
       allocatedSWSeats,
     });
