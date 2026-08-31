@@ -59,3 +59,6 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local database snapshots taken before destructive cleanups.
+db-backups/
