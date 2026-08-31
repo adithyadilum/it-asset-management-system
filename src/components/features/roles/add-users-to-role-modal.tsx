@@ -106,6 +106,10 @@ export function AddUsersToRoleModal({
   };
 
   // ── Close handler — resets all local state (safe: called from an event, not render) ──
+  // Every close path routes through here -- the dialog's own onOpenChange, the
+  // header X, Cancel, and the close after a successful assign. Calling
+  // `onOpenChange(false)` directly from any of them would skip the reset and
+  // reopen the modal still holding the last search and selection.
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       setSearchQuery('');
@@ -137,7 +141,9 @@ export function AddUsersToRoleModal({
         if (isCancelled) return;
         setSearchResults([]);
         setSearchError(
-          caughtError instanceof Error ? caughtError.message : 'Failed to search users.'
+          caughtError instanceof Error
+            ? caughtError.message
+            : 'Failed to search users.'
         );
       } finally {
         if (!isCancelled) setIsSearching(false);
@@ -170,7 +176,7 @@ export function AddUsersToRoleModal({
         return;
       }
 
-      onOpenChange(false);
+      handleOpenChange(false);
       onUpdated?.();
     } catch (caughtError) {
       setError(
@@ -216,7 +222,7 @@ export function AddUsersToRoleModal({
             size="icon"
             aria-label="Close"
             className="-mr-2 -mt-2 h-8 w-8 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isSubmitting}
           >
             <X className="h-5 w-5" />
@@ -225,8 +231,6 @@ export function AddUsersToRoleModal({
 
         {/* ── Body ── */}
         <div className="space-y-4 px-6 py-4">
-
-
           {/* Search input */}
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -482,7 +486,7 @@ export function AddUsersToRoleModal({
           <Button
             type="button"
             variant="ghost"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             className={cn(
               'px-6 hover:bg-muted',
               TYPOGRAPHY_CLASSNAMES.textSmMedium
